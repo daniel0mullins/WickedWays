@@ -31,6 +31,8 @@ function makeHolder(): ICharacter {
   return {
     holderKind: "character",
     removeFromInventory: vi.fn(),
+    hasRoomForItem: vi.fn(() => true),
+    receiveItem: vi.fn(),
   } as unknown as ICharacter;
 }
 
@@ -185,7 +187,7 @@ describe("Item", () => {
   });
 
   describe("transfer", () => {
-    it("moves the item from the holder to the recipient", () => {
+    it("removes the item from the sender and deposits it into the recipient", () => {
       const { item, actions, events } = makeItem();
       const holder = makeHolder();
       const recipient = makeHolder();
@@ -196,7 +198,27 @@ describe("Item", () => {
       expect(actions.transfer).toHaveBeenCalledWith(holder, recipient);
       expect(events.onTransfer).toHaveBeenCalledWith(holder, recipient);
       expect(holder.removeFromInventory).toHaveBeenCalledWith(item);
-      expect(heldBy(item)).toBe(recipient);
+      // The recipient claims the item via its own receiveItem (which re-points
+      // heldBy through CLAIM); transfer no longer writes heldBy directly.
+      expect(recipient.receiveItem).toHaveBeenCalledWith(item);
+    });
+
+    it("throws and changes nothing when the recipient has no room", () => {
+      const { item, actions, events } = makeItem();
+      const holder = makeHolder();
+      const recipient = makeHolder();
+      (recipient.hasRoomForItem as ReturnType<typeof vi.fn>).mockReturnValue(
+        false,
+      );
+      hold(item, holder);
+
+      expect(() => item.actions.transfer(holder, recipient)).toThrow(
+        ProceduralViolation,
+      );
+      expect(holder.removeFromInventory).not.toHaveBeenCalled();
+      expect(recipient.receiveItem).not.toHaveBeenCalled();
+      expect(actions.transfer).not.toHaveBeenCalled();
+      expect(events.onTransfer).not.toHaveBeenCalled();
     });
 
     it("does nothing when the item is not held", () => {
