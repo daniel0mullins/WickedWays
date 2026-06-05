@@ -47,6 +47,29 @@ function edgeCount(rooms: IRoom[]): number {
   return total / 2;
 }
 
+function makeRng(seed: number): () => number {
+  let a = seed;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function exitSignature(rooms: IRoom[]): string {
+  const index = new Map<IRoom, number>(rooms.map((r, i) => [r, i]));
+  return rooms
+    .map((room, i) =>
+      [...room.exits.entries()]
+        .map(([dir, dest]) => `${i}:${dir}->${index.get(dest)}`)
+        .sort()
+        .join(","),
+    )
+    .join("|");
+}
+
 describe("buildMap", () => {
   it("returns an empty array unchanged", () => {
     expect(buildMap([])).toEqual([]);
@@ -132,6 +155,28 @@ describe("buildMap", () => {
           expect(dest.exits.get(OPPOSITE[direction]! as keyof ExitsArg)).toBe(room);
         }
       }
+    });
+  });
+
+  describe("determinism", () => {
+    it("produces identical structure for the same seed", () => {
+      const first = buildMap(makeRooms(15), {
+        rng: makeRng(42),
+        extraConnections: 4,
+      });
+      const second = buildMap(makeRooms(15), {
+        rng: makeRng(42),
+        extraConnections: 4,
+      });
+
+      expect(exitSignature(first)).toBe(exitSignature(second));
+    });
+
+    it("produces different structure for different seeds", () => {
+      const first = buildMap(makeRooms(15), { rng: makeRng(1) });
+      const second = buildMap(makeRooms(15), { rng: makeRng(2) });
+
+      expect(exitSignature(first)).not.toBe(exitSignature(second));
     });
   });
 });
