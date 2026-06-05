@@ -7,20 +7,23 @@ export type CampaignId = Brand<string, "CampaignId">;
 export interface ICampaign {
   // ### Properties
   id: CampaignId;
-  title: string;
   party: IPlayerCharacter[];
+  title: string;
+
   readonly maxRounds: number;
-  get round(): number;
-  get gm(): IPlayerCharacter;
+
   get activeCharacter(): IPlayerCharacter;
+  get gm(): IPlayerCharacter;
+  get round(): number;
 
   // ### Methods
-  endRound: () => void;
-  transfer: (c: IPlayerCharacter) => void;
   beginCampaign: () => void;
   endCampaign: () => void;
+  endRound: () => void;
   joinCampaign: (c: IPlayerCharacter) => void;
   leaveCampaign: (c: IPlayerCharacter) => void;
+  nextPlayer: () => void;
+  transfer: (c: IPlayerCharacter) => void;
 }
 
 export class Campaign implements ICampaign {
@@ -33,7 +36,7 @@ export class Campaign implements ICampaign {
 
   #started = false;
   #finished = false;
-  #activeCharacter: IPlayerCharacter;
+  #activeCharacterIndex: number = 0;
   #actedThisRound: WeakMap<IPlayerCharacter, boolean>;
 
   get round() {
@@ -45,7 +48,12 @@ export class Campaign implements ICampaign {
   }
 
   get activeCharacter() {
-    return this.#activeCharacter;
+    const activeCharacter = this.party[this.#activeCharacterIndex];
+    if (activeCharacter) {
+      return activeCharacter;
+    } else {
+      throw new ProceduralViolation("Unable to resolve active character");
+    }
   }
 
   #resetActivity() {
@@ -70,14 +78,15 @@ export class Campaign implements ICampaign {
     this.#actedThisRound = new WeakMap<IPlayerCharacter, boolean>();
     this.#resetActivity();
 
-    const activeCharacter = this.party[0];
-    if (activeCharacter) {
-      this.#activeCharacter = activeCharacter;
-    } else {
-      throw new ProceduralViolation(
-        "Unable to set active character in campaign set up",
-      );
-    }
+    this.#activeCharacterIndex = 0;
+  }
+
+  beginCampaign() {
+    this.#started = true;
+  }
+
+  endCampaign() {
+    this.#finished = true;
   }
 
   endRound() {
@@ -95,14 +104,6 @@ export class Campaign implements ICampaign {
     }
   }
 
-  beginCampaign() {
-    this.#started = true;
-  }
-
-  endCampaign() {
-    this.#finished = true;
-  }
-
   joinCampaign(c: IPlayerCharacter) {
     this.party.push(c);
   }
@@ -114,6 +115,17 @@ export class Campaign implements ICampaign {
       );
     } else {
       this.party = this.party.filter((pc) => pc !== c);
+    }
+  }
+
+  nextPlayer() {
+    this.#actedThisRound.set(this.activeCharacter, true);
+    const nextIndex = this.#activeCharacterIndex + 1;
+    if (nextIndex === this.party.length) {
+      this.#activeCharacterIndex = 0;
+      this.endRound();
+    } else {
+      this.#activeCharacterIndex = nextIndex;
     }
   }
 

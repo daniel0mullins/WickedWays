@@ -5,40 +5,44 @@ import { generateId } from "./util";
 
 type PreconditionFn = (r: IRoom) => boolean;
 type ScriptFn = (r: IRoom) => void;
+type TriggerPhase = "enter" | "exit";
 
 export type SceneId = Brand<string, "sceneId">;
 export interface IScene {
   id: SceneId;
-  room: IRoom;
   preconditions: PreconditionFn[];
-  playScene: () => void;
+  playScene: (phase: TriggerPhase, room: IRoom) => void;
 }
 
 export class Scene implements IScene {
   id: SceneId;
-  room: IRoom;
   preconditions: PreconditionFn[];
 
   #script: ScriptFn;
+  #triggerPhase: TriggerPhase;
 
   constructor({
-    room,
+    phase = "enter",
     preconditions,
     script,
   }: {
     room: IRoom;
+    phase: TriggerPhase;
     preconditions: PreconditionFn[];
     script: ScriptFn;
   }) {
     this.id = generateId<SceneId>();
-    this.room = room;
     this.preconditions = preconditions;
     this.#script = script;
+    this.#triggerPhase = phase;
   }
 
-  playScene() {
-    if (this.preconditions.every((fn) => fn(this.room))) {
-      this.#script(this.room);
+  playScene(phase: TriggerPhase, room: IRoom) {
+    if (
+      this.#triggerPhase === phase &&
+      this.preconditions.every((fn) => fn(room))
+    ) {
+      this.#script(room);
     }
   }
 }

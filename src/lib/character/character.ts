@@ -70,7 +70,7 @@ export class Character implements ICharacter {
   }
 
   get isNormal() {
-    return this.#status.values().every((val) => !!val);
+    return this.#status.values().every((val) => !val);
   }
 
   get status() {
