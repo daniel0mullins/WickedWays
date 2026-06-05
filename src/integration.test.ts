@@ -135,4 +135,35 @@ describe("Campaign integration", () => {
     expect(sceneEntries).toBeGreaterThan(0);
     expect(npc).toBeInstanceOf(Character);
   });
+
+  it("resolves combat between a player character and a co-located npc", () => {
+    const campaign = new Campaign("Wicked Ways");
+    const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+    hero.joinCampaign();
+    campaign.gm = hero;
+
+    // sanity 5 mitigates a 1-point unarmed health attack to exactly 1 damage,
+    // and keeps the npc "normal" (fear is only below sanity 5).
+    const ghoul = new NonPlayerCharacter(
+      campaign,
+      "Ghoul",
+      makeStats({ [StatType.Sanity]: 5 }),
+      "Hgrrr",
+      [],
+    );
+
+    const crypt = new Room("Crypt", [], {} as ExitsArg);
+    campaign.beginCampaign();
+    hero.move(crypt);
+    ghoul.move(crypt);
+
+    expect(crypt.occupants).toContain(hero);
+    expect(crypt.occupants).toContain(ghoul);
+
+    hero.startTurn();
+    hero.attack(ghoul);
+
+    expect(ghoul.stats[StatType.Health]).toBe(9);
+    expect(ghoul.isNormal).toBe(true);
+  });
 });
