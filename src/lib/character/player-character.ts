@@ -1,13 +1,13 @@
 import { ICampaign } from "../campaign";
 import { IItem } from "../inventory";
 import { ILoot } from "../loot";
-import { typedEntries } from "../util";
+import { typedEntries, ProceduralViolation } from "../util";
 import { Character, ICharacter } from "./character";
 import { Stats, StatType } from "./stats";
 
 export interface IPlayerCharacter extends ICharacter {
   attack: <C extends ICharacter>(c: C) => void;
-  openLootBox: (lootBox: ILoot) => IItem[];
+  openLootBox: (lootBox: ILoot) => readonly IItem[];
 }
 
 export class PlayerCharacter extends Character implements IPlayerCharacter {
@@ -21,7 +21,6 @@ export class PlayerCharacter extends Character implements IPlayerCharacter {
 
     this.isActionMap.set(this.move, true);
     this.isActionMap.set(this.attack, true);
-    this.isActionMap.set(this.openLootBox, true);
   }
 
   attack(c: ICharacter) {
@@ -39,7 +38,7 @@ export class PlayerCharacter extends Character implements IPlayerCharacter {
 
     // Fill up the attack matrix with a single loop
     weapons.forEach((weapon) => {
-      attackMatrix[weapon.stat] = attackMatrix[weapon.stat] += weapon.modifier;
+      attackMatrix[weapon.stat] += weapon.modifier;
     });
 
     // Inflict the damage for each stat type to the defender
@@ -51,9 +50,16 @@ export class PlayerCharacter extends Character implements IPlayerCharacter {
     this.recordAction(this.attack);
   }
 
-  openLootBox(lootBox: ILoot) {
-    const { contents } = lootBox;
-    this.recordAction(this.openLootBox);
-    return contents;
+  #requireCoLocated(lootBox: ILoot) {
+    if (!this.currentRoom?.loot.has(lootBox.id)) {
+      throw new ProceduralViolation(
+        "Cannot interact with a loot box that is not in the current room",
+      );
+    }
+  }
+
+  openLootBox(lootBox: ILoot): readonly IItem[] {
+    this.#requireCoLocated(lootBox);
+    return [...lootBox.contents];
   }
 }

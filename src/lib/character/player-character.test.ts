@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ICampaign } from "../campaign";
 import type { IItem, ItemId } from "../inventory";
-import type { ILoot, LootId } from "../loot";
+import type { IRoom } from "../room";
 
+import { CLAIM } from "../inventory";
+import { Loot } from "../loot";
+import { ProceduralViolation } from "../util";
 import { Character, type ICharacter } from "./character";
 import { PlayerCharacter } from "./player-character";
 import { StatType, type Stats } from "./stats";
@@ -42,21 +45,6 @@ function makeWeapon(opts: {
   } as unknown as IItem;
 }
 
-function makeLoot(contents: IItem[]): ILoot {
-  return {
-    holderKind: "loot",
-    id: "loot-1" as LootId,
-    description: "a chest",
-    contents,
-    capacity: contents.length + 2,
-    removeItems: vi.fn(),
-    stowItem: vi.fn(),
-    hasRoomForItem: vi.fn(),
-    receiveItem: vi.fn(),
-    relinquishItem: vi.fn(),
-  };
-}
-
 function makeDefender(): ICharacter {
   return { takeDamage: vi.fn() } as unknown as ICharacter;
 }
@@ -70,6 +58,52 @@ function makePc(opts: { inventorySlots?: number } = {}) {
   );
 }
 
+const HELD_BY = Symbol.for("heldBy");
+
+// Item stub that supports the holder plumbing (CLAIM + HELD_BY) and pickUp,
+// so it works with a real Loot box and with addToInventory.
+function makeLootItem(id: string): IItem {
+  let holder: unknown = null;
+  return {
+    id: id as ItemId,
+    actions: { pickUp: vi.fn() },
+    [CLAIM]: (h: unknown) => {
+      holder = h;
+    },
+    get [HELD_BY]() {
+      return holder;
+    },
+  } as unknown as IItem;
+}
+
+// A room whose loot map contains `box`, so the player can be co-located with it.
+function makeRoomWith(box: Loot): IRoom {
+  return {
+    loot: new Map([[box.id, box]]),
+    enterRoom: vi.fn(),
+    exitRoom: vi.fn(),
+  } as unknown as IRoom;
+}
+
+// Build a player already standing in a room that holds the box.
+function makePcInRoomWith(
+  box: Loot,
+  opts: { inventorySlots?: number; actionsPerRound?: number } = {},
+) {
+  const pc = new PlayerCharacter(
+    makeCampaign(),
+    "Hero",
+    makeStats(),
+    opts.inventorySlots,
+  );
+  if (opts.actionsPerRound !== undefined) {
+    pc.actionsPerRound = opts.actionsPerRound;
+  }
+  pc.move(makeRoomWith(box)); // sets currentRoom
+  pc.startTurn(); // reset the action count consumed by move()
+  return pc;
+}
+
 describe("PlayerCharacter", () => {
   beforeEach(() => {
     itemCounter = 0;
@@ -80,12 +114,11 @@ describe("PlayerCharacter", () => {
       expect(makePc()).toBeInstanceOf(Character);
     });
 
-    it("registers move, attack, and openLootBox as recordable actions", () => {
+    it("registers move and attack as recordable actions", () => {
       const pc = makePc();
 
       expect(pc.isActionMap.get(pc.move)).toBe(true);
       expect(pc.isActionMap.get(pc.attack)).toBe(true);
-      expect(pc.isActionMap.get(pc.openLootBox)).toBe(true);
     });
 
     it("keeps the inventory actions inherited from Character", () => {
@@ -207,25 +240,39 @@ describe("PlayerCharacter", () => {
   });
 
   describe("openLootBox", () => {
-    it("returns the contents of the loot box", () => {
-      const pc = makePc();
-      const contents = [makeWeapon(), makeWeapon()];
-      const loot = makeLoot(contents);
+    it("returns the contents of a co-located loot box", () => {
+      const contents = [makeLootItem("a"), makeLootItem("b")];
+      const box = new Loot("chest", contents);
+      const pc = makePcInRoomWith(box);
 
-      expect(pc.openLootBox(loot)).toEqual(contents);
+      expect(pc.openLootBox(box)).toEqual(contents);
     });
 
-    it("counts as a recordable action", () => {
-      const pc = makePc();
+    it("returns a view that cannot mutate the box", () => {
+      const box = new Loot("chest", [makeLootItem("a")]);
+      const pc = makePcInRoomWith(box);
+
+      const view = pc.openLootBox(box) as IItem[];
+      view.push(makeLootItem("x"));
+
+      expect(box.contents).toHaveLength(1);
+    });
+
+    it("does not cost an action", () => {
+      const box = new Loot("chest", [makeLootItem("a")]);
+      const pc = makePcInRoomWith(box, { actionsPerRound: 1 });
       const onTurnEnd = vi.spyOn(pc.events, "onTurnEnd");
-      const loot = makeLoot([]);
 
-      pc.openLootBox(loot);
-      pc.openLootBox(loot);
+      pc.openLootBox(box);
+
       expect(onTurnEnd).not.toHaveBeenCalled();
+    });
 
-      pc.openLootBox(loot);
-      expect(onTurnEnd).toHaveBeenCalledOnce();
+    it("throws when the box is not in the player's room", () => {
+      const box = new Loot("chest", [makeLootItem("a")]);
+      const pc = new PlayerCharacter(makeCampaign(), "Hero", makeStats());
+
+      expect(() => pc.openLootBox(box)).toThrow(ProceduralViolation);
     });
   });
 });
