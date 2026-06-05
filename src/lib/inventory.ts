@@ -90,7 +90,7 @@ export type ItemHolder = ICharacter | ILoot;
 export const CLAIM = Symbol("claimItem");
 
 // Using a Symbol so Object.keys does not leak the key and Object.values does not leak the value
-const HELD_BY = Symbol.for("heldBy");
+export const HELD_BY = Symbol.for("heldBy");
 
 export interface IItem {
   id: ItemId;
