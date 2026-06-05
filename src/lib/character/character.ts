@@ -1,6 +1,6 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { IItem, Inventory } from "../inventory";
+import { CLAIM, IItem, IItemHolder, Inventory } from "../inventory";
 import { IRoom } from "../room";
 import { Status, StatusMatrix } from "../status";
 
@@ -10,13 +10,24 @@ import { MitigatorStatType, Stats, StatType } from "./stats";
 
 export type CharacterId = Brand<string, "CharacterId">;
 
-export interface ICharacter {
+// Damage mitigation: a mitigating stat of MAX_STAT fully absorbs the hit, while
+// a mitigator of 0 doubles it. Each point of the mitigating stat removes
+// MITIGATION_PER_POINT of the incoming damage multiplier.
+const MAX_STAT = 10;
+const MITIGATION_PER_POINT = 0.2;
+
+// Any callable, used purely as an identity key in the action-tracking maps.
+// Preferred over the unsafe built-in `Function` type.
+export type ActionFn = (...args: never[]) => unknown;
+
+export interface ICharacter extends IItemHolder {
   // ### Properties
+  readonly holderKind: "character";
   id: CharacterId;
   name: string;
   stats: Stats;
   actionsPerRound: number;
-  readonly isActionMap: WeakMap<Function, boolean>;
+  readonly isActionMap: WeakMap<ActionFn, boolean>;
 
   get campaign(): ICampaign;
   get currentRoom(): IRoom | null;
@@ -29,7 +40,7 @@ export interface ICharacter {
   endTurn: () => void;
   move: (room: IRoom) => void;
   removeFromInventory: (item: IItem) => void;
-  recordAction: (callingFn: Function) => void;
+  recordAction: (callingFn: ActionFn) => void;
   startTurn: () => void;
   takeDamage: (attackStrength: number, attackStat?: StatType) => void;
 
@@ -39,13 +50,14 @@ export interface ICharacter {
 
 export class Character implements ICharacter {
   // Public Properties
+  readonly holderKind = "character" as const;
   events: ICharacterEvents;
   id: CharacterId;
   name: string;
   stats: Stats;
   actionsPerRound: number;
-  readonly isActionMap: WeakMap<Function, boolean> = new WeakMap<
-    Function,
+  readonly isActionMap: WeakMap<ActionFn, boolean> = new WeakMap<
+    ActionFn,
     boolean
   >();
 
@@ -119,8 +131,22 @@ export class Character implements ICharacter {
     }
   }
 
-  #canAddToInventory() {
+  hasRoomForItem() {
     return this.#inventory.items.length < this.#inventory.slots;
+  }
+
+  receiveItem(item: IItem) {
+    this.#inventory.items.push(item);
+    item[CLAIM](this);
+  }
+
+  relinquishItem(item: IItem) {
+    const index = this.#inventory.items.findIndex(
+      (current) => current.id === item.id,
+    );
+    if (index !== -1) {
+      this.#inventory.items.splice(index, 1);
+    }
   }
 
   constructor(
@@ -146,7 +172,7 @@ export class Character implements ICharacter {
     this.isActionMap.set(this.removeFromInventory, true);
   }
 
-  recordAction(callingFn: Function) {
+  recordAction(callingFn: ActionFn) {
     if (this.isActionMap.get(callingFn)) {
       this.actionsThisRound = this.actionsThisRound + 1;
     }
@@ -157,10 +183,10 @@ export class Character implements ICharacter {
 
   addToInventory(item: IItem | IItem[]) {
     const items = Array.isArray(item) ? item : [item];
-    for (const item of items) {
-      if (this.#canAddToInventory()) {
-        this.#inventory.items.push(item);
-        item.actions.pickUp(this);
+    for (const current of items) {
+      if (this.hasRoomForItem()) {
+        this.receiveItem(current);
+        current.actions.pickUp(this);
       } else {
         throw new ProceduralViolation(
           "Attempted to add to inventory, but character doesn't have enough slots!",
@@ -172,31 +198,22 @@ export class Character implements ICharacter {
 
   removeFromInventory(item: IItem | IItem[]) {
     const items = Array.isArray(item) ? item : [item];
-    for (const item of items) {
-      let removed = false;
-      this.#inventory.items = this.#inventory.items.reduce(
-        (accumulator, currentItem) => {
-          if (currentItem.id === item.id) {
-            removed = true;
-          } else {
-            accumulator.push(currentItem);
-          }
-          return accumulator;
-        },
-        [] as IItem[],
-      );
-      if (!removed) {
+    for (const current of items) {
+      const held = this.#inventory.items.some((i) => i.id === current.id);
+      if (!held) {
         throw new ProceduralViolation(
           "Attempted to remove an item from inventory, but the item was not in the character's inventory!",
         );
       }
+      this.relinquishItem(current);
     }
     this.recordAction(this.removeFromInventory);
   }
 
   takeDamage(attackStrength: number, attackStat: StatType = StatType.Health) {
-    const finalAttackStrength =
-      attackStrength * ((10 - this.stats[MitigatorStatType[attackStat]]) * 0.2);
+    const mitigator = this.stats[MitigatorStatType[attackStat]];
+    const damageMultiplier = (MAX_STAT - mitigator) * MITIGATION_PER_POINT;
+    const finalAttackStrength = attackStrength * damageMultiplier;
 
     this.stats[attackStat] = this.stats[attackStat] - finalAttackStrength;
 

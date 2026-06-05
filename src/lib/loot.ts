@@ -1,33 +1,38 @@
 import { Brand } from "./brand";
-import { IItem, ItemId } from "./inventory";
+import { CLAIM, IItem, IItemHolder, ItemId } from "./inventory";
 import { ContainerFullException, generateId } from "./util";
 
 export type LootId = Brand<string, "LootId">;
 
-export interface ILoot {
+export interface ILoot extends IItemHolder {
+  readonly holderKind: "loot";
   id: LootId;
   description: string;
   contents: IItem[];
   removeItems: (itemId: ItemId | ItemId[]) => IItem[];
   stowItem: (item: IItem) => void;
-  readonly spaces: number;
+  readonly capacity: number;
 }
 
 export class Loot implements ILoot {
+  readonly holderKind = "loot" as const;
   id: LootId;
   description: string;
   contents: IItem[];
-  #spaces: number;
+  #capacity: number;
 
-  get spaces() {
-    return this.#spaces;
+  get capacity() {
+    return this.#capacity;
   }
 
   constructor(description: string, contents: IItem[]) {
     this.id = generateId<LootId>();
     this.description = description;
     this.contents = contents;
-    this.#spaces = contents.length + 2;
+    this.#capacity = contents.length + 2;
+    for (const item of contents) {
+      item[CLAIM](this);
+    }
   }
 
   removeItems(itemId: ItemId | ItemId[]) {
@@ -47,9 +52,25 @@ export class Loot implements ILoot {
     return items;
   }
 
+  hasRoomForItem() {
+    return this.contents.length < this.#capacity;
+  }
+
+  receiveItem(item: IItem) {
+    this.contents.push(item);
+    item[CLAIM](this);
+  }
+
+  relinquishItem(item: IItem) {
+    const index = this.contents.findIndex((value) => value.id === item.id);
+    if (index !== -1) {
+      this.contents.splice(index, 1);
+    }
+  }
+
   stowItem(item: IItem) {
-    if (this.contents.length < this.spaces) {
-      this.contents.push(item);
+    if (this.hasRoomForItem()) {
+      this.receiveItem(item);
     } else {
       throw new ContainerFullException(this.id);
     }
