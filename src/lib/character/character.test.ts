@@ -180,6 +180,18 @@ describe("Character", () => {
       expect(character.inventory.items).toEqual([b]);
     });
 
+    it("removes an array of items", () => {
+      const character = makeCharacter({ actionsPerRound: 99 });
+      const a = makeItem("a");
+      const b = makeItem("b");
+      const c = makeItem("c");
+      character.addToInventory([a, b, c]);
+
+      character.removeFromInventory([a, c]);
+
+      expect(character.inventory.items).toEqual([b]);
+    });
+
     it("throws a ProceduralViolation when the item is not held", () => {
       const character = makeCharacter();
 
@@ -270,6 +282,19 @@ describe("Character", () => {
 
       expect(character.stats[StatType.Energy]).toBe(0);
       expect(character.status).toContain(Status.Confused);
+    });
+
+    it("leaves Confused unchanged when energy sits at exactly 1", () => {
+      // Energy of 1 is the neutral band: not depleted (<= 0) and not yet
+      // recovered (> 1), so the Confused status is left as-is.
+      const character = makeCharacter({ stats: { [StatType.Energy]: 1 } });
+
+      // Health mitigated by Sanity 10 => zero damage, so energy stays at 1
+      // while #resolveStatuses runs over the unchanged stats.
+      character.takeDamage(0);
+
+      expect(character.stats[StatType.Energy]).toBe(1);
+      expect(character.status).not.toContain(Status.Confused);
     });
 
     it("is no longer normal once an affliction is applied", () => {
