@@ -18,7 +18,13 @@ const OPPOSITES: Record<Direction, Direction> = {
 export interface BuildMapOptions {
   /** 0..1 random source. Default: Math.random. Inject for deterministic tests. */
   rng?: () => number;
-  /** Loop/shortcut edges beyond the spanning tree. Default: 0. */
+  /**
+   * Loop/shortcut edges beyond the spanning tree. Default: 0.
+   * - Integer >= 1: absolute edge count (floored).
+   * - In (0, 1): fraction of (n-1) edges, rounded.
+   * - <= 0: no extras.
+   * Delivery is best-effort; fewer edges are added if the graph is saturated.
+   */
   extraConnections?: number;
 }
 
@@ -26,7 +32,7 @@ export function buildMap(
   rooms: IRoom[],
   options: BuildMapOptions = {},
 ): IRoom[] {
-  const { rng = Math.random } = options;
+  const { rng = Math.random, extraConnections = 0 } = options;
 
   if (rooms.length <= 1) {
     return rooms;
@@ -43,6 +49,19 @@ export function buildMap(
     const target = candidates[Math.floor(rng() * candidates.length)]!;
     connect(target, room, rng);
     connected.push(room);
+  }
+
+  const extra = resolveExtraConnections(extraConnections, rooms.length);
+  let added = 0;
+  let attempts = 0;
+  const maxAttempts = extra * rooms.length * 2;
+  while (added < extra && attempts < maxAttempts) {
+    const a = rooms[Math.floor(rng() * rooms.length)]!;
+    const b = rooms[Math.floor(rng() * rooms.length)]!;
+    if (connect(a, b, rng)) {
+      added++;
+    }
+    attempts++;
   }
 
   return rooms;
@@ -74,6 +93,16 @@ function areAdjacent(a: IRoom, b: IRoom): boolean {
 
 function freeDirections(room: IRoom): Direction[] {
   return ALL_DIRECTIONS.filter((direction) => !room.exits.has(direction));
+}
+
+function resolveExtraConnections(extra: number, roomCount: number): number {
+  if (extra <= 0) {
+    return 0;
+  }
+  if (extra < 1) {
+    return Math.round(extra * (roomCount - 1));
+  }
+  return Math.floor(extra);
 }
 
 function shuffle<T>(items: T[], rng: () => number): T[] {

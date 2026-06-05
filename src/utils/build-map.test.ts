@@ -101,4 +101,37 @@ describe("buildMap", () => {
       }
     });
   });
+
+  describe("extraConnections", () => {
+    it("adds extra edges as an absolute integer count", () => {
+      const rooms = buildMap(makeRooms(12), { extraConnections: 3 });
+
+      // n-1 tree edges (11) plus up to 3 extras; each extra only skips when no
+      // free-slot pair exists, which cannot happen for 12 rooms with <=8 exits.
+      expect(edgeCount(rooms)).toBe(14);
+    });
+
+    it("treats a value in (0,1) as a fraction of (n-1)", () => {
+      // 0.5 * (12 - 1) = 5.5 -> rounds to 6 extra edges.
+      const rooms = buildMap(makeRooms(12), { extraConnections: 0.5 });
+
+      expect(edgeCount(rooms)).toBe(17);
+    });
+
+    it("adds nothing for a value of 0", () => {
+      const rooms = buildMap(makeRooms(12), { extraConnections: 0 });
+
+      expect(edgeCount(rooms)).toBe(11);
+    });
+
+    it("keeps every exit bidirectional after adding extras", () => {
+      const rooms = buildMap(makeRooms(12), { extraConnections: 5 });
+
+      for (const room of rooms) {
+        for (const [direction, dest] of room.exits.entries()) {
+          expect(dest.exits.get(OPPOSITE[direction]! as keyof ExitsArg)).toBe(room);
+        }
+      }
+    });
+  });
 });
