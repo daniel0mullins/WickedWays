@@ -1,13 +1,29 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { IItem, ItemId } from "./inventory";
+import { CLAIM, type IItem, type ItemId } from "./inventory";
 import { Loot } from "./loot";
 import { ContainerFullException, generateId } from "./util";
 
-// `Loot` only ever reads `id` off the items it holds, so a minimal stub cast to
-// `IItem` is enough and keeps the tests free of the full `Item` machinery.
+const HELD_BY = Symbol.for("heldBy");
+
+// Reads the holder an item stub recorded through its HELD_BY getter.
+function heldBy(item: IItem): unknown {
+  return (item as unknown as Record<symbol, unknown>)[HELD_BY];
+}
+
+// `Loot` reads each item's `id` and claims it as holder, so the stub supports
+// the CLAIM symbol and the HELD_BY getter.
 function makeItem(id: ItemId = generateId<ItemId>()): IItem {
-  return { id } as unknown as IItem;
+  let holder: unknown = null;
+  return {
+    id,
+    [CLAIM]: (h: unknown) => {
+      holder = h;
+    },
+    get [HELD_BY]() {
+      return holder;
+    },
+  } as unknown as IItem;
 }
 
 afterEach(() => {
@@ -26,17 +42,19 @@ describe("Loot", () => {
       expect(loot.contents).toBe(contents);
     });
 
-    it("sizes spaces to two more than the initial contents", () => {
-      expect(new Loot("empty", []).spaces).toBe(2);
-      expect(new Loot("packed", [makeItem(), makeItem(), makeItem()]).spaces).toBe(5);
+    it("sizes capacity to two more than the initial contents", () => {
+      expect(new Loot("empty", []).capacity).toBe(2);
+      expect(
+        new Loot("packed", [makeItem(), makeItem(), makeItem()]).capacity,
+      ).toBe(5);
     });
 
-    it("does not recompute spaces when contents change after construction", () => {
+    it("does not recompute capacity when contents change after construction", () => {
       const loot = new Loot("empty", []);
 
       loot.stowItem(makeItem());
 
-      expect(loot.spaces).toBe(2);
+      expect(loot.capacity).toBe(2);
     });
   });
 
@@ -108,7 +126,7 @@ describe("Loot", () => {
     });
 
     it("throws ContainerFullException once the container is full", () => {
-      // Empty contents => spaces === 2, so the third stow overflows.
+      // Empty contents => capacity === 2, so the third stow overflows.
       const loot = new Loot("empty", []);
       loot.stowItem(makeItem());
       loot.stowItem(makeItem());
@@ -118,11 +136,60 @@ describe("Loot", () => {
 
     it("includes the container id in the overflow error message", () => {
       const loot = new Loot("packed", [makeItem(), makeItem()]);
-      // spaces === 4, contents already at 2, so two more fit and the next throws.
+      // capacity === 4, contents already at 2, so two more fit and the next throws.
       loot.stowItem(makeItem());
       loot.stowItem(makeItem());
 
       expect(() => loot.stowItem(makeItem())).toThrow(loot.id);
+    });
+  });
+
+  describe("IItemHolder conformance", () => {
+    it("identifies itself as a loot holder", () => {
+      expect(new Loot("chest", []).holderKind).toBe("loot");
+    });
+
+    it("claims its initial contents as their holder", () => {
+      const item = makeItem();
+      const loot = new Loot("chest", [item]);
+
+      expect(heldBy(item)).toBe(loot);
+    });
+
+    it("receiveItem stows the item and claims it", () => {
+      const loot = new Loot("chest", []);
+      const item = makeItem();
+
+      loot.receiveItem(item);
+
+      expect(loot.contents).toContain(item);
+      expect(heldBy(item)).toBe(loot);
+    });
+
+    it("relinquishItem removes the item from contents", () => {
+      const item = makeItem();
+      const loot = new Loot("chest", [item]);
+
+      loot.relinquishItem(item);
+
+      expect(loot.contents).not.toContain(item);
+    });
+
+    it("relinquishItem leaves contents untouched when the item is absent", () => {
+      const present = makeItem();
+      const loot = new Loot("chest", [present]);
+
+      loot.relinquishItem(makeItem());
+
+      expect(loot.contents).toEqual([present]);
+    });
+
+    it("reports no room once at capacity", () => {
+      const loot = new Loot("chest", []); // capacity 2
+      expect(loot.hasRoomForItem()).toBe(true);
+      loot.stowItem(makeItem());
+      loot.stowItem(makeItem());
+      expect(loot.hasRoomForItem()).toBe(false);
     });
   });
 });

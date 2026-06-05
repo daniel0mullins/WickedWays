@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ICampaign } from "../campaign";
-import type { IItem, ItemId } from "../inventory";
+import { CLAIM, type IItem, type ItemId } from "../inventory";
 import type { IRoom } from "../room";
 import { Status } from "../status";
 import { ProceduralViolation } from "../util";
@@ -33,9 +33,16 @@ function makeCampaign(): ICampaign {
 let itemCounter = 0;
 function makeItem(id?: string): IItem {
   const itemId = (id ?? `item-${++itemCounter}`) as ItemId;
+  let holder: unknown = null;
   return {
     id: itemId,
     actions: { pickUp: vi.fn() },
+    [CLAIM]: (h: unknown) => {
+      holder = h;
+    },
+    get [Symbol.for("heldBy")]() {
+      return holder;
+    },
   } as unknown as IItem;
 }
 
@@ -411,6 +418,52 @@ describe("Character", () => {
       character.recordAction(() => {});
 
       expect(onTurnEnd).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("IItemHolder conformance", () => {
+    it("identifies itself as a character holder", () => {
+      expect(makeCharacter().holderKind).toBe("character");
+    });
+
+    it("reports room while under capacity and none when full", () => {
+      const character = makeCharacter({ inventorySlots: 1 });
+      expect(character.hasRoomForItem()).toBe(true);
+
+      character.receiveItem(makeItem());
+      expect(character.hasRoomForItem()).toBe(false);
+    });
+
+    it("receiveItem adds the item and records itself as the holder", () => {
+      const character = makeCharacter();
+      const item = makeItem();
+
+      character.receiveItem(item);
+
+      expect(character.inventory.items).toContain(item);
+      expect(
+        (item as unknown as Record<symbol, unknown>)[Symbol.for("heldBy")],
+      ).toBe(character);
+    });
+
+    it("relinquishItem removes the item from the inventory", () => {
+      const character = makeCharacter();
+      const item = makeItem();
+      character.receiveItem(item);
+
+      character.relinquishItem(item);
+
+      expect(character.inventory.items).not.toContain(item);
+    });
+
+    it("relinquishItem is a no-op when the item is not held", () => {
+      const character = makeCharacter();
+      const kept = makeItem();
+      character.receiveItem(kept);
+
+      character.relinquishItem(makeItem()); // a different item, never added
+
+      expect(character.inventory.items).toEqual([kept]);
     });
   });
 });
