@@ -178,7 +178,7 @@ export class Character implements ICharacter {
         (accumulator, currentItem) => {
           if (currentItem.id === item.id) {
             removed = true;
-          } else if (currentItem.id !== item.id) {
+          } else {
             accumulator.push(currentItem);
           }
           return accumulator;

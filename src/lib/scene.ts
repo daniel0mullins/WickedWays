@@ -26,8 +26,7 @@ export class Scene implements IScene {
     preconditions,
     script,
   }: {
-    room: IRoom;
-    phase: TriggerPhase;
+    phase?: TriggerPhase;
     preconditions: PreconditionFn[];
     script: ScriptFn;
   }) {

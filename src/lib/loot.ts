@@ -1,10 +1,6 @@
 import { Brand } from "./brand";
 import { IItem, ItemId } from "./inventory";
-import {
-  ContainerFullException,
-  generateId,
-  ProceduralViolation,
-} from "./util";
+import { ContainerFullException, generateId } from "./util";
 
 export type LootId = Brand<string, "LootId">;
 
@@ -39,22 +35,14 @@ export class Loot implements ILoot {
     const ids = Array.isArray(itemId) ? itemId : [itemId];
 
     for (const id of ids) {
-      try {
-        const item = this.contents.find((value) => value.id === id);
-        if (!item) {
-          throw new ProceduralViolation(
-            "Attempted to remove an item from a container, but it was not there",
-          );
-        } else {
-          items.push(item);
-        }
-      } catch (error: unknown) {
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : "Something happened that wasn't planned";
-        console.warn(errorMessage);
+      const index = this.contents.findIndex((value) => value.id === id);
+      if (index === -1) {
+        console.warn(
+          "Attempted to remove an item from a container, but it was not there",
+        );
+        continue;
       }
+      items.push(...this.contents.splice(index, 1));
     }
     return items;
   }

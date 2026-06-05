@@ -62,6 +62,15 @@ export class Campaign implements ICampaign {
     }
   }
 
+  #assertRunning() {
+    if (!this.#started) {
+      throw new ProceduralViolation("Campaign has not begun");
+    }
+    if (this.#finished) {
+      throw new ProceduralViolation("Campaign has already finished");
+    }
+  }
+
   constructor(
     title: string,
     players: IPlayerCharacter[],
@@ -82,14 +91,19 @@ export class Campaign implements ICampaign {
   }
 
   beginCampaign() {
+    if (this.#started) {
+      throw new ProceduralViolation("Campaign has already begun");
+    }
     this.#started = true;
   }
 
   endCampaign() {
+    this.#assertRunning();
     this.#finished = true;
   }
 
   endRound() {
+    this.#assertRunning();
     const allPartyActed = this.party.every((c) => this.#actedThisRound.get(c));
     if (allPartyActed) {
       this.#round = this.#round + 1;
@@ -105,20 +119,35 @@ export class Campaign implements ICampaign {
   }
 
   joinCampaign(c: IPlayerCharacter) {
+    this.#assertRunning();
     this.party.push(c);
   }
 
   leaveCampaign(c: IPlayerCharacter) {
+    this.#assertRunning();
     if (this.gm === c) {
       throw new ProceduralViolation(
         "GM cannot leave the campaign, transfer the campaign first",
       );
-    } else {
-      this.party = this.party.filter((pc) => pc !== c);
+    }
+
+    const index = this.party.indexOf(c);
+    this.party = this.party.filter((pc) => pc !== c);
+
+    if (index !== -1) {
+      // Keep the active index pointing at the same turn position: shift it down
+      // when an earlier member leaves, and wrap to the start if it now dangles
+      // past the end of the (shrunk) party.
+      if (index < this.#activeCharacterIndex) {
+        this.#activeCharacterIndex -= 1;
+      } else if (this.#activeCharacterIndex >= this.party.length) {
+        this.#activeCharacterIndex = 0;
+      }
     }
   }
 
   nextPlayer() {
+    this.#assertRunning();
     this.#actedThisRound.set(this.activeCharacter, true);
     const nextIndex = this.#activeCharacterIndex + 1;
     if (nextIndex === this.party.length) {
@@ -130,6 +159,7 @@ export class Campaign implements ICampaign {
   }
 
   transfer(c: IPlayerCharacter) {
+    this.#assertRunning();
     this.#gm = c;
   }
 }
