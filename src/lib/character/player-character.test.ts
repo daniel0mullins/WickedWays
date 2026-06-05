@@ -340,4 +340,81 @@ describe("PlayerCharacter", () => {
       );
     });
   });
+
+  describe("putInLootBox", () => {
+    it("moves a held item into the box", () => {
+      const box = new Loot("chest", []); // capacity 2
+      const pc = makePcInRoomWith(box, { actionsPerRound: 99 });
+      const item = makeLootItem("a");
+      pc.addToInventory(item);
+
+      const put = pc.putInLootBox(box, item);
+
+      expect(put).toEqual([item]);
+      expect(box.contents).toContain(item);
+      expect(pc.inventory.items).not.toContain(item);
+      expect(item[HELD_BY]).toBe(box);
+    });
+
+    it("puts only what fits, leaving the rest in the inventory", () => {
+      const box = new Loot("chest", [makeLootItem("x")]); // capacity 3, 1 used
+      const pc = makePcInRoomWith(box, { inventorySlots: 5, actionsPerRound: 99 });
+      const held = [makeLootItem("a"), makeLootItem("b"), makeLootItem("c")];
+      pc.addToInventory(held);
+
+      const put = pc.putInLootBox(box, held);
+
+      expect(put).toHaveLength(2); // box had room for 2 more
+      expect(box.contents).toHaveLength(3);
+      expect(pc.inventory.items).toHaveLength(1);
+    });
+
+    it("puts nothing and costs no action when the box is full", () => {
+      // Capacity is seeded contents + 2, so fill the remaining slots to make it full.
+      const box = new Loot("chest", [makeLootItem("x"), makeLootItem("y")]);
+      box.stowItem(makeLootItem("z"));
+      box.stowItem(makeLootItem("w"));
+      expect(box.contents).toHaveLength(box.capacity); // full
+      const pc = makePcInRoomWith(box, { inventorySlots: 5, actionsPerRound: 1 });
+      const item = makeLootItem("a");
+      pc.addToInventory(item);
+      pc.startTurn();
+      const onTurnEnd = vi.spyOn(pc.events, "onTurnEnd");
+
+      const put = pc.putInLootBox(box, item);
+
+      expect(put).toEqual([]);
+      expect(onTurnEnd).not.toHaveBeenCalled();
+    });
+
+    it("skips an item the player is not holding", () => {
+      const box = new Loot("chest", []);
+      const pc = makePcInRoomWith(box);
+
+      expect(pc.putInLootBox(box, makeLootItem("ghost"))).toEqual([]);
+    });
+
+    it("records exactly one action when items move", () => {
+      const box = new Loot("chest", []);
+      const pc = makePcInRoomWith(box, { inventorySlots: 5, actionsPerRound: 99 });
+      const item = makeLootItem("a");
+      pc.addToInventory(item);
+      pc.startTurn();
+      pc.actionsPerRound = 1;
+      const onTurnEnd = vi.spyOn(pc.events, "onTurnEnd");
+
+      pc.putInLootBox(box, item);
+
+      expect(onTurnEnd).toHaveBeenCalledTimes(1);
+    });
+
+    it("throws when the box is not co-located", () => {
+      const box = new Loot("chest", []);
+      const pc = new PlayerCharacter(makeCampaign(), "Hero", makeStats());
+
+      expect(() => pc.putInLootBox(box, makeLootItem("a"))).toThrow(
+        ProceduralViolation,
+      );
+    });
+  });
 });

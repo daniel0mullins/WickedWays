@@ -9,6 +9,7 @@ export interface IPlayerCharacter extends ICharacter {
   attack: <C extends ICharacter>(c: C) => void;
   openLootBox: (lootBox: ILoot) => readonly IItem[];
   takeFromLootBox: (lootBox: ILoot, item: IItem | IItem[]) => IItem[];
+  putInLootBox: (lootBox: ILoot, item: IItem | IItem[]) => IItem[];
 }
 
 export class PlayerCharacter extends Character implements IPlayerCharacter {
@@ -77,5 +78,22 @@ export class PlayerCharacter extends Character implements IPlayerCharacter {
       this.addToInventory(removed);
     }
     return removed;
+  }
+
+  putInLootBox(lootBox: ILoot, item: IItem | IItem[]): IItem[] {
+    this.#requireCoLocated(lootBox);
+    const requested = Array.isArray(item) ? item : [item];
+    const present = requested.filter((requestedItem) =>
+      this.inventory.items.some((held) => held.id === requestedItem.id),
+    );
+    const free = lootBox.capacity - lootBox.contents.length;
+    const toPut = present.slice(0, free);
+    if (toPut.length > 0) {
+      this.removeFromInventory(toPut);
+      for (const putItem of toPut) {
+        lootBox.stowItem(putItem);
+      }
+    }
+    return toPut;
   }
 }
