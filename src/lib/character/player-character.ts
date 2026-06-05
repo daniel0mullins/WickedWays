@@ -67,6 +67,8 @@ export class PlayerCharacter extends Character implements IPlayerCharacter {
 
   takeFromLootBox(lootBox: ILoot, item: IItem | IItem[]): IItem[] {
     this.#requireCoLocated(lootBox);
+    // Reuse removeItems + addToInventory rather than the raw holder primitives:
+    // addToInventory already fires pickUp and records exactly one action.
     const requested = Array.isArray(item) ? item : [item];
     const present = requested.filter((requestedItem) =>
       lootBox.contents.some((boxItem) => boxItem.id === requestedItem.id),
@@ -82,6 +84,8 @@ export class PlayerCharacter extends Character implements IPlayerCharacter {
 
   putInLootBox(lootBox: ILoot, item: IItem | IItem[]): IItem[] {
     this.#requireCoLocated(lootBox);
+    // Reuse removeFromInventory + stowItem rather than the raw holder primitives:
+    // removeFromInventory records exactly one action; stowItem re-claims the box as holder.
     const requested = Array.isArray(item) ? item : [item];
     const present = requested.filter((requestedItem) =>
       this.inventory.items.some((held) => held.id === requestedItem.id),
