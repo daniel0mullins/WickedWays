@@ -16,9 +16,15 @@ function makeCampaign(
   maxRounds?: number,
   begin = true,
 ): { campaign: Campaign; party: IPlayerCharacter[]; gm: IPlayerCharacter } {
+  const campaign = new Campaign("The Haunting", maxRounds);
   const party = Array.from({ length: partySize }, makePlayer);
+  for (const player of party) {
+    campaign.party.push(player);
+  }
   const gm = party[0] ?? makePlayer();
-  const campaign = new Campaign("The Haunting", party, gm, maxRounds);
+  if (party.length > 0) {
+    campaign.gm = gm;
+  }
   if (begin) {
     campaign.beginCampaign();
   }
@@ -33,7 +39,7 @@ describe("Campaign", () => {
       expect(typeof campaign.id).toBe("string");
       expect(campaign.id.length).toBeGreaterThan(0);
       expect(campaign.title).toBe("The Haunting");
-      expect(campaign.party).toBe(party);
+      expect(campaign.party).toEqual(party);
       expect(campaign.gm).toBe(gm);
       expect(campaign.round).toBe(0);
     });
@@ -55,7 +61,7 @@ describe("Campaign", () => {
     });
 
     it("throws when there is no character at the active index", () => {
-      const { campaign } = makeCampaign(0);
+      const { campaign } = makeCampaign(0, undefined, false);
 
       expect(() => campaign.activeCharacter).toThrow(ProceduralViolation);
     });
@@ -128,12 +134,12 @@ describe("Campaign", () => {
     });
   });
 
-  describe("joinCampaign", () => {
+  describe("addPlayer", () => {
     it("adds the character to the party", () => {
       const { campaign } = makeCampaign(1);
       const newcomer = makePlayer();
 
-      campaign.joinCampaign(newcomer);
+      campaign.addPlayer(newcomer);
 
       expect(campaign.party).toContain(newcomer);
     });
@@ -249,7 +255,7 @@ describe("Campaign", () => {
 
       expect(() => campaign.nextPlayer()).toThrow(ProceduralViolation);
       expect(() => campaign.endRound()).toThrow(ProceduralViolation);
-      expect(() => campaign.joinCampaign(makePlayer())).toThrow(ProceduralViolation);
+      expect(() => campaign.addPlayer(makePlayer())).toThrow(ProceduralViolation);
       expect(() => campaign.leaveCampaign(party[1]!)).toThrow(ProceduralViolation);
       expect(() => campaign.transfer(party[1]!)).toThrow(ProceduralViolation);
       expect(() => campaign.endCampaign()).toThrow(ProceduralViolation);
@@ -261,10 +267,56 @@ describe("Campaign", () => {
 
       expect(() => campaign.nextPlayer()).toThrow(ProceduralViolation);
       expect(() => campaign.endRound()).toThrow(ProceduralViolation);
-      expect(() => campaign.joinCampaign(makePlayer())).toThrow(ProceduralViolation);
+      expect(() => campaign.addPlayer(makePlayer())).toThrow(ProceduralViolation);
       expect(() => campaign.leaveCampaign(party[1]!)).toThrow(ProceduralViolation);
       expect(() => campaign.transfer(party[1]!)).toThrow(ProceduralViolation);
       expect(() => campaign.endCampaign()).toThrow(ProceduralViolation);
+    });
+  });
+
+  describe("beginCampaign validation", () => {
+    it("throws when the party is empty", () => {
+      const campaign = new Campaign("Empty");
+
+      expect(() => campaign.beginCampaign()).toThrow(ProceduralViolation);
+    });
+
+    it("throws when the gm is not a member of the party", () => {
+      const campaign = new Campaign("Mismatch");
+      campaign.party.push(makePlayer());
+      campaign.gm = makePlayer(); // a gm who never joined the party
+
+      expect(() => campaign.beginCampaign()).toThrow(ProceduralViolation);
+    });
+
+    it("begins when the party is non-empty and contains the gm", () => {
+      const campaign = new Campaign("Valid");
+      const gm = makePlayer();
+      campaign.party.push(gm);
+      campaign.gm = gm;
+
+      expect(() => campaign.beginCampaign()).not.toThrow();
+    });
+  });
+
+  describe("gm setter", () => {
+    it("assigns the gm before the campaign begins", () => {
+      const campaign = new Campaign("Setup");
+      const gm = makePlayer();
+      campaign.party.push(gm);
+
+      campaign.gm = gm;
+
+      expect(campaign.gm).toBe(gm);
+    });
+
+    it("throws when assigning the gm after the campaign has begun", () => {
+      const { campaign, party } = makeCampaign(2);
+      const other = party[1]!;
+
+      expect(() => {
+        campaign.gm = other;
+      }).toThrow(ProceduralViolation);
     });
   });
 });

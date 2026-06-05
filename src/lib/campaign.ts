@@ -13,14 +13,15 @@ export interface ICampaign {
   readonly maxRounds: number;
 
   get activeCharacter(): IPlayerCharacter;
-  get gm(): IPlayerCharacter;
+  get gm(): IPlayerCharacter | undefined;
+  set gm(pc: IPlayerCharacter | undefined);
   get round(): number;
 
   // ### Methods
   beginCampaign: () => void;
   endCampaign: () => void;
   endRound: () => void;
-  joinCampaign: (c: IPlayerCharacter) => void;
+  addPlayer: (c: IPlayerCharacter) => void;
   leaveCampaign: (c: IPlayerCharacter) => void;
   nextPlayer: () => void;
   transfer: (c: IPlayerCharacter) => void;
@@ -31,7 +32,7 @@ export class Campaign implements ICampaign {
   title: string;
   party: IPlayerCharacter[];
   #round: number;
-  #gm: IPlayerCharacter;
+  #gm: IPlayerCharacter | undefined;
   readonly maxRounds: number;
 
   #started = false;
@@ -45,6 +46,15 @@ export class Campaign implements ICampaign {
 
   get gm() {
     return this.#gm;
+  }
+
+  set gm(pc: IPlayerCharacter | undefined) {
+    if (this.#started) {
+      throw new ProceduralViolation(
+        "Cannot set the GM after the campaign has begun; use transfer() instead",
+      );
+    }
+    this.#gm = pc;
   }
 
   get activeCharacter() {
@@ -71,17 +81,12 @@ export class Campaign implements ICampaign {
     }
   }
 
-  constructor(
-    title: string,
-    players: IPlayerCharacter[],
-    gm: IPlayerCharacter,
-    maxRounds: number = 100,
-  ) {
+  constructor(title: string, maxRounds: number = 100) {
     this.id = generateId<CampaignId>();
     this.title = title;
-    this.party = players;
+    this.party = [];
     this.#round = 0;
-    this.#gm = gm;
+    this.#gm = undefined;
     this.maxRounds = maxRounds;
 
     this.#actedThisRound = new WeakMap<IPlayerCharacter, boolean>();
@@ -93,6 +98,14 @@ export class Campaign implements ICampaign {
   beginCampaign() {
     if (this.#started) {
       throw new ProceduralViolation("Campaign has already begun");
+    }
+    if (this.party.length === 0) {
+      throw new ProceduralViolation("Cannot begin a campaign with no party");
+    }
+    if (!this.#gm || !this.party.includes(this.#gm)) {
+      throw new ProceduralViolation(
+        "Cannot begin a campaign whose GM is not a member of the party",
+      );
     }
     this.#started = true;
   }
@@ -118,7 +131,7 @@ export class Campaign implements ICampaign {
     }
   }
 
-  joinCampaign(c: IPlayerCharacter) {
+  addPlayer(c: IPlayerCharacter) {
     this.#assertRunning();
     this.party.push(c);
   }
