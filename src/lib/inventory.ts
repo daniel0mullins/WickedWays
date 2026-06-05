@@ -178,10 +178,17 @@ export class Item implements IItem {
       [ItemAction.Transfer]: (_c, cc) => {
         const holder = this.#characterHolder();
         if (!holder) return;
+        if (!cc.hasRoomForItem()) {
+          throw new ProceduralViolation(
+            "Attempted to transfer an item, but the recipient has no free inventory slots",
+          );
+        }
         actions[ItemAction.Transfer](holder, cc);
         events.onTransfer?.(holder, cc);
         holder.removeFromInventory(this);
-        this.#heldBy = cc;
+        // receiveItem deposits the item into the recipient's inventory and
+        // re-points heldBy through CLAIM (no direct #heldBy write).
+        cc.receiveItem(this);
       },
       [ItemAction.Use]: () => {
         const holder = this.#characterHolder();
