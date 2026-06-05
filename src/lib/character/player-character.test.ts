@@ -44,12 +44,16 @@ function makeWeapon(opts: {
 
 function makeLoot(contents: IItem[]): ILoot {
   return {
+    holderKind: "loot",
     id: "loot-1" as LootId,
     description: "a chest",
     contents,
-    spaces: contents.length + 2,
+    capacity: contents.length + 2,
     removeItems: vi.fn(),
     stowItem: vi.fn(),
+    hasRoomForItem: vi.fn(),
+    receiveItem: vi.fn(),
+    relinquishItem: vi.fn(),
   };
 }
 

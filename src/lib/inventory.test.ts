@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ICharacter } from "./character/character";
 import { StatType } from "./character/stats";
-import { Item } from "./inventory";
+import { CLAIM, Item, type IItemHolder } from "./inventory";
 import { ProceduralViolation } from "./util";
 
 // `ItemProperties` is not exported, so we recover the shape the constructor
@@ -12,12 +12,26 @@ type ItemPropsArg = ConstructorParameters<typeof Item>[1];
 // `HELD_BY` lives in the global symbol registry, so the test can read the
 // private holder through the same key the class exposes it under.
 const HELD_BY = Symbol.for("heldBy");
-function heldBy(item: Item): ICharacter | null {
-  return (item as unknown as Record<symbol, ICharacter | null>)[HELD_BY] ?? null;
+function heldBy(item: Item): IItemHolder | null {
+  return (
+    (item as unknown as Record<symbol, IItemHolder | null>)[HELD_BY] ?? null
+  );
+}
+
+// A holder claims an item the same way `receiveItem` does internally.
+function hold(item: Item, holder: IItemHolder): void {
+  (
+    item as unknown as {
+      [CLAIM]: (h: IItemHolder | null) => void;
+    }
+  )[CLAIM](holder);
 }
 
 function makeHolder(): ICharacter {
-  return { removeFromInventory: vi.fn() } as unknown as ICharacter;
+  return {
+    holderKind: "character",
+    removeFromInventory: vi.fn(),
+  } as unknown as ICharacter;
 }
 
 function makeActions() {
@@ -88,15 +102,16 @@ describe("Item", () => {
   });
 
   describe("pickUp", () => {
-    it("records the holder and fires the underlying action and event", () => {
+    it("fires the underlying action and event without claiming the item", () => {
       const { item, actions, events } = makeItem();
       const holder = makeHolder();
 
       item.actions.pickUp(holder);
 
-      expect(heldBy(item)).toBe(holder);
       expect(actions.pickUp).toHaveBeenCalledWith(holder);
       expect(events.onPickUp).toHaveBeenCalledWith(holder);
+      // pickUp no longer sets heldBy; a holder's receiveItem does.
+      expect(heldBy(item)).toBeNull();
     });
   });
 
@@ -104,7 +119,7 @@ describe("Item", () => {
     it("equips a held item and fires the action and event", () => {
       const { item, actions, events } = makeItem();
       const holder = makeHolder();
-      item.actions.pickUp(holder);
+      hold(item, holder);
 
       item.actions.equip(holder);
 
@@ -128,7 +143,7 @@ describe("Item", () => {
     it("unequips a held item and fires the action and event", () => {
       const { item, actions, events } = makeItem();
       const holder = makeHolder();
-      item.actions.pickUp(holder);
+      hold(item, holder);
       item.actions.equip(holder);
 
       item.actions.unequip(holder);
@@ -151,7 +166,7 @@ describe("Item", () => {
     it("fires the action and event then removes the item from the holder", () => {
       const { item, actions, events } = makeItem();
       const holder = makeHolder();
-      item.actions.pickUp(holder);
+      hold(item, holder);
 
       item.actions.use(holder);
 
@@ -174,7 +189,7 @@ describe("Item", () => {
       const { item, actions, events } = makeItem();
       const holder = makeHolder();
       const recipient = makeHolder();
-      item.actions.pickUp(holder);
+      hold(item, holder);
 
       item.actions.transfer(holder, recipient);
 
@@ -199,7 +214,7 @@ describe("Item", () => {
     it("returns the components and forwards them to the event when held", () => {
       const { item, actions, events } = makeItem();
       const holder = makeHolder();
-      item.actions.pickUp(holder);
+      hold(item, holder);
       const components = ["metal", "glass"];
       actions.destroy.mockReturnValue(components);
 
@@ -238,6 +253,7 @@ describe("Item", () => {
 
       item.actions.pickUp(holder);
       expect(onPickUp).toHaveBeenCalledWith(holder);
+      hold(item, holder);
 
       // No onEquip handler was provided, yet equipping must not throw.
       expect(() => item.actions.equip(holder)).not.toThrow();

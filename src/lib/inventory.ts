@@ -1,5 +1,6 @@
 import { Brand } from "./brand";
 import type { ICharacter } from "./character/character";
+import type { ILoot } from "./loot";
 import type { RequireAtLeastOne } from "type-fest";
 import { v4 as uuid } from "uuid";
 import { StatType } from "./character/stats";
@@ -74,6 +75,20 @@ type ItemProperties = {
   usable: boolean;
 };
 
+export interface IItemHolder {
+  readonly holderKind: "character" | "loot";
+  hasRoomForItem(): boolean;
+  receiveItem(item: IItem): void;
+  relinquishItem(item: IItem): void;
+}
+
+export type ItemHolder = ICharacter | ILoot;
+
+// Re-pointing an item's holder is funnelled through this symbol-keyed method so
+// external code cannot reassign `heldBy` directly (the public setter throws).
+// Only a holder's `receiveItem` should call it.
+export const CLAIM = Symbol("claimItem");
+
 // Using a Symbol so Object.keys does not leak the key and Object.values does not leak the value
 const HELD_BY = Symbol.for("heldBy");
 
@@ -84,7 +99,8 @@ export interface IItem {
   modifier: number;
   properties: ItemProperties;
   stat: StatType;
-  readonly [HELD_BY]: ICharacter | null;
+  readonly [HELD_BY]: ItemHolder | null;
+  [CLAIM](holder: ItemHolder | null): void;
   actions: ItemActions;
 }
 
@@ -97,14 +113,24 @@ export class Item implements IItem {
   properties: ItemProperties;
   actions: ItemActions;
 
-  #heldBy: ICharacter | null = null;
+  #heldBy: ItemHolder | null = null;
 
   get [HELD_BY]() {
     return this.#heldBy;
   }
 
-  set heldBy(_value: ICharacter | null) {
+  set heldBy(_value: ItemHolder | null) {
     throw new ProceduralViolation("Cannot set 'heldBy' directly!");
+  }
+
+  [CLAIM](holder: ItemHolder | null) {
+    this.#heldBy = holder;
+  }
+
+  // The character-only item actions (equip/unequip/use/transfer/destroy) operate
+  // only while a character holds the item; box-held items make them no-ops.
+  #characterHolder(): ICharacter | null {
+    return this.#heldBy?.holderKind === "character" ? this.#heldBy : null;
   }
 
   constructor(
@@ -132,39 +158,43 @@ export class Item implements IItem {
 
     this.actions = {
       [ItemAction.PickUp]: (c) => {
-        this.#heldBy = c;
         actions[ItemAction.PickUp](c);
         events.onPickUp(c);
       },
       [ItemAction.Equip]: () => {
-        if (!this.#heldBy) return;
-        actions[ItemAction.Equip](this.#heldBy);
+        const holder = this.#characterHolder();
+        if (!holder) return;
+        actions[ItemAction.Equip](holder);
         this.properties.equipped = true;
-        events.onEquip?.(this.#heldBy);
+        events.onEquip?.(holder);
       },
       [ItemAction.Unequip]: () => {
-        if (!this.#heldBy) return;
-        actions[ItemAction.Unequip](this.#heldBy);
+        const holder = this.#characterHolder();
+        if (!holder) return;
+        actions[ItemAction.Unequip](holder);
         this.properties.equipped = false;
-        events.onUnequip?.(this.#heldBy);
+        events.onUnequip?.(holder);
       },
       [ItemAction.Transfer]: (_c, cc) => {
-        if (!this.#heldBy) return;
-        actions[ItemAction.Transfer](this.#heldBy, cc);
-        events.onTransfer?.(this.#heldBy, cc);
-        this.#heldBy.removeFromInventory(this);
+        const holder = this.#characterHolder();
+        if (!holder) return;
+        actions[ItemAction.Transfer](holder, cc);
+        events.onTransfer?.(holder, cc);
+        holder.removeFromInventory(this);
         this.#heldBy = cc;
       },
       [ItemAction.Use]: () => {
-        if (!this.#heldBy) return;
-        actions[ItemAction.Use](this.#heldBy);
-        events.onUse?.(this.#heldBy);
-        this.#heldBy.removeFromInventory(this);
+        const holder = this.#characterHolder();
+        if (!holder) return;
+        actions[ItemAction.Use](holder);
+        events.onUse?.(holder);
+        holder.removeFromInventory(this);
       },
       [ItemAction.Destroy]: () => {
-        if (!this.#heldBy) return null;
+        const holder = this.#characterHolder();
+        if (!holder) return null;
         const components = actions[ItemAction.Destroy]();
-        events.onDestroy?.(this.#heldBy, components);
+        events.onDestroy?.(holder, components);
         return components;
       },
     };
