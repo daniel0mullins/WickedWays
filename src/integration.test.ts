@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { Campaign } from "./lib/campaign";
-import { Item } from "./lib/inventory";
+import { HELD_BY, Item } from "./lib/inventory";
 import { Loot } from "./lib/loot";
 import { Room } from "./lib/room";
 import { Scene } from "./lib/scene";
@@ -165,5 +165,27 @@ describe("Campaign integration", () => {
 
     expect(ghoul.stats[StatType.Health]).toBe(9);
     expect(ghoul.isNormal).toBe(true);
+  });
+
+  it("lets a player character take loot from a co-located box", () => {
+    const campaign = new Campaign("Wicked Ways");
+    const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+    hero.joinCampaign();
+    campaign.gm = hero;
+
+    const sword = makeWeapon();
+    const chest = new Loot("treasure chest", [sword]);
+    const vault = new Room("Vault", [chest], {} as ExitsArg);
+
+    campaign.beginCampaign();
+    hero.move(vault);
+    hero.startTurn();
+
+    const taken = hero.takeFromLootBox(chest, sword);
+
+    expect(taken).toEqual([sword]);
+    expect(hero.inventory.items).toContain(sword);
+    expect(chest.contents).not.toContain(sword);
+    expect(sword[HELD_BY]).toBe(hero);
   });
 });
