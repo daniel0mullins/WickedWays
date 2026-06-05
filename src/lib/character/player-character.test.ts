@@ -4,6 +4,7 @@ import type { ICampaign } from "../campaign";
 import type { IItem, ItemId } from "../inventory";
 import type { IRoom } from "../room";
 
+import { Campaign } from "../campaign";
 import { CLAIM, HELD_BY } from "../inventory";
 import { Loot } from "../loot";
 import { ProceduralViolation } from "../util";
@@ -128,6 +129,34 @@ describe("PlayerCharacter", () => {
 
     it("passes inventory slots through to Character", () => {
       expect(makePc({ inventorySlots: 8 }).inventory.slots).toBe(8);
+    });
+  });
+
+  describe("joinCampaign", () => {
+    it("adds itself to the campaign party", () => {
+      const campaign = new Campaign("Quest");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+
+      pc.joinCampaign();
+
+      expect(campaign.party).toContain(pc);
+    });
+
+    it("does not add itself twice", () => {
+      const campaign = new Campaign("Quest");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+
+      pc.joinCampaign();
+      pc.joinCampaign();
+
+      expect(campaign.party.filter((member) => member === pc)).toHaveLength(1);
+    });
+
+    it("can join before the campaign has begun", () => {
+      const campaign = new Campaign("Quest");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+
+      expect(() => pc.joinCampaign()).not.toThrow();
     });
   });
 

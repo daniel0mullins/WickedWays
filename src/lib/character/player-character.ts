@@ -6,6 +6,7 @@ import { Character, ICharacter } from "./character";
 import { Stats, StatType } from "./stats";
 
 export interface IPlayerCharacter extends ICharacter {
+  joinCampaign: () => void;
   attack: <C extends ICharacter>(c: C) => void;
   openLootBox: (lootBox: ILoot) => readonly IItem[];
   takeFromLootBox: (lootBox: ILoot, item: IItem | IItem[]) => IItem[];
@@ -23,6 +24,13 @@ export class PlayerCharacter extends Character implements IPlayerCharacter {
 
     this.isActionMap.set(this.move, true);
     this.isActionMap.set(this.attack, true);
+  }
+
+  joinCampaign() {
+    const { party } = this.campaign;
+    if (!party.includes(this)) {
+      party.push(this);
+    }
   }
 
   attack(c: ICharacter) {

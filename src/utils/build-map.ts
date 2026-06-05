@@ -5,15 +5,15 @@ type Direction = (typeof Directions)[keyof typeof Directions];
 const ALL_DIRECTIONS = Object.values(Directions) as Direction[];
 
 const OPPOSITES: Record<Direction, Direction> = {
-  north: "south",
-  south: "north",
-  east: "west",
-  west: "east",
-  northeast: "southwest",
-  southwest: "northeast",
-  northwest: "southeast",
-  southeast: "northwest",
-};
+  [Directions.North]: Directions.South,
+  [Directions.South]: Directions.North,
+  [Directions.East]: Directions.West,
+  [Directions.West]: Directions.East,
+  [Directions.Northeast]: Directions.Southwest,
+  [Directions.Southwest]: Directions.Northeast,
+  [Directions.Northwest]: Directions.Southeast,
+  [Directions.Southeast]: Directions.Northwest,
+} as const;
 
 export interface BuildMapOptions {
   /** 0..1 random source. Default: Math.random. Inject for deterministic tests. */
