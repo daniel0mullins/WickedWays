@@ -188,4 +188,30 @@ describe("Campaign integration", () => {
     expect(chest.contents).not.toContain(sword);
     expect(sword[HELD_BY]).toBe(hero);
   });
+
+  it("fires a registered scene when a player character enters the room", () => {
+    const campaign = new Campaign("Wicked Ways");
+    const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+    hero.joinCampaign();
+    campaign.gm = hero;
+
+    let firedWithOccupants = 0;
+    const trap = new Scene({
+      phase: "enter",
+      preconditions: [],
+      script: (room) => {
+        firedWithOccupants = room.occupants.length;
+      },
+    });
+    const hall = new Room("Trapped Hall", [], {} as ExitsArg);
+    hall.registerScene(trap);
+
+    campaign.beginCampaign();
+    hero.move(hall);
+
+    // enterRoom adds the occupant before playing scenes, so the entering hero
+    // is visible to the script.
+    expect(firedWithOccupants).toBe(1);
+    expect(hall.occupants).toContain(hero);
+  });
 });

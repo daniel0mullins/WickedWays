@@ -14,7 +14,7 @@ export const Directions = {
   Northeast: "northeast",
   West: "west",
   Northwest: "northwest",
-  SouthWest: "southwest",
+  Southwest: "southwest",
 } as const;
 
 type Direction = (typeof Directions)[keyof typeof Directions];
