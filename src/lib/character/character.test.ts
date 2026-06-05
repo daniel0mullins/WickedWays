@@ -455,5 +455,15 @@ describe("Character", () => {
 
       expect(character.inventory.items).not.toContain(item);
     });
+
+    it("relinquishItem is a no-op when the item is not held", () => {
+      const character = makeCharacter();
+      const kept = makeItem();
+      character.receiveItem(kept);
+
+      character.relinquishItem(makeItem()); // a different item, never added
+
+      expect(character.inventory.items).toEqual([kept]);
+    });
   });
 });
