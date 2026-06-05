@@ -50,7 +50,7 @@ function makeLoot(contents: IItem[]): ILoot {
     spaces: contents.length + 2,
     removeItems: vi.fn(),
     stowItem: vi.fn(),
-  } as unknown as ILoot;
+  };
 }
 
 function makeDefender(): ICharacter {

@@ -6,7 +6,7 @@ import { generateId, ProceduralViolation } from "./util";
 
 export type RoomId = Brand<string, "RoomId">;
 
-const Directions = {
+export const Directions = {
   North: "north",
   South: "south",
   Southeast: "southeast",

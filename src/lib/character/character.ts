@@ -10,13 +10,17 @@ import { MitigatorStatType, Stats, StatType } from "./stats";
 
 export type CharacterId = Brand<string, "CharacterId">;
 
+// Any callable, used purely as an identity key in the action-tracking maps.
+// Preferred over the unsafe built-in `Function` type.
+export type ActionFn = (...args: never[]) => unknown;
+
 export interface ICharacter {
   // ### Properties
   id: CharacterId;
   name: string;
   stats: Stats;
   actionsPerRound: number;
-  readonly isActionMap: WeakMap<Function, boolean>;
+  readonly isActionMap: WeakMap<ActionFn, boolean>;
 
   get campaign(): ICampaign;
   get currentRoom(): IRoom | null;
@@ -29,7 +33,7 @@ export interface ICharacter {
   endTurn: () => void;
   move: (room: IRoom) => void;
   removeFromInventory: (item: IItem) => void;
-  recordAction: (callingFn: Function) => void;
+  recordAction: (callingFn: ActionFn) => void;
   startTurn: () => void;
   takeDamage: (attackStrength: number, attackStat?: StatType) => void;
 
@@ -44,8 +48,8 @@ export class Character implements ICharacter {
   name: string;
   stats: Stats;
   actionsPerRound: number;
-  readonly isActionMap: WeakMap<Function, boolean> = new WeakMap<
-    Function,
+  readonly isActionMap: WeakMap<ActionFn, boolean> = new WeakMap<
+    ActionFn,
     boolean
   >();
 
@@ -146,7 +150,7 @@ export class Character implements ICharacter {
     this.isActionMap.set(this.removeFromInventory, true);
   }
 
-  recordAction(callingFn: Function) {
+  recordAction(callingFn: ActionFn) {
     if (this.isActionMap.get(callingFn)) {
       this.actionsThisRound = this.actionsThisRound + 1;
     }

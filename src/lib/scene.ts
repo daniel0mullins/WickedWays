@@ -1,5 +1,4 @@
 import { Brand } from "./brand";
-import { ICharacter } from "./character/character";
 import { IRoom } from "./room";
 import { generateId } from "./util";
 

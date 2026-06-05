@@ -5,11 +5,9 @@ import { StatType } from "./character/stats";
 import { Item } from "./inventory";
 import { ProceduralViolation } from "./util";
 
-// `ItemActions`/`ItemEvents`/`ItemProperties` are not exported, so we recover
-// the shapes the constructor expects straight from its parameter list.
+// `ItemProperties` is not exported, so we recover the shape the constructor
+// expects straight from its parameter list.
 type ItemPropsArg = ConstructorParameters<typeof Item>[1];
-type ItemActionsArg = ConstructorParameters<typeof Item>[2];
-type ItemEventsArg = ConstructorParameters<typeof Item>[3];
 
 // `HELD_BY` lives in the global symbol registry, so the test can read the
 // private holder through the same key the class exposes it under.
@@ -57,8 +55,8 @@ function makeItem(propsOverride: Partial<ItemPropsArg> = {}) {
   const item = new Item(
     { type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health },
     properties,
-    actions as unknown as ItemActionsArg,
-    events as unknown as ItemEventsArg,
+    actions,
+    events,
   );
   return { item, actions, events, properties };
 }
@@ -233,8 +231,8 @@ describe("Item", () => {
           stat: StatType.Health,
         },
         { equippable: true, equipped: false, destroyable: false, usable: true },
-        actions as unknown as ItemActionsArg,
-        { onPickUp } as unknown as ItemEventsArg,
+        actions,
+        { onPickUp },
       );
       const holder = makeHolder();
 
