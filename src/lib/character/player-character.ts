@@ -8,6 +8,7 @@ import { Stats, StatType } from "./stats";
 export interface IPlayerCharacter extends ICharacter {
   attack: <C extends ICharacter>(c: C) => void;
   openLootBox: (lootBox: ILoot) => readonly IItem[];
+  takeFromLootBox: (lootBox: ILoot, item: IItem | IItem[]) => IItem[];
 }
 
 export class PlayerCharacter extends Character implements IPlayerCharacter {
@@ -61,5 +62,20 @@ export class PlayerCharacter extends Character implements IPlayerCharacter {
   openLootBox(lootBox: ILoot): readonly IItem[] {
     this.#requireCoLocated(lootBox);
     return [...lootBox.contents];
+  }
+
+  takeFromLootBox(lootBox: ILoot, item: IItem | IItem[]): IItem[] {
+    this.#requireCoLocated(lootBox);
+    const requested = Array.isArray(item) ? item : [item];
+    const present = requested.filter((requestedItem) =>
+      lootBox.contents.some((boxItem) => boxItem.id === requestedItem.id),
+    );
+    const free = this.inventory.slots - this.inventory.items.length;
+    const toTake = present.slice(0, free);
+    const removed = lootBox.removeItems(toTake.map((taken) => taken.id));
+    if (removed.length > 0) {
+      this.addToInventory(removed);
+    }
+    return removed;
   }
 }
