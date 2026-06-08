@@ -1,23 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ICampaign } from "../campaign";
-
 import { Character } from "./character";
 import { NonPlayerCharacter } from "./non-player-character";
-import { StatType, type Stats } from "./stats";
 
-function makeStats(overrides: Partial<Stats> = {}): Stats {
-  return {
-    [StatType.Health]: 10,
-    [StatType.Sanity]: 10,
-    [StatType.Energy]: 10,
-    ...overrides,
-  };
-}
-
-function makeCampaign(): ICampaign {
-  return {} as ICampaign;
-}
+import { makeCampaign, makeStats } from "../../test-utils";
 
 // `IDialogue` is not exported, so we lean on the constructor's parameter type
 // to structurally check these literals.
