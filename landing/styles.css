@@ -1,0 +1,317 @@
+/* ============================================================
+   Wicked Ways — Coming Soon landing page
+   Exported from Pencil design (Desktop / Tablet / Mobile frames)
+   ============================================================ */
+
+:root {
+  /* Brand colors */
+  --blood: #8b0000;
+  --cream: #faf0e6;
+  --beige: #f5f5dc;
+  --parchment: #d4c4a8;
+  --ink: #1a1a1a;
+  --ink-border: #3d3d3d;
+  --muted: #6b6b6b;
+
+  /* Type */
+  --font-display: "Cinzel", Georgia, "Times New Roman", serif;
+  --font-serif: "EB Garamond", Georgia, serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #000;
+  color: var(--cream);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Hero shell ---------- */
+.hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  gap: 40px;
+  padding: 80px 80px 60px;
+  overflow: hidden;
+  background-image: url("assets/hero-bg.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Atmospheric overlays */
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.overlay--vignette {
+  background: radial-gradient(
+    ellipse 75% 75% at center,
+    rgba(0, 0, 0, 0) 30%,
+    rgba(0, 0, 0, 0.67) 70%,
+    rgba(0, 0, 0, 1) 100%
+  );
+}
+
+.overlay--bottom {
+  top: auto;
+  bottom: 0;
+  height: 28%;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.8) 50%,
+    rgba(0, 0, 0, 1) 100%
+  );
+}
+
+/* ---------- Top: badge ---------- */
+.hero__top {
+  display: flex;
+  justify-content: center;
+}
+
+.badge {
+  display: inline-block;
+  background: var(--blood);
+  color: var(--beige);
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  padding: 12px 24px;
+  border-radius: 4px;
+}
+
+/* ---------- Center: title ---------- */
+.hero__center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  /* fluid between the mobile (~50px) and desktop (140px) frames */
+  font-size: clamp(3.25rem, 8.5vw, 140px);
+  line-height: 1.05;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--cream);
+  text-shadow: 0 6px 28px rgba(0, 0, 0, 0.8);
+}
+
+.tagline {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: clamp(1.125rem, 1.6vw, 1.5rem);
+  color: rgba(245, 245, 220, 0.8);
+}
+
+.release {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: clamp(0.875rem, 1.1vw, 1.125rem);
+  color: rgba(245, 245, 220, 0.6);
+}
+
+/* ---------- Bottom: social + signup ---------- */
+.hero__bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  width: 100%;
+}
+
+.social {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.social__label {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: rgba(245, 245, 220, 0.53);
+}
+
+.social__icon {
+  display: inline-flex;
+  color: var(--beige);
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.social__icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.social__icon:hover {
+  color: #fff;
+  transform: translateY(-2px);
+}
+
+.signup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  width: min(600px, 100%);
+}
+
+.signup__headline {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(1.75rem, 3.2vw, 2.625rem);
+  color: var(--cream);
+}
+
+.signup__tagline {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--parchment);
+}
+
+.signup__form {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
+.signup__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 320px;
+  height: 52px;
+  padding: 16px 20px;
+  font-family: Georgia, serif;
+  font-size: 14px;
+  color: var(--cream);
+  background: var(--ink);
+  border: 1px solid var(--ink-border);
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+  outline: none;
+}
+
+.signup__input::placeholder {
+  color: var(--muted);
+}
+
+.signup__input:focus {
+  border-color: var(--blood);
+}
+
+.signup__button {
+  flex: 0 0 auto;
+  height: 52px;
+  padding: 16px 24px;
+  font-family: Georgia, serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--cream);
+  background: var(--blood);
+  border: none;
+  border-radius: 0 4px 4px 0;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.signup__button:hover {
+  background: #a30000;
+}
+
+.signup__disclaimer {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ============================================================
+   Tablet  (matches the 834px frame)
+   ============================================================ */
+@media (max-width: 834px) {
+  .hero {
+    padding: 56px 48px 48px;
+  }
+
+  .signup {
+    width: min(560px, 100%);
+  }
+}
+
+/* ============================================================
+   Mobile  (matches the 390px frame) — stack the email form
+   ============================================================ */
+@media (max-width: 560px) {
+  .hero {
+    padding: 40px 24px 32px;
+    gap: 32px;
+  }
+
+  .hero__bottom {
+    gap: 28px;
+  }
+
+  .social {
+    gap: 16px;
+  }
+
+  .signup__tagline {
+    font-size: 15px;
+  }
+
+  /* Email + button stack full-width */
+  .signup__form {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .signup__input {
+    max-width: none;
+    width: 100%;
+    border-right: 1px solid var(--ink-border);
+    border-radius: 6px;
+    text-align: center;
+  }
+
+  .signup__button {
+    width: 100%;
+    border-radius: 6px;
+  }
+}
