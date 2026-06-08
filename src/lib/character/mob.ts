@@ -1,0 +1,36 @@
+import { ICampaign } from "../campaign";
+import { IItem } from "../inventory";
+import { Combatant, ICombatant } from "./combatant";
+import { Stats } from "./stats";
+
+export interface IMob extends ICombatant {
+  escape: () => void;
+}
+
+export class Mob extends Combatant implements IMob {
+  constructor(
+    campaign: ICampaign,
+    name: string,
+    stats: Stats,
+    inventorySlots: number = 2,
+    actionsPerRound: number = 2,
+    drops: IItem[],
+  ) {
+    const _inventorySlots = Math.max(inventorySlots, drops.length);
+    super(campaign, name, stats, _inventorySlots, actionsPerRound);
+
+    this.isActionMap.set(this.escape, true);
+  }
+
+  escape() {
+    // Flee through the first available exit. The move() transition fires the
+    // room's exit/enter scenes; because Mob does not register `move`, that
+    // call does not consume an action — `escape` is the recorded action.
+    const exits = [...(this.currentRoom?.exits.values() ?? [])];
+    const destination = exits[0];
+    if (destination) {
+      this.move(destination);
+    }
+    this.recordAction(this.escape);
+  }
+}
