@@ -1,0 +1,44 @@
+import { vi } from "vitest";
+
+import type { ICampaign } from "./lib/campaign";
+import type { ICharacter } from "./lib/character/character";
+import { StatType, type Stats } from "./lib/character/stats";
+import { Room } from "./lib/room";
+
+// The Room constructor types `exits` as a full Record<Direction, IRoom>, but the
+// body only iterates whatever keys are present, so tests recover the parameter
+// type and cast partial (or empty) maps into it.
+export type ExitsArg = ConstructorParameters<typeof Room>[2];
+
+// A full stat block with every stat at 10, overridable per stat.
+export function makeStats(overrides: Partial<Stats> = {}): Stats {
+  return {
+    [StatType.Health]: 10,
+    [StatType.Sanity]: 10,
+    [StatType.Energy]: 10,
+    ...overrides,
+  };
+}
+
+// Character only stores the campaign and exposes it via a getter, so a bare
+// stub is enough for tests that never drive campaign behaviour.
+export function makeCampaign(): ICampaign {
+  return {} as ICampaign;
+}
+
+// A defender that only needs to record the damage calls made against it.
+export function makeDefender(): ICharacter {
+  return { takeDamage: vi.fn() } as unknown as ICharacter;
+}
+
+// Deterministic mulberry32 PRNG so buildMap produces a fixed topology.
+export function makeRng(seed: number): () => number {
+  let a = seed;
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}

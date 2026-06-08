@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ICampaign } from "../campaign";
 import { CLAIM, type IItem, type ItemId } from "../inventory";
 import type { IRoom } from "../room";
 import { Status } from "../status";
@@ -9,26 +8,15 @@ import { ProceduralViolation } from "../util";
 import { Character } from "./character";
 import { StatType, type Stats } from "./stats";
 
+import { makeCampaign, makeStats } from "../../test-utils";
+
 // ---------------------------------------------------------------------------
 // Test doubles
 //
-// Character only stores the campaign and exposes it via a getter, so a bare
-// stub is enough. Rooms and items are interacted with through a small, known
-// surface, so we fake just the methods Character touches.
+// Rooms and items are interacted with through a small, known surface, so we
+// fake just the methods Character touches. Stats and the campaign stub come
+// from the shared test-utils helpers.
 // ---------------------------------------------------------------------------
-
-function makeStats(overrides: Partial<Stats> = {}): Stats {
-  return {
-    [StatType.Health]: 10,
-    [StatType.Sanity]: 10,
-    [StatType.Energy]: 10,
-    ...overrides,
-  };
-}
-
-function makeCampaign(): ICampaign {
-  return {} as ICampaign;
-}
 
 let itemCounter = 0;
 function makeItem(id?: string): IItem {

@@ -9,34 +9,9 @@ import { ProceduralViolation } from "./lib/util";
 import { Character } from "./lib/character/character";
 import { NonPlayerCharacter } from "./lib/character/non-player-character";
 import { PlayerCharacter } from "./lib/character/player-character";
-import { StatType, type Stats } from "./lib/character/stats";
+import { StatType } from "./lib/character/stats";
 import { buildMap } from "./utils/build-map";
-
-// The Room constructor types `exits` as a full Record<Direction, IRoom>, but
-// at runtime it just iterates Object.entries, so an empty literal is valid.
-// Match the existing room/build-map tests, which alias and cast the same way.
-type ExitsArg = ConstructorParameters<typeof Room>[2];
-
-function makeStats(overrides: Partial<Stats> = {}): Stats {
-  return {
-    [StatType.Health]: 10,
-    [StatType.Sanity]: 10,
-    [StatType.Energy]: 10,
-    ...overrides,
-  };
-}
-
-// Deterministic mulberry32 PRNG so buildMap produces a fixed topology.
-function makeRng(seed: number): () => number {
-  let a = seed;
-  return () => {
-    a |= 0;
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+import { type ExitsArg, makeRng, makeStats } from "./test-utils";
 
 // A real weapon Item with inert actions/events, usable in inventories and boxes.
 function makeWeapon(modifier = 3): Item {

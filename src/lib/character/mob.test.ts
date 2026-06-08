@@ -1,28 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { ICampaign } from "../campaign";
 import type { IItem } from "../inventory";
 
 import { Room } from "../room";
 import { Combatant } from "./combatant";
-import { type ICharacter } from "./character";
 import { Mob } from "./mob";
-import { StatType, type Stats } from "./stats";
+import { StatType } from "./stats";
 
-type ExitsArg = ConstructorParameters<typeof Room>[2];
-
-function makeStats(overrides: Partial<Stats> = {}): Stats {
-  return {
-    [StatType.Health]: 10,
-    [StatType.Sanity]: 10,
-    [StatType.Energy]: 10,
-    ...overrides,
-  };
-}
-
-function makeCampaign(): ICampaign {
-  return {} as ICampaign;
-}
+import {
+  type ExitsArg,
+  makeCampaign,
+  makeDefender,
+  makeStats,
+} from "../../test-utils";
 
 function makeMob(opts: { actionsPerRound?: number; drops?: IItem[] } = {}) {
   return new Mob(
@@ -33,10 +23,6 @@ function makeMob(opts: { actionsPerRound?: number; drops?: IItem[] } = {}) {
     opts.actionsPerRound ?? 2,
     opts.drops ?? [],
   );
-}
-
-function makeDefender(): ICharacter {
-  return { takeDamage: vi.fn() } as unknown as ICharacter;
 }
 
 describe("Mob", () => {

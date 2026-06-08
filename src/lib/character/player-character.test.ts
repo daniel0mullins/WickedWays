@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { ICampaign } from "../campaign";
 import type { IItem, ItemId } from "../inventory";
 import type { IRoom } from "../room";
 
@@ -8,22 +7,11 @@ import { Campaign } from "../campaign";
 import { CLAIM, HELD_BY } from "../inventory";
 import { Loot } from "../loot";
 import { ProceduralViolation } from "../util";
-import { Character, type ICharacter } from "./character";
+import { Character } from "./character";
 import { PlayerCharacter } from "./player-character";
-import { StatType, type Stats } from "./stats";
+import { StatType } from "./stats";
 
-function makeStats(overrides: Partial<Stats> = {}): Stats {
-  return {
-    [StatType.Health]: 10,
-    [StatType.Sanity]: 10,
-    [StatType.Energy]: 10,
-    ...overrides,
-  };
-}
-
-function makeCampaign(): ICampaign {
-  return {} as ICampaign;
-}
+import { makeCampaign, makeDefender, makeStats } from "../../test-utils";
 
 let itemCounter = 0;
 function makeWeapon(opts: {
@@ -44,10 +32,6 @@ function makeWeapon(opts: {
       usable: false,
     },
   } as unknown as IItem;
-}
-
-function makeDefender(): ICharacter {
-  return { takeDamage: vi.fn() } as unknown as ICharacter;
 }
 
 function makePc(opts: { inventorySlots?: number } = {}) {
