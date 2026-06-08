@@ -42,10 +42,11 @@ export default tseslint.config(
     },
   },
 
-  // Tests lean on `as unknown as X` stubs and mock objects by design, so the
-  // strict "unsafe any" checks are relaxed here to avoid noise.
+  // Tests (and the shared test helpers) lean on `as unknown as X` stubs and
+  // mock objects by design, so the strict "unsafe any" checks are relaxed here
+  // to avoid noise.
   {
-    files: ["**/*.test.ts"],
+    files: ["**/*.test.ts", "src/test-utils.ts"],
     rules: {
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",

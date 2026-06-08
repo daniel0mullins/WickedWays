@@ -6,6 +6,8 @@ import { Room } from "./room";
 import type { IScene, Scene } from "./scene";
 import { ProceduralViolation } from "./util";
 
+import { type ExitsArg } from "../test-utils";
+
 // `Room` only ever touches an occupant's `id`, a loot batch's `id`, and a
 // scene's `playScene`, so minimal stubs cast to the interfaces are enough.
 let idCounter = 0;
@@ -22,11 +24,6 @@ function makeScene(): IScene & { playScene: ReturnType<typeof vi.fn> } {
     playScene: ReturnType<typeof vi.fn>;
   };
 }
-
-// The constructor's `exits` argument is typed as a full `Record<Direction, …>`,
-// but the body only iterates whatever keys are present, so we recover the param
-// type and cast partial maps into it.
-type ExitsArg = ConstructorParameters<typeof Room>[2];
 
 function makeRoom(loot: ILoot[] = [], exits: Partial<ExitsArg> = {}): Room {
   return new Room("a dim room", loot, exits as ExitsArg);
