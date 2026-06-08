@@ -1,5 +1,7 @@
 # Wicked Ways
 
+![Wicked Ways](src/assets/images/wicked+ways.png)
+
 A type-safe, turn-based tabletop RPG engine written in TypeScript. Wicked Ways models
 a party-based horror campaign: a Game Master and player characters take turns across a
 procedurally generated dungeon, fighting mobs, looting containers, talking to NPCs, and
