@@ -188,17 +188,30 @@ export class Character implements ICharacter {
    * entry point.
    */
   receiveItem(item: IItem) {
-    this.#inventory.items.push(item);
+    // Keys are stored "for free" in a separate compartment; everything else
+    // takes a slot in `items`.
+    if (item.type === "key") {
+      this.#inventory.keys.push(item);
+    } else {
+      this.#inventory.items.push(item);
+    }
     item[CLAIM](this);
   }
 
   /** Removes `item` from the inventory if present, leaving its holder untouched. */
   relinquishItem(item: IItem) {
-    const index = this.#inventory.items.findIndex(
+    const fromItems = this.#inventory.items.findIndex(
       (current) => current.id === item.id,
     );
-    if (index !== -1) {
-      this.#inventory.items.splice(index, 1);
+    if (fromItems !== -1) {
+      this.#inventory.items.splice(fromItems, 1);
+      return;
+    }
+    const fromKeys = this.#inventory.keys.findIndex(
+      (current) => current.id === item.id,
+    );
+    if (fromKeys !== -1) {
+      this.#inventory.keys.splice(fromKeys, 1);
     }
   }
 
@@ -223,7 +236,7 @@ export class Character implements ICharacter {
     this.actionsPerRound = actionsPerRound;
     this.actionsThisRound = 0;
 
-    this.#inventory = { slots: inventorySlots, items: [] };
+    this.#inventory = { slots: inventorySlots, items: [], keys: [] };
     this.#campaign = campaign;
     this.#status = new Map<Status, boolean>();
     this.#resetStatuses();

@@ -295,10 +295,11 @@ export class Item implements IItem {
   }
 }
 
-/** A holder's item store: a fixed number of `slots` and the `items` filling them. */
+/** A holder's item store: `slots`/`items` for normal items, plus a free `keys` keyring. */
 export type Inventory = {
   slots: number;
   items: IItem[];
+  keys: IItem[];
 };
 
 /**
