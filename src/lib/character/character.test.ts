@@ -494,6 +494,27 @@ describe("Character", () => {
     });
   });
 
+  describe("keys (free storage via addToInventory)", () => {
+    it("adds a key even when the item slots are full", () => {
+      const character = makeCharacter({ inventorySlots: 1 });
+      character.addToInventory(makeItem()); // fills the only item slot
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+
+      expect(() => character.addToInventory(key)).not.toThrow();
+      expect(character.inventory.keys).toContain(key);
+      expect(character.inventory.items).toHaveLength(1);
+    });
+
+    it("still throws when a non-key overflows the item slots", () => {
+      const character = makeCharacter({ inventorySlots: 1 });
+      character.addToInventory(makeItem());
+
+      expect(() => character.addToInventory(makeItem())).toThrow(
+        ProceduralViolation,
+      );
+    });
+  });
+
   describe("action history", () => {
     it("records a move with the destination room id and name", () => {
       const character = makeCharacter();

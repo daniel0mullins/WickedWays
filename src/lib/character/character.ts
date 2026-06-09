@@ -278,7 +278,11 @@ export class Character implements ICharacter {
   addToInventory(item: IItem | IItem[]) {
     const items = Array.isArray(item) ? item : [item];
     for (const current of items) {
-      if (this.hasRoomForItem()) {
+      if (current.type === "key") {
+        // Keys never consume a slot, so they bypass the room check entirely.
+        this.receiveItem(current);
+        current.actions.pickUp(this);
+      } else if (this.hasRoomForItem()) {
         this.receiveItem(current);
         current.actions.pickUp(this);
       } else {
