@@ -50,9 +50,9 @@ describe("Campaign integration", () => {
 
     // Rooms connected into a deterministic spanning tree.
     const rooms = [
-      new Room("Entrance", [], {} as ExitsArg),
-      new Room("Corridor", [], {} as ExitsArg),
-      new Room("Vault", [], {} as ExitsArg),
+      new Room("Entrance", "Entrance", [], {} as ExitsArg),
+      new Room("Corridor", "Corridor", [], {} as ExitsArg),
+      new Room("Vault", "Vault", [], {} as ExitsArg),
     ];
     buildMap(rooms, { rng: makeRng(42), extraConnections: 1 });
 
@@ -128,7 +128,7 @@ describe("Campaign integration", () => {
       [],
     );
 
-    const crypt = new Room("Crypt", [], {} as ExitsArg);
+    const crypt = new Room("Crypt", "Crypt", [], {} as ExitsArg);
     campaign.beginCampaign();
     hero.move(crypt);
     ghoul.move(crypt);
@@ -151,7 +151,7 @@ describe("Campaign integration", () => {
 
     const sword = makeWeapon();
     const chest = new Loot("treasure chest", [sword]);
-    const vault = new Room("Vault", [chest], {} as ExitsArg);
+    const vault = new Room("Vault", "Vault", [chest], {} as ExitsArg);
 
     campaign.beginCampaign();
     hero.move(vault);
@@ -179,7 +179,7 @@ describe("Campaign integration", () => {
         firedWithOccupants = room.occupants.length;
       },
     });
-    const hall = new Room("Trapped Hall", [], {} as ExitsArg);
+    const hall = new Room("Trapped Hall", "Trapped Hall", [], {} as ExitsArg);
     hall.registerScene(trap);
 
     campaign.beginCampaign();
