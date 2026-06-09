@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { CLAIM, type IItem, type ItemId } from "./inventory";
+import { CLAIM, createKey, type IItem, type ItemId } from "./inventory";
 import { Loot } from "./loot";
-import { ContainerFullException, generateId } from "./util";
+import { ContainerFullException, ProceduralViolation, generateId } from "./util";
 
 const HELD_BY = Symbol.for("heldBy");
 
@@ -190,6 +190,28 @@ describe("Loot", () => {
       loot.stowItem(makeItem());
       loot.stowItem(makeItem());
       expect(loot.hasRoomForItem()).toBe(false);
+    });
+  });
+
+  describe("keys", () => {
+    it("refuses to stow a key", () => {
+      const box = new Loot("chest", []);
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+
+      expect(() => box.stowItem(key)).toThrow(ProceduralViolation);
+    });
+
+    it("refuses to receive a key directly", () => {
+      const box = new Loot("chest", []);
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+
+      expect(() => box.receiveItem(key)).toThrow(ProceduralViolation);
+    });
+
+    it("refuses to be constructed holding a key", () => {
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+
+      expect(() => new Loot("chest", [key])).toThrow(ProceduralViolation);
     });
   });
 });
