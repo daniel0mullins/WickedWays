@@ -49,6 +49,7 @@ function makeLootItem(id: string): IItem {
   let holder: unknown = null;
   return {
     id: id as ItemId,
+    name: id,
     actions: { pickUp: vi.fn() },
     [CLAIM]: (h: unknown) => {
       holder = h;
@@ -234,6 +235,16 @@ describe("PlayerCharacter", () => {
       pc.attack(defender);
 
       expect(defender.takeDamage).toHaveBeenCalledWith(1, StatType.Health);
+    });
+
+    it("records the attack target in the attacker's history", () => {
+      const pc = makePc();
+      const defender = makeDefender();
+      pc.attack(defender);
+      expect(pc.history.at(-1)).toMatchObject({
+        kind: "attack",
+        target: { id: defender.id, name: defender.name },
+      });
     });
 
     it("counts as a recordable action", () => {
@@ -428,6 +439,30 @@ describe("PlayerCharacter", () => {
       expect(() => pc.putInLootBox(box, makeLootItem("a"))).toThrow(
         ProceduralViolation,
       );
+    });
+  });
+
+  describe("loot box history", () => {
+    it("records a single pickUp when taking from a loot box", () => {
+      const target = makeLootItem("a");
+      const box = new Loot("chest", [target]);
+      const pc = makePcInRoomWith(box);
+      pc.takeFromLootBox(box, target);
+      const pickUps = pc.history.filter((e) => e.kind === "pickUp");
+      expect(pickUps).toHaveLength(1);
+      expect(pickUps[0]).toMatchObject({ items: [{ id: target.id, name: target.name }] });
+    });
+
+    it("records a single drop when putting into a loot box", () => {
+      const target = makeLootItem("a");
+      const box = new Loot("chest", []);
+      const pc = makePcInRoomWith(box, { inventorySlots: 5 });
+      pc.addToInventory(target);
+      const before = pc.history.length;
+      pc.putInLootBox(box, target);
+      const drops = pc.history.slice(before).filter((e) => e.kind === "drop");
+      expect(drops).toHaveLength(1);
+      expect(drops[0]).toMatchObject({ items: [{ id: target.id, name: target.name }] });
     });
   });
 });

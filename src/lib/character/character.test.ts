@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CLAIM, type IItem, type ItemId } from "../inventory";
-import type { IRoom } from "../room";
+import type { IRoom, RoomId } from "../room";
 import { Status } from "../status";
 import { ProceduralViolation } from "../util";
 
+import type { ICampaign } from "../campaign";
 import { Character } from "./character";
+import type { ActionHistoryEntry } from "./history";
 import { StatType, type Stats } from "./stats";
 
 import { makeCampaign, makeStats } from "../../test-utils";
@@ -24,6 +26,7 @@ function makeItem(id?: string): IItem {
   let holder: unknown = null;
   return {
     id: itemId,
+    name: itemId,
     actions: { pickUp: vi.fn() },
     [CLAIM]: (h: unknown) => {
       holder = h;
@@ -36,6 +39,8 @@ function makeItem(id?: string): IItem {
 
 function makeRoom(): IRoom {
   return {
+    id: "room-1" as RoomId,
+    name: "Test Room",
     enterRoom: vi.fn(),
     exitRoom: vi.fn(),
   } as unknown as IRoom;
@@ -402,8 +407,16 @@ describe("Character", () => {
       const character = makeCharacter({ actionsPerRound: 1 });
       const onTurnEnd = vi.spyOn(character.events, "onTurnEnd");
 
-      character.recordAction(function notAnAction() {});
-      character.recordAction(() => {});
+      character.recordAction(function notAnAction() {}, {
+        kind: "takeDamage",
+        amount: 0,
+        stat: StatType.Health,
+      });
+      character.recordAction(() => {}, {
+        kind: "takeDamage",
+        amount: 0,
+        stat: StatType.Health,
+      });
 
       expect(onTurnEnd).not.toHaveBeenCalled();
     });
@@ -452,6 +465,65 @@ describe("Character", () => {
       character.relinquishItem(makeItem()); // a different item, never added
 
       expect(character.inventory.items).toEqual([kept]);
+    });
+  });
+
+  describe("action history", () => {
+    it("records a move with the destination room id and name", () => {
+      const character = makeCharacter();
+      const room = makeRoom();
+      character.move(room);
+      expect(character.history).toHaveLength(1);
+      expect(character.history[0]).toMatchObject({
+        kind: "move",
+        room: { id: room.id, name: room.name },
+      });
+    });
+
+    it("records pickUp when adding to inventory and drop when removing", () => {
+      const character = makeCharacter({ inventorySlots: 5 });
+      const item = makeItem();
+      character.addToInventory(item);
+      character.removeFromInventory(item);
+      expect(character.history.map((e) => e.kind)).toEqual(["pickUp", "drop"]);
+      expect(character.history[0]).toMatchObject({
+        kind: "pickUp",
+        items: [{ id: item.id, name: item.name }],
+      });
+    });
+
+    it("records takeDamage with the mitigated amount and stat", () => {
+      // Sanity 5 mitigates Health: multiplier = (10 - 5) * 0.2 = 1, so 5 damage applies as 5.
+      const character = makeCharacter({ stats: { [StatType.Sanity]: 5 } });
+      character.takeDamage(5, StatType.Health);
+      expect(character.history.at(-1)).toMatchObject({
+        kind: "takeDamage",
+        amount: 5,
+        stat: StatType.Health,
+      });
+    });
+
+    it("stamps each entry with the current campaign round", () => {
+      const character = new Character(
+        { round: 7 } as unknown as ICampaign,
+        "Hero",
+        makeStats(),
+      );
+      character.move(makeRoom());
+      expect(character.history[0]?.round).toBe(7);
+    });
+
+    it("returns a read-only snapshot that cannot mutate internal state", () => {
+      const character = makeCharacter();
+      const room = makeRoom();
+      character.move(room);
+      const snapshot = character.history as ActionHistoryEntry[];
+      snapshot.push({
+        kind: "move",
+        round: 99,
+        room: { id: room.id, name: room.name },
+      });
+      expect(character.history).toHaveLength(1);
     });
   });
 });
