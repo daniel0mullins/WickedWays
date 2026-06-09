@@ -2,6 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { IRoom } from "./room";
 import { Scene } from "./scene";
+import { Character } from "./character/character";
+import { createKey } from "./inventory";
+import { makeCampaign, makeStats } from "../test-utils";
 
 // `Scene` only ever passes the room through to preconditions and the script; it
 // never reads off it, so a bare stub cast to `IRoom` is enough.
@@ -116,6 +119,44 @@ describe("Scene", () => {
       scene.playScene("exit", makeRoom());
 
       expect(precondition).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("key-gated scene (authoring pattern)", () => {
+    // A precondition an author writes with the public surface: the gate opens
+    // when any occupant of the room holds a key with the matching code.
+    const requiresKey = (keyCode: string) => (room: IRoom) =>
+      room.occupants.some((c) =>
+        c.inventory.keys.some((k) => k.keyCode === keyCode),
+      );
+
+    function roomWithOccupants(occupants: Character[]): IRoom {
+      return { occupants } as unknown as IRoom;
+    }
+
+    it("does not fire when no occupant holds the key", () => {
+      const { scene, script } = makeScene({
+        preconditions: [requiresKey("vault")],
+      });
+      const bystander = new Character(makeCampaign(), "Bystander", makeStats());
+
+      scene.playScene("enter", roomWithOccupants([bystander]));
+
+      expect(script).not.toHaveBeenCalled();
+    });
+
+    it("fires once an occupant holds the matching key", () => {
+      const { scene, script } = makeScene({
+        preconditions: [requiresKey("vault")],
+      });
+      const hero = new Character(makeCampaign(), "Hero", makeStats());
+      hero.addToInventory(createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: false }));
+
+      const room = roomWithOccupants([hero]);
+      scene.playScene("enter", room);
+
+      expect(script).toHaveBeenCalledOnce();
+      expect(script).toHaveBeenCalledWith(room);
     });
   });
 });
