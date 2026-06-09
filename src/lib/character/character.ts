@@ -183,7 +183,7 @@ export class Character implements ICharacter {
     this.#history.push({
       ...detail,
       round: this.campaign.round,
-    } as ActionHistoryEntry);
+    });
 
     if (this.isActionMap.get(callingFn)) {
       this.actionsThisRound = this.actionsThisRound + 1;

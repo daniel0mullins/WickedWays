@@ -31,6 +31,9 @@ export class Mob extends Combatant implements IMob {
     if (destination) {
       this.move(destination);
     }
+    // The escape attempt is always recorded (it consumed the action), even when
+    // there was no exit to flee through; a successful flee also records the
+    // `move` separately via move() above.
     this.recordAction(this.escape, { kind: "escape" });
   }
 }
