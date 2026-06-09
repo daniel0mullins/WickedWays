@@ -307,6 +307,11 @@ export class Character implements ICharacter {
   removeFromInventory(item: IItem | IItem[]) {
     const items = Array.isArray(item) ? item : [item];
     for (const current of items) {
+      if (current.type === "key") {
+        throw new ProceduralViolation(
+          "Keys cannot be dropped; hand them over with transferKey instead.",
+        );
+      }
       const held = this.#inventory.items.some((i) => i.id === current.id);
       if (!held) {
         throw new ProceduralViolation(
