@@ -338,8 +338,15 @@ export class Character implements ICharacter {
    * burn a one-shot key, typically guarded by the key's {@link IItem.consumeOnUse}.
    *
    * @param key - The key to consume.
+   * @throws {@link ProceduralViolation} if this character is not holding `key`.
    */
   consumeKey(key: IItem) {
+    const held = this.#inventory.keys.some((k) => k.id === key.id);
+    if (!held) {
+      throw new ProceduralViolation(
+        "Attempted to consume a key the character is not holding.",
+      );
+    }
     this.relinquishItem(key);
     key[CLAIM](null);
   }
