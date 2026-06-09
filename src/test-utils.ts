@@ -8,7 +8,7 @@ import { Room } from "./lib/room";
 // The Room constructor types `exits` as a full Record<Direction, IRoom>, but the
 // body only iterates whatever keys are present, so tests recover the parameter
 // type and cast partial (or empty) maps into it.
-export type ExitsArg = ConstructorParameters<typeof Room>[2];
+export type ExitsArg = ConstructorParameters<typeof Room>[3];
 
 // A full stat block with every stat at 10, overridable per stat.
 export function makeStats(overrides: Partial<Stats> = {}): Stats {

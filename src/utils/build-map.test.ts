@@ -9,7 +9,7 @@ import { type ExitsArg, makeRng } from "../test-utils";
 function makeRooms(count: number): IRoom[] {
   return Array.from(
     { length: count },
-    () => new Room("a room", [], {} as ExitsArg),
+    () => new Room("a room", "a room", [], {} as ExitsArg),
   );
 }
 
