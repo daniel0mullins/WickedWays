@@ -102,12 +102,18 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
    * @param item - The item(s) requested.
    * @returns The items actually stowed.
    * @throws {@link ProceduralViolation} if the box is not in the current room.
+   * @throws {@link ProceduralViolation} if any item is a key.
    */
   putInLootBox(lootBox: ILoot, item: IItem | IItem[]): IItem[] {
     this.#requireCoLocated(lootBox);
+    const requested = Array.isArray(item) ? item : [item];
+    if (requested.some((i) => i.type === "key")) {
+      throw new ProceduralViolation(
+        "Keys cannot be stored in a loot container.",
+      );
+    }
     // Reuse removeFromInventory + stowItem rather than the raw holder primitives:
     // removeFromInventory records exactly one action; stowItem re-claims the box as holder.
-    const requested = Array.isArray(item) ? item : [item];
     const present = requested.filter((requestedItem) =>
       this.inventory.items.some((held) => held.id === requestedItem.id),
     );
