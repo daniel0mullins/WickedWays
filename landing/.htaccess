@@ -1,13 +1,29 @@
 # Wicked Ways — landing page server config
 
+RewriteEngine On
+
+# 1. Redirect external requests with .html to the extensionless URL
+
+RewriteCond %{THE_REQUEST} /([^.]+)\.html [NC]
+RewriteRule ^ /%1 [NC,L,R=301]
+
+# 2. Internally map extensionless URLs back to the actual .html file
+
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME}.html -f
+RewriteRule ^([^.]+)$ $1.html [NC,L]
+
 # Custom error pages
+
 ErrorDocument 404 /404.html
 ErrorDocument 500 /500.html
 
 # Protect dotfiles and env from being served
+
 <FilesMatch "^\.">
-  Require all denied
+Require all denied
 </FilesMatch>
 <Files ".env">
-  Require all denied
+Require all denied
 </Files>
