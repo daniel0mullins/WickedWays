@@ -6,6 +6,7 @@ import { v4 as uuid } from "uuid";
 import { StatType } from "./character/stats";
 import { ProceduralViolation } from "./util";
 
+/** The kinds of item the engine recognises. */
 const ItemType = {
   Consumable: "consumable",
   Armor: "armor",
@@ -13,9 +14,11 @@ const ItemType = {
   Throwable: "throwable",
 } as const;
 
+/** Unique identifier for an {@link Item}. */
 export type ItemId = Brand<string, "ItemId">;
 type ItemType = (typeof ItemType)[keyof typeof ItemType];
 
+/** Raw materials an item is made of and yields when destroyed. */
 const ItemComponentType = {
   Metal: "metal",
   Glass: "glass",
@@ -27,20 +30,24 @@ const ItemComponentType = {
 type ItemComponentType =
   (typeof ItemComponentType)[keyof typeof ItemComponentType];
 
+/** Component-to-quantity makeup of an item; at least one component is required. */
 type Recipe = RequireAtLeastOne<{
   [k in ItemComponentType]: number;
 }>;
 
+/** Item action callback acting on a single character (optionally with components). */
 type ItemActionEvent = <C extends ICharacter>(
   c: C,
   components?: ItemComponentType[] | null,
 ) => void;
 
+/** Item action callback acting between two characters (e.g. a transfer). */
 type ItemActionSharedEvent = <C extends ICharacter, CC extends ICharacter>(
   c: C,
   cc: CC,
 ) => void;
 
+/** The interactions an item can be the subject of. */
 const ItemAction = {
   PickUp: "pickUp",
   Equip: "equip",
@@ -50,6 +57,11 @@ const ItemAction = {
   Use: "use",
 } as const;
 
+/**
+ * The core behaviour each action performs, supplied when an {@link Item} is
+ * constructed. The `Item` wraps these and fires the matching {@link ItemEvents}
+ * hook after each runs.
+ */
 type ItemActions = {
   [ItemAction.PickUp]: ItemActionEvent;
   [ItemAction.Equip]: ItemActionEvent;
@@ -59,6 +71,10 @@ type ItemActions = {
   [ItemAction.Destroy]: () => ItemComponentType[] | null;
 };
 
+/**
+ * Optional observer hooks fired after the corresponding {@link ItemActions}
+ * behaviour runs. Only `onPickUp` is required.
+ */
 type ItemEvents = {
   onPickUp: ItemActionEvent;
   onEquip?: ItemActionEvent;
@@ -68,6 +84,7 @@ type ItemEvents = {
   onDestroy?: ItemActionEvent;
 };
 
+/** Mutable flags describing what may currently be done with an item. */
 type ItemProperties = {
   equippable: boolean;
   equipped: boolean;
@@ -75,23 +92,46 @@ type ItemProperties = {
   usable: boolean;
 };
 
+/**
+ * Anything that can hold items — a {@link ICharacter} inventory or a {@link ILoot}
+ * container. Holders expose the primitives the item-transfer machinery relies on
+ * to move items in and out.
+ */
 export interface IItemHolder {
+  /** Discriminates the concrete holder kind. */
   readonly holderKind: "character" | "loot";
+  /** Whether the holder has a free slot for another item. */
   hasRoomForItem(): boolean;
+  /** Places `item` into the holder and claims ownership of it. */
   receiveItem(item: IItem): void;
+  /** Removes `item` from the holder without re-homing it. */
   relinquishItem(item: IItem): void;
 }
 
+/** Concrete holder types an item can belong to. */
 export type ItemHolder = ICharacter | ILoot;
 
-// Re-pointing an item's holder is funnelled through this symbol-keyed method so
-// external code cannot reassign `heldBy` directly (the public setter throws).
-// Only a holder's `receiveItem` should call it.
+/**
+ * Symbol-keyed method used to (re)assign an item's holder.
+ *
+ * Re-pointing an item's holder is funnelled through this symbol so external code
+ * cannot reassign `heldBy` directly (the public setter throws). Only a holder's
+ * `receiveItem` should call it.
+ */
 export const CLAIM = Symbol("claimItem");
 
-// Using a Symbol so Object.keys does not leak the key and Object.values does not leak the value
+/**
+ * Symbol key under which an item exposes its current holder.
+ *
+ * Using a Symbol keeps the key off `Object.keys` and the value off
+ * `Object.values`, so the back-reference does not leak through enumeration.
+ */
 export const HELD_BY = Symbol.for("heldBy");
 
+/**
+ * A game item: a typed, craftable object that lives in a holder's inventory and
+ * can be picked up, equipped, used, transferred, or destroyed via {@link IItem.actions}.
+ */
 export interface IItem {
   id: ItemId;
   name: string;
@@ -100,11 +140,23 @@ export interface IItem {
   modifier: number;
   properties: ItemProperties;
   stat: StatType;
+  /** The item's current holder, or `null` when unheld. See {@link HELD_BY}. */
   readonly [HELD_BY]: ItemHolder | null;
+  /** Reassigns the item's holder; for holder internals only. See {@link CLAIM}. */
   [CLAIM](holder: ItemHolder | null): void;
+  /** Bound interaction handlers (pick up, equip, use, transfer, destroy, …). */
   actions: ItemActions;
 }
 
+/**
+ * Default {@link IItem} implementation.
+ *
+ * The constructor wraps the caller-supplied {@link ItemActions} so that each
+ * action enforces its preconditions, updates item state (e.g. the `equipped`
+ * flag), and fires the matching {@link ItemEvents} hook. The equip/unequip/use/
+ * transfer/destroy actions are no-ops while the item is held by a loot box
+ * rather than a character.
+ */
 export class Item implements IItem {
   id: ItemId;
   name: string;
@@ -121,6 +173,10 @@ export class Item implements IItem {
     return this.#heldBy;
   }
 
+  /**
+   * Guards against direct reassignment of the holder.
+   * @throws {@link ProceduralViolation} always — use {@link CLAIM} instead.
+   */
   set heldBy(_value: ItemHolder | null) {
     throw new ProceduralViolation("Cannot set 'heldBy' directly!");
   }
@@ -135,6 +191,17 @@ export class Item implements IItem {
     return this.#heldBy?.holderKind === "character" ? this.#heldBy : null;
   }
 
+  /**
+   * @param descriptor - The item's intrinsic data.
+   * @param descriptor.type - Item category (weapon, armor, …).
+   * @param descriptor.recipe - Component makeup used for crafting/destruction.
+   * @param descriptor.modifier - Strength applied when the item affects `stat`.
+   * @param descriptor.stat - The {@link StatType} this item acts on.
+   * @param descriptor.name - Display name.
+   * @param properties - Initial mutable flags (equippable, equipped, …).
+   * @param actions - Core behaviour for each interaction; wrapped on construction.
+   * @param events - Observer hooks fired after the matching action runs.
+   */
   constructor(
     {
       type,
@@ -213,6 +280,7 @@ export class Item implements IItem {
   }
 }
 
+/** A holder's item store: a fixed number of `slots` and the `items` filling them. */
 export type Inventory = {
   slots: number;
   items: IItem[];

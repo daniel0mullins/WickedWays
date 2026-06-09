@@ -3,11 +3,18 @@ import { typedEntries } from "../util";
 import { Character, ICharacter } from "./character";
 import { Stats, StatType } from "./stats";
 
+/** A {@link ICharacter} that can attack other characters. */
 export interface ICombatant extends ICharacter {
+  /** Attacks `c`, dealing weapon- or unarmed-based damage. */
   attack: <C extends ICharacter>(c: C) => void;
 }
 
+/**
+ * Abstract base for characters that fight. Adds the {@link Combatant.attack}
+ * action (registered as a budgeted action) on top of {@link Character}.
+ */
 export abstract class Combatant extends Character implements ICombatant {
+  /** See {@link Character} for parameter details; also registers `attack` as an action. */
   constructor(
     campaign: ICampaign,
     name: string,
@@ -19,6 +26,14 @@ export abstract class Combatant extends Character implements ICombatant {
     this.isActionMap.set(this.attack, true);
   }
 
+  /**
+   * Attacks `c`. Each equipped weapon contributes its modifier to its stat; with
+   * no weapon equipped, a strength-1 unarmed strike lands against the defender's
+   * health. Damage is then applied per stat via {@link Character.takeDamage} and
+   * an `attack` action is recorded.
+   *
+   * @param c - The character being attacked.
+   */
   attack(c: ICharacter) {
     // Find the equipped weapon(s)
     const weapons = this.inventory.items.filter(

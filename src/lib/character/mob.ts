@@ -3,11 +3,25 @@ import { IItem } from "../inventory";
 import { Combatant, ICombatant } from "./combatant";
 import { Stats } from "./stats";
 
+/** A non-player {@link ICombatant}, such as an enemy, that can also flee. */
 export interface IMob extends ICombatant {
+  /** Flees through the first available exit, recording an `escape` action. */
   escape: () => void;
 }
 
+/**
+ * A hostile, non-player combatant. Carries `drops` (items released on defeat)
+ * and can {@link Mob.escape}. Inventory is sized to hold at least its drops.
+ */
 export class Mob extends Combatant implements IMob {
+  /**
+   * @param campaign - The campaign the mob belongs to.
+   * @param name - Display name.
+   * @param stats - Initial {@link Stats}.
+   * @param inventorySlots - Inventory capacity; raised to fit `drops`. Defaults to 2.
+   * @param actionsPerRound - Budgeted actions per turn. Defaults to 2.
+   * @param drops - Items the mob carries (and can drop).
+   */
   constructor(
     campaign: ICampaign,
     name: string,
@@ -22,6 +36,14 @@ export class Mob extends Combatant implements IMob {
     this.isActionMap.set(this.escape, true);
   }
 
+  /**
+   * Attempts to flee through the first available exit of the current room.
+   *
+   * The `escape` action is always recorded (it consumes the action) even when
+   * there is no exit to flee through. A successful flee additionally moves the
+   * mob via {@link Character.move}; because `Mob` does not register `move` as an
+   * action, that move does not consume a second action.
+   */
   escape() {
     // Flee through the first available exit. The move() transition fires the
     // room's exit/enter scenes; because Mob does not register `move`, that

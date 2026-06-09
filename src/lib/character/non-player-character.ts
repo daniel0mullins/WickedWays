@@ -2,26 +2,46 @@ import { ICampaign } from "../campaign";
 import { Character, ICharacter } from "./character";
 import { Stats } from "./stats";
 
+/** Fields shared by every dialogue block: its responses and an optional gate. */
 type DialogueBase = {
   response: string[];
   precondition?: (c: Character) => boolean;
 };
 
+/**
+ * A unit of NPC dialogue. A `"fuzzy"` block triggers when its trigger tokens are
+ * all present in the prompt; an `"exact"` block triggers on a full string match.
+ */
 type IDialogue =
   | (DialogueBase & { type: "fuzzy"; trigger: Set<string> })
   | (DialogueBase & { type: "exact"; trigger: string });
 
+/** A dialogue block paired with its precompiled prompt-matching predicate. */
 type DialogueMatcher = {
   block: IDialogue;
   matches: (normalizedPrompt: string, promptTokens: Set<string>) => boolean;
 };
 
+/**
+ * A character the player can talk to. Responds to prompts by matching them
+ * against its dialogue blocks, falling back to an initial greeting.
+ */
 export interface INonPlayerCharacter extends ICharacter {
+  /** Returns responses for `prompt`, or the initial line when no prompt is given. */
   dialogue: (prompt?: string) => string[];
+  /** The dialogue blocks driving this NPC's responses. */
   readonly dialogueBlocks: IDialogue[];
+  /** Line returned when {@link INonPlayerCharacter.dialogue} is called with no prompt. */
   initialDialogue: string;
 }
 
+/**
+ * Default {@link INonPlayerCharacter} implementation.
+ *
+ * Dialogue triggers are normalized to lowercase once at construction so that
+ * matching a prompt does not re-process every trigger on each call; the prompt
+ * itself is normalized once per {@link NonPlayerCharacter.dialogue} call.
+ */
 export class NonPlayerCharacter
   extends Character
   implements INonPlayerCharacter
@@ -83,6 +103,13 @@ export class NonPlayerCharacter
     return responses;
   }
 
+  /**
+   * @param campaign - The campaign the NPC belongs to.
+   * @param name - Display name.
+   * @param stats - Initial {@link Stats}.
+   * @param initialDialogue - Line returned when talked to without a prompt.
+   * @param dialogueBlocks - Blocks whose triggers drive prompted responses.
+   */
   constructor(
     campaign: ICampaign,
     name: string,
@@ -98,6 +125,14 @@ export class NonPlayerCharacter
     );
   }
 
+  /**
+   * Produces the NPC's spoken response.
+   *
+   * @param prompt - What the player says. When omitted, the NPC returns its
+   *   {@link NonPlayerCharacter.initialDialogue}.
+   * @returns The concatenated responses of every matching, precondition-satisfied
+   *   dialogue block (empty if none match).
+   */
   dialogue(prompt?: string) {
     if (!prompt) {
       return [this.initialDialogue];

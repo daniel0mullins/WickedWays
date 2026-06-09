@@ -9,6 +9,7 @@ import { CharacterEvents, ICharacterEvents } from "./events";
 import type { ActionDetail, ActionHistoryEntry } from "./history";
 import { MitigatorStatType, Stats, StatType } from "./stats";
 
+/** Unique identifier for a {@link Character}. */
 export type CharacterId = Brand<string, "CharacterId">;
 
 // Damage mitigation: a mitigating stat of MAX_STAT fully absorbs the hit, while
@@ -17,39 +18,77 @@ export type CharacterId = Brand<string, "CharacterId">;
 const MAX_STAT = 10;
 const MITIGATION_PER_POINT = 0.2;
 
-// Any callable, used purely as an identity key in the action-tracking maps.
-// Preferred over the unsafe built-in `Function` type.
+/**
+ * Any callable, used purely as an identity key in the action-tracking maps.
+ * Preferred over the unsafe built-in `Function` type.
+ */
 export type ActionFn = (...args: never[]) => unknown;
 
+/**
+ * A participant in the game world and an {@link IItemHolder}.
+ *
+ * A character owns stats, status conditions, an inventory, and a per-turn action
+ * budget. Actions are logged to its history and, when they count toward the
+ * budget, advance the turn. {@link Character} is the base class; combat and
+ * role-specific behaviour live in its subclasses.
+ */
 export interface ICharacter extends IItemHolder {
   // ### Properties
   readonly holderKind: "character";
   id: CharacterId;
   name: string;
   stats: Stats;
+  /** Number of budgeted actions the character may take per turn. */
   actionsPerRound: number;
+  /**
+   * Marks which of the character's methods count as budgeted actions. Subclasses
+   * register their own action methods here so {@link ICharacter.recordAction}
+   * knows which ones tick the per-round counter.
+   */
   readonly isActionMap: WeakMap<ActionFn, boolean>;
 
+  /** The campaign this character belongs to. */
   get campaign(): ICampaign;
+  /** The room the character currently occupies, or `null` if none. */
   get currentRoom(): IRoom | null;
+  /** Immutable copy of the character's recorded action history. */
   get history(): readonly ActionHistoryEntry[];
   get inventory(): Inventory;
+  /** Whether the character is free of all status conditions. */
   get isNormal(): boolean;
+  /** The status conditions currently active on the character. */
   get status(): Status[];
 
   // ### Methods
+  /** Picks up one or more items, recording a single `pickUp` action. */
   addToInventory: (item: IItem | IItem[]) => void;
+  /** Ends the character's turn, firing end events and resolving statuses. */
   endTurn: () => void;
+  /** Moves the character into `room`, leaving the current room first. */
   move: (room: IRoom) => void;
+  /** Drops one or more items, recording a single `drop` action. */
   removeFromInventory: (item: IItem) => void;
+  /** Logs an action to history and advances the turn if the budget is spent. */
   recordAction: (callingFn: ActionFn, detail: ActionDetail) => void;
+  /** Begins the character's turn, resetting the action budget. */
   startTurn: () => void;
+  /** Applies damage to a stat after mitigation, updating status conditions. */
   takeDamage: (attackStrength: number, attackStat?: StatType) => void;
 
   // ### Events
+  /** Turn-lifecycle event hub for this character. */
   events: ICharacterEvents;
 }
 
+/**
+ * Base implementation of {@link ICharacter}.
+ *
+ * Owns the character's stats, status matrix, inventory, and action history, and
+ * implements the {@link IItemHolder} primitives. Damage is reduced by a
+ * mitigating stat (a full mitigator absorbs the hit; an empty one doubles it),
+ * and status conditions (KO, Panic, Fear, Confused) are recomputed from stats
+ * whenever they change. Subclasses such as {@link Combatant} add further actions.
+ */
 export class Character implements ICharacter {
   // Public Properties
   readonly holderKind = "character" as const;
@@ -138,15 +177,22 @@ export class Character implements ICharacter {
     }
   }
 
+  /** @returns Whether the inventory has a free slot. */
   hasRoomForItem() {
     return this.#inventory.items.length < this.#inventory.slots;
   }
 
+  /**
+   * Places `item` into the inventory and claims ownership of it. Low-level
+   * holder primitive; {@link Character.addToInventory} is the action-recording
+   * entry point.
+   */
   receiveItem(item: IItem) {
     this.#inventory.items.push(item);
     item[CLAIM](this);
   }
 
+  /** Removes `item` from the inventory if present, leaving its holder untouched. */
   relinquishItem(item: IItem) {
     const index = this.#inventory.items.findIndex(
       (current) => current.id === item.id,
@@ -156,6 +202,13 @@ export class Character implements ICharacter {
     }
   }
 
+  /**
+   * @param campaign - The campaign the character belongs to.
+   * @param name - Display name.
+   * @param stats - Initial {@link Stats}.
+   * @param inventorySlots - Inventory capacity. Defaults to 5.
+   * @param actionsPerRound - Budgeted actions per turn. Defaults to 3.
+   */
   constructor(
     campaign: ICampaign,
     name: string,
@@ -179,6 +232,15 @@ export class Character implements ICharacter {
     this.isActionMap.set(this.removeFromInventory, true);
   }
 
+  /**
+   * Appends an entry to the action history, stamping it with the current
+   * campaign round. If `callingFn` is registered in {@link Character.isActionMap}
+   * it also consumes an action from the per-turn budget, automatically ending
+   * the turn once the budget is exhausted.
+   *
+   * @param callingFn - The method recording the action, used as an identity key.
+   * @param detail - The action payload, minus the `round` (stamped here).
+   */
   recordAction(callingFn: ActionFn, detail: ActionDetail) {
     this.#history.push({
       ...detail,
@@ -193,6 +255,13 @@ export class Character implements ICharacter {
     }
   }
 
+  /**
+   * Adds one or more items to the inventory, firing each item's `pickUp` action
+   * and recording a single `pickUp` history entry for the batch.
+   *
+   * @param item - An item or array of items to pick up.
+   * @throws {@link ProceduralViolation} if the inventory runs out of slots.
+   */
   addToInventory(item: IItem | IItem[]) {
     const items = Array.isArray(item) ? item : [item];
     for (const current of items) {
@@ -211,6 +280,13 @@ export class Character implements ICharacter {
     });
   }
 
+  /**
+   * Removes one or more items from the inventory, recording a single `drop`
+   * history entry for the batch.
+   *
+   * @param item - An item or array of items to drop.
+   * @throws {@link ProceduralViolation} if any item is not in the inventory.
+   */
   removeFromInventory(item: IItem | IItem[]) {
     const items = Array.isArray(item) ? item : [item];
     for (const current of items) {
@@ -228,6 +304,18 @@ export class Character implements ICharacter {
     });
   }
 
+  /**
+   * Applies an incoming attack to a stat after mitigation, then recomputes
+   * status conditions and records a `takeDamage` action.
+   *
+   * The damage taken is `attackStrength * (MAX_STAT - mitigator) * 0.2`, where
+   * the mitigator is the value of the stat that defends `attackStat` (see
+   * {@link MitigatorStatType}). A full mitigator absorbs the hit entirely; an
+   * empty one doubles it.
+   *
+   * @param attackStrength - Raw incoming attack strength before mitigation.
+   * @param attackStat - The stat being attacked. Defaults to health.
+   */
   takeDamage(attackStrength: number, attackStat: StatType = StatType.Health) {
     const mitigator = this.stats[MitigatorStatType[attackStat]];
     const damageMultiplier = (MAX_STAT - mitigator) * MITIGATION_PER_POINT;
@@ -243,6 +331,13 @@ export class Character implements ICharacter {
     });
   }
 
+  /**
+   * Moves the character into `room`, exiting the current room first (which fires
+   * that room's exit scenes) and entering the new one (firing its enter scenes).
+   * Records a `move` action.
+   *
+   * @param room - Destination room.
+   */
   move(room: IRoom) {
     if (this.#currentRoom) {
       this.#currentRoom.exitRoom(this);
@@ -255,11 +350,16 @@ export class Character implements ICharacter {
     });
   }
 
+  /** Ends the turn: fires end-of-turn events and resolves status conditions. */
   endTurn() {
     this.events.onTurnEnd();
     this.#resolveStatuses();
   }
 
+  /**
+   * Begins the turn: resets the per-round action budget, fires start-of-turn
+   * events, and resolves status conditions.
+   */
   startTurn() {
     this.actionsThisRound = 0;
     this.events.onTurnStart();

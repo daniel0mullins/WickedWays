@@ -2,18 +2,31 @@ import { Brand } from "./brand";
 import { CLAIM, IItem, IItemHolder, ItemId } from "./inventory";
 import { ContainerFullException, generateId } from "./util";
 
+/** Unique identifier for a {@link Loot} container. */
 export type LootId = Brand<string, "LootId">;
 
+/**
+ * A loot container: an {@link IItemHolder} that stores items in a room for
+ * characters to take from or stow into, up to a fixed {@link ILoot.capacity}.
+ */
 export interface ILoot extends IItemHolder {
   readonly holderKind: "loot";
   id: LootId;
   description: string;
   contents: IItem[];
+  /** Removes and returns the items matching the given id(s), if present. */
   removeItems: (itemId: ItemId | ItemId[]) => IItem[];
+  /** Adds an item to the container, throwing if it is already full. */
   stowItem: (item: IItem) => void;
+  /** Maximum number of items the container can hold. */
   readonly capacity: number;
 }
 
+/**
+ * Default {@link ILoot} implementation. Capacity is sized to its initial
+ * contents plus a small headroom, and every starting item is claimed by the box
+ * on construction.
+ */
 export class Loot implements ILoot {
   readonly holderKind = "loot" as const;
   id: LootId;
@@ -25,6 +38,11 @@ export class Loot implements ILoot {
     return this.#capacity;
   }
 
+  /**
+   * @param description - Flavour text describing the container.
+   * @param contents - Initial items; capacity is set to their count plus 2 and
+   *   each is claimed by this container.
+   */
   constructor(description: string, contents: IItem[]) {
     this.id = generateId<LootId>();
     this.description = description;
@@ -35,6 +53,14 @@ export class Loot implements ILoot {
     }
   }
 
+  /**
+   * Removes the items matching the given id(s) from the container.
+   *
+   * Ids not present are skipped with a warning rather than throwing.
+   *
+   * @param itemId - A single item id or an array of ids to remove.
+   * @returns The items that were found and removed.
+   */
   removeItems(itemId: ItemId | ItemId[]) {
     const items: IItem[] = [];
     const ids = Array.isArray(itemId) ? itemId : [itemId];
@@ -52,15 +78,21 @@ export class Loot implements ILoot {
     return items;
   }
 
+  /** @returns Whether the container is below capacity. */
   hasRoomForItem() {
     return this.contents.length < this.#capacity;
   }
 
+  /**
+   * Adds `item` to the contents and claims it, without a capacity check.
+   * Prefer {@link Loot.stowItem} for the guarded variant.
+   */
   receiveItem(item: IItem) {
     this.contents.push(item);
     item[CLAIM](this);
   }
 
+  /** Removes `item` from the contents if present, leaving its holder untouched. */
   relinquishItem(item: IItem) {
     const index = this.contents.findIndex((value) => value.id === item.id);
     if (index !== -1) {
@@ -68,6 +100,12 @@ export class Loot implements ILoot {
     }
   }
 
+  /**
+   * Stows `item` into the container.
+   *
+   * @param item - The item to add.
+   * @throws {@link ContainerFullException} if the container is already at capacity.
+   */
   stowItem(item: IItem) {
     if (this.hasRoomForItem()) {
       this.receiveItem(item);
