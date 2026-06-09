@@ -6,6 +6,7 @@ import { Status, StatusMatrix } from "../status";
 
 import { generateId, ProceduralViolation } from "../util";
 import { CharacterEvents, ICharacterEvents } from "./events";
+import type { ActionDetail, ActionHistoryEntry } from "./history";
 import { MitigatorStatType, Stats, StatType } from "./stats";
 
 export type CharacterId = Brand<string, "CharacterId">;
@@ -31,6 +32,7 @@ export interface ICharacter extends IItemHolder {
 
   get campaign(): ICampaign;
   get currentRoom(): IRoom | null;
+  get history(): readonly ActionHistoryEntry[];
   get inventory(): Inventory;
   get isNormal(): boolean;
   get status(): Status[];
@@ -40,7 +42,7 @@ export interface ICharacter extends IItemHolder {
   endTurn: () => void;
   move: (room: IRoom) => void;
   removeFromInventory: (item: IItem) => void;
-  recordAction: (callingFn: ActionFn) => void;
+  recordAction: (callingFn: ActionFn, detail: ActionDetail) => void;
   startTurn: () => void;
   takeDamage: (attackStrength: number, attackStat?: StatType) => void;
 
@@ -64,6 +66,7 @@ export class Character implements ICharacter {
   // Private Properties
   #campaign: ICampaign;
   #currentRoom: IRoom | null = null;
+  #history: ActionHistoryEntry[] = [];
   #inventory: Inventory;
   #status: StatusMatrix;
   protected actionsThisRound: number;
@@ -75,6 +78,10 @@ export class Character implements ICharacter {
 
   get currentRoom() {
     return this.#currentRoom;
+  }
+
+  get history(): readonly ActionHistoryEntry[] {
+    return [...this.#history];
   }
 
   get inventory() {
@@ -172,7 +179,12 @@ export class Character implements ICharacter {
     this.isActionMap.set(this.removeFromInventory, true);
   }
 
-  recordAction(callingFn: ActionFn) {
+  recordAction(callingFn: ActionFn, detail: ActionDetail) {
+    this.#history.push({
+      ...detail,
+      round: this.campaign.round,
+    } as ActionHistoryEntry);
+
     if (this.isActionMap.get(callingFn)) {
       this.actionsThisRound = this.actionsThisRound + 1;
     }
@@ -193,7 +205,10 @@ export class Character implements ICharacter {
         );
       }
     }
-    this.recordAction(this.addToInventory);
+    this.recordAction(this.addToInventory, {
+      kind: "pickUp",
+      items: items.map((i) => ({ id: i.id, name: i.name })),
+    });
   }
 
   removeFromInventory(item: IItem | IItem[]) {
@@ -207,7 +222,10 @@ export class Character implements ICharacter {
       }
       this.relinquishItem(current);
     }
-    this.recordAction(this.removeFromInventory);
+    this.recordAction(this.removeFromInventory, {
+      kind: "drop",
+      items: items.map((i) => ({ id: i.id, name: i.name })),
+    });
   }
 
   takeDamage(attackStrength: number, attackStat: StatType = StatType.Health) {
@@ -218,7 +236,11 @@ export class Character implements ICharacter {
     this.stats[attackStat] = this.stats[attackStat] - finalAttackStrength;
 
     this.#resolveStatuses();
-    this.recordAction(this.takeDamage);
+    this.recordAction(this.takeDamage, {
+      kind: "takeDamage",
+      amount: finalAttackStrength,
+      stat: attackStat,
+    });
   }
 
   move(room: IRoom) {
@@ -227,7 +249,10 @@ export class Character implements ICharacter {
     }
     this.#currentRoom = room;
     room.enterRoom(this);
-    this.recordAction(this.move);
+    this.recordAction(this.move, {
+      kind: "move",
+      room: { id: room.id, name: room.name },
+    });
   }
 
   endTurn() {
