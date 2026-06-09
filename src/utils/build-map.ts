@@ -28,6 +28,19 @@ export interface BuildMapOptions {
   extraConnections?: number;
 }
 
+/**
+ * Connects a set of rooms into a navigable map in place.
+ *
+ * First lays down a random spanning tree so every room is reachable, then adds
+ * up to {@link BuildMapOptions.extraConnections} loop/shortcut edges. Each
+ * connection is bidirectional, using opposite compass directions, and respects
+ * the eight available directions per room. The same `rooms` array is returned
+ * (mutated); a single room or empty array is returned untouched.
+ *
+ * @param rooms - The rooms to wire together; their `exits` are mutated.
+ * @param options - Randomness source and extra-edge configuration.
+ * @returns The same `rooms` array, now connected.
+ */
 export function buildMap(
   rooms: IRoom[],
   options: BuildMapOptions = {},

@@ -3,6 +3,11 @@ import type { RoomId } from "../room";
 import type { CharacterId } from "./character";
 import type { StatType } from "./stats";
 
+/**
+ * A single recorded action in a character's history, discriminated by `kind`.
+ * Every entry carries the `round` it occurred in (stamped by
+ * `Character.recordAction`) plus kind-specific details.
+ */
 export type ActionHistoryEntry =
   | { kind: "attack"; round: number; target: { id: CharacterId; name: string } }
   | { kind: "move"; round: number; room: { id: RoomId; name: string } }
@@ -15,8 +20,21 @@ export type ActionHistoryEntry =
 type DistributiveOmit<T, K extends keyof T> = T extends unknown
   ? Omit<T, K>
   : never;
+
+/**
+ * The payload passed to `Character.recordAction`: an {@link ActionHistoryEntry}
+ * without its `round`, which the character stamps from the current campaign
+ * round when the action is logged.
+ */
 export type ActionDetail = DistributiveOmit<ActionHistoryEntry, "round">;
 
+/**
+ * Renders an {@link ActionHistoryEntry} as a short past-tense phrase suitable
+ * for a log or recap (e.g. `"attacked Goblin"`, `"took 3 health damage"`).
+ *
+ * @param entry - The history entry to describe.
+ * @returns A human-readable description of the action.
+ */
 export function describeAction(entry: ActionHistoryEntry): string {
   switch (entry.kind) {
     case "attack":
