@@ -236,6 +236,16 @@ describe("PlayerCharacter", () => {
       expect(defender.takeDamage).toHaveBeenCalledWith(1, StatType.Health);
     });
 
+    it("records the attack target in the attacker's history", () => {
+      const pc = makePc();
+      const defender = makeDefender();
+      pc.attack(defender);
+      expect(pc.history.at(-1)).toMatchObject({
+        kind: "attack",
+        target: { id: defender.id, name: defender.name },
+      });
+    });
+
     it("counts as a recordable action", () => {
       const pc = makePc();
       const onTurnEnd = vi.spyOn(pc.events, "onTurnEnd");

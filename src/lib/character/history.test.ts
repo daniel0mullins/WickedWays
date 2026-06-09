@@ -45,6 +45,11 @@ describe("describeAction", () => {
     expect(describeAction(entry)).toBe("dropped Sword");
   });
 
+  it("describes an escape", () => {
+    const entry: ActionHistoryEntry = { kind: "escape", round: 1 };
+    expect(describeAction(entry)).toBe("escaped");
+  });
+
   it("describes damage taken", () => {
     const entry: ActionHistoryEntry = {
       kind: "takeDamage",

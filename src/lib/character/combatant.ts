@@ -43,6 +43,9 @@ export abstract class Combatant extends Character implements ICombatant {
         c.takeDamage(strength, stat);
       }
     }
-    this.recordAction(this.attack);
+    this.recordAction(this.attack, {
+      kind: "attack",
+      target: { id: c.id, name: c.name },
+    });
   }
 }

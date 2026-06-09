@@ -31,6 +31,6 @@ export class Mob extends Combatant implements IMob {
     if (destination) {
       this.move(destination);
     }
-    this.recordAction(this.escape);
+    this.recordAction(this.escape, { kind: "escape" });
   }
 }

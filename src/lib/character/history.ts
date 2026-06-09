@@ -8,6 +8,7 @@ export type ActionHistoryEntry =
   | { kind: "move"; round: number; room: { id: RoomId; name: string } }
   | { kind: "pickUp"; round: number; items: { id: ItemId; name: string }[] }
   | { kind: "drop"; round: number; items: { id: ItemId; name: string }[] }
+  | { kind: "escape"; round: number }
   | { kind: "takeDamage"; round: number; amount: number; stat: StatType };
 
 // The entry minus `round`; `round` is stamped by Character.recordAction.
@@ -26,6 +27,8 @@ export function describeAction(entry: ActionHistoryEntry): string {
       return `picked up ${entry.items.map((i) => i.name).join(", ")}`;
     case "drop":
       return `dropped ${entry.items.map((i) => i.name).join(", ")}`;
+    case "escape":
+      return "escaped";
     case "takeDamage":
       return `took ${entry.amount} ${entry.stat} damage`;
   }
