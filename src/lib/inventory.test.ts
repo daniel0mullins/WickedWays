@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ICharacter } from "./character/character";
 import { StatType } from "./character/stats";
-import { CLAIM, Item, type IItemHolder } from "./inventory";
+import { CLAIM, Item, createKey, type IItemHolder } from "./inventory";
 import { ProceduralViolation } from "./util";
 
 // `ItemProperties` is not exported, so we recover the shape the constructor
@@ -296,5 +296,28 @@ describe("Item", () => {
       expect(item.properties.equipped).toBe(true);
       expect(actions.equip).toHaveBeenCalledWith(holder);
     });
+  });
+});
+
+describe("createKey", () => {
+  it("creates a key item with its code, consume flag, and no-destroy", () => {
+    const key = createKey({
+      name: "Vault Key",
+      keyCode: "vault",
+      consumeOnUse: false,
+    });
+
+    expect(key.type).toBe("key");
+    expect(key.name).toBe("Vault Key");
+    expect(key.keyCode).toBe("vault");
+    expect(key.consumeOnUse).toBe(false);
+    expect(key.properties.destroyable).toBe(false);
+  });
+
+  it("cannot be destroyed even when held by a character", () => {
+    const key = createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: true });
+    hold(key, makeHolder());
+
+    expect(key.actions.destroy()).toBeNull();
   });
 });
