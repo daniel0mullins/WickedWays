@@ -10,8 +10,8 @@ Today, characters take recorded actions (`attack`, `move`, `addToInventory`,
 retained — `recordAction` only increments a per-round counter and is discarded.
 
 The goal: every recorded action a character takes is appended to a per-character
-history, with enough context to be meaningful ("attacked Goblin", "moved to a
-room", "took 4 sanity damage"). Since history lives on the base `Character`
+history, with enough context to be meaningful ("attacked Goblin", "moved to the
+Library", "took 4 sanity damage"). Since history lives on the base `Character`
 class, all character types (`PlayerCharacter`, `Mob`, `NonPlayerCharacter`)
 inherit it automatically.
 
@@ -36,6 +36,22 @@ extending it keeps logging and counting together and makes it impossible to
 method — two calls per action that can drift; a name-registry `WeakMap` plus a
 loose context bag — loses type safety in an otherwise strongly-typed codebase.)
 
+## Prerequisite: add `name` to `Room` and `Item`
+
+History entries should read with real names ("moved to the Library", "picked up
+a Rusty Sword"), so the two types that lack a name gain one:
+
+- **`IRoom` / `Room`:** add `name: string`. Constructor gains a leading `name`
+  parameter: `constructor(name, description, loot, exits)`.
+- **`IItem` / `Item`:** add `name: string`. The constructor's first destructured
+  argument gains `name`: `{ type, recipe, modifier, stat, name }`.
+
+Both are **required** fields. This ripples to every construction site — 13
+`new Room(...)` calls and 3 `new Item(...)` calls (all in tests / map builders /
+the integration test) must supply a name. Updating them is part of this work.
+
+`ICharacter` already has `name`, so it is unchanged.
+
 ## Data model
 
 New file `src/lib/character/history.ts`:
@@ -43,14 +59,14 @@ New file `src/lib/character/history.ts`:
 ```ts
 import { CharacterId } from "./character";
 import { RoomId } from "../room";
-import { ItemId, ItemType } from "../inventory";
+import { ItemId } from "../inventory";
 import { StatType } from "./stats";
 
 export type ActionHistoryEntry =
   | { kind: "attack"; round: number; target: { id: CharacterId; name: string } }
-  | { kind: "move"; round: number; room: { id: RoomId } }
-  | { kind: "pickUp"; round: number; items: { id: ItemId; type: ItemType }[] }
-  | { kind: "drop"; round: number; items: { id: ItemId; type: ItemType }[] }
+  | { kind: "move"; round: number; room: { id: RoomId; name: string } }
+  | { kind: "pickUp"; round: number; items: { id: ItemId; name: string }[] }
+  | { kind: "drop"; round: number; items: { id: ItemId; name: string }[] }
   | { kind: "takeDamage"; round: number; amount: number; stat: StatType };
 
 // The entry minus `round`; `round` is stamped by recordAction.
@@ -64,9 +80,8 @@ export function describeAction(entry: ActionHistoryEntry): string;
 
 `ActionDetail` is a distributive `Omit` so each union member keeps its own shape
 minus `round`. `describeAction` is a pure formatter that turns an entry into a
-human-readable line; the library does not own any further UI concern. Context
-fields use only what each type exposes: `IItem` has `id`/`type` (no name),
-`IRoom` has `id`/`description` (no name), `ICharacter` has `id`/`name`.
+human-readable line; the library does not own any further UI concern. With the
+prerequisite in place, every context object carries an `id` plus a `name`.
 
 ## `recordAction` change
 
@@ -95,8 +110,8 @@ recordAction(callingFn: ActionFn, detail: ActionDetail) {
 The five existing `recordAction` calls each pass their detail:
 
 - `attack` → `{ kind: "attack", target: { id: c.id, name: c.name } }`
-- `move` → `{ kind: "move", room: { id: room.id } }`
-- `addToInventory` → `{ kind: "pickUp", items: items.map(i => ({ id: i.id, type: i.type })) }`
+- `move` → `{ kind: "move", room: { id: room.id, name: room.name } }`
+- `addToInventory` → `{ kind: "pickUp", items: items.map(i => ({ id: i.id, name: i.name })) }`
 - `removeFromInventory` → `{ kind: "drop", items: ... }`
 - `takeDamage` → `{ kind: "takeDamage", amount: finalAttackStrength, stat: attackStat }`
   (the **mitigated** amount actually applied to the stat)
@@ -118,9 +133,10 @@ consumers iterating `campaign.party` and reading each member's `.history`.
 ## Testing (TDD)
 
 - `attack` appends one `attack` entry with the target's id and name.
-- `move` appends one `move` entry with the destination room id.
+- `move` appends one `move` entry with the destination room's id and name.
 - `addToInventory` / `removeFromInventory` append one `pickUp` / `drop` entry
-  listing the affected items' id and type.
+  listing the affected items' id and name.
+- `Room` and `Item` expose the `name` passed to their constructors.
 - `takeDamage` appends one `takeDamage` entry with the **mitigated** amount and
   the correct stat.
 - Entries are stored in append (chronological) order.
