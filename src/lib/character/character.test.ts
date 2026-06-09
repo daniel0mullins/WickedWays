@@ -577,6 +577,13 @@ describe("Character", () => {
         (key as unknown as Record<symbol, unknown>)[Symbol.for("heldBy")],
       ).toBeNull();
     });
+
+    it("throws when the character is not holding the key", () => {
+      const character = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: true });
+
+      expect(() => character.consumeKey(key)).toThrow(ProceduralViolation);
+    });
   });
 
   describe("action history", () => {
