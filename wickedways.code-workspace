@@ -3,5 +3,8 @@
 		{
 			"path": "."
 		}
-	]
+	],
+	"settings": {
+		"intelephense.diagnostics.undefinedProperties": false
+	}
 }

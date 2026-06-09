@@ -315,3 +315,204 @@ body {
     border-radius: 6px;
   }
 }
+
+/* ============================================================
+   Subscription Confirmed page
+   Exported from Pencil design (Desktop / Tablet / Mobile frames)
+   ============================================================ */
+.confirm {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 32px;
+  padding: 80px;
+  overflow: hidden;
+  background-image: url("assets/confirmed-bg.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Success icon — 120px blood-red circle with cream check */
+.confirm__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 120px;
+  border-radius: 60px;
+  background: var(--blood);
+  box-shadow: 0 10px 40px rgba(139, 0, 0, 0.5);
+}
+
+.confirm__icon svg {
+  width: 56px;
+  height: 56px;
+  color: var(--beige);
+}
+
+.confirm__headline {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: clamp(2rem, 5vw, 56px);
+  line-height: 1.1;
+  color: var(--beige);
+  text-shadow: 0 6px 28px rgba(0, 0, 0, 0.8);
+}
+
+.confirm__subheadline {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-style: italic;
+  font-size: clamp(1.125rem, 2.2vw, 24px);
+  color: rgba(245, 245, 220, 0.67);
+}
+
+.confirm__message {
+  margin: 0;
+  max-width: 600px;
+  font-family: var(--font-sans);
+  font-size: clamp(1rem, 1.4vw, 18px);
+  line-height: 1.6;
+  color: rgba(245, 245, 220, 0.6);
+}
+
+.confirm__divider {
+  width: 200px;
+  height: 1px;
+  background: rgba(139, 0, 0, 0.4);
+}
+
+/* Back button — outlined blood-red pill */
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 32px;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  color: var(--beige);
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid var(--blood);
+  border-radius: 4px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.back-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.back-button:hover {
+  background: rgba(139, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+/* Tablet (matches the 768px frame) */
+@media (max-width: 834px) {
+  .confirm {
+    padding: 48px;
+    gap: 24px;
+  }
+}
+
+/* Mobile (matches the 390px frame) */
+@media (max-width: 560px) {
+  .confirm {
+    padding: 32px;
+    gap: 20px;
+  }
+
+  .confirm__icon {
+    width: 96px;
+    height: 96px;
+    border-radius: 48px;
+  }
+
+  .confirm__icon svg {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* ============================================================
+   Error pages (404 / 500)
+   ============================================================ */
+.error {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 24px;
+  padding: 80px;
+  overflow: hidden;
+  background-image: url("assets/hero-bg.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.error__code {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(5rem, 18vw, 180px);
+  line-height: 1;
+  letter-spacing: 0.05em;
+  color: var(--blood);
+  text-shadow: 0 8px 40px rgba(139, 0, 0, 0.5);
+}
+
+.error__headline {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: clamp(1.75rem, 4.5vw, 48px);
+  line-height: 1.1;
+  color: var(--beige);
+  text-shadow: 0 6px 28px rgba(0, 0, 0, 0.8);
+}
+
+.error__message {
+  margin: 0;
+  max-width: 560px;
+  font-family: var(--font-sans);
+  font-size: clamp(1rem, 1.4vw, 18px);
+  line-height: 1.6;
+  color: rgba(245, 245, 220, 0.6);
+}
+
+.error__divider {
+  width: 200px;
+  height: 1px;
+  background: rgba(139, 0, 0, 0.4);
+  margin-bottom: 8px;
+}
+
+/* Tablet */
+@media (max-width: 834px) {
+  .error {
+    padding: 48px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 560px) {
+  .error {
+    padding: 32px;
+    gap: 20px;
+  }
+}
