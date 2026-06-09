@@ -562,6 +562,20 @@ describe("Character", () => {
 
       expect(() => giver.transferKey(key, recipient)).toThrow(ProceduralViolation);
     });
+
+    it("rejects the generic Item.actions.transfer path for a key", () => {
+      const giver = makeCharacter();
+      const recipient = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+      giver.addToInventory(key);
+
+      // Keys are transfer-only via Character.transferKey; the generic item
+      // transfer path must fail (it routes through removeFromInventory).
+      expect(() => key.actions.transfer(giver, recipient)).toThrow(
+        ProceduralViolation,
+      );
+      expect(giver.inventory.keys).toContain(key);
+    });
   });
 
   describe("consumeKey", () => {

@@ -261,6 +261,8 @@ export class Item implements IItem {
         events.onUnequip?.(holder);
       },
       [ItemAction.Transfer]: (_c, cc) => {
+        // Keys are transfer-only via Character.transferKey; a key reaching this
+        // generic path is rejected downstream by holder.removeFromInventory.
         const holder = this.#characterHolder();
         if (!holder) return;
         if (!cc.hasRoomForItem()) {
