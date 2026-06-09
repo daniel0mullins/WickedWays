@@ -28,7 +28,7 @@ export function makeCampaign(): ICampaign {
 
 // A defender that only needs to record the damage calls made against it.
 export function makeDefender(): ICharacter {
-  return { takeDamage: vi.fn() } as unknown as ICharacter;
+  return { id: "defender-1", name: "Goblin", takeDamage: vi.fn() } as unknown as ICharacter;
 }
 
 // Deterministic mulberry32 PRNG so buildMap produces a fixed topology.

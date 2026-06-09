@@ -89,6 +89,18 @@ describe("Mob", () => {
       expect(onTurnEnd).toHaveBeenCalledTimes(1);
     });
 
+    it("records an escape in history", () => {
+      const mob = makeMob();
+      const den = new Room("Den", "Den", [], {} as ExitsArg);
+      const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
+      den.addExit("north", cave);
+      mob.move(den);
+
+      mob.escape();
+
+      expect(mob.history.some((e) => e.kind === "escape")).toBe(true);
+    });
+
     it("does not move when the current room has no exits", () => {
       const mob = makeMob();
       const sealed = new Room("Sealed", "Sealed", [], {} as ExitsArg);
