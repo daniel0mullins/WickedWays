@@ -272,6 +272,8 @@ export class Item implements IItem {
       [ItemAction.Destroy]: () => {
         const holder = this.#characterHolder();
         if (!holder) return null;
+        // A non-destroyable item (e.g. a key) cannot be broken down.
+        if (!this.properties.destroyable) return null;
         const components = actions[ItemAction.Destroy]();
         events.onDestroy?.(holder, components);
         return components;
