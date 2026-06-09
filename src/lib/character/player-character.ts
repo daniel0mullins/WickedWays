@@ -5,14 +5,28 @@ import { ProceduralViolation } from "../util";
 import { Combatant, ICombatant } from "./combatant";
 import { Stats } from "./stats";
 
+/**
+ * A player-controlled {@link ICombatant}. Adds campaign membership and the
+ * ability to interact with loot boxes in the current room.
+ */
 export interface IPlayerCharacter extends ICombatant {
+  /** Adds this character to its campaign's party if not already present. */
   joinCampaign: () => void;
+  /** Returns a snapshot of a co-located loot box's contents. */
   openLootBox: (lootBox: ILoot) => readonly IItem[];
+  /** Takes item(s) from a loot box into inventory, limited by free slots. */
   takeFromLootBox: (lootBox: ILoot, item: IItem | IItem[]) => IItem[];
+  /** Stows item(s) from inventory into a loot box, limited by its capacity. */
   putInLootBox: (lootBox: ILoot, item: IItem | IItem[]) => IItem[];
 }
 
+/**
+ * A player-controlled combatant. Unlike other characters, `move` counts toward
+ * its per-turn action budget, and it can open and exchange items with loot boxes
+ * in the room it currently occupies.
+ */
 export class PlayerCharacter extends Combatant implements IPlayerCharacter {
+  /** See {@link Character} for parameters; also registers `move` as a budgeted action. */
   constructor(
     campaign: ICampaign,
     name: string,
@@ -24,6 +38,7 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     this.isActionMap.set(this.move, true);
   }
 
+  /** Joins the character's campaign party, ignoring a repeated join. */
   joinCampaign() {
     const { party } = this.campaign;
     if (!party.includes(this)) {
@@ -39,11 +54,28 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     }
   }
 
+  /**
+   * Returns a snapshot of the loot box's contents.
+   *
+   * @param lootBox - The box to inspect; must be in the current room.
+   * @returns A copy of the box's current contents.
+   * @throws {@link ProceduralViolation} if the box is not in the current room.
+   */
   openLootBox(lootBox: ILoot): readonly IItem[] {
     this.#requireCoLocated(lootBox);
     return [...lootBox.contents];
   }
 
+  /**
+   * Moves item(s) from the loot box into this character's inventory, taking only
+   * those actually present in the box and only as many as there are free slots.
+   * Recorded as a single `pickUp` action.
+   *
+   * @param lootBox - The box to take from; must be in the current room.
+   * @param item - The item(s) requested.
+   * @returns The items actually transferred.
+   * @throws {@link ProceduralViolation} if the box is not in the current room.
+   */
   takeFromLootBox(lootBox: ILoot, item: IItem | IItem[]): IItem[] {
     this.#requireCoLocated(lootBox);
     // Reuse removeItems + addToInventory rather than the raw holder primitives:
@@ -61,6 +93,16 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     return removed;
   }
 
+  /**
+   * Moves item(s) from this character's inventory into the loot box, stowing
+   * only those actually held and only as many as the box's remaining capacity
+   * allows. Recorded as a single `drop` action.
+   *
+   * @param lootBox - The box to stow into; must be in the current room.
+   * @param item - The item(s) requested.
+   * @returns The items actually stowed.
+   * @throws {@link ProceduralViolation} if the box is not in the current room.
+   */
   putInLootBox(lootBox: ILoot, item: IItem | IItem[]): IItem[] {
     this.#requireCoLocated(lootBox);
     // Reuse removeFromInventory + stowItem rather than the raw holder primitives:
