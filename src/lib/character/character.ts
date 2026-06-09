@@ -302,6 +302,7 @@ export class Character implements ICharacter {
    * history entry for the batch.
    *
    * @param item - An item or array of items to drop.
+   * @throws {@link ProceduralViolation} if any item is a key (use transferKey instead).
    * @throws {@link ProceduralViolation} if any item is not in the inventory.
    */
   removeFromInventory(item: IItem | IItem[]) {

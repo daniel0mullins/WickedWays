@@ -524,6 +524,9 @@ describe("Character", () => {
       expect(() => character.removeFromInventory(key)).toThrow(
         ProceduralViolation,
       );
+      expect(() => character.removeFromInventory(key)).toThrow(
+        "Keys cannot be dropped; hand them over with transferKey instead.",
+      );
       expect(character.inventory.keys).toContain(key);
     });
   });
