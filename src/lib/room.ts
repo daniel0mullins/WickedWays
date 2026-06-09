@@ -21,6 +21,7 @@ type Direction = (typeof Directions)[keyof typeof Directions];
 
 export interface IRoom {
   id: RoomId;
+  name: string;
   description: string;
   loot: Map<LootId, ILoot>;
   exits: Map<Direction, IRoom>;
@@ -36,6 +37,7 @@ export interface IRoom {
 
 export class Room implements IRoom {
   id: RoomId;
+  name: string;
   description: string;
   loot: Map<LootId, ILoot>;
   exits: Map<Direction, IRoom>;
@@ -51,11 +53,13 @@ export class Room implements IRoom {
   }
 
   constructor(
+    name: string,
     description: string,
     loot: ILoot[],
     exits: Record<Direction, IRoom>,
   ) {
     this.id = generateId<RoomId>();
+    this.name = name;
     this.description = description;
     this.#occupants = new Map<CharacterId, ICharacter>();
     this.#scenes = [];

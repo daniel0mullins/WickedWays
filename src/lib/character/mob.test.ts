@@ -54,8 +54,8 @@ describe("Mob", () => {
   describe("escape", () => {
     it("flees to an adjacent room", () => {
       const mob = makeMob();
-      const den = new Room("Den", [], {} as ExitsArg);
-      const cave = new Room("Cave", [], {} as ExitsArg);
+      const den = new Room("Den", "Den", [], {} as ExitsArg);
+      const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
       den.addExit("north", cave);
       mob.move(den);
 
@@ -68,8 +68,8 @@ describe("Mob", () => {
 
     it("records escape as an action", () => {
       const mob = makeMob({ actionsPerRound: 1 });
-      const den = new Room("Den", [], {} as ExitsArg);
-      const cave = new Room("Cave", [], {} as ExitsArg);
+      const den = new Room("Den", "Den", [], {} as ExitsArg);
+      const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
       den.addExit("north", cave);
       mob.move(den);
       mob.startTurn(); // reset the (no-op) action count from move()
@@ -89,9 +89,21 @@ describe("Mob", () => {
       expect(onTurnEnd).toHaveBeenCalledTimes(1);
     });
 
+    it("records an escape in history", () => {
+      const mob = makeMob();
+      const den = new Room("Den", "Den", [], {} as ExitsArg);
+      const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
+      den.addExit("north", cave);
+      mob.move(den);
+
+      mob.escape();
+
+      expect(mob.history.some((e) => e.kind === "escape")).toBe(true);
+    });
+
     it("does not move when the current room has no exits", () => {
       const mob = makeMob();
-      const sealed = new Room("Sealed", [], {} as ExitsArg);
+      const sealed = new Room("Sealed", "Sealed", [], {} as ExitsArg);
       mob.move(sealed);
 
       mob.escape();

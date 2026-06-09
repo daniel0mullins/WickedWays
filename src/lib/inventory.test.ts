@@ -69,7 +69,7 @@ function makeItem(propsOverride: Partial<ItemPropsArg> = {}) {
     ...propsOverride,
   };
   const item = new Item(
-    { type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health },
+    { type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, name: "Rusty Sword" },
     properties,
     actions,
     events,
@@ -84,6 +84,7 @@ describe("Item", () => {
 
       expect(typeof item.id).toBe("string");
       expect(item.id.length).toBeGreaterThan(0);
+      expect(item.name).toBe("Rusty Sword");
       expect(item.type).toBe("weapon");
       expect(item.recipe).toEqual({ metal: 1 });
       expect(item.modifier).toBe(2);
@@ -262,6 +263,7 @@ describe("Item", () => {
       const onPickUp = vi.fn();
       const item = new Item(
         {
+          name: "Test Item",
           type: "consumable",
           recipe: { food: 1 },
           modifier: 0,

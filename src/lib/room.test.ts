@@ -26,7 +26,7 @@ function makeScene(): IScene & { playScene: ReturnType<typeof vi.fn> } {
 }
 
 function makeRoom(loot: ILoot[] = [], exits: Partial<ExitsArg> = {}): Room {
-  return new Room("a dim room", loot, exits as ExitsArg);
+  return new Room("A Dim Room", "a dim room", loot, exits as ExitsArg);
 }
 
 describe("Room", () => {
@@ -37,6 +37,7 @@ describe("Room", () => {
       expect(typeof room.id).toBe("string");
       expect(room.id.length).toBeGreaterThan(0);
       expect(room.description).toBe("a dim room");
+      expect(room.name).toBe("A Dim Room");
     });
 
     it("starts with no occupants", () => {
