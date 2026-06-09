@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CLAIM, type IItem, type ItemId } from "../inventory";
+import { CLAIM, createKey, type IItem, type ItemId } from "../inventory";
 import type { IRoom, RoomId } from "../room";
 import { Status } from "../status";
 import { ProceduralViolation } from "../util";
@@ -465,6 +465,138 @@ describe("Character", () => {
       character.relinquishItem(makeItem()); // a different item, never added
 
       expect(character.inventory.items).toEqual([kept]);
+    });
+  });
+
+  describe("keys (storage)", () => {
+    it("defaults to an empty keyring", () => {
+      expect(makeCharacter().inventory.keys).toEqual([]);
+    });
+
+    it("routes a received key into the keyring, not the item slots", () => {
+      const character = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+
+      character.receiveItem(key);
+
+      expect(character.inventory.keys).toContain(key);
+      expect(character.inventory.items).not.toContain(key);
+    });
+
+    it("relinquishes a key from the keyring", () => {
+      const character = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+      character.receiveItem(key);
+
+      character.relinquishItem(key);
+
+      expect(character.inventory.keys).not.toContain(key);
+    });
+  });
+
+  describe("keys (free storage via addToInventory)", () => {
+    it("adds a key even when the item slots are full", () => {
+      const character = makeCharacter({ inventorySlots: 1 });
+      character.addToInventory(makeItem()); // fills the only item slot
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+
+      expect(() => character.addToInventory(key)).not.toThrow();
+      expect(character.inventory.keys).toContain(key);
+      expect(character.inventory.items).toHaveLength(1);
+    });
+
+    it("still throws when a non-key overflows the item slots", () => {
+      const character = makeCharacter({ inventorySlots: 1 });
+      character.addToInventory(makeItem());
+
+      expect(() => character.addToInventory(makeItem())).toThrow(
+        ProceduralViolation,
+      );
+    });
+  });
+
+  describe("keys (no dropping)", () => {
+    it("refuses to drop a key", () => {
+      const character = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+      character.addToInventory(key);
+
+      expect(() => character.removeFromInventory(key)).toThrow(
+        ProceduralViolation,
+      );
+      expect(() => character.removeFromInventory(key)).toThrow(
+        "Keys cannot be dropped; hand them over with transferKey instead.",
+      );
+      expect(character.inventory.keys).toContain(key);
+    });
+  });
+
+  describe("transferKey", () => {
+    it("moves a key from one character's keyring to another's", () => {
+      const giver = makeCharacter();
+      const recipient = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+      giver.addToInventory(key);
+
+      giver.transferKey(key, recipient);
+
+      expect(giver.inventory.keys).not.toContain(key);
+      expect(recipient.inventory.keys).toContain(key);
+    });
+
+    it("records a single pickUp on the recipient", () => {
+      const giver = makeCharacter();
+      const recipient = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+      giver.addToInventory(key);
+
+      giver.transferKey(key, recipient);
+
+      expect(recipient.history.filter((e) => e.kind === "pickUp")).toHaveLength(1);
+    });
+
+    it("throws when the giver is not holding the key", () => {
+      const giver = makeCharacter();
+      const recipient = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+
+      expect(() => giver.transferKey(key, recipient)).toThrow(ProceduralViolation);
+    });
+
+    it("rejects the generic Item.actions.transfer path for a key", () => {
+      const giver = makeCharacter();
+      const recipient = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+      giver.addToInventory(key);
+
+      // Keys are transfer-only via Character.transferKey; the generic item
+      // transfer path must fail (it routes through removeFromInventory).
+      expect(() => key.actions.transfer(giver, recipient)).toThrow(
+        ProceduralViolation,
+      );
+      expect(giver.inventory.keys).toContain(key);
+    });
+  });
+
+  describe("consumeKey", () => {
+    it("removes the key from the keyring and clears its holder", () => {
+      const character = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: true });
+      character.addToInventory(key);
+
+      character.consumeKey(key);
+
+      expect(character.inventory.keys).not.toContain(key);
+      expect(
+        (key as unknown as Record<symbol, unknown>)[Symbol.for("heldBy")],
+      ).toBeNull();
+    });
+
+    it("throws when the character is not holding the key", () => {
+      const character = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: true });
+
+      expect(() => character.consumeKey(key)).toThrow(ProceduralViolation);
     });
   });
 
