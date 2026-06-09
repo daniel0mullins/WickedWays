@@ -257,6 +257,18 @@ describe("Item", () => {
     });
   });
 
+  describe("destroy guard (destroyable=false)", () => {
+    it("returns null and skips the action for a non-destroyable item", () => {
+      const { item, actions, events } = makeItem({ destroyable: false });
+      const holder = makeHolder();
+      hold(item, holder);
+
+      expect(item.actions.destroy()).toBeNull();
+      expect(actions.destroy).not.toHaveBeenCalled();
+      expect(events.onDestroy).not.toHaveBeenCalled();
+    });
+  });
+
   describe("optional events", () => {
     it("works when only the required onPickUp event is supplied", () => {
       const actions = makeActions();
