@@ -531,6 +531,39 @@ describe("Character", () => {
     });
   });
 
+  describe("transferKey", () => {
+    it("moves a key from one character's keyring to another's", () => {
+      const giver = makeCharacter();
+      const recipient = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+      giver.addToInventory(key);
+
+      giver.transferKey(key, recipient);
+
+      expect(giver.inventory.keys).not.toContain(key);
+      expect(recipient.inventory.keys).toContain(key);
+    });
+
+    it("records a single pickUp on the recipient", () => {
+      const giver = makeCharacter();
+      const recipient = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+      giver.addToInventory(key);
+
+      giver.transferKey(key, recipient);
+
+      expect(recipient.history.filter((e) => e.kind === "pickUp")).toHaveLength(1);
+    });
+
+    it("throws when the giver is not holding the key", () => {
+      const giver = makeCharacter();
+      const recipient = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+
+      expect(() => giver.transferKey(key, recipient)).toThrow(ProceduralViolation);
+    });
+  });
+
   describe("action history", () => {
     it("records a move with the destination room id and name", () => {
       const character = makeCharacter();

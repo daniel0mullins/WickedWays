@@ -68,6 +68,8 @@ export interface ICharacter extends IItemHolder {
   move: (room: IRoom) => void;
   /** Drops one or more items, recording a single `drop` action. */
   removeFromInventory: (item: IItem) => void;
+  /** Hands a key to another character (keyring to keyring; the only way keys change hands). */
+  transferKey: (key: IItem, recipient: ICharacter) => void;
   /** Logs an action to history and advances the turn if the budget is spent. */
   recordAction: (callingFn: ActionFn, detail: ActionDetail) => void;
   /** Begins the character's turn, resetting the action budget. */
@@ -325,6 +327,26 @@ export class Character implements ICharacter {
       kind: "drop",
       items: items.map((i) => ({ id: i.id, name: i.name })),
     });
+  }
+
+  /**
+   * Hands a key to another character. Keys are never dropped or stowed, so this
+   * keyring-to-keyring move is the only way a key changes hands. The recipient
+   * records it as a single `pickUp`; the giver's side is silent (it is not a drop).
+   *
+   * @param key - A key currently in this character's keyring.
+   * @param recipient - The character receiving the key.
+   * @throws {@link ProceduralViolation} if this character is not holding `key`.
+   */
+  transferKey(key: IItem, recipient: ICharacter) {
+    const held = this.#inventory.keys.some((k) => k.id === key.id);
+    if (!held) {
+      throw new ProceduralViolation(
+        "Attempted to transfer a key the character is not holding.",
+      );
+    }
+    this.relinquishItem(key);
+    recipient.addToInventory(key);
   }
 
   /**
