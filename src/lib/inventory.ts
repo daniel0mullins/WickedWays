@@ -94,6 +94,7 @@ export const HELD_BY = Symbol.for("heldBy");
 
 export interface IItem {
   id: ItemId;
+  name: string;
   type: ItemType;
   recipe: Recipe;
   modifier: number;
@@ -106,6 +107,7 @@ export interface IItem {
 
 export class Item implements IItem {
   id: ItemId;
+  name: string;
   type: ItemType;
   recipe: Recipe;
   modifier: number;
@@ -139,17 +141,20 @@ export class Item implements IItem {
       recipe,
       modifier,
       stat,
+      name,
     }: {
       type: ItemType;
       recipe: Recipe;
       modifier: number;
       stat: StatType;
+      name: string;
     },
     properties: ItemProperties,
     actions: ItemActions,
     events: ItemEvents,
   ) {
     this.id = uuid() as ItemId;
+    this.name = name;
     this.type = type;
     this.recipe = recipe;
     this.modifier = modifier;

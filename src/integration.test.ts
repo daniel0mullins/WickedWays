@@ -17,6 +17,7 @@ import { type ExitsArg, makeRng, makeStats } from "./test-utils";
 function makeWeapon(modifier = 3): Item {
   return new Item(
     {
+      name: "Test Weapon",
       type: "weapon",
       recipe: { metal: 1 },
       modifier,
