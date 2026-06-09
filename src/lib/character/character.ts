@@ -332,7 +332,8 @@ export class Character implements ICharacter {
   /**
    * Hands a key to another character. Keys are never dropped or stowed, so this
    * keyring-to-keyring move is the only way a key changes hands. The recipient
-   * records it as a single `pickUp`; the giver's side is silent (it is not a drop).
+   * records it as a single `pickUp` (which counts as one of the recipient's
+   * actions for the turn); the giver's side is silent (it is not a drop).
    *
    * @param key - A key currently in this character's keyring.
    * @param recipient - The character receiving the key.
