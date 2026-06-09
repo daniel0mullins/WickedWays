@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CLAIM, type IItem, type ItemId } from "../inventory";
+import { CLAIM, createKey, type IItem, type ItemId } from "../inventory";
 import type { IRoom, RoomId } from "../room";
 import { Status } from "../status";
 import { ProceduralViolation } from "../util";
@@ -465,6 +465,32 @@ describe("Character", () => {
       character.relinquishItem(makeItem()); // a different item, never added
 
       expect(character.inventory.items).toEqual([kept]);
+    });
+  });
+
+  describe("keys (storage)", () => {
+    it("defaults to an empty keyring", () => {
+      expect(makeCharacter().inventory.keys).toEqual([]);
+    });
+
+    it("routes a received key into the keyring, not the item slots", () => {
+      const character = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+
+      character.receiveItem(key);
+
+      expect(character.inventory.keys).toContain(key);
+      expect(character.inventory.items).not.toContain(key);
+    });
+
+    it("relinquishes a key from the keyring", () => {
+      const character = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+      character.receiveItem(key);
+
+      character.relinquishItem(key);
+
+      expect(character.inventory.keys).not.toContain(key);
     });
   });
 
