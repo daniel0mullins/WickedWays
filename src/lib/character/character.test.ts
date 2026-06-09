@@ -515,6 +515,19 @@ describe("Character", () => {
     });
   });
 
+  describe("keys (no dropping)", () => {
+    it("refuses to drop a key", () => {
+      const character = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+      character.addToInventory(key);
+
+      expect(() => character.removeFromInventory(key)).toThrow(
+        ProceduralViolation,
+      );
+      expect(character.inventory.keys).toContain(key);
+    });
+  });
+
   describe("action history", () => {
     it("records a move with the destination room id and name", () => {
       const character = makeCharacter();
