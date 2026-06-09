@@ -624,14 +624,70 @@ git commit -m "Record action history in Character.recordAction"
 
 ---
 
-### Task 5: Update `Combatant.attack` to record its target
+### Task 5: Update the remaining `recordAction` callers (`Combatant.attack` and `Mob.escape`)
 
-There is no `combatant.test.ts`; `attack` is exercised in `player-character.test.ts` (and `mob.test.ts`). The attack target is read from `c.id` / `c.name`, but `makeDefender` in `test-utils.ts` currently returns only `{ takeDamage }`, so it must gain an `id` and `name`.
+After Task 4 changed `recordAction` to require a `detail`, TWO out-of-file public-API callers are left broken and must be wired here so the build type-checks again:
+- `src/lib/character/combatant.ts` — `attack` calls `recordAction(this.attack)`.
+- `src/lib/character/mob.ts` — `escape` calls `recordAction(this.escape)`. (This was missed in the original plan; surfaced by code review of Task 4.)
+
+`escape` needs its own history kind. `escape()` already calls `this.move(destination)` (which records a `move` entry with the destination room), so the `escape` entry is minimal — no payload beyond `kind`/`round`.
+
+There is no `combatant.test.ts`; `attack` is exercised in `player-character.test.ts` and `mob.test.ts`. The attack target is read from `c.id` / `c.name`, but `makeDefender` in `test-utils.ts` currently returns only `{ takeDamage }`, so it must gain an `id` and `name`.
 
 **Files:**
+- Modify: `src/lib/character/history.ts` (add the `escape` variant + `describeAction` case)
+- Modify: `src/lib/character/history.test.ts` (add an `escape` describeAction test)
 - Modify: `src/lib/character/combatant.ts` (the `recordAction` call in `attack`)
+- Modify: `src/lib/character/mob.ts` (the `recordAction` call in `escape`)
 - Modify: `src/test-utils.ts` (give `makeDefender` an `id` and `name`)
-- Modify: `src/lib/character/player-character.test.ts` (add a history assertion)
+- Modify: `src/lib/character/player-character.test.ts` (add an attack history assertion)
+- Modify: `src/lib/character/mob.test.ts` (add an escape history assertion)
+
+- [ ] **Step 0a: Add the `escape` kind to `history.ts`**
+
+In `src/lib/character/history.ts`, add a variant to `ActionHistoryEntry` (after the `drop` variant):
+
+```ts
+  | { kind: "escape"; round: number }
+```
+
+and a case to `describeAction` (before `takeDamage`):
+
+```ts
+    case "escape":
+      return "escaped";
+```
+
+- [ ] **Step 0b: Add an `escape` describeAction test**
+
+In `src/lib/character/history.test.ts`, add:
+
+```ts
+  it("describes an escape", () => {
+    const entry: ActionHistoryEntry = { kind: "escape", round: 1 };
+    expect(describeAction(entry)).toBe("escaped");
+  });
+```
+
+- [ ] **Step 0c: Wire the `escape` call site**
+
+In `src/lib/character/mob.ts`, change the final line of `escape`:
+
+```ts
+    this.recordAction(this.escape, { kind: "escape" });
+```
+
+In `src/lib/character/mob.test.ts`, add (inside a suitable describe, using the file's existing `makeMob` helper — a mob in a room with an exit so `escape` flees):
+
+```ts
+it("records an escape in history", () => {
+  const den = new Room("Den", "Den", {} as ExitsArg /* see existing escape tests for setup */);
+  // Reuse the file's existing escape-test setup verbatim; after escape(), assert:
+  // expect(mob.history.some((e) => e.kind === "escape")).toBe(true);
+});
+```
+
+> For the escape test, COPY the setup from the file's existing `describe("escape", ...)` test that successfully calls `mob.escape()` (it already builds a mob in a room wired with an exit). Then assert `expect(mob.history.some((e) => e.kind === "escape")).toBe(true);`. Do not invent new room wiring — reuse what already drives `escape()` in that file.
 
 - [ ] **Step 1: Give `makeDefender` an id and name**
 
@@ -683,8 +739,8 @@ Expected: PASS (all files — the build now type-checks end to end).
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/lib/character/combatant.ts src/test-utils.ts src/lib/character/player-character.test.ts
-git commit -m "Record attack target in combatant action history"
+git add src/lib/character/history.ts src/lib/character/history.test.ts src/lib/character/combatant.ts src/lib/character/mob.ts src/test-utils.ts src/lib/character/player-character.test.ts src/lib/character/mob.test.ts
+git commit -m "Record attack and escape in action history"
 ```
 
 ---
