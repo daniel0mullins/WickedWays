@@ -564,6 +564,21 @@ describe("Character", () => {
     });
   });
 
+  describe("consumeKey", () => {
+    it("removes the key from the keyring and clears its holder", () => {
+      const character = makeCharacter();
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: true });
+      character.addToInventory(key);
+
+      character.consumeKey(key);
+
+      expect(character.inventory.keys).not.toContain(key);
+      expect(
+        (key as unknown as Record<symbol, unknown>)[Symbol.for("heldBy")],
+      ).toBeNull();
+    });
+  });
+
   describe("action history", () => {
     it("records a move with the destination room id and name", () => {
       const character = makeCharacter();

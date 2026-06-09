@@ -70,6 +70,8 @@ export interface ICharacter extends IItemHolder {
   removeFromInventory: (item: IItem) => void;
   /** Hands a key to another character (keyring to keyring; the only way keys change hands). */
   transferKey: (key: IItem, recipient: ICharacter) => void;
+  /** Spends a key, removing it from the keyring. The sanctioned "story consumed this key" path. */
+  consumeKey: (key: IItem) => void;
   /** Logs an action to history and advances the turn if the budget is spent. */
   recordAction: (callingFn: ActionFn, detail: ActionDetail) => void;
   /** Begins the character's turn, resetting the action budget. */
@@ -327,6 +329,19 @@ export class Character implements ICharacter {
       kind: "drop",
       items: items.map((i) => ({ id: i.id, name: i.name })),
     });
+  }
+
+  /**
+   * Spends a key: removes it from the keyring and unhomes it ({@link CLAIM} null).
+   * This is the only sanctioned removal path for a key — the player cannot drop
+   * one (see {@link Character.removeFromInventory}). Scene scripts call this to
+   * burn a one-shot key, typically guarded by the key's {@link IItem.consumeOnUse}.
+   *
+   * @param key - The key to consume.
+   */
+  consumeKey(key: IItem) {
+    this.relinquishItem(key);
+    key[CLAIM](null);
   }
 
   /**
