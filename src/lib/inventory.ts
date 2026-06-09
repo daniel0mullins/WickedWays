@@ -12,6 +12,7 @@ const ItemType = {
   Armor: "armor",
   Weapon: "weapon",
   Throwable: "throwable",
+  Key: "key",
 } as const;
 
 /** Unique identifier for an {@link Item}. */
@@ -140,6 +141,10 @@ export interface IItem {
   modifier: number;
   properties: ItemProperties;
   stat: StatType;
+  /** For keys only: the shared code matched by a scene/lock gate. */
+  readonly keyCode?: string;
+  /** For keys only: whether spending the key (consumeKey) is expected on use. */
+  readonly consumeOnUse?: boolean;
   /** The item's current holder, or `null` when unheld. See {@link HELD_BY}. */
   readonly [HELD_BY]: ItemHolder | null;
   /** Reassigns the item's holder; for holder internals only. See {@link CLAIM}. */
@@ -166,6 +171,8 @@ export class Item implements IItem {
   stat: StatType;
   properties: ItemProperties;
   actions: ItemActions;
+  readonly keyCode?: string;
+  readonly consumeOnUse?: boolean;
 
   #heldBy: ItemHolder | null = null;
 
@@ -209,12 +216,16 @@ export class Item implements IItem {
       modifier,
       stat,
       name,
+      keyCode,
+      consumeOnUse,
     }: {
       type: ItemType;
       recipe: Recipe;
       modifier: number;
       stat: StatType;
       name: string;
+      keyCode?: string;
+      consumeOnUse?: boolean;
     },
     properties: ItemProperties,
     actions: ItemActions,
@@ -227,6 +238,8 @@ export class Item implements IItem {
     this.modifier = modifier;
     this.stat = stat;
     this.properties = properties;
+    this.keyCode = keyCode;
+    this.consumeOnUse = consumeOnUse;
 
     this.actions = {
       [ItemAction.PickUp]: (c) => {
@@ -248,6 +261,8 @@ export class Item implements IItem {
         events.onUnequip?.(holder);
       },
       [ItemAction.Transfer]: (_c, cc) => {
+        // Keys are transfer-only via Character.transferKey; a key reaching this
+        // generic path is rejected downstream by holder.removeFromInventory.
         const holder = this.#characterHolder();
         if (!holder) return;
         if (!cc.hasRoomForItem()) {
@@ -272,6 +287,8 @@ export class Item implements IItem {
       [ItemAction.Destroy]: () => {
         const holder = this.#characterHolder();
         if (!holder) return null;
+        // A non-destroyable item (e.g. a key) cannot be broken down.
+        if (!this.properties.destroyable) return null;
         const components = actions[ItemAction.Destroy]();
         events.onDestroy?.(holder, components);
         return components;
@@ -280,8 +297,52 @@ export class Item implements IItem {
   }
 }
 
-/** A holder's item store: a fixed number of `slots` and the `items` filling them. */
+/** A holder's item store: `slots`/`items` for normal items, plus a free `keys` keyring. */
 export type Inventory = {
   slots: number;
   items: IItem[];
+  keys: IItem[];
 };
+
+/**
+ * Builds a key {@link Item}: a story-progression item that never occupies an
+ * inventory slot, cannot be destroyed, and is matched to gates by its
+ * {@link IItem.keyCode}. All key invariants are fixed here so callers cannot
+ * accidentally create a destroyable or equippable key.
+ *
+ * @param descriptor - The key's display `name`, its shared `keyCode`, and
+ *   whether using it is expected to consume it (`consumeOnUse`).
+ * @returns A new key item (`type: "key"`, `destroyable: false`).
+ */
+export function createKey({
+  name,
+  keyCode,
+  consumeOnUse,
+}: {
+  name: string;
+  keyCode: string;
+  consumeOnUse: boolean;
+}): Item {
+  return new Item(
+    {
+      type: ItemType.Key,
+      // recipe/modifier/stat are required by the Item constructor but unused for keys.
+      recipe: { item: 1 },
+      modifier: 0,
+      stat: StatType.Health,
+      name,
+      keyCode,
+      consumeOnUse,
+    },
+    { equippable: false, equipped: false, destroyable: false, usable: false },
+    {
+      pickUp: () => {},
+      equip: () => {},
+      unequip: () => {},
+      transfer: () => {},
+      use: () => {},
+      destroy: () => null,
+    },
+    { onPickUp: () => {} },
+  );
+}

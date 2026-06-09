@@ -1,6 +1,6 @@
 import { Brand } from "./brand";
 import { CLAIM, IItem, IItemHolder, ItemId } from "./inventory";
-import { ContainerFullException, generateId } from "./util";
+import { ContainerFullException, ProceduralViolation, generateId } from "./util";
 
 /** Unique identifier for a {@link Loot} container. */
 export type LootId = Brand<string, "LootId">;
@@ -42,8 +42,12 @@ export class Loot implements ILoot {
    * @param description - Flavour text describing the container.
    * @param contents - Initial items; capacity is set to their count plus 2 and
    *   each is claimed by this container.
+   * @throws {@link ProceduralViolation} if any initial item is a key.
    */
   constructor(description: string, contents: IItem[]) {
+    if (contents.some((item) => item.type === "key")) {
+      throw new ProceduralViolation("Keys cannot be stored in a loot container.");
+    }
     this.id = generateId<LootId>();
     this.description = description;
     this.contents = contents;
@@ -86,8 +90,13 @@ export class Loot implements ILoot {
   /**
    * Adds `item` to the contents and claims it, without a capacity check.
    * Prefer {@link Loot.stowItem} for the guarded variant.
+   *
+   * @throws {@link ProceduralViolation} if `item` is a key.
    */
   receiveItem(item: IItem) {
+    if (item.type === "key") {
+      throw new ProceduralViolation("Keys cannot be stored in a loot container.");
+    }
     this.contents.push(item);
     item[CLAIM](this);
   }

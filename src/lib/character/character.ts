@@ -68,6 +68,10 @@ export interface ICharacter extends IItemHolder {
   move: (room: IRoom) => void;
   /** Drops one or more items, recording a single `drop` action. */
   removeFromInventory: (item: IItem) => void;
+  /** Hands a key to another character (keyring to keyring; the only way keys change hands). */
+  transferKey: (key: IItem, recipient: ICharacter) => void;
+  /** Spends a key, removing it from the keyring. The sanctioned "story consumed this key" path. */
+  consumeKey: (key: IItem) => void;
   /** Logs an action to history and advances the turn if the budget is spent. */
   recordAction: (callingFn: ActionFn, detail: ActionDetail) => void;
   /** Begins the character's turn, resetting the action budget. */
@@ -188,17 +192,30 @@ export class Character implements ICharacter {
    * entry point.
    */
   receiveItem(item: IItem) {
-    this.#inventory.items.push(item);
+    // Keys are stored "for free" in a separate compartment; everything else
+    // takes a slot in `items`.
+    if (item.type === "key") {
+      this.#inventory.keys.push(item);
+    } else {
+      this.#inventory.items.push(item);
+    }
     item[CLAIM](this);
   }
 
   /** Removes `item` from the inventory if present, leaving its holder untouched. */
   relinquishItem(item: IItem) {
-    const index = this.#inventory.items.findIndex(
+    const fromItems = this.#inventory.items.findIndex(
       (current) => current.id === item.id,
     );
-    if (index !== -1) {
-      this.#inventory.items.splice(index, 1);
+    if (fromItems !== -1) {
+      this.#inventory.items.splice(fromItems, 1);
+      return;
+    }
+    const fromKeys = this.#inventory.keys.findIndex(
+      (current) => current.id === item.id,
+    );
+    if (fromKeys !== -1) {
+      this.#inventory.keys.splice(fromKeys, 1);
     }
   }
 
@@ -223,7 +240,7 @@ export class Character implements ICharacter {
     this.actionsPerRound = actionsPerRound;
     this.actionsThisRound = 0;
 
-    this.#inventory = { slots: inventorySlots, items: [] };
+    this.#inventory = { slots: inventorySlots, items: [], keys: [] };
     this.#campaign = campaign;
     this.#status = new Map<Status, boolean>();
     this.#resetStatuses();
@@ -265,7 +282,11 @@ export class Character implements ICharacter {
   addToInventory(item: IItem | IItem[]) {
     const items = Array.isArray(item) ? item : [item];
     for (const current of items) {
-      if (this.hasRoomForItem()) {
+      if (current.type === "key") {
+        // Keys never consume a slot, so they bypass the room check entirely.
+        this.receiveItem(current);
+        current.actions.pickUp(this);
+      } else if (this.hasRoomForItem()) {
         this.receiveItem(current);
         current.actions.pickUp(this);
       } else {
@@ -285,11 +306,17 @@ export class Character implements ICharacter {
    * history entry for the batch.
    *
    * @param item - An item or array of items to drop.
+   * @throws {@link ProceduralViolation} if any item is a key (use transferKey instead).
    * @throws {@link ProceduralViolation} if any item is not in the inventory.
    */
   removeFromInventory(item: IItem | IItem[]) {
     const items = Array.isArray(item) ? item : [item];
     for (const current of items) {
+      if (current.type === "key") {
+        throw new ProceduralViolation(
+          "Keys cannot be dropped; hand them over with transferKey instead.",
+        );
+      }
       const held = this.#inventory.items.some((i) => i.id === current.id);
       if (!held) {
         throw new ProceduralViolation(
@@ -302,6 +329,47 @@ export class Character implements ICharacter {
       kind: "drop",
       items: items.map((i) => ({ id: i.id, name: i.name })),
     });
+  }
+
+  /**
+   * Spends a key: removes it from the keyring and unhomes it ({@link CLAIM} null).
+   * This is the only sanctioned removal path for a key — the player cannot drop
+   * one (see {@link Character.removeFromInventory}). Scene scripts call this to
+   * burn a one-shot key, typically guarded by the key's {@link IItem.consumeOnUse}.
+   *
+   * @param key - The key to consume.
+   * @throws {@link ProceduralViolation} if this character is not holding `key`.
+   */
+  consumeKey(key: IItem) {
+    const held = this.#inventory.keys.some((k) => k.id === key.id);
+    if (!held) {
+      throw new ProceduralViolation(
+        "Attempted to consume a key the character is not holding.",
+      );
+    }
+    this.relinquishItem(key);
+    key[CLAIM](null);
+  }
+
+  /**
+   * Hands a key to another character. Keys are never dropped or stowed, so this
+   * keyring-to-keyring move is the only way a key changes hands. The recipient
+   * records it as a single `pickUp` (which counts as one of the recipient's
+   * actions for the turn); the giver's side is silent (it is not a drop).
+   *
+   * @param key - A key currently in this character's keyring.
+   * @param recipient - The character receiving the key.
+   * @throws {@link ProceduralViolation} if this character is not holding `key`.
+   */
+  transferKey(key: IItem, recipient: ICharacter) {
+    const held = this.#inventory.keys.some((k) => k.id === key.id);
+    if (!held) {
+      throw new ProceduralViolation(
+        "Attempted to transfer a key the character is not holding.",
+      );
+    }
+    this.relinquishItem(key);
+    recipient.addToInventory(key);
   }
 
   /**

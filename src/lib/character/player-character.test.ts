@@ -4,7 +4,7 @@ import type { IItem, ItemId } from "../inventory";
 import type { IRoom } from "../room";
 
 import { Campaign } from "../campaign";
-import { CLAIM, HELD_BY } from "../inventory";
+import { CLAIM, HELD_BY, createKey } from "../inventory";
 import { Loot } from "../loot";
 import { ProceduralViolation } from "../util";
 import { Character } from "./character";
@@ -439,6 +439,16 @@ describe("PlayerCharacter", () => {
       expect(() => pc.putInLootBox(box, makeLootItem("a"))).toThrow(
         ProceduralViolation,
       );
+    });
+
+    it("refuses to put a key into the box", () => {
+      const box = new Loot("chest", []);
+      const pc = makePcInRoomWith(box, { inventorySlots: 5, actionsPerRound: 99 });
+      const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
+      pc.addToInventory(key);
+
+      expect(() => pc.putInLootBox(box, key)).toThrow(ProceduralViolation);
+      expect(box.contents).not.toContain(key);
     });
   });
 
