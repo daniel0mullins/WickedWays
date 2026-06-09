@@ -4,3 +4,8 @@ coverage/
 .codegraph/
 .DS_Store
 **/*/*.pen
+.env
+vendor
+composer.*
+.vscode
+.claude/

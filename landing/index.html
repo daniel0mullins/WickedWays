@@ -61,7 +61,12 @@
       <div class="hero__bottom">
         <nav class="social" aria-label="Social links">
           <span class="social__label">Follow the darkness:</span>
-          <a class="social__icon" href="#" aria-label="Twitter / X">
+          <a
+            class="social__icon"
+            href="https://x.com/wickedways_vtt"
+            aria-label="Twitter / X"
+            target="_blank"
+          >
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -75,19 +80,12 @@
               />
             </svg>
           </a>
-          <a class="social__icon" href="#" aria-label="Discord">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-            </svg>
-          </a>
-          <a class="social__icon" href="#" aria-label="Instagram">
+          <a
+            class="social__icon"
+            href="https://www.instagram.com/wickedways_vtt/"
+            aria-label="Instagram"
+            target="_blank"
+          >
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -108,7 +106,12 @@
           <p class="signup__tagline">
             Be the first to know when the nightmare begins
           </p>
-          <form class="signup__form" action="#" method="post">
+          <form
+            class="signup__form"
+            id="subscribe_frm"
+            action="subscribe.php"
+            method="post"
+          >
             <input
               class="signup__input"
               type="email"
@@ -117,7 +120,9 @@
               aria-label="Email address"
               required
             />
-            <button class="signup__button" type="submit">Notify Me</button>
+            <button class="signup__button" id="subscribe_btn" type="submit">
+              Notify Me
+            </button>
           </form>
           <p class="signup__disclaimer">
             No spam. Only whispers from the void.
@@ -125,5 +130,36 @@
         </section>
       </div>
     </main>
+    <script>
+      const formElement = document.querySelector("#subscribe_frm");
+
+      async function subscribeUser(emailAddress) {
+        const formData = new FormData(formElement);
+        try {
+          const response = await fetch("/subscribe.php", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams(formData).toString(),
+          });
+          if (response.ok) {
+            // navigate to "/confirmed"
+            window.history.pushState(null, "", "confirmed");
+          } else {
+            // navigate to "/500.html"
+            window.history.replaceState(null, "", "500");
+          }
+        } catch (error) {
+          console.error(error);
+          window.history.replaceState(null, "", "500");
+        }
+      }
+
+      formElement.addEventListener("submit", (event) => {
+        event.preventDefault();
+        subscribeUser();
+      });
+    </script>
   </body>
 </html>

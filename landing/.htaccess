@@ -1,0 +1,13 @@
+# Wicked Ways — landing page server config
+
+# Custom error pages
+ErrorDocument 404 /404.html
+ErrorDocument 500 /500.html
+
+# Protect dotfiles and env from being served
+<FilesMatch "^\.">
+  Require all denied
+</FilesMatch>
+<Files ".env">
+  Require all denied
+</Files>
