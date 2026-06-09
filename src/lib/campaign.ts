@@ -2,31 +2,58 @@ import { Brand } from "./brand";
 import { IPlayerCharacter } from "./character/player-character";
 import { generateId, ProceduralViolation } from "./util";
 
+/** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
 
+/**
+ * A play session: the ordered party of player characters, the round counter,
+ * and the turn cycle that advances through them. One player acts as the game
+ * master (GM). A campaign must be started with {@link ICampaign.beginCampaign}
+ * before its turn-management methods may be used.
+ */
 export interface ICampaign {
   // ### Properties
   id: CampaignId;
+  /** The player characters taking part, in turn order. */
   party: IPlayerCharacter[];
   title: string;
 
+  /** Round count at which the campaign automatically ends. */
   readonly maxRounds: number;
 
+  /** The player whose turn it currently is. */
   get activeCharacter(): IPlayerCharacter;
+  /** The current game master, or `undefined` if none has been assigned. */
   get gm(): IPlayerCharacter | undefined;
+  /** Sets the GM; only permitted before the campaign has begun. */
   set gm(pc: IPlayerCharacter | undefined);
+  /** The current round number, starting at 0. */
   get round(): number;
 
   // ### Methods
+  /** Starts the campaign once a valid party and GM are in place. */
   beginCampaign: () => void;
+  /** Marks a running campaign finished. */
   endCampaign: () => void;
+  /** Advances the round once every party member has acted. */
   endRound: () => void;
+  /** Adds a player to a running campaign's party. */
   addPlayer: (c: IPlayerCharacter) => void;
+  /** Removes a player from the party (the GM may not leave). */
   leaveCampaign: (c: IPlayerCharacter) => void;
+  /** Marks the active player as having acted and advances the turn. */
   nextPlayer: () => void;
+  /** Transfers the GM role to another player mid-campaign. */
   transfer: (c: IPlayerCharacter) => void;
 }
 
+/**
+ * Default {@link ICampaign} implementation.
+ *
+ * Tracks lifecycle (started/finished), the active turn position, and which
+ * party members have acted in the current round. Most mutating methods assert
+ * the campaign is running and throw {@link ProceduralViolation} otherwise.
+ */
 export class Campaign implements ICampaign {
   id: CampaignId;
   title: string;
@@ -48,6 +75,11 @@ export class Campaign implements ICampaign {
     return this.#gm;
   }
 
+  /**
+   * Assigns the GM before the campaign starts.
+   * @throws {@link ProceduralViolation} if the campaign has already begun; use
+   *   {@link Campaign.transfer} instead.
+   */
   set gm(pc: IPlayerCharacter | undefined) {
     if (this.#started) {
       throw new ProceduralViolation(
@@ -57,6 +89,7 @@ export class Campaign implements ICampaign {
     this.#gm = pc;
   }
 
+  /** @throws {@link ProceduralViolation} if the active character cannot be resolved. */
   get activeCharacter() {
     const activeCharacter = this.party[this.#activeCharacterIndex];
     if (activeCharacter) {
@@ -81,6 +114,10 @@ export class Campaign implements ICampaign {
     }
   }
 
+  /**
+   * @param title - Display title of the campaign.
+   * @param maxRounds - Round count at which the campaign auto-ends. Defaults to 100.
+   */
   constructor(title: string, maxRounds: number = 100) {
     this.id = generateId<CampaignId>();
     this.title = title;
@@ -95,6 +132,13 @@ export class Campaign implements ICampaign {
     this.#activeCharacterIndex = 0;
   }
 
+  /**
+   * Starts the campaign, after which the GM can no longer be set directly and
+   * turn management becomes available.
+   *
+   * @throws {@link ProceduralViolation} if already started, if the party is
+   *   empty, or if the GM is not a member of the party.
+   */
   beginCampaign() {
     if (this.#started) {
       throw new ProceduralViolation("Campaign has already begun");
@@ -110,11 +154,22 @@ export class Campaign implements ICampaign {
     this.#started = true;
   }
 
+  /**
+   * Marks the campaign finished.
+   * @throws {@link ProceduralViolation} if the campaign is not currently running.
+   */
   endCampaign() {
     this.#assertRunning();
     this.#finished = true;
   }
 
+  /**
+   * Advances to the next round once every party member has acted, ending the
+   * campaign if {@link Campaign.maxRounds} is reached.
+   *
+   * @throws {@link ProceduralViolation} if not running, or if called before all
+   *   characters have acted this round.
+   */
   endRound() {
     this.#assertRunning();
     const allPartyActed = this.party.every((c) => this.#actedThisRound.get(c));
@@ -131,11 +186,24 @@ export class Campaign implements ICampaign {
     }
   }
 
+  /**
+   * Adds a player to the party.
+   * @param c - The player character to add.
+   * @throws {@link ProceduralViolation} if the campaign is not running.
+   */
   addPlayer(c: IPlayerCharacter) {
     this.#assertRunning();
     this.party.push(c);
   }
 
+  /**
+   * Removes a player from the party, keeping the turn position pointed at the
+   * same upcoming player.
+   *
+   * @param c - The player character leaving.
+   * @throws {@link ProceduralViolation} if not running, or if `c` is the GM
+   *   (transfer the role first).
+   */
   leaveCampaign(c: IPlayerCharacter) {
     this.#assertRunning();
     if (this.gm === c) {
@@ -159,6 +227,12 @@ export class Campaign implements ICampaign {
     }
   }
 
+  /**
+   * Marks the active character as having acted and advances to the next player,
+   * wrapping to the first and ending the round after the last.
+   *
+   * @throws {@link ProceduralViolation} if the campaign is not running.
+   */
   nextPlayer() {
     this.#assertRunning();
     this.#actedThisRound.set(this.activeCharacter, true);
@@ -171,6 +245,12 @@ export class Campaign implements ICampaign {
     }
   }
 
+  /**
+   * Transfers the GM role to another player while the campaign is running.
+   *
+   * @param c - The player character to make GM.
+   * @throws {@link ProceduralViolation} if the campaign is not running.
+   */
   transfer(c: IPlayerCharacter) {
     this.#assertRunning();
     this.#gm = c;
