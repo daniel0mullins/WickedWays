@@ -5,6 +5,7 @@ import type { RequireAtLeastOne } from "type-fest";
 import { v4 as uuid } from "uuid";
 import { StatType } from "./character/stats";
 import { ProceduralViolation } from "./util";
+import type { CraftingRecipe } from "./crafting";
 
 /** The kinds of item the engine recognises. */
 const ItemType = {
@@ -158,6 +159,8 @@ export interface IItem {
   readonly keyCode?: string;
   /** For keys only: whether spending the key (consumeKey) is expected on use. */
   readonly consumeOnUse?: boolean;
+  /** A recipe this item imparts to the party when picked up. */
+  readonly teaches?: CraftingRecipe;
   /** The item's current holder, or `null` when unheld. See {@link HELD_BY}. */
   readonly [HELD_BY]: ItemHolder | null;
   /** Reassigns the item's holder; for holder internals only. See {@link CLAIM}. */
@@ -186,6 +189,7 @@ export class Item implements IItem {
   actions: ItemActions;
   readonly keyCode?: string;
   readonly consumeOnUse?: boolean;
+  readonly teaches?: CraftingRecipe;
 
   #heldBy: ItemHolder | null = null;
 
@@ -218,6 +222,9 @@ export class Item implements IItem {
    * @param descriptor.modifier - Strength applied when the item affects `stat`.
    * @param descriptor.stat - The {@link StatType} this item acts on.
    * @param descriptor.name - Display name.
+   * @param descriptor.keyCode - Shared lock/gate code (keys only).
+   * @param descriptor.consumeOnUse - Whether using the key spends it (keys only).
+   * @param descriptor.teaches - Recipe this item imparts to the party when picked up.
    * @param properties - Initial mutable flags (equippable, equipped, …).
    * @param actions - Core behaviour for each interaction; wrapped on construction.
    * @param events - Observer hooks fired after the matching action runs.
@@ -231,6 +238,7 @@ export class Item implements IItem {
       name,
       keyCode,
       consumeOnUse,
+      teaches,
     }: {
       type: ItemType;
       recipe: Recipe;
@@ -239,6 +247,7 @@ export class Item implements IItem {
       name: string;
       keyCode?: string;
       consumeOnUse?: boolean;
+      teaches?: CraftingRecipe;
     },
     properties: ItemProperties,
     actions: ItemActions,
@@ -253,6 +262,7 @@ export class Item implements IItem {
     this.properties = properties;
     this.keyCode = keyCode;
     this.consumeOnUse = consumeOnUse;
+    this.teaches = teaches;
 
     this.actions = {
       [ItemAction.PickUp]: (c) => {
