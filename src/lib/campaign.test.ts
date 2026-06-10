@@ -352,4 +352,38 @@ describe("Campaign", () => {
       }).toThrow(ProceduralViolation);
     });
   });
+
+  describe("canAfford / withdrawMaterials", () => {
+    function stocked(): Campaign {
+      const campaign = new Campaign("Materials");
+      campaign[DEPOSIT_MATERIALS]({ metal: 5, glass: 2 });
+      return campaign;
+    }
+
+    it("affords amounts within the pool", () => {
+      expect(stocked().canAfford({ metal: 5, glass: 1 })).toBe(true);
+    });
+
+    it("does not afford amounts beyond the pool", () => {
+      expect(stocked().canAfford({ metal: 6 })).toBe(false);
+      expect(stocked().canAfford({ electronics: 1 })).toBe(false);
+    });
+
+    it("subtracts withdrawn materials and removes zeroed components", () => {
+      const campaign = stocked();
+
+      campaign.withdrawMaterials({ metal: 5, glass: 1 });
+
+      expect(campaign.materials).toEqual({ glass: 1 });
+    });
+
+    it("throws and leaves the pool unchanged when short", () => {
+      const campaign = stocked();
+
+      expect(() => campaign.withdrawMaterials({ metal: 6 })).toThrow(
+        ProceduralViolation,
+      );
+      expect(campaign.materials).toEqual({ metal: 5, glass: 2 });
+    });
+  });
 });
