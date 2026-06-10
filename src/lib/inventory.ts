@@ -5,6 +5,7 @@ import type { RequireAtLeastOne } from "type-fest";
 import { v4 as uuid } from "uuid";
 import { StatType } from "./character/stats";
 import { ProceduralViolation } from "./util";
+import type { CraftingRecipe } from "./crafting";
 
 /** The kinds of item the engine recognises. */
 const ItemType = {
@@ -176,6 +177,8 @@ export interface IItem {
   readonly isBroken: boolean;
   /** Sets durability, clamped to `[0, maxDurability]`; for combat/repair internals only. See {@link SET_DURABILITY}. */
   [SET_DURABILITY](value: number): void;
+  /** A recipe this item imparts to the party when picked up. */
+  readonly teaches?: CraftingRecipe;
   /** The item's current holder, or `null` when unheld. See {@link HELD_BY}. */
   readonly [HELD_BY]: ItemHolder | null;
   /** Reassigns the item's holder; for holder internals only. See {@link CLAIM}. */
@@ -204,6 +207,7 @@ export class Item implements IItem {
   actions: ItemActions;
   readonly keyCode?: string;
   readonly consumeOnUse?: boolean;
+  readonly teaches?: CraftingRecipe;
   readonly maxDurability?: number;
   #durability?: number;
 
@@ -253,6 +257,9 @@ export class Item implements IItem {
    * @param descriptor.modifier - Strength applied when the item affects `stat`.
    * @param descriptor.stat - The {@link StatType} this item acts on.
    * @param descriptor.name - Display name.
+   * @param descriptor.keyCode - Shared lock/gate code (keys only).
+   * @param descriptor.consumeOnUse - Whether using the key spends it (keys only).
+   * @param descriptor.teaches - Recipe this item imparts to the party when picked up.
    * @param descriptor.maxDurability - Max durability for equipment that wears (optional).
    * @param descriptor.durability - Starting durability; defaults to `maxDurability`.
    * @param properties - Initial mutable flags (equippable, equipped, …).
@@ -268,6 +275,7 @@ export class Item implements IItem {
       name,
       keyCode,
       consumeOnUse,
+      teaches,
       maxDurability,
       durability,
     }: {
@@ -278,6 +286,7 @@ export class Item implements IItem {
       name: string;
       keyCode?: string;
       consumeOnUse?: boolean;
+      teaches?: CraftingRecipe;
       maxDurability?: number;
       durability?: number;
     },
@@ -294,6 +303,7 @@ export class Item implements IItem {
     this.properties = properties;
     this.keyCode = keyCode;
     this.consumeOnUse = consumeOnUse;
+    this.teaches = teaches;
     this.maxDurability = maxDurability;
     this.#durability =
       maxDurability === undefined

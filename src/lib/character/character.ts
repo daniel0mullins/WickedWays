@@ -9,6 +9,7 @@ import { generateId, ProceduralViolation, typedEntries } from "../util";
 import { CharacterEvents, ICharacterEvents } from "./events";
 import type { ActionDetail, ActionHistoryEntry } from "./history";
 import { MitigatorStatType, Stats, StatType } from "./stats";
+import type { RecipeId } from "../crafting";
 
 /** Unique identifier for a {@link Character}. */
 export type CharacterId = Brand<string, "CharacterId">;
@@ -83,6 +84,11 @@ export interface ICharacter extends IItemHolder {
   takeDamage: (attackStrength: number, attackStat?: StatType) => void;
   /** Restores a damaged, durability-bearing held item to full for a proportional material cost (free). */
   repair: (item: IItem) => void;
+  /**
+   * Crafts an item using the materials-track recipe identified by `recipeId`.
+   * Free action — does not tick the action budget or record history.
+   */
+  craft: (recipeId: RecipeId) => IItem;
 
   // ### Events
   /** Turn-lifecycle event hub for this character. */
@@ -298,6 +304,10 @@ export class Character implements ICharacter {
         throw new ProceduralViolation(
           "Attempted to add to inventory, but character doesn't have enough slots!",
         );
+      }
+      // A picked-up item may impart a recipe to the whole party.
+      if (current.teaches) {
+        this.campaign.discoverRecipe(current.teaches);
       }
     }
     this.recordAction(this.addToInventory, {
@@ -519,5 +529,61 @@ export class Character implements ICharacter {
     this.actionsThisRound = 0;
     this.events.onTurnStart();
     this.#resolveStatuses();
+  }
+
+  /**
+   * Crafts the item produced by the recipe identified by `recipeId`. Supports
+   * both the materials track (debits the party pool, places the output in an
+   * inventory slot) and the key track (consumes held keys, places the output on
+   * the keyring). Free action — does not tick the action budget or record history.
+   *
+   * @param recipeId - The id of a known recipe.
+   * @returns The newly created item.
+   * @throws {@link ProceduralViolation} if the recipe is unknown.
+   * @throws {@link ProceduralViolation} if the party pool cannot cover the cost (materials track).
+   * @throws {@link ProceduralViolation} if there is no free inventory slot (materials track).
+   * @throws {@link ProceduralViolation} if a key-track recipe's required keys are not all held.
+   */
+  craft(recipeId: RecipeId): IItem {
+    const recipe = this.campaign.knownRecipes.get(recipeId);
+    if (!recipe) {
+      throw new ProceduralViolation("Cannot craft an undiscovered recipe");
+    }
+    if ("materials" in recipe) {
+      if (!this.campaign.canAfford(recipe.materials)) {
+        throw new ProceduralViolation("Not enough materials to craft");
+      }
+      if (!this.hasRoomForItem()) {
+        throw new ProceduralViolation("No inventory slot for the crafted item");
+      }
+      this.campaign.withdrawMaterials(recipe.materials);
+      const output = recipe.create();
+      this.receiveItem(output);
+      return output;
+    }
+    // Key track. Total demand per code first, so a recipe that lists the same
+    // code twice is treated as a single combined cost rather than checked
+    // against the full keyring twice.
+    const demand = new Map<string, number>();
+    for (const { keyCode, qty } of recipe.keys) {
+      demand.set(keyCode, (demand.get(keyCode) ?? 0) + qty);
+    }
+    // Verify EVERY code is satisfiable BEFORE consuming anything, so a recipe
+    // the character can't fully supply consumes nothing.
+    for (const [keyCode, qty] of demand) {
+      const held = this.#inventory.keys.filter((k) => k.keyCode === keyCode);
+      if (held.length < qty) {
+        throw new ProceduralViolation("Missing required keys to craft");
+      }
+    }
+    for (const [keyCode, qty] of demand) {
+      const held = this.#inventory.keys.filter((k) => k.keyCode === keyCode);
+      for (const key of held.slice(0, qty)) {
+        this.consumeKey(key);
+      }
+    }
+    const output = recipe.create();
+    this.receiveItem(output);
+    return output;
   }
 }

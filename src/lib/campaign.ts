@@ -2,6 +2,7 @@ import { Brand } from "./brand";
 import { IPlayerCharacter } from "./character/player-character";
 import { DEPOSIT_MATERIALS, type MaterialMap } from "./inventory";
 import { generateId, ProceduralViolation, typedEntries } from "./util";
+import type { CraftingRecipe, RecipeId } from "./crafting";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -22,6 +23,8 @@ export interface ICampaign {
   get materials(): Readonly<MaterialMap>;
   /** Adds raw materials to the pool. Engine-internal; see {@link DEPOSIT_MATERIALS}. */
   [DEPOSIT_MATERIALS](mats: MaterialMap): void;
+  /** Read-only view of the recipes the party can currently craft. */
+  get knownRecipes(): ReadonlyMap<RecipeId, CraftingRecipe>;
 
   /** Round count at which the campaign automatically ends. */
   readonly maxRounds: number;
@@ -42,6 +45,10 @@ export interface ICampaign {
   withdrawMaterials: (mats: MaterialMap) => void;
   /** Grants materials once per `claimId`; later calls with the same id are ignored. */
   claimMaterials: (claimId: string, mats: MaterialMap) => void;
+  /** Whether the party knows `recipeId`. */
+  knows: (recipeId: RecipeId) => boolean;
+  /** Marks a recipe known to the whole party; idempotent by id (first wins). */
+  discoverRecipe: (recipe: CraftingRecipe) => void;
   /** Starts the campaign once a valid party and GM are in place. */
   beginCampaign: () => void;
   /** Marks a running campaign finished. */
@@ -75,6 +82,7 @@ export class Campaign implements ICampaign {
 
   #materials: MaterialMap = {};
   #claims: Set<string> = new Set<string>();
+  #knownRecipes: Map<RecipeId, CraftingRecipe> = new Map();
   #started = false;
   #finished = false;
   #activeCharacterIndex: number = 0;
@@ -86,6 +94,14 @@ export class Campaign implements ICampaign {
 
   get materials(): Readonly<MaterialMap> {
     return { ...this.#materials };
+  }
+
+  get knownRecipes(): ReadonlyMap<RecipeId, CraftingRecipe> {
+    // Deliberately the live map (as a ReadonlyMap), not a copy like `materials`:
+    // crafting reads it via `.get(id)` on every craft, so a per-access Map copy
+    // would be wasteful, and the read-only type is a sufficient boundary. Mutation
+    // is funnelled through `discoverRecipe`.
+    return this.#knownRecipes;
   }
 
   /**
@@ -143,8 +159,13 @@ export class Campaign implements ICampaign {
   /**
    * @param title - Display title of the campaign.
    * @param maxRounds - Round count at which the campaign auto-ends. Defaults to 100.
+   * @param knownRecipes - Recipes the party knows from the start.
    */
-  constructor(title: string, maxRounds: number = 100) {
+  constructor(
+    title: string,
+    maxRounds: number = 100,
+    knownRecipes: CraftingRecipe[] = [],
+  ) {
     this.id = generateId<CampaignId>();
     this.title = title;
     this.party = [];
@@ -156,6 +177,10 @@ export class Campaign implements ICampaign {
     this.#resetActivity();
 
     this.#activeCharacterIndex = 0;
+
+    for (const recipe of knownRecipes) {
+      this.discoverRecipe(recipe);
+    }
   }
 
   /**
@@ -325,6 +350,27 @@ export class Campaign implements ICampaign {
     }
     this.#claims.add(claimId);
     this[DEPOSIT_MATERIALS](mats);
+  }
+
+  /**
+   * @param recipeId - The recipe id to test.
+   * @returns Whether the party already knows it.
+   */
+  knows(recipeId: RecipeId): boolean {
+    return this.#knownRecipes.has(recipeId);
+  }
+
+  /**
+   * Marks `recipe` known to the whole party. Idempotent by id: the first
+   * definition for an id wins; later calls with that id are ignored.
+   *
+   * @param recipe - The recipe to learn.
+   */
+  discoverRecipe(recipe: CraftingRecipe) {
+    if (this.#knownRecipes.has(recipe.id)) {
+      return;
+    }
+    this.#knownRecipes.set(recipe.id, recipe);
   }
 
   /**
