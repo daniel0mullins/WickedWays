@@ -36,6 +36,9 @@ type Recipe = RequireAtLeastOne<{
   [k in ItemComponentType]: number;
 }>;
 
+/** A quantity of raw materials by component type; the currency of the party pool. */
+export type MaterialMap = Partial<Record<ItemComponentType, number>>;
+
 /** Item action callback acting on a single character (optionally with components). */
 type ItemActionEvent = <C extends ICharacter>(
   c: C,
@@ -128,6 +131,16 @@ export const CLAIM = Symbol("claimItem");
  * `Object.values`, so the back-reference does not leak through enumeration.
  */
 export const HELD_BY = Symbol.for("heldBy");
+
+/**
+ * Symbol-keyed method that adds raw materials to the party's pool.
+ *
+ * Raw deposits are funnelled through this symbol so author/scene code cannot mint
+ * materials at will (which would defeat anti-farming). Only engine internals — the
+ * Item Destroy wrapper, {@link Character.harvest}, and {@link Campaign.claimMaterials}
+ * — call it. There is no public "add materials" method.
+ */
+export const DEPOSIT_MATERIALS = Symbol("depositMaterials");
 
 /**
  * A game item: a typed, craftable object that lives in a holder's inventory and
