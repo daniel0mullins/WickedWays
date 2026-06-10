@@ -883,6 +883,33 @@ describe("Character", () => {
     });
   });
 
+  describe("party-wide crafting (seam)", () => {
+    it("lets one member craft a recipe a different member discovered", () => {
+      const campaign = new Campaign("Crafting");
+      const finder = new Character(campaign, "Finder", makeStats());
+      const crafter = new Character(campaign, "Crafter", makeStats());
+
+      const output = makeItem();
+      const recipeId = "shared-widget" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        materials: { metal: 1 },
+        create: () => output,
+      };
+
+      // The finder picks up a blueprint, teaching the whole party the recipe.
+      finder.addToInventory(makeTeachingItem(recipe, "blueprint"));
+      expect(campaign.knows(recipeId)).toBe(true);
+
+      // A different party member can now craft it from the shared pool.
+      campaign.claimMaterials("seed", { metal: 1 });
+      const result = crafter.craft(recipeId);
+
+      expect(result).toBe(output);
+      expect(crafter.inventory.items).toContain(output);
+    });
+  });
+
   describe("action history", () => {
     it("records a move with the destination room id and name", () => {
       const character = makeCharacter();
