@@ -303,6 +303,9 @@ export class Item implements IItem {
         // A non-destroyable item (e.g. a key) cannot be broken down.
         if (!this.properties.destroyable) return null;
         const components = actions[ItemAction.Destroy]();
+        // Scrapping returns the item's makeup to the party pool; `recipe` is the
+        // single source of truth for both scrap-yield and (later) craft-cost.
+        holder.campaign[DEPOSIT_MATERIALS](this.recipe);
         events.onDestroy?.(holder, components);
         return components;
       },
