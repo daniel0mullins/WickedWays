@@ -317,7 +317,7 @@ export class Campaign implements ICampaign {
    */
   withdrawMaterials(mats: MaterialMap) {
     if (!this.canAfford(mats)) {
-      throw new ProceduralViolation("Insufficient materials in the party pool.");
+      throw new ProceduralViolation("Insufficient materials in the party pool");
     }
     for (const [component, qty] of typedEntries(mats) as Array<
       [keyof MaterialMap, number | undefined]
