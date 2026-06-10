@@ -700,6 +700,91 @@ describe("Character", () => {
     });
   });
 
+  describe("craft (item track)", () => {
+    it("withdraws materials and places the crafted item in inventory", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      const output = makeItem();
+      const recipeId = "widget" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        materials: { metal: 2 },
+        create: () => output,
+      };
+      campaign.claimMaterials("seed", { metal: 2 });
+      campaign.discoverRecipe(recipe);
+
+      const result = character.craft(recipeId);
+
+      expect(result).toBe(output);
+      expect(character.inventory.items).toContain(output);
+      expect(campaign.canAfford({ metal: 1 })).toBe(false);
+    });
+
+    it("throws ProceduralViolation on an undiscovered recipe", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+
+      expect(() => character.craft("unknown-recipe" as RecipeId)).toThrow(
+        new ProceduralViolation("Cannot craft an undiscovered recipe"),
+      );
+    });
+
+    it("throws and spends nothing when materials are insufficient", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      const recipeId = "expensive-widget" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        materials: { metal: 5 },
+        create: () => makeItem(),
+      };
+      // Seed only 2 metal, but recipe costs 5
+      campaign.claimMaterials("seed", { metal: 2 });
+      campaign.discoverRecipe(recipe);
+
+      expect(() => character.craft(recipeId)).toThrow(ProceduralViolation);
+      // Pool unchanged: still has 2 metal
+      expect(campaign.canAfford({ metal: 2 })).toBe(true);
+    });
+
+    it("throws and spends nothing when there is no inventory slot", () => {
+      const campaign = new Campaign("Crafting");
+      // 0 inventory slots
+      const character = new Character(campaign, "Hero", makeStats(), 0);
+      const recipeId = "widget" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        materials: { metal: 1 },
+        create: () => makeItem(),
+      };
+      campaign.claimMaterials("seed", { metal: 1 });
+      campaign.discoverRecipe(recipe);
+
+      expect(() => character.craft(recipeId)).toThrow(ProceduralViolation);
+      // Materials should be untouched
+      expect(campaign.canAfford({ metal: 1 })).toBe(true);
+    });
+
+    it("does not consume an action (records no history)", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      const recipeId = "widget" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        materials: { metal: 1 },
+        create: () => makeItem(),
+      };
+      campaign.claimMaterials("seed", { metal: 1 });
+      campaign.discoverRecipe(recipe);
+
+      const before = character.history.length;
+      character.craft(recipeId);
+
+      expect(character.history.length).toBe(before);
+    });
+  });
+
   describe("action history", () => {
     it("records a move with the destination room id and name", () => {
       const character = makeCharacter();
