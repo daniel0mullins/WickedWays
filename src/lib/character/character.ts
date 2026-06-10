@@ -133,6 +133,9 @@ export class Character implements ICharacter {
   #currentRoom: IRoom | null = null;
   #history: ActionHistoryEntry[] = [];
   #inventory: Inventory;
+  // #slots is the character's anatomy (which named positions exist); #equipment
+  // is current occupancy (named position → worn item). A two-handed weapon
+  // appears under both hand keys.
   #equipment: Map<EquipmentSlot, IItem> = new Map();
   #slots: readonly EquipmentSlot[] = DEFAULT_EQUIPMENT_SLOTS;
   #status: StatusMatrix;

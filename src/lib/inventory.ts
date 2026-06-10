@@ -232,6 +232,9 @@ export class Item implements IItem {
   readonly slot?: SlotKind;
   readonly twoHanded?: boolean;
   #durability?: number;
+  // The raw equip/unequip behavior and events, captured from the constructor so
+  // the class-level {@link EQUIP}/{@link UNEQUIP} methods can reach them (unlike
+  // the other action wrappers, which close over the constructor params inline).
   #equipBehavior: ItemActionEvent;
   #unequipBehavior: ItemActionEvent;
   #onEquip?: ItemActionEvent;
@@ -276,6 +279,10 @@ export class Item implements IItem {
     return this.#heldBy?.holderKind === "character" ? this.#heldBy : null;
   }
 
+  // The terminal equip/unequip step: run the raw author behavior, toggle the
+  // flag, fire the event. Calls #equipBehavior directly (never actions.equip), so
+  // Character.equip can route a slotted item through validation and finish here
+  // without looping back into the action wrapper.
   [EQUIP](holder: ICharacter) {
     this.#equipBehavior(holder);
     this.properties.equipped = true;
@@ -365,6 +372,10 @@ export class Item implements IItem {
         actions[ItemAction.PickUp](c);
         events.onPickUp(c);
       },
+      // A slotted item routes through Character.equip so slot capacity is
+      // enforced even via the item's own action (no bypass); the validated path
+      // calls back into [EQUIP] to finish. Slotless legacy equippables toggle
+      // directly here.
       [ItemAction.Equip]: () => {
         const holder = this.#characterHolder();
         if (!holder) return;
