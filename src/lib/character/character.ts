@@ -1,11 +1,11 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { CLAIM, DEPOSIT_MATERIALS, IItem, IItemHolder, Inventory } from "../inventory";
+import { CLAIM, DEPOSIT_MATERIALS, IItem, IItemHolder, Inventory, MaterialMap, SET_DURABILITY } from "../inventory";
 import { DEPLETE, type IMaterialCache } from "../material-cache";
 import { IRoom } from "../room";
 import { Status, StatusMatrix } from "../status";
 
-import { generateId, ProceduralViolation } from "../util";
+import { generateId, ProceduralViolation, typedEntries } from "../util";
 import { CharacterEvents, ICharacterEvents } from "./events";
 import type { ActionDetail, ActionHistoryEntry } from "./history";
 import { MitigatorStatType, Stats, StatType } from "./stats";
@@ -82,6 +82,8 @@ export interface ICharacter extends IItemHolder {
   startTurn: () => void;
   /** Applies damage to a stat after mitigation, updating status conditions. */
   takeDamage: (attackStrength: number, attackStat?: StatType) => void;
+  /** Restores a damaged, durability-bearing held item to full for a proportional material cost (free). */
+  repair: (item: IItem) => void;
   /**
    * Crafts an item using the materials-track recipe identified by `recipeId`.
    * Free action — does not tick the action budget or record history.
@@ -365,6 +367,51 @@ export class Character implements ICharacter {
   }
 
   /**
+   * Restores a damaged, durability-bearing item to full durability, paying a
+   * material cost proportional to the missing fraction (`ceil(recipe[c] * missing
+   * / maxDurability)` per component) from the party pool. Free — it does not
+   * consume a budgeted action or record history.
+   *
+   * @param item - A held item that has durability and is below full.
+   * @throws {@link ProceduralViolation} if the item is not held, has no
+   *   durability, is already at full, or the party cannot afford the cost.
+   */
+  repair(item: IItem) {
+    // Keys live on the keyring and carry no durability; reject them explicitly
+    // rather than letting the held/durability guards report a confusing reason.
+    if (item.type === "key") {
+      throw new ProceduralViolation("Keys cannot be repaired.");
+    }
+    const held = this.#inventory.items.some((i) => i.id === item.id);
+    if (!held) {
+      throw new ProceduralViolation(
+        "Cannot repair an item the character is not holding.",
+      );
+    }
+    if (item.maxDurability === undefined || item.durability === undefined) {
+      throw new ProceduralViolation("Cannot repair an item that has no durability.");
+    }
+    if (item.durability >= item.maxDurability) {
+      throw new ProceduralViolation("Cannot repair an item that is not damaged.");
+    }
+
+    const missing = item.maxDurability - item.durability;
+    const cost: MaterialMap = {};
+    for (const [component, qty] of typedEntries(item.recipe) as Array<
+      [keyof MaterialMap, number | undefined]
+    >) {
+      if (qty === undefined) continue;
+      cost[component] = Math.ceil((qty * missing) / item.maxDurability);
+    }
+
+    if (!this.campaign.canAfford(cost)) {
+      throw new ProceduralViolation("Not enough materials to repair.");
+    }
+    this.campaign.withdrawMaterials(cost);
+    item[SET_DURABILITY](item.maxDurability);
+  }
+
+  /**
    * Hands a key to another character. Keys are never dropped or stowed, so this
    * keyring-to-keyring move is the only way a key changes hands. The recipient
    * records it as a single `pickUp` (which counts as one of the recipient's
@@ -406,20 +453,40 @@ export class Character implements ICharacter {
    * Applies an incoming attack to a stat after mitigation, then recomputes
    * status conditions and records a `takeDamage` action.
    *
-   * The damage taken is `attackStrength * (MAX_STAT - mitigator) * 0.2`, where
-   * the mitigator is the value of the stat that defends `attackStat` (see
-   * {@link MitigatorStatType}). A full mitigator absorbs the hit entirely; an
-   * empty one doubles it.
+   * Equipped, non-broken armor whose `stat` matches `attackStat` first subtracts
+   * its `modifier` from the raw strength (floored at 0); the remainder is then
+   * `* (MAX_STAT - mitigator) * 0.2`, where the mitigator is the stat that defends
+   * `attackStat` (see {@link MitigatorStatType}). Contributing armor wears one point.
    *
    * @param attackStrength - Raw incoming attack strength before mitigation.
    * @param attackStat - The stat being attacked. Defaults to health.
    */
   takeDamage(attackStrength: number, attackStat: StatType = StatType.Health) {
+    // Equipped, intact armor defending this stat soaks raw strength first — the
+    // defensive counterpart to how attacking weapons add to raw attack strength.
+    const armor = this.#inventory.items.filter(
+      (item) =>
+        item.properties.equipped &&
+        item.type === "armor" &&
+        !item.isBroken &&
+        item.stat === attackStat,
+    );
+    const armorSum = armor.reduce((sum, piece) => sum + piece.modifier, 0);
+    const mitigatedStrength = Math.max(0, attackStrength - armorSum);
+
     const mitigator = this.stats[MitigatorStatType[attackStat]];
     const damageMultiplier = (MAX_STAT - mitigator) * MITIGATION_PER_POINT;
-    const finalAttackStrength = attackStrength * damageMultiplier;
+    const finalAttackStrength = mitigatedStrength * damageMultiplier;
 
     this.stats[attackStat] = this.stats[attackStat] - finalAttackStrength;
+
+    // Each contributing armor piece wears for the blow it helped absorb.
+    armor.forEach((piece) => {
+      if (piece.maxDurability !== undefined) {
+        // durability is defined whenever maxDurability is (see Item constructor).
+        piece[SET_DURABILITY](piece.durability! - 1);
+      }
+    });
 
     this.#resolveStatuses();
     this.recordAction(this.takeDamage, {
