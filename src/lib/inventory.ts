@@ -6,6 +6,7 @@ import { v4 as uuid } from "uuid";
 import { StatType } from "./character/stats";
 import { ProceduralViolation } from "./util";
 import type { CraftingRecipe } from "./crafting";
+import type { SlotKind } from "./equipment";
 
 /** The kinds of item the engine recognises. */
 const ItemType = {
@@ -13,6 +14,7 @@ const ItemType = {
   Armor: "armor",
   Weapon: "weapon",
   Throwable: "throwable",
+  Accessory: "accessory",
   Key: "key",
 } as const;
 
@@ -177,6 +179,10 @@ export interface IItem {
   readonly isBroken: boolean;
   /** Sets durability, clamped to `[0, maxDurability]`; for combat/repair internals only. See {@link SET_DURABILITY}. */
   [SET_DURABILITY](value: number): void;
+  /** The kind of slot this item equips into; absent ⇒ not slot-equippable. */
+  readonly slot?: SlotKind;
+  /** Weapons only: occupies both hand slots when equipped. */
+  readonly twoHanded?: boolean;
   /** A recipe this item imparts to the party when picked up. */
   readonly teaches?: CraftingRecipe;
   /** The item's current holder, or `null` when unheld. See {@link HELD_BY}. */
@@ -209,6 +215,8 @@ export class Item implements IItem {
   readonly consumeOnUse?: boolean;
   readonly teaches?: CraftingRecipe;
   readonly maxDurability?: number;
+  readonly slot?: SlotKind;
+  readonly twoHanded?: boolean;
   #durability?: number;
 
   get durability(): number | undefined {
@@ -262,6 +270,8 @@ export class Item implements IItem {
    * @param descriptor.teaches - Recipe this item imparts to the party when picked up.
    * @param descriptor.maxDurability - Max durability for equipment that wears (optional).
    * @param descriptor.durability - Starting durability; defaults to `maxDurability`.
+   * @param descriptor.slot - The {@link SlotKind} this item equips into (optional).
+   * @param descriptor.twoHanded - Weapons only: occupies both hands when equipped.
    * @param properties - Initial mutable flags (equippable, equipped, …).
    * @param actions - Core behaviour for each interaction; wrapped on construction.
    * @param events - Observer hooks fired after the matching action runs.
@@ -278,6 +288,8 @@ export class Item implements IItem {
       teaches,
       maxDurability,
       durability,
+      slot,
+      twoHanded,
     }: {
       type: ItemType;
       recipe: Recipe;
@@ -289,6 +301,8 @@ export class Item implements IItem {
       teaches?: CraftingRecipe;
       maxDurability?: number;
       durability?: number;
+      slot?: SlotKind;
+      twoHanded?: boolean;
     },
     properties: ItemProperties,
     actions: ItemActions,
@@ -305,6 +319,8 @@ export class Item implements IItem {
     this.consumeOnUse = consumeOnUse;
     this.teaches = teaches;
     this.maxDurability = maxDurability;
+    this.slot = slot;
+    this.twoHanded = twoHanded;
     this.#durability =
       maxDurability === undefined
         ? undefined

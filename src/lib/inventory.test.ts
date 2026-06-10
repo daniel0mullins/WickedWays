@@ -443,6 +443,65 @@ describe("createKey", () => {
   });
 });
 
+describe("equipment slots", () => {
+  it("exposes an authored slot kind and twoHanded flag", () => {
+    const item = new Item(
+      {
+        type: "weapon",
+        recipe: { metal: 1 },
+        modifier: 3,
+        stat: StatType.Health,
+        name: "Greatsword",
+        slot: "hand",
+        twoHanded: true,
+      },
+      { equippable: true, equipped: false, destroyable: true, usable: false },
+      makeActions(),
+      makeEvents(),
+    );
+
+    expect(item.slot).toBe("hand");
+    expect(item.twoHanded).toBe(true);
+  });
+
+  it("leaves slot and twoHanded undefined when not authored", () => {
+    const item = new Item(
+      {
+        type: "consumable",
+        recipe: { healing: 1 },
+        modifier: 0,
+        stat: StatType.Health,
+        name: "Potion",
+      },
+      { equippable: false, equipped: false, destroyable: true, usable: true },
+      makeActions(),
+      makeEvents(),
+    );
+
+    expect(item.slot).toBeUndefined();
+    expect(item.twoHanded).toBeUndefined();
+  });
+
+  it("accepts the accessory item type", () => {
+    const ring = new Item(
+      {
+        type: "accessory",
+        recipe: { metal: 1 },
+        modifier: 2,
+        stat: StatType.Sanity,
+        name: "Ring of Calm",
+        slot: "finger",
+      },
+      { equippable: true, equipped: false, destroyable: true, usable: false },
+      makeActions(),
+      makeEvents(),
+    );
+
+    expect(ring.type).toBe("accessory");
+    expect(ring.slot).toBe("finger");
+  });
+});
+
 describe("teaches", () => {
   const recipe: CraftingRecipe = {
     id: "iron-sword" as RecipeId,
