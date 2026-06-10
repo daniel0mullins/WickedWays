@@ -297,6 +297,10 @@ export class Character implements ICharacter {
           "Attempted to add to inventory, but character doesn't have enough slots!",
         );
       }
+      // A picked-up item may impart a recipe to the whole party.
+      if (current.teaches) {
+        this.campaign.discoverRecipe(current.teaches);
+      }
     }
     this.recordAction(this.addToInventory, {
       kind: "pickUp",
