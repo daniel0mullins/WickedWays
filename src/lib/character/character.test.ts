@@ -11,6 +11,10 @@ import type { ActionHistoryEntry } from "./history";
 import { StatType, type Stats } from "./stats";
 
 import { makeCampaign, makeStats } from "../../test-utils";
+import { Campaign } from "../campaign";
+import { Room } from "../room";
+import { MaterialCache } from "../material-cache";
+import type { ExitsArg } from "../../test-utils";
 
 // ---------------------------------------------------------------------------
 // Test doubles
@@ -597,6 +601,59 @@ describe("Character", () => {
       const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: true });
 
       expect(() => character.consumeKey(key)).toThrow(ProceduralViolation);
+    });
+  });
+
+  describe("harvest", () => {
+    function setup() {
+      const campaign = new Campaign("Materials");
+      const character = new Character(campaign, "Hero", makeStats());
+      const cache = new MaterialCache({ metal: 3, glass: 1 });
+      const room = new Room("Vault", "a vault", [], {} as ExitsArg, [cache]);
+      character.move(room);
+      return { campaign, character, cache };
+    }
+
+    it("deposits a co-located cache into the party pool and depletes it", () => {
+      const { campaign, character, cache } = setup();
+
+      character.harvest(cache);
+
+      expect(campaign.materials).toEqual({ metal: 3, glass: 1 });
+      expect(cache.depleted).toBe(true);
+    });
+
+    it("is idempotent: a second harvest deposits nothing more", () => {
+      const { campaign, character, cache } = setup();
+
+      character.harvest(cache);
+      character.harvest(cache);
+
+      expect(campaign.materials).toEqual({ metal: 3, glass: 1 });
+    });
+
+    it("throws when the cache is not in the current room", () => {
+      const { character } = setup();
+      const stray = new MaterialCache({ metal: 9 });
+
+      expect(() => character.harvest(stray)).toThrow(ProceduralViolation);
+    });
+
+    it("throws when the character is in no room", () => {
+      const character = new Character(new Campaign("Materials"), "Hero", makeStats());
+      const cache = new MaterialCache({ metal: 1 });
+
+      // move() was never called, so currentRoom is null.
+      expect(() => character.harvest(cache)).toThrow(ProceduralViolation);
+    });
+
+    it("does not consume an action (records no history)", () => {
+      const { character, cache } = setup();
+      const before = character.history.length;
+
+      character.harvest(cache);
+
+      expect(character.history.length).toBe(before);
     });
   });
 
