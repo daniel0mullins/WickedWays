@@ -399,11 +399,17 @@ Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
 
 ---
 
-### Task 4: Destroy deposits its recipe into the party pool
+### Task 4: Destroy deposits its recipe into the party pool (and removes the item)
 
 **Files:**
 - Modify: `src/lib/inventory.ts:287-295` (the `Item.Destroy` action wrapper)
 - Test: `src/lib/inventory.test.ts`
+
+> **Note:** This task also fixes a pre-existing bug folded in during review — `Item.Destroy`
+> never removed the destroyed item from its holder, leaving a "ghost" (still in the inventory
+> list, `heldBy` still set). The fix removes it **silently** via `relinquishItem` + `CLAIM(null)`
+> — not `removeFromInventory` — so destroying logs no `"drop"` and stays free, consistent with
+> the "destroy is free" decision.
 
 - [ ] **Step 1: Update the test holder stub and write the failing deposit tests**
 
@@ -420,6 +426,7 @@ function makeHolder(): ICharacter {
   return {
     holderKind: "character",
     removeFromInventory: vi.fn(),
+    relinquishItem: vi.fn(),
     hasRoomForItem: vi.fn(() => true),
     receiveItem: vi.fn(),
     campaign: { [DEPOSIT_MATERIALS]: vi.fn() },
@@ -432,12 +439,14 @@ Add this describe block after the existing `describe("destroy guard (destroyable
 ```ts
 describe("destroy deposits recipe into the party pool", () => {
   it("deposits the item's recipe when destroyed", () => {
-    const { item } = makeItem({ destroyable: true });
+    const { item, actions } = makeItem({ destroyable: true });
     const holder = makeHolder();
     hold(item, holder);
 
     item.actions.destroy();
 
+    // The core action must run for the deposit to be legitimate.
+    expect(actions.destroy).toHaveBeenCalled();
     expect(holder.campaign[DEPOSIT_MATERIALS]).toHaveBeenCalledWith(item.recipe);
   });
 
@@ -452,9 +461,24 @@ describe("destroy deposits recipe into the party pool", () => {
   });
 
   it("deposits nothing when the item is not held", () => {
-    const { item } = makeItem({ destroyable: true });
+    const { item, actions } = makeItem({ destroyable: true });
 
+    // Unheld: the wrapper short-circuits to null before the underlying destroy
+    // runs, so the deposit line (which follows it) is never reached.
     expect(item.actions.destroy()).toBeNull();
+    expect(actions.destroy).not.toHaveBeenCalled();
+  });
+
+  it("removes the destroyed item from the holder and unhomes it", () => {
+    const { item } = makeItem({ destroyable: true });
+    const holder = makeHolder();
+    hold(item, holder);
+
+    item.actions.destroy();
+
+    expect(holder.relinquishItem).toHaveBeenCalledWith(item);
+    expect(holder.removeFromInventory).not.toHaveBeenCalled();
+    expect(heldBy(item)).toBeNull();
   });
 });
 ```
@@ -464,9 +488,9 @@ describe("destroy deposits recipe into the party pool", () => {
 Run: `npx vitest run src/lib/inventory.test.ts -t "deposits recipe"`
 Expected: FAIL — `holder.campaign[DEPOSIT_MATERIALS]` was not called (the wrapper does not deposit yet).
 
-- [ ] **Step 3: Wire the Destroy wrapper to deposit**
+- [ ] **Step 3: Wire the Destroy wrapper to deposit and remove the item**
 
-In `src/lib/inventory.ts`, change the `[ItemAction.Destroy]` wrapper so it deposits the item's `recipe` into the holder's campaign pool before firing the event:
+In `src/lib/inventory.ts`, change the `[ItemAction.Destroy]` wrapper so it deposits the item's `recipe` into the holder's campaign pool, then removes the consumed item from the holder:
 
 ```ts
       [ItemAction.Destroy]: () => {
@@ -479,16 +503,21 @@ In `src/lib/inventory.ts`, change the `[ItemAction.Destroy]` wrapper so it depos
         // single source of truth for both scrap-yield and (later) craft-cost.
         holder.campaign[DEPOSIT_MATERIALS](this.recipe);
         events.onDestroy?.(holder, components);
+        // The item is consumed: pull it from the holder and unhome it so it does
+        // not linger as a ghost. Removal is silent — relinquishItem, not
+        // removeFromInventory — so destroying logs no "drop" and stays free.
+        holder.relinquishItem(this);
+        this[CLAIM](null);
         return components;
       },
 ```
 
-(`DEPOSIT_MATERIALS` is already defined in this file from Task 1; no new import needed. `holder.campaign` is typed `ICampaign`, which declares `[DEPOSIT_MATERIALS]`.)
+(`DEPOSIT_MATERIALS` and `CLAIM` are already defined in this file from Task 1 / earlier; no new import needed. `holder.campaign` is typed `ICampaign`, which declares `[DEPOSIT_MATERIALS]`; `relinquishItem` comes from `IItemHolder`.)
 
 - [ ] **Step 4: Run the full inventory suite to verify it passes (and existing destroy tests still pass)**
 
 Run: `npx vitest run src/lib/inventory.test.ts`
-Expected: PASS — the three new tests plus all pre-existing `Item`/`createKey` tests (the updated `makeHolder` keeps the existing `destroy` and `createKey` tests green).
+Expected: PASS — the four new tests plus all pre-existing `Item`/`createKey` tests (the updated `makeHolder` keeps the existing `destroy` and `createKey` tests green).
 
 - [ ] **Step 5: Commit**
 

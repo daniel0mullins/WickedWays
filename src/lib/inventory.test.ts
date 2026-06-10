@@ -31,6 +31,7 @@ function makeHolder(): ICharacter {
   return {
     holderKind: "character",
     removeFromInventory: vi.fn(),
+    relinquishItem: vi.fn(),
     hasRoomForItem: vi.fn(() => true),
     receiveItem: vi.fn(),
     campaign: { [DEPOSIT_MATERIALS]: vi.fn() },
@@ -300,6 +301,21 @@ describe("Item", () => {
       // runs, so the deposit line (which follows it) is never reached.
       expect(item.actions.destroy()).toBeNull();
       expect(actions.destroy).not.toHaveBeenCalled();
+    });
+
+    it("removes the destroyed item from the holder and unhomes it", () => {
+      const { item } = makeItem({ destroyable: true });
+      const holder = makeHolder();
+      hold(item, holder);
+
+      item.actions.destroy();
+
+      // A destroyed item must leave the inventory and be unhomed — not linger as
+      // a ghost. Removal is silent (relinquish, not removeFromInventory): no
+      // "drop" log and no action cost, since destroying is free and not a drop.
+      expect(holder.relinquishItem).toHaveBeenCalledWith(item);
+      expect(holder.removeFromInventory).not.toHaveBeenCalled();
+      expect(heldBy(item)).toBeNull();
     });
   });
 
