@@ -54,7 +54,8 @@ export const SLOT_KIND: Record<EquipmentSlot, SlotKind> = {
 
 /**
  * The default humanoid set of named slots, in canonical fill order (used when
- * `equip` auto-assigns a free slot of a kind).
+ * `equip` auto-assigns a free slot of a kind): head/torso/legs/feet, two wrists,
+ * two hands, and two ring fingers per hand (the index and ring fingers).
  */
 export const DEFAULT_EQUIPMENT_SLOTS: readonly EquipmentSlot[] = [
   EquipmentSlot.Head,
