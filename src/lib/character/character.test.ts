@@ -785,6 +785,104 @@ describe("Character", () => {
     });
   });
 
+  describe("craft (key track)", () => {
+    it("consumes required keys and places the crafted key in the keyring", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      const bronze1 = createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false });
+      const bronze2 = createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false });
+      character.addToInventory(bronze1);
+      character.addToInventory(bronze2);
+
+      const recipeId = "silver-key" as RecipeId;
+      const silverKey = createKey({ name: "Silver Key", keyCode: "silver", consumeOnUse: false });
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        keys: [{ keyCode: "bronze", qty: 2 }],
+        create: () => silverKey,
+      };
+      campaign.discoverRecipe(recipe);
+
+      const result = character.craft(recipeId);
+
+      expect(result).toBe(silverKey);
+      expect(character.inventory.keys).toContain(silverKey);
+      const bronzeCount = character.inventory.keys.filter(
+        (k) => k.keyCode === "bronze",
+      ).length;
+      expect(bronzeCount).toBe(0);
+    });
+
+    it("throws and consumes nothing when a required key is missing", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      const bronze1 = createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false });
+      character.addToInventory(bronze1);
+
+      const recipeId = "silver-key-2" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        keys: [{ keyCode: "bronze", qty: 2 }],
+        create: () => createKey({ name: "Silver Key", keyCode: "silver", consumeOnUse: false }),
+      };
+      campaign.discoverRecipe(recipe);
+
+      expect(() => character.craft(recipeId)).toThrow(ProceduralViolation);
+      const bronzeCount = character.inventory.keys.filter(
+        (k) => k.keyCode === "bronze",
+      ).length;
+      expect(bronzeCount).toBe(1);
+    });
+
+    it("combines duplicate key codes into a single total cost", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      character.addToInventory(
+        createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false }),
+      );
+
+      // Two entries for the same code demand two keys in total, not one each.
+      const recipeId = "silver-key-3" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        keys: [
+          { keyCode: "bronze", qty: 1 },
+          { keyCode: "bronze", qty: 1 },
+        ],
+        create: () => createKey({ name: "Silver Key", keyCode: "silver", consumeOnUse: false }),
+      };
+      campaign.discoverRecipe(recipe);
+
+      // Only one bronze held, so it falls short and consumes nothing.
+      expect(() => character.craft(recipeId)).toThrow(ProceduralViolation);
+      const bronzeCount = character.inventory.keys.filter(
+        (k) => k.keyCode === "bronze",
+      ).length;
+      expect(bronzeCount).toBe(1);
+    });
+
+    it("does not consume an action (records no history)", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      character.addToInventory(
+        createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false }),
+      );
+
+      const recipeId = "silver-key-4" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        keys: [{ keyCode: "bronze", qty: 1 }],
+        create: () => createKey({ name: "Silver Key", keyCode: "silver", consumeOnUse: false }),
+      };
+      campaign.discoverRecipe(recipe);
+
+      const before = character.history.length;
+      character.craft(recipeId);
+
+      expect(character.history.length).toBe(before);
+    });
+  });
+
   describe("action history", () => {
     it("records a move with the destination room id and name", () => {
       const character = makeCharacter();
