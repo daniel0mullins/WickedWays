@@ -4,7 +4,7 @@ import type { IItem, ItemId } from "../inventory";
 import type { IRoom } from "../room";
 
 import { Campaign } from "../campaign";
-import { CLAIM, HELD_BY, createKey } from "../inventory";
+import { CLAIM, HELD_BY, Item, createKey } from "../inventory";
 import { Loot } from "../loot";
 import { ProceduralViolation } from "../util";
 import { Character } from "./character";
@@ -32,6 +32,30 @@ function makeWeapon(opts: {
       usable: false,
     },
   } as unknown as IItem;
+}
+
+function makeDurableWeapon(opts: {
+  modifier?: number;
+  stat?: StatType;
+  maxDurability: number;
+  durability?: number;
+  equipped?: boolean;
+}): Item {
+  const noop = () => {};
+  return new Item(
+    {
+      type: "weapon",
+      recipe: { metal: 2 },
+      modifier: opts.modifier ?? 3,
+      stat: opts.stat ?? StatType.Health,
+      name: "Sword",
+      maxDurability: opts.maxDurability,
+      durability: opts.durability,
+    },
+    { equippable: true, equipped: opts.equipped ?? true, destroyable: true, usable: false },
+    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    { onPickUp: noop },
+  );
 }
 
 function makePc(opts: { inventorySlots?: number } = {}) {
@@ -235,6 +259,67 @@ describe("PlayerCharacter", () => {
       pc.attack(defender);
 
       expect(defender.takeDamage).toHaveBeenCalledWith(1, StatType.Health);
+    });
+
+    describe("weapon durability", () => {
+      it("wears an equipped durable weapon by one per attack", () => {
+        const pc = makePc();
+        const weapon = makeDurableWeapon({ modifier: 3, maxDurability: 3 });
+        pc.inventory.items.push(weapon);
+        const defender = makeDefender();
+
+        pc.attack(defender);
+
+        expect(defender.takeDamage).toHaveBeenCalledWith(3, StatType.Health);
+        expect(weapon.durability).toBe(2);
+      });
+
+      it("breaks a weapon that reaches 0, after its hit lands", () => {
+        const pc = makePc();
+        const weapon = makeDurableWeapon({ modifier: 3, maxDurability: 1 });
+        pc.inventory.items.push(weapon);
+        const defender = makeDefender();
+
+        pc.attack(defender);
+
+        expect(defender.takeDamage).toHaveBeenCalledWith(3, StatType.Health);
+        expect(weapon.isBroken).toBe(true);
+      });
+
+      it("a broken weapon contributes nothing (falls back to unarmed)", () => {
+        const pc = makePc();
+        pc.inventory.items.push(
+          makeDurableWeapon({ modifier: 3, maxDurability: 1, durability: 0 }),
+        );
+        const defender = makeDefender();
+
+        pc.attack(defender);
+
+        expect(defender.takeDamage).toHaveBeenCalledTimes(1);
+        expect(defender.takeDamage).toHaveBeenCalledWith(1, StatType.Health);
+      });
+
+      it("does not wear a non-durable weapon", () => {
+        const pc = makePc();
+        pc.inventory.items.push(makeWeapon({ modifier: 2, stat: StatType.Health }));
+        const defender = makeDefender();
+
+        expect(() => pc.attack(defender)).not.toThrow();
+        expect(defender.takeDamage).toHaveBeenCalledWith(2, StatType.Health);
+      });
+
+      it("wears each equipped durable weapon independently", () => {
+        const pc = makePc();
+        const a = makeDurableWeapon({ modifier: 2, stat: StatType.Health, maxDurability: 4 });
+        const b = makeDurableWeapon({ modifier: 1, stat: StatType.Health, maxDurability: 4 });
+        pc.inventory.items.push(a, b);
+        const defender = makeDefender();
+
+        pc.attack(defender);
+
+        expect(a.durability).toBe(3);
+        expect(b.durability).toBe(3);
+      });
     });
 
     it("records the attack target in the attacker's history", () => {
