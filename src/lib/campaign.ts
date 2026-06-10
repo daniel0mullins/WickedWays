@@ -36,6 +36,10 @@ export interface ICampaign {
   get round(): number;
 
   // ### Methods
+  /** Whether the pool currently holds at least `mats`. */
+  canAfford: (mats: MaterialMap) => boolean;
+  /** Removes materials from the pool. Throws if the pool is short. */
+  withdrawMaterials: (mats: MaterialMap) => void;
   /** Starts the campaign once a valid party and GM are in place. */
   beginCampaign: () => void;
   /** Marks a running campaign finished. */
@@ -288,6 +292,43 @@ export class Campaign implements ICampaign {
     >) {
       if (qty === undefined) continue;
       this.#materials[component] = (this.#materials[component] ?? 0) + qty;
+    }
+  }
+
+  /**
+   * @param mats - Quantities to test against the pool.
+   * @returns Whether every requested component is present at ≥ the requested amount.
+   */
+  canAfford(mats: MaterialMap): boolean {
+    return (
+      typedEntries(mats) as Array<[keyof MaterialMap, number | undefined]>
+    ).every(
+      ([component, qty]) =>
+        qty === undefined || (this.#materials[component] ?? 0) >= qty,
+    );
+  }
+
+  /**
+   * Spends materials from the pool, removing any component that reaches zero. The
+   * pool is checked up front, so a failed withdrawal leaves it unchanged.
+   *
+   * @param mats - Quantities to remove, by component type.
+   * @throws {@link ProceduralViolation} if the pool cannot cover `mats`.
+   */
+  withdrawMaterials(mats: MaterialMap) {
+    if (!this.canAfford(mats)) {
+      throw new ProceduralViolation("Insufficient materials in the party pool.");
+    }
+    for (const [component, qty] of typedEntries(mats) as Array<
+      [keyof MaterialMap, number | undefined]
+    >) {
+      if (qty === undefined) continue;
+      const remaining = (this.#materials[component] ?? 0) - qty;
+      if (remaining > 0) {
+        this.#materials[component] = remaining;
+      } else {
+        delete this.#materials[component];
+      }
     }
   }
 }
