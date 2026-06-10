@@ -4,12 +4,22 @@ import { Campaign } from "./campaign";
 import type { IPlayerCharacter } from "./character/player-character";
 import { ProceduralViolation } from "./util";
 import { DEPOSIT_MATERIALS } from "./inventory";
+import type { CraftingRecipe, RecipeId } from "./crafting";
+import type { IItem } from "./inventory";
 
 // `Campaign` only stores players and compares them by identity, so distinct
 // stub objects cast to `IPlayerCharacter` are enough (WeakMap needs objects).
 let counter = 0;
 function makePlayer(): IPlayerCharacter {
   return { id: `pc-${++counter}` } as unknown as IPlayerCharacter;
+}
+
+function makeRecipe(id: string): CraftingRecipe {
+  return {
+    id: id as RecipeId,
+    materials: { metal: 1 },
+    create: () => ({ name: id }) as unknown as IItem,
+  };
 }
 
 function makeCampaign(
@@ -414,6 +424,41 @@ describe("Campaign", () => {
       campaign.claimMaterials("b", { metal: 2 });
 
       expect(campaign.materials).toEqual({ metal: 5 });
+    });
+  });
+
+  describe("known recipes", () => {
+    it("starts with no known recipes", () => {
+      expect(new Campaign("C").knownRecipes.size).toBe(0);
+    });
+
+    it("discoverRecipe makes a recipe known", () => {
+      const campaign = new Campaign("C");
+
+      campaign.discoverRecipe(makeRecipe("iron-sword"));
+
+      expect(campaign.knows("iron-sword" as RecipeId)).toBe(true);
+    });
+
+    it("keeps the first definition when an id is rediscovered", () => {
+      const campaign = new Campaign("C");
+      const first = makeRecipe("dup");
+      const second: CraftingRecipe = {
+        id: "dup" as RecipeId,
+        materials: { metal: 9 },
+        create: () => ({ name: "OTHER" }) as unknown as IItem,
+      };
+
+      campaign.discoverRecipe(first);
+      campaign.discoverRecipe(second);
+
+      expect(campaign.knownRecipes.get("dup" as RecipeId)).toBe(first);
+    });
+
+    it("seeds known recipes from the constructor", () => {
+      const campaign = new Campaign("C", 100, [makeRecipe("seeded")]);
+
+      expect(campaign.knows("seeded" as RecipeId)).toBe(true);
     });
   });
 });
