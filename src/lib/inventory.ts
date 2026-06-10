@@ -368,11 +368,19 @@ export class Item implements IItem {
       [ItemAction.Equip]: () => {
         const holder = this.#characterHolder();
         if (!holder) return;
+        if (this.slot !== undefined) {
+          holder.equip(this);
+          return;
+        }
         this[EQUIP](holder);
       },
       [ItemAction.Unequip]: () => {
         const holder = this.#characterHolder();
         if (!holder) return;
+        if (this.slot !== undefined) {
+          holder.unequip(this);
+          return;
+        }
         this[UNEQUIP](holder);
       },
       [ItemAction.Transfer]: (_c, cc) => {
