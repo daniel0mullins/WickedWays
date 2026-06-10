@@ -1,6 +1,7 @@
 import { Brand } from "./brand";
 import { IPlayerCharacter } from "./character/player-character";
-import { generateId, ProceduralViolation } from "./util";
+import { DEPOSIT_MATERIALS, type MaterialMap } from "./inventory";
+import { generateId, ProceduralViolation, typedEntries } from "./util";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -17,6 +18,10 @@ export interface ICampaign {
   /** The player characters taking part, in turn order. */
   party: IPlayerCharacter[];
   title: string;
+  /** Read-only view of the party's shared raw-material pool. */
+  get materials(): Readonly<MaterialMap>;
+  /** Adds raw materials to the pool. Engine-internal; see {@link DEPOSIT_MATERIALS}. */
+  [DEPOSIT_MATERIALS](mats: MaterialMap): void;
 
   /** Round count at which the campaign automatically ends. */
   readonly maxRounds: number;
@@ -31,6 +36,12 @@ export interface ICampaign {
   get round(): number;
 
   // ### Methods
+  /** Whether the pool currently holds at least `mats`. */
+  canAfford: (mats: MaterialMap) => boolean;
+  /** Removes materials from the pool. Throws if the pool is short. */
+  withdrawMaterials: (mats: MaterialMap) => void;
+  /** Grants materials once per `claimId`; later calls with the same id are ignored. */
+  claimMaterials: (claimId: string, mats: MaterialMap) => void;
   /** Starts the campaign once a valid party and GM are in place. */
   beginCampaign: () => void;
   /** Marks a running campaign finished. */
@@ -62,6 +73,8 @@ export class Campaign implements ICampaign {
   #gm: IPlayerCharacter | undefined;
   readonly maxRounds: number;
 
+  #materials: MaterialMap = {};
+  #claims: Set<string> = new Set<string>();
   #started = false;
   #finished = false;
   #activeCharacterIndex: number = 0;
@@ -69,6 +82,19 @@ export class Campaign implements ICampaign {
 
   get round() {
     return this.#round;
+  }
+
+  get materials(): Readonly<MaterialMap> {
+    return { ...this.#materials };
+  }
+
+  /**
+   * Guards against replacing the pool wholesale.
+   * @throws {@link ProceduralViolation} always — deposit via the engine-internal
+   *   {@link DEPOSIT_MATERIALS} or {@link Campaign.claimMaterials}.
+   */
+  set materials(_value: MaterialMap) {
+    throw new ProceduralViolation("Cannot set 'materials' directly");
   }
 
   get gm() {
@@ -254,5 +280,74 @@ export class Campaign implements ICampaign {
   transfer(c: IPlayerCharacter) {
     this.#assertRunning();
     this.#gm = c;
+  }
+
+  /**
+   * Adds raw materials to the party pool, summing by component. Engine-internal:
+   * the Item Destroy wrapper, {@link Character.harvest}, and
+   * {@link Campaign.claimMaterials} are its only callers.
+   *
+   * @param mats - Quantities to add, by component type.
+   */
+  [DEPOSIT_MATERIALS](mats: MaterialMap) {
+    for (const [component, qty] of typedEntries(mats) as Array<
+      [keyof MaterialMap, number | undefined]
+    >) {
+      if (qty === undefined) continue;
+      this.#materials[component] = (this.#materials[component] ?? 0) + qty;
+    }
+  }
+
+  /**
+   * @param mats - Quantities to test against the pool.
+   * @returns Whether every requested component is present at ≥ the requested amount.
+   */
+  canAfford(mats: MaterialMap): boolean {
+    return (
+      typedEntries(mats) as Array<[keyof MaterialMap, number | undefined]>
+    ).every(
+      ([component, qty]) =>
+        qty === undefined || (this.#materials[component] ?? 0) >= qty,
+    );
+  }
+
+  /**
+   * Grants materials once per `claimId`. The first call with a given id deposits
+   * and records the id; later calls with the same id are no-ops. The farm-proof
+   * public grant for scene/quest scripts that have no physical cache.
+   *
+   * @param claimId - A stable id identifying this one-time grant.
+   * @param mats - Quantities to grant on the first claim.
+   */
+  claimMaterials(claimId: string, mats: MaterialMap) {
+    if (this.#claims.has(claimId)) {
+      return;
+    }
+    this.#claims.add(claimId);
+    this[DEPOSIT_MATERIALS](mats);
+  }
+
+  /**
+   * Spends materials from the pool, removing any component that reaches zero. The
+   * pool is checked up front, so a failed withdrawal leaves it unchanged.
+   *
+   * @param mats - Quantities to remove, by component type.
+   * @throws {@link ProceduralViolation} if the pool cannot cover `mats`.
+   */
+  withdrawMaterials(mats: MaterialMap) {
+    if (!this.canAfford(mats)) {
+      throw new ProceduralViolation("Insufficient materials in the party pool");
+    }
+    for (const [component, qty] of typedEntries(mats) as Array<
+      [keyof MaterialMap, number | undefined]
+    >) {
+      if (qty === undefined) continue;
+      const remaining = (this.#materials[component] ?? 0) - qty;
+      if (remaining > 0) {
+        this.#materials[component] = remaining;
+      } else {
+        delete this.#materials[component];
+      }
+    }
   }
 }

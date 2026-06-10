@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Campaign } from "./campaign";
 import type { IPlayerCharacter } from "./character/player-character";
 import { ProceduralViolation } from "./util";
+import { DEPOSIT_MATERIALS } from "./inventory";
 
 // `Campaign` only stores players and compares them by identity, so distinct
 // stub objects cast to `IPlayerCharacter` are enough (WeakMap needs objects).
@@ -317,6 +318,102 @@ describe("Campaign", () => {
       expect(() => {
         campaign.gm = other;
       }).toThrow(ProceduralViolation);
+    });
+  });
+
+  describe("material pool", () => {
+    it("starts empty", () => {
+      expect(new Campaign("Materials").materials).toEqual({});
+    });
+
+    it("sums deposits by component", () => {
+      const campaign = new Campaign("Materials");
+
+      campaign[DEPOSIT_MATERIALS]({ metal: 2 });
+      campaign[DEPOSIT_MATERIALS]({ metal: 3, glass: 1 });
+
+      expect(campaign.materials).toEqual({ metal: 5, glass: 1 });
+    });
+
+    it("exposes a copy that cannot mutate the pool", () => {
+      const campaign = new Campaign("Materials");
+      campaign[DEPOSIT_MATERIALS]({ metal: 2 });
+
+      (campaign.materials as Record<string, number>).metal = 99;
+
+      expect(campaign.materials).toEqual({ metal: 2 });
+    });
+
+    it("throws when materials is assigned directly", () => {
+      const campaign = new Campaign("Materials");
+
+      expect(() => {
+        (campaign as unknown as { materials: unknown }).materials = {};
+      }).toThrow(ProceduralViolation);
+    });
+  });
+
+  describe("canAfford / withdrawMaterials", () => {
+    function stocked(): Campaign {
+      const campaign = new Campaign("Materials");
+      campaign[DEPOSIT_MATERIALS]({ metal: 5, glass: 2 });
+      return campaign;
+    }
+
+    it("affords amounts within the pool", () => {
+      expect(stocked().canAfford({ metal: 5, glass: 1 })).toBe(true);
+    });
+
+    it("does not afford amounts beyond the pool", () => {
+      expect(stocked().canAfford({ metal: 6 })).toBe(false);
+      expect(stocked().canAfford({ electronics: 1 })).toBe(false);
+    });
+
+    it("subtracts withdrawn materials and removes zeroed components", () => {
+      const campaign = stocked();
+
+      campaign.withdrawMaterials({ metal: 5, glass: 1 });
+
+      expect(campaign.materials).toEqual({ glass: 1 });
+    });
+
+    it("throws and leaves the pool unchanged when short", () => {
+      const campaign = stocked();
+
+      expect(() => campaign.withdrawMaterials({ metal: 6 })).toThrow(
+        ProceduralViolation,
+      );
+      expect(campaign.materials).toEqual({ metal: 5, glass: 2 });
+    });
+  });
+
+  describe("claimMaterials", () => {
+    it("deposits on the first claim of an id", () => {
+      const campaign = new Campaign("Materials");
+
+      campaign.claimMaterials("vault-stash", { metal: 3 });
+
+      expect(campaign.materials).toEqual({ metal: 3 });
+    });
+
+    it("ignores a repeated claim id", () => {
+      const campaign = new Campaign("Materials");
+
+      campaign.claimMaterials("vault-stash", { metal: 3 });
+      // A different payload on the repeat proves the call is ignored entirely,
+      // not merely deduped to a coincidentally-equal amount.
+      campaign.claimMaterials("vault-stash", { metal: 99 });
+
+      expect(campaign.materials).toEqual({ metal: 3 });
+    });
+
+    it("deposits again for a different id", () => {
+      const campaign = new Campaign("Materials");
+
+      campaign.claimMaterials("a", { metal: 3 });
+      campaign.claimMaterials("b", { metal: 2 });
+
+      expect(campaign.materials).toEqual({ metal: 5 });
     });
   });
 });

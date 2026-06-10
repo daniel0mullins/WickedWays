@@ -1,6 +1,7 @@
 import { Brand } from "./brand";
 import { CharacterId, ICharacter } from "./character/character";
 import { ILoot, LootId } from "./loot";
+import type { IMaterialCache, MaterialCacheId } from "./material-cache";
 import { IScene, Scene } from "./scene";
 import { generateId, ProceduralViolation } from "./util";
 
@@ -33,6 +34,8 @@ export interface IRoom {
   description: string;
   /** Loot containers present in the room, keyed by id. */
   loot: Map<LootId, ILoot>;
+  /** Material caches present in the room, keyed by id. */
+  materials: Map<MaterialCacheId, IMaterialCache>;
   /** Adjacent rooms keyed by the direction that leads to them. */
   exits: Map<Direction, IRoom>;
 
@@ -61,6 +64,7 @@ export class Room implements IRoom {
   name: string;
   description: string;
   loot: Map<LootId, ILoot>;
+  materials: Map<MaterialCacheId, IMaterialCache>;
   exits: Map<Direction, IRoom>;
   #occupants: Map<CharacterId, ICharacter>;
   #scenes: IScene[];
@@ -83,12 +87,14 @@ export class Room implements IRoom {
    * @param description - Flavour text shown to players.
    * @param loot - Loot containers initially present in the room.
    * @param exits - Initial exits keyed by direction.
+   * @param materials - Material caches initially present in the room.
    */
   constructor(
     name: string,
     description: string,
     loot: ILoot[],
     exits: Record<Direction, IRoom>,
+    materials: IMaterialCache[] = [],
   ) {
     this.id = generateId<RoomId>();
     this.name = name;
@@ -99,6 +105,11 @@ export class Room implements IRoom {
     this.loot = new Map<LootId, ILoot>();
     for (const lootBatch of loot) {
       this.loot.set(lootBatch.id, lootBatch);
+    }
+
+    this.materials = new Map<MaterialCacheId, IMaterialCache>();
+    for (const cache of materials) {
+      this.materials.set(cache.id, cache);
     }
 
     this.exits = new Map<Direction, IRoom>();

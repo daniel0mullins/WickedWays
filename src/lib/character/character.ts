@@ -1,6 +1,7 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { CLAIM, IItem, IItemHolder, Inventory } from "../inventory";
+import { CLAIM, DEPOSIT_MATERIALS, IItem, IItemHolder, Inventory } from "../inventory";
+import { DEPLETE, type IMaterialCache } from "../material-cache";
 import { IRoom } from "../room";
 import { Status, StatusMatrix } from "../status";
 
@@ -70,6 +71,8 @@ export interface ICharacter extends IItemHolder {
   removeFromInventory: (item: IItem) => void;
   /** Hands a key to another character (keyring to keyring; the only way keys change hands). */
   transferKey: (key: IItem, recipient: ICharacter) => void;
+  /** Harvests a co-located material cache into the party pool (free; idempotent). */
+  harvest: (cache: IMaterialCache) => void;
   /** Spends a key, removing it from the keyring. The sanctioned "story consumed this key" path. */
   consumeKey: (key: IItem) => void;
   /** Logs an action to history and advances the turn if the budget is spent. */
@@ -370,6 +373,23 @@ export class Character implements ICharacter {
     }
     this.relinquishItem(key);
     recipient.addToInventory(key);
+  }
+
+  /**
+   * Harvests a material cache in the character's current room into the party
+   * pool. Idempotent: harvesting an already-depleted cache deposits nothing. Free
+   * — it does not consume a budgeted action.
+   *
+   * @param cache - A cache present in the character's current room.
+   * @throws {@link ProceduralViolation} if the cache is not in the current room.
+   */
+  harvest(cache: IMaterialCache) {
+    if (!this.#currentRoom?.materials.has(cache.id)) {
+      throw new ProceduralViolation(
+        "Cannot harvest a material cache that is not in the current room",
+      );
+    }
+    this.campaign[DEPOSIT_MATERIALS](cache[DEPLETE]());
   }
 
   /**

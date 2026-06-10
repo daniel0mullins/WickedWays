@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ICharacter } from "./character/character";
 import { StatType } from "./character/stats";
-import { CLAIM, Item, createKey, type IItemHolder } from "./inventory";
+import { CLAIM, DEPOSIT_MATERIALS, Item, createKey, type IItemHolder } from "./inventory";
 import { ProceduralViolation } from "./util";
 
 // `ItemProperties` is not exported, so we recover the shape the constructor
@@ -31,8 +31,10 @@ function makeHolder(): ICharacter {
   return {
     holderKind: "character",
     removeFromInventory: vi.fn(),
+    relinquishItem: vi.fn(),
     hasRoomForItem: vi.fn(() => true),
     receiveItem: vi.fn(),
+    campaign: { [DEPOSIT_MATERIALS]: vi.fn() },
   } as unknown as ICharacter;
 }
 
@@ -266,6 +268,54 @@ describe("Item", () => {
       expect(item.actions.destroy()).toBeNull();
       expect(actions.destroy).not.toHaveBeenCalled();
       expect(events.onDestroy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("destroy deposits recipe into the party pool", () => {
+    it("deposits the item's recipe when destroyed", () => {
+      const { item, actions } = makeItem({ destroyable: true });
+      const holder = makeHolder();
+      hold(item, holder);
+
+      item.actions.destroy();
+
+      // The core action must run for the deposit to be legitimate.
+      expect(actions.destroy).toHaveBeenCalled();
+      expect(holder.campaign[DEPOSIT_MATERIALS]).toHaveBeenCalledWith(item.recipe);
+    });
+
+    it("deposits nothing for a non-destroyable item", () => {
+      const { item } = makeItem({ destroyable: false });
+      const holder = makeHolder();
+      hold(item, holder);
+
+      item.actions.destroy();
+
+      expect(holder.campaign[DEPOSIT_MATERIALS]).not.toHaveBeenCalled();
+    });
+
+    it("deposits nothing when the item is not held", () => {
+      const { item, actions } = makeItem({ destroyable: true });
+
+      // Unheld: the wrapper short-circuits to null before the underlying destroy
+      // runs, so the deposit line (which follows it) is never reached.
+      expect(item.actions.destroy()).toBeNull();
+      expect(actions.destroy).not.toHaveBeenCalled();
+    });
+
+    it("removes the destroyed item from the holder and unhomes it", () => {
+      const { item } = makeItem({ destroyable: true });
+      const holder = makeHolder();
+      hold(item, holder);
+
+      item.actions.destroy();
+
+      // A destroyed item must leave the inventory and be unhomed — not linger as
+      // a ghost. Removal is silent (relinquish, not removeFromInventory): no
+      // "drop" log and no action cost, since destroying is free and not a drop.
+      expect(holder.relinquishItem).toHaveBeenCalledWith(item);
+      expect(holder.removeFromInventory).not.toHaveBeenCalled();
+      expect(heldBy(item)).toBeNull();
     });
   });
 
