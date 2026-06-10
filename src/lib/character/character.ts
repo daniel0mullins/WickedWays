@@ -190,19 +190,26 @@ export class Character implements ICharacter {
   }
 
   #resolveStatuses() {
-    if (this.stats[StatType.Health] <= 0) {
-      this.stats[StatType.Health] = 0;
-      this.#status.set(Status.KO, true);
-    } else {
-      this.#status.set(Status.KO, false);
-    }
+    // Floor each BASE stat at 0, unconditionally. (Previously this happened inside
+    // each status branch; it is now decoupled from the status decision so the
+    // flags below can read the effective stat without losing the base clamp.)
+    this.stats[StatType.Health] = Math.max(0, this.stats[StatType.Health]);
+    this.stats[StatType.Sanity] = Math.max(0, this.stats[StatType.Sanity]);
+    this.stats[StatType.Energy] = Math.max(0, this.stats[StatType.Energy]);
 
-    if (this.stats[StatType.Sanity] <= 0) {
-      this.stats[StatType.Sanity] = 0;
+    // Status flags read the EFFECTIVE stat (base + equipped accessory modifiers),
+    // so a worn ring can stave off an affliction; removing it re-applies it at the
+    // next resolution. Damage is still applied to the base stat in takeDamage.
+    const health = this.effectiveStat(StatType.Health);
+    const sanity = this.effectiveStat(StatType.Sanity);
+    const energy = this.effectiveStat(StatType.Energy);
 
+    this.#status.set(Status.KO, health <= 0);
+
+    if (sanity <= 0) {
       this.#status.set(Status.Panic, true);
       this.#status.set(Status.Fear, false);
-    } else if (this.stats[StatType.Sanity] < 5) {
+    } else if (sanity < 5) {
       this.#status.set(Status.Panic, false);
       this.#status.set(Status.Fear, true);
     } else {
@@ -210,10 +217,12 @@ export class Character implements ICharacter {
       this.#status.set(Status.Fear, false);
     }
 
-    if (this.stats[StatType.Energy] <= 0) {
-      this.stats[StatType.Energy] = 0;
+    // Preserve the existing hysteresis: Confused is set at <= 0 and cleared only
+    // above 1, left unchanged in (0, 1] — the dead band keeps Confused from
+    // flickering on and off as effective Energy oscillates around the boundary.
+    if (energy <= 0) {
       this.#status.set(Status.Confused, true);
-    } else if (this.stats[StatType.Energy] > 1) {
+    } else if (energy > 1) {
       this.#status.set(Status.Confused, false);
     }
   }

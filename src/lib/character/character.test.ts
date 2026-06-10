@@ -33,6 +33,9 @@ function makeItem(id?: string): IItem {
   return {
     id: itemId,
     name: itemId,
+    // Minimal but contract-complete: `properties` is required on IItem and is
+    // read by effectiveStat (now reached via #resolveStatuses on every turn).
+    properties: { equippable: false, equipped: false, destroyable: true, usable: false },
     actions: { pickUp: vi.fn() },
     [CLAIM]: (h: unknown) => {
       holder = h;
@@ -482,6 +485,57 @@ describe("Character", () => {
 
         expect(character.stats[StatType.Health]).toBeCloseTo(5);
       });
+    });
+  });
+
+  describe("status thresholds read the effective stat (lazy)", () => {
+    function ringFor(stat: StatType, modifier: number): Item {
+      return makeGear({ type: "accessory", slot: "finger", stat, modifier });
+    }
+
+    it("a +Health ring staves off KO when base health hits 0", () => {
+      // Sanity 0 => health multiplier (10-0)*0.2 = 2; 2 damage * 2 = 4 vs 2 health => base floored to 0.
+      const hero = makeCharacter({ stats: { [StatType.Health]: 2, [StatType.Sanity]: 0 } });
+      const ring = ringFor(StatType.Health, 3);
+      hero.inventory.items.push(ring);
+      hero.equip(ring);
+
+      hero.takeDamage(2);
+
+      expect(hero.stats[StatType.Health]).toBe(0);     // base floored
+      expect(hero.status).not.toContain(Status.KO);    // effective health = 0 + 3 > 0
+    });
+
+    it("removing the life-saving ring re-KOs at the next resolution trigger (lazy)", () => {
+      const hero = makeCharacter({ stats: { [StatType.Health]: 2, [StatType.Sanity]: 0 } });
+      const ring = ringFor(StatType.Health, 3);
+      hero.inventory.items.push(ring);
+      hero.equip(ring);
+      hero.takeDamage(2);
+      expect(hero.status).not.toContain(Status.KO);
+
+      hero.unequip(ring);                               // pure slot op — status not yet refreshed
+      hero.startTurn();                                 // next resolution trigger
+      expect(hero.status).toContain(Status.KO);         // effective health now 0
+    });
+
+    it("a +Sanity ring above the Fear threshold prevents Fear", () => {
+      // Base sanity 4 (< 5) would be Fear; +2 ring => effective 6 => no Fear.
+      const hero = makeCharacter({ stats: { [StatType.Sanity]: 4 } });
+      const ring = ringFor(StatType.Sanity, 2);
+      hero.inventory.items.push(ring);
+      hero.equip(ring);
+
+      hero.startTurn();                                 // resolution trigger
+
+      expect(hero.status).not.toContain(Status.Fear);
+    });
+
+    it("still floors the base stat at 0 regardless of rings", () => {
+      const hero = makeCharacter({ stats: { [StatType.Sanity]: 1, [StatType.Energy]: 0 } });
+      // Energy 0 => sanity multiplier 2; 5 * 2 = 10 vs sanity 1 => base floored to 0.
+      hero.takeDamage(5, StatType.Sanity);
+      expect(hero.stats[StatType.Sanity]).toBe(0);
     });
   });
 
