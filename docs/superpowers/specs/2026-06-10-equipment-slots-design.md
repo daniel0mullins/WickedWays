@@ -29,69 +29,94 @@ passively buff the wearer's stats while equipped.
 
 One spec, **two sequential implementation plans** (each its own PR):
 
-- **④a — Equipment slots & handedness:** slot model, per-character capacities, validated
-  `equip`/`unequip` with auto-swap, two-handed weapons, the `accessory` item type and the
-  `Ring` slot. This alone makes equipping bounded (the existing attack/armor filters become
-  naturally capped because you can no longer over-equip).
+- **④a — Equipment slots & handedness:** slot model (item slot *kinds* + the character's
+  named, single-occupancy slots), validated `equip`/`unequip` with auto-swap, two-handed
+  weapons, the `accessory` item type and the finger slots. This alone makes equipping bounded
+  (the existing attack/armor filters become naturally capped because you can no longer
+  over-equip).
 - **④b — Passive ring effects:** the effective-stat layer — worn rings add their `modifier`
   to the wearer's effective stat, and the combat/status stat reads consume the effective
   value. Depends on ④a (rings must exist as equippable slot items first).
 
-Out of scope (YAGNI / deferred): per-character/anatomy-configurable capacities (humanoid
-defaults are fixed constants); non-ring accessory effects; accessory durability; equipping
+Out of scope (YAGNI / deferred): per-character anatomy variation and losing individual named
+slots (humanoid default slot set is fixed); non-ring accessory effects; accessory durability;
+equipping
 costing an action (it stays free, as today).
 
 ---
 
 ## ④a — Equipment slots & handedness
 
-### Slot model (`src/lib/inventory.ts`)
+### Slot kinds vs. named slots
 
-- New `EquipmentSlot` enum: `Hand`, `Head`, `Torso`, `Legs`, `Feet`, `Wrist`, `Ring`.
+The model separates the **kind** of slot an item fits from the **named, single-occupancy
+slot positions** a character actually has. This is what makes the anatomy addressable: a
+future spec can remove an individual named slot (a lost finger/limb) without touching item
+data.
+
+- **`SlotKind`** (the category an item fits): `Hand`, `Finger`, `Wrist`, `Head`, `Torso`,
+  `Legs`, `Feet`.
+- **`EquipmentSlot`** (a character's discrete, named positions, each holding ≤ 1 item):
+  `Head`, `Torso`, `Legs`, `Feet`, `LeftWrist`, `RightWrist`, `LeftHand`, `RightHand`,
+  `LeftIndexFinger`, `LeftRingFinger`, `RightIndexFinger`, `RightRingFinger`.
+- A constant `SLOT_KIND: Record<EquipmentSlot, SlotKind>` maps each named slot to its kind
+  (e.g. `LeftIndexFinger → Finger`, `RightHand → Hand`, `LeftWrist → Wrist`).
+
+### Item slot fields (`src/lib/inventory.ts`)
+
 - New `ItemType` value: `accessory` (rings, and future trinkets). Keeps rings out of the
   `weapon`/`armor` combat filters, which key on `type`.
 - `Item` / `IItem` gain (authored, optional, immutable):
-  - `slot?: EquipmentSlot` — where the item equips. Absent ⇒ not slot-equippable.
-  - `twoHanded?: boolean` — weapons only; a two-handed weapon consumes both hand slots.
+  - `slot?: SlotKind` — the kind of slot the item fits. Absent ⇒ not slot-equippable.
+  - `twoHanded?: boolean` — weapons only; a two-handed weapon occupies BOTH hand slots
+    (`LeftHand` + `RightHand`).
 - Threaded through the constructor descriptor exactly like the durability fields.
-- Authoring: weapon → `slot: Hand` (+ optional `twoHanded: true`); armor → a body slot
+- Authoring: weapon → `slot: Hand` (+ optional `twoHanded: true`); armor → a body kind
   (`Head`/`Torso`/`Legs`/`Feet`/`Wrist`), still `type: "armor"`, still mitigates per ③;
-  ring → `type: "accessory"`, `slot: Ring` (its `stat`/`modifier` are its future buff, inert
-  until ④b).
+  ring → `type: "accessory"`, `slot: Finger` (its `stat`/`modifier` are its future buff,
+  inert until ④b).
 
-### Per-character capacity (`src/lib/character/character.ts`)
+### Character anatomy (`src/lib/character/character.ts`)
 
-A fixed default capacity map (humanoid):
+A character has a fixed default set of the named `EquipmentSlot`s above (humanoid: head,
+torso, legs, feet, two wrists, two hands, **two rings per hand** on the index and ring
+fingers — four finger slots total). Each named slot holds at most one item; a two-handed
+weapon spans both hand slots. The character tracks occupancy in an equipment map
+`Map<EquipmentSlot, IItem>`; `item.properties.equipped` mirrors map membership so the
+existing combat filters keep working unchanged.
 
-```
-Hand 2, Head 1, Torso 1, Legs 1, Feet 1, Wrist 2, Ring 8
-```
-
-A two-handed weapon counts as occupying **2** hand units; everything else occupies 1 unit
-of its slot. (Per-character/anatomy overrides are deferred.)
+(Per-character/anatomy variation — non-humanoids, and the future digit/limb-loss mechanic
+that removes individual named slots — is deferred. The named-slot model is chosen now
+specifically so that mechanic can later drop a single slot from a character's set.)
 
 ### Validated equip / unequip (`src/lib/character/character.ts`)
 
-The character owns equip logic (only it knows every held item). New methods:
+The character owns equip logic (only it knows every held item and which slots are filled).
+New methods:
 
-- `Character.equip(item)`:
-  1. Guard: the item is held, `properties.equippable`, and has a `slot`; else throw
+- `Character.equip(item, targetSlot?)`:
+  1. Guard: the item is held, `properties.equippable`, and has a `slot` (kind); else throw
      `ProceduralViolation`.
-  2. Compute current occupants of that slot = held items with `equipped === true` and the
-     same `slot`. Occupancy is summed in **units** (a two-handed weapon = 2 hand units).
-  3. Required units = 2 for a two-handed weapon, else 1. If `occupiedUnits + required >
-     capacity`, **auto-swap**: unequip occupants in inventory order until enough units free.
-     (Equipping a 1-handed weapon while a two-handed weapon is worn frees both hands by
-     displacing it; equipping a two-handed weapon displaces whatever occupies the hands.)
-  4. Mark the item equipped (firing the item's existing `equip` action / `onEquip`).
-- `Character.unequip(item)`: clears `equipped` (firing `unequip`/`onUnequip`). Guard: item
-  is held and currently equipped.
+  2. **Eligible slots** = the character's named slots whose kind === the item's `slot` kind
+     (e.g. a ring → the four finger slots; a 1-handed weapon → `LeftHand`/`RightHand`).
+     If the character has no slot of that kind (e.g. a lost limb, later), throw.
+  3. **Resolve the target named slot:**
+     - If `targetSlot` is given, it must be an eligible slot (right kind, exists on the
+       character); else throw.
+     - If omitted, pick the first **free** eligible slot in a fixed canonical order; if none
+       is free, **auto-swap** the occupant of the first eligible slot.
+  4. **Two-handed weapons** ignore a single `targetSlot` and require both `LeftHand` and
+     `RightHand`; auto-swap displaces whatever occupies either hand.
+  5. Place the item: set the equipment map for the slot(s), mark it equipped (firing the
+     item's existing `equip` action / `onEquip`). A displaced occupant is unequipped first.
+- `Character.unequip(item)`: find the item's slot(s) in the equipment map, clear them, mark
+  it unequipped (firing `unequip`/`onUnequip`). Guard: item is held and currently equipped.
 - Both are **free** (not registered as budgeted actions; no `recordAction`) — matching how
   equipping behaves today.
-- Displaced items remain in inventory, simply `equipped === false`.
+- Displaced items remain in inventory, simply `equipped === false` (and absent from the map).
 
 `Character.equip`/`unequip` become the sanctioned entry points; the raw item-level
-`actions.equip` is rerouted to flow through them so capacity can't be bypassed.
+`actions.equip` is rerouted to flow through them so slot capacity can't be bypassed.
 
 ### Effect on combat filters
 
@@ -108,17 +133,24 @@ equipped. Auto-swap is the defined behavior for a full slot (it does **not** thr
 
 ### ④a testing
 
-- Slot/`twoHanded` authoring and threading.
-- Capacity enforcement: equipping up to capacity succeeds; the next equip auto-swaps a
-  displaced occupant (in inventory order; single-capacity slots: head/torso/legs/feet;
-  multi: wrist 2, ring 8).
-- Hands: two 1-handed weapons fill both hands; a third auto-swaps; a two-handed weapon
-  displaces both hands; equipping a 1-handed weapon while a two-handed is worn displaces it.
-- Displaced items stay in inventory, unequipped.
-- Guards throw (unheld / non-equippable / slot-less / unequip-not-equipped).
+- `slot` (kind) / `twoHanded` authoring and threading; the `SLOT_KIND` map covers every
+  named slot.
+- Single-occupancy: equipping into an empty named slot fills it; equipping another item of
+  that kind into an occupied slot auto-swaps the occupant (e.g. a second helm displaces the
+  first from `Head`).
+- Auto-assign vs. explicit target: with `targetSlot` omitted, a ring goes to the first free
+  finger; with all four fingers full, the first finger's ring is displaced. With `targetSlot`
+  given, the ring lands on that exact finger (and a wrong-kind or absent target throws).
+- Two rings per hand: the four finger slots fill, then auto-swap; a fifth ring can't add a
+  fifth finger.
+- Hands: two 1-handed weapons fill `LeftHand`/`RightHand`; a two-handed weapon displaces
+  both; equipping a 1-handed weapon while a two-handed is worn displaces the two-handed one.
+- Displaced items stay in inventory, unequipped, and out of the equipment map.
+- Guards throw (unheld / non-equippable / slot-less / no-such-slot-kind / bad targetSlot /
+  unequip-not-equipped).
 - equip/unequip record no history (free).
-- The attack/armor sums are now bounded by equip capacity (a regression test that you can't
-  stack 3 weapons into the attack).
+- The attack/armor sums are now bounded by the named slots (regression: you can't stack a
+  third weapon into the attack).
 
 ---
 
@@ -127,11 +159,12 @@ equipped. Auto-swap is the defined behavior for a full slot (it does **not** thr
 ### Effective stat (`src/lib/character/character.ts`)
 
 - New `Character.effectiveStat(stat: StatType): number` =
-  `this.stats[stat]` + Σ `modifier` of equipped items where `slot === Ring` and
-  `item.stat === stat`. Additive (four +2-Sanity rings ⇒ +8). Base stats are never mutated.
+  `this.stats[stat]` + Σ `modifier` of equipped items where `type === "accessory"` (i.e.
+  rings, slot kind `Finger`) and `item.stat === stat`. Additive (with two fingers per hand,
+  up to four +2-Sanity rings ⇒ +8). Base stats are never mutated.
 - Rings reuse the existing `stat`/`modifier` fields: a ring authored
-  `{ type: "accessory", slot: Ring, stat: Sanity, modifier: 2 }` grants **+2 effective Sanity**
-  while worn.
+  `{ type: "accessory", slot: Finger, stat: Sanity, modifier: 2 }` grants **+2 effective
+  Sanity** while worn.
 
 ### Read routing
 
@@ -161,7 +194,8 @@ Every character stat **read** switches from `this.stats[x]` to `this.effectiveSt
   unequipping re-KOs.
 - Lossless: equip → take damage (base drops) → unequip restores no buff to base; base reflects
   only real damage, effective reflects rings.
-- Additivity across multiple rings; ring-slot capacity (8) interplay from ④a.
+- Additivity across multiple rings; interplay with the four finger slots from ④a (a fifth
+  ring auto-swaps rather than stacking a fifth bonus).
 
 ### Seam (④b)
 
