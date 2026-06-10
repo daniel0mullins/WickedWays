@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ICharacter } from "./character/character";
 import { StatType } from "./character/stats";
-import { CLAIM, DEPOSIT_MATERIALS, Item, SET_DURABILITY, createKey, type IItem, type IItemHolder } from "./inventory";
+import { CLAIM, DEPOSIT_MATERIALS, EQUIP, Item, SET_DURABILITY, UNEQUIP, createKey, type IItem, type IItemHolder } from "./inventory";
 import { ProceduralViolation } from "./util";
 import type { CraftingRecipe, RecipeId } from "./crafting";
 
@@ -235,6 +235,31 @@ describe("Item", () => {
       item.actions.unequip(makeHolder());
 
       expect(actions.unequip).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("equip seam", () => {
+    it("EQUIP runs the behavior, toggles equipped, and fires onEquip", () => {
+      const { item, actions, events } = makeItem();
+      const holder = makeHolder();
+
+      item[EQUIP](holder);
+
+      expect(item.properties.equipped).toBe(true);
+      expect(actions.equip).toHaveBeenCalledWith(holder);
+      expect(events.onEquip).toHaveBeenCalledWith(holder);
+    });
+
+    it("UNEQUIP runs the behavior, clears equipped, and fires onUnequip", () => {
+      const { item, actions, events } = makeItem();
+      const holder = makeHolder();
+      item[EQUIP](holder);
+
+      item[UNEQUIP](holder);
+
+      expect(item.properties.equipped).toBe(false);
+      expect(actions.unequip).toHaveBeenCalledWith(holder);
+      expect(events.onUnequip).toHaveBeenCalledWith(holder);
     });
   });
 
