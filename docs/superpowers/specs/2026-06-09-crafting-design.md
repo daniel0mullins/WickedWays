@@ -85,7 +85,7 @@ teaches the recipe via a findable **blueprint** item and simply never spawns the
 | Recipe storage | Recipes **travel with** the teaching item / seed list; no central pre-registry. |
 | Known recipes | Party-wide on `Campaign` (`#knownRecipes`), seeded at construction. |
 | Discovery trigger | **Picking up** an item that carries `teaches` (plus a script primitive). |
-| Recipe id | Author-chosen `string` (like `keyCode`), not a generated brand. |
+| Recipe id | Author-chosen **branded** `RecipeId` (`Brand<string, "RecipeId">`), cast at the authoring boundary. |
 | Craft action cost | **Free** — no budget tick, not recorded in history. |
 | Output destination | The crafter's own inventory (keyring for keys, a slot for items). |
 | Full inventory | Item-track craft throws if the crafter has no free slot. |
@@ -100,8 +100,12 @@ New module `crafting.ts` (a small, focused file in the `material-cache.ts` / `st
 mould):
 
 ```ts
-/** Author-chosen recipe identifier (semantic, like a key's code — not generated). */
-export type RecipeId = string;
+/**
+ * Author-chosen recipe identifier (semantic, like a key's code, but branded so a
+ * stray `string` can't be passed where a recipe id is expected). Authors cast
+ * their literal at the boundary: `"iron-sword" as RecipeId`.
+ */
+export type RecipeId = Brand<string, "RecipeId">;
 
 /** A quantity of keys a key recipe consumes, matched by code. */
 export type KeyCost = { keyCode: string; qty: number };
@@ -116,10 +120,10 @@ export type CraftingRecipe =
   | { id: RecipeId; keys: KeyCost[]; create: () => IItem };
 ```
 
-`crafting.ts` imports `IItem` and `MaterialMap` from `inventory.ts` **type-only**, so the
-inventory↔crafting reference (items carry `teaches?: CraftingRecipe`) is a compile-time-only
-cycle — erased at runtime, no import loop. Craft logic discriminates with `"materials" in
-recipe`.
+`crafting.ts` imports `Brand` from `./brand` and `IItem` / `MaterialMap` from `inventory.ts`
+**type-only**, so the inventory↔crafting reference (items carry `teaches?: CraftingRecipe`) is a
+compile-time-only cycle — erased at runtime, no import loop. Craft logic discriminates with
+`"materials" in recipe`.
 
 ### 2. Items can teach a recipe
 
