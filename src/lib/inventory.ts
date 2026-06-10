@@ -143,6 +143,16 @@ export const HELD_BY = Symbol.for("heldBy");
 export const DEPOSIT_MATERIALS = Symbol("depositMaterials");
 
 /**
+ * Symbol-keyed setter for an item's current durability.
+ *
+ * Durability is read publicly but written only through this symbol, so wear
+ * (combat) and repair are the sole mutation paths. The setter clamps to
+ * `[0, maxDurability]`; on an item with no durability it is a no-op. Follows the
+ * same privileged-mutator pattern as {@link CLAIM} and {@link DEPOSIT_MATERIALS}.
+ */
+export const SET_DURABILITY = Symbol("setDurability");
+
+/**
  * A game item: a typed, craftable object that lives in a holder's inventory and
  * can be picked up, equipped, used, transferred, or destroyed via {@link IItem.actions}.
  */
@@ -158,6 +168,14 @@ export interface IItem {
   readonly keyCode?: string;
   /** For keys only: whether spending the key (consumeKey) is expected on use. */
   readonly consumeOnUse?: boolean;
+  /** Max durability for equipment that wears; absent for items without durability. */
+  readonly maxDurability?: number;
+  /** Current durability in `[0, maxDurability]`; absent when the item has no durability. */
+  readonly durability?: number;
+  /** True when the item has durability and it has reached 0. */
+  readonly isBroken: boolean;
+  /** Sets durability, clamped to `[0, maxDurability]`; for combat/repair internals only. See {@link SET_DURABILITY}. */
+  [SET_DURABILITY](value: number): void;
   /** The item's current holder, or `null` when unheld. See {@link HELD_BY}. */
   readonly [HELD_BY]: ItemHolder | null;
   /** Reassigns the item's holder; for holder internals only. See {@link CLAIM}. */
@@ -186,6 +204,23 @@ export class Item implements IItem {
   actions: ItemActions;
   readonly keyCode?: string;
   readonly consumeOnUse?: boolean;
+  readonly maxDurability?: number;
+  #durability?: number;
+
+  get durability(): number | undefined {
+    return this.#durability;
+  }
+
+  get isBroken(): boolean {
+    return this.maxDurability !== undefined && this.#durability === 0;
+  }
+
+  [SET_DURABILITY](value: number) {
+    // No durability to mutate. (A degenerate `maxDurability: 0` author error is
+    // tolerated, not guarded: it clamps every write to 0, i.e. always-broken.)
+    if (this.maxDurability === undefined) return;
+    this.#durability = Math.max(0, Math.min(this.maxDurability, value));
+  }
 
   #heldBy: ItemHolder | null = null;
 
@@ -218,6 +253,8 @@ export class Item implements IItem {
    * @param descriptor.modifier - Strength applied when the item affects `stat`.
    * @param descriptor.stat - The {@link StatType} this item acts on.
    * @param descriptor.name - Display name.
+   * @param descriptor.maxDurability - Max durability for equipment that wears (optional).
+   * @param descriptor.durability - Starting durability; defaults to `maxDurability`.
    * @param properties - Initial mutable flags (equippable, equipped, …).
    * @param actions - Core behaviour for each interaction; wrapped on construction.
    * @param events - Observer hooks fired after the matching action runs.
@@ -231,6 +268,8 @@ export class Item implements IItem {
       name,
       keyCode,
       consumeOnUse,
+      maxDurability,
+      durability,
     }: {
       type: ItemType;
       recipe: Recipe;
@@ -239,6 +278,8 @@ export class Item implements IItem {
       name: string;
       keyCode?: string;
       consumeOnUse?: boolean;
+      maxDurability?: number;
+      durability?: number;
     },
     properties: ItemProperties,
     actions: ItemActions,
@@ -253,6 +294,11 @@ export class Item implements IItem {
     this.properties = properties;
     this.keyCode = keyCode;
     this.consumeOnUse = consumeOnUse;
+    this.maxDurability = maxDurability;
+    this.#durability =
+      maxDurability === undefined
+        ? undefined
+        : Math.max(0, Math.min(maxDurability, durability ?? maxDurability));
 
     this.actions = {
       [ItemAction.PickUp]: (c) => {

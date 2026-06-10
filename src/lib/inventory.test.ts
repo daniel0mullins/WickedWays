@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ICharacter } from "./character/character";
 import { StatType } from "./character/stats";
-import { CLAIM, DEPOSIT_MATERIALS, Item, createKey, type IItemHolder } from "./inventory";
+import { CLAIM, DEPOSIT_MATERIALS, Item, SET_DURABILITY, createKey, type IItemHolder } from "./inventory";
 import { ProceduralViolation } from "./util";
 
 // `ItemProperties` is not exported, so we recover the shape the constructor
@@ -78,6 +78,76 @@ function makeItem(propsOverride: Partial<ItemPropsArg> = {}) {
   );
   return { item, actions, events, properties };
 }
+
+function makeDurable(maxDurability?: number, durability?: number) {
+  return new Item(
+    {
+      type: "weapon",
+      recipe: { metal: 1 },
+      modifier: 2,
+      stat: StatType.Health,
+      name: "Sword",
+      maxDurability,
+      durability,
+    },
+    { equippable: true, equipped: false, destroyable: true, usable: true },
+    makeActions(),
+    makeEvents(),
+  );
+}
+
+describe("durability", () => {
+  it("defaults current durability to maxDurability when not authored", () => {
+    const item = makeDurable(10);
+    expect(item.maxDurability).toBe(10);
+    expect(item.durability).toBe(10);
+    expect(item.isBroken).toBe(false);
+  });
+
+  it("honors an authored starting durability", () => {
+    expect(makeDurable(10, 4).durability).toBe(4);
+  });
+
+  it("clamps an authored durability into [0, maxDurability]", () => {
+    expect(makeDurable(10, 99).durability).toBe(10);
+    expect(makeDurable(10, -5).durability).toBe(0);
+  });
+
+  it("is broken when durability reaches 0", () => {
+    const item = makeDurable(10, 0);
+    expect(item.isBroken).toBe(true);
+  });
+
+  it("has no durability when maxDurability is omitted", () => {
+    const item = makeDurable();
+    expect(item.maxDurability).toBeUndefined();
+    expect(item.durability).toBeUndefined();
+    expect(item.isBroken).toBe(false);
+  });
+
+  it("clamps the privileged setter to [0, maxDurability]", () => {
+    const item = makeDurable(5);
+    item[SET_DURABILITY](3);
+    expect(item.durability).toBe(3);
+    item[SET_DURABILITY](-2);
+    expect(item.durability).toBe(0);
+    item[SET_DURABILITY](99);
+    expect(item.durability).toBe(5);
+  });
+
+  it("is a no-op setter on an item with no durability", () => {
+    const item = makeDurable();
+    item[SET_DURABILITY](3);
+    expect(item.durability).toBeUndefined();
+  });
+
+  it("leaves keys without durability", () => {
+    const key = createKey({ name: "Brass Key", keyCode: "brass", consumeOnUse: false });
+    expect(key.maxDurability).toBeUndefined();
+    expect(key.durability).toBeUndefined();
+    expect(key.isBroken).toBe(false);
+  });
+});
 
 describe("Item", () => {
   describe("constructor", () => {
