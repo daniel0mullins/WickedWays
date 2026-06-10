@@ -2,15 +2,15 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give characters explicit, single-occupancy equipment slots (head/torso/legs/feet, two wrists, two hands, two ring fingers per hand), validated `equip`/`unequip` with auto-swap, and two-handed weapons that span both hands — so equipped gear is bounded.
+**Goal:** Give characters explicit, single-occupancy equipment slots (head/torso/legs/feet, two wrists, two hands, two ring fingers per hand), validated `equip`/`unequip` with auto-swap, and two-handed weapons that span both hands — so equipped gear is bounded and can't be bypassed.
 
-**Architecture:** A new `equipment.ts` module defines item slot **kinds** (`SlotKind`) and a character's named **slot positions** (`EquipmentSlot`) plus the `SLOT_KIND` map and the default humanoid slot set. Items gain a `slot` (kind) and `twoHanded` flag. `Character` tracks occupancy in a `Map<EquipmentSlot, IItem>` and exposes `equip(item, targetSlot?)` / `unequip(item)` that validate, auto-assign or target a named slot, and auto-swap conflicts. The existing combat filters (`attack`, `takeDamage`) are untouched — they read `properties.equipped`, which `equip`/`unequip` keep in sync, and are now naturally bounded because equipping is capped.
+**Architecture:** A new `equipment.ts` module defines item slot **kinds** (`SlotKind`) and a character's named **slot positions** (`EquipmentSlot`) plus the `SLOT_KIND` map and the default humanoid slot set. Items gain a `slot` (kind) and `twoHanded` flag. `Item` exposes symbol-keyed low-level `[EQUIP]`/`[UNEQUIP]` methods (the `CLAIM`/`SET_DURABILITY` privileged-mutator pattern). `Character` tracks occupancy in a `Map<EquipmentSlot, IItem>` and exposes validated `equip(item, targetSlot?)` / `unequip(item)`. The public `item.actions.equip` wrapper routes *slotted* items through `Character.equip`, so capacity holds even via the item's own API. The combat filters (`attack`, `takeDamage`) are untouched — they read `properties.equipped`, which the seam keeps in sync, and are now naturally bounded.
 
 **Tech Stack:** TypeScript (strict, NodeNext), Vitest, typescript-eslint (recommendedTypeChecked).
 
 **Design spec:** `docs/superpowers/specs/2026-06-10-equipment-slots-design.md`
 
-**Scope note — deviation from the spec to confirm:** The spec said to *reroute* `item.actions.equip` through `Character.equip`. Doing that literally needs an invasive low-level seam on `Item` (to avoid wrapper↔character recursion) and risks the existing equip tests. Instead, this plan makes `Character.equip`/`unequip` the **validated entry points** and keeps `item.actions.equip` as a **low-level toggle** — exactly the existing `receiveItem`/`relinquishItem` (low-level) vs `addToInventory`/`removeFromInventory` (validated) split already in the codebase. Equip done through `Character.equip` is fully slot-checked; the only "bypass" is calling the low-level `item.actions.equip()` directly, the same kind of low-level door the codebase already leaves open. If a hard no-bypass guarantee is wanted, add the `EQUIP`/`UNEQUIP` symbol seam as a follow-up task.
+**Design note — the equip seam (no-bypass guarantee):** Per the spec, `item.actions.equip` is rerouted through `Character.equip` so slot capacity can't be bypassed even via the item's own API. A naive reroute loops forever (`item.actions.equip` → `holder.equip` → `item.actions.equip` …). To break it, `Item` gains symbol-keyed low-level `[EQUIP]`/`[UNEQUIP]` methods that do the *terminal* toggle (run the author behavior, flip `properties.equipped`, fire `onEquip`/`onUnequip`) and never route back out. The public `actions.equip` wrapper routes a **slotted** item to `holder.equip(this)`; `Character.equip` performs the terminal step via `item[EQUIP](this)`. **Slotless** items (the pre-existing equippables) keep the legacy inline toggle, so existing equip tests stay green. **Task 3** introduces the seam (pure refactor); **Task 4** wires `Character.equip` and the reroute.
 
 This is sub-project **④a**. ④b (passive ring effects / effective-stat layer) is a separate plan that builds on this.
 
@@ -20,10 +20,11 @@ This is sub-project **④a**. ④b (passive ring effects / effective-stat layer)
 
 - `src/lib/equipment.ts` — **create.** `SlotKind`, `EquipmentSlot`, `SLOT_KIND`, `DEFAULT_EQUIPMENT_SLOTS`. Pure data, no deps.
 - `src/lib/equipment.test.ts` — **create.** Unit-test the constants/mapping.
-- `src/lib/inventory.ts` — **modify.** Add `accessory` `ItemType`; add `slot?: SlotKind` and `twoHanded?: boolean` to `IItem`/`Item` + constructor descriptor.
-- `src/lib/inventory.test.ts` — **modify.** Authoring of `slot`/`twoHanded`.
-- `src/lib/character/character.ts` — **modify.** Equipment map + `equip`/`unequip` + `equipment` getter on `ICharacter`/`Character`.
-- `src/lib/character/character.test.ts` — **modify.** Equip/unequip/auto-swap/handedness tests + the seam.
+- `src/lib/inventory.ts` — **modify.** Add `accessory` `ItemType`; `slot?: SlotKind` and `twoHanded?: boolean` on `Item`; the `EQUIP`/`UNEQUIP` symbol seam; the slot-aware equip/unequip wrapper reroute.
+- `src/lib/inventory.test.ts` — **modify.** Authoring of `slot`/`twoHanded`; the low-level seam.
+- `src/lib/character/character.ts` — **modify.** Equipment map + validated `equip`/`unequip` + `equipment` getter on `ICharacter`/`Character`.
+- `src/lib/character/character.test.ts` — **modify.** Equip/unequip/auto-swap/handedness + no-bypass.
+- `src/lib/character/player-character.test.ts` — **modify.** The capping seam.
 
 A note on running filtered tests: Vitest treats `-t` patterns as regex, so **do not** put `()` in a `-t` filter. The steps below run whole test files.
 
@@ -195,7 +196,7 @@ EOF
 
 - [ ] **Step 1: Write the failing tests**
 
-In `src/lib/inventory.test.ts`, add to the existing `describe("Item", …)` constructor area a new block (the file already imports `Item`, `StatType`, and has `makeActions`/`makeEvents`):
+In `src/lib/inventory.test.ts`, add to the existing `describe("Item", …)` area a new block (the file already imports `Item`, `StatType`, and has `makeActions`/`makeEvents`):
 
 ```ts
   describe("equipment slots", () => {
@@ -271,7 +272,7 @@ Expected: FAIL — `slot`/`twoHanded` are not accepted by the constructor and `"
 import type { SlotKind } from "./equipment";
 ```
 
-(b) Add `Accessory` to the `ItemType` map (so the union gains `"accessory"`):
+(b) Add `Accessory` to the `ItemType` map:
 
 ```ts
 const ItemType = {
@@ -300,7 +301,7 @@ const ItemType = {
   readonly twoHanded?: boolean;
 ```
 
-(e) Extend the constructor descriptor. Add `slot` and `twoHanded` to the destructure and its inline type:
+(e) Extend the constructor descriptor — add `slot` and `twoHanded` to the destructure and its inline type:
 
 ```ts
       teaches,
@@ -340,7 +341,7 @@ const ItemType = {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `npx vitest run src/lib/inventory.test.ts` → PASS (new block + existing item tests).
+Run: `npx vitest run src/lib/inventory.test.ts` → PASS.
 Then `npx tsc --noEmit` and `npx eslint src/lib/inventory.ts src/lib/inventory.test.ts` → clean.
 
 - [ ] **Step 5: Commit**
@@ -357,22 +358,179 @@ EOF
 
 ---
 
-## Task 3: Character equipment slots + validated equip/unequip (`character.ts`)
+## Task 3: The `EQUIP`/`UNEQUIP` low-level seam (`inventory.ts`)
+
+Extract the equip/unequip behavior into symbol-keyed low-level methods that the public
+wrappers delegate to. This is **behavior-preserving** — `item.actions.equip()` still does
+exactly what it did — but it gives `Character.equip` (Task 4) a terminal entry point to call,
+breaking the wrapper↔character recursion.
 
 **Files:**
-- Modify: `src/lib/character/character.ts`
+- Modify: `src/lib/inventory.ts`
+- Test: `src/lib/inventory.test.ts`
+
+- [ ] **Step 1: Write the failing test**
+
+In `src/lib/inventory.test.ts`, extend the inventory import to add `EQUIP`/`UNEQUIP`:
+
+```ts
+import { CLAIM, DEPOSIT_MATERIALS, EQUIP, Item, SET_DURABILITY, UNEQUIP, createKey, type IItem, type IItemHolder } from "./inventory";
+```
+
+Add a `describe` block (uses the existing `makeItem`/`makeHolder` helpers):
+
+```ts
+  describe("equip seam", () => {
+    it("EQUIP runs the behavior, toggles equipped, and fires onEquip", () => {
+      const { item, actions, events } = makeItem();
+      const holder = makeHolder();
+
+      item[EQUIP](holder);
+
+      expect(item.properties.equipped).toBe(true);
+      expect(actions.equip).toHaveBeenCalledWith(holder);
+      expect(events.onEquip).toHaveBeenCalledWith(holder);
+    });
+
+    it("UNEQUIP runs the behavior, clears equipped, and fires onUnequip", () => {
+      const { item, actions, events } = makeItem();
+      const holder = makeHolder();
+      item[EQUIP](holder);
+
+      item[UNEQUIP](holder);
+
+      expect(item.properties.equipped).toBe(false);
+      expect(actions.unequip).toHaveBeenCalledWith(holder);
+      expect(events.onUnequip).toHaveBeenCalledWith(holder);
+    });
+  });
+```
+
+(The pre-existing `describe("equip")` / `describe("unequip")` tests at the top of the file must
+keep passing unchanged.)
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `npx vitest run src/lib/inventory.test.ts`
+Expected: FAIL — `EQUIP`/`UNEQUIP` are not exported.
+
+- [ ] **Step 3: Implement in `src/lib/inventory.ts`**
+
+(a) Add the symbols (after the `SET_DURABILITY` declaration):
+
+```ts
+/**
+ * Symbol-keyed low-level equip/unequip. They run the item's author equip/unequip
+ * behavior, toggle `properties.equipped`, and fire the matching event — the
+ * terminal step, with no slot validation. Only {@link Character.equip}/`unequip`
+ * and the item's own action wrapper call them. Same privileged-mutator pattern as
+ * {@link CLAIM} and {@link SET_DURABILITY}.
+ */
+export const EQUIP = Symbol("equipItem");
+export const UNEQUIP = Symbol("unequipItem");
+```
+
+(b) In the `IItem` interface, add (near the `[SET_DURABILITY]` declaration):
+
+```ts
+  /** Low-level equip: runs behavior, sets `equipped`, fires `onEquip`. See {@link EQUIP}. */
+  [EQUIP](holder: ICharacter): void;
+  /** Low-level unequip: runs behavior, clears `equipped`, fires `onUnequip`. See {@link UNEQUIP}. */
+  [UNEQUIP](holder: ICharacter): void;
+```
+
+(c) In the `Item` class, add private fields to hold the equip/unequip behavior + events
+(the other wrappers keep using the constructor closures; these fields let the symbol methods
+reach the same callbacks):
+
+```ts
+  #equipBehavior: ItemActionEvent;
+  #unequipBehavior: ItemActionEvent;
+  #onEquip?: ItemActionEvent;
+  #onUnequip?: ItemActionEvent;
+```
+
+In the constructor (after the durability init), capture them:
+
+```ts
+    this.#equipBehavior = actions[ItemAction.Equip];
+    this.#unequipBehavior = actions[ItemAction.Unequip];
+    this.#onEquip = events.onEquip;
+    this.#onUnequip = events.onUnequip;
+```
+
+Add the methods (after the `#characterHolder()` method):
+
+```ts
+  [EQUIP](holder: ICharacter) {
+    this.#equipBehavior(holder);
+    this.properties.equipped = true;
+    this.#onEquip?.(holder);
+  }
+
+  [UNEQUIP](holder: ICharacter) {
+    this.#unequipBehavior(holder);
+    this.properties.equipped = false;
+    this.#onUnequip?.(holder);
+  }
+```
+
+(d) Change the public equip/unequip wrappers to delegate to the seam (behavior identical):
+
+```ts
+      [ItemAction.Equip]: () => {
+        const holder = this.#characterHolder();
+        if (!holder) return;
+        this[EQUIP](holder);
+      },
+      [ItemAction.Unequip]: () => {
+        const holder = this.#characterHolder();
+        if (!holder) return;
+        this[UNEQUIP](holder);
+      },
+```
+
+- [ ] **Step 4: Run the tests to verify they pass**
+
+Run: `npx vitest run src/lib/inventory.test.ts` → PASS (new seam tests + the pre-existing
+equip/unequip wrapper tests).
+Then `npx tsc --noEmit` and `npx eslint src/lib/inventory.ts src/lib/inventory.test.ts` → clean.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/lib/inventory.ts src/lib/inventory.test.ts
+git commit -m "$(cat <<'EOF'
+refactor: extract low-level EQUIP/UNEQUIP seam on Item
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+EOF
+)"
+```
+
+---
+
+## Task 4: Character equipment slots + validated equip + reroute
+
+Add the character-side equipment map and validated `equip`/`unequip`, then reroute the public
+item wrapper so a **slotted** item routes through `Character.equip` (no bypass). Slotless items
+keep the legacy inline toggle.
+
+**Files:**
+- Modify: `src/lib/character/character.ts`, `src/lib/inventory.ts`
 - Test: `src/lib/character/character.test.ts`
 
 - [ ] **Step 1: Write the failing tests**
 
-In `src/lib/character/character.test.ts`, add a real-`Item` gear helper near the existing `makeDurable` helper (the file already imports `Item`, `StatType`, `Campaign`, `makeStats`, `ProceduralViolation`; it builds real Items with noop actions). Then add the `describe("equip", …)` block. Add the imports for the slot enums at the top of the file:
+In `src/lib/character/character.test.ts`, add the import:
 
 ```ts
 import { EquipmentSlot } from "../equipment";
 ```
 
-Helper (module scope, next to `makeDurable`). **Reuse the existing `ItemDescriptor`
-type alias already defined in this file** (from the ③ work) — do NOT redeclare it:
+Add a real-`Item` gear helper at **module scope, next to `makeDurable`**. **Reuse the existing
+`ItemDescriptor` type alias** already defined in this file (from ③) — do NOT redeclare it (if
+it is missing, add `type ItemDescriptor = ConstructorParameters<typeof Item>[0];` once):
 
 ```ts
 function makeGear(opts: {
@@ -402,10 +560,7 @@ function makeGear(opts: {
 }
 ```
 
-(If the `ItemDescriptor` alias is not present, add `type ItemDescriptor =
-ConstructorParameters<typeof Item>[0];` once at module scope.)
-
-Tests:
+Add the `describe("equip", …)` block:
 
 ```ts
   describe("equip", () => {
@@ -468,7 +623,7 @@ Tests:
 
       const equipped = rings.filter((r) => r.properties.equipped);
       expect(equipped).toHaveLength(4); // only four finger slots
-      expect(rings[0].properties.equipped).toBe(false); // first displaced
+      expect(rings[0]!.properties.equipped).toBe(false); // first displaced
     });
 
     it("a two-handed weapon occupies both hands and displaces them", () => {
@@ -527,7 +682,6 @@ Tests:
 
       const ring = makeGear({ type: "accessory", slot: "finger" });
       hero.inventory.items.push(ring);
-      // a finger ring cannot target a head slot
       expect(() => hero.equip(ring, EquipmentSlot.Head)).toThrow(ProceduralViolation);
     });
 
@@ -545,6 +699,17 @@ Tests:
       hero.unequip(helm);
       expect(hero.history.length).toBe(before);
     });
+
+    it("equipping via the item's own action still validates the slot (no bypass)", () => {
+      const hero = new Character(new Campaign("Equip"), "Hero", makeStats());
+      const helm = makeGear({ type: "armor", slot: "head", name: "Helm" });
+      hero.addToInventory(helm); // claims the item to the hero (sets its holder)
+
+      helm.actions.equip(hero); // public low-level entry → routes to hero.equip
+
+      expect(hero.equipment.get(EquipmentSlot.Head)).toBe(helm);
+      expect(helm.properties.equipped).toBe(true);
+    });
   });
 ```
 
@@ -553,11 +718,14 @@ Tests:
 Run: `npx vitest run src/lib/character/character.test.ts`
 Expected: FAIL — `equip`/`unequip`/`equipment` do not exist.
 
-- [ ] **Step 3: Implement in `src/lib/character/character.ts`**
+- [ ] **Step 3: Implement**
 
-(a) Extend the inventory import to also import the equipment module:
+In `src/lib/character/character.ts`:
+
+(a) Add `EQUIP`/`UNEQUIP` to the inventory import and import the equipment module:
 
 ```ts
+import { CLAIM, DEPOSIT_MATERIALS, EQUIP, IItem, IItemHolder, Inventory, MaterialMap, SET_DURABILITY, UNEQUIP } from "../inventory";
 import {
   DEFAULT_EQUIPMENT_SLOTS,
   EquipmentSlot,
@@ -591,7 +759,8 @@ import {
   }
 ```
 
-(e) Add the methods (place after `repair`). They are **free** (no `recordAction`, not in `isActionMap`):
+(e) Add the methods (place after `repair`). They are **free** (no `recordAction`, not in
+`isActionMap`):
 
 ```ts
   /**
@@ -628,7 +797,7 @@ import {
       }
       this.#equipment.set(EquipmentSlot.LeftHand, item);
       this.#equipment.set(EquipmentSlot.RightHand, item);
-      item.actions.equip(this);
+      item[EQUIP](this);
       return;
     }
 
@@ -653,7 +822,7 @@ import {
       this.unequip(occupant); // auto-swap (a 2H occupant frees both hands)
     }
     this.#equipment.set(slot, item);
-    item.actions.equip(this);
+    item[EQUIP](this);
   }
 
   /**
@@ -674,25 +843,55 @@ import {
         this.#equipment.delete(slot);
       }
     }
-    item.actions.unequip(this);
+    item[UNEQUIP](this);
   }
 ```
 
+(f) **Reroute the item wrapper** in `src/lib/inventory.ts` so a slotted item routes through
+the validated path (slotless items keep the legacy inline toggle from Task 3):
+
+```ts
+      [ItemAction.Equip]: () => {
+        const holder = this.#characterHolder();
+        if (!holder) return;
+        if (this.slot !== undefined) {
+          holder.equip(this);
+          return;
+        }
+        this[EQUIP](holder);
+      },
+      [ItemAction.Unequip]: () => {
+        const holder = this.#characterHolder();
+        if (!holder) return;
+        if (this.slot !== undefined) {
+          holder.unequip(this);
+          return;
+        }
+        this[UNEQUIP](holder);
+      },
+```
+
 Notes for the implementer:
-- `item.actions.equip(this)` / `item.actions.unequip(this)` are the existing low-level wrappers: they run the item's `equip`/`unequip` behavior, toggle `properties.equipped`, and fire `onEquip`/`onUnequip`. `Character.equip`/`unequip` add the slot validation + map bookkeeping around them. (The arg is ignored by the wrapper, which uses the item's own holder; pass `this` for clarity/symmetry with other call styles.)
-- The combat filters in `combatant.ts`/`character.ts` are unchanged — they read `properties.equipped`, which these methods keep in sync, and are now naturally bounded by the slot count.
+- `item[EQUIP](this)` / `item[UNEQUIP](this)` are the terminal low-level methods from Task 3 —
+  they run the item's behavior, toggle `properties.equipped`, and fire the event. `Character.equip`
+  performs validation + slot bookkeeping around them; calling them (not `actions.equip`) is what
+  avoids the wrapper↔character loop.
+- The combat filters in `combatant.ts`/`character.ts` are unchanged — they read
+  `properties.equipped`, which these methods keep in sync, and are now bounded by the slot count.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run src/lib/character/character.test.ts` → PASS.
-Then `npx tsc --noEmit` and `npx eslint src/lib/character/character.ts src/lib/character/character.test.ts` → clean.
+Then the whole suite to catch the reroute's effect on existing equip tests:
+`npx vitest run src/lib/inventory.test.ts` (the pre-existing slotless equip tests must stay green).
+Then `npx tsc --noEmit` and `npx eslint src/lib/character/character.ts src/lib/inventory.ts src/lib/character/character.test.ts` → clean.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/lib/character/character.ts src/lib/character/character.test.ts
+git add src/lib/character/character.ts src/lib/inventory.ts src/lib/character/character.test.ts
 git commit -m "$(cat <<'EOF'
-feat: Character.equip/unequip with named slots, auto-swap, two-handed
+feat: Character.equip/unequip with named slots; route item equip through it
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 EOF
@@ -701,16 +900,18 @@ EOF
 
 ---
 
-## Task 4: Capping regression + integration seam
+## Task 5: Capping regression + integration seam
 
 **Files:**
 - Test: `src/lib/character/player-character.test.ts`
 
-Prove the headline outcome — equipping is now bounded, so combat can't be fed more weapons than hands — and an end-to-end equip flow.
+Prove the headline outcome — equipping is now bounded, so combat can't be fed more weapons
+than hands — and an end-to-end equip flow.
 
-- [ ] **Step 1: Write the tests** (these pass once Tasks 1–3 are in, like an integration seam)
+- [ ] **Step 1: Write the tests** (these pass once Tasks 1–4 are in, like an integration seam)
 
-In `src/lib/character/player-character.test.ts`, add a real-`Item` weapon helper if one isn't already present that takes `slot`/`twoHanded` (the file has `makeDurableWeapon` from ③; add `slot`/`twoHanded` to its options, or add a sibling). The cleanest is a small local helper:
+In `src/lib/character/player-character.test.ts`, add a real-`Item` hand-weapon helper at
+module scope:
 
 ```ts
 function makeHandWeapon(opts: { modifier?: number; twoHanded?: boolean; name?: string }): Item {
@@ -748,9 +949,7 @@ Then a `describe("equipment seam", …)` block:
       hero.equip(b); // both hands full
       hero.equip(c); // displaces the occupant of the first hand
 
-      const equippedWeapons = hero.inventory.items.filter(
-        (w) => w.properties.equipped,
-      );
+      const equippedWeapons = hero.inventory.items.filter((w) => w.properties.equipped);
       expect(equippedWeapons).toHaveLength(2); // never three
 
       // attack sums exactly the two equipped weapons (2 + 2 = 4 to Health)
@@ -776,11 +975,13 @@ Then a `describe("equipment seam", …)` block:
   });
 ```
 
-(Confirm the import line includes `Item`, `Campaign`, `StatType`, `makeDefender`, `makeStats` — all already imported in this file from ③; add `Item` to the inventory import if it isn't there.)
+(Confirm the import line includes `Item`, `Campaign`, `StatType`, `makeDefender`, `makeStats` —
+all already imported in this file from ③; add `Item` to the inventory import if it isn't there.)
 
 - [ ] **Step 2: Run the tests**
 
-Run: `npx vitest run src/lib/character/player-character.test.ts` → PASS (the behavior is implemented by Tasks 1–3). If the third-weapon test fails, it means equip didn't cap — fix the implementation, not the test.
+Run: `npx vitest run src/lib/character/player-character.test.ts` → PASS. If the third-weapon test
+fails, equip didn't cap — fix the implementation, not the test.
 
 - [ ] **Step 3: Full suite + static checks**
 
@@ -805,4 +1006,6 @@ EOF
 
 ## Done (④a)
 
-After Task 4: `feature/equipment-slots` holds the spec plus four feature commits. Hand off to **superpowers:finishing-a-development-branch** (Push & open PR against `main`). Then ④b (passive ring effects / effective-stat layer) gets its own plan on a fresh branch.
+After Task 5: `feature/equipment-slots` holds the spec plus five feature commits. Hand off to
+**superpowers:finishing-a-development-branch** (Push & open PR against `main`). Then ④b (passive
+ring effects / effective-stat layer) gets its own plan on a fresh branch.
