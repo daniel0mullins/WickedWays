@@ -40,6 +40,8 @@ export interface ICampaign {
   canAfford: (mats: MaterialMap) => boolean;
   /** Removes materials from the pool. Throws if the pool is short. */
   withdrawMaterials: (mats: MaterialMap) => void;
+  /** Grants materials once per `claimId`; later calls with the same id are ignored. */
+  claimMaterials: (claimId: string, mats: MaterialMap) => void;
   /** Starts the campaign once a valid party and GM are in place. */
   beginCampaign: () => void;
   /** Marks a running campaign finished. */
@@ -72,6 +74,7 @@ export class Campaign implements ICampaign {
   readonly maxRounds: number;
 
   #materials: MaterialMap = {};
+  #claims: Set<string> = new Set<string>();
   #started = false;
   #finished = false;
   #activeCharacterIndex: number = 0;
@@ -306,6 +309,22 @@ export class Campaign implements ICampaign {
       ([component, qty]) =>
         qty === undefined || (this.#materials[component] ?? 0) >= qty,
     );
+  }
+
+  /**
+   * Grants materials once per `claimId`. The first call with a given id deposits
+   * and records the id; later calls with the same id are no-ops. The farm-proof
+   * public grant for scene/quest scripts that have no physical cache.
+   *
+   * @param claimId - A stable id identifying this one-time grant.
+   * @param mats - Quantities to grant on the first claim.
+   */
+  claimMaterials(claimId: string, mats: MaterialMap) {
+    if (this.#claims.has(claimId)) {
+      return;
+    }
+    this.#claims.add(claimId);
+    this[DEPOSIT_MATERIALS](mats);
   }
 
   /**
