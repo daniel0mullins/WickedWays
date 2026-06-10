@@ -1,6 +1,7 @@
 import { Brand } from "./brand";
 import { IPlayerCharacter } from "./character/player-character";
-import { generateId, ProceduralViolation } from "./util";
+import { DEPOSIT_MATERIALS, type MaterialMap } from "./inventory";
+import { generateId, ProceduralViolation, typedEntries } from "./util";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -17,6 +18,10 @@ export interface ICampaign {
   /** The player characters taking part, in turn order. */
   party: IPlayerCharacter[];
   title: string;
+  /** Read-only view of the party's shared raw-material pool. */
+  get materials(): Readonly<MaterialMap>;
+  /** Adds raw materials to the pool. Engine-internal; see {@link DEPOSIT_MATERIALS}. */
+  [DEPOSIT_MATERIALS](mats: MaterialMap): void;
 
   /** Round count at which the campaign automatically ends. */
   readonly maxRounds: number;
@@ -62,6 +67,7 @@ export class Campaign implements ICampaign {
   #gm: IPlayerCharacter | undefined;
   readonly maxRounds: number;
 
+  #materials: MaterialMap = {};
   #started = false;
   #finished = false;
   #activeCharacterIndex: number = 0;
@@ -69,6 +75,19 @@ export class Campaign implements ICampaign {
 
   get round() {
     return this.#round;
+  }
+
+  get materials(): Readonly<MaterialMap> {
+    return { ...this.#materials };
+  }
+
+  /**
+   * Guards against replacing the pool wholesale.
+   * @throws {@link ProceduralViolation} always — deposit via the engine-internal
+   *   {@link DEPOSIT_MATERIALS} or {@link Campaign.claimMaterials}.
+   */
+  set materials(_value: MaterialMap) {
+    throw new ProceduralViolation("Cannot set 'materials' directly");
   }
 
   get gm() {
@@ -254,5 +273,21 @@ export class Campaign implements ICampaign {
   transfer(c: IPlayerCharacter) {
     this.#assertRunning();
     this.#gm = c;
+  }
+
+  /**
+   * Adds raw materials to the party pool, summing by component. Engine-internal:
+   * the Item Destroy wrapper, {@link Character.harvest}, and
+   * {@link Campaign.claimMaterials} are its only callers.
+   *
+   * @param mats - Quantities to add, by component type.
+   */
+  [DEPOSIT_MATERIALS](mats: MaterialMap) {
+    for (const [component, qty] of typedEntries(mats) as Array<
+      [keyof MaterialMap, number | undefined]
+    >) {
+      if (qty === undefined) continue;
+      this.#materials[component] = (this.#materials[component] ?? 0) + qty;
+    }
   }
 }
