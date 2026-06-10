@@ -9,6 +9,7 @@ import { generateId, ProceduralViolation } from "../util";
 import { CharacterEvents, ICharacterEvents } from "./events";
 import type { ActionDetail, ActionHistoryEntry } from "./history";
 import { MitigatorStatType, Stats, StatType } from "./stats";
+import type { RecipeId } from "../crafting";
 
 /** Unique identifier for a {@link Character}. */
 export type CharacterId = Brand<string, "CharacterId">;
@@ -81,6 +82,11 @@ export interface ICharacter extends IItemHolder {
   startTurn: () => void;
   /** Applies damage to a stat after mitigation, updating status conditions. */
   takeDamage: (attackStrength: number, attackStat?: StatType) => void;
+  /**
+   * Crafts an item using the materials-track recipe identified by `recipeId`.
+   * Free action — does not tick the action budget or record history.
+   */
+  craft: (recipeId: RecipeId) => IItem;
 
   // ### Events
   /** Turn-lifecycle event hub for this character. */
@@ -456,5 +462,39 @@ export class Character implements ICharacter {
     this.actionsThisRound = 0;
     this.events.onTurnStart();
     this.#resolveStatuses();
+  }
+
+  /**
+   * Crafts the item produced by the materials-track recipe identified by
+   * `recipeId`, debiting the cost from the party pool and placing the output
+   * into this character's inventory. Free action — does not tick the action
+   * budget or record history.
+   *
+   * @param recipeId - The id of a known materials recipe.
+   * @returns The newly created item.
+   * @throws {@link ProceduralViolation} if the recipe is unknown.
+   * @throws {@link ProceduralViolation} if the recipe is a key-track recipe.
+   * @throws {@link ProceduralViolation} if the party pool cannot cover the cost.
+   * @throws {@link ProceduralViolation} if there is no free inventory slot.
+   */
+  craft(recipeId: RecipeId): IItem {
+    const recipe = this.campaign.knownRecipes.get(recipeId);
+    if (!recipe) {
+      throw new ProceduralViolation("Cannot craft an undiscovered recipe");
+    }
+    if (!("materials" in recipe)) {
+      // Only materials-track recipes are craftable here; key-track recipes are handled separately.
+      throw new ProceduralViolation("Key crafting not yet implemented");
+    }
+    if (!this.campaign.canAfford(recipe.materials)) {
+      throw new ProceduralViolation("Not enough materials to craft");
+    }
+    if (!this.hasRoomForItem()) {
+      throw new ProceduralViolation("No inventory slot for the crafted item");
+    }
+    this.campaign.withdrawMaterials(recipe.materials);
+    const output = recipe.create();
+    this.receiveItem(output);
+    return output;
   }
 }
