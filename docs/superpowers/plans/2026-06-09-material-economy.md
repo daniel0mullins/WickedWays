@@ -254,7 +254,9 @@ In the `Campaign` class, add after the `[DEPOSIT_MATERIALS]` method:
    * @returns Whether every requested component is present at ≥ the requested amount.
    */
   canAfford(mats: MaterialMap): boolean {
-    return typedEntries(mats).every(
+    return (
+      typedEntries(mats) as Array<[keyof MaterialMap, number | undefined]>
+    ).every(
       ([component, qty]) =>
         qty === undefined || (this.#materials[component] ?? 0) >= qty,
     );
@@ -271,7 +273,9 @@ In the `Campaign` class, add after the `[DEPOSIT_MATERIALS]` method:
     if (!this.canAfford(mats)) {
       throw new ProceduralViolation("Insufficient materials in the party pool.");
     }
-    for (const [component, qty] of typedEntries(mats)) {
+    for (const [component, qty] of typedEntries(mats) as Array<
+      [keyof MaterialMap, number | undefined]
+    >) {
       if (qty === undefined) continue;
       const remaining = (this.#materials[component] ?? 0) - qty;
       if (remaining > 0) {
