@@ -465,34 +465,56 @@ export class Character implements ICharacter {
   }
 
   /**
-   * Crafts the item produced by the materials-track recipe identified by
-   * `recipeId`, debiting the cost from the party pool and placing the output
-   * into this character's inventory. Free action — does not tick the action
-   * budget or record history.
+   * Crafts the item produced by the recipe identified by `recipeId`. Supports
+   * both the materials track (debits the party pool, places the output in an
+   * inventory slot) and the key track (consumes held keys, places the output on
+   * the keyring). Free action — does not tick the action budget or record history.
    *
-   * @param recipeId - The id of a known materials recipe.
+   * @param recipeId - The id of a known recipe.
    * @returns The newly created item.
    * @throws {@link ProceduralViolation} if the recipe is unknown.
-   * @throws {@link ProceduralViolation} if the recipe is a key-track recipe.
-   * @throws {@link ProceduralViolation} if the party pool cannot cover the cost.
-   * @throws {@link ProceduralViolation} if there is no free inventory slot.
+   * @throws {@link ProceduralViolation} if the party pool cannot cover the cost (materials track).
+   * @throws {@link ProceduralViolation} if there is no free inventory slot (materials track).
+   * @throws {@link ProceduralViolation} if a key-track recipe's required keys are not all held.
    */
   craft(recipeId: RecipeId): IItem {
     const recipe = this.campaign.knownRecipes.get(recipeId);
     if (!recipe) {
       throw new ProceduralViolation("Cannot craft an undiscovered recipe");
     }
-    if (!("materials" in recipe)) {
-      // Only materials-track recipes are craftable here; key-track recipes are handled separately.
-      throw new ProceduralViolation("Key crafting not yet implemented");
+    if ("materials" in recipe) {
+      if (!this.campaign.canAfford(recipe.materials)) {
+        throw new ProceduralViolation("Not enough materials to craft");
+      }
+      if (!this.hasRoomForItem()) {
+        throw new ProceduralViolation("No inventory slot for the crafted item");
+      }
+      this.campaign.withdrawMaterials(recipe.materials);
+      const output = recipe.create();
+      this.receiveItem(output);
+      return output;
     }
-    if (!this.campaign.canAfford(recipe.materials)) {
-      throw new ProceduralViolation("Not enough materials to craft");
+    // Key track. Total demand per code first, so a recipe that lists the same
+    // code twice is treated as a single combined cost rather than checked
+    // against the full keyring twice.
+    const demand = new Map<string, number>();
+    for (const { keyCode, qty } of recipe.keys) {
+      demand.set(keyCode, (demand.get(keyCode) ?? 0) + qty);
     }
-    if (!this.hasRoomForItem()) {
-      throw new ProceduralViolation("No inventory slot for the crafted item");
+    // Verify EVERY code is satisfiable BEFORE consuming anything, so a recipe
+    // the character can't fully supply consumes nothing.
+    for (const [keyCode, qty] of demand) {
+      const held = this.#inventory.keys.filter((k) => k.keyCode === keyCode);
+      if (held.length < qty) {
+        throw new ProceduralViolation("Missing required keys to craft");
+      }
     }
-    this.campaign.withdrawMaterials(recipe.materials);
+    for (const [keyCode, qty] of demand) {
+      const held = this.#inventory.keys.filter((k) => k.keyCode === keyCode);
+      for (const key of held.slice(0, qty)) {
+        this.consumeKey(key);
+      }
+    }
     const output = recipe.create();
     this.receiveItem(output);
     return output;
