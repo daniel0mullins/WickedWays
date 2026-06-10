@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { CharacterId, ICharacter } from "./character/character";
 import type { ILoot, LootId } from "./loot";
+import { MaterialCache } from "./material-cache";
 import { Room } from "./room";
 import type { IScene, Scene } from "./scene";
 import { ProceduralViolation } from "./util";
@@ -59,6 +60,23 @@ describe("Room", () => {
       const room = makeRoom([], { north });
 
       expect(room.exits.get("north")).toBe(north);
+    });
+
+    it("keys the materials map by each cache's id", () => {
+      const first = new MaterialCache({ metal: 1 });
+      const second = new MaterialCache({ glass: 2 });
+      const room = new Room("A Dim Room", "a dim room", [], {} as ExitsArg, [
+        first,
+        second,
+      ]);
+
+      expect(room.materials.size).toBe(2);
+      expect(room.materials.get(first.id)).toBe(first);
+      expect(room.materials.get(second.id)).toBe(second);
+    });
+
+    it("defaults to no material caches", () => {
+      expect(makeRoom().materials.size).toBe(0);
     });
   });
 
