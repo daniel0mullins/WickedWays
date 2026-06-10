@@ -43,7 +43,8 @@ Character
 - [`Character`](src/lib/character/character.ts) is the base: it holds `stats`, an `inventory`,
   a `campaign` reference, the current room, status effects, and the action-budget machinery.
   It implements the item-holder contract (`addToInventory` / `removeFromInventory`),
-  `move(room)`, `takeDamage(...)`, and the turn lifecycle (`startTurn` / `endTurn`).
+  `move(room)`, `takeDamage(...)`, crafting and gear (`craft`, `repair`, `equip`, `unequip`),
+  the keyring (`transferKey`, `consumeKey`), and the turn lifecycle (`startTurn` / `endTurn`).
 - [`Combatant`](src/lib/character/combatant.ts) adds `attack(target)` (see Combat below) and
   is shared by player characters and mobs.
 - [`PlayerCharacter`](src/lib/character/player-character.ts) adds `joinCampaign()` and
@@ -71,12 +72,16 @@ Character
 
 - [`Loot`](src/lib/loot.ts) is a fixed-capacity container (default: initial contents + 2 slots).
   `stowItem` throws `ContainerFullException` once full; `removeItems` extracts items by id.
-- [`Item`](src/lib/inventory.ts) carries a type, recipe, modifier, target stat, and properties
+- [`Item`](src/lib/inventory.ts) carries a type (weapon, armor, accessory, consumable,
+  throwable, key), recipe, modifier, target stat, and properties
   (equippable/equipped/destroyable/usable), plus actions: `pickUp`, `equip`, `unequip`,
-  `transfer`, `use`, `destroy`.
-- Both characters and loot boxes are **item holders**. Ownership is tracked through the
-  `HELD_BY` symbol (read-only) and reassigned only through the `CLAIM` symbol, so external code
-  can't silently re-point an item's holder.
+  `transfer`, `use`, `destroy`. Optional authored fields layer on behaviour: `maxDurability`
+  (gear that wears), `slot` / `twoHanded` (equipment slots and handedness), `keyCode` /
+  `consumeOnUse` (keys), and `teaches` (a recipe imparted to the party on pickup).
+- Both characters and loot boxes are **item holders**. State that must not be forged is
+  symbol-keyed: ownership through `HELD_BY` (read-only) and `CLAIM`, durability through
+  `SET_DURABILITY`, and equip/unequip through `EQUIP` / `UNEQUIP` — so external code can't
+  silently re-point a holder, refill durability, or bypass slot capacity.
 
 ## Key mechanics
 
@@ -100,13 +105,18 @@ another in a cycle:
 | Sanity       | Energy       |
 | Energy       | Health       |
 
-Damage scales with the *mitigating* stat (max value 10):
+Equipped, intact armor whose `stat` matches the attacked stat first subtracts its `modifier`
+from the incoming strength (floored at 0); the remainder is then scaled by the *mitigating* stat
+(max value 10):
 
 ```
-finalDamage = attackStrength × (10 − mitigator) × 0.2
+mitigated   = max(0, attackStrength − armorModifiers)
+finalDamage = mitigated × (10 − mitigator) × 0.2
 ```
 
-So a fully-rested mitigator (10) absorbs all damage, while a depleted one (0) doubles it.
+So a fully-rested mitigator (10) absorbs all damage, while a depleted one (0) doubles it. Each
+armor piece that absorbs a hit loses 1 durability and stops mitigating once it breaks (see
+Durability below).
 
 ### Status effects
 
@@ -124,7 +134,62 @@ A character with no active afflictions reports `isNormal === true`.
 `Combatant.attack(target)` collects the attacker's *equipped weapons*, sums each weapon's
 modifier onto the stat it targets, and applies the result to the defender via `takeDamage`
 (which runs the mitigation above). With no equipped weapon, an attack deals 1 point of
-unarmed Health damage.
+unarmed Health damage. Because weapons occupy hand slots (see Equipment below), an attacker
+fields at most two one-handed weapons — or one two-handed — so the summed modifier is
+naturally bounded.
+
+### Materials and crafting
+
+Crafting components are pooled at the **campaign** level and shared party-wide, not held per
+character. The pool ([`MaterialMap`](src/lib/inventory.ts)) is fed only through sanctioned paths
+— destroying (scrapping) an item deposits its `recipe`, harvesting a material cache, and one-time
+`Campaign.claimMaterials(claimId, …)` grants (idempotent by `claimId`, so a cache can't be
+farmed). `Campaign.materials` exposes a read-only copy; `canAfford` / `withdrawMaterials` gate
+spending, and a component is deleted from the pool when it reaches zero. All deposits go through
+the `DEPOSIT_MATERIALS` symbol.
+
+`Character.craft(recipeId)` turns a known recipe into an item and is a **free** action (no budget
+tick, no history). A [`CraftingRecipe`](src/lib/inventory.ts) is discriminated into two tracks: a
+**materials** recipe withdraws from the pool, while a **keys** recipe consumes keys by code
+(validated atomically — every code must be fully available before any key is spent). Recipe
+knowledge is party-wide: picking up an item whose `teaches` field names a recipe calls
+`Campaign.discoverRecipe()` (idempotent by id), so the whole party can then craft it.
+
+### Durability and repair
+
+Gear authored with `maxDurability` wears with use. Armor loses 1 durability each time it absorbs
+a hit and stops mitigating once `isBroken` (durability 0). Durability is read publicly but written
+only through the `SET_DURABILITY` symbol, which clamps to `[0, maxDurability]`. `Character.repair(item)`
+restores a held, damaged item to full for a material cost proportional to the missing fraction —
+`ceil(recipe[c] × missing ∕ maxDurability)` per component — drawn from the campaign pool. Repair is
+**free** and throws if the item is unheld, has no durability, is already full, or the party can't
+afford it.
+
+### Equipment slots and handedness
+
+Equipping is bounded by named anatomy rather than an unlimited flag. An item declares a slot
+**kind** ([`SlotKind`](src/lib/equipment.ts): hand, finger, wrist, head, torso, legs, feet); a
+character has discrete, single-occupancy **named slots** ([`EquipmentSlot`](src/lib/equipment.ts))
+— head/torso/legs/feet, two wrists, two hands, and two ring fingers per hand.
+`Character.equip(item, targetSlot?)` validates that the item is held, equippable, and has a slot
+kind, then fills the first free named slot of that kind (or an explicit `targetSlot`),
+**auto-swapping** the occupant when none is free. A `twoHanded` weapon spans both hand slots, and
+equipping a one-handed weapon displaces a worn two-hander; `Character.unequip(item)` clears every
+slot the item occupies. Both are **free** and leave displaced items in inventory, unequipped.
+
+Occupancy lives in the character's slot map but mirrors `properties.equipped`, so the combat
+filters are unchanged — and now naturally capped. The item's own `actions.equip` routes a slotted
+item through `Character.equip` (finishing via the `EQUIP` / `UNEQUIP` symbols), so slot capacity
+can't be bypassed even through the item's own API.
+
+### Keys
+
+Keys ([`createKey`](src/lib/inventory.ts)) are a distinct item type that lives on a character's
+keyring rather than in inventory slots. A key carries a `keyCode` matched by scene/lock gates and a
+`consumeOnUse` flag. Keys are **transfer-only**: the generic drop path rejects them, so the only way
+a key changes hands is `Character.transferKey(key, recipient)` (recorded as a pickup on the
+recipient). `Character.consumeKey(key)` spends a key — removing it from the keyring and unhoming it
+— used by scene scripts when a `consumeOnUse` gate is satisfied.
 
 ### Dialogue
 
@@ -148,7 +213,7 @@ carry a `precondition(character)` gate. With no prompt it returns the NPC's init
 
 - **Language:** TypeScript in `strict` mode with `NodeNext` module resolution and the extra
   `noUncheckedIndexedAccess` / `noImplicitOverride` guards.
-- **Tests:** [Vitest](https://vitest.dev) — 217 tests across 13 files, including an end-to-end
+- **Tests:** [Vitest](https://vitest.dev) — 352 tests across 17 files, including an end-to-end
   [`src/integration.test.ts`](src/integration.test.ts) that wires up a full campaign and runs
   the turn loop. Shared helpers live in [`src/test-utils.ts`](src/test-utils.ts).
 - **Linting:** ESLint flat config with type-aware `typescript-eslint`.
