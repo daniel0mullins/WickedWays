@@ -576,8 +576,11 @@ export class Character implements ICharacter {
    *
    * Equipped, non-broken armor whose `stat` matches `attackStat` first subtracts
    * its `modifier` from the raw strength (floored at 0); the remainder is then
-   * `* (MAX_STAT - mitigator) * 0.2`, where the mitigator is the stat that defends
-   * `attackStat` (see {@link MitigatorStatType}). Contributing armor wears one point.
+   * `* max(0, MAX_STAT - mitigator) * 0.2`, where the mitigator is the *effective*
+   * value (base plus equipped-accessory bonuses, see {@link effectiveStat}) of the
+   * stat that defends `attackStat` (see {@link MitigatorStatType}). The `max(0, …)`
+   * means an over-cap mitigator fully absorbs the hit rather than healing.
+   * Contributing armor wears one point.
    *
    * @param attackStrength - Raw incoming attack strength before mitigation.
    * @param attackStat - The stat being attacked. Defaults to health.
@@ -595,8 +598,8 @@ export class Character implements ICharacter {
     const armorSum = armor.reduce((sum, piece) => sum + piece.modifier, 0);
     const mitigatedStrength = Math.max(0, attackStrength - armorSum);
 
-    const mitigator = this.stats[MitigatorStatType[attackStat]];
-    const damageMultiplier = (MAX_STAT - mitigator) * MITIGATION_PER_POINT;
+    const mitigator = this.effectiveStat(MitigatorStatType[attackStat]);
+    const damageMultiplier = Math.max(0, MAX_STAT - mitigator) * MITIGATION_PER_POINT;
     const finalAttackStrength = mitigatedStrength * damageMultiplier;
 
     this.stats[attackStat] = this.stats[attackStat] - finalAttackStrength;

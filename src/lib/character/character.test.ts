@@ -1223,6 +1223,37 @@ describe("Character", () => {
     });
   });
 
+  describe("takeDamage with accessory mitigation", () => {
+    function ringFor(stat: StatType, modifier: number): Item {
+      return makeGear({ type: "accessory", slot: "finger", stat, modifier });
+    }
+
+    it("a ring on the mitigator stat reduces incoming damage", () => {
+      // Health is mitigated by Sanity. Base sanity 5 => multiplier (10-5)*0.2 = 1.0 => 5*1.0 = 5 damage.
+      // A +3 Sanity ring => effective 8 => multiplier (10-8)*0.2 = 0.4 => 5*0.4 = 2 damage.
+      const hero = makeCharacter({ stats: { [StatType.Health]: 10, [StatType.Sanity]: 5 } });
+      const ring = ringFor(StatType.Sanity, 3);
+      hero.inventory.items.push(ring);
+      hero.equip(ring);
+
+      hero.takeDamage(5);
+
+      expect(hero.stats[StatType.Health]).toBeCloseTo(8); // 10 - 2
+    });
+
+    it("an over-cap mitigator floors the multiplier at 0 — full absorption, never healing", () => {
+      // Base sanity 9 + ring 5 => effective 14 => (10-14) clamped to 0 => 0 damage.
+      const hero = makeCharacter({ stats: { [StatType.Health]: 6, [StatType.Sanity]: 9 } });
+      const ring = ringFor(StatType.Sanity, 5);
+      hero.inventory.items.push(ring);
+      hero.equip(ring);
+
+      hero.takeDamage(10);
+
+      expect(hero.stats[StatType.Health]).toBeCloseTo(6); // unchanged, NOT increased
+    });
+  });
+
   describe("effectiveStat", () => {
     function makeRing(stat: StatType, modifier: number, name = "Ring"): Item {
       return makeGear({ type: "accessory", slot: "finger", stat, modifier, name });
