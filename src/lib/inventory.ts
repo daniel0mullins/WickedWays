@@ -156,6 +156,16 @@ export const DEPOSIT_MATERIALS = Symbol("depositMaterials");
 export const SET_DURABILITY = Symbol("setDurability");
 
 /**
+ * Symbol-keyed low-level equip/unequip. They run the item's author equip/unequip
+ * behavior, toggle `properties.equipped`, and fire the matching event — the
+ * terminal step, with no slot validation. Only {@link Character.equip}/`unequip`
+ * and the item's own action wrapper call them. Same privileged-mutator pattern as
+ * {@link CLAIM} and {@link SET_DURABILITY}.
+ */
+export const EQUIP = Symbol("equipItem");
+export const UNEQUIP = Symbol("unequipItem");
+
+/**
  * A game item: a typed, craftable object that lives in a holder's inventory and
  * can be picked up, equipped, used, transferred, or destroyed via {@link IItem.actions}.
  */
@@ -179,6 +189,10 @@ export interface IItem {
   readonly isBroken: boolean;
   /** Sets durability, clamped to `[0, maxDurability]`; for combat/repair internals only. See {@link SET_DURABILITY}. */
   [SET_DURABILITY](value: number): void;
+  /** Low-level equip: runs behavior, sets `equipped`, fires `onEquip`. See {@link EQUIP}. */
+  [EQUIP](holder: ICharacter): void;
+  /** Low-level unequip: runs behavior, clears `equipped`, fires `onUnequip`. See {@link UNEQUIP}. */
+  [UNEQUIP](holder: ICharacter): void;
   /** The kind of slot this item equips into; absent ⇒ not slot-equippable. */
   readonly slot?: SlotKind;
   /** Weapons only: occupies both hand slots when equipped. */
@@ -218,6 +232,10 @@ export class Item implements IItem {
   readonly slot?: SlotKind;
   readonly twoHanded?: boolean;
   #durability?: number;
+  #equipBehavior: ItemActionEvent;
+  #unequipBehavior: ItemActionEvent;
+  #onEquip?: ItemActionEvent;
+  #onUnequip?: ItemActionEvent;
 
   get durability(): number | undefined {
     return this.#durability;
@@ -256,6 +274,18 @@ export class Item implements IItem {
   // only while a character holds the item; box-held items make them no-ops.
   #characterHolder(): ICharacter | null {
     return this.#heldBy?.holderKind === "character" ? this.#heldBy : null;
+  }
+
+  [EQUIP](holder: ICharacter) {
+    this.#equipBehavior(holder);
+    this.properties.equipped = true;
+    this.#onEquip?.(holder);
+  }
+
+  [UNEQUIP](holder: ICharacter) {
+    this.#unequipBehavior(holder);
+    this.properties.equipped = false;
+    this.#onUnequip?.(holder);
   }
 
   /**
@@ -325,6 +355,10 @@ export class Item implements IItem {
       maxDurability === undefined
         ? undefined
         : Math.max(0, Math.min(maxDurability, durability ?? maxDurability));
+    this.#equipBehavior = actions[ItemAction.Equip];
+    this.#unequipBehavior = actions[ItemAction.Unequip];
+    this.#onEquip = events.onEquip;
+    this.#onUnequip = events.onUnequip;
 
     this.actions = {
       [ItemAction.PickUp]: (c) => {
@@ -334,16 +368,12 @@ export class Item implements IItem {
       [ItemAction.Equip]: () => {
         const holder = this.#characterHolder();
         if (!holder) return;
-        actions[ItemAction.Equip](holder);
-        this.properties.equipped = true;
-        events.onEquip?.(holder);
+        this[EQUIP](holder);
       },
       [ItemAction.Unequip]: () => {
         const holder = this.#characterHolder();
         if (!holder) return;
-        actions[ItemAction.Unequip](holder);
-        this.properties.equipped = false;
-        events.onUnequip?.(holder);
+        this[UNEQUIP](holder);
       },
       [ItemAction.Transfer]: (_c, cc) => {
         // Keys are transfer-only via Character.transferKey; a key reaching this
