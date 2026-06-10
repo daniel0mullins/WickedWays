@@ -1,6 +1,11 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { CLAIM, DEPOSIT_MATERIALS, IItem, IItemHolder, Inventory, MaterialMap, SET_DURABILITY } from "../inventory";
+import { CLAIM, DEPOSIT_MATERIALS, EQUIP, IItem, IItemHolder, Inventory, MaterialMap, SET_DURABILITY, UNEQUIP } from "../inventory";
+import {
+  DEFAULT_EQUIPMENT_SLOTS,
+  EquipmentSlot,
+  SLOT_KIND,
+} from "../equipment";
 import { DEPLETE, type IMaterialCache } from "../material-cache";
 import { IRoom } from "../room";
 import { Status, StatusMatrix } from "../status";
@@ -84,6 +89,12 @@ export interface ICharacter extends IItemHolder {
   takeDamage: (attackStrength: number, attackStat?: StatType) => void;
   /** Restores a damaged, durability-bearing held item to full for a proportional material cost (free). */
   repair: (item: IItem) => void;
+  /** The character's currently filled equipment slots (named slot → item). */
+  get equipment(): ReadonlyMap<EquipmentSlot, IItem>;
+  /** Equips a held item into a named slot of its kind, auto-swapping conflicts (free). */
+  equip: (item: IItem, targetSlot?: EquipmentSlot) => void;
+  /** Removes an equipped item from its slot(s) (free). */
+  unequip: (item: IItem) => void;
   /**
    * Crafts an item using the materials-track recipe identified by `recipeId`.
    * Free action — does not tick the action budget or record history.
@@ -122,6 +133,11 @@ export class Character implements ICharacter {
   #currentRoom: IRoom | null = null;
   #history: ActionHistoryEntry[] = [];
   #inventory: Inventory;
+  // #slots is the character's anatomy (which named positions exist); #equipment
+  // is current occupancy (named position → worn item). A two-handed weapon
+  // appears under both hand keys.
+  #equipment: Map<EquipmentSlot, IItem> = new Map();
+  #slots: readonly EquipmentSlot[] = DEFAULT_EQUIPMENT_SLOTS;
   #status: StatusMatrix;
   protected actionsThisRound: number;
 
@@ -140,6 +156,10 @@ export class Character implements ICharacter {
 
   get inventory() {
     return this.#inventory;
+  }
+
+  get equipment(): ReadonlyMap<EquipmentSlot, IItem> {
+    return this.#equipment;
   }
 
   get isNormal() {
@@ -409,6 +429,89 @@ export class Character implements ICharacter {
     }
     this.campaign.withdrawMaterials(cost);
     item[SET_DURABILITY](item.maxDurability);
+  }
+
+  /**
+   * Equips a held item into one of the character's named slots of the item's
+   * slot kind. Auto-assigns the first free slot of that kind (or the named
+   * `targetSlot`), displacing whatever is there (the displaced item stays in
+   * inventory, unequipped). A two-handed weapon spans both hand slots. Free — no
+   * budgeted action, no history.
+   *
+   * @throws {@link ProceduralViolation} if the item is not held, not equippable,
+   *   has no slot kind, the character has no slot of that kind, or `targetSlot`
+   *   does not fit the item.
+   */
+  equip(item: IItem, targetSlot?: EquipmentSlot) {
+    if (!this.#inventory.items.some((i) => i.id === item.id)) {
+      throw new ProceduralViolation("Cannot equip an item the character is not holding.");
+    }
+    if (!item.properties.equippable) {
+      throw new ProceduralViolation("Item is not equippable.");
+    }
+    if (item.slot === undefined) {
+      throw new ProceduralViolation("Item has no equipment slot.");
+    }
+    // Re-equipping a worn item: free its current slot(s) first.
+    if (item.properties.equipped) {
+      this.unequip(item);
+    }
+
+    // Two-handed weapons span both hands.
+    if (item.type === "weapon" && item.twoHanded) {
+      for (const hand of [EquipmentSlot.LeftHand, EquipmentSlot.RightHand]) {
+        const occupant = this.#equipment.get(hand);
+        if (occupant) this.unequip(occupant);
+      }
+      this.#equipment.set(EquipmentSlot.LeftHand, item);
+      this.#equipment.set(EquipmentSlot.RightHand, item);
+      item[EQUIP](this);
+      return;
+    }
+
+    const eligible = this.#slots.filter((s) => SLOT_KIND[s] === item.slot);
+    if (eligible.length === 0) {
+      throw new ProceduralViolation("Character has no slot for this item.");
+    }
+
+    let slot: EquipmentSlot;
+    if (targetSlot !== undefined) {
+      if (!eligible.includes(targetSlot)) {
+        throw new ProceduralViolation("Target slot does not fit this item.");
+      }
+      slot = targetSlot;
+    } else {
+      // First free eligible slot in canonical order, else displace the first.
+      slot = eligible.find((s) => !this.#equipment.has(s)) ?? eligible[0]!;
+    }
+
+    const occupant = this.#equipment.get(slot);
+    if (occupant && occupant.id !== item.id) {
+      this.unequip(occupant); // auto-swap (a 2H occupant frees both hands)
+    }
+    this.#equipment.set(slot, item);
+    item[EQUIP](this);
+  }
+
+  /**
+   * Removes an equipped item from every slot it occupies (a two-handed weapon
+   * occupies two). Free — no budgeted action, no history.
+   *
+   * @throws {@link ProceduralViolation} if the item is not held or not equipped.
+   */
+  unequip(item: IItem) {
+    if (!this.#inventory.items.some((i) => i.id === item.id)) {
+      throw new ProceduralViolation("Cannot unequip an item the character is not holding.");
+    }
+    if (!item.properties.equipped) {
+      throw new ProceduralViolation("Item is not equipped.");
+    }
+    for (const slot of [...this.#equipment.keys()]) {
+      if (this.#equipment.get(slot)?.id === item.id) {
+        this.#equipment.delete(slot);
+      }
+    }
+    item[UNEQUIP](this);
   }
 
   /**

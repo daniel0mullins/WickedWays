@@ -82,6 +82,30 @@ function makeDurableArmor(opts: {
   );
 }
 
+// makeHandWeapon builds a real Item with slot: "hand" so Character.equip routes
+// it through the equipment slots map (LeftHand / RightHand).
+function makeHandWeapon(opts: {
+  modifier?: number;
+  twoHanded?: boolean;
+  name?: string;
+}): Item {
+  const noop = () => {};
+  return new Item(
+    {
+      type: "weapon",
+      recipe: { metal: 1 },
+      modifier: opts.modifier ?? 2,
+      stat: StatType.Health,
+      name: opts.name ?? "Blade",
+      slot: "hand",
+      twoHanded: opts.twoHanded,
+    },
+    { equippable: true, equipped: false, destroyable: true, usable: false },
+    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    { onPickUp: noop },
+  );
+}
+
 function makePc(opts: { inventorySlots?: number } = {}) {
   return new PlayerCharacter(
     makeCampaign(),
@@ -367,6 +391,47 @@ describe("PlayerCharacter", () => {
 
       pc.attack(makeDefender());
       expect(onTurnEnd).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("equipment seam", () => {
+    it("caps attack at hand count — a third weapon displaces one", () => {
+      const campaign = new Campaign("Seam");
+      const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+      const a = makeHandWeapon({ modifier: 2, name: "A" });
+      const b = makeHandWeapon({ modifier: 2, name: "B" });
+      const c = makeHandWeapon({ modifier: 2, name: "C" });
+      [a, b, c].forEach((w) => hero.inventory.items.push(w));
+
+      hero.equip(a);
+      hero.equip(b); // both hands full
+      hero.equip(c); // displaces the occupant of the first hand (LeftHand)
+
+      const equippedWeapons = hero.inventory.items.filter((w) => w.properties.equipped);
+      // The core guarantee: never three weapons equipped simultaneously.
+      expect(equippedWeapons).toHaveLength(2);
+
+      // attack sums weapons per stat into a single takeDamage call per stat:
+      // two Health weapons (modifier 2 each) → takeDamage(4, Health).
+      const defender = makeDefender();
+      hero.attack(defender);
+      expect(defender.takeDamage).toHaveBeenCalledTimes(1);
+      expect(defender.takeDamage).toHaveBeenCalledWith(4, StatType.Health);
+    });
+
+    it("a two-handed weapon yields a single-weapon attack", () => {
+      const campaign = new Campaign("Seam");
+      const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+      const greatsword = makeHandWeapon({ modifier: 5, twoHanded: true, name: "2H" });
+      hero.inventory.items.push(greatsword);
+      hero.equip(greatsword);
+
+      // A two-handed weapon spans both hand slots but is ONE item in inventory.
+      // attack finds it once → single takeDamage(5, Health) call.
+      const defender = makeDefender();
+      hero.attack(defender);
+      expect(defender.takeDamage).toHaveBeenCalledTimes(1);
+      expect(defender.takeDamage).toHaveBeenCalledWith(5, StatType.Health);
     });
   });
 

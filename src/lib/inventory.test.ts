@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ICharacter } from "./character/character";
 import { StatType } from "./character/stats";
-import { CLAIM, DEPOSIT_MATERIALS, Item, SET_DURABILITY, createKey, type IItem, type IItemHolder } from "./inventory";
+import { CLAIM, DEPOSIT_MATERIALS, EQUIP, Item, SET_DURABILITY, UNEQUIP, createKey, type IItem, type IItemHolder } from "./inventory";
 import { ProceduralViolation } from "./util";
 import type { CraftingRecipe, RecipeId } from "./crafting";
 
@@ -238,6 +238,31 @@ describe("Item", () => {
     });
   });
 
+  describe("equip seam", () => {
+    it("EQUIP runs the behavior, toggles equipped, and fires onEquip", () => {
+      const { item, actions, events } = makeItem();
+      const holder = makeHolder();
+
+      item[EQUIP](holder);
+
+      expect(item.properties.equipped).toBe(true);
+      expect(actions.equip).toHaveBeenCalledWith(holder);
+      expect(events.onEquip).toHaveBeenCalledWith(holder);
+    });
+
+    it("UNEQUIP runs the behavior, clears equipped, and fires onUnequip", () => {
+      const { item, actions, events } = makeItem();
+      const holder = makeHolder();
+      item[EQUIP](holder);
+
+      item[UNEQUIP](holder);
+
+      expect(item.properties.equipped).toBe(false);
+      expect(actions.unequip).toHaveBeenCalledWith(holder);
+      expect(events.onUnequip).toHaveBeenCalledWith(holder);
+    });
+  });
+
   describe("use", () => {
     it("fires the action and event then removes the item from the holder", () => {
       const { item, actions, events } = makeItem();
@@ -440,6 +465,65 @@ describe("createKey", () => {
     hold(key, makeHolder());
 
     expect(key.actions.destroy()).toBeNull();
+  });
+});
+
+describe("equipment slots", () => {
+  it("exposes an authored slot kind and twoHanded flag", () => {
+    const item = new Item(
+      {
+        type: "weapon",
+        recipe: { metal: 1 },
+        modifier: 3,
+        stat: StatType.Health,
+        name: "Greatsword",
+        slot: "hand",
+        twoHanded: true,
+      },
+      { equippable: true, equipped: false, destroyable: true, usable: false },
+      makeActions(),
+      makeEvents(),
+    );
+
+    expect(item.slot).toBe("hand");
+    expect(item.twoHanded).toBe(true);
+  });
+
+  it("leaves slot and twoHanded undefined when not authored", () => {
+    const item = new Item(
+      {
+        type: "consumable",
+        recipe: { healing: 1 },
+        modifier: 0,
+        stat: StatType.Health,
+        name: "Potion",
+      },
+      { equippable: false, equipped: false, destroyable: true, usable: true },
+      makeActions(),
+      makeEvents(),
+    );
+
+    expect(item.slot).toBeUndefined();
+    expect(item.twoHanded).toBeUndefined();
+  });
+
+  it("accepts the accessory item type", () => {
+    const ring = new Item(
+      {
+        type: "accessory",
+        recipe: { metal: 1 },
+        modifier: 2,
+        stat: StatType.Sanity,
+        name: "Ring of Calm",
+        slot: "finger",
+      },
+      { equippable: true, equipped: false, destroyable: true, usable: false },
+      makeActions(),
+      makeEvents(),
+    );
+
+    expect(ring.type).toBe("accessory");
+    expect(ring.slot).toBe("finger");
   });
 });
 

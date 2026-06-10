@@ -6,6 +6,7 @@ import { v4 as uuid } from "uuid";
 import { StatType } from "./character/stats";
 import { ProceduralViolation } from "./util";
 import type { CraftingRecipe } from "./crafting";
+import type { SlotKind } from "./equipment";
 
 /** The kinds of item the engine recognises. */
 const ItemType = {
@@ -13,6 +14,7 @@ const ItemType = {
   Armor: "armor",
   Weapon: "weapon",
   Throwable: "throwable",
+  Accessory: "accessory",
   Key: "key",
 } as const;
 
@@ -154,6 +156,16 @@ export const DEPOSIT_MATERIALS = Symbol("depositMaterials");
 export const SET_DURABILITY = Symbol("setDurability");
 
 /**
+ * Symbol-keyed low-level equip/unequip. They run the item's author equip/unequip
+ * behavior, toggle `properties.equipped`, and fire the matching event — the
+ * terminal step, with no slot validation. Only {@link Character.equip}/`unequip`
+ * and the item's own action wrapper call them. Same privileged-mutator pattern as
+ * {@link CLAIM} and {@link SET_DURABILITY}.
+ */
+export const EQUIP = Symbol("equipItem");
+export const UNEQUIP = Symbol("unequipItem");
+
+/**
  * A game item: a typed, craftable object that lives in a holder's inventory and
  * can be picked up, equipped, used, transferred, or destroyed via {@link IItem.actions}.
  */
@@ -177,6 +189,14 @@ export interface IItem {
   readonly isBroken: boolean;
   /** Sets durability, clamped to `[0, maxDurability]`; for combat/repair internals only. See {@link SET_DURABILITY}. */
   [SET_DURABILITY](value: number): void;
+  /** Low-level equip: runs behavior, sets `equipped`, fires `onEquip`. See {@link EQUIP}. */
+  [EQUIP](holder: ICharacter): void;
+  /** Low-level unequip: runs behavior, clears `equipped`, fires `onUnequip`. See {@link UNEQUIP}. */
+  [UNEQUIP](holder: ICharacter): void;
+  /** The kind of slot this item equips into; absent ⇒ not slot-equippable. */
+  readonly slot?: SlotKind;
+  /** Weapons only: occupies both hand slots when equipped. */
+  readonly twoHanded?: boolean;
   /** A recipe this item imparts to the party when picked up. */
   readonly teaches?: CraftingRecipe;
   /** The item's current holder, or `null` when unheld. See {@link HELD_BY}. */
@@ -209,7 +229,16 @@ export class Item implements IItem {
   readonly consumeOnUse?: boolean;
   readonly teaches?: CraftingRecipe;
   readonly maxDurability?: number;
+  readonly slot?: SlotKind;
+  readonly twoHanded?: boolean;
   #durability?: number;
+  // The raw equip/unequip behavior and events, captured from the constructor so
+  // the class-level {@link EQUIP}/{@link UNEQUIP} methods can reach them (unlike
+  // the other action wrappers, which close over the constructor params inline).
+  #equipBehavior: ItemActionEvent;
+  #unequipBehavior: ItemActionEvent;
+  #onEquip?: ItemActionEvent;
+  #onUnequip?: ItemActionEvent;
 
   get durability(): number | undefined {
     return this.#durability;
@@ -250,6 +279,22 @@ export class Item implements IItem {
     return this.#heldBy?.holderKind === "character" ? this.#heldBy : null;
   }
 
+  // The terminal equip/unequip step: run the raw author behavior, toggle the
+  // flag, fire the event. Calls #equipBehavior directly (never actions.equip), so
+  // Character.equip can route a slotted item through validation and finish here
+  // without looping back into the action wrapper.
+  [EQUIP](holder: ICharacter) {
+    this.#equipBehavior(holder);
+    this.properties.equipped = true;
+    this.#onEquip?.(holder);
+  }
+
+  [UNEQUIP](holder: ICharacter) {
+    this.#unequipBehavior(holder);
+    this.properties.equipped = false;
+    this.#onUnequip?.(holder);
+  }
+
   /**
    * @param descriptor - The item's intrinsic data.
    * @param descriptor.type - Item category (weapon, armor, …).
@@ -262,6 +307,8 @@ export class Item implements IItem {
    * @param descriptor.teaches - Recipe this item imparts to the party when picked up.
    * @param descriptor.maxDurability - Max durability for equipment that wears (optional).
    * @param descriptor.durability - Starting durability; defaults to `maxDurability`.
+   * @param descriptor.slot - The {@link SlotKind} this item equips into (optional).
+   * @param descriptor.twoHanded - Weapons only: occupies both hands when equipped.
    * @param properties - Initial mutable flags (equippable, equipped, …).
    * @param actions - Core behaviour for each interaction; wrapped on construction.
    * @param events - Observer hooks fired after the matching action runs.
@@ -278,6 +325,8 @@ export class Item implements IItem {
       teaches,
       maxDurability,
       durability,
+      slot,
+      twoHanded,
     }: {
       type: ItemType;
       recipe: Recipe;
@@ -289,6 +338,8 @@ export class Item implements IItem {
       teaches?: CraftingRecipe;
       maxDurability?: number;
       durability?: number;
+      slot?: SlotKind;
+      twoHanded?: boolean;
     },
     properties: ItemProperties,
     actions: ItemActions,
@@ -305,29 +356,43 @@ export class Item implements IItem {
     this.consumeOnUse = consumeOnUse;
     this.teaches = teaches;
     this.maxDurability = maxDurability;
+    this.slot = slot;
+    this.twoHanded = twoHanded;
     this.#durability =
       maxDurability === undefined
         ? undefined
         : Math.max(0, Math.min(maxDurability, durability ?? maxDurability));
+    this.#equipBehavior = actions[ItemAction.Equip];
+    this.#unequipBehavior = actions[ItemAction.Unequip];
+    this.#onEquip = events.onEquip;
+    this.#onUnequip = events.onUnequip;
 
     this.actions = {
       [ItemAction.PickUp]: (c) => {
         actions[ItemAction.PickUp](c);
         events.onPickUp(c);
       },
+      // A slotted item routes through Character.equip so slot capacity is
+      // enforced even via the item's own action (no bypass); the validated path
+      // calls back into [EQUIP] to finish. Slotless legacy equippables toggle
+      // directly here.
       [ItemAction.Equip]: () => {
         const holder = this.#characterHolder();
         if (!holder) return;
-        actions[ItemAction.Equip](holder);
-        this.properties.equipped = true;
-        events.onEquip?.(holder);
+        if (this.slot !== undefined) {
+          holder.equip(this);
+          return;
+        }
+        this[EQUIP](holder);
       },
       [ItemAction.Unequip]: () => {
         const holder = this.#characterHolder();
         if (!holder) return;
-        actions[ItemAction.Unequip](holder);
-        this.properties.equipped = false;
-        events.onUnequip?.(holder);
+        if (this.slot !== undefined) {
+          holder.unequip(this);
+          return;
+        }
+        this[UNEQUIP](holder);
       },
       [ItemAction.Transfer]: (_c, cc) => {
         // Keys are transfer-only via Character.transferKey; a key reaching this
