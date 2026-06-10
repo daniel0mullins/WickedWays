@@ -172,7 +172,7 @@ pool cannot be replaced wholesale.
 
 The `Item.Destroy` wrapper (`inventory.ts:287-295`) is extended so that, when an item
 is actually destroyed (it is held by a character and is `destroyable`), it deposits its
-`recipe` into the party pool before returning:
+`recipe` into the party pool and then removes the consumed item from its holder:
 
 ```ts
 [ItemAction.Destroy]: () => {
@@ -180,16 +180,25 @@ is actually destroyed (it is held by a character and is `destroyable`), it depos
   if (!holder) return null;
   if (!this.properties.destroyable) return null;
   const components = actions[ItemAction.Destroy]();
-  holder.campaign[DEPOSIT_MATERIALS](this.recipe);   // <- new: yield -> party pool
+  holder.campaign[DEPOSIT_MATERIALS](this.recipe);   // <- yield -> party pool
   events.onDestroy?.(holder, components);
+  holder.relinquishItem(this);                        // <- remove the consumed item
+  this[CLAIM](null);                                  // <- and unhome it
   return components;
 },
 ```
 
 `holder` is an `ICharacter`, which exposes `campaign`. Destroy stays **free** (it does
-not route through `recordAction`, unchanged from today). Destroying is not a farm
-vector: it consumes the item, and later crafting that item will cost at least its
-`recipe`, so a destroy/craft loop is net-neutral at best.
+not route through `recordAction`). Destroying is not a farm vector: it consumes the
+item, and later crafting that item will cost at least its `recipe`, so a destroy/craft
+loop is net-neutral at best.
+
+**Item removal (folded in during review):** previously the wrapper deposited/returned
+but left the destroyed item in the holder's inventory with `heldBy` still set — a
+"ghost." It now removes the item **silently** via `relinquishItem` + `CLAIM(null)`,
+*not* `removeFromInventory`: destruction logs no `"drop"` and incurs no action cost,
+keeping it consistent with the "destroy is free" decision and avoiding mislabelling a
+destroy as a drop.
 
 ### 5. Material caches
 
@@ -267,7 +276,7 @@ mirroring the key-items precondition idiom.
 ## Files touched
 
 - **`inventory.ts`** — `MaterialMap` type; `DEPOSIT_MATERIALS` symbol; `Item.Destroy`
-  wrapper deposits `recipe`.
+  wrapper deposits `recipe` and removes/unhomes the consumed item.
 - **`campaign.ts`** — pool field + claims set; `materials` getter/throwing setter;
   `[DEPOSIT_MATERIALS]`; `claimMaterials`; `withdrawMaterials`; `canAfford`.
 - **`material-cache.ts`** *(new)* — `MaterialCache` + `DEPLETE` symbol.
@@ -293,6 +302,9 @@ Vitest specs mirroring the existing style:
 - **Destroy → pool:** destroying a `destroyable` item deposits exactly its `recipe`
   into its campaign's pool; destroying a non-destroyable item (e.g. a key) deposits
   nothing; a box-held item's destroy is still a no-op and deposits nothing.
+- **Destroy removes the item:** a destroyed item is relinquished from its holder and
+  unhomed (`heldBy` is `null`); removal goes through `relinquishItem`, not
+  `removeFromInventory`, so no `"drop"` is recorded.
 - **Cache harvest:** harvesting a cache in the character's room deposits its contents
   and marks it depleted; a second harvest deposits nothing (idempotent); harvesting a
   cache not in the current room throws `ProceduralViolation`.
@@ -307,6 +319,10 @@ Vitest specs mirroring the existing style:
 - **Destroy yield semantics change:** the old `ItemComponentType[]` return is preserved
   for existing callers; the pool deposit is additive and uses `recipe`. Audit any test
   asserting the old discarded-yield behavior.
+- **Destroy now mutates the holder's inventory:** folded in during review to fix a
+  pre-existing ghost-item bug. Any caller that destroyed an item and then read it back
+  from the holder's `items` will now find it gone. The removal is silent (no `"drop"`,
+  no budget tick), so turn/history-sensitive callers are unaffected.
 - **Claim-id collisions:** two unrelated grants sharing a `claimId` means the second is
   silently skipped. Claim ids are the author's responsibility to keep unique, the same
   way scene/precondition keys are.

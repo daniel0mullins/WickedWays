@@ -307,6 +307,11 @@ export class Item implements IItem {
         // single source of truth for both scrap-yield and (later) craft-cost.
         holder.campaign[DEPOSIT_MATERIALS](this.recipe);
         events.onDestroy?.(holder, components);
+        // The item is consumed: pull it from the holder and unhome it so it does
+        // not linger as a ghost. Removal is silent — relinquishItem, not
+        // removeFromInventory — so destroying logs no "drop" and stays free.
+        holder.relinquishItem(this);
+        this[CLAIM](null);
         return components;
       },
     };
