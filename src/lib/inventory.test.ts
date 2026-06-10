@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ICharacter } from "./character/character";
 import { StatType } from "./character/stats";
-import { CLAIM, DEPOSIT_MATERIALS, Item, createKey, type IItemHolder } from "./inventory";
+import { CLAIM, DEPOSIT_MATERIALS, Item, createKey, type IItem, type IItemHolder } from "./inventory";
 import { ProceduralViolation } from "./util";
+import type { CraftingRecipe, RecipeId } from "./crafting";
 
 // `ItemProperties` is not exported, so we recover the shape the constructor
 // expects straight from its parameter list.
@@ -369,5 +370,35 @@ describe("createKey", () => {
     hold(key, makeHolder());
 
     expect(key.actions.destroy()).toBeNull();
+  });
+});
+
+describe("teaches", () => {
+  const recipe: CraftingRecipe = {
+    id: "iron-sword" as RecipeId,
+    materials: { metal: 1 },
+    create: () => ({ name: "Iron Sword" }) as unknown as IItem,
+  };
+
+  it("exposes the recipe an item teaches", () => {
+    const item = new Item(
+      {
+        type: "weapon",
+        recipe: { metal: 1 },
+        modifier: 1,
+        stat: StatType.Health,
+        name: "Blueprint",
+        teaches: recipe,
+      },
+      { equippable: false, equipped: false, destroyable: true, usable: false },
+      makeActions(),
+      makeEvents(),
+    );
+
+    expect(item.teaches).toBe(recipe);
+  });
+
+  it("defaults teaches to undefined", () => {
+    expect(makeItem().item.teaches).toBeUndefined();
   });
 });

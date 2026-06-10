@@ -10,6 +10,7 @@ import { Character } from "./character";
 import type { ActionHistoryEntry } from "./history";
 import { StatType, type Stats } from "./stats";
 
+import type { CraftingRecipe, RecipeId } from "../crafting";
 import { makeCampaign, makeStats } from "../../test-utils";
 import { Campaign } from "../campaign";
 import { Room } from "../room";
@@ -31,6 +32,23 @@ function makeItem(id?: string): IItem {
   return {
     id: itemId,
     name: itemId,
+    actions: { pickUp: vi.fn() },
+    [CLAIM]: (h: unknown) => {
+      holder = h;
+    },
+    get [Symbol.for("heldBy")]() {
+      return holder;
+    },
+  } as unknown as IItem;
+}
+
+function makeTeachingItem(recipe: CraftingRecipe, id = "teacher"): IItem {
+  let holder: unknown = null;
+  return {
+    id: id as ItemId,
+    name: "Blueprint",
+    type: "consumable",
+    teaches: recipe,
     actions: { pickUp: vi.fn() },
     [CLAIM]: (h: unknown) => {
       holder = h;
@@ -654,6 +672,241 @@ describe("Character", () => {
       character.harvest(cache);
 
       expect(character.history.length).toBe(before);
+    });
+  });
+
+  describe("recipe discovery on pickup", () => {
+    it("teaches the party a recipe when a teaching item is picked up", () => {
+      const recipe: CraftingRecipe = {
+        id: "torch" as RecipeId,
+        materials: { metal: 1 },
+        create: () => ({ name: "Torch" }) as unknown as IItem,
+      };
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+
+      character.addToInventory(makeTeachingItem(recipe));
+
+      expect(campaign.knows("torch" as RecipeId)).toBe(true);
+    });
+
+    it("discovers nothing for an item that teaches no recipe", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+
+      character.addToInventory(makeItem());
+
+      expect(campaign.knownRecipes.size).toBe(0);
+    });
+  });
+
+  describe("craft (item track)", () => {
+    it("withdraws materials and places the crafted item in inventory", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      const output = makeItem();
+      const recipeId = "widget" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        materials: { metal: 2 },
+        create: () => output,
+      };
+      campaign.claimMaterials("seed", { metal: 2 });
+      campaign.discoverRecipe(recipe);
+
+      const result = character.craft(recipeId);
+
+      expect(result).toBe(output);
+      expect(character.inventory.items).toContain(output);
+      expect(campaign.canAfford({ metal: 1 })).toBe(false);
+    });
+
+    it("throws ProceduralViolation on an undiscovered recipe", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+
+      expect(() => character.craft("unknown-recipe" as RecipeId)).toThrow(
+        new ProceduralViolation("Cannot craft an undiscovered recipe"),
+      );
+    });
+
+    it("throws and spends nothing when materials are insufficient", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      const recipeId = "expensive-widget" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        materials: { metal: 5 },
+        create: () => makeItem(),
+      };
+      // Seed only 2 metal, but recipe costs 5
+      campaign.claimMaterials("seed", { metal: 2 });
+      campaign.discoverRecipe(recipe);
+
+      expect(() => character.craft(recipeId)).toThrow(ProceduralViolation);
+      // Pool unchanged: still has 2 metal
+      expect(campaign.canAfford({ metal: 2 })).toBe(true);
+    });
+
+    it("throws and spends nothing when there is no inventory slot", () => {
+      const campaign = new Campaign("Crafting");
+      // 0 inventory slots
+      const character = new Character(campaign, "Hero", makeStats(), 0);
+      const recipeId = "widget" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        materials: { metal: 1 },
+        create: () => makeItem(),
+      };
+      campaign.claimMaterials("seed", { metal: 1 });
+      campaign.discoverRecipe(recipe);
+
+      expect(() => character.craft(recipeId)).toThrow(ProceduralViolation);
+      // Materials should be untouched
+      expect(campaign.canAfford({ metal: 1 })).toBe(true);
+    });
+
+    it("does not consume an action (records no history)", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      const recipeId = "widget" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        materials: { metal: 1 },
+        create: () => makeItem(),
+      };
+      campaign.claimMaterials("seed", { metal: 1 });
+      campaign.discoverRecipe(recipe);
+
+      const before = character.history.length;
+      character.craft(recipeId);
+
+      expect(character.history.length).toBe(before);
+    });
+  });
+
+  describe("craft (key track)", () => {
+    it("consumes required keys and places the crafted key in the keyring", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      const bronze1 = createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false });
+      const bronze2 = createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false });
+      character.addToInventory(bronze1);
+      character.addToInventory(bronze2);
+
+      const recipeId = "silver-key" as RecipeId;
+      const silverKey = createKey({ name: "Silver Key", keyCode: "silver", consumeOnUse: false });
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        keys: [{ keyCode: "bronze", qty: 2 }],
+        create: () => silverKey,
+      };
+      campaign.discoverRecipe(recipe);
+
+      const result = character.craft(recipeId);
+
+      expect(result).toBe(silverKey);
+      expect(character.inventory.keys).toContain(silverKey);
+      const bronzeCount = character.inventory.keys.filter(
+        (k) => k.keyCode === "bronze",
+      ).length;
+      expect(bronzeCount).toBe(0);
+    });
+
+    it("throws and consumes nothing when a required key is missing", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      const bronze1 = createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false });
+      character.addToInventory(bronze1);
+
+      const recipeId = "silver-key-2" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        keys: [{ keyCode: "bronze", qty: 2 }],
+        create: () => createKey({ name: "Silver Key", keyCode: "silver", consumeOnUse: false }),
+      };
+      campaign.discoverRecipe(recipe);
+
+      expect(() => character.craft(recipeId)).toThrow(ProceduralViolation);
+      const bronzeCount = character.inventory.keys.filter(
+        (k) => k.keyCode === "bronze",
+      ).length;
+      expect(bronzeCount).toBe(1);
+    });
+
+    it("combines duplicate key codes into a single total cost", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      character.addToInventory(
+        createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false }),
+      );
+
+      // Two entries for the same code demand two keys in total, not one each.
+      const recipeId = "silver-key-3" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        keys: [
+          { keyCode: "bronze", qty: 1 },
+          { keyCode: "bronze", qty: 1 },
+        ],
+        create: () => createKey({ name: "Silver Key", keyCode: "silver", consumeOnUse: false }),
+      };
+      campaign.discoverRecipe(recipe);
+
+      // Only one bronze held, so it falls short and consumes nothing.
+      expect(() => character.craft(recipeId)).toThrow(ProceduralViolation);
+      const bronzeCount = character.inventory.keys.filter(
+        (k) => k.keyCode === "bronze",
+      ).length;
+      expect(bronzeCount).toBe(1);
+    });
+
+    it("does not consume an action (records no history)", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+      character.addToInventory(
+        createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false }),
+      );
+
+      const recipeId = "silver-key-4" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        keys: [{ keyCode: "bronze", qty: 1 }],
+        create: () => createKey({ name: "Silver Key", keyCode: "silver", consumeOnUse: false }),
+      };
+      campaign.discoverRecipe(recipe);
+
+      const before = character.history.length;
+      character.craft(recipeId);
+
+      expect(character.history.length).toBe(before);
+    });
+  });
+
+  describe("party-wide crafting (seam)", () => {
+    it("lets one member craft a recipe a different member discovered", () => {
+      const campaign = new Campaign("Crafting");
+      const finder = new Character(campaign, "Finder", makeStats());
+      const crafter = new Character(campaign, "Crafter", makeStats());
+
+      const output = makeItem();
+      const recipeId = "shared-widget" as RecipeId;
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        materials: { metal: 1 },
+        create: () => output,
+      };
+
+      // The finder picks up a blueprint, teaching the whole party the recipe.
+      finder.addToInventory(makeTeachingItem(recipe, "blueprint"));
+      expect(campaign.knows(recipeId)).toBe(true);
+
+      // A different party member can now craft it from the shared pool.
+      campaign.claimMaterials("seed", { metal: 1 });
+      const result = crafter.craft(recipeId);
+
+      expect(result).toBe(output);
+      expect(crafter.inventory.items).toContain(output);
     });
   });
 
