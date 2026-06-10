@@ -774,6 +774,116 @@ describe("Character", () => {
     });
   });
 
+  describe("repair", () => {
+    it("restores a damaged held item to full for a proportional, debited cost", () => {
+      const campaign = new Campaign("Repair");
+      const character = new Character(campaign, "Hero", makeStats());
+      const weapon = makeDurable({ recipe: { metal: 4 }, maxDurability: 10, durability: 3 });
+      character.inventory.items.push(weapon);
+      campaign.claimMaterials("seed", { metal: 5 });
+
+      character.repair(weapon);
+
+      // missing 7 of 10 -> ceil(4 * 7 / 10) = ceil(2.8) = 3 metal; 5 - 3 = 2 left
+      expect(weapon.durability).toBe(10);
+      expect(campaign.materials).toEqual({ metal: 2 });
+    });
+
+    it("charges the full recipe to fully restore a broken item", () => {
+      const campaign = new Campaign("Repair");
+      const character = new Character(campaign, "Hero", makeStats());
+      const weapon = makeDurable({ recipe: { metal: 4 }, maxDurability: 10, durability: 0 });
+      character.inventory.items.push(weapon);
+      campaign.claimMaterials("seed", { metal: 4 });
+
+      character.repair(weapon);
+
+      // missing 10 of 10 -> ceil(4 * 10 / 10) = 4 metal (whole recipe); pool emptied
+      expect(weapon.durability).toBe(10);
+      expect(campaign.materials).toEqual({});
+    });
+
+    it("throws and spends nothing for an item the character is not holding", () => {
+      const campaign = new Campaign("Repair");
+      const character = new Character(campaign, "Hero", makeStats());
+      const weapon = makeDurable({ recipe: { metal: 4 }, maxDurability: 10, durability: 3 });
+      campaign.claimMaterials("seed", { metal: 5 });
+
+      expect(() => character.repair(weapon)).toThrow(ProceduralViolation);
+      expect(campaign.materials).toEqual({ metal: 5 });
+    });
+
+    it("throws for an item that has no durability", () => {
+      const campaign = new Campaign("Repair");
+      const character = new Character(campaign, "Hero", makeStats());
+      const plain = makeDurable({ recipe: { metal: 1 } }); // no maxDurability
+      character.inventory.items.push(plain);
+
+      expect(() => character.repair(plain)).toThrow(ProceduralViolation);
+    });
+
+    it("throws for an item that is not damaged", () => {
+      const campaign = new Campaign("Repair");
+      const character = new Character(campaign, "Hero", makeStats());
+      const weapon = makeDurable({ recipe: { metal: 4 }, maxDurability: 10 }); // full
+      character.inventory.items.push(weapon);
+
+      expect(() => character.repair(weapon)).toThrow(ProceduralViolation);
+    });
+
+    it("throws and spends nothing when the pool cannot afford the cost", () => {
+      const campaign = new Campaign("Repair");
+      const character = new Character(campaign, "Hero", makeStats());
+      const weapon = makeDurable({ recipe: { metal: 4 }, maxDurability: 10, durability: 0 });
+      character.inventory.items.push(weapon);
+      campaign.claimMaterials("seed", { metal: 1 }); // need 4
+
+      expect(() => character.repair(weapon)).toThrow(ProceduralViolation);
+      expect(campaign.materials).toEqual({ metal: 1 });
+      expect(weapon.durability).toBe(0);
+    });
+
+    it("does not consume an action (records no history)", () => {
+      const campaign = new Campaign("Repair");
+      const character = new Character(campaign, "Hero", makeStats());
+      const weapon = makeDurable({ recipe: { metal: 4 }, maxDurability: 10, durability: 3 });
+      character.inventory.items.push(weapon);
+      campaign.claimMaterials("seed", { metal: 5 });
+
+      const before = character.history.length;
+      character.repair(weapon);
+
+      expect(character.history.length).toBe(before);
+    });
+
+    it("debits each recipe component proportionally", () => {
+      const campaign = new Campaign("Repair");
+      const character = new Character(campaign, "Hero", makeStats());
+      const weapon = makeDurable({
+        recipe: { metal: 4, electronics: 2 },
+        maxDurability: 10,
+        durability: 5,
+      });
+      character.inventory.items.push(weapon);
+      campaign.claimMaterials("seed", { metal: 3, electronics: 2 });
+
+      character.repair(weapon);
+
+      // missing 5 of 10 -> metal ceil(4*5/10)=2, electronics ceil(2*5/10)=1
+      expect(weapon.durability).toBe(10);
+      expect(campaign.materials).toEqual({ metal: 1, electronics: 1 });
+    });
+
+    it("throws when asked to repair a key", () => {
+      const campaign = new Campaign("Repair");
+      const character = new Character(campaign, "Hero", makeStats());
+      const key = createKey({ name: "Brass Key", keyCode: "brass", consumeOnUse: false });
+      character.addToInventory(key);
+
+      expect(() => character.repair(key)).toThrow("Keys cannot be repaired.");
+    });
+  });
+
   describe("action history", () => {
     it("records a move with the destination room id and name", () => {
       const character = makeCharacter();
