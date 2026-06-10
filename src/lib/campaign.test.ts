@@ -386,4 +386,34 @@ describe("Campaign", () => {
       expect(campaign.materials).toEqual({ metal: 5, glass: 2 });
     });
   });
+
+  describe("claimMaterials", () => {
+    it("deposits on the first claim of an id", () => {
+      const campaign = new Campaign("Materials");
+
+      campaign.claimMaterials("vault-stash", { metal: 3 });
+
+      expect(campaign.materials).toEqual({ metal: 3 });
+    });
+
+    it("ignores a repeated claim id", () => {
+      const campaign = new Campaign("Materials");
+
+      campaign.claimMaterials("vault-stash", { metal: 3 });
+      // A different payload on the repeat proves the call is ignored entirely,
+      // not merely deduped to a coincidentally-equal amount.
+      campaign.claimMaterials("vault-stash", { metal: 99 });
+
+      expect(campaign.materials).toEqual({ metal: 3 });
+    });
+
+    it("deposits again for a different id", () => {
+      const campaign = new Campaign("Materials");
+
+      campaign.claimMaterials("a", { metal: 3 });
+      campaign.claimMaterials("b", { metal: 2 });
+
+      expect(campaign.materials).toEqual({ metal: 5 });
+    });
+  });
 });
