@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CLAIM, createKey, type IItem, type ItemId } from "../inventory";
+import { CLAIM, Item, createKey, type IItem, type ItemId } from "../inventory";
 import type { IRoom, RoomId } from "../room";
 import { Status } from "../status";
 import { ProceduralViolation } from "../util";
@@ -48,6 +48,33 @@ function makeRoom(): IRoom {
     enterRoom: vi.fn(),
     exitRoom: vi.fn(),
   } as unknown as IRoom;
+}
+
+type ItemDescriptor = ConstructorParameters<typeof Item>[0];
+function makeDurable(opts: {
+  type?: ItemDescriptor["type"];
+  stat?: StatType;
+  modifier?: number;
+  recipe?: ItemDescriptor["recipe"];
+  maxDurability?: number;
+  durability?: number;
+  equipped?: boolean;
+} = {}): Item {
+  const noop = () => {};
+  return new Item(
+    {
+      type: opts.type ?? "weapon",
+      recipe: opts.recipe ?? { metal: 1 },
+      modifier: opts.modifier ?? 2,
+      stat: opts.stat ?? StatType.Health,
+      name: "Gear",
+      maxDurability: opts.maxDurability,
+      durability: opts.durability,
+    },
+    { equippable: true, equipped: opts.equipped ?? true, destroyable: true, usable: false },
+    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    { onPickUp: noop },
+  );
 }
 
 function makeCharacter(opts: {
@@ -320,6 +347,96 @@ describe("Character", () => {
       character.takeDamage(1);
 
       expect(onTurnEnd).not.toHaveBeenCalled();
+    });
+
+    describe("armor", () => {
+      // Sanity 5 makes the Health multiplier exactly 1: (10 - 5) * 0.2 = 1,
+      // so post-mitigation damage equals the raw strength after armor soak.
+      it("reduces raw strength by equipped matching armor before the multiplier", () => {
+        const character = makeCharacter({ stats: { [StatType.Sanity]: 5 } });
+        character.inventory.items.push(
+          makeDurable({ type: "armor", stat: StatType.Health, modifier: 2, maxDurability: 5 }),
+        );
+
+        character.takeDamage(5, StatType.Health);
+
+        // raw = max(0, 5 - 2) = 3; final = 3 * 1 = 3; health 10 - 3 = 7
+        expect(character.stats[StatType.Health]).toBeCloseTo(7);
+      });
+
+      it("does not mitigate when the armor defends a different stat", () => {
+        const character = makeCharacter({ stats: { [StatType.Sanity]: 5 } });
+        character.inventory.items.push(
+          makeDurable({ type: "armor", stat: StatType.Energy, modifier: 4, maxDurability: 5 }),
+        );
+
+        character.takeDamage(5, StatType.Health);
+
+        expect(character.stats[StatType.Health]).toBeCloseTo(5);
+      });
+
+      it("does not mitigate with broken armor", () => {
+        const character = makeCharacter({ stats: { [StatType.Sanity]: 5 } });
+        character.inventory.items.push(
+          makeDurable({ type: "armor", stat: StatType.Health, modifier: 2, maxDurability: 5, durability: 0 }),
+        );
+
+        character.takeDamage(5, StatType.Health);
+
+        expect(character.stats[StatType.Health]).toBeCloseTo(5);
+      });
+
+      it("sums multiple matching armor pieces", () => {
+        const character = makeCharacter({ stats: { [StatType.Sanity]: 5 } });
+        character.inventory.items.push(
+          makeDurable({ type: "armor", stat: StatType.Health, modifier: 2, maxDurability: 5 }),
+          makeDurable({ type: "armor", stat: StatType.Health, modifier: 1, maxDurability: 5 }),
+        );
+
+        character.takeDamage(5, StatType.Health);
+
+        // raw = max(0, 5 - 3) = 2; final 2; health 10 - 2 = 8
+        expect(character.stats[StatType.Health]).toBeCloseTo(8);
+      });
+
+      it("wears equipped matching armor by one when it absorbs a hit", () => {
+        const armor = makeDurable({ type: "armor", stat: StatType.Health, modifier: 2, maxDurability: 5 });
+        const character = makeCharacter({ stats: { [StatType.Sanity]: 5 } });
+        character.inventory.items.push(armor);
+
+        character.takeDamage(5, StatType.Health);
+
+        expect(armor.durability).toBe(4);
+      });
+
+      it("mitigates with non-durable armor but never wears it", () => {
+        const armor = makeDurable({ type: "armor", stat: StatType.Health, modifier: 2 });
+        const character = makeCharacter({ stats: { [StatType.Sanity]: 5 } });
+        character.inventory.items.push(armor);
+
+        expect(() => character.takeDamage(5, StatType.Health)).not.toThrow();
+
+        // raw = max(0, 5 - 2) = 3; final 3; health 10 - 3 = 7
+        expect(character.stats[StatType.Health]).toBeCloseTo(7);
+        expect(armor.durability).toBeUndefined();
+      });
+
+      it("does not mitigate with unequipped armor", () => {
+        const character = makeCharacter({ stats: { [StatType.Sanity]: 5 } });
+        character.inventory.items.push(
+          makeDurable({
+            type: "armor",
+            stat: StatType.Health,
+            modifier: 2,
+            maxDurability: 5,
+            equipped: false,
+          }),
+        );
+
+        character.takeDamage(5, StatType.Health);
+
+        expect(character.stats[StatType.Health]).toBeCloseTo(5);
+      });
     });
   });
 

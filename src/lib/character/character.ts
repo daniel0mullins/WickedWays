@@ -1,6 +1,6 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { CLAIM, DEPOSIT_MATERIALS, IItem, IItemHolder, Inventory } from "../inventory";
+import { CLAIM, DEPOSIT_MATERIALS, IItem, IItemHolder, Inventory, SET_DURABILITY } from "../inventory";
 import { DEPLETE, type IMaterialCache } from "../material-cache";
 import { IRoom } from "../room";
 import { Status, StatusMatrix } from "../status";
@@ -396,20 +396,40 @@ export class Character implements ICharacter {
    * Applies an incoming attack to a stat after mitigation, then recomputes
    * status conditions and records a `takeDamage` action.
    *
-   * The damage taken is `attackStrength * (MAX_STAT - mitigator) * 0.2`, where
-   * the mitigator is the value of the stat that defends `attackStat` (see
-   * {@link MitigatorStatType}). A full mitigator absorbs the hit entirely; an
-   * empty one doubles it.
+   * Equipped, non-broken armor whose `stat` matches `attackStat` first subtracts
+   * its `modifier` from the raw strength (floored at 0); the remainder is then
+   * `* (MAX_STAT - mitigator) * 0.2`, where the mitigator is the stat that defends
+   * `attackStat` (see {@link MitigatorStatType}). Contributing armor wears one point.
    *
    * @param attackStrength - Raw incoming attack strength before mitigation.
    * @param attackStat - The stat being attacked. Defaults to health.
    */
   takeDamage(attackStrength: number, attackStat: StatType = StatType.Health) {
+    // Equipped, intact armor defending this stat soaks raw strength first — the
+    // defensive counterpart to how attacking weapons add to raw attack strength.
+    const armor = this.#inventory.items.filter(
+      (item) =>
+        item.properties.equipped &&
+        item.type === "armor" &&
+        !item.isBroken &&
+        item.stat === attackStat,
+    );
+    const armorSum = armor.reduce((sum, piece) => sum + piece.modifier, 0);
+    const mitigatedStrength = Math.max(0, attackStrength - armorSum);
+
     const mitigator = this.stats[MitigatorStatType[attackStat]];
     const damageMultiplier = (MAX_STAT - mitigator) * MITIGATION_PER_POINT;
-    const finalAttackStrength = attackStrength * damageMultiplier;
+    const finalAttackStrength = mitigatedStrength * damageMultiplier;
 
     this.stats[attackStat] = this.stats[attackStat] - finalAttackStrength;
+
+    // Each contributing armor piece wears for the blow it helped absorb.
+    armor.forEach((piece) => {
+      if (piece.maxDurability !== undefined) {
+        // durability is defined whenever maxDurability is (see Item constructor).
+        piece[SET_DURABILITY](piece.durability! - 1);
+      }
+    });
 
     this.#resolveStatuses();
     this.recordAction(this.takeDamage, {
