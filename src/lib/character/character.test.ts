@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CLAIM, Item, createKey, type IItem, type ItemId } from "../inventory";
+import { EquipmentSlot } from "../equipment";
 import type { IRoom, RoomId } from "../room";
 import { Status } from "../status";
 import { ProceduralViolation } from "../util";
@@ -90,6 +91,32 @@ function makeDurable(opts: {
       durability: opts.durability,
     },
     { equippable: true, equipped: opts.equipped ?? true, destroyable: true, usable: false },
+    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    { onPickUp: noop },
+  );
+}
+
+function makeGear(opts: {
+  type?: ItemDescriptor["type"];
+  name?: string;
+  slot?: ItemDescriptor["slot"];
+  twoHanded?: boolean;
+  stat?: StatType;
+  modifier?: number;
+  equippable?: boolean;
+}): Item {
+  const noop = () => {};
+  return new Item(
+    {
+      type: opts.type ?? "armor",
+      recipe: { metal: 1 },
+      modifier: opts.modifier ?? 1,
+      stat: opts.stat ?? StatType.Health,
+      name: opts.name ?? "Gear",
+      slot: opts.slot,
+      twoHanded: opts.twoHanded,
+    },
+    { equippable: opts.equippable ?? true, equipped: false, destroyable: true, usable: false },
     { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
     { onPickUp: noop },
   );
@@ -1193,6 +1220,170 @@ describe("Character", () => {
         room: { id: room.id, name: room.name },
       });
       expect(character.history).toHaveLength(1);
+    });
+  });
+
+  describe("equip", () => {
+    function heroWith(...items: Item[]) {
+      const character = new Character(new Campaign("Equip"), "Hero", makeStats());
+      for (const item of items) character.inventory.items.push(item);
+      return character;
+    }
+
+    it("equips an item into a free named slot of its kind", () => {
+      const helm = makeGear({ type: "armor", slot: "head", name: "Helm" });
+      const hero = heroWith(helm);
+
+      hero.equip(helm);
+
+      expect(helm.properties.equipped).toBe(true);
+      expect(hero.equipment.get(EquipmentSlot.Head)).toBe(helm);
+    });
+
+    it("auto-assigns rings to the first free finger, then the next", () => {
+      const r1 = makeGear({ type: "accessory", slot: "finger", name: "R1" });
+      const r2 = makeGear({ type: "accessory", slot: "finger", name: "R2" });
+      const hero = heroWith(r1, r2);
+
+      hero.equip(r1);
+      hero.equip(r2);
+
+      expect(hero.equipment.get(EquipmentSlot.LeftIndexFinger)).toBe(r1);
+      expect(hero.equipment.get(EquipmentSlot.LeftRingFinger)).toBe(r2);
+    });
+
+    it("honors an explicit target slot", () => {
+      const ring = makeGear({ type: "accessory", slot: "finger", name: "R" });
+      const hero = heroWith(ring);
+
+      hero.equip(ring, EquipmentSlot.RightRingFinger);
+
+      expect(hero.equipment.get(EquipmentSlot.RightRingFinger)).toBe(ring);
+    });
+
+    it("auto-swaps the occupant of a single-capacity slot", () => {
+      const helmA = makeGear({ type: "armor", slot: "head", name: "A" });
+      const helmB = makeGear({ type: "armor", slot: "head", name: "B" });
+      const hero = heroWith(helmA, helmB);
+      hero.equip(helmA);
+
+      hero.equip(helmB);
+
+      expect(hero.equipment.get(EquipmentSlot.Head)).toBe(helmB);
+      expect(helmA.properties.equipped).toBe(false);
+      expect(hero.inventory.items).toContain(helmA); // displaced, still held
+    });
+
+    it("fills all four fingers, then auto-swaps the first", () => {
+      const rings = [0, 1, 2, 3, 4].map((n) =>
+        makeGear({ type: "accessory", slot: "finger", name: `R${n}` }),
+      );
+      const hero = heroWith(...rings);
+      rings.forEach((r) => hero.equip(r));
+
+      const equipped = rings.filter((r) => r.properties.equipped);
+      expect(equipped).toHaveLength(4); // only four finger slots
+      expect(rings[0]!.properties.equipped).toBe(false); // first displaced
+    });
+
+    it("a two-handed weapon occupies both hands and displaces them", () => {
+      const sword = makeGear({ type: "weapon", slot: "hand", name: "1H-A" });
+      const dagger = makeGear({ type: "weapon", slot: "hand", name: "1H-B" });
+      const greatsword = makeGear({ type: "weapon", slot: "hand", twoHanded: true, name: "2H" });
+      const hero = heroWith(sword, dagger, greatsword);
+      hero.equip(sword);
+      hero.equip(dagger); // both hands now full
+
+      hero.equip(greatsword);
+
+      expect(hero.equipment.get(EquipmentSlot.LeftHand)).toBe(greatsword);
+      expect(hero.equipment.get(EquipmentSlot.RightHand)).toBe(greatsword);
+      expect(sword.properties.equipped).toBe(false);
+      expect(dagger.properties.equipped).toBe(false);
+    });
+
+    it("equipping a one-handed weapon displaces a worn two-handed weapon", () => {
+      const greatsword = makeGear({ type: "weapon", slot: "hand", twoHanded: true, name: "2H" });
+      const dagger = makeGear({ type: "weapon", slot: "hand", name: "1H" });
+      const hero = heroWith(greatsword, dagger);
+      hero.equip(greatsword);
+
+      hero.equip(dagger, EquipmentSlot.LeftHand);
+
+      expect(hero.equipment.get(EquipmentSlot.LeftHand)).toBe(dagger);
+      expect(hero.equipment.has(EquipmentSlot.RightHand)).toBe(false);
+      expect(greatsword.properties.equipped).toBe(false);
+    });
+
+    it("unequip clears the slot and leaves the item in inventory", () => {
+      const helm = makeGear({ type: "armor", slot: "head", name: "Helm" });
+      const hero = heroWith(helm);
+      hero.equip(helm);
+
+      hero.unequip(helm);
+
+      expect(helm.properties.equipped).toBe(false);
+      expect(hero.equipment.has(EquipmentSlot.Head)).toBe(false);
+      expect(hero.inventory.items).toContain(helm);
+    });
+
+    it("unequipping a two-handed weapon frees both hand slots", () => {
+      const greatsword = makeGear({ type: "weapon", slot: "hand", twoHanded: true, name: "2H" });
+      const hero = heroWith(greatsword);
+      hero.equip(greatsword);
+      expect(hero.equipment.get(EquipmentSlot.LeftHand)).toBe(greatsword);
+      expect(hero.equipment.get(EquipmentSlot.RightHand)).toBe(greatsword);
+
+      hero.unequip(greatsword);
+
+      expect(greatsword.properties.equipped).toBe(false);
+      expect(hero.equipment.has(EquipmentSlot.LeftHand)).toBe(false);
+      expect(hero.equipment.has(EquipmentSlot.RightHand)).toBe(false);
+      expect(hero.inventory.items).toContain(greatsword);
+    });
+
+    it("throws for an unheld / non-equippable / slot-less item and a bad target", () => {
+      const hero = heroWith();
+      const unheld = makeGear({ type: "armor", slot: "head" });
+      expect(() => hero.equip(unheld)).toThrow(ProceduralViolation);
+
+      const notEquippable = makeGear({ type: "armor", slot: "head", equippable: false });
+      hero.inventory.items.push(notEquippable);
+      expect(() => hero.equip(notEquippable)).toThrow(ProceduralViolation);
+
+      const slotless = makeGear({ type: "consumable", slot: undefined });
+      hero.inventory.items.push(slotless);
+      expect(() => hero.equip(slotless)).toThrow(ProceduralViolation);
+
+      const ring = makeGear({ type: "accessory", slot: "finger" });
+      hero.inventory.items.push(ring);
+      expect(() => hero.equip(ring, EquipmentSlot.Head)).toThrow(ProceduralViolation);
+    });
+
+    it("throws when unequipping an item that is not equipped", () => {
+      const helm = makeGear({ type: "armor", slot: "head" });
+      const hero = heroWith(helm);
+      expect(() => hero.unequip(helm)).toThrow(ProceduralViolation);
+    });
+
+    it("records no history (free actions)", () => {
+      const helm = makeGear({ type: "armor", slot: "head" });
+      const hero = heroWith(helm);
+      const before = hero.history.length;
+      hero.equip(helm);
+      hero.unequip(helm);
+      expect(hero.history.length).toBe(before);
+    });
+
+    it("equipping via the item's own action still validates the slot (no bypass)", () => {
+      const hero = new Character(new Campaign("Equip"), "Hero", makeStats());
+      const helm = makeGear({ type: "armor", slot: "head", name: "Helm" });
+      hero.addToInventory(helm); // claims the item to the hero (sets its holder)
+
+      helm.actions.equip(hero); // public low-level entry → routes to hero.equip
+
+      expect(hero.equipment.get(EquipmentSlot.Head)).toBe(helm);
+      expect(helm.properties.equipped).toBe(true);
     });
   });
 });
