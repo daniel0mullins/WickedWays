@@ -4,7 +4,7 @@ import type { IItem, ItemId } from "../inventory";
 import type { IRoom } from "../room";
 
 import { Campaign } from "../campaign";
-import { CLAIM, HELD_BY, createKey } from "../inventory";
+import { CLAIM, HELD_BY, Item, createKey } from "../inventory";
 import { Loot } from "../loot";
 import { ProceduralViolation } from "../util";
 import { Character } from "./character";
@@ -32,6 +32,54 @@ function makeWeapon(opts: {
       usable: false,
     },
   } as unknown as IItem;
+}
+
+function makeDurableWeapon(opts: {
+  modifier?: number;
+  stat?: StatType;
+  maxDurability: number;
+  durability?: number;
+  equipped?: boolean;
+}): Item {
+  const noop = () => {};
+  return new Item(
+    {
+      type: "weapon",
+      recipe: { metal: 2 },
+      modifier: opts.modifier ?? 3,
+      stat: opts.stat ?? StatType.Health,
+      name: "Sword",
+      maxDurability: opts.maxDurability,
+      durability: opts.durability,
+    },
+    { equippable: true, equipped: opts.equipped ?? true, destroyable: true, usable: false },
+    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    { onPickUp: noop },
+  );
+}
+
+function makeDurableArmor(opts: {
+  modifier?: number;
+  stat?: StatType;
+  maxDurability: number;
+  durability?: number;
+  equipped?: boolean;
+}): Item {
+  const noop = () => {};
+  return new Item(
+    {
+      type: "armor",
+      recipe: { metal: 1 },
+      modifier: opts.modifier ?? 2,
+      stat: opts.stat ?? StatType.Health,
+      name: "Plate",
+      maxDurability: opts.maxDurability,
+      durability: opts.durability,
+    },
+    { equippable: true, equipped: opts.equipped ?? true, destroyable: true, usable: false },
+    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    { onPickUp: noop },
+  );
 }
 
 function makePc(opts: { inventorySlots?: number } = {}) {
@@ -237,6 +285,67 @@ describe("PlayerCharacter", () => {
       expect(defender.takeDamage).toHaveBeenCalledWith(1, StatType.Health);
     });
 
+    describe("weapon durability", () => {
+      it("wears an equipped durable weapon by one per attack", () => {
+        const pc = makePc();
+        const weapon = makeDurableWeapon({ modifier: 3, maxDurability: 3 });
+        pc.inventory.items.push(weapon);
+        const defender = makeDefender();
+
+        pc.attack(defender);
+
+        expect(defender.takeDamage).toHaveBeenCalledWith(3, StatType.Health);
+        expect(weapon.durability).toBe(2);
+      });
+
+      it("breaks a weapon that reaches 0, after its hit lands", () => {
+        const pc = makePc();
+        const weapon = makeDurableWeapon({ modifier: 3, maxDurability: 1 });
+        pc.inventory.items.push(weapon);
+        const defender = makeDefender();
+
+        pc.attack(defender);
+
+        expect(defender.takeDamage).toHaveBeenCalledWith(3, StatType.Health);
+        expect(weapon.isBroken).toBe(true);
+      });
+
+      it("a broken weapon contributes nothing (falls back to unarmed)", () => {
+        const pc = makePc();
+        pc.inventory.items.push(
+          makeDurableWeapon({ modifier: 3, maxDurability: 1, durability: 0 }),
+        );
+        const defender = makeDefender();
+
+        pc.attack(defender);
+
+        expect(defender.takeDamage).toHaveBeenCalledTimes(1);
+        expect(defender.takeDamage).toHaveBeenCalledWith(1, StatType.Health);
+      });
+
+      it("does not wear a non-durable weapon", () => {
+        const pc = makePc();
+        pc.inventory.items.push(makeWeapon({ modifier: 2, stat: StatType.Health }));
+        const defender = makeDefender();
+
+        expect(() => pc.attack(defender)).not.toThrow();
+        expect(defender.takeDamage).toHaveBeenCalledWith(2, StatType.Health);
+      });
+
+      it("wears each equipped durable weapon independently", () => {
+        const pc = makePc();
+        const a = makeDurableWeapon({ modifier: 2, stat: StatType.Health, maxDurability: 4 });
+        const b = makeDurableWeapon({ modifier: 1, stat: StatType.Health, maxDurability: 4 });
+        pc.inventory.items.push(a, b);
+        const defender = makeDefender();
+
+        pc.attack(defender);
+
+        expect(a.durability).toBe(3);
+        expect(b.durability).toBe(3);
+      });
+    });
+
     it("records the attack target in the attacker's history", () => {
       const pc = makePc();
       const defender = makeDefender();
@@ -258,6 +367,42 @@ describe("PlayerCharacter", () => {
 
       pc.attack(makeDefender());
       expect(onTurnEnd).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("durability seam", () => {
+    it("a weapon breaks in combat, is repaired, and fights again while armor wears", () => {
+      const campaign = new Campaign("Seam");
+      const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+      const weapon = makeDurableWeapon({ modifier: 3, stat: StatType.Health, maxDurability: 1 });
+      hero.inventory.items.push(weapon);
+
+      // Real Character defender so its takeDamage runs armor mitigation/wear.
+      // Sanity 5 makes the Health multiplier exactly 1.
+      const defender = new Character(campaign, "Ogre", makeStats({ [StatType.Sanity]: 5 }));
+      const armor = makeDurableArmor({ modifier: 2, stat: StatType.Health, maxDurability: 5 });
+      defender.inventory.items.push(armor);
+
+      // Swing 1: weapon mod 3 vs armor mod 2 -> raw 1 -> final 1. Weapon breaks; armor wears.
+      const start = defender.stats[StatType.Health];
+      hero.attack(defender);
+      expect(defender.stats[StatType.Health]).toBeCloseTo(start - 1);
+      expect(weapon.isBroken).toBe(true);
+      expect(armor.durability).toBe(4);
+
+      // Swing 2: broken weapon -> unarmed 1; armor fully soaks it (raw max(0, 1 - 2) = 0).
+      const mid = defender.stats[StatType.Health];
+      hero.attack(defender);
+      expect(defender.stats[StatType.Health]).toBeCloseTo(mid);
+      expect(armor.durability).toBe(3);
+
+      // Repair from a stocked pool, then swing effectively again.
+      campaign.claimMaterials("seed", { metal: 2 });
+      hero.repair(weapon);
+      expect(weapon.isBroken).toBe(false);
+
+      hero.attack(defender);
+      expect(defender.stats[StatType.Health]).toBeCloseTo(mid - 1);
     });
   });
 

@@ -1,4 +1,5 @@
 import { ICampaign } from "../campaign";
+import { SET_DURABILITY } from "../inventory";
 import { typedEntries } from "../util";
 import { Character, ICharacter } from "./character";
 import { Stats, StatType } from "./stats";
@@ -35,13 +36,13 @@ export abstract class Combatant extends Character implements ICombatant {
    * @param c - The character being attacked.
    */
   attack(c: ICharacter) {
-    // Find the equipped weapon(s)
+    // Only intact (non-broken) equipped weapons fight; broken ones contribute nothing.
     const weapons = this.inventory.items.filter(
-      (item) => item.properties.equipped && item.type === "weapon",
+      (item) => item.properties.equipped && item.type === "weapon" && !item.isBroken,
     );
 
     const attackMatrix: Record<StatType, number> = {
-      // If there are no equipped weapons, do an unarmed attack against defender health
+      // If there are no usable weapons, do an unarmed attack against defender health
       [StatType.Health]: weapons.length === 0 ? 1 : 0,
       [StatType.Energy]: 0,
       [StatType.Sanity]: 0,
@@ -58,6 +59,15 @@ export abstract class Combatant extends Character implements ICombatant {
         c.takeDamage(strength, stat);
       }
     }
+
+    // Each weapon that swung wears one point (non-durable weapons are untouched).
+    weapons.forEach((weapon) => {
+      if (weapon.maxDurability !== undefined) {
+        // durability is defined whenever maxDurability is (see Item constructor).
+        weapon[SET_DURABILITY](weapon.durability! - 1);
+      }
+    });
+
     this.recordAction(this.attack, {
       kind: "attack",
       target: { id: c.id, name: c.name },
