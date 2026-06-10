@@ -10,6 +10,7 @@ import { Character } from "./character";
 import type { ActionHistoryEntry } from "./history";
 import { StatType, type Stats } from "./stats";
 
+import type { CraftingRecipe, RecipeId } from "../crafting";
 import { makeCampaign, makeStats } from "../../test-utils";
 import { Campaign } from "../campaign";
 import { Room } from "../room";
@@ -31,6 +32,23 @@ function makeItem(id?: string): IItem {
   return {
     id: itemId,
     name: itemId,
+    actions: { pickUp: vi.fn() },
+    [CLAIM]: (h: unknown) => {
+      holder = h;
+    },
+    get [Symbol.for("heldBy")]() {
+      return holder;
+    },
+  } as unknown as IItem;
+}
+
+function makeTeachingItem(recipe: CraftingRecipe, id = "teacher"): IItem {
+  let holder: unknown = null;
+  return {
+    id: id as ItemId,
+    name: "Blueprint",
+    type: "consumable",
+    teaches: recipe,
     actions: { pickUp: vi.fn() },
     [CLAIM]: (h: unknown) => {
       holder = h;
@@ -654,6 +672,31 @@ describe("Character", () => {
       character.harvest(cache);
 
       expect(character.history.length).toBe(before);
+    });
+  });
+
+  describe("recipe discovery on pickup", () => {
+    it("teaches the party a recipe when a teaching item is picked up", () => {
+      const recipe: CraftingRecipe = {
+        id: "torch" as RecipeId,
+        materials: { metal: 1 },
+        create: () => ({ name: "Torch" }) as unknown as IItem,
+      };
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+
+      character.addToInventory(makeTeachingItem(recipe));
+
+      expect(campaign.knows("torch" as RecipeId)).toBe(true);
+    });
+
+    it("discovers nothing for an item that teaches no recipe", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(campaign, "Hero", makeStats());
+
+      character.addToInventory(makeItem());
+
+      expect(campaign.knownRecipes.size).toBe(0);
     });
   });
 
