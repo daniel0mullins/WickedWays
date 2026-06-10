@@ -1223,6 +1223,64 @@ describe("Character", () => {
     });
   });
 
+  describe("effectiveStat", () => {
+    function makeRing(stat: StatType, modifier: number, name = "Ring"): Item {
+      return makeGear({ type: "accessory", slot: "finger", stat, modifier, name });
+    }
+    function heroWearing(rings: Item[], stats?: Partial<Stats>) {
+      const hero = makeCharacter({ stats });
+      for (const ring of rings) {
+        hero.inventory.items.push(ring);
+        hero.equip(ring);
+      }
+      return hero;
+    }
+
+    it("returns the base stat when no accessories are worn", () => {
+      const hero = makeCharacter({ stats: { [StatType.Sanity]: 7 } });
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(7);
+    });
+
+    it("adds an equipped accessory's modifier for the matching stat", () => {
+      const hero = heroWearing([makeRing(StatType.Sanity, 2)], { [StatType.Sanity]: 6 });
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(8);
+    });
+
+    it("sums multiple matching rings additively", () => {
+      const hero = heroWearing(
+        [makeRing(StatType.Sanity, 2, "A"), makeRing(StatType.Sanity, 3, "B")],
+        { [StatType.Sanity]: 5 },
+      );
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(10);
+    });
+
+    it("ignores accessories targeting a different stat", () => {
+      const hero = heroWearing([makeRing(StatType.Health, 4)], { [StatType.Sanity]: 6 });
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(6);
+    });
+
+    it("ignores accessories that are in inventory but not equipped", () => {
+      const hero = makeCharacter({ stats: { [StatType.Sanity]: 6 } });
+      const ring = makeRing(StatType.Sanity, 2);
+      hero.inventory.items.push(ring); // present but never equipped
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(6);
+    });
+
+    it("does not count non-accessory items with the same stat (no double-count)", () => {
+      const hero = makeCharacter({ stats: { [StatType.Sanity]: 6 } });
+      const weapon = makeGear({ type: "weapon", slot: "hand", stat: StatType.Sanity, modifier: 5 });
+      hero.inventory.items.push(weapon);
+      hero.equip(weapon);
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(6);
+    });
+
+    it("never mutates the base stat", () => {
+      const hero = heroWearing([makeRing(StatType.Sanity, 2)], { [StatType.Sanity]: 6 });
+      hero.effectiveStat(StatType.Sanity);
+      expect(hero.stats[StatType.Sanity]).toBe(6);
+    });
+  });
+
   describe("equip", () => {
     function heroWith(...items: Item[]) {
       const character = new Character(new Campaign("Equip"), "Hero", makeStats());

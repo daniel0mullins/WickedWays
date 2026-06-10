@@ -100,6 +100,12 @@ export interface ICharacter extends IItemHolder {
    * Free action — does not tick the action budget or record history.
    */
   craft: (recipeId: RecipeId) => IItem;
+  /**
+   * The character's effective value for `stat`: the base stat plus the `modifier`
+   * of every equipped accessory targeting it. Drives damage mitigation and status
+   * thresholds; never mutates the base. Uncapped — the use site clamps.
+   */
+  effectiveStat: (stat: StatType) => number;
 
   // ### Events
   /** Turn-lifecycle event hub for this character. */
@@ -550,6 +556,18 @@ export class Character implements ICharacter {
       );
     }
     this.campaign[DEPOSIT_MATERIALS](cache[DEPLETE]());
+  }
+
+  effectiveStat(stat: StatType): number {
+    const bonus = this.#inventory.items
+      .filter(
+        (item) =>
+          item.properties.equipped &&
+          item.type === "accessory" &&
+          item.stat === stat,
+      )
+      .reduce((sum, item) => sum + item.modifier, 0);
+    return this.stats[stat] + bonus;
   }
 
   /**
