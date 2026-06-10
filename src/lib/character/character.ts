@@ -1,11 +1,11 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { CLAIM, DEPOSIT_MATERIALS, IItem, IItemHolder, Inventory, SET_DURABILITY } from "../inventory";
+import { CLAIM, DEPOSIT_MATERIALS, IItem, IItemHolder, Inventory, MaterialMap, SET_DURABILITY } from "../inventory";
 import { DEPLETE, type IMaterialCache } from "../material-cache";
 import { IRoom } from "../room";
 import { Status, StatusMatrix } from "../status";
 
-import { generateId, ProceduralViolation } from "../util";
+import { generateId, ProceduralViolation, typedEntries } from "../util";
 import { CharacterEvents, ICharacterEvents } from "./events";
 import type { ActionDetail, ActionHistoryEntry } from "./history";
 import { MitigatorStatType, Stats, StatType } from "./stats";
@@ -81,6 +81,8 @@ export interface ICharacter extends IItemHolder {
   startTurn: () => void;
   /** Applies damage to a stat after mitigation, updating status conditions. */
   takeDamage: (attackStrength: number, attackStat?: StatType) => void;
+  /** Restores a damaged, durability-bearing held item to full for a proportional material cost (free). */
+  repair: (item: IItem) => void;
 
   // ### Events
   /** Turn-lifecycle event hub for this character. */
@@ -352,6 +354,51 @@ export class Character implements ICharacter {
     }
     this.relinquishItem(key);
     key[CLAIM](null);
+  }
+
+  /**
+   * Restores a damaged, durability-bearing item to full durability, paying a
+   * material cost proportional to the missing fraction (`ceil(recipe[c] * missing
+   * / maxDurability)` per component) from the party pool. Free — it does not
+   * consume a budgeted action or record history.
+   *
+   * @param item - A held item that has durability and is below full.
+   * @throws {@link ProceduralViolation} if the item is not held, has no
+   *   durability, is already at full, or the party cannot afford the cost.
+   */
+  repair(item: IItem) {
+    // Keys live on the keyring and carry no durability; reject them explicitly
+    // rather than letting the held/durability guards report a confusing reason.
+    if (item.type === "key") {
+      throw new ProceduralViolation("Keys cannot be repaired.");
+    }
+    const held = this.#inventory.items.some((i) => i.id === item.id);
+    if (!held) {
+      throw new ProceduralViolation(
+        "Cannot repair an item the character is not holding.",
+      );
+    }
+    if (item.maxDurability === undefined || item.durability === undefined) {
+      throw new ProceduralViolation("Cannot repair an item that has no durability.");
+    }
+    if (item.durability >= item.maxDurability) {
+      throw new ProceduralViolation("Cannot repair an item that is not damaged.");
+    }
+
+    const missing = item.maxDurability - item.durability;
+    const cost: MaterialMap = {};
+    for (const [component, qty] of typedEntries(item.recipe) as Array<
+      [keyof MaterialMap, number | undefined]
+    >) {
+      if (qty === undefined) continue;
+      cost[component] = Math.ceil((qty * missing) / item.maxDurability);
+    }
+
+    if (!this.campaign.canAfford(cost)) {
+      throw new ProceduralViolation("Not enough materials to repair.");
+    }
+    this.campaign.withdrawMaterials(cost);
+    item[SET_DURABILITY](item.maxDurability);
   }
 
   /**
