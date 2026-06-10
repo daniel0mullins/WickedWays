@@ -100,6 +100,12 @@ export interface ICharacter extends IItemHolder {
    * Free action — does not tick the action budget or record history.
    */
   craft: (recipeId: RecipeId) => IItem;
+  /**
+   * The character's effective value for `stat`: the base stat plus the `modifier`
+   * of every equipped accessory targeting it. Drives damage mitigation and status
+   * thresholds; never mutates the base. Uncapped — the use site clamps.
+   */
+  effectiveStat: (stat: StatType) => number;
 
   // ### Events
   /** Turn-lifecycle event hub for this character. */
@@ -184,19 +190,26 @@ export class Character implements ICharacter {
   }
 
   #resolveStatuses() {
-    if (this.stats[StatType.Health] <= 0) {
-      this.stats[StatType.Health] = 0;
-      this.#status.set(Status.KO, true);
-    } else {
-      this.#status.set(Status.KO, false);
-    }
+    // Floor each BASE stat at 0, unconditionally. (Previously this happened inside
+    // each status branch; it is now decoupled from the status decision so the
+    // flags below can read the effective stat without losing the base clamp.)
+    this.stats[StatType.Health] = Math.max(0, this.stats[StatType.Health]);
+    this.stats[StatType.Sanity] = Math.max(0, this.stats[StatType.Sanity]);
+    this.stats[StatType.Energy] = Math.max(0, this.stats[StatType.Energy]);
 
-    if (this.stats[StatType.Sanity] <= 0) {
-      this.stats[StatType.Sanity] = 0;
+    // Status flags read the EFFECTIVE stat (base + equipped accessory modifiers),
+    // so a worn ring can stave off an affliction; removing it re-applies it at the
+    // next resolution. Damage is still applied to the base stat in takeDamage.
+    const health = this.effectiveStat(StatType.Health);
+    const sanity = this.effectiveStat(StatType.Sanity);
+    const energy = this.effectiveStat(StatType.Energy);
 
+    this.#status.set(Status.KO, health <= 0);
+
+    if (sanity <= 0) {
       this.#status.set(Status.Panic, true);
       this.#status.set(Status.Fear, false);
-    } else if (this.stats[StatType.Sanity] < 5) {
+    } else if (sanity < 5) {
       this.#status.set(Status.Panic, false);
       this.#status.set(Status.Fear, true);
     } else {
@@ -204,10 +217,12 @@ export class Character implements ICharacter {
       this.#status.set(Status.Fear, false);
     }
 
-    if (this.stats[StatType.Energy] <= 0) {
-      this.stats[StatType.Energy] = 0;
+    // Preserve the existing hysteresis: Confused is set at <= 0 and cleared only
+    // above 1, left unchanged in (0, 1] — the dead band keeps Confused from
+    // flickering on and off as effective Energy oscillates around the boundary.
+    if (energy <= 0) {
       this.#status.set(Status.Confused, true);
-    } else if (this.stats[StatType.Energy] > 1) {
+    } else if (energy > 1) {
       this.#status.set(Status.Confused, false);
     }
   }
@@ -552,14 +567,29 @@ export class Character implements ICharacter {
     this.campaign[DEPOSIT_MATERIALS](cache[DEPLETE]());
   }
 
+  effectiveStat(stat: StatType): number {
+    const bonus = this.#inventory.items
+      .filter(
+        (item) =>
+          item.properties.equipped &&
+          item.type === "accessory" &&
+          item.stat === stat,
+      )
+      .reduce((sum, item) => sum + item.modifier, 0);
+    return this.stats[stat] + bonus;
+  }
+
   /**
    * Applies an incoming attack to a stat after mitigation, then recomputes
    * status conditions and records a `takeDamage` action.
    *
    * Equipped, non-broken armor whose `stat` matches `attackStat` first subtracts
    * its `modifier` from the raw strength (floored at 0); the remainder is then
-   * `* (MAX_STAT - mitigator) * 0.2`, where the mitigator is the stat that defends
-   * `attackStat` (see {@link MitigatorStatType}). Contributing armor wears one point.
+   * `* max(0, MAX_STAT - mitigator) * 0.2`, where the mitigator is the *effective*
+   * value (base plus equipped-accessory bonuses, see {@link effectiveStat}) of the
+   * stat that defends `attackStat` (see {@link MitigatorStatType}). The `max(0, …)`
+   * means an over-cap mitigator fully absorbs the hit rather than healing.
+   * Contributing armor wears one point.
    *
    * @param attackStrength - Raw incoming attack strength before mitigation.
    * @param attackStat - The stat being attacked. Defaults to health.
@@ -577,8 +607,8 @@ export class Character implements ICharacter {
     const armorSum = armor.reduce((sum, piece) => sum + piece.modifier, 0);
     const mitigatedStrength = Math.max(0, attackStrength - armorSum);
 
-    const mitigator = this.stats[MitigatorStatType[attackStat]];
-    const damageMultiplier = (MAX_STAT - mitigator) * MITIGATION_PER_POINT;
+    const mitigator = this.effectiveStat(MitigatorStatType[attackStat]);
+    const damageMultiplier = Math.max(0, MAX_STAT - mitigator) * MITIGATION_PER_POINT;
     const finalAttackStrength = mitigatedStrength * damageMultiplier;
 
     this.stats[attackStat] = this.stats[attackStat] - finalAttackStrength;

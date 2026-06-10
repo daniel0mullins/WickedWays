@@ -33,6 +33,9 @@ function makeItem(id?: string): IItem {
   return {
     id: itemId,
     name: itemId,
+    // Minimal but contract-complete: `properties` is required on IItem and is
+    // read by effectiveStat (now reached via #resolveStatuses on every turn).
+    properties: { equippable: false, equipped: false, destroyable: true, usable: false },
     actions: { pickUp: vi.fn() },
     [CLAIM]: (h: unknown) => {
       holder = h;
@@ -482,6 +485,57 @@ describe("Character", () => {
 
         expect(character.stats[StatType.Health]).toBeCloseTo(5);
       });
+    });
+  });
+
+  describe("status thresholds read the effective stat (lazy)", () => {
+    function ringFor(stat: StatType, modifier: number): Item {
+      return makeGear({ type: "accessory", slot: "finger", stat, modifier });
+    }
+
+    it("a +Health ring staves off KO when base health hits 0", () => {
+      // Sanity 0 => health multiplier (10-0)*0.2 = 2; 2 damage * 2 = 4 vs 2 health => base floored to 0.
+      const hero = makeCharacter({ stats: { [StatType.Health]: 2, [StatType.Sanity]: 0 } });
+      const ring = ringFor(StatType.Health, 3);
+      hero.inventory.items.push(ring);
+      hero.equip(ring);
+
+      hero.takeDamage(2);
+
+      expect(hero.stats[StatType.Health]).toBe(0);     // base floored
+      expect(hero.status).not.toContain(Status.KO);    // effective health = 0 + 3 > 0
+    });
+
+    it("removing the life-saving ring re-KOs at the next resolution trigger (lazy)", () => {
+      const hero = makeCharacter({ stats: { [StatType.Health]: 2, [StatType.Sanity]: 0 } });
+      const ring = ringFor(StatType.Health, 3);
+      hero.inventory.items.push(ring);
+      hero.equip(ring);
+      hero.takeDamage(2);
+      expect(hero.status).not.toContain(Status.KO);
+
+      hero.unequip(ring);                               // pure slot op — status not yet refreshed
+      hero.startTurn();                                 // next resolution trigger
+      expect(hero.status).toContain(Status.KO);         // effective health now 0
+    });
+
+    it("a +Sanity ring above the Fear threshold prevents Fear", () => {
+      // Base sanity 4 (< 5) would be Fear; +2 ring => effective 6 => no Fear.
+      const hero = makeCharacter({ stats: { [StatType.Sanity]: 4 } });
+      const ring = ringFor(StatType.Sanity, 2);
+      hero.inventory.items.push(ring);
+      hero.equip(ring);
+
+      hero.startTurn();                                 // resolution trigger
+
+      expect(hero.status).not.toContain(Status.Fear);
+    });
+
+    it("still floors the base stat at 0 regardless of rings", () => {
+      const hero = makeCharacter({ stats: { [StatType.Sanity]: 1, [StatType.Energy]: 0 } });
+      // Energy 0 => sanity multiplier 2; 5 * 2 = 10 vs sanity 1 => base floored to 0.
+      hero.takeDamage(5, StatType.Sanity);
+      expect(hero.stats[StatType.Sanity]).toBe(0);
     });
   });
 
@@ -1220,6 +1274,144 @@ describe("Character", () => {
         room: { id: room.id, name: room.name },
       });
       expect(character.history).toHaveLength(1);
+    });
+  });
+
+  describe("takeDamage with accessory mitigation", () => {
+    function ringFor(stat: StatType, modifier: number): Item {
+      return makeGear({ type: "accessory", slot: "finger", stat, modifier });
+    }
+
+    it("a ring on the mitigator stat reduces incoming damage", () => {
+      // Health is mitigated by Sanity. Base sanity 5 => multiplier (10-5)*0.2 = 1.0 => 5*1.0 = 5 damage.
+      // A +3 Sanity ring => effective 8 => multiplier (10-8)*0.2 = 0.4 => 5*0.4 = 2 damage.
+      const hero = makeCharacter({ stats: { [StatType.Health]: 10, [StatType.Sanity]: 5 } });
+      const ring = ringFor(StatType.Sanity, 3);
+      hero.inventory.items.push(ring);
+      hero.equip(ring);
+
+      hero.takeDamage(5);
+
+      expect(hero.stats[StatType.Health]).toBeCloseTo(8); // 10 - 2
+    });
+
+    it("an over-cap mitigator floors the multiplier at 0 — full absorption, never healing", () => {
+      // Base sanity 9 + ring 5 => effective 14 => (10-14) clamped to 0 => 0 damage.
+      const hero = makeCharacter({ stats: { [StatType.Health]: 6, [StatType.Sanity]: 9 } });
+      const ring = ringFor(StatType.Sanity, 5);
+      hero.inventory.items.push(ring);
+      hero.equip(ring);
+
+      hero.takeDamage(10);
+
+      expect(hero.stats[StatType.Health]).toBeCloseTo(6); // unchanged, NOT increased
+    });
+  });
+
+  describe("effectiveStat", () => {
+    function makeRing(stat: StatType, modifier: number, name = "Ring"): Item {
+      return makeGear({ type: "accessory", slot: "finger", stat, modifier, name });
+    }
+    function heroWearing(rings: Item[], stats?: Partial<Stats>) {
+      const hero = makeCharacter({ stats });
+      for (const ring of rings) {
+        hero.inventory.items.push(ring);
+        hero.equip(ring);
+      }
+      return hero;
+    }
+
+    it("returns the base stat when no accessories are worn", () => {
+      const hero = makeCharacter({ stats: { [StatType.Sanity]: 7 } });
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(7);
+    });
+
+    it("adds an equipped accessory's modifier for the matching stat", () => {
+      const hero = heroWearing([makeRing(StatType.Sanity, 2)], { [StatType.Sanity]: 6 });
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(8);
+    });
+
+    it("sums multiple matching rings additively", () => {
+      const hero = heroWearing(
+        [makeRing(StatType.Sanity, 2, "A"), makeRing(StatType.Sanity, 3, "B")],
+        { [StatType.Sanity]: 5 },
+      );
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(10);
+    });
+
+    it("ignores accessories targeting a different stat", () => {
+      const hero = heroWearing([makeRing(StatType.Health, 4)], { [StatType.Sanity]: 6 });
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(6);
+    });
+
+    it("ignores accessories that are in inventory but not equipped", () => {
+      const hero = makeCharacter({ stats: { [StatType.Sanity]: 6 } });
+      const ring = makeRing(StatType.Sanity, 2);
+      hero.inventory.items.push(ring); // present but never equipped
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(6);
+    });
+
+    it("does not count non-accessory items with the same stat (no double-count)", () => {
+      const hero = makeCharacter({ stats: { [StatType.Sanity]: 6 } });
+      const weapon = makeGear({ type: "weapon", slot: "hand", stat: StatType.Sanity, modifier: 5 });
+      hero.inventory.items.push(weapon);
+      hero.equip(weapon);
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(6);
+    });
+
+    it("never mutates the base stat", () => {
+      const hero = heroWearing([makeRing(StatType.Sanity, 2)], { [StatType.Sanity]: 6 });
+      hero.effectiveStat(StatType.Sanity);
+      expect(hero.stats[StatType.Sanity]).toBe(6);
+    });
+  });
+
+  describe("passive ring effects seam", () => {
+    it("worn rings drive both mitigation and status off the effective value", () => {
+      // Base sanity 4 would mean Fear and weak mitigation; a +2 Sanity ring => effective 6.
+      const hero = makeCharacter({ stats: { [StatType.Health]: 10, [StatType.Sanity]: 4 } });
+      const ring = makeGear({ type: "accessory", slot: "finger", stat: StatType.Sanity, modifier: 2 });
+      hero.inventory.items.push(ring);
+      hero.equip(ring);
+
+      // Mitigation: Health mitigated by effective Sanity 6 => (10-6)*0.2 = 0.8 => 5 * 0.8 = 4.
+      hero.takeDamage(5);
+
+      expect(hero.stats[StatType.Health]).toBeCloseTo(6);  // 10 - 4
+      expect(hero.status).not.toContain(Status.Fear);      // effective sanity 6 >= 5
+    });
+
+    it("the four-finger cap bounds the passive bonus — a fifth ring auto-swaps", () => {
+      const hero = makeCharacter({ stats: { [StatType.Sanity]: 2 } });
+      const rings = [0, 1, 2, 3, 4].map((n) =>
+        makeGear({ type: "accessory", slot: "finger", stat: StatType.Sanity, modifier: 2, name: `R${n}` }),
+      );
+      rings.forEach((ring) => {
+        hero.inventory.items.push(ring);
+        hero.equip(ring);
+      });
+
+      expect(rings.filter((r) => r.properties.equipped)).toHaveLength(4); // only four finger slots
+      // The bound holds at the effective layer: exactly four rings' worth of bonus,
+      // never a fifth. (Which ring is displaced is asserted by the equip unit tests.)
+      expect(hero.effectiveStat(StatType.Sanity)).toBe(10);   // 2 + 4*2
+      expect(hero.effectiveStat(StatType.Sanity)).not.toBe(12); // never 2 + 5*2
+    });
+
+    it("is lossless — equip, take damage, unequip leaves base reflecting only real damage", () => {
+      const hero = makeCharacter({ stats: { [StatType.Health]: 10, [StatType.Sanity]: 5 } });
+      // A Health ring does not affect Health's mitigator (Sanity), so it changes no damage here.
+      const ring = makeGear({ type: "accessory", slot: "finger", stat: StatType.Health, modifier: 4 });
+      hero.inventory.items.push(ring);
+      hero.equip(ring);
+
+      hero.takeDamage(5); // sanity 5 => multiplier 1 => 5 damage => base health 5
+      expect(hero.stats[StatType.Health]).toBeCloseTo(5);
+      expect(hero.effectiveStat(StatType.Health)).toBeCloseTo(9); // 5 + 4 while worn
+
+      hero.unequip(ring);
+      expect(hero.stats[StatType.Health]).toBeCloseTo(5);          // base never carried the bonus
+      expect(hero.effectiveStat(StatType.Health)).toBeCloseTo(5);  // bonus gone with the ring
     });
   });
 
