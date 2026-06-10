@@ -58,6 +58,30 @@ function makeDurableWeapon(opts: {
   );
 }
 
+function makeDurableArmor(opts: {
+  modifier?: number;
+  stat?: StatType;
+  maxDurability: number;
+  durability?: number;
+  equipped?: boolean;
+}): Item {
+  const noop = () => {};
+  return new Item(
+    {
+      type: "armor",
+      recipe: { metal: 1 },
+      modifier: opts.modifier ?? 2,
+      stat: opts.stat ?? StatType.Health,
+      name: "Plate",
+      maxDurability: opts.maxDurability,
+      durability: opts.durability,
+    },
+    { equippable: true, equipped: opts.equipped ?? true, destroyable: true, usable: false },
+    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    { onPickUp: noop },
+  );
+}
+
 function makePc(opts: { inventorySlots?: number } = {}) {
   return new PlayerCharacter(
     makeCampaign(),
@@ -343,6 +367,42 @@ describe("PlayerCharacter", () => {
 
       pc.attack(makeDefender());
       expect(onTurnEnd).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("durability seam", () => {
+    it("a weapon breaks in combat, is repaired, and fights again while armor wears", () => {
+      const campaign = new Campaign("Seam");
+      const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+      const weapon = makeDurableWeapon({ modifier: 3, stat: StatType.Health, maxDurability: 1 });
+      hero.inventory.items.push(weapon);
+
+      // Real Character defender so its takeDamage runs armor mitigation/wear.
+      // Sanity 5 makes the Health multiplier exactly 1.
+      const defender = new Character(campaign, "Ogre", makeStats({ [StatType.Sanity]: 5 }));
+      const armor = makeDurableArmor({ modifier: 2, stat: StatType.Health, maxDurability: 5 });
+      defender.inventory.items.push(armor);
+
+      // Swing 1: weapon mod 3 vs armor mod 2 -> raw 1 -> final 1. Weapon breaks; armor wears.
+      const start = defender.stats[StatType.Health];
+      hero.attack(defender);
+      expect(defender.stats[StatType.Health]).toBeCloseTo(start - 1);
+      expect(weapon.isBroken).toBe(true);
+      expect(armor.durability).toBe(4);
+
+      // Swing 2: broken weapon -> unarmed 1; armor fully soaks it (raw max(0, 1 - 2) = 0).
+      const mid = defender.stats[StatType.Health];
+      hero.attack(defender);
+      expect(defender.stats[StatType.Health]).toBeCloseTo(mid);
+      expect(armor.durability).toBe(3);
+
+      // Repair from a stocked pool, then swing effectively again.
+      campaign.claimMaterials("seed", { metal: 2 });
+      hero.repair(weapon);
+      expect(weapon.isBroken).toBe(false);
+
+      hero.attack(defender);
+      expect(defender.stats[StatType.Health]).toBeCloseTo(mid - 1);
     });
   });
 
