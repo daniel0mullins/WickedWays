@@ -120,14 +120,70 @@ Durability below).
 
 ### Status effects
 
-After damage resolves, [statuses](src/lib/status.ts) are recomputed from the stats:
+Statuses are triggered by stat thresholds (using effective stats — base plus any equipped-accessory bonuses):
 
-- **KO** — Health depleted (≤ 0)
-- **Panic** — Sanity depleted (≤ 0)
-- **Fear** — Sanity low but not gone (0 < Sanity < 5)
-- **Confused** — Energy depleted (≤ 0)
+- **KO** — Health ≤ 0
+- **Panic** — Sanity ≤ 0
+- **Fear** — 0 < Sanity < 5
+- **Confused** — Energy ≤ 0 (with a (0, 1] hysteresis band so it does not flicker at the boundary)
 
 A character with no active afflictions reports `isNormal === true`.
+
+#### Consequences
+
+Once triggered, statuses impose hard rules enforced by [`Afflictions.gate`](src/lib/character/afflictions.ts)
+inside `Character.attemptAction`:
+
+| Status | Allowed | Blocked |
+|--------|---------|---------|
+| **KO** | nothing — every gated action throws; `use` also throws | everything |
+| **Panic** | `move`, `use` | all other actions |
+| **Fear** | everything except `move` | `move` |
+| **Confused** | all actions — but each has a 50 % chance to **fizzle** | — |
+
+A **fizzle** (Confused) means the action has no effect but the attempt still consumes a budget slot and is
+recorded in history as a `fumble`. Free actions (craft, equip, repair …) that fizzle return `null` / are
+no-ops. KO supersedes all other statuses: when Health drops to ≤ 0 the engine clears Panic, Fear, and
+Confused immediately so only KO remains active.
+
+#### Self-clearing
+
+Panic, Fear, and Confused are *latched* — they persist even if the stat that triggered them recovers
+partially. Each status has two clearing paths:
+
+1. **Stat recovery:** when the effective stat rises back above its threshold (e.g. Health above 0),
+   `applyFromStats` clears the status immediately.
+2. **Early shake-off (per-turn roll):** at the start of each of the character's turns,
+   [`Afflictions.onTurnStart`](src/lib/character/afflictions.ts) rolls a
+   [`roll(100, rng)`](src/lib/dice.ts) d100 against an escalating threshold:
+
+   | Status | 1st turn | 2nd turn | 3rd turn | Guaranteed by |
+   |--------|----------|----------|----------|---------------|
+   | Fear | 40 % | 70 % | 100 % | turn 3 |
+   | Panic | 20 % | 40 % | 60 % | turn 5 |
+   | Confused | 15 % | 30 % | 45 % | turn 7 |
+
+   A successful roll marks the status *shaken off* for the rest of that depressed episode; it does not
+   re-trigger until the stat recovers past the threshold and drops again. Confused separately rolls its
+   50 % per-action fizzle chance independently of the turn-start shake-off.
+
+Status lifecycle is managed by the [`Afflictions`](src/lib/character/afflictions.ts) unit, which
+`Character` delegates to. All randomness goes through the injected `rng` (a `() => number` constructor
+option); passing a seeded RNG makes every roll deterministic for tests.
+
+#### Immunity
+
+Passive and timed immunity both cover Panic, Fear, and Confused only — KO can never be immunized:
+
+- **Passive (equipped item):** an [`IItem`](src/lib/inventory.ts) with an `immunities?: Status[]` field
+  confers immunity to those statuses while the item is equipped and intact. Consulted on every
+  `applyFromStats` reconciliation, exactly like the accessory effectiveStat bonuses.
+- **Timed (consumable):** an `IItem` with a `grantsImmunity?: { statuses: Status[]; turns: number }` field
+  grants immunity for `turns` of the holder's turns when the item is used. The grant goes through the
+  [`GRANT_IMMUNITY`](src/lib/inventory.ts) symbol seam (unforgeable by stray code); the timer ticks down
+  in `Afflictions.onTurnStart` and the active status is cleared on grant.
+
+Both fields are plain declarative `Item` descriptor fields — no factory or subclass required.
 
 ### Combat
 
@@ -149,7 +205,8 @@ spending, and a component is deleted from the pool when it reaches zero. All dep
 the `DEPOSIT_MATERIALS` symbol.
 
 `Character.craft(recipeId)` turns a known recipe into an item and is a **free** action (no budget
-tick, no history). A [`CraftingRecipe`](src/lib/inventory.ts) is discriminated into two tracks: a
+tick, no history); it returns `null` if the attempt fizzles while the character is Confused. A
+[`CraftingRecipe`](src/lib/inventory.ts) is discriminated into two tracks: a
 **materials** recipe withdraws from the pool, while a **keys** recipe consumes keys by code
 (validated atomically — every code must be fully available before any key is spent). Recipe
 knowledge is party-wide: picking up an item whose `teaches` field names a recipe calls
@@ -213,7 +270,7 @@ carry a `precondition(character)` gate. With no prompt it returns the NPC's init
 
 - **Language:** TypeScript in `strict` mode with `NodeNext` module resolution and the extra
   `noUncheckedIndexedAccess` / `noImplicitOverride` guards.
-- **Tests:** [Vitest](https://vitest.dev) — 352 tests across 17 files, including an end-to-end
+- **Tests:** [Vitest](https://vitest.dev) — 403 tests across 19 files, including an end-to-end
   [`src/integration.test.ts`](src/integration.test.ts) that wires up a full campaign and runs
   the turn loop. Shared helpers live in [`src/test-utils.ts`](src/test-utils.ts).
 - **Linting:** ESLint flat config with type-aware `typescript-eslint`.

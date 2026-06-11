@@ -13,6 +13,10 @@ export type AfflictionConfig = {
   confusedFailChance: number;
 };
 
+/**
+ * Production defaults: Fear 40 %+30/turn (guaranteed turn 3), Panic 20 %+20/turn
+ * (guaranteed turn 5), Confused 15 %+15/turn (guaranteed turn 7), Confused fizzle 50 %.
+ */
 export const DEFAULT_AFFLICTION_CONFIG: AfflictionConfig = {
   clear: {
     [Status.Fear]: { base: 40, increment: 30 },
