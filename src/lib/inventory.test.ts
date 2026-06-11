@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ICharacter } from "./character/character";
 import { StatType } from "./character/stats";
-import { CLAIM, DEPOSIT_MATERIALS, EQUIP, Item, SET_DURABILITY, UNEQUIP, createKey, type IItem, type IItemHolder } from "./inventory";
+import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, Item, SET_DURABILITY, UNEQUIP, createKey, type IItem, type IItemHolder } from "./inventory";
 import { ProceduralViolation } from "./util";
 import type { CraftingRecipe, RecipeId } from "./crafting";
 
@@ -36,6 +36,9 @@ function makeHolder(): ICharacter {
     hasRoomForItem: vi.fn(() => true),
     receiveItem: vi.fn(),
     campaign: { [DEPOSIT_MATERIALS]: vi.fn() },
+    status: [],
+    [GRANT_IMMUNITY]: vi.fn(),
+    [CONSUME_VIA_USE]: vi.fn(),
   } as unknown as ICharacter;
 }
 
@@ -273,7 +276,7 @@ describe("Item", () => {
 
       expect(actions.use).toHaveBeenCalledWith(holder);
       expect(events.onUse).toHaveBeenCalledWith(holder);
-      expect(holder.removeFromInventory).toHaveBeenCalledWith(item);
+      expect(holder[CONSUME_VIA_USE]).toHaveBeenCalledWith(item);
     });
 
     it("does nothing when the item is not held", () => {

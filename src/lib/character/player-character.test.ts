@@ -123,7 +123,7 @@ function makeLootItem(id: string): IItem {
     id: id as ItemId,
     name: id,
     // Minimal but contract-complete: `properties` is required on IItem and is
-    // read by effectiveStat (reached via #resolveStatuses on every turn).
+    // read by effectiveStat (reached via #reconcile on every turn).
     properties: { equippable: false, equipped: false, destroyable: true, usable: false },
     actions: { pickUp: vi.fn() },
     [CLAIM]: (h: unknown) => {

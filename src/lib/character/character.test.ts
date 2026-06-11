@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CLAIM, Item, createKey, type IItem, type ItemId } from "../inventory";
-import { EquipmentSlot } from "../equipment";
+import { EquipmentSlot, SlotKind } from "../equipment";
 import type { IRoom, RoomId } from "../room";
 import { Status } from "../status";
 import { ProceduralViolation } from "../util";
@@ -34,7 +34,7 @@ function makeItem(id?: string): IItem {
     id: itemId,
     name: itemId,
     // Minimal but contract-complete: `properties` is required on IItem and is
-    // read by effectiveStat (now reached via #resolveStatuses on every turn).
+    // read by effectiveStat (now reached via #reconcile on every turn).
     properties: { equippable: false, equipped: false, destroyable: true, usable: false },
     actions: { pickUp: vi.fn() },
     [CLAIM]: (h: unknown) => {
@@ -107,6 +107,9 @@ function makeGear(opts: {
   stat?: StatType;
   modifier?: number;
   equippable?: boolean;
+  usable?: boolean;
+  immunities?: Status[];
+  grantsImmunity?: { statuses: Status[]; turns: number };
 }): Item {
   const noop = () => {};
   return new Item(
@@ -118,8 +121,10 @@ function makeGear(opts: {
       name: opts.name ?? "Gear",
       slot: opts.slot,
       twoHanded: opts.twoHanded,
+      immunities: opts.immunities,
+      grantsImmunity: opts.grantsImmunity,
     },
-    { equippable: opts.equippable ?? true, equipped: false, destroyable: true, usable: false },
+    { equippable: opts.equippable ?? true, equipped: false, destroyable: true, usable: opts.usable ?? false },
     { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
     { onPickUp: noop },
   );
@@ -129,6 +134,7 @@ function makeCharacter(opts: {
   stats?: Partial<Stats>;
   inventorySlots?: number;
   actionsPerRound?: number;
+  rng?: () => number;
 } = {}) {
   return new Character(
     makeCampaign(),
@@ -136,6 +142,7 @@ function makeCharacter(opts: {
     makeStats(opts.stats),
     opts.inventorySlots,
     opts.actionsPerRound,
+    { rng: opts.rng },
   );
 }
 
@@ -353,8 +360,10 @@ describe("Character", () => {
 
     it("applies Confused and clamps energy when energy is depleted", () => {
       const character = makeCharacter({
-        // Energy mitigated by Health 0 => multiplier 2.
-        stats: { [StatType.Energy]: 3, [StatType.Health]: 0 },
+        // Energy mitigated by Health 1 => multiplier 1.8; large enough to zero energy.
+        // Health stays > 0 after the energy-only hit so KO does not mask Confused.
+        stats: { [StatType.Energy]: 3, [StatType.Health]: 1 },
+        rng: () => 0.999,
       });
 
       character.takeDamage(10, StatType.Energy);
@@ -369,7 +378,7 @@ describe("Character", () => {
       const character = makeCharacter({ stats: { [StatType.Energy]: 1 } });
 
       // Health mitigated by Sanity 10 => zero damage, so energy stays at 1
-      // while #resolveStatuses runs over the unchanged stats.
+      // while #reconcile runs over the unchanged stats.
       character.takeDamage(0);
 
       expect(character.stats[StatType.Energy]).toBe(1);
@@ -1576,6 +1585,42 @@ describe("Character", () => {
 
       expect(hero.equipment.get(EquipmentSlot.Head)).toBe(helm);
       expect(helm.properties.equipped).toBe(true);
+    });
+  });
+
+  describe("status consequences — wiring & immunity", () => {
+    it("derives Panic from depleted sanity (unchanged surface)", () => {
+      const c = makeCharacter({ stats: { [StatType.Sanity]: 0 }, rng: () => 0.999 });
+      c.takeDamage(0, StatType.Sanity); // forces a reconcile
+      expect(c.status).toEqual([Status.Panic]);
+    });
+
+    it("passive immunity: an equipped ward (modifier 0) suppresses Panic", () => {
+      const c = makeCharacter({ stats: { [StatType.Sanity]: 0 }, rng: () => 0.999 });
+      const ward = makeGear({
+        type: "accessory", slot: SlotKind.Finger, stat: StatType.Sanity,
+        modifier: 0, immunities: [Status.Panic],
+      });
+      c.addToInventory(ward);
+      c.equip(ward);
+      c.takeDamage(0, StatType.Sanity); // reconcile
+      expect(c.isNormal).toBe(true);
+
+      c.unequip(ward);
+      c.takeDamage(0, StatType.Sanity); // reconcile -> reapplies
+      expect(c.status).toEqual([Status.Panic]);
+    });
+
+    it("timed immunity: using a consumable grants N turns via the seam", () => {
+      const c = makeCharacter({ stats: { [StatType.Sanity]: 0 }, rng: () => 0.999 });
+      const tonic = makeGear({
+        type: "consumable", equippable: false, usable: true, modifier: 0,
+        stat: StatType.Sanity, grantsImmunity: { statuses: [Status.Panic], turns: 2 },
+      });
+      c.addToInventory(tonic);
+      tonic.actions.use(c);   // applies immunity, then consumes
+      c.endTurn();           // reconcile while immune
+      expect(c.isNormal).toBe(true);
     });
   });
 });

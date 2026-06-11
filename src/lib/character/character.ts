@@ -1,6 +1,6 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { CLAIM, DEPOSIT_MATERIALS, EQUIP, IItem, IItemHolder, Inventory, MaterialMap, SET_DURABILITY, UNEQUIP } from "../inventory";
+import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, MaterialMap, SET_DURABILITY, UNEQUIP } from "../inventory";
 import {
   DEFAULT_EQUIPMENT_SLOTS,
   EquipmentSlot,
@@ -8,7 +8,8 @@ import {
 } from "../equipment";
 import { DEPLETE, type IMaterialCache } from "../material-cache";
 import { IRoom } from "../room";
-import { Status, StatusMatrix } from "../status";
+import { Status } from "../status";
+import { Afflictions, AfflictionConfig, DEFAULT_AFFLICTION_CONFIG } from "./afflictions";
 
 import { generateId, ProceduralViolation, typedEntries } from "../util";
 import { CharacterEvents, ICharacterEvents } from "./events";
@@ -107,6 +108,11 @@ export interface ICharacter extends IItemHolder {
    */
   effectiveStat: (stat: StatType) => number;
 
+  /** Grants timed status immunity; engine-internal (item Use path only). */
+  [GRANT_IMMUNITY]: (statuses: Status[], turns: number) => void;
+  /** Consumes an item for the Use path, gating suppressed; engine-internal. */
+  [CONSUME_VIA_USE]: (item: IItem) => void;
+
   // ### Events
   /** Turn-lifecycle event hub for this character. */
   events: ICharacterEvents;
@@ -144,7 +150,7 @@ export class Character implements ICharacter {
   // appears under both hand keys.
   #equipment: Map<EquipmentSlot, IItem> = new Map();
   #slots: readonly EquipmentSlot[] = DEFAULT_EQUIPMENT_SLOTS;
-  #status: StatusMatrix;
+  #afflictions: Afflictions;
   protected actionsThisRound: number;
 
   // Public Getters
@@ -169,62 +175,69 @@ export class Character implements ICharacter {
   }
 
   get isNormal() {
-    return this.#status.values().every((val) => !val);
+    return this.#afflictions.isNormal;
   }
 
   get status() {
-    return this.#status.entries().reduce((accumulator, [status, value]) => {
-      if (value) {
-        accumulator.push(status);
-      }
-      return accumulator;
-    }, [] as Status[]);
+    return this.#afflictions.list;
   }
 
-  // Private Methods
-  #resetStatuses() {
-    this.#status.set(Status.Confused, false);
-    this.#status.set(Status.Fear, false);
-    this.#status.set(Status.KO, false);
-    this.#status.set(Status.Panic, false);
-  }
-
-  #resolveStatuses() {
-    // Floor each BASE stat at 0, unconditionally. (Previously this happened inside
-    // each status branch; it is now decoupled from the status decision so the
-    // flags below can read the effective stat without losing the base clamp.)
+  // Floors each base stat at 0 (mutates this.stats — intentional clamp), then
+  // returns the effective snapshot (base + equipped-accessory bonuses).
+  #floorAndSnapshot(): Stats {
     this.stats[StatType.Health] = Math.max(0, this.stats[StatType.Health]);
     this.stats[StatType.Sanity] = Math.max(0, this.stats[StatType.Sanity]);
     this.stats[StatType.Energy] = Math.max(0, this.stats[StatType.Energy]);
+    return {
+      [StatType.Health]: this.effectiveStat(StatType.Health),
+      [StatType.Sanity]: this.effectiveStat(StatType.Sanity),
+      [StatType.Energy]: this.effectiveStat(StatType.Energy),
+    };
+  }
 
-    // Status flags read the EFFECTIVE stat (base + equipped accessory modifiers),
-    // so a worn ring can stave off an affliction; removing it re-applies it at the
-    // next resolution. Damage is still applied to the base stat in takeDamage.
-    const health = this.effectiveStat(StatType.Health);
-    const sanity = this.effectiveStat(StatType.Sanity);
-    const energy = this.effectiveStat(StatType.Energy);
-
-    this.#status.set(Status.KO, health <= 0);
-
-    if (sanity <= 0) {
-      this.#status.set(Status.Panic, true);
-      this.#status.set(Status.Fear, false);
-    } else if (sanity < 5) {
-      this.#status.set(Status.Panic, false);
-      this.#status.set(Status.Fear, true);
-    } else {
-      this.#status.set(Status.Panic, false);
-      this.#status.set(Status.Fear, false);
+  /** Statuses currently immunized by equipped, intact gear (passive immunity). */
+  #passiveImmunities(): Set<Status> {
+    const set = new Set<Status>();
+    for (const item of this.#inventory.items) {
+      if (!item.properties.equipped || item.isBroken || !item.immunities) continue;
+      for (const s of item.immunities) set.add(s);
     }
+    return set;
+  }
 
-    // Preserve the existing hysteresis: Confused is set at <= 0 and cleared only
-    // above 1, left unchanged in (0, 1] — the dead band keeps Confused from
-    // flickering on and off as effective Energy oscillates around the boundary.
-    if (energy <= 0) {
-      this.#status.set(Status.Confused, true);
-    } else if (energy > 1) {
-      this.#status.set(Status.Confused, false);
+  #reconcile() {
+    this.#afflictions.applyFromStats(
+      this.#floorAndSnapshot(),
+      this.#passiveImmunities(),
+    );
+  }
+
+  /** Grants timed status immunity. Engine-internal: only the item Use path calls it. */
+  [GRANT_IMMUNITY](statuses: Status[], turns: number) {
+    this.#afflictions.grantImmunity(statuses, turns);
+  }
+
+  // Set while a gated action is mid-flight so a nested same-character gated call
+  // (escape -> move, loot -> add/remove, use -> remove) doesn't re-gate/re-roll.
+  #suppressGate = false;
+
+  /** Runs `fn` with affliction gating suppressed (same-character composition only). */
+  protected withGateSuppressed<T>(fn: () => T): T {
+    const prev = this.#suppressGate;
+    this.#suppressGate = true;
+    try {
+      return fn();
+    } finally {
+      this.#suppressGate = prev;
     }
+  }
+
+  /**
+   * Consumes an item on behalf of the item `Use` path: removes it with gating
+   * suppressed (use is always allowed) while keeping the drop record + budget tick.
+   */
+  [CONSUME_VIA_USE](item: IItem) {
+    this.withGateSuppressed(() => this.removeFromInventory(item));
   }
 
   /** @returns Whether the inventory has a free slot. */
@@ -271,6 +284,7 @@ export class Character implements ICharacter {
    * @param stats - Initial {@link Stats}.
    * @param inventorySlots - Inventory capacity. Defaults to 5.
    * @param actionsPerRound - Budgeted actions per turn. Defaults to 3.
+   * @param options - Optional rng and affliction config for deterministic testing.
    */
   constructor(
     campaign: ICampaign,
@@ -278,6 +292,7 @@ export class Character implements ICharacter {
     stats: Stats,
     inventorySlots: number = 5,
     actionsPerRound: number = 3,
+    options: { rng?: () => number; afflictionConfig?: AfflictionConfig } = {},
   ) {
     this.id = generateId<CharacterId>();
     this.name = name;
@@ -288,8 +303,10 @@ export class Character implements ICharacter {
 
     this.#inventory = { slots: inventorySlots, items: [], keys: [] };
     this.#campaign = campaign;
-    this.#status = new Map<Status, boolean>();
-    this.#resetStatuses();
+    this.#afflictions = new Afflictions(
+      options.rng,
+      options.afflictionConfig ?? DEFAULT_AFFLICTION_CONFIG,
+    );
 
     this.isActionMap.set(this.addToInventory, true);
     this.isActionMap.set(this.removeFromInventory, true);
@@ -621,7 +638,7 @@ export class Character implements ICharacter {
       }
     });
 
-    this.#resolveStatuses();
+    this.#reconcile();
     this.recordAction(this.takeDamage, {
       kind: "takeDamage",
       amount: finalAttackStrength,
@@ -648,20 +665,23 @@ export class Character implements ICharacter {
     });
   }
 
-  /** Ends the turn: fires end-of-turn events and resolves status conditions. */
+  /** Ends the turn: fires end-of-turn events and reconciles status conditions. */
   endTurn() {
     this.events.onTurnEnd();
-    this.#resolveStatuses();
+    this.#reconcile();
   }
 
   /**
    * Begins the turn: resets the per-round action budget, fires start-of-turn
-   * events, and resolves status conditions.
+   * events, and ticks timed immunities then reconciles status conditions.
    */
   startTurn() {
     this.actionsThisRound = 0;
     this.events.onTurnStart();
-    this.#resolveStatuses();
+    this.#afflictions.onTurnStart(
+      this.#floorAndSnapshot(),
+      this.#passiveImmunities(),
+    );
   }
 
   /**

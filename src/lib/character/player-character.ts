@@ -4,6 +4,7 @@ import { ILoot } from "../loot";
 import { ProceduralViolation } from "../util";
 import { Combatant, ICombatant } from "./combatant";
 import { Stats } from "./stats";
+import type { AfflictionConfig } from "./afflictions";
 
 /**
  * A player-controlled {@link ICombatant}. Adds campaign membership and the
@@ -32,8 +33,9 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     name: string,
     stats: Stats,
     inventorySlots: number = 5,
+    options: { rng?: () => number; afflictionConfig?: AfflictionConfig } = {},
   ) {
-    super(campaign, name, stats, inventorySlots);
+    super(campaign, name, stats, inventorySlots, 3, options);
 
     this.isActionMap.set(this.move, true);
   }

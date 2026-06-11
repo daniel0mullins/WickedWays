@@ -2,6 +2,7 @@ import { ICampaign } from "../campaign";
 import { IItem } from "../inventory";
 import { Combatant, ICombatant } from "./combatant";
 import { Stats } from "./stats";
+import type { AfflictionConfig } from "./afflictions";
 
 /** A non-player {@link ICombatant}, such as an enemy, that can also flee. */
 export interface IMob extends ICombatant {
@@ -29,9 +30,10 @@ export class Mob extends Combatant implements IMob {
     inventorySlots: number = 2,
     actionsPerRound: number = 2,
     drops: IItem[],
+    options: { rng?: () => number; afflictionConfig?: AfflictionConfig } = {},
   ) {
     const _inventorySlots = Math.max(inventorySlots, drops.length);
-    super(campaign, name, stats, _inventorySlots, actionsPerRound);
+    super(campaign, name, stats, _inventorySlots, actionsPerRound, options);
 
     this.isActionMap.set(this.escape, true);
   }
