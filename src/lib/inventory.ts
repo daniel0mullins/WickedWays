@@ -180,6 +180,26 @@ export const GRANT_IMMUNITY = Symbol("GRANT_IMMUNITY");
 export const CONSUME_VIA_USE = Symbol("CONSUME_VIA_USE");
 
 /**
+ * Symbol-keyed method that forces an item (including a key) into a {@link Loot}
+ * box, bypassing the player-facing "no keys in loot" and capacity guards. Only
+ * the mob defeat-drop path calls it.
+ */
+export const STASH_DROP = Symbol("stashDrop");
+
+/**
+ * Symbol-keyed method that wires a character into a room (sets current room and
+ * occupancy) with no gating, history, or budget tick. Engine-internal: room
+ * placement and encounter spawning call it.
+ */
+export const PLACE = Symbol("place");
+
+/**
+ * Symbol-keyed method that sets a mob's origin (`"room"` | `"campaign"`). Only
+ * {@link Room.placeMob} and the {@link EncounterTable} spawn path call it.
+ */
+export const SET_ORIGIN = Symbol("setOrigin");
+
+/**
  * A game item: a typed, craftable object that lives in a holder's inventory and
  * can be picked up, equipped, used, transferred, or destroyed via {@link IItem.actions}.
  */

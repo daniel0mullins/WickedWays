@@ -1,6 +1,6 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, MaterialMap, SET_DURABILITY, UNEQUIP } from "../inventory";
+import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, MaterialMap, PLACE, SET_DURABILITY, UNEQUIP } from "../inventory";
 import {
   DEFAULT_EQUIPMENT_SLOTS,
   EquipmentSlot,
@@ -59,6 +59,8 @@ export interface ICharacter extends IItemHolder {
   get campaign(): ICampaign;
   /** The room the character currently occupies, or `null` if none. */
   get currentRoom(): IRoom | null;
+  /** Wires this character into `room` (current room + occupancy) with no history. */
+  [PLACE]: (room: IRoom) => void;
   /** Immutable copy of the character's recorded action history. */
   get history(): readonly ActionHistoryEntry[];
   get inventory(): Inventory;
@@ -703,6 +705,20 @@ export class Character implements ICharacter {
       amount: finalAttackStrength,
       stat: attackStat,
     });
+  }
+
+  /**
+   * Engine-internal placement: sets the current room and occupancy directly,
+   * exiting any prior room first. Unlike {@link Character.move} it is ungated,
+   * records no history, and ticks no action budget. Used to seat resident or
+   * spawned mobs (see {@link Room.placeMob} and the encounter spawn path).
+   */
+  [PLACE](room: IRoom) {
+    if (this.#currentRoom) {
+      this.#currentRoom.exitRoom(this);
+    }
+    this.#currentRoom = room;
+    room.enterRoom(this);
   }
 
   /**

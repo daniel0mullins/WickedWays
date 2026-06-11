@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CLAIM, Item, createKey, type IItem, type ItemId } from "../inventory";
+import { CLAIM, Item, PLACE, createKey, type IItem, type ItemId } from "../inventory";
 import { EquipmentSlot, SlotKind } from "../equipment";
 import type { IRoom, RoomId } from "../room";
 import { Status } from "../status";
@@ -1780,6 +1780,31 @@ describe("Character", () => {
       const spy = makeSpy(0);
       spy.startTurn(); // goes through afflictions.onTurnStart, not #reconcile
       expect(spy.knockOuts).toBe(0);
+    });
+  });
+
+  describe("PLACE seam", () => {
+    it("sets the current room and enters it without recording history", () => {
+      const character = makeCharacter();
+      const room = makeRoom();
+
+      character[PLACE](room);
+
+      expect(character.currentRoom).toBe(room);
+      expect(room.enterRoom).toHaveBeenCalledWith(character);
+      expect(character.history).toHaveLength(0);
+    });
+
+    it("exits the previous room before entering the new one", () => {
+      const character = makeCharacter();
+      const first = makeRoom();
+      const second = makeRoom();
+
+      character[PLACE](first);
+      character[PLACE](second);
+
+      expect(first.exitRoom).toHaveBeenCalledWith(character);
+      expect(character.currentRoom).toBe(second);
     });
   });
 });
