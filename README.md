@@ -50,16 +50,19 @@ Character
 - [`PlayerCharacter`](src/lib/character/player-character.ts) adds `joinCampaign()` and
   co-located loot interaction: `openLootBox`, `takeFromLootBox`, `putInLootBox`.
 - [`Mob`](src/lib/character/mob.ts) is an enemy with a smaller default budget (2 actions,
-  2 inventory slots), a `drops` list, and `escape()` — which flees through the first available
-  exit. (`escape` is intentionally simple: it takes the first exit, with no pathfinding.)
+  2 inventory slots), a `drops` list, and `escape()` — a Health-gated roll (see Mob encounters
+  below). It also tracks an `origin` (`"room"` / `"campaign"` / `"unbound"`) that controls
+  whether it drops key items on defeat.
 - [`NonPlayerCharacter`](src/lib/character/non-player-character.ts) stays on `Character`
   directly and exposes `dialogue(prompt?)` over a list of dialogue blocks.
 
 ### Rooms, the map, and scenes
 
 - A [`Room`](src/lib/room.ts) has a description, a `loot` map, an `exits` map keyed by compass
-  `Direction`, and occupants. Entering or exiting a room fires any [`Scene`](src/lib/scene.ts)
-  registered for that phase.
+  `Direction`, occupants, and a `spawnModifier` (default 1; 0 = never spawns) that scales the
+  campaign's base encounter chance. `Room.placeMob` seats a mob as a room-attached resident
+  (origin `"room"`), enabling key-item drops on defeat. Entering or exiting a room fires any
+  [`Scene`](src/lib/scene.ts) registered for that phase.
 - [`buildMap(rooms, options)`](src/utils/build-map.ts) wires a list of rooms into a connected
   dungeon via a randomized **spanning tree** (every room reachable, `n - 1` edges). Exits are
   bidirectional (north↔south, etc.), a room is never connected to itself, and no room exceeds
@@ -195,6 +198,62 @@ unarmed Health damage. Because weapons occupy hand slots (see Equipment below), 
 fields at most two one-handed weapons — or one two-handed — so the summed modifier is
 naturally bounded.
 
+### Mob encounters & loot
+
+#### Mob origin
+
+A mob's **origin** (`"room"` | `"campaign"` | `"unbound"`) gates which drops it releases on
+defeat. Room-attached mobs (seated via `Room.placeMob`, which sets origin `"room"`) may drop
+key items; campaign-roving mobs (spawned by the encounter table, origin `"campaign"`) never do.
+A freshly constructed mob starts as `"unbound"` until the engine sets its origin.
+
+#### Drop-on-defeat
+
+When a mob's Health hits 0, its `onKnockOut` hook fires exactly once:
+
+1. **Material drops** — any `materialDrops` in the mob's options are deposited into the
+   campaign's shared material pool via `DEPOSIT_MATERIALS`.
+2. **Item loot box** — held items are relinquished and placed into a fresh `Loot` box
+   (named `"<mob> 's remains"`) which is added to the mob's current room. If the mob has
+   no items and no keys to drop, no box is created.
+3. **Key items** — if the mob is room-attached (`origin === "room"`), keys on its keyring
+   are also stashed into the box via the `STASH_DROP` seam (past normal capacity, bypassing
+   the key-exclusion guard on regular `stowItem`). Campaign-roving mobs never drop keys.
+
+#### Escape
+
+`Mob.escape()` is a budgeted action gated by Health. The success threshold is:
+
+```
+threshold = clamp(baseEscapeChance + effectiveStat(Health), 0, 100)
+```
+
+`baseEscapeChance` defaults to 50. A `roll(100)` at or below the threshold — **and** at
+least one exit present — counts as a successful escape; the mob then moves through a randomly
+chosen exit (gating suppressed, so the move does not consume a second action). Whether the
+escape succeeds or fails, the action is recorded and the budget ticks.
+
+#### Roving formations and the encounter table
+
+`Campaign.addFormation` registers a weighted [`Formation`](src/lib/encounter-table.ts) — a
+named factory (`build`) and a positive `weight`. The table rejects any formation whose mobs
+carry key-item drops (roving mobs may not drop keys). `Campaign` is constructed with an
+optional `baseEncounterChance` (default 20, on a 0–100 scale) and an injectable `rng`.
+
+When a player character moves into a room, `PlayerCharacter.move` calls `Campaign.maybeSpawn`.
+The spawn check runs only on the **first visit** to each room (the room is marked visited
+regardless of outcome) and is suppressed when an active (non-KO) mob is already present. If
+the check proceeds:
+
+```
+threshold = clamp(baseEncounterChance × room.spawnModifier, 0, 100)
+roll(100) <= threshold  →  weighted formation chosen  →  mobs built + placed (origin "campaign")
+```
+
+A room with `spawnModifier = 0` can never spawn an encounter. Blocked or fizzled moves (e.g.
+a Confused character whose move fizzles) do not reach the destination room and therefore do
+not trigger a spawn check.
+
 ### Materials and crafting
 
 Crafting components are pooled at the **campaign** level and shared party-wide, not held per
@@ -271,7 +330,7 @@ carry a `precondition(character)` gate. With no prompt it returns the NPC's init
 
 - **Language:** TypeScript in `strict` mode with `NodeNext` module resolution and the extra
   `noUncheckedIndexedAccess` / `noImplicitOverride` guards.
-- **Tests:** [Vitest](https://vitest.dev) — 403 tests across 19 files, including an end-to-end
+- **Tests:** [Vitest](https://vitest.dev) — 446 tests across 20 files, including an end-to-end
   [`src/integration.test.ts`](src/integration.test.ts) that wires up a full campaign and runs
   the turn loop. Shared helpers live in [`src/test-utils.ts`](src/test-utils.ts).
 - **Linting:** ESLint flat config with type-aware `typescript-eslint`.
