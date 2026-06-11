@@ -1,6 +1,6 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { CLAIM, DEPOSIT_MATERIALS, EQUIP, IItem, IItemHolder, Inventory, MaterialMap, SET_DURABILITY, UNEQUIP } from "../inventory";
+import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, MaterialMap, SET_DURABILITY, UNEQUIP } from "../inventory";
 import {
   DEFAULT_EQUIPMENT_SLOTS,
   EquipmentSlot,
@@ -8,7 +8,8 @@ import {
 } from "../equipment";
 import { DEPLETE, type IMaterialCache } from "../material-cache";
 import { IRoom } from "../room";
-import { Status, StatusMatrix } from "../status";
+import { Status } from "../status";
+import { Afflictions, AfflictionConfig, DEFAULT_AFFLICTION_CONFIG } from "./afflictions";
 
 import { generateId, ProceduralViolation, typedEntries } from "../util";
 import { CharacterEvents, ICharacterEvents } from "./events";
@@ -91,21 +92,34 @@ export interface ICharacter extends IItemHolder {
   repair: (item: IItem) => void;
   /** The character's currently filled equipment slots (named slot → item). */
   get equipment(): ReadonlyMap<EquipmentSlot, IItem>;
-  /** Equips a held item into a named slot of its kind, auto-swapping conflicts (free). */
+  /**
+   * Equips a held item into a named slot of its kind, auto-swapping conflicts (free).
+   * A Confused fizzle records a `fumble` to history but still does not tick the action budget.
+   */
   equip: (item: IItem, targetSlot?: EquipmentSlot) => void;
-  /** Removes an equipped item from its slot(s) (free). */
+  /**
+   * Removes an equipped item from its slot(s) (free).
+   * A Confused fizzle records a `fumble` to history but still does not tick the action budget.
+   */
   unequip: (item: IItem) => void;
   /**
    * Crafts an item using the materials-track recipe identified by `recipeId`.
+   * Returns `null` if the action was gated (fizzled due to Confused status).
    * Free action — does not tick the action budget or record history.
+   * A Confused fizzle records a `fumble` to history but still does not tick the action budget.
    */
-  craft: (recipeId: RecipeId) => IItem;
+  craft: (recipeId: RecipeId) => IItem | null;
   /**
    * The character's effective value for `stat`: the base stat plus the `modifier`
    * of every equipped accessory targeting it. Drives damage mitigation and status
    * thresholds; never mutates the base. Uncapped — the use site clamps.
    */
   effectiveStat: (stat: StatType) => number;
+
+  /** Grants timed status immunity; engine-internal (item Use path only). */
+  [GRANT_IMMUNITY]: (statuses: Status[], turns: number) => void;
+  /** Consumes an item for the Use path, gating suppressed; engine-internal. */
+  [CONSUME_VIA_USE]: (item: IItem) => void;
 
   // ### Events
   /** Turn-lifecycle event hub for this character. */
@@ -144,7 +158,7 @@ export class Character implements ICharacter {
   // appears under both hand keys.
   #equipment: Map<EquipmentSlot, IItem> = new Map();
   #slots: readonly EquipmentSlot[] = DEFAULT_EQUIPMENT_SLOTS;
-  #status: StatusMatrix;
+  #afflictions: Afflictions;
   protected actionsThisRound: number;
 
   // Public Getters
@@ -169,62 +183,89 @@ export class Character implements ICharacter {
   }
 
   get isNormal() {
-    return this.#status.values().every((val) => !val);
+    return this.#afflictions.isNormal;
   }
 
   get status() {
-    return this.#status.entries().reduce((accumulator, [status, value]) => {
-      if (value) {
-        accumulator.push(status);
-      }
-      return accumulator;
-    }, [] as Status[]);
+    return this.#afflictions.list;
   }
 
-  // Private Methods
-  #resetStatuses() {
-    this.#status.set(Status.Confused, false);
-    this.#status.set(Status.Fear, false);
-    this.#status.set(Status.KO, false);
-    this.#status.set(Status.Panic, false);
-  }
-
-  #resolveStatuses() {
-    // Floor each BASE stat at 0, unconditionally. (Previously this happened inside
-    // each status branch; it is now decoupled from the status decision so the
-    // flags below can read the effective stat without losing the base clamp.)
+  // Floors each base stat at 0 (mutates this.stats — intentional clamp), then
+  // returns the effective snapshot (base + equipped-accessory bonuses).
+  #floorAndSnapshot(): Stats {
     this.stats[StatType.Health] = Math.max(0, this.stats[StatType.Health]);
     this.stats[StatType.Sanity] = Math.max(0, this.stats[StatType.Sanity]);
     this.stats[StatType.Energy] = Math.max(0, this.stats[StatType.Energy]);
+    return {
+      [StatType.Health]: this.effectiveStat(StatType.Health),
+      [StatType.Sanity]: this.effectiveStat(StatType.Sanity),
+      [StatType.Energy]: this.effectiveStat(StatType.Energy),
+    };
+  }
 
-    // Status flags read the EFFECTIVE stat (base + equipped accessory modifiers),
-    // so a worn ring can stave off an affliction; removing it re-applies it at the
-    // next resolution. Damage is still applied to the base stat in takeDamage.
-    const health = this.effectiveStat(StatType.Health);
-    const sanity = this.effectiveStat(StatType.Sanity);
-    const energy = this.effectiveStat(StatType.Energy);
-
-    this.#status.set(Status.KO, health <= 0);
-
-    if (sanity <= 0) {
-      this.#status.set(Status.Panic, true);
-      this.#status.set(Status.Fear, false);
-    } else if (sanity < 5) {
-      this.#status.set(Status.Panic, false);
-      this.#status.set(Status.Fear, true);
-    } else {
-      this.#status.set(Status.Panic, false);
-      this.#status.set(Status.Fear, false);
+  /** Statuses currently immunized by equipped, intact gear (passive immunity). */
+  #passiveImmunities(): Set<Status> {
+    const set = new Set<Status>();
+    for (const item of this.#inventory.items) {
+      if (!item.properties.equipped || item.isBroken || !item.immunities) continue;
+      for (const s of item.immunities) set.add(s);
     }
+    return set;
+  }
 
-    // Preserve the existing hysteresis: Confused is set at <= 0 and cleared only
-    // above 1, left unchanged in (0, 1] — the dead band keeps Confused from
-    // flickering on and off as effective Energy oscillates around the boundary.
-    if (energy <= 0) {
-      this.#status.set(Status.Confused, true);
-    } else if (energy > 1) {
-      this.#status.set(Status.Confused, false);
+  #reconcile() {
+    this.#afflictions.applyFromStats(
+      this.#floorAndSnapshot(),
+      this.#passiveImmunities(),
+    );
+  }
+
+  /** Grants timed status immunity. Engine-internal: only the item Use path calls it. */
+  [GRANT_IMMUNITY](statuses: Status[], turns: number) {
+    this.#afflictions.grantImmunity(statuses, turns);
+  }
+
+  // Set while a gated action is mid-flight so a nested same-character gated call
+  // (escape -> move, loot -> add/remove, use -> remove) doesn't re-gate/re-roll.
+  #suppressGate = false;
+
+  /** Runs `fn` with affliction gating suppressed (same-character composition only). */
+  protected withGateSuppressed<T>(fn: () => T): T {
+    const prev = this.#suppressGate;
+    this.#suppressGate = true;
+    try {
+      return fn();
+    } finally {
+      this.#suppressGate = prev;
     }
+  }
+
+  /**
+   * Gates an attempted action against active afflictions. Throws on a hard block;
+   * on a Confused fizzle records a fumble (which ticks the budget when `callingFn`
+   * is a budgeted action) and returns false; otherwise returns true.
+   */
+  protected attemptAction(callingFn: ActionFn, isMove: boolean): boolean {
+    if (this.#suppressGate) return true;
+    const verdict = this.#afflictions.gate(isMove);
+    if (verdict.kind === "block") {
+      throw new ProceduralViolation(verdict.reason);
+    }
+    if (verdict.kind === "fizzle") {
+      // `callingFn.name` labels the fumble; relies on un-minified method names
+      // (true under tsc — revisit if a bundler is ever added).
+      this.recordAction(callingFn, { kind: "fumble", action: callingFn.name });
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Consumes an item on behalf of the item `Use` path: removes it with gating
+   * suppressed (use is always allowed) while keeping the drop record + budget tick.
+   */
+  [CONSUME_VIA_USE](item: IItem) {
+    this.withGateSuppressed(() => this.removeFromInventory(item));
   }
 
   /** @returns Whether the inventory has a free slot. */
@@ -271,6 +312,7 @@ export class Character implements ICharacter {
    * @param stats - Initial {@link Stats}.
    * @param inventorySlots - Inventory capacity. Defaults to 5.
    * @param actionsPerRound - Budgeted actions per turn. Defaults to 3.
+   * @param options - Optional rng and affliction config for deterministic testing.
    */
   constructor(
     campaign: ICampaign,
@@ -278,6 +320,7 @@ export class Character implements ICharacter {
     stats: Stats,
     inventorySlots: number = 5,
     actionsPerRound: number = 3,
+    options: { rng?: () => number; afflictionConfig?: AfflictionConfig } = {},
   ) {
     this.id = generateId<CharacterId>();
     this.name = name;
@@ -288,8 +331,10 @@ export class Character implements ICharacter {
 
     this.#inventory = { slots: inventorySlots, items: [], keys: [] };
     this.#campaign = campaign;
-    this.#status = new Map<Status, boolean>();
-    this.#resetStatuses();
+    this.#afflictions = new Afflictions(
+      options.rng,
+      options.afflictionConfig ?? DEFAULT_AFFLICTION_CONFIG,
+    );
 
     this.isActionMap.set(this.addToInventory, true);
     this.isActionMap.set(this.removeFromInventory, true);
@@ -326,6 +371,7 @@ export class Character implements ICharacter {
    * @throws {@link ProceduralViolation} if the inventory runs out of slots.
    */
   addToInventory(item: IItem | IItem[]) {
+    if (!this.attemptAction(this.addToInventory, false)) return;
     const items = Array.isArray(item) ? item : [item];
     for (const current of items) {
       if (current.type === "key") {
@@ -360,6 +406,7 @@ export class Character implements ICharacter {
    * @throws {@link ProceduralViolation} if any item is not in the inventory.
    */
   removeFromInventory(item: IItem | IItem[]) {
+    if (!this.attemptAction(this.removeFromInventory, false)) return;
     const items = Array.isArray(item) ? item : [item];
     for (const current of items) {
       if (current.type === "key") {
@@ -405,13 +452,15 @@ export class Character implements ICharacter {
    * Restores a damaged, durability-bearing item to full durability, paying a
    * material cost proportional to the missing fraction (`ceil(recipe[c] * missing
    * / maxDurability)` per component) from the party pool. Free — it does not
-   * consume a budgeted action or record history.
+   * consume a budgeted action or record history. A Confused fizzle records a
+   * `fumble` to history but still does not tick the action budget.
    *
    * @param item - A held item that has durability and is below full.
    * @throws {@link ProceduralViolation} if the item is not held, has no
    *   durability, is already at full, or the party cannot afford the cost.
    */
   repair(item: IItem) {
+    if (!this.attemptAction(this.repair, false)) return;
     // Keys live on the keyring and carry no durability; reject them explicitly
     // rather than letting the held/durability guards report a confusing reason.
     if (item.type === "key") {
@@ -451,13 +500,15 @@ export class Character implements ICharacter {
    * slot kind. Auto-assigns the first free slot of that kind (or the named
    * `targetSlot`), displacing whatever is there (the displaced item stays in
    * inventory, unequipped). A two-handed weapon spans both hand slots. Free — no
-   * budgeted action, no history.
+   * budgeted action, no history. A Confused fizzle records a `fumble` to history
+   * but still does not tick the action budget.
    *
    * @throws {@link ProceduralViolation} if the item is not held, not equippable,
    *   has no slot kind, the character has no slot of that kind, or `targetSlot`
    *   does not fit the item.
    */
   equip(item: IItem, targetSlot?: EquipmentSlot) {
+    if (!this.attemptAction(this.equip, false)) return;
     if (!this.#inventory.items.some((i) => i.id === item.id)) {
       throw new ProceduralViolation("Cannot equip an item the character is not holding.");
     }
@@ -469,14 +520,14 @@ export class Character implements ICharacter {
     }
     // Re-equipping a worn item: free its current slot(s) first.
     if (item.properties.equipped) {
-      this.unequip(item);
+      this.withGateSuppressed(() => this.unequip(item));
     }
 
     // Two-handed weapons span both hands.
     if (item.type === "weapon" && item.twoHanded) {
       for (const hand of [EquipmentSlot.LeftHand, EquipmentSlot.RightHand]) {
         const occupant = this.#equipment.get(hand);
-        if (occupant) this.unequip(occupant);
+        if (occupant) this.withGateSuppressed(() => this.unequip(occupant));
       }
       this.#equipment.set(EquipmentSlot.LeftHand, item);
       this.#equipment.set(EquipmentSlot.RightHand, item);
@@ -502,7 +553,7 @@ export class Character implements ICharacter {
 
     const occupant = this.#equipment.get(slot);
     if (occupant && occupant.id !== item.id) {
-      this.unequip(occupant); // auto-swap (a 2H occupant frees both hands)
+      this.withGateSuppressed(() => this.unequip(occupant)); // auto-swap (a 2H occupant frees both hands)
     }
     this.#equipment.set(slot, item);
     item[EQUIP](this);
@@ -510,11 +561,13 @@ export class Character implements ICharacter {
 
   /**
    * Removes an equipped item from every slot it occupies (a two-handed weapon
-   * occupies two). Free — no budgeted action, no history.
+   * occupies two). Free — no budgeted action, no history. A Confused fizzle
+   * records a `fumble` to history but still does not tick the action budget.
    *
    * @throws {@link ProceduralViolation} if the item is not held or not equipped.
    */
   unequip(item: IItem) {
+    if (!this.attemptAction(this.unequip, false)) return;
     if (!this.#inventory.items.some((i) => i.id === item.id)) {
       throw new ProceduralViolation("Cannot unequip an item the character is not holding.");
     }
@@ -540,14 +593,22 @@ export class Character implements ICharacter {
    * @throws {@link ProceduralViolation} if this character is not holding `key`.
    */
   transferKey(key: IItem, recipient: ICharacter) {
+    if (!this.attemptAction(this.transferKey, false)) return;
     const held = this.#inventory.keys.some((k) => k.id === key.id);
     if (!held) {
       throw new ProceduralViolation(
         "Attempted to transfer a key the character is not holding.",
       );
     }
-    this.relinquishItem(key);
+    // Add to the recipient FIRST, then relinquish: if the recipient's gated
+    // addToInventory blocks (e.g. KO'd ally), the key is not lost from the giver.
     recipient.addToInventory(key);
+    // Only release the key if the recipient actually received it. A KO'd recipient
+    // throws before we get here; a Confused recipient can silently fizzle the
+    // pickup, in which case the key must stay with the giver rather than vanish.
+    if (recipient.inventory.keys.some((k) => k.id === key.id)) {
+      this.relinquishItem(key);
+    }
   }
 
   /**
@@ -621,7 +682,7 @@ export class Character implements ICharacter {
       }
     });
 
-    this.#resolveStatuses();
+    this.#reconcile();
     this.recordAction(this.takeDamage, {
       kind: "takeDamage",
       amount: finalAttackStrength,
@@ -637,6 +698,7 @@ export class Character implements ICharacter {
    * @param room - Destination room.
    */
   move(room: IRoom) {
+    if (!this.attemptAction(this.move, true)) return;
     if (this.#currentRoom) {
       this.#currentRoom.exitRoom(this);
     }
@@ -648,20 +710,23 @@ export class Character implements ICharacter {
     });
   }
 
-  /** Ends the turn: fires end-of-turn events and resolves status conditions. */
+  /** Ends the turn: fires end-of-turn events and reconciles status conditions. */
   endTurn() {
     this.events.onTurnEnd();
-    this.#resolveStatuses();
+    this.#reconcile();
   }
 
   /**
    * Begins the turn: resets the per-round action budget, fires start-of-turn
-   * events, and resolves status conditions.
+   * events, and ticks timed immunities then reconciles status conditions.
    */
   startTurn() {
     this.actionsThisRound = 0;
     this.events.onTurnStart();
-    this.#resolveStatuses();
+    this.#afflictions.onTurnStart(
+      this.#floorAndSnapshot(),
+      this.#passiveImmunities(),
+    );
   }
 
   /**
@@ -669,15 +734,18 @@ export class Character implements ICharacter {
    * both the materials track (debits the party pool, places the output in an
    * inventory slot) and the key track (consumes held keys, places the output on
    * the keyring). Free action — does not tick the action budget or record history.
+   * A Confused fizzle records a `fumble` to history but still does not tick the
+   * action budget.
    *
    * @param recipeId - The id of a known recipe.
-   * @returns The newly created item.
+   * @returns The newly created item, or `null` if the action was gated (fizzled).
    * @throws {@link ProceduralViolation} if the recipe is unknown.
    * @throws {@link ProceduralViolation} if the party pool cannot cover the cost (materials track).
    * @throws {@link ProceduralViolation} if there is no free inventory slot (materials track).
    * @throws {@link ProceduralViolation} if a key-track recipe's required keys are not all held.
    */
-  craft(recipeId: RecipeId): IItem {
+  craft(recipeId: RecipeId): IItem | null {
+    if (!this.attemptAction(this.craft, false)) return null;
     const recipe = this.campaign.knownRecipes.get(recipeId);
     if (!recipe) {
       throw new ProceduralViolation("Cannot craft an undiscovered recipe");

@@ -2,6 +2,7 @@ import { ICampaign } from "../campaign";
 import { IItem } from "../inventory";
 import { Combatant, ICombatant } from "./combatant";
 import { Stats } from "./stats";
+import type { AfflictionConfig } from "./afflictions";
 
 /** A non-player {@link ICombatant}, such as an enemy, that can also flee. */
 export interface IMob extends ICombatant {
@@ -29,9 +30,10 @@ export class Mob extends Combatant implements IMob {
     inventorySlots: number = 2,
     actionsPerRound: number = 2,
     drops: IItem[],
+    options: { rng?: () => number; afflictionConfig?: AfflictionConfig } = {},
   ) {
     const _inventorySlots = Math.max(inventorySlots, drops.length);
-    super(campaign, name, stats, _inventorySlots, actionsPerRound);
+    super(campaign, name, stats, _inventorySlots, actionsPerRound, options);
 
     this.isActionMap.set(this.escape, true);
   }
@@ -45,13 +47,14 @@ export class Mob extends Combatant implements IMob {
    * action, that move does not consume a second action.
    */
   escape() {
+    if (!this.attemptAction(this.escape, false)) return;
     // Flee through the first available exit. The move() transition fires the
     // room's exit/enter scenes; because Mob does not register `move`, that
     // call does not consume an action — `escape` is the recorded action.
     const exits = [...(this.currentRoom?.exits.values() ?? [])];
     const destination = exits[0];
     if (destination) {
-      this.move(destination);
+      this.withGateSuppressed(() => this.move(destination));
     }
     // The escape attempt is always recorded (it consumed the action), even when
     // there was no exit to flee through; a successful flee also records the

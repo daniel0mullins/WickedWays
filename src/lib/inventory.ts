@@ -7,6 +7,7 @@ import { StatType } from "./character/stats";
 import { ProceduralViolation } from "./util";
 import type { CraftingRecipe } from "./crafting";
 import type { SlotKind } from "./equipment";
+import { Status } from "./status";
 
 /** The kinds of item the engine recognises. */
 const ItemType = {
@@ -166,6 +167,19 @@ export const EQUIP = Symbol("equipItem");
 export const UNEQUIP = Symbol("unequipItem");
 
 /**
+ * Symbol-keyed seam used to grant timed status immunity to a character holder.
+ * Only the item `Use` path calls it, keeping grants unforgeable by stray code.
+ */
+export const GRANT_IMMUNITY = Symbol("GRANT_IMMUNITY");
+
+/**
+ * Symbol-keyed seam the item `Use` path uses to consume the item. It removes the
+ * item with affliction gating suppressed (use is the always-allowed escape hatch)
+ * while preserving the existing drop record and budget tick.
+ */
+export const CONSUME_VIA_USE = Symbol("CONSUME_VIA_USE");
+
+/**
  * A game item: a typed, craftable object that lives in a holder's inventory and
  * can be picked up, equipped, used, transferred, or destroyed via {@link IItem.actions}.
  */
@@ -199,6 +213,10 @@ export interface IItem {
   readonly twoHanded?: boolean;
   /** A recipe this item imparts to the party when picked up. */
   readonly teaches?: CraftingRecipe;
+  /** Statuses this item confers immunity to while equipped (passive immunity). */
+  readonly immunities?: Status[];
+  /** On use, grants timed immunity to these statuses for `turns` of the holder's turns. */
+  readonly grantsImmunity?: { statuses: Status[]; turns: number };
   /** The item's current holder, or `null` when unheld. See {@link HELD_BY}. */
   readonly [HELD_BY]: ItemHolder | null;
   /** Reassigns the item's holder; for holder internals only. See {@link CLAIM}. */
@@ -228,6 +246,8 @@ export class Item implements IItem {
   readonly keyCode?: string;
   readonly consumeOnUse?: boolean;
   readonly teaches?: CraftingRecipe;
+  readonly immunities?: Status[];
+  readonly grantsImmunity?: { statuses: Status[]; turns: number };
   readonly maxDurability?: number;
   readonly slot?: SlotKind;
   readonly twoHanded?: boolean;
@@ -323,6 +343,8 @@ export class Item implements IItem {
       keyCode,
       consumeOnUse,
       teaches,
+      immunities,
+      grantsImmunity,
       maxDurability,
       durability,
       slot,
@@ -336,6 +358,8 @@ export class Item implements IItem {
       keyCode?: string;
       consumeOnUse?: boolean;
       teaches?: CraftingRecipe;
+      immunities?: Status[];
+      grantsImmunity?: { statuses: Status[]; turns: number };
       maxDurability?: number;
       durability?: number;
       slot?: SlotKind;
@@ -355,6 +379,8 @@ export class Item implements IItem {
     this.keyCode = keyCode;
     this.consumeOnUse = consumeOnUse;
     this.teaches = teaches;
+    this.immunities = immunities;
+    this.grantsImmunity = grantsImmunity;
     this.maxDurability = maxDurability;
     this.slot = slot;
     this.twoHanded = twoHanded;
@@ -414,9 +440,22 @@ export class Item implements IItem {
       [ItemAction.Use]: () => {
         const holder = this.#characterHolder();
         if (!holder) return;
+        // `use` is the always-allowed escape hatch UNDER Panic/Fear/Confused, but
+        // a KO'd character can do nothing at all — including use an item.
+        if (holder.status.includes(Status.KO)) {
+          throw new ProceduralViolation("Cannot use items while KO'd.");
+        }
         actions[ItemAction.Use](holder);
         events.onUse?.(holder);
-        holder.removeFromInventory(this);
+        if (this.grantsImmunity) {
+          holder[GRANT_IMMUNITY](
+            this.grantsImmunity.statuses,
+            this.grantsImmunity.turns,
+          );
+        }
+        // Consume via the gate-suppressed seam so a Panicked/Confused holder can
+        // still use the item; this still records the drop and ticks the budget.
+        holder[CONSUME_VIA_USE](this);
       },
       [ItemAction.Destroy]: () => {
         const holder = this.#characterHolder();

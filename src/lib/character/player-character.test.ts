@@ -106,12 +106,16 @@ function makeHandWeapon(opts: {
   );
 }
 
-function makePc(opts: { inventorySlots?: number } = {}) {
+import { Status } from "../status";
+import type { Stats } from "./stats";
+
+function makePc(opts: { inventorySlots?: number; stats?: Partial<Stats>; rng?: () => number } = {}) {
   return new PlayerCharacter(
     makeCampaign(),
     "Hero",
-    makeStats(),
+    makeStats(opts.stats),
     opts.inventorySlots,
+    { rng: opts.rng },
   );
 }
 
@@ -123,7 +127,7 @@ function makeLootItem(id: string): IItem {
     id: id as ItemId,
     name: id,
     // Minimal but contract-complete: `properties` is required on IItem and is
-    // read by effectiveStat (reached via #resolveStatuses on every turn).
+    // read by effectiveStat (reached via #reconcile on every turn).
     properties: { equippable: false, equipped: false, destroyable: true, usable: false },
     actions: { pickUp: vi.fn() },
     [CLAIM]: (h: unknown) => {
@@ -686,6 +690,60 @@ describe("PlayerCharacter", () => {
       const drops = pc.history.slice(before).filter((e) => e.kind === "drop");
       expect(drops).toHaveLength(1);
       expect(drops[0]).toMatchObject({ items: [{ id: target.id, name: target.name }] });
+    });
+  });
+
+  describe("status consequences — gating", () => {
+    it("a Panicked player's attack throws", () => {
+      const pc = makePc({ stats: { [StatType.Sanity]: 0 }, rng: () => 0.999 });
+      pc.takeDamage(0, StatType.Sanity); // Panic
+      expect(() => pc.attack(makeDefender())).toThrow(/Panicked/);
+    });
+
+    it("a Fear'd player's move throws", () => {
+      const pc = makePc({ stats: { [StatType.Sanity]: 3 }, rng: () => 0.999 });
+      pc.takeDamage(0, StatType.Sanity); // Fear (sanity 3 < 5)
+      const box = new Loot("chest", []);
+      expect(() => pc.move(makeRoomWith(box))).toThrow(/afraid/);
+    });
+
+    it("a Panicked player's takeFromLootBox throws", () => {
+      const target = makeLootItem("a");
+      const box = new Loot("chest", [target]);
+      // Build a panicked player already standing in the room.
+      const pc = new PlayerCharacter(
+        makeCampaign(),
+        "Hero",
+        makeStats({ [StatType.Sanity]: 0 }),
+        5,
+        { rng: () => 0.999 },
+      );
+      pc.move(makeRoomWith(box));
+      pc.startTurn();
+      pc.takeDamage(0, StatType.Sanity); // reconcile → Panic
+      expect(pc.status).toContain(Status.Panic);
+      expect(() => pc.takeFromLootBox(box, target)).toThrow(/Panicked/);
+    });
+
+    it("a Panicked player's putInLootBox throws", () => {
+      const box = new Loot("chest", []);
+      // Start with normal stats so addToInventory is not blocked,
+      // then deplete sanity to trigger Panic before the putInLootBox call.
+      const pc = new PlayerCharacter(
+        makeCampaign(),
+        "Hero",
+        makeStats({ [StatType.Sanity]: 5 }),
+        5,
+        { rng: () => 0.999 },
+      );
+      const item = makeLootItem("a");
+      pc.addToInventory(item);           // pick up while still normal
+      pc.move(makeRoomWith(box));
+      pc.startTurn();
+      pc.stats[StatType.Sanity] = 0;
+      pc.takeDamage(0, StatType.Sanity); // reconcile → Panic
+      expect(pc.status).toContain(Status.Panic);
+      expect(() => pc.putInLootBox(box, item)).toThrow(/Panicked/);
     });
   });
 });

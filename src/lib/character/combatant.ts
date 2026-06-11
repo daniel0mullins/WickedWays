@@ -3,6 +3,7 @@ import { SET_DURABILITY } from "../inventory";
 import { typedEntries } from "../util";
 import { Character, ICharacter } from "./character";
 import { Stats, StatType } from "./stats";
+import type { AfflictionConfig } from "./afflictions";
 
 /** A {@link ICharacter} that can attack other characters. */
 export interface ICombatant extends ICharacter {
@@ -22,8 +23,9 @@ export abstract class Combatant extends Character implements ICombatant {
     stats: Stats,
     inventorySlots: number = 5,
     actionsPerRound: number = 3,
+    options: { rng?: () => number; afflictionConfig?: AfflictionConfig } = {},
   ) {
-    super(campaign, name, stats, inventorySlots, actionsPerRound);
+    super(campaign, name, stats, inventorySlots, actionsPerRound, options);
     this.isActionMap.set(this.attack, true);
   }
 
@@ -36,6 +38,7 @@ export abstract class Combatant extends Character implements ICombatant {
    * @param c - The character being attacked.
    */
   attack(c: ICharacter) {
+    if (!this.attemptAction(this.attack, false)) return;
     // Only intact (non-broken) equipped weapons fight; broken ones contribute nothing.
     const weapons = this.inventory.items.filter(
       (item) => item.properties.equipped && item.type === "weapon" && !item.isBroken,

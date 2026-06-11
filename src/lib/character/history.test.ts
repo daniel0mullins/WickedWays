@@ -59,4 +59,10 @@ describe("describeAction", () => {
     };
     expect(describeAction(entry)).toBe("took 4 sanity damage");
   });
+
+  it("describes a fumble", () => {
+    expect(
+      describeAction({ kind: "fumble", round: 2, action: "attack" }),
+    ).toBe("fumbled attack");
+  });
 });
