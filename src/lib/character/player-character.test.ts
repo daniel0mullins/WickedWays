@@ -11,7 +11,9 @@ import { Character } from "./character";
 import { PlayerCharacter } from "./player-character";
 import { StatType } from "./stats";
 
-import { makeCampaign, makeDefender, makeStats } from "../../test-utils";
+import { makeCampaign, makeDefender, makeStats, type ExitsArg } from "../../test-utils";
+import { Mob } from "./mob";
+import { Room } from "../room";
 
 let itemCounter = 0;
 function makeWeapon(opts: {
@@ -744,6 +746,72 @@ describe("PlayerCharacter", () => {
       pc.takeDamage(0, StatType.Sanity); // reconcile → Panic
       expect(pc.status).toContain(Status.Panic);
       expect(() => pc.putInLootBox(box, item)).toThrow(/Panicked/);
+    });
+  });
+
+  describe("move triggers encounters", () => {
+    it("spawns a formation when entering a new room", () => {
+      const campaign = new Campaign("C", 100, [], { rng: () => 0, baseEncounterChance: 50 });
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+      campaign.gm = pc;
+      campaign.beginCampaign();
+      campaign.addFormation({
+        id: "goblins",
+        weight: 1,
+        build: (c) => [new Mob(c, "Goblin", makeStats(), 2, 2, [])],
+      });
+      const cave = new Room("Cave", "Cave", [], {} as ExitsArg, [], 1);
+
+      pc.move(cave);
+
+      const mobsInRoom = cave.occupants.filter((o) => o !== pc);
+      expect(mobsInRoom).toHaveLength(1);
+    });
+
+    it("does not spawn when the move fizzles (Confused)", () => {
+      const campaign = new Campaign("C", 100, [], { rng: () => 0, baseEncounterChance: 100 });
+      // Energy 0 => Confused; the player's own rng => 0 makes the move gate fizzle.
+      const pc = new PlayerCharacter(
+        campaign,
+        "Hero",
+        makeStats({ [StatType.Energy]: 0 }),
+        5,
+        { rng: () => 0 },
+      );
+      pc.joinCampaign();
+      campaign.gm = pc;
+      campaign.beginCampaign();
+      campaign.addFormation({
+        id: "goblins",
+        weight: 1,
+        build: (c) => [new Mob(c, "Goblin", makeStats(), 2, 2, [])],
+      });
+      pc.takeDamage(0, StatType.Energy); // reconcile -> latch Confused
+
+      const cave = new Room("Cave", "Cave", [], {} as ExitsArg, [], 1);
+      pc.move(cave); // Confused gate fizzles (rng 0): move returns without moving
+
+      expect(pc.currentRoom).not.toBe(cave);
+      expect(cave.occupants).toHaveLength(0);
+    });
+
+    it("does not spawn when the move itself is blocked", () => {
+      const campaign = new Campaign("C", 100, [], { rng: () => 0, baseEncounterChance: 100 });
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats({ [StatType.Health]: 0 }));
+      pc.joinCampaign();
+      campaign.gm = pc;
+      campaign.beginCampaign();
+      campaign.addFormation({
+        id: "goblins",
+        weight: 1,
+        build: (c) => [new Mob(c, "Goblin", makeStats(), 2, 2, [])],
+      });
+      pc.takeDamage(0); // triggers #reconcile() to latch Status.KO (health already 0)
+      const cave = new Room("Cave", "Cave", [], {} as ExitsArg, [], 1);
+
+      expect(() => pc.move(cave)).toThrow();
+      expect(cave.occupants).toHaveLength(0);
     });
   });
 });

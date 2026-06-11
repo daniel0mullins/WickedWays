@@ -3,6 +3,9 @@ import { IPlayerCharacter } from "./character/player-character";
 import { DEPOSIT_MATERIALS, type MaterialMap } from "./inventory";
 import { generateId, ProceduralViolation, typedEntries } from "./util";
 import type { CraftingRecipe, RecipeId } from "./crafting";
+import { EncounterTable, type Formation } from "./encounter-table";
+import type { IRoom } from "./room";
+import type { IMob } from "./character/mob";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -63,6 +66,10 @@ export interface ICampaign {
   nextPlayer: () => void;
   /** Transfers the GM role to another player mid-campaign. */
   transfer: (c: IPlayerCharacter) => void;
+  /** Registers a roving formation; rejects one whose mobs drop key items. */
+  addFormation: (formation: Formation) => void;
+  /** Spawn check for a player entering `room`; returns any mobs spawned. */
+  maybeSpawn: (room: IRoom) => IMob[];
 }
 
 /**
@@ -87,6 +94,7 @@ export class Campaign implements ICampaign {
   #finished = false;
   #activeCharacterIndex: number = 0;
   #actedThisRound: WeakMap<IPlayerCharacter, boolean>;
+  #encounterTable: EncounterTable;
 
   get round() {
     return this.#round;
@@ -160,11 +168,13 @@ export class Campaign implements ICampaign {
    * @param title - Display title of the campaign.
    * @param maxRounds - Round count at which the campaign auto-ends. Defaults to 100.
    * @param knownRecipes - Recipes the party knows from the start.
+   * @param options - Optional encounter table configuration.
    */
   constructor(
     title: string,
     maxRounds: number = 100,
     knownRecipes: CraftingRecipe[] = [],
+    options: { rng?: () => number; baseEncounterChance?: number } = {},
   ) {
     this.id = generateId<CampaignId>();
     this.title = title;
@@ -172,6 +182,11 @@ export class Campaign implements ICampaign {
     this.#round = 0;
     this.#gm = undefined;
     this.maxRounds = maxRounds;
+
+    this.#encounterTable = new EncounterTable(
+      options.rng ?? Math.random,
+      options.baseEncounterChance ?? 20,
+    );
 
     this.#actedThisRound = new WeakMap<IPlayerCharacter, boolean>();
     this.#resetActivity();
@@ -395,5 +410,23 @@ export class Campaign implements ICampaign {
         delete this.#materials[component];
       }
     }
+  }
+
+  /**
+   * Registers a roving {@link Formation}. Delegates to the encounter table,
+   * which rejects formations whose mobs carry key-item drops.
+   */
+  addFormation(formation: Formation) {
+    this.#encounterTable.addFormation(formation, this);
+  }
+
+  /**
+   * Runs the encounter spawn check for a player entering `room` (first-visit
+   * only, suppressed when an active mob is present).
+   *
+   * @returns The mobs spawned, if any.
+   */
+  maybeSpawn(room: IRoom): IMob[] {
+    return this.#encounterTable.maybeSpawn(room, this);
   }
 }

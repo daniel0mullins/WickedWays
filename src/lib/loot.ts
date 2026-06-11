@@ -1,5 +1,5 @@
 import { Brand } from "./brand";
-import { CLAIM, IItem, IItemHolder, ItemId } from "./inventory";
+import { CLAIM, IItem, IItemHolder, ItemId, STASH_DROP } from "./inventory";
 import { ContainerFullException, ProceduralViolation, generateId } from "./util";
 
 /** Unique identifier for a {@link Loot} container. */
@@ -18,6 +18,12 @@ export interface ILoot extends IItemHolder {
   removeItems: (itemId: ItemId | ItemId[]) => IItem[];
   /** Adds an item to the container, throwing if it is already full. */
   stowItem: (item: IItem) => void;
+  /**
+   * Forces `item` into the container — including a key, and past capacity —
+   * claiming it. The caller must first relinquish it from its current holder.
+   * Engine-internal defeat-drop seam; players use {@link stowItem}.
+   */
+  [STASH_DROP]: (item: IItem) => void;
   /** Maximum number of items the container can hold. */
   readonly capacity: number;
 }
@@ -121,5 +127,10 @@ export class Loot implements ILoot {
     } else {
       throw new ContainerFullException(this.id);
     }
+  }
+
+  [STASH_DROP](item: IItem) {
+    this.contents.push(item);
+    item[CLAIM](this);
   }
 }

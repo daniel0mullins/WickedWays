@@ -1,6 +1,7 @@
 import { ICampaign } from "../campaign";
 import { IItem } from "../inventory";
 import { ILoot } from "../loot";
+import type { IRoom } from "../room";
 import { ProceduralViolation } from "../util";
 import { Combatant, ICombatant } from "./combatant";
 import { Stats } from "./stats";
@@ -37,7 +38,23 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
   ) {
     super(campaign, name, stats, inventorySlots, 3, options);
 
+    // `this.move` is the override (PlayerCharacter.prototype.move); super.move's
+    // recordAction(this.move, …) resolves to that same override, so the budget ticks.
     this.isActionMap.set(this.move, true);
+  }
+
+  /**
+   * Moves as a {@link Character}, then runs the campaign's encounter spawn check
+   * on the room actually entered. If the move was blocked or fizzled (current
+   * room unchanged), no spawn check runs.
+   *
+   * @param room - Destination room.
+   */
+  override move(room: IRoom) {
+    super.move(room);
+    if (this.currentRoom === room) {
+      this.campaign.maybeSpawn(room);
+    }
   }
 
   /** Joins the character's campaign party, ignoring a repeated join. */

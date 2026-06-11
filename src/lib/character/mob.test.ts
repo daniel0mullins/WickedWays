@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { IItem } from "../inventory";
-
+import { Campaign } from "../campaign";
+import { Item, createKey, PLACE, SET_ORIGIN, type IItem, type MaterialMap } from "../inventory";
 import { Room } from "../room";
 import { Combatant } from "./combatant";
 import { Mob } from "./mob";
@@ -16,15 +16,39 @@ import {
   makeStats,
 } from "../../test-utils";
 
-function makeMob(opts: { actionsPerRound?: number; drops?: IItem[]; stats?: Partial<Stats>; rng?: () => number } = {}) {
+function makeDrop(name: string): Item {
+  const noop = () => {};
+  return new Item(
+    { type: "consumable", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name },
+    { equippable: false, equipped: false, destroyable: true, usable: false },
+    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    { onPickUp: noop },
+  );
+}
+
+// A real campaign so DEPOSIT_MATERIALS and the material pool work.
+function realCampaign(): Campaign {
+  return new Campaign("Test");
+}
+
+function makeMob(
+  opts: {
+    actionsPerRound?: number;
+    drops?: IItem[];
+    materialDrops?: MaterialMap;
+    stats?: Partial<Stats>;
+    rng?: () => number;
+    campaign?: Campaign;
+  } = {},
+) {
   return new Mob(
-    makeCampaign(),
+    opts.campaign ?? makeCampaign(),
     "Goblin",
     makeStats(opts.stats),
     2,
     opts.actionsPerRound ?? 2,
     opts.drops ?? [],
-    { rng: opts.rng },
+    { rng: opts.rng, materialDrops: opts.materialDrops },
   );
 }
 
@@ -61,8 +85,10 @@ describe("Mob", () => {
   });
 
   describe("escape", () => {
-    it("flees to an adjacent room", () => {
-      const mob = makeMob();
+    // baseEscapeChance(50) + effective Health(10 from makeStats) = 60; rng()=>0
+    // rolls a 1 (<= 60) so escape always succeeds, and rng()=>0 selects exit 0.
+    it("flees through an exit on a successful roll", () => {
+      const mob = makeMob({ rng: () => 0 });
       const den = new Room("Den", "Den", [], {} as ExitsArg);
       const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
       den.addExit("north", cave);
@@ -76,7 +102,7 @@ describe("Mob", () => {
     });
 
     it("records escape as an action", () => {
-      const mob = makeMob({ actionsPerRound: 1 });
+      const mob = makeMob({ actionsPerRound: 1, rng: () => 0 });
       const den = new Room("Den", "Den", [], {} as ExitsArg);
       const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
       den.addExit("north", cave);
@@ -90,16 +116,17 @@ describe("Mob", () => {
     });
 
     it("does not throw and still records when the mob is in no room", () => {
-      const mob = makeMob({ actionsPerRound: 1 });
+      const mob = makeMob({ actionsPerRound: 1, rng: () => 0 });
       const onTurnEnd = vi.spyOn(mob.events, "onTurnEnd");
 
       expect(() => mob.escape()).not.toThrow();
       expect(mob.currentRoom).toBeNull();
       expect(onTurnEnd).toHaveBeenCalledTimes(1);
+      expect(mob.history.at(-1)).toMatchObject({ kind: "escape", success: false });
     });
 
-    it("records an escape in history", () => {
-      const mob = makeMob();
+    it("records a successful escape in history", () => {
+      const mob = makeMob({ rng: () => 0 });
       const den = new Room("Den", "Den", [], {} as ExitsArg);
       const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
       den.addExit("north", cave);
@@ -107,21 +134,27 @@ describe("Mob", () => {
 
       mob.escape();
 
-      expect(mob.history.some((e) => e.kind === "escape")).toBe(true);
+      expect(
+        mob.history.some((e) => e.kind === "escape" && e.success),
+      ).toBe(true);
     });
 
     it("does not move when the current room has no exits", () => {
-      const mob = makeMob();
+      const mob = makeMob({ rng: () => 0 });
       const sealed = new Room("Sealed", "Sealed", [], {} as ExitsArg);
       mob.move(sealed);
 
       mob.escape();
 
       expect(mob.currentRoom).toBe(sealed);
+      expect(
+        mob.history.some((e) => e.kind === "escape" && !e.success),
+      ).toBe(true);
     });
 
-    it("a normal mob's escape still moves through an exit (withGateSuppressed regression)", () => {
-      const mob = makeMob();
+    it("stays put and records a failed escape on a failed roll", () => {
+      // threshold = 50 + Health(5) = 55; rng()=>0.99 rolls 100 (> 55) => fail.
+      const mob = makeMob({ stats: { [StatType.Health]: 5 }, rng: () => 0.99 });
       const den = new Room("Den", "Den", [], {} as ExitsArg);
       const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
       den.addExit("north", cave);
@@ -129,7 +162,135 @@ describe("Mob", () => {
 
       mob.escape();
 
-      expect(mob.currentRoom).toBe(cave);
+      expect(mob.currentRoom).toBe(den);
+      expect(mob.history.at(-1)).toMatchObject({ kind: "escape", success: false });
+    });
+
+    it("uses a custom baseEscapeChance in the threshold", () => {
+      // baseEscapeChance(10) + Health(10) = 20; rng()=>0.5 rolls 51 (> 20) => fail.
+      const mob = new Mob(
+        makeCampaign(),
+        "Goblin",
+        makeStats(),
+        2,
+        2,
+        [],
+        { rng: () => 0.5, baseEscapeChance: 10 },
+      );
+      const den = new Room("Den", "Den", [], {} as ExitsArg);
+      const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
+      den.addExit("north", cave);
+      mob.move(den);
+
+      mob.escape();
+
+      expect(mob.currentRoom).toBe(den);
+      expect(mob.history.at(-1)).toMatchObject({ kind: "escape", success: false });
+    });
+  });
+
+  describe("drop-on-defeat", () => {
+    function room() {
+      return new Room("Lair", "Lair", [], {} as ExitsArg);
+    }
+
+    it("spawns a loot box of its items in the room on KO", () => {
+      const sword = makeDrop("Sword");
+      const lair = room();
+      const mob = makeMob({ drops: [sword], stats: { [StatType.Health]: 0 } });
+      mob[SET_ORIGIN]("room");
+      mob[PLACE](lair);
+
+      mob.takeDamage(0); // reconcile -> KO
+
+      const boxes = [...lair.loot.values()];
+      expect(boxes).toHaveLength(1);
+      expect(boxes[0]!.contents).toContain(sword);
+      expect(mob.inventory.items).not.toContain(sword);
+    });
+
+    it("deposits material drops into the campaign pool on KO", () => {
+      const campaign = realCampaign();
+      const lair = room();
+      const mob = makeMob({
+        campaign,
+        materialDrops: { metal: 3 },
+        stats: { [StatType.Health]: 0 },
+      });
+      mob[SET_ORIGIN]("room");
+      mob[PLACE](lair);
+
+      mob.takeDamage(0);
+
+      expect(campaign.materials.metal).toBe(3);
+    });
+
+    it("drops a key item into the loot box for a room-origin mob", () => {
+      const key = createKey({ name: "Cell Key", keyCode: "cell", consumeOnUse: false });
+      const lair = room();
+      const mob = makeMob({ drops: [key], stats: { [StatType.Health]: 0 } });
+      mob[SET_ORIGIN]("room");
+      mob[PLACE](lair);
+
+      mob.takeDamage(0);
+
+      const box = [...lair.loot.values()][0]!;
+      expect(box.contents).toContain(key);
+    });
+
+    it("does NOT drop a key item for a campaign-origin mob (key stays on keyring)", () => {
+      const coin = makeDrop("Coin");
+      const key = createKey({ name: "Cell Key", keyCode: "cell", consumeOnUse: false });
+      const lair = room();
+      const mob = makeMob({ drops: [coin, key], stats: { [StatType.Health]: 0 } });
+      mob[SET_ORIGIN]("campaign"); // simulate a roving mob
+      mob[PLACE](lair);
+
+      mob.takeDamage(0);
+
+      const box = [...lair.loot.values()][0]!;
+      expect(box.contents).toContain(coin); // the regular item still drops
+      expect(box.contents).not.toContain(key); // the key does not
+      expect(mob.inventory.keys).toContain(key); // it stays on the mob's keyring
+    });
+
+    it("deposits materials but creates no box when KO'd in no room", () => {
+      const campaign = realCampaign();
+      const mob = makeMob({
+        campaign,
+        drops: [makeDrop("Sword")],
+        materialDrops: { glass: 1 },
+        stats: { [StatType.Health]: 0 },
+      });
+      mob[SET_ORIGIN]("room");
+
+      mob.takeDamage(0); // currentRoom is null
+
+      expect(campaign.materials.glass).toBe(1);
+      expect(mob.currentRoom).toBeNull();
+    });
+
+    it("creates no loot box when there are no item drops", () => {
+      const lair = room();
+      const mob = makeMob({ stats: { [StatType.Health]: 0 } });
+      mob[SET_ORIGIN]("room");
+      mob[PLACE](lair);
+
+      mob.takeDamage(0);
+
+      expect([...lair.loot.values()]).toHaveLength(0);
+    });
+
+    it("drops exactly once", () => {
+      const lair = room();
+      const mob = makeMob({ drops: [makeDrop("Sword")], stats: { [StatType.Health]: 0 } });
+      mob[SET_ORIGIN]("room");
+      mob[PLACE](lair);
+
+      mob.takeDamage(0);
+      mob.takeDamage(0); // still KO — must not drop again
+
+      expect([...lair.loot.values()]).toHaveLength(1);
     });
   });
 

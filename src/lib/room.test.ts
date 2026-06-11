@@ -3,11 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import type { CharacterId, ICharacter } from "./character/character";
 import type { ILoot, LootId } from "./loot";
 import { MaterialCache } from "./material-cache";
+import { Mob } from "./character/mob";
 import { Room } from "./room";
 import type { IScene, Scene } from "./scene";
 import { ProceduralViolation } from "./util";
 
-import { type ExitsArg } from "../test-utils";
+import { type ExitsArg, makeCampaign, makeStats } from "../test-utils";
 
 // `Room` only ever touches an occupant's `id`, a loot batch's `id`, and a
 // scene's `playScene`, so minimal stubs cast to the interfaces are enough.
@@ -219,6 +220,35 @@ describe("Room", () => {
 
       expect(first.playScene).toHaveBeenCalledWith("enter", room);
       expect(second.playScene).toHaveBeenCalledWith("enter", room);
+    });
+  });
+
+  describe("placeMob", () => {
+    function makeMob() {
+      return new Mob(makeCampaign(), "Goblin", makeStats(), 2, 2, []);
+    }
+
+    it("seats the mob as an occupant in its current room with room origin", () => {
+      const room = new Room("Lair", "Lair", [], {} as ExitsArg);
+      const mob = makeMob();
+
+      room.placeMob(mob);
+
+      expect(room.occupants).toContain(mob);
+      expect(mob.currentRoom).toBe(room);
+    });
+
+    it("seats resident mobs passed to the constructor", () => {
+      const mob = makeMob();
+      const room = new Room("Lair", "Lair", [], {} as ExitsArg, [], 1, [mob]);
+
+      expect(room.occupants).toContain(mob);
+      expect(mob.currentRoom).toBe(room);
+    });
+
+    it("defaults spawnModifier to 1", () => {
+      const room = new Room("Hall", "Hall", [], {} as ExitsArg);
+      expect(room.spawnModifier).toBe(1);
     });
   });
 });

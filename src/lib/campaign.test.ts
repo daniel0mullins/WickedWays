@@ -6,6 +6,11 @@ import { ProceduralViolation } from "./util";
 import { DEPOSIT_MATERIALS } from "./inventory";
 import type { CraftingRecipe, RecipeId } from "./crafting";
 import type { IItem } from "./inventory";
+import { Mob } from "./character/mob";
+import { Room } from "./room";
+import { type Formation } from "./encounter-table";
+import { createKey } from "./inventory";
+import { makeStats, type ExitsArg } from "../test-utils";
 
 // `Campaign` only stores players and compares them by identity, so distinct
 // stub objects cast to `IPlayerCharacter` are enough (WeakMap needs objects).
@@ -459,6 +464,39 @@ describe("Campaign", () => {
       const campaign = new Campaign("C", 100, [makeRecipe("seeded")]);
 
       expect(campaign.knows("seeded" as RecipeId)).toBe(true);
+    });
+  });
+
+  describe("encounters", () => {
+    const formation: Formation = {
+      id: "goblins",
+      weight: 1,
+      build: (c) => [new Mob(c, "Goblin", makeStats(), 2, 2, [])],
+    };
+
+    it("spawns a formation via maybeSpawn when the roll passes", () => {
+      const campaign = new Campaign("C", 100, [], { rng: () => 0, baseEncounterChance: 50 });
+      campaign.addFormation(formation);
+      const cave = new Room("Cave", "Cave", [], {} as ExitsArg, [], 1);
+
+      const spawned = campaign.maybeSpawn(cave);
+
+      expect(spawned).toHaveLength(1);
+      expect(cave.occupants).toContain(spawned[0]);
+    });
+
+    it("rejects a formation whose mobs drop keys", () => {
+      const campaign = new Campaign("C", 100, [], { rng: () => 0, baseEncounterChance: 50 });
+      const bad: Formation = {
+        id: "thief",
+        weight: 1,
+        build: (c) => [
+          new Mob(c, "Thief", makeStats(), 2, 2, [
+            createKey({ name: "K", keyCode: "k", consumeOnUse: false }),
+          ]),
+        ],
+      };
+      expect(() => campaign.addFormation(bad)).toThrow();
     });
   });
 });

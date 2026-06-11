@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { CLAIM, createKey, type IItem, type ItemId } from "./inventory";
+import { CLAIM, STASH_DROP, createKey, type IItem, type ItemId } from "./inventory";
 import { Loot } from "./loot";
 import { ContainerFullException, ProceduralViolation, generateId } from "./util";
 
@@ -212,6 +212,29 @@ describe("Loot", () => {
       const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
 
       expect(() => new Loot("chest", [key])).toThrow(ProceduralViolation);
+    });
+  });
+
+  describe("STASH_DROP", () => {
+    it("forces a key into the box and claims it, bypassing the key guard", () => {
+      const loot = new Loot("remains", []);
+      const key = createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: false });
+
+      loot[STASH_DROP](key);
+
+      expect(loot.contents).toContain(key);
+      expect(heldBy(key)).toBe(loot);
+    });
+
+    it("stashes past the normal capacity", () => {
+      const loot = new Loot("remains", [makeItem(), makeItem()]); // capacity 4
+      // Fill to capacity, then force one more in.
+      loot.stowItem(makeItem());
+      loot.stowItem(makeItem());
+      const extra = makeItem();
+
+      expect(() => loot[STASH_DROP](extra)).not.toThrow();
+      expect(loot.contents).toContain(extra);
     });
   });
 });

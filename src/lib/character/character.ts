@@ -1,6 +1,6 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, MaterialMap, SET_DURABILITY, UNEQUIP } from "../inventory";
+import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, MaterialMap, PLACE, SET_DURABILITY, UNEQUIP } from "../inventory";
 import {
   DEFAULT_EQUIPMENT_SLOTS,
   EquipmentSlot,
@@ -59,6 +59,8 @@ export interface ICharacter extends IItemHolder {
   get campaign(): ICampaign;
   /** The room the character currently occupies, or `null` if none. */
   get currentRoom(): IRoom | null;
+  /** Wires this character into `room` (current room + occupancy) with no gating, history, or budget tick. */
+  [PLACE]: (room: IRoom) => void;
   /** Immutable copy of the character's recorded action history. */
   get history(): readonly ActionHistoryEntry[];
   get inventory(): Inventory;
@@ -151,6 +153,8 @@ export class Character implements ICharacter {
   // Private Properties
   #campaign: ICampaign;
   #currentRoom: IRoom | null = null;
+  /** Injected randomness for all of this character's rolls (escape, etc.). */
+  protected readonly rng: () => number;
   #history: ActionHistoryEntry[] = [];
   #inventory: Inventory;
   // #slots is the character's anatomy (which named positions exist); #equipment
@@ -214,11 +218,23 @@ export class Character implements ICharacter {
   }
 
   #reconcile() {
+    const wasKO = this.#afflictions.list.includes(Status.KO);
     this.#afflictions.applyFromStats(
       this.#floorAndSnapshot(),
       this.#passiveImmunities(),
     );
+    const isKO = this.#afflictions.list.includes(Status.KO);
+    if (!wasKO && isKO) {
+      this.onKnockOut();
+    }
   }
+
+  /**
+   * Hook fired exactly once when this character's {@link Status.KO} newly
+   * latches during a reconcile. Base behaviour is none; subclasses (e.g.
+   * {@link Mob}) override it to react to defeat.
+   */
+  protected onKnockOut(): void {}
 
   /** Grants timed status immunity. Engine-internal: only the item Use path calls it. */
   [GRANT_IMMUNITY](statuses: Status[], turns: number) {
@@ -331,8 +347,9 @@ export class Character implements ICharacter {
 
     this.#inventory = { slots: inventorySlots, items: [], keys: [] };
     this.#campaign = campaign;
+    this.rng = options.rng ?? Math.random;
     this.#afflictions = new Afflictions(
-      options.rng,
+      this.rng,
       options.afflictionConfig ?? DEFAULT_AFFLICTION_CONFIG,
     );
 
@@ -688,6 +705,20 @@ export class Character implements ICharacter {
       amount: finalAttackStrength,
       stat: attackStat,
     });
+  }
+
+  /**
+   * Engine-internal placement: sets the current room and occupancy directly,
+   * exiting any prior room first. Unlike {@link Character.move} it is ungated,
+   * records no history, and ticks no action budget. Used to seat resident or
+   * spawned mobs (see {@link Room.placeMob} and the encounter spawn path).
+   */
+  [PLACE](room: IRoom) {
+    if (this.#currentRoom) {
+      this.#currentRoom.exitRoom(this);
+    }
+    this.#currentRoom = room;
+    room.enterRoom(this);
   }
 
   /**

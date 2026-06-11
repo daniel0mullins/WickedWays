@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CLAIM, Item, createKey, type IItem, type ItemId } from "../inventory";
+import { CLAIM, Item, PLACE, createKey, type IItem, type ItemId } from "../inventory";
 import { EquipmentSlot, SlotKind } from "../equipment";
 import type { IRoom, RoomId } from "../room";
 import { Status } from "../status";
@@ -1741,6 +1741,70 @@ describe("Character", () => {
       tonic.actions.use(c);   // applies immunity, then consumes
       c.endTurn();           // reconcile while immune
       expect(c.isNormal).toBe(true);
+    });
+  });
+
+  describe("onKnockOut hook", () => {
+    class HookSpy extends Character {
+      knockOuts = 0;
+      protected override onKnockOut() {
+        this.knockOuts += 1;
+      }
+    }
+
+    function makeSpy(health: number) {
+      return new HookSpy(makeCampaign(), "Spy", makeStats({ [StatType.Health]: health }));
+    }
+
+    it("fires once when KO newly latches", () => {
+      const spy = makeSpy(0);
+      spy.takeDamage(0); // reconcile -> health <= 0 -> KO transition
+      expect(spy.knockOuts).toBe(1);
+    });
+
+    it("does not fire again on subsequent reconciles while still KO'd", () => {
+      const spy = makeSpy(0);
+      spy.takeDamage(0);
+      spy.takeDamage(0);
+      spy.endTurn();
+      expect(spy.knockOuts).toBe(1);
+    });
+
+    it("does not fire for a character that never becomes KO'd", () => {
+      const spy = makeSpy(10);
+      spy.takeDamage(0);
+      expect(spy.knockOuts).toBe(0);
+    });
+
+    it("does not fire via startTurn (startTurn bypasses #reconcile)", () => {
+      const spy = makeSpy(0);
+      spy.startTurn(); // goes through afflictions.onTurnStart, not #reconcile
+      expect(spy.knockOuts).toBe(0);
+    });
+  });
+
+  describe("PLACE seam", () => {
+    it("sets the current room and enters it without recording history", () => {
+      const character = makeCharacter();
+      const room = makeRoom();
+
+      character[PLACE](room);
+
+      expect(character.currentRoom).toBe(room);
+      expect(room.enterRoom).toHaveBeenCalledWith(character);
+      expect(character.history).toHaveLength(0);
+    });
+
+    it("exits the previous room before entering the new one", () => {
+      const character = makeCharacter();
+      const first = makeRoom();
+      const second = makeRoom();
+
+      character[PLACE](first);
+      character[PLACE](second);
+
+      expect(first.exitRoom).toHaveBeenCalledWith(character);
+      expect(character.currentRoom).toBe(second);
     });
   });
 });

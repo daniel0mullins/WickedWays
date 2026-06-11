@@ -1,7 +1,9 @@
 import { Brand } from "./brand";
 import { CharacterId, ICharacter } from "./character/character";
+import { PLACE, SET_ORIGIN } from "./inventory";
 import { ILoot, LootId } from "./loot";
 import type { IMaterialCache, MaterialCacheId } from "./material-cache";
+import type { IMob } from "./character/mob";
 import { IScene, Scene } from "./scene";
 import { generateId, ProceduralViolation } from "./util";
 
@@ -38,6 +40,8 @@ export interface IRoom {
   materials: Map<MaterialCacheId, IMaterialCache>;
   /** Adjacent rooms keyed by the direction that leads to them. */
   exits: Map<Direction, IRoom>;
+  /** Multiplier on the campaign's base encounter chance (0 = never spawns). */
+  spawnModifier: number;
 
   /** Characters currently in the room. */
   get occupants(): ICharacter[];
@@ -52,6 +56,8 @@ export interface IRoom {
   registerScene: (scene: Scene) => void;
   /** Removes the exit in `direction`, if any. */
   removeExit: (direction: Direction) => void;
+  /** Seats `mob` as a room-attached resident (origin `"room"`). */
+  placeMob: (mob: IMob) => void;
 }
 
 /**
@@ -66,6 +72,7 @@ export class Room implements IRoom {
   loot: Map<LootId, ILoot>;
   materials: Map<MaterialCacheId, IMaterialCache>;
   exits: Map<Direction, IRoom>;
+  spawnModifier: number;
   #occupants: Map<CharacterId, ICharacter>;
   #scenes: IScene[];
 
@@ -88,6 +95,8 @@ export class Room implements IRoom {
    * @param loot - Loot containers initially present in the room.
    * @param exits - Initial exits keyed by direction.
    * @param materials - Material caches initially present in the room.
+   * @param spawnModifier - Multiplier on the campaign's base encounter chance (default 1; 0 = never spawns).
+   * @param mobs - Resident mobs seated immediately via {@link Room.placeMob} (origin `"room"`).
    */
   constructor(
     name: string,
@@ -95,6 +104,8 @@ export class Room implements IRoom {
     loot: ILoot[],
     exits: Record<Direction, IRoom>,
     materials: IMaterialCache[] = [],
+    spawnModifier: number = 1,
+    mobs: IMob[] = [],
   ) {
     this.id = generateId<RoomId>();
     this.name = name;
@@ -115,6 +126,12 @@ export class Room implements IRoom {
     this.exits = new Map<Direction, IRoom>();
     for (const [direction, room] of Object.entries(exits)) {
       this.exits.set(direction as Direction, room);
+    }
+
+    this.spawnModifier = spawnModifier;
+
+    for (const mob of mobs) {
+      this.placeMob(mob);
     }
   }
 
@@ -155,5 +172,15 @@ export class Room implements IRoom {
   /** Removes the exit in `direction`, if one exists. */
   removeExit(direction: Direction) {
     this.exits.delete(direction);
+  }
+
+  /**
+   * Seats `mob` as a room-attached resident: marks its origin `"room"` and wires
+   * it into this room as an occupant. Room-attached mobs may drop key items on
+   * defeat (see {@link Mob.onKnockOut}).
+   */
+  placeMob(mob: IMob) {
+    mob[SET_ORIGIN]("room");
+    mob[PLACE](this);
   }
 }
