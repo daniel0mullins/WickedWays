@@ -20,7 +20,8 @@ export interface ILoot extends IItemHolder {
   stowItem: (item: IItem) => void;
   /**
    * Forces `item` into the container — including a key, and past capacity —
-   * claiming it. Engine-internal defeat-drop seam; players use {@link stowItem}.
+   * claiming it. The caller must first relinquish it from its current holder.
+   * Engine-internal defeat-drop seam; players use {@link stowItem}.
    */
   [STASH_DROP]: (item: IItem) => void;
   /** Maximum number of items the container can hold. */

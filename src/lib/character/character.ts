@@ -59,7 +59,7 @@ export interface ICharacter extends IItemHolder {
   get campaign(): ICampaign;
   /** The room the character currently occupies, or `null` if none. */
   get currentRoom(): IRoom | null;
-  /** Wires this character into `room` (current room + occupancy) with no history. */
+  /** Wires this character into `room` (current room + occupancy) with no gating, history, or budget tick. */
   [PLACE]: (room: IRoom) => void;
   /** Immutable copy of the character's recorded action history. */
   get history(): readonly ActionHistoryEntry[];

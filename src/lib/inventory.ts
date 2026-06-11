@@ -182,7 +182,9 @@ export const CONSUME_VIA_USE = Symbol("CONSUME_VIA_USE");
 /**
  * Symbol-keyed method that forces an item (including a key) into a {@link Loot}
  * box, bypassing the player-facing "no keys in loot" and capacity guards. Only
- * the mob defeat-drop path calls it.
+ * the mob defeat-drop path calls it. The caller must first relinquish the item
+ * from its current holder — like {@link CLAIM}, this only claims, it does not
+ * evict the prior holder.
  */
 export const STASH_DROP = Symbol("stashDrop");
 
