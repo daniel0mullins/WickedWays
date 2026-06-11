@@ -1743,4 +1743,37 @@ describe("Character", () => {
       expect(c.isNormal).toBe(true);
     });
   });
+
+  describe("onKnockOut hook", () => {
+    class HookSpy extends Character {
+      knockOuts = 0;
+      protected override onKnockOut() {
+        this.knockOuts += 1;
+      }
+    }
+
+    function makeSpy(health: number) {
+      return new HookSpy(makeCampaign(), "Spy", makeStats({ [StatType.Health]: health }));
+    }
+
+    it("fires once when KO newly latches", () => {
+      const spy = makeSpy(0);
+      spy.takeDamage(0); // reconcile -> health <= 0 -> KO transition
+      expect(spy.knockOuts).toBe(1);
+    });
+
+    it("does not fire again on subsequent reconciles while still KO'd", () => {
+      const spy = makeSpy(0);
+      spy.takeDamage(0);
+      spy.takeDamage(0);
+      spy.endTurn();
+      expect(spy.knockOuts).toBe(1);
+    });
+
+    it("does not fire for a character that never becomes KO'd", () => {
+      const spy = makeSpy(10);
+      spy.takeDamage(0);
+      expect(spy.knockOuts).toBe(0);
+    });
+  });
 });

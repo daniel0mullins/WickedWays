@@ -216,11 +216,23 @@ export class Character implements ICharacter {
   }
 
   #reconcile() {
+    const wasKO = this.#afflictions.list.includes(Status.KO);
     this.#afflictions.applyFromStats(
       this.#floorAndSnapshot(),
       this.#passiveImmunities(),
     );
+    const isKO = this.#afflictions.list.includes(Status.KO);
+    if (!wasKO && isKO) {
+      this.onKnockOut();
+    }
   }
+
+  /**
+   * Hook fired exactly once when this character's {@link Status.KO} newly
+   * latches during a reconcile. Base behaviour is none; subclasses (e.g.
+   * {@link Mob}) override it to react to defeat.
+   */
+  protected onKnockOut(): void {}
 
   /** Grants timed status immunity. Engine-internal: only the item Use path calls it. */
   [GRANT_IMMUNITY](statuses: Status[], turns: number) {
