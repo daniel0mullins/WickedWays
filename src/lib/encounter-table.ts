@@ -67,6 +67,9 @@ export class EncounterTable {
    * never when an active mob is already present. On success, a weighted
    * formation is built, marked campaign-origin, and placed in the room.
    *
+   * Note: the first visit consumes the room's one chance even if no formations
+   * are registered yet, so register formations before the party explores.
+   *
    * @returns The mobs spawned (empty if none).
    */
   maybeSpawn(room: IRoom, campaign: ICampaign): IMob[] {

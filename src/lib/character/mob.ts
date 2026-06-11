@@ -113,6 +113,8 @@ export class Mob extends Combatant implements IMob {
     const room = this.currentRoom;
     if (!room) return;
 
+    // Drops are loaded into the inventory via receiveItem (never equipped), so
+    // the dropped items carry no equipped flag — no unequip step is needed here.
     const items = [...this.inventory.items];
     const keys = this.#origin === "room" ? [...this.inventory.keys] : [];
     if (items.length === 0 && keys.length === 0) return;
