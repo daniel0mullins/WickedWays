@@ -98,6 +98,7 @@ describe("Mob", () => {
       expect(() => mob.escape()).not.toThrow();
       expect(mob.currentRoom).toBeNull();
       expect(onTurnEnd).toHaveBeenCalledTimes(1);
+      expect(mob.history.at(-1)).toMatchObject({ kind: "escape", success: false });
     });
 
     it("records a successful escape in history", () => {
@@ -130,6 +131,28 @@ describe("Mob", () => {
     it("stays put and records a failed escape on a failed roll", () => {
       // threshold = 50 + Health(5) = 55; rng()=>0.99 rolls 100 (> 55) => fail.
       const mob = makeMob({ stats: { [StatType.Health]: 5 }, rng: () => 0.99 });
+      const den = new Room("Den", "Den", [], {} as ExitsArg);
+      const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
+      den.addExit("north", cave);
+      mob.move(den);
+
+      mob.escape();
+
+      expect(mob.currentRoom).toBe(den);
+      expect(mob.history.at(-1)).toMatchObject({ kind: "escape", success: false });
+    });
+
+    it("uses a custom baseEscapeChance in the threshold", () => {
+      // baseEscapeChance(10) + Health(10) = 20; rng()=>0.5 rolls 51 (> 20) => fail.
+      const mob = new Mob(
+        makeCampaign(),
+        "Goblin",
+        makeStats(),
+        2,
+        2,
+        [],
+        { rng: () => 0.5, baseEscapeChance: 10 },
+      );
       const den = new Room("Den", "Den", [], {} as ExitsArg);
       const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
       den.addExit("north", cave);

@@ -63,7 +63,8 @@ export class Mob extends Combatant implements IMob {
       0,
       100,
     );
-    const success = roll(100, this.rng) <= threshold && exits.length > 0;
+    const rolled = roll(100, this.rng) <= threshold;
+    const success = rolled && exits.length > 0;
     if (success) {
       const destination = exits[roll(exits.length, this.rng) - 1]!;
       this.withGateSuppressed(() => this.move(destination));
