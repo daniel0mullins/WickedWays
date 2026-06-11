@@ -1775,5 +1775,11 @@ describe("Character", () => {
       spy.takeDamage(0);
       expect(spy.knockOuts).toBe(0);
     });
+
+    it("does not fire via startTurn (startTurn bypasses #reconcile)", () => {
+      const spy = makeSpy(0);
+      spy.startTurn(); // goes through afflictions.onTurnStart, not #reconcile
+      expect(spy.knockOuts).toBe(0);
+    });
   });
 });
