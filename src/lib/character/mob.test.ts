@@ -238,17 +238,20 @@ describe("Mob", () => {
       expect(box.contents).toContain(key);
     });
 
-    it("does NOT drop a key item for a campaign-origin mob", () => {
+    it("does NOT drop a key item for a campaign-origin mob (key stays on keyring)", () => {
+      const coin = makeDrop("Coin");
       const key = createKey({ name: "Cell Key", keyCode: "cell", consumeOnUse: false });
       const lair = room();
-      const mob = makeMob({ drops: [key], stats: { [StatType.Health]: 0 } });
+      const mob = makeMob({ drops: [coin, key], stats: { [StatType.Health]: 0 } });
       mob[SET_ORIGIN]("campaign"); // simulate a roving mob
       mob[PLACE](lair);
 
       mob.takeDamage(0);
 
-      const boxes = [...lair.loot.values()];
-      expect(boxes.flatMap((b) => b.contents)).not.toContain(key);
+      const box = [...lair.loot.values()][0]!;
+      expect(box.contents).toContain(coin); // the regular item still drops
+      expect(box.contents).not.toContain(key); // the key does not
+      expect(mob.inventory.keys).toContain(key); // it stays on the mob's keyring
     });
 
     it("deposits materials but creates no box when KO'd in no room", () => {
