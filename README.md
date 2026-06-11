@@ -142,9 +142,10 @@ inside `Character.attemptAction`:
 | **Confused** | all actions — but each has a 50 % chance to **fizzle** | — |
 
 A **fizzle** (Confused) means the action has no effect but the attempt still consumes a budget slot and is
-recorded in history as a `fumble`. Free actions (craft, equip, repair …) that fizzle return `null` / are
-no-ops. KO supersedes all other statuses: when Health drops to ≤ 0 the engine clears Panic, Fear, and
-Confused immediately so only KO remains active.
+recorded in history as a `fumble`. Free actions (craft, equip, repair …) that fizzle return `null` / void
+and still record a `fumble` to history — they just do not consume a budget slot. KO supersedes all other
+statuses: when Health drops to ≤ 0 the engine clears Panic, Fear, and Confused immediately so only KO
+remains active.
 
 #### Self-clearing
 

@@ -1672,6 +1672,40 @@ describe("Character", () => {
       expect(character.history.at(-1)?.kind).toBe("fumble");
       expect(campaign.canAfford(cost)).toBe(true);
     });
+
+    it("transferKey keeps the key with the giver when the Confused recipient fizzles the pickup", () => {
+      // rng: () => 0 means roll(100) returns 1, which is <= 50 (confusedFailChance),
+      // so every gated action on the recipient fizzles.
+      const giver = makeCharacter();
+      const recipient = makeCharacter({ stats: { [StatType.Energy]: 0 }, rng: () => 0 });
+      const key = createKey({ name: "Vault", keyCode: "vault", consumeOnUse: false });
+      giver.addToInventory(key);
+      recipient.takeDamage(0, StatType.Energy); // reconcile -> Confused
+      expect(recipient.status).toContain(Status.Confused);
+
+      // transferKey must not throw; the fizzled pickup means the key stays with the giver.
+      expect(() => giver.transferKey(key, recipient)).not.toThrow();
+      expect(giver.inventory.keys.some((k) => k.id === key.id)).toBe(true);
+      expect(recipient.inventory.keys.some((k) => k.id === key.id)).toBe(false);
+    });
+
+    it("Confused character exhausts its action budget even when every action fizzles", () => {
+      // actionsPerRound: 2, rng: () => 0 => every gated call fizzles.
+      const c = makeCharacter({
+        stats: { [StatType.Energy]: 0 },
+        rng: () => 0,
+        actionsPerRound: 2,
+        inventorySlots: 99,
+      });
+      c.takeDamage(0, StatType.Energy); // reconcile -> Confused
+      const onTurnEnd = vi.spyOn(c.events, "onTurnEnd");
+
+      // Each fizzle records a fumble and ticks the budget for budgeted actions.
+      c.addToInventory(makeItem()); // fizzle #1 — budget 1/2
+      expect(onTurnEnd).not.toHaveBeenCalled();
+      c.addToInventory(makeItem()); // fizzle #2 — budget 2/2 -> turn ends
+      expect(onTurnEnd).toHaveBeenCalledOnce();
+    });
   });
 
   describe("status consequences — wiring & immunity", () => {

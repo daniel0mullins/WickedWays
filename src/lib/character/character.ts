@@ -92,14 +92,21 @@ export interface ICharacter extends IItemHolder {
   repair: (item: IItem) => void;
   /** The character's currently filled equipment slots (named slot → item). */
   get equipment(): ReadonlyMap<EquipmentSlot, IItem>;
-  /** Equips a held item into a named slot of its kind, auto-swapping conflicts (free). */
+  /**
+   * Equips a held item into a named slot of its kind, auto-swapping conflicts (free).
+   * A Confused fizzle records a `fumble` to history but still does not tick the action budget.
+   */
   equip: (item: IItem, targetSlot?: EquipmentSlot) => void;
-  /** Removes an equipped item from its slot(s) (free). */
+  /**
+   * Removes an equipped item from its slot(s) (free).
+   * A Confused fizzle records a `fumble` to history but still does not tick the action budget.
+   */
   unequip: (item: IItem) => void;
   /**
    * Crafts an item using the materials-track recipe identified by `recipeId`.
    * Returns `null` if the action was gated (fizzled due to Confused status).
    * Free action — does not tick the action budget or record history.
+   * A Confused fizzle records a `fumble` to history but still does not tick the action budget.
    */
   craft: (recipeId: RecipeId) => IItem | null;
   /**
@@ -445,7 +452,8 @@ export class Character implements ICharacter {
    * Restores a damaged, durability-bearing item to full durability, paying a
    * material cost proportional to the missing fraction (`ceil(recipe[c] * missing
    * / maxDurability)` per component) from the party pool. Free — it does not
-   * consume a budgeted action or record history.
+   * consume a budgeted action or record history. A Confused fizzle records a
+   * `fumble` to history but still does not tick the action budget.
    *
    * @param item - A held item that has durability and is below full.
    * @throws {@link ProceduralViolation} if the item is not held, has no
@@ -492,7 +500,8 @@ export class Character implements ICharacter {
    * slot kind. Auto-assigns the first free slot of that kind (or the named
    * `targetSlot`), displacing whatever is there (the displaced item stays in
    * inventory, unequipped). A two-handed weapon spans both hand slots. Free — no
-   * budgeted action, no history.
+   * budgeted action, no history. A Confused fizzle records a `fumble` to history
+   * but still does not tick the action budget.
    *
    * @throws {@link ProceduralViolation} if the item is not held, not equippable,
    *   has no slot kind, the character has no slot of that kind, or `targetSlot`
@@ -511,14 +520,14 @@ export class Character implements ICharacter {
     }
     // Re-equipping a worn item: free its current slot(s) first.
     if (item.properties.equipped) {
-      this.unequip(item);
+      this.withGateSuppressed(() => this.unequip(item));
     }
 
     // Two-handed weapons span both hands.
     if (item.type === "weapon" && item.twoHanded) {
       for (const hand of [EquipmentSlot.LeftHand, EquipmentSlot.RightHand]) {
         const occupant = this.#equipment.get(hand);
-        if (occupant) this.unequip(occupant);
+        if (occupant) this.withGateSuppressed(() => this.unequip(occupant));
       }
       this.#equipment.set(EquipmentSlot.LeftHand, item);
       this.#equipment.set(EquipmentSlot.RightHand, item);
@@ -544,7 +553,7 @@ export class Character implements ICharacter {
 
     const occupant = this.#equipment.get(slot);
     if (occupant && occupant.id !== item.id) {
-      this.unequip(occupant); // auto-swap (a 2H occupant frees both hands)
+      this.withGateSuppressed(() => this.unequip(occupant)); // auto-swap (a 2H occupant frees both hands)
     }
     this.#equipment.set(slot, item);
     item[EQUIP](this);
@@ -552,7 +561,8 @@ export class Character implements ICharacter {
 
   /**
    * Removes an equipped item from every slot it occupies (a two-handed weapon
-   * occupies two). Free — no budgeted action, no history.
+   * occupies two). Free — no budgeted action, no history. A Confused fizzle
+   * records a `fumble` to history but still does not tick the action budget.
    *
    * @throws {@link ProceduralViolation} if the item is not held or not equipped.
    */
@@ -593,7 +603,12 @@ export class Character implements ICharacter {
     // Add to the recipient FIRST, then relinquish: if the recipient's gated
     // addToInventory blocks (e.g. KO'd ally), the key is not lost from the giver.
     recipient.addToInventory(key);
-    this.relinquishItem(key);
+    // Only release the key if the recipient actually received it. A KO'd recipient
+    // throws before we get here; a Confused recipient can silently fizzle the
+    // pickup, in which case the key must stay with the giver rather than vanish.
+    if (recipient.inventory.keys.some((k) => k.id === key.id)) {
+      this.relinquishItem(key);
+    }
   }
 
   /**
@@ -719,6 +734,8 @@ export class Character implements ICharacter {
    * both the materials track (debits the party pool, places the output in an
    * inventory slot) and the key track (consumes held keys, places the output on
    * the keyring). Free action — does not tick the action budget or record history.
+   * A Confused fizzle records a `fumble` to history but still does not tick the
+   * action budget.
    *
    * @param recipeId - The id of a known recipe.
    * @returns The newly created item, or `null` if the action was gated (fizzled).

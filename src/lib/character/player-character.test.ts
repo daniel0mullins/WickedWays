@@ -724,5 +724,26 @@ describe("PlayerCharacter", () => {
       expect(pc.status).toContain(Status.Panic);
       expect(() => pc.takeFromLootBox(box, target)).toThrow(/Panicked/);
     });
+
+    it("a Panicked player's putInLootBox throws", () => {
+      const box = new Loot("chest", []);
+      // Start with normal stats so addToInventory is not blocked,
+      // then deplete sanity to trigger Panic before the putInLootBox call.
+      const pc = new PlayerCharacter(
+        makeCampaign(),
+        "Hero",
+        makeStats({ [StatType.Sanity]: 5 }),
+        5,
+        { rng: () => 0.999 },
+      );
+      const item = makeLootItem("a");
+      pc.addToInventory(item);           // pick up while still normal
+      pc.move(makeRoomWith(box));
+      pc.startTurn();
+      pc.stats[StatType.Sanity] = 0;
+      pc.takeDamage(0, StatType.Sanity); // reconcile → Panic
+      expect(pc.status).toContain(Status.Panic);
+      expect(() => pc.putInLootBox(box, item)).toThrow(/Panicked/);
+    });
   });
 });

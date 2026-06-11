@@ -115,6 +115,12 @@ export class Afflictions {
     } else if (effective.energy > 1) {
       this.#resolve(Status.Confused, false, passiveImmune);
     } else if (this.#immune(Status.Confused, passiveImmune)) {
+      // Energy is in the (0, 1] hold band: Confused would normally be left as-is.
+      // However, if a timed or passive immunity is active we still clear the episode
+      // immediately — consistent with the immunity contract. When that immunity
+      // later lapses while energy remains in (0, 1], Confused will NOT re-apply:
+      // re-application only triggers when energy drops to <= 0 again. This is the
+      // intended hysteresis behaviour; it is not a missed re-application.
       this.#clearEpisode(Status.Confused);
     }
   }
