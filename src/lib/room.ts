@@ -95,6 +95,8 @@ export class Room implements IRoom {
    * @param loot - Loot containers initially present in the room.
    * @param exits - Initial exits keyed by direction.
    * @param materials - Material caches initially present in the room.
+   * @param spawnModifier - Multiplier on the campaign's base encounter chance (default 1; 0 = never spawns).
+   * @param mobs - Resident mobs seated immediately via {@link Room.placeMob} (origin `"room"`).
    */
   constructor(
     name: string,

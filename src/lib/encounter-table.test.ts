@@ -44,6 +44,14 @@ describe("EncounterTable", () => {
       const campaign = new Campaign("C");
       expect(() => table.addFormation(goblinFormation("a", 1), campaign)).not.toThrow();
     });
+
+    it("rejects a formation with non-positive weight", () => {
+      const table = new EncounterTable(() => 0, 100);
+      const campaign = new Campaign("C");
+      expect(() => table.addFormation(goblinFormation("a", 0), campaign)).toThrow(
+        ProceduralViolation,
+      );
+    });
   });
 
   describe("maybeSpawn", () => {
@@ -98,7 +106,7 @@ describe("EncounterTable", () => {
       expect(table.maybeSpawn(cave, campaign)).toHaveLength(0);
     });
 
-    it("marks spawned mobs with campaign origin (no key drops)", () => {
+    it("places spawned mobs alive in the room", () => {
       const table = new EncounterTable(() => 0, 100);
       const campaign = new Campaign("C");
       table.addFormation(goblinFormation("a", 1), campaign);

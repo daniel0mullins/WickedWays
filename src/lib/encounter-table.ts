@@ -3,7 +3,6 @@ import { PLACE, SET_ORIGIN } from "./inventory";
 import { Status } from "./status";
 import { clamp, ProceduralViolation } from "./util";
 import type { ICampaign } from "./campaign";
-import type { ICharacter } from "./character/character";
 import type { IMob } from "./character/mob";
 import type { IRoom } from "./room";
 
@@ -45,9 +44,13 @@ export class EncounterTable {
    * mobs may not drop keys (only room-attached mobs can). Validation mints one
    * sample via `build` and inspects the produced mobs' keyrings.
    *
-   * @throws {@link ProceduralViolation} if any sampled mob carries a key drop.
+   * @throws {@link ProceduralViolation} if the weight is not positive, or if any
+   *   sampled mob carries a key drop.
    */
   addFormation(formation: Formation, campaign: ICampaign) {
+    if (formation.weight <= 0) {
+      throw new ProceduralViolation("A formation's weight must be greater than 0.");
+    }
     for (const mob of formation.build(campaign)) {
       if (mob.inventory.keys.length > 0) {
         throw new ProceduralViolation(
@@ -70,10 +73,9 @@ export class EncounterTable {
     if (this.#visited.has(room.id)) return [];
     this.#visited.add(room.id);
 
+    const partyIds = new Set(campaign.party.map((p) => p.id));
     const activeMobPresent = room.occupants.some(
-      (o) =>
-        !(campaign.party as ICharacter[]).includes(o) &&
-        !o.status.includes(Status.KO),
+      (o) => !partyIds.has(o.id) && !o.status.includes(Status.KO),
     );
     if (activeMobPresent) return [];
     if (this.#formations.length === 0) return [];
