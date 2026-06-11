@@ -58,3 +58,15 @@ export class ContainerFullException extends Error {
     this.name = "ContainerFullException";
   }
 }
+
+/**
+ * Clamps `n` into the inclusive range `[lo, hi]`.
+ *
+ * @param n - Value to clamp.
+ * @param lo - Lower bound.
+ * @param hi - Upper bound.
+ * @returns `n` constrained to `[lo, hi]`.
+ */
+export function clamp(n: number, lo: number, hi: number): number {
+  return Math.max(lo, Math.min(hi, n));
+}

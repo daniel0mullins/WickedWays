@@ -61,8 +61,10 @@ describe("Mob", () => {
   });
 
   describe("escape", () => {
-    it("flees to an adjacent room", () => {
-      const mob = makeMob();
+    // baseEscapeChance(50) + effective Health(10 from makeStats) = 60; rng()=>0
+    // rolls a 1 (<= 60) so escape always succeeds, and rng()=>0 selects exit 0.
+    it("flees through an exit on a successful roll", () => {
+      const mob = makeMob({ rng: () => 0 });
       const den = new Room("Den", "Den", [], {} as ExitsArg);
       const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
       den.addExit("north", cave);
@@ -76,7 +78,7 @@ describe("Mob", () => {
     });
 
     it("records escape as an action", () => {
-      const mob = makeMob({ actionsPerRound: 1 });
+      const mob = makeMob({ actionsPerRound: 1, rng: () => 0 });
       const den = new Room("Den", "Den", [], {} as ExitsArg);
       const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
       den.addExit("north", cave);
@@ -90,7 +92,7 @@ describe("Mob", () => {
     });
 
     it("does not throw and still records when the mob is in no room", () => {
-      const mob = makeMob({ actionsPerRound: 1 });
+      const mob = makeMob({ actionsPerRound: 1, rng: () => 0 });
       const onTurnEnd = vi.spyOn(mob.events, "onTurnEnd");
 
       expect(() => mob.escape()).not.toThrow();
@@ -98,8 +100,8 @@ describe("Mob", () => {
       expect(onTurnEnd).toHaveBeenCalledTimes(1);
     });
 
-    it("records an escape in history", () => {
-      const mob = makeMob();
+    it("records a successful escape in history", () => {
+      const mob = makeMob({ rng: () => 0 });
       const den = new Room("Den", "Den", [], {} as ExitsArg);
       const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
       den.addExit("north", cave);
@@ -107,21 +109,27 @@ describe("Mob", () => {
 
       mob.escape();
 
-      expect(mob.history.some((e) => e.kind === "escape")).toBe(true);
+      expect(
+        mob.history.some((e) => e.kind === "escape" && e.success),
+      ).toBe(true);
     });
 
     it("does not move when the current room has no exits", () => {
-      const mob = makeMob();
+      const mob = makeMob({ rng: () => 0 });
       const sealed = new Room("Sealed", "Sealed", [], {} as ExitsArg);
       mob.move(sealed);
 
       mob.escape();
 
       expect(mob.currentRoom).toBe(sealed);
+      expect(
+        mob.history.some((e) => e.kind === "escape" && !e.success),
+      ).toBe(true);
     });
 
-    it("a normal mob's escape still moves through an exit (withGateSuppressed regression)", () => {
-      const mob = makeMob();
+    it("stays put and records a failed escape on a failed roll", () => {
+      // threshold = 50 + Health(5) = 55; rng()=>0.99 rolls 100 (> 55) => fail.
+      const mob = makeMob({ stats: { [StatType.Health]: 5 }, rng: () => 0.99 });
       const den = new Room("Den", "Den", [], {} as ExitsArg);
       const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
       den.addExit("north", cave);
@@ -129,7 +137,8 @@ describe("Mob", () => {
 
       mob.escape();
 
-      expect(mob.currentRoom).toBe(cave);
+      expect(mob.currentRoom).toBe(den);
+      expect(mob.history.at(-1)).toMatchObject({ kind: "escape", success: false });
     });
   });
 

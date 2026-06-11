@@ -1,12 +1,14 @@
 import { ICampaign } from "../campaign";
 import { IItem } from "../inventory";
+import { roll } from "../dice";
+import { clamp } from "../util";
 import { Combatant, ICombatant } from "./combatant";
-import { Stats } from "./stats";
+import { Stats, StatType } from "./stats";
 import type { AfflictionConfig } from "./afflictions";
 
 /** A non-player {@link ICombatant}, such as an enemy, that can also flee. */
 export interface IMob extends ICombatant {
-  /** Flees through the first available exit, recording an `escape` action. */
+  /** Attempts a Health-gated flee through a random exit, recording an `escape`. */
   escape: () => void;
 }
 
@@ -15,6 +17,9 @@ export interface IMob extends ICombatant {
  * and can {@link Mob.escape}. Inventory is sized to hold at least its drops.
  */
 export class Mob extends Combatant implements IMob {
+  /** Base escape chance before the Health bonus; 0–100. */
+  #baseEscapeChance: number;
+
   /**
    * @param campaign - The campaign the mob belongs to.
    * @param name - Display name.
@@ -30,35 +35,39 @@ export class Mob extends Combatant implements IMob {
     inventorySlots: number = 2,
     actionsPerRound: number = 2,
     drops: IItem[],
-    options: { rng?: () => number; afflictionConfig?: AfflictionConfig } = {},
+    options: {
+      rng?: () => number;
+      afflictionConfig?: AfflictionConfig;
+      baseEscapeChance?: number;
+    } = {},
   ) {
     const _inventorySlots = Math.max(inventorySlots, drops.length);
     super(campaign, name, stats, _inventorySlots, actionsPerRound, options);
 
+    this.#baseEscapeChance = options.baseEscapeChance ?? 50;
     this.isActionMap.set(this.escape, true);
   }
 
   /**
-   * Attempts to flee through the first available exit of the current room.
-   *
-   * The `escape` action is always recorded (it consumes the action) even when
-   * there is no exit to flee through. A successful flee additionally moves the
-   * mob via {@link Character.move}; because `Mob` does not register `move` as an
-   * action, that move does not consume a second action.
+   * Attempts to flee the current room. Success is a Health-gated roll:
+   * `roll(100) <= clamp(baseEscapeChance + effective Health, 0, 100)` *and* an
+   * exit must exist. On success the mob moves through a randomly chosen exit
+   * (gate-suppressed, so it does not consume a second action). Whether it
+   * succeeds or fails, the `escape` action is recorded and the budget ticks.
    */
   escape() {
     if (!this.attemptAction(this.escape, false)) return;
-    // Flee through the first available exit. The move() transition fires the
-    // room's exit/enter scenes; because Mob does not register `move`, that
-    // call does not consume an action — `escape` is the recorded action.
     const exits = [...(this.currentRoom?.exits.values() ?? [])];
-    const destination = exits[0];
-    if (destination) {
+    const threshold = clamp(
+      this.#baseEscapeChance + this.effectiveStat(StatType.Health),
+      0,
+      100,
+    );
+    const success = roll(100, this.rng) <= threshold && exits.length > 0;
+    if (success) {
+      const destination = exits[roll(exits.length, this.rng) - 1]!;
       this.withGateSuppressed(() => this.move(destination));
     }
-    // The escape attempt is always recorded (it consumed the action), even when
-    // there was no exit to flee through; a successful flee also records the
-    // `move` separately via move() above.
-    this.recordAction(this.escape, { kind: "escape" });
+    this.recordAction(this.escape, { kind: "escape", success });
   }
 }

@@ -13,7 +13,7 @@ export type ActionHistoryEntry =
   | { kind: "move"; round: number; room: { id: RoomId; name: string } }
   | { kind: "pickUp"; round: number; items: { id: ItemId; name: string }[] }
   | { kind: "drop"; round: number; items: { id: ItemId; name: string }[] }
-  | { kind: "escape"; round: number }
+  | { kind: "escape"; round: number; success: boolean }
   | { kind: "takeDamage"; round: number; amount: number; stat: StatType }
   | { kind: "fumble"; round: number; action: string };
 
@@ -47,7 +47,7 @@ export function describeAction(entry: ActionHistoryEntry): string {
     case "drop":
       return `dropped ${entry.items.map((i) => i.name).join(", ")}`;
     case "escape":
-      return "escaped";
+      return entry.success ? "escaped" : "failed to escape";
     case "takeDamage":
       return `took ${entry.amount} ${entry.stat} damage`;
     case "fumble":

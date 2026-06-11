@@ -151,6 +151,8 @@ export class Character implements ICharacter {
   // Private Properties
   #campaign: ICampaign;
   #currentRoom: IRoom | null = null;
+  /** Injected randomness for all of this character's rolls (escape, etc.). */
+  protected readonly rng: () => number;
   #history: ActionHistoryEntry[] = [];
   #inventory: Inventory;
   // #slots is the character's anatomy (which named positions exist); #equipment
@@ -331,8 +333,9 @@ export class Character implements ICharacter {
 
     this.#inventory = { slots: inventorySlots, items: [], keys: [] };
     this.#campaign = campaign;
+    this.rng = options.rng ?? Math.random;
     this.#afflictions = new Afflictions(
-      options.rng,
+      this.rng,
       options.afflictionConfig ?? DEFAULT_AFFLICTION_CONFIG,
     );
 
