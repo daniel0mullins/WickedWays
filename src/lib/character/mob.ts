@@ -47,13 +47,14 @@ export class Mob extends Combatant implements IMob {
    * action, that move does not consume a second action.
    */
   escape() {
+    if (!this.attemptAction(this.escape, false)) return;
     // Flee through the first available exit. The move() transition fires the
     // room's exit/enter scenes; because Mob does not register `move`, that
     // call does not consume an action — `escape` is the recorded action.
     const exits = [...(this.currentRoom?.exits.values() ?? [])];
     const destination = exits[0];
     if (destination) {
-      this.move(destination);
+      this.withGateSuppressed(() => this.move(destination));
     }
     // The escape attempt is always recorded (it consumed the action), even when
     // there was no exit to flee through; a successful flee also records the

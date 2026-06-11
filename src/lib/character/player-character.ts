@@ -79,9 +79,8 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
    * @throws {@link ProceduralViolation} if the box is not in the current room.
    */
   takeFromLootBox(lootBox: ILoot, item: IItem | IItem[]): IItem[] {
+    if (!this.attemptAction(this.takeFromLootBox, false)) return [];
     this.#requireCoLocated(lootBox);
-    // Reuse removeItems + addToInventory rather than the raw holder primitives:
-    // addToInventory already fires pickUp and records exactly one action.
     const requested = Array.isArray(item) ? item : [item];
     const present = requested.filter((requestedItem) =>
       lootBox.contents.some((boxItem) => boxItem.id === requestedItem.id),
@@ -90,7 +89,7 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     const toTake = present.slice(0, free);
     const removed = lootBox.removeItems(toTake.map((taken) => taken.id));
     if (removed.length > 0) {
-      this.addToInventory(removed);
+      this.withGateSuppressed(() => this.addToInventory(removed));
     }
     return removed;
   }
@@ -107,6 +106,7 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
    * @throws {@link ProceduralViolation} if any item is a key.
    */
   putInLootBox(lootBox: ILoot, item: IItem | IItem[]): IItem[] {
+    if (!this.attemptAction(this.putInLootBox, false)) return [];
     this.#requireCoLocated(lootBox);
     const requested = Array.isArray(item) ? item : [item];
     if (requested.some((i) => i.type === "key")) {
@@ -114,15 +114,13 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
         "Keys cannot be stored in a loot container.",
       );
     }
-    // Reuse removeFromInventory + stowItem rather than the raw holder primitives:
-    // removeFromInventory records exactly one action; stowItem re-claims the box as holder.
     const present = requested.filter((requestedItem) =>
       this.inventory.items.some((held) => held.id === requestedItem.id),
     );
     const free = lootBox.capacity - lootBox.contents.length;
     const toPut = present.slice(0, free);
     if (toPut.length > 0) {
-      this.removeFromInventory(toPut);
+      this.withGateSuppressed(() => this.removeFromInventory(toPut));
       for (const putItem of toPut) {
         lootBox.stowItem(putItem);
       }

@@ -6,6 +6,7 @@ import { Room } from "../room";
 import { Combatant } from "./combatant";
 import { Mob } from "./mob";
 import { StatType } from "./stats";
+import type { Stats } from "./stats";
 
 import {
   type ExitsArg,
@@ -14,14 +15,15 @@ import {
   makeStats,
 } from "../../test-utils";
 
-function makeMob(opts: { actionsPerRound?: number; drops?: IItem[] } = {}) {
+function makeMob(opts: { actionsPerRound?: number; drops?: IItem[]; stats?: Partial<Stats>; rng?: () => number } = {}) {
   return new Mob(
     makeCampaign(),
     "Goblin",
-    makeStats(),
+    makeStats(opts.stats),
     2,
     opts.actionsPerRound ?? 2,
     opts.drops ?? [],
+    { rng: opts.rng },
   );
 }
 
@@ -48,6 +50,12 @@ describe("Mob", () => {
 
       expect(defender.takeDamage).toHaveBeenCalledTimes(1);
       expect(defender.takeDamage).toHaveBeenCalledWith(1, StatType.Health);
+    });
+
+    it("a Panicked mob's attack throws", () => {
+      const mob = makeMob({ stats: { [StatType.Sanity]: 0 }, rng: () => 0.999 });
+      mob.takeDamage(0, StatType.Sanity); // Panic
+      expect(() => mob.attack(makeDefender())).toThrow(/Panicked/);
     });
   });
 
@@ -109,6 +117,18 @@ describe("Mob", () => {
       mob.escape();
 
       expect(mob.currentRoom).toBe(sealed);
+    });
+
+    it("a normal mob's escape still moves through an exit (withGateSuppressed regression)", () => {
+      const mob = makeMob();
+      const den = new Room("Den", "Den", [], {} as ExitsArg);
+      const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
+      den.addExit("north", cave);
+      mob.move(den);
+
+      mob.escape();
+
+      expect(mob.currentRoom).toBe(cave);
     });
   });
 });

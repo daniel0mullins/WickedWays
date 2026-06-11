@@ -98,9 +98,10 @@ export interface ICharacter extends IItemHolder {
   unequip: (item: IItem) => void;
   /**
    * Crafts an item using the materials-track recipe identified by `recipeId`.
+   * Returns `null` if the action was gated (fizzled due to Confused status).
    * Free action — does not tick the action budget or record history.
    */
-  craft: (recipeId: RecipeId) => IItem;
+  craft: (recipeId: RecipeId) => IItem | null;
   /**
    * The character's effective value for `stat`: the base stat plus the `modifier`
    * of every equipped accessory targeting it. Drives damage mitigation and status
@@ -233,6 +234,26 @@ export class Character implements ICharacter {
   }
 
   /**
+   * Gates an attempted action against active afflictions. Throws on a hard block;
+   * on a Confused fizzle records a fumble (which ticks the budget when `callingFn`
+   * is a budgeted action) and returns false; otherwise returns true.
+   */
+  protected attemptAction(callingFn: ActionFn, isMove: boolean): boolean {
+    if (this.#suppressGate) return true;
+    const verdict = this.#afflictions.gate(isMove);
+    if (verdict.kind === "block") {
+      throw new ProceduralViolation(verdict.reason);
+    }
+    if (verdict.kind === "fizzle") {
+      // `callingFn.name` labels the fumble; relies on un-minified method names
+      // (true under tsc — revisit if a bundler is ever added).
+      this.recordAction(callingFn, { kind: "fumble", action: callingFn.name });
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Consumes an item on behalf of the item `Use` path: removes it with gating
    * suppressed (use is always allowed) while keeping the drop record + budget tick.
    */
@@ -343,6 +364,7 @@ export class Character implements ICharacter {
    * @throws {@link ProceduralViolation} if the inventory runs out of slots.
    */
   addToInventory(item: IItem | IItem[]) {
+    if (!this.attemptAction(this.addToInventory, false)) return;
     const items = Array.isArray(item) ? item : [item];
     for (const current of items) {
       if (current.type === "key") {
@@ -377,6 +399,7 @@ export class Character implements ICharacter {
    * @throws {@link ProceduralViolation} if any item is not in the inventory.
    */
   removeFromInventory(item: IItem | IItem[]) {
+    if (!this.attemptAction(this.removeFromInventory, false)) return;
     const items = Array.isArray(item) ? item : [item];
     for (const current of items) {
       if (current.type === "key") {
@@ -429,6 +452,7 @@ export class Character implements ICharacter {
    *   durability, is already at full, or the party cannot afford the cost.
    */
   repair(item: IItem) {
+    if (!this.attemptAction(this.repair, false)) return;
     // Keys live on the keyring and carry no durability; reject them explicitly
     // rather than letting the held/durability guards report a confusing reason.
     if (item.type === "key") {
@@ -475,6 +499,7 @@ export class Character implements ICharacter {
    *   does not fit the item.
    */
   equip(item: IItem, targetSlot?: EquipmentSlot) {
+    if (!this.attemptAction(this.equip, false)) return;
     if (!this.#inventory.items.some((i) => i.id === item.id)) {
       throw new ProceduralViolation("Cannot equip an item the character is not holding.");
     }
@@ -532,6 +557,7 @@ export class Character implements ICharacter {
    * @throws {@link ProceduralViolation} if the item is not held or not equipped.
    */
   unequip(item: IItem) {
+    if (!this.attemptAction(this.unequip, false)) return;
     if (!this.#inventory.items.some((i) => i.id === item.id)) {
       throw new ProceduralViolation("Cannot unequip an item the character is not holding.");
     }
@@ -557,14 +583,17 @@ export class Character implements ICharacter {
    * @throws {@link ProceduralViolation} if this character is not holding `key`.
    */
   transferKey(key: IItem, recipient: ICharacter) {
+    if (!this.attemptAction(this.transferKey, false)) return;
     const held = this.#inventory.keys.some((k) => k.id === key.id);
     if (!held) {
       throw new ProceduralViolation(
         "Attempted to transfer a key the character is not holding.",
       );
     }
-    this.relinquishItem(key);
+    // Add to the recipient FIRST, then relinquish: if the recipient's gated
+    // addToInventory blocks (e.g. KO'd ally), the key is not lost from the giver.
     recipient.addToInventory(key);
+    this.relinquishItem(key);
   }
 
   /**
@@ -654,6 +683,7 @@ export class Character implements ICharacter {
    * @param room - Destination room.
    */
   move(room: IRoom) {
+    if (!this.attemptAction(this.move, true)) return;
     if (this.#currentRoom) {
       this.#currentRoom.exitRoom(this);
     }
@@ -691,13 +721,14 @@ export class Character implements ICharacter {
    * the keyring). Free action — does not tick the action budget or record history.
    *
    * @param recipeId - The id of a known recipe.
-   * @returns The newly created item.
+   * @returns The newly created item, or `null` if the action was gated (fizzled).
    * @throws {@link ProceduralViolation} if the recipe is unknown.
    * @throws {@link ProceduralViolation} if the party pool cannot cover the cost (materials track).
    * @throws {@link ProceduralViolation} if there is no free inventory slot (materials track).
    * @throws {@link ProceduralViolation} if a key-track recipe's required keys are not all held.
    */
-  craft(recipeId: RecipeId): IItem {
+  craft(recipeId: RecipeId): IItem | null {
+    if (!this.attemptAction(this.craft, false)) return null;
     const recipe = this.campaign.knownRecipes.get(recipeId);
     if (!recipe) {
       throw new ProceduralViolation("Cannot craft an undiscovered recipe");

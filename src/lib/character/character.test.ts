@@ -516,7 +516,9 @@ describe("Character", () => {
     });
 
     it("removing the life-saving ring re-KOs at the next resolution trigger (lazy)", () => {
-      const hero = makeCharacter({ stats: { [StatType.Health]: 2, [StatType.Sanity]: 0 } });
+      // Sanity 1 keeps multiplier < 2 (1.8) so 2 damage still depletes base health;
+      // but sanity > 0 means Fear (not Panic), which allows non-move actions like unequip.
+      const hero = makeCharacter({ stats: { [StatType.Health]: 2, [StatType.Sanity]: 1 }, rng: () => 0.999 });
       const ring = ringFor(StatType.Health, 3);
       hero.inventory.items.push(ring);
       hero.equip(ring);
@@ -1585,6 +1587,90 @@ describe("Character", () => {
 
       expect(hero.equipment.get(EquipmentSlot.Head)).toBe(helm);
       expect(helm.properties.equipped).toBe(true);
+    });
+  });
+
+  describe("status consequences — gating", () => {
+    it("KO blocks a recordable action", () => {
+      const c = makeCharacter({ stats: { [StatType.Health]: 0 }, rng: () => 0.999 });
+      c.takeDamage(0); // reconcile -> KO
+      expect(() => c.addToInventory(makeItem())).toThrow(/KO/);
+    });
+
+    it("Panic blocks non-move actions but allows move", () => {
+      const c = makeCharacter({ stats: { [StatType.Sanity]: 0 }, rng: () => 0.999 });
+      c.takeDamage(0, StatType.Sanity); // Panic
+      expect(() => c.addToInventory(makeItem())).toThrow(/Panicked/);
+      expect(() => c.move(makeRoom())).not.toThrow();
+    });
+
+    it("Fear blocks move but allows other actions", () => {
+      const c = makeCharacter({ stats: { [StatType.Sanity]: 3 }, rng: () => 0.999 });
+      c.takeDamage(0, StatType.Sanity); // Fear
+      expect(() => c.move(makeRoom())).toThrow(/afraid/);
+      expect(() => c.addToInventory(makeItem())).not.toThrow();
+    });
+
+    it("Confused fizzle records a fumble (rng 0 => roll 1 <= 50)", () => {
+      const c = makeCharacter({ stats: { [StatType.Energy]: 0 }, rng: () => 0 });
+      c.takeDamage(0, StatType.Energy); // Confused
+      c.addToInventory(makeItem());      // attempt -> fizzles, records a fumble
+      expect(c.history.at(-1)?.kind).toBe("fumble");
+    });
+
+    it("KO blocks use, but Panic does not", () => {
+      const ko = makeCharacter({ stats: { [StatType.Health]: 0 }, rng: () => 0.999 });
+      const tonicA = makeGear({ type: "consumable", equippable: false, usable: true, modifier: 0 });
+      ko.addToInventory(tonicA); // added while still normal (no reconcile yet)
+      ko.takeDamage(0);          // reconcile -> KO
+      expect(() => tonicA.actions.use(ko)).toThrow(/KO/);
+
+      const panicked = makeCharacter({ stats: { [StatType.Sanity]: 0 }, rng: () => 0.999 });
+      const tonicB = makeGear({ type: "consumable", equippable: false, usable: true, modifier: 0,
+        grantsImmunity: { statuses: [Status.Panic], turns: 1 } });
+      panicked.addToInventory(tonicB);
+      panicked.takeDamage(0, StatType.Sanity); // Panic
+      expect(() => tonicB.actions.use(panicked)).not.toThrow();
+    });
+
+    it("transferKey does not lose the key when the recipient is KO'd", () => {
+      const giver = makeCharacter();
+      const recipient = makeCharacter({ stats: { [StatType.Health]: 0 }, rng: () => 0.999 });
+      const key = createKey({ name: "Vault", keyCode: "vault", consumeOnUse: false });
+      giver.addToInventory(key);
+      recipient.takeDamage(0); // reconcile -> KO
+
+      expect(() => giver.transferKey(key, recipient)).toThrow(/KO/);
+      expect(giver.inventory.keys.some((k) => k.id === key.id)).toBe(true);
+    });
+
+    it("Confused fizzle on craft returns null, records a fumble, spends no materials", () => {
+      const campaign = new Campaign("Crafting");
+      const character = new Character(
+        campaign,
+        "Hero",
+        makeStats({ [StatType.Energy]: 0 }),
+        undefined,
+        undefined,
+        { rng: () => 0 },
+      );
+      const recipeId = "widget" as RecipeId;
+      const cost = { metal: 2 };
+      const recipe: CraftingRecipe = {
+        id: recipeId,
+        materials: cost,
+        create: () => makeItem(),
+      };
+      campaign.claimMaterials("seed", cost);
+      campaign.discoverRecipe(recipe);
+
+      character.takeDamage(0, StatType.Energy); // reconcile -> Confused (energy 0)
+
+      const result = character.craft(recipeId);
+
+      expect(result).toBeNull();
+      expect(character.history.at(-1)?.kind).toBe("fumble");
+      expect(campaign.canAfford(cost)).toBe(true);
     });
   });
 
