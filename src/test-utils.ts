@@ -23,7 +23,10 @@ export function makeStats(overrides: Partial<Stats> = {}): Stats {
 // Character only stores the campaign and exposes it via a getter, so a bare
 // stub is enough for tests that never drive campaign behaviour.
 export function makeCampaign(): ICampaign {
-  return {} as ICampaign;
+  return {
+    maybeSpawn: () => [],
+    addFormation: () => {},
+  } as unknown as ICampaign;
 }
 
 // A defender that only needs to record the damage calls made against it.
