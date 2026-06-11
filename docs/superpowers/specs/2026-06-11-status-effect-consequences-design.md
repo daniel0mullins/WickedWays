@@ -77,6 +77,12 @@ the same injectable-RNG pattern `buildMap` already uses — and hands it to its
 `Afflictions`. Tests inject deterministic sequences; production defaults to
 `Math.random`.
 
+The injected `rng` is **never consumed directly**. All randomness — clearing rolls
+and the Confused fizzle — flows through the `roll()` Dice primitive (see below),
+passing the character's `rng` as `roll`'s `rng` argument (e.g. `roll(100, rng)`). So
+the `rng` is the underlying float source and the Dice primitive is the only thing
+that turns it into a roll, keeping a single, testable randomness path.
+
 ### Dice primitive
 
 **New file:** `src/lib/dice.ts`
