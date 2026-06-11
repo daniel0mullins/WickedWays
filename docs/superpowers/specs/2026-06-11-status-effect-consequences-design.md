@@ -26,8 +26,9 @@ Two further rules:
 - **Self-clearing.** Every status *except KO* gets an increasing per-turn chance to
   clear early while its stat is still depleted (a percentile "shake it off" roll).
 
-Plus a new immunity path: **timed, consumable-granted immunity** to Panic / Fear /
-Confused.
+Plus a new immunity system covering Panic / Fear / Confused, from two sources:
+**passive** (worn equipment) and **timed** (consumable-granted, lasting a fixed
+number of turns).
 
 ## Motivation
 
@@ -59,11 +60,14 @@ instance. `Character.status` / `Character.isNormal` read through it.
 
 **Public API (consumed by `Character`):**
 
-- `applyFromStats(effective)` — pure reconciliation of the flags from current
-  effective stats. Replaces today's `#resolveStatuses` body; called from the same
-  three sites (`takeDamage`, `startTurn`, `endTurn`). No RNG, no timer mutation.
-- `onTurnStart(rng)` — the time-based step: tick immunity timers down, increment
-  `turnsActive`, run clearing rolls, then reconcile. Called from `Character.startTurn`.
+- `applyFromStats(effective, passiveImmune)` — pure reconciliation of the flags from
+  current effective stats. Replaces today's `#resolveStatuses` body; called from the
+  same three sites (`takeDamage`, `startTurn`, `endTurn`). No RNG, no timer mutation.
+  `passiveImmune: Set<Status>` is the set of equipment-conferred immunities, computed
+  by `Character` from currently-equipped gear (see Immunity below).
+- `onTurnStart(rng, effective, passiveImmune)` — the time-based step: tick immunity
+  timers down, increment `turnsActive`, run clearing rolls, then reconcile. Called
+  from `Character.startTurn`.
 - `gate(isMove)` — returns `"allow" | "block" | "fizzle"` for an attempted action.
 - `[GRANT_IMMUNITY](statuses, turns)` — symbol-gated seam so only sanctioned paths
   (consumable `use`) can grant immunity, matching the engine's other protected seams.
@@ -106,7 +110,9 @@ they do today.
 
 Per non-KO status `S` with threshold predicate `P(S)`:
 
-- **Immune to `S`** → `active[S] = false`; does not latch.
+- **Immune to `S`** (passive *or* timed) → `active[S] = false`; reset `turnsActive[S]`
+  and clear `shakenOff[S]` so the episode restarts fresh when immunity lapses; does
+  not latch.
 - **Above threshold** (`¬P(S)`) → `active[S] = false`; clear `shakenOff[S]`; reset
   `turnsActive[S] = 0` (the episode is over).
 - **Below threshold & shaken-off** → `active[S] = false` (suppressed this episode).
@@ -192,36 +198,58 @@ the move.)
 calls such as `consumeKey` fired by a scene script — gating governs a character's own
 deliberate turn actions, not engine bookkeeping.
 
-## Timed immunity
+## Immunity
 
-Immunity is granted only by consuming a consumable, and lasts a fixed number of the
-character's turns. It covers **Panic / Fear / Confused only** — KO is not immunizable
-(0 Health always downs you, and KO blocks `use` so it could not be applied
-reactively anyway).
+Immunity comes from two sources, and a status is immune when **either** applies:
 
-### Item authoring
+- **Passive** — an equipped item confers immunity for as long as it's worn.
+- **Timed** — using a consumable confers immunity for a fixed number of the
+  character's turns.
 
-A factory mirroring `createKey`:
+Both cover **Panic / Fear / Confused only**. KO is never immunizable from either
+source (0 Health always downs you, and KO blocks `use` so timed grants couldn't be
+applied reactively); any `Status.KO` entry in an immunity declaration is ignored.
 
-```ts
-createImmunityConsumable({ name, statuses, turns, ... })
-```
+Following the user's preference against factory proliferation, neither source uses a
+dedicated factory. Each is a declarative descriptor field on a normal `Item`,
+interpreted by the engine on the relevant action — the same idiom already used by
+`teaches`, `keyCode`, `consumeOnUse`, `maxDurability`, and `slot`.
 
-builds a consumable whose `use` callback calls `holder[GRANT_IMMUNITY](statuses, turns)`.
-The existing `use` path consumes (removes) the item afterward. Routing through the
-symbol seam keeps grants unforgeable.
+### Passive immunity (equipment-worn)
 
-### Lifecycle
+- **New descriptor field:** `immunities?: Status[]` — the statuses this item confers
+  immunity to while equipped.
+- `Character.passiveImmunities(): Set<Status>` collects the union of `immunities`
+  from every currently-equipped item that is **equipped and intact** (if the item
+  wears, `isBroken` items stop conferring immunity — mirroring how broken armor stops
+  mitigating). This set is computed alongside `effectiveStat` and passed into
+  reconciliation.
+- Timing follows the existing passive-accessory model: passive immunity is consulted
+  during reconciliation, so equipping a ward suppresses the status at the **next
+  resolution** (turn boundary or damage), and unequipping re-applies it at the next
+  resolution if the stat is still depleted — exactly how `effectiveStat` accessory
+  bonuses already behave.
 
+### Timed immunity (consumable)
+
+- **New descriptor field:** `grantsImmunity?: { statuses: Status[]; turns: number }`.
+- The generic `[ItemAction.Use]` wrapper, after running the authored `use`, reads
+  `this.grantsImmunity` and applies it via `holder[GRANT_IMMUNITY](statuses, turns)` —
+  exactly how the pickup path reads `teaches` and calls `Campaign.discoverRecipe()`.
+  The existing `use` path then consumes (removes) the item. Routing through the symbol
+  seam keeps grants unforgeable by stray game code; it is wired once in the engine
+  rather than per item.
 - `[GRANT_IMMUNITY](statuses, turns)` sets `remaining = max(current, turns)` per
-  status (refresh to the longer), and resets that status's episode state
-  (`active = false`, clear `shakenOff`, `turnsActive = 0`) so it restarts fresh when
-  immunity lapses.
+  status (refresh to the longer).
 - `onTurnStart` decrements each timer; at 0 it expires. "N turns" = active for the
   character's next N turns.
-- While immune, `applyFromStats` forces the status off and won't latch it. When
-  immunity lapses with the stat still depleted, the status applies fresh on the next
-  reconciliation.
+
+### Combined effect
+
+`applyFromStats` treats a status as immune when it is in the passed `passiveImmune`
+set **or** has a positive timed-immunity timer. While immune, the status is forced
+off, does not latch, and its episode state is reset — so when *both* sources lapse
+with the stat still depleted, the status applies fresh on the next reconciliation.
 
 ## Testing
 
@@ -232,7 +260,12 @@ The project's TDD discipline is strong (57K of `character.test.ts`); this follow
   - shaken-off via a forced clearing roll; suppression until stat recovers
   - clear-odds boundary math (`turnsActive` → `p`, including clamp at 100)
   - KO precedence wiping Panic / Fear / Confused
-  - immunity suppress + expiry, and fresh re-application after lapse
+  - timed immunity: grant, refresh-to-longer, per-turn tick-down, expiry, and fresh
+    re-application after lapse
+  - passive immunity: equipped item suppresses the status; unequipping re-applies it
+    at the next resolution; a broken (worn) immunity item stops conferring it
+  - combined: status stays suppressed while either source is active, applies fresh
+    only once both lapse
 - **New `dice.test.ts`** — `roll` bounds `[1, sides]`, default d100, deterministic
   under injected `rng`.
 - **`character.test.ts` additions** — gating:
@@ -241,13 +274,11 @@ The project's TDD discipline is strong (57K of `character.test.ts`); this follow
   - KO blocks everything, including `use`
   - Confused fizzle costs a budget slot for a recordable action, no-ops a free
     action — both under deterministic `rng`
-  - `use` of an immunity consumable while Panicked/Confused succeeds and suppresses
-    the status
+  - `use` of a timed-immunity consumable while Panicked/Confused succeeds and
+    suppresses the status (the always-allowed `use` path)
 
 ## Out of scope
 
-- **Passive (equipment-worn) immunity** — explicitly dropped in favor of timed
-  consumable immunity. A future spec could add it.
 - **A generalized per-status "X+ on a dY" die-size system** — the `roll` helper is
   reusable, but status clearing stays percentage-vs-d100.
 - **General timed-effect framework** — the immunity timer is a narrow, purpose-built
