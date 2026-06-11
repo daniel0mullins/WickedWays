@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { IItem } from "../inventory";
-
+import { Campaign } from "../campaign";
+import { Item, createKey, PLACE, SET_ORIGIN, type IItem, type MaterialMap } from "../inventory";
 import { Room } from "../room";
 import { Combatant } from "./combatant";
 import { Mob } from "./mob";
@@ -16,15 +16,39 @@ import {
   makeStats,
 } from "../../test-utils";
 
-function makeMob(opts: { actionsPerRound?: number; drops?: IItem[]; stats?: Partial<Stats>; rng?: () => number } = {}) {
+function makeDrop(name: string): Item {
+  const noop = () => {};
+  return new Item(
+    { type: "consumable", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name },
+    { equippable: false, equipped: false, destroyable: true, usable: false },
+    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    { onPickUp: noop },
+  );
+}
+
+// A real campaign so DEPOSIT_MATERIALS and the material pool work.
+function realCampaign(): Campaign {
+  return new Campaign("Test");
+}
+
+function makeMob(
+  opts: {
+    actionsPerRound?: number;
+    drops?: IItem[];
+    materialDrops?: MaterialMap;
+    stats?: Partial<Stats>;
+    rng?: () => number;
+    campaign?: Campaign;
+  } = {},
+) {
   return new Mob(
-    makeCampaign(),
+    opts.campaign ?? makeCampaign(),
     "Goblin",
     makeStats(opts.stats),
     2,
     opts.actionsPerRound ?? 2,
     opts.drops ?? [],
-    { rng: opts.rng },
+    { rng: opts.rng, materialDrops: opts.materialDrops },
   );
 }
 
@@ -162,6 +186,108 @@ describe("Mob", () => {
 
       expect(mob.currentRoom).toBe(den);
       expect(mob.history.at(-1)).toMatchObject({ kind: "escape", success: false });
+    });
+  });
+
+  describe("drop-on-defeat", () => {
+    function room() {
+      return new Room("Lair", "Lair", [], {} as ExitsArg);
+    }
+
+    it("spawns a loot box of its items in the room on KO", () => {
+      const sword = makeDrop("Sword");
+      const lair = room();
+      const mob = makeMob({ drops: [sword], stats: { [StatType.Health]: 0 } });
+      mob[SET_ORIGIN]("room");
+      mob[PLACE](lair);
+
+      mob.takeDamage(0); // reconcile -> KO
+
+      const boxes = [...lair.loot.values()];
+      expect(boxes).toHaveLength(1);
+      expect(boxes[0]!.contents).toContain(sword);
+      expect(mob.inventory.items).not.toContain(sword);
+    });
+
+    it("deposits material drops into the campaign pool on KO", () => {
+      const campaign = realCampaign();
+      const lair = room();
+      const mob = makeMob({
+        campaign,
+        materialDrops: { metal: 3 },
+        stats: { [StatType.Health]: 0 },
+      });
+      mob[SET_ORIGIN]("room");
+      mob[PLACE](lair);
+
+      mob.takeDamage(0);
+
+      expect(campaign.materials.metal).toBe(3);
+    });
+
+    it("drops a key item into the loot box for a room-origin mob", () => {
+      const key = createKey({ name: "Cell Key", keyCode: "cell", consumeOnUse: false });
+      const lair = room();
+      const mob = makeMob({ drops: [key], stats: { [StatType.Health]: 0 } });
+      mob[SET_ORIGIN]("room");
+      mob[PLACE](lair);
+
+      mob.takeDamage(0);
+
+      const box = [...lair.loot.values()][0]!;
+      expect(box.contents).toContain(key);
+    });
+
+    it("does NOT drop a key item for a campaign-origin mob", () => {
+      const key = createKey({ name: "Cell Key", keyCode: "cell", consumeOnUse: false });
+      const lair = room();
+      const mob = makeMob({ drops: [key], stats: { [StatType.Health]: 0 } });
+      mob[SET_ORIGIN]("campaign"); // simulate a roving mob
+      mob[PLACE](lair);
+
+      mob.takeDamage(0);
+
+      const boxes = [...lair.loot.values()];
+      expect(boxes.flatMap((b) => b.contents)).not.toContain(key);
+    });
+
+    it("deposits materials but creates no box when KO'd in no room", () => {
+      const campaign = realCampaign();
+      const mob = makeMob({
+        campaign,
+        drops: [makeDrop("Sword")],
+        materialDrops: { glass: 1 },
+        stats: { [StatType.Health]: 0 },
+      });
+      mob[SET_ORIGIN]("room");
+
+      mob.takeDamage(0); // currentRoom is null
+
+      expect(campaign.materials.glass).toBe(1);
+      expect(mob.currentRoom).toBeNull();
+    });
+
+    it("creates no loot box when there are no item drops", () => {
+      const lair = room();
+      const mob = makeMob({ stats: { [StatType.Health]: 0 } });
+      mob[SET_ORIGIN]("room");
+      mob[PLACE](lair);
+
+      mob.takeDamage(0);
+
+      expect([...lair.loot.values()]).toHaveLength(0);
+    });
+
+    it("drops exactly once", () => {
+      const lair = room();
+      const mob = makeMob({ drops: [makeDrop("Sword")], stats: { [StatType.Health]: 0 } });
+      mob[SET_ORIGIN]("room");
+      mob[PLACE](lair);
+
+      mob.takeDamage(0);
+      mob.takeDamage(0); // still KO — must not drop again
+
+      expect([...lair.loot.values()]).toHaveLength(1);
     });
   });
 
