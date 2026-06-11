@@ -140,6 +140,29 @@ export class Afflictions {
   }
 
   /**
+   * Verdict for an attempted action. Hard blocks (KO, Panic-on-non-move,
+   * Fear-on-move) come first; an active Confused then rolls a fizzle. `use` is
+   * never gated by the caller, so it never reaches here.
+   */
+  gate(isMove: boolean): GateVerdict {
+    if (this.#active.get(Status.KO)) {
+      return { kind: "block", reason: "Cannot act while KO'd." };
+    }
+    if (this.#active.get(Status.Panic) && !isMove) {
+      return { kind: "block", reason: "Panicked: can only move." };
+    }
+    if (this.#active.get(Status.Fear) && isMove) {
+      return { kind: "block", reason: "Too afraid to move." };
+    }
+    if (this.#active.get(Status.Confused)) {
+      if (roll(100, this.#rng) <= this.#config.confusedFailChance) {
+        return { kind: "fizzle" };
+      }
+    }
+    return { kind: "allow" };
+  }
+
+  /**
    * Grants timed immunity to `statuses` for `turns` of the character's turns
    * (refreshing to the longer). KO is never immunizable and is ignored. Resets the
    * episode for each granted status so it restarts fresh when immunity lapses.

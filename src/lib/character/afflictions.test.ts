@@ -107,3 +107,43 @@ describe("Afflictions.onTurnStart", () => {
     expect(a.list).toEqual([Status.Panic]);
   });
 });
+
+describe("Afflictions.gate", () => {
+  it("allows everything when normal", () => {
+    const a = new Afflictions(() => 0.5);
+    expect(a.gate(true)).toEqual({ kind: "allow" });
+    expect(a.gate(false)).toEqual({ kind: "allow" });
+  });
+
+  it("KO blocks every action", () => {
+    const a = new Afflictions(() => 0.5);
+    a.applyFromStats(stats(0, 10, 10), NONE);
+    expect(a.gate(true).kind).toBe("block");
+    expect(a.gate(false).kind).toBe("block");
+  });
+
+  it("Panic blocks non-move but allows move", () => {
+    const a = new Afflictions(() => 0.5);
+    a.applyFromStats(stats(10, 0, 10), NONE);
+    expect(a.gate(false).kind).toBe("block");
+    expect(a.gate(true).kind).toBe("allow");
+  });
+
+  it("Fear blocks move but allows others", () => {
+    const a = new Afflictions(() => 0.5);
+    a.applyFromStats(stats(10, 3, 10), NONE);
+    expect(a.gate(true).kind).toBe("block");
+    expect(a.gate(false).kind).toBe("allow");
+  });
+
+  it("Confused fizzles on a failed roll, allows on a passed roll", () => {
+    // confusedFailChance 50: roll <= 50 -> fizzle
+    const fizzle = new Afflictions(() => 0.49); // roll 50
+    fizzle.applyFromStats(stats(10, 10, 0), NONE);
+    expect(fizzle.gate(false).kind).toBe("fizzle");
+
+    const pass = new Afflictions(() => 0.5); // roll 51
+    pass.applyFromStats(stats(10, 10, 0), NONE);
+    expect(pass.gate(false).kind).toBe("allow");
+  });
+});
