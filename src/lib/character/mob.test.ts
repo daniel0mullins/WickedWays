@@ -5,6 +5,7 @@ import type { IItem } from "../inventory";
 import { Room } from "../room";
 import { Combatant } from "./combatant";
 import { Mob } from "./mob";
+import { Status } from "../status";
 import { StatType } from "./stats";
 import type { Stats } from "./stats";
 
@@ -129,6 +130,41 @@ describe("Mob", () => {
       mob.escape();
 
       expect(mob.currentRoom).toBe(cave);
+    });
+  });
+
+  // Mob extends Combatant extends Character, so the full Afflictions lifecycle —
+  // stat-derived statuses, action gating, the Confused fizzle, and the per-turn
+  // shake-off roll — applies to mobs exactly as it does to player characters.
+  describe("status effects apply to mobs", () => {
+    it("is KO'd when its health is depleted, blocking all actions", () => {
+      const mob = makeMob({ stats: { [StatType.Health]: 0 }, rng: () => 0.999 });
+      mob.takeDamage(0); // reconcile -> KO
+      expect(mob.status).toContain(Status.KO);
+      expect(() => mob.attack(makeDefender())).toThrow(/KO/);
+    });
+
+    it("a Confused mob's attack fizzles and records a fumble", () => {
+      // Energy depleted => Confused; rng 0 => d100 roll of 1 <= 50 => fizzle.
+      const mob = makeMob({ stats: { [StatType.Energy]: 0 }, rng: () => 0 });
+      mob.takeDamage(0, StatType.Energy);
+      const defender = makeDefender();
+
+      mob.attack(defender);
+
+      expect(defender.takeDamage).not.toHaveBeenCalled();
+      expect(mob.history.at(-1)?.kind).toBe("fumble");
+    });
+
+    it("a latched status shakes off on the mob's own turn", () => {
+      // Fear is 40% on turn 1; rng 0.39 => d100 roll of 40 <= 40 => clears.
+      const mob = makeMob({ stats: { [StatType.Sanity]: 3 }, rng: () => 0.39 });
+      mob.takeDamage(0, StatType.Sanity); // Fear
+      expect(mob.status).toContain(Status.Fear);
+
+      mob.startTurn(); // onTurnStart shake-off roll
+
+      expect(mob.isNormal).toBe(true);
     });
   });
 });
