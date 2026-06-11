@@ -214,7 +214,7 @@ When a mob's Health hits 0, its `onKnockOut` hook fires exactly once:
 1. **Material drops** — any `materialDrops` in the mob's options are deposited into the
    campaign's shared material pool via `DEPOSIT_MATERIALS`.
 2. **Item loot box** — held items are relinquished and placed into a fresh `Loot` box
-   (named `"<mob> 's remains"`) which is added to the mob's current room. If the mob has
+   (named `"<mob>'s remains"`) which is added to the mob's current room. If the mob has
    no items and no keys to drop, no box is created.
 3. **Key items** — if the mob is room-attached (`origin === "room"`), keys on its keyring
    are also stashed into the box via the `STASH_DROP` seam (past normal capacity, bypassing
