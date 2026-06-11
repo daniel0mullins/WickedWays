@@ -1,5 +1,4 @@
 // src/lib/character/afflictions.ts
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in Task 3 (onTurnStart)
 import { roll } from "../dice";
 import { Status } from "../status";
 import type { Stats } from "./stats";
@@ -29,7 +28,6 @@ export type GateVerdict =
   | { kind: "fizzle" }
   | { kind: "block"; reason: string };
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in Task 3 (onTurnStart)
 const clamp = (n: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, n));
 
@@ -40,9 +38,7 @@ const clamp = (n: number, lo: number, hi: number) =>
  * (clear rolls, Confused fizzle) goes through the injected `rng` via {@link roll}.
  */
 export class Afflictions {
-  // eslint-disable-next-line no-unused-private-class-members -- used in Task 3 (onTurnStart)
   #rng: () => number;
-  // eslint-disable-next-line no-unused-private-class-members -- used in Task 3 (onTurnStart)
   #config: AfflictionConfig;
   #active = new Map<Status, boolean>();
   #turnsActive = new Map<Clearable, number>();
@@ -116,6 +112,30 @@ export class Afflictions {
       this.#resolve(Status.Confused, false, passiveImmune);
     } else if (this.#immune(Status.Confused, passiveImmune)) {
       this.#clearEpisode(Status.Confused);
+    }
+  }
+
+  /**
+   * The per-turn time step: roll each active non-KO status for an early clear
+   * (chance rises with `turnsActive`), reconcile, then consume one turn of each
+   * immunity timer. A status immune this turn is covered before its timer ticks,
+   * so a grant of `N` covers the next `N` turns.
+   */
+  onTurnStart(effective: Stats, passiveImmune: Set<Status>) {
+    for (const s of CLEARABLE) {
+      if (!this.#active.get(s)) continue;
+      const turns = (this.#turnsActive.get(s) ?? 0) + 1;
+      this.#turnsActive.set(s, turns);
+      const { base, increment } = this.#config.clear[s];
+      const p = clamp(base + increment * (turns - 1), 0, 100);
+      if (roll(100, this.#rng) <= p) this.#shakenOff.add(s);
+    }
+
+    this.applyFromStats(effective, passiveImmune);
+
+    for (const [s, remaining] of [...this.#immunity.entries()]) {
+      if (remaining <= 1) this.#immunity.delete(s);
+      else this.#immunity.set(s, remaining - 1);
     }
   }
 
