@@ -39,11 +39,14 @@ export interface BuildMapOptions {
 /**
  * Connects a set of rooms into a navigable map in place.
  *
- * First lays down a random spanning tree so every room is reachable, then adds
- * up to {@link BuildMapOptions.extraConnections} loop/shortcut edges. Each
+ * First lays down any {@link BuildMapOptions.requiredConnections} as direct
+ * adjacencies, then a random spanning tree so every room is reachable, then up
+ * to {@link BuildMapOptions.extraConnections} loop/shortcut edges. Each
  * connection is bidirectional, using opposite compass directions, and respects
- * the eight available directions per room. The same `rooms` array is returned
- * (mutated); a single room or empty array is returned untouched.
+ * the eight available directions per room. Required connections are best-effort:
+ * an impossible pair (same room, already adjacent, or no free direction) is
+ * skipped. The same `rooms` array is returned (mutated); a single room or empty
+ * array is returned untouched.
  *
  * @param rooms - The rooms to wire together; their `exits` are mutated.
  * @param options - Randomness source and extra-edge configuration.

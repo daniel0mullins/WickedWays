@@ -81,7 +81,9 @@ shape as the existing GM-membership requirement.
   dungeon via a randomized **spanning tree** (every room reachable, `n - 1` edges). Exits are
   bidirectional (north↔south, etc.), a room is never connected to itself, and no room exceeds
   8 exits. `extraConnections` adds loops/shortcuts (an absolute count, or a fraction of `n - 1`
-  when between 0 and 1), and an injectable `rng` makes generation deterministic.
+  when between 0 and 1), `requiredConnections` pins specific room pairs as direct neighbors
+  before the tree is laid down (best-effort: an impossible pair is skipped), and an injectable
+  `rng` makes generation deterministic.
 - A `Scene` runs its `script(room)` only when the trigger phase (`"enter"` / `"exit"`) matches
   **and** all of its `preconditions` pass — preconditions short-circuit on the first failure.
 
