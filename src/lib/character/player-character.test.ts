@@ -715,6 +715,26 @@ describe("PlayerCharacter", () => {
         expect.objectContaining({ kind: "action", action: "pickUp", sound: "coins.ogg" }),
       );
     });
+
+    it("attributes a loot-box drop cue to the container's sound", () => {
+      const campaign = new Campaign("Loot");
+      const item = makeLootItem("coin");
+      const box = new Loot("chest", [], { sound: "coins.ogg" });
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      const room = new Room("Vault", "Vault", [box], {} as ExitsArg);
+      pc.move(room);
+      pc.startTurn();
+      pc.addToInventory(item);
+
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => seen.push(cue));
+
+      pc.putInLootBox(box, item);
+
+      expect(seen).toContainEqual(
+        expect.objectContaining({ kind: "action", action: "drop", sound: "coins.ogg" }),
+      );
+    });
   });
 
   describe("status consequences — gating", () => {
@@ -948,6 +968,29 @@ describe("PlayerCharacter", () => {
 
       expect(seen).toHaveLength(1);
       expect(seen[0]).toMatchObject({ kind: "encounter", mob: { name: "Hobgoblin" }, sound: "growl.ogg" });
+    });
+
+    it("fires separately for a second character meeting the same mob", () => {
+      const campaign = new Campaign("Enc");
+      const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+      const ally = new PlayerCharacter(campaign, "Ally", makeStats());
+      hero.joinCampaign();
+      ally.joinCampaign();
+      const hob = new Mob(campaign, "Hobgoblin", makeStats(), 2, 2, [], {
+        presentation: { sound: "growl.ogg" },
+      });
+      const lair = new Room("Lair", "Lair", [], {} as ExitsArg);
+      lair.placeMob(hob);
+
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => { if (cue.kind === "encounter") seen.push(cue); });
+
+      hero.startTurn();
+      hero.move(lair); // hero's first encounter → fires
+      ally.startTurn();
+      ally.move(lair); // ally's first encounter with the same mob → fires too
+
+      expect(seen).toHaveLength(2);
     });
 
     it("does not fire for a KO'd mob", () => {

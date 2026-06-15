@@ -1826,5 +1826,20 @@ describe("Character", () => {
       );
       expect(seen[seen.length - 1]).toMatchObject({ actor: { name: "Mira" } });
     });
+
+    it("falls back to the campaign default sound when the actor has none", () => {
+      const campaign = new Campaign("Cues", 100, [], { actionSounds: { move: "marching.ogg" } });
+      // No presentation on the character, so the cue carries no actor sound and
+      // [EMIT_CUE] fills the campaign default for the action kind.
+      const character = new Character(campaign, "Mira", makeStats(), 5, 3);
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => seen.push(cue));
+
+      character.move({ id: "r1", name: "Hall", enterRoom: () => {}, exitRoom: () => {} } as unknown as IRoom);
+
+      expect(seen).toContainEqual(
+        expect.objectContaining({ kind: "action", action: "move", sound: "marching.ogg" }),
+      );
+    });
   });
 });
