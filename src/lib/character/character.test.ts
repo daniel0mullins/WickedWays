@@ -17,6 +17,8 @@ import { Campaign } from "../campaign";
 import { Room } from "../room";
 import { MaterialCache } from "../material-cache";
 import type { ExitsArg } from "../../test-utils";
+import { EMIT_CUE } from "../presentation";
+import type { PresentationCue } from "../presentation";
 
 // ---------------------------------------------------------------------------
 // Test doubles
@@ -1266,7 +1268,7 @@ describe("Character", () => {
 
     it("stamps each entry with the current campaign round", () => {
       const character = new Character(
-        { round: 7 } as unknown as ICampaign,
+        { round: 7, [EMIT_CUE]: () => {} } as unknown as ICampaign,
         "Hero",
         makeStats(),
       );
@@ -1805,6 +1807,24 @@ describe("Character", () => {
 
       expect(first.exitRoom).toHaveBeenCalledWith(character);
       expect(character.currentRoom).toBe(second);
+    });
+  });
+
+  describe("action cues", () => {
+    it("emits an action cue when an action is recorded, resolving the actor's sound", () => {
+      const campaign = new Campaign("Cues");
+      const character = new Character(campaign, "Mira", makeStats(), 5, 3, {
+        presentation: { sound: "mira.ogg" },
+      });
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => seen.push(cue));
+
+      character.move({ id: "r1", name: "Hall", enterRoom: () => {}, exitRoom: () => {} } as unknown as IRoom);
+
+      expect(seen).toContainEqual(
+        expect.objectContaining({ kind: "action", action: "move", sound: "mira.ogg" }),
+      );
+      expect(seen[seen.length - 1]).toMatchObject({ actor: { name: "Mira" } });
     });
   });
 });

@@ -10,7 +10,8 @@ import { DEPLETE, type IMaterialCache } from "../material-cache";
 import { IRoom } from "../room";
 import { Status } from "../status";
 import { Afflictions, AfflictionConfig, DEFAULT_AFFLICTION_CONFIG } from "./afflictions";
-import type { Presentation } from "../presentation";
+import { EMIT_CUE } from "../presentation";
+import type { AssetRef, Presentation } from "../presentation";
 
 import { generateId, ProceduralViolation, typedEntries } from "../util";
 import { CharacterEvents, ICharacterEvents } from "./events";
@@ -271,6 +272,11 @@ export class Character implements ICharacter {
   // (escape -> move, loot -> add/remove, use -> remove) doesn't re-gate/re-roll.
   #suppressGate = false;
 
+  // Set transiently so an action recorded inside a wrapped call (e.g. a loot-box
+  // exchange) attributes its cue sound to the involved container rather than the
+  // actor. Mirrors #suppressGate.
+  #cueSoundOverride: AssetRef | undefined;
+
   /** Runs `fn` with affliction gating suppressed (same-character composition only). */
   protected withGateSuppressed<T>(fn: () => T): T {
     const prev = this.#suppressGate;
@@ -279,6 +285,17 @@ export class Character implements ICharacter {
       return fn();
     } finally {
       this.#suppressGate = prev;
+    }
+  }
+
+  /** Runs `fn` with `sound` as the cue-sound override for any action it records. */
+  protected withCueSound<T>(sound: AssetRef | undefined, fn: () => T): T {
+    const prev = this.#cueSoundOverride;
+    this.#cueSoundOverride = sound;
+    try {
+      return fn();
+    } finally {
+      this.#cueSoundOverride = prev;
     }
   }
 
@@ -397,6 +414,15 @@ export class Character implements ICharacter {
     this.#history.push({
       ...detail,
       round: this.campaign.round,
+    });
+
+    // Entity sound: the loot-box override when set, else the actor's own sound.
+    // The campaign fills the action-kind default when this is undefined.
+    this.campaign[EMIT_CUE]({
+      kind: "action",
+      action: detail.kind,
+      actor: { id: this.id, name: this.name },
+      sound: this.#cueSoundOverride ?? this.#presentation?.sound,
     });
 
     if (this.isActionMap.get(callingFn)) {
