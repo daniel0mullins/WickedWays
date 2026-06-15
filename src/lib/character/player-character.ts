@@ -5,7 +5,7 @@ import type { IRoom } from "../room";
 import { ProceduralViolation, typedEntries } from "../util";
 import { Combatant, ICombatant } from "./combatant";
 import { StatType, type Stats } from "./stats";
-import type { AfflictionConfig } from "./afflictions";
+import type { CharacterOptions } from "./character";
 import type { Archetype, ArchetypeId } from "../archetype";
 
 /**
@@ -48,7 +48,7 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     name: string,
     stats: Stats,
     inventorySlots: number = 5,
-    options: { rng?: () => number; afflictionConfig?: AfflictionConfig } = {},
+    options: CharacterOptions = {},
   ) {
     super(campaign, name, stats, inventorySlots, 3, options);
 

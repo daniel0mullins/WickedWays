@@ -11,7 +11,7 @@ import { roll } from "../dice";
 import { clamp } from "../util";
 import { Combatant, ICombatant } from "./combatant";
 import { Stats, StatType } from "./stats";
-import type { AfflictionConfig } from "./afflictions";
+import type { CharacterOptions } from "./character";
 
 /** Where a mob comes from; gates key-item drops (see {@link Mob.onKnockOut}). */
 export type MobOrigin = "room" | "campaign" | "unbound";
@@ -50,9 +50,7 @@ export class Mob extends Combatant implements IMob {
     inventorySlots: number = 2,
     actionsPerRound: number = 2,
     drops: IItem[],
-    options: {
-      rng?: () => number;
-      afflictionConfig?: AfflictionConfig;
+    options: CharacterOptions & {
       baseEscapeChance?: number;
       materialDrops?: MaterialMap;
     } = {},

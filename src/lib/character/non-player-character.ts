@@ -1,5 +1,5 @@
 import { ICampaign } from "../campaign";
-import { Character, ICharacter } from "./character";
+import { Character, CharacterOptions, ICharacter } from "./character";
 import { Stats } from "./stats";
 
 /** Fields shared by every dialogue block: its responses and an optional gate. */
@@ -109,6 +109,7 @@ export class NonPlayerCharacter
    * @param stats - Initial {@link Stats}.
    * @param initialDialogue - Line returned when talked to without a prompt.
    * @param dialogueBlocks - Blocks whose triggers drive prompted responses.
+   * @param options - Optional character options (rng, afflictionConfig, presentation).
    */
   constructor(
     campaign: ICampaign,
@@ -116,8 +117,9 @@ export class NonPlayerCharacter
     stats: Stats,
     initialDialogue: string,
     dialogueBlocks: IDialogue[],
+    options: CharacterOptions = {},
   ) {
-    super(campaign, name, stats);
+    super(campaign, name, stats, 5, 3, options);
     this.initialDialogue = initialDialogue;
     this.#dialogueBlocks = dialogueBlocks;
     this.#matchers = dialogueBlocks.map((block) =>
