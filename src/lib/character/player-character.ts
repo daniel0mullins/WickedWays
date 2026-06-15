@@ -3,9 +3,10 @@ import { IItem } from "../inventory";
 import { ILoot } from "../loot";
 import type { IRoom } from "../room";
 import { ProceduralViolation, typedEntries } from "../util";
+import { NOTE_ENCOUNTERS } from "../presentation";
 import { Combatant, ICombatant } from "./combatant";
 import { StatType, type Stats } from "./stats";
-import type { AfflictionConfig } from "./afflictions";
+import type { CharacterOptions } from "./character";
 import type { Archetype, ArchetypeId } from "../archetype";
 
 /**
@@ -48,7 +49,7 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     name: string,
     stats: Stats,
     inventorySlots: number = 5,
-    options: { rng?: () => number; afflictionConfig?: AfflictionConfig } = {},
+    options: CharacterOptions = {},
   ) {
     super(campaign, name, stats, inventorySlots, 3, options);
 
@@ -111,6 +112,7 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     super.move(room);
     if (this.currentRoom === room) {
       this.campaign.maybeSpawn(room);
+      this.campaign[NOTE_ENCOUNTERS](this, room);
     }
   }
 
@@ -163,7 +165,11 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     const toTake = present.slice(0, free);
     const removed = lootBox.removeItems(toTake.map((taken) => taken.id));
     if (removed.length > 0) {
-      this.withGateSuppressed(() => this.addToInventory(removed));
+      this.withGateSuppressed(() =>
+        this.withCueSound(lootBox.presentation?.sound, () =>
+          this.addToInventory(removed),
+        ),
+      );
     }
     return removed;
   }
@@ -194,7 +200,11 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     const free = lootBox.capacity - lootBox.contents.length;
     const toPut = present.slice(0, free);
     if (toPut.length > 0) {
-      this.withGateSuppressed(() => this.removeFromInventory(toPut));
+      this.withGateSuppressed(() =>
+        this.withCueSound(lootBox.presentation?.sound, () =>
+          this.removeFromInventory(toPut),
+        ),
+      );
       for (const putItem of toPut) {
         lootBox.stowItem(putItem);
       }

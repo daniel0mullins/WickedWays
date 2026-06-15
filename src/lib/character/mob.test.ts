@@ -8,6 +8,7 @@ import { Mob } from "./mob";
 import { Status } from "../status";
 import { StatType } from "./stats";
 import type { Stats } from "./stats";
+import type { Presentation } from "../presentation";
 
 import {
   type ExitsArg,
@@ -291,6 +292,20 @@ describe("Mob", () => {
       mob.takeDamage(0); // still KO — must not drop again
 
       expect([...lair.loot.values()]).toHaveLength(1);
+    });
+  });
+
+  describe("presentation", () => {
+    it("exposes the supplied presentation and is undefined when omitted", () => {
+      const campaign = makeCampaign();
+      const pres: Presentation = { image: "hob.png", sound: "growl.ogg" };
+      const withPres = new Mob(campaign, "Hobgoblin", makeStats(), 2, 2, [], {
+        presentation: pres,
+      });
+      const without = new Mob(campaign, "Rat", makeStats(), 2, 2, []);
+
+      expect(withPres.presentation).toBe(pres);
+      expect(without.presentation).toBeUndefined();
     });
   });
 

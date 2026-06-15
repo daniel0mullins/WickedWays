@@ -7,6 +7,10 @@ import { EncounterTable, type Formation } from "./encounter-table";
 import type { IRoom } from "./room";
 import type { IMob } from "./character/mob";
 import type { Archetype, ArchetypeId } from "./archetype";
+import { EMIT_CUE, NOTE_ENCOUNTERS } from "./presentation";
+import type { ActionKind, AssetRef, PresentationCue } from "./presentation";
+import { Status } from "./status";
+import type { ICharacter } from "./character/character";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -47,6 +51,12 @@ export interface ICampaign {
   get round(): number;
 
   // ### Methods
+  /** Subscribes a handler to the presentation cue stream. */
+  onCue: (handler: (cue: PresentationCue) => void) => void;
+  /** Removes a previously-subscribed cue handler (no-op if not subscribed). */
+  offCue: (handler: (cue: PresentationCue) => void) => void;
+  /** Publishes a cue to subscribers. Engine-internal; see {@link EMIT_CUE}. */
+  [EMIT_CUE]: (cue: PresentationCue) => void;
   /** Whether the pool currently holds at least `mats`. */
   canAfford: (mats: MaterialMap) => boolean;
   /** Removes materials from the pool. Throws if the pool is short. */
@@ -77,6 +87,8 @@ export interface ICampaign {
   addFormation: (formation: Formation) => void;
   /** Spawn check for a player entering `room`; returns any mobs spawned. */
   maybeSpawn: (room: IRoom) => IMob[];
+  /** Emits first-encounter cues for active mobs in a room a character entered. Engine-internal. */
+  [NOTE_ENCOUNTERS]: (character: ICharacter, room: IRoom) => void;
 }
 
 /**
@@ -103,6 +115,9 @@ export class Campaign implements ICampaign {
   #activeCharacterIndex: number = 0;
   #actedThisRound: WeakMap<IPlayerCharacter, boolean>;
   #encounterTable: EncounterTable;
+  #cueHandlers: Array<(cue: PresentationCue) => void> = [];
+  #encountered: Set<string> = new Set<string>();
+  #actionSounds: Partial<Record<ActionKind, AssetRef>>;
 
   get round() {
     return this.#round;
@@ -193,7 +208,11 @@ export class Campaign implements ICampaign {
     title: string,
     maxRounds: number = 100,
     knownRecipes: CraftingRecipe[] = [],
-    options: { rng?: () => number; baseEncounterChance?: number } = {},
+    options: {
+      rng?: () => number;
+      baseEncounterChance?: number;
+      actionSounds?: Partial<Record<ActionKind, AssetRef>>;
+    } = {},
   ) {
     this.id = generateId<CampaignId>();
     this.title = title;
@@ -211,6 +230,8 @@ export class Campaign implements ICampaign {
     this.#resetActivity();
 
     this.#activeCharacterIndex = 0;
+
+    this.#actionSounds = options.actionSounds ?? {};
 
     for (const recipe of knownRecipes) {
       this.discoverRecipe(recipe);
@@ -398,6 +419,67 @@ export class Campaign implements ICampaign {
    */
   knows(recipeId: RecipeId): boolean {
     return this.#knownRecipes.has(recipeId);
+  }
+
+  /** Subscribes `handler` to the presentation cue stream. */
+  onCue(handler: (cue: PresentationCue) => void) {
+    this.#cueHandlers.push(handler);
+  }
+
+  /** Removes `handler` from the cue stream; a no-op if it was not subscribed. */
+  offCue(handler: (cue: PresentationCue) => void) {
+    const index = this.#cueHandlers.indexOf(handler);
+    if (index !== -1) {
+      this.#cueHandlers.splice(index, 1);
+    }
+  }
+
+  // Fans a cue out to every subscriber. A throwing handler is isolated so one bad
+  // presentation subscriber cannot break the turn loop (the engine has no logger,
+  // and a handler failure is not a game-rule violation).
+  #dispatch(cue: PresentationCue) {
+    for (const handler of [...this.#cueHandlers]) {
+      try {
+        handler(cue);
+      } catch {
+        // Intentionally swallowed: presentation is best-effort, never load-bearing.
+      }
+    }
+  }
+
+  /**
+   * Publishes a cue to subscribers. For an action cue with no resolved sound,
+   * fills in the campaign default for that action kind. Engine-internal.
+   */
+  [EMIT_CUE](cue: PresentationCue) {
+    const finalCue: PresentationCue =
+      cue.kind === "action" && cue.sound === undefined
+        ? { ...cue, sound: this.#actionSounds[cue.action] }
+        : cue;
+    this.#dispatch(finalCue);
+  }
+
+  /**
+   * Scans `room` (which `character` just entered) and emits one `encounter` cue
+   * per active (non-KO), non-party occupant the character has not encountered
+   * before. Dedup is per (characterId, mobId), so re-entry — or the mob leaving
+   * and returning — never replays the cue for that character. Engine-internal.
+   */
+  [NOTE_ENCOUNTERS](character: ICharacter, room: IRoom) {
+    const partyIds = new Set(this.party.map((p) => p.id));
+    for (const occupant of room.occupants) {
+      if (partyIds.has(occupant.id)) continue;
+      if (occupant.status.includes(Status.KO)) continue;
+      const key = `${character.id}:${occupant.id}`;
+      if (this.#encountered.has(key)) continue;
+      this.#encountered.add(key);
+      this.#dispatch({
+        kind: "encounter",
+        mob: { id: occupant.id, name: occupant.name },
+        room: { id: room.id, name: room.name },
+        sound: occupant.presentation?.sound,
+      });
+    }
   }
 
   /**

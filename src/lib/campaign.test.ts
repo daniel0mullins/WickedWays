@@ -12,6 +12,8 @@ import { Room } from "./room";
 import { type Formation } from "./encounter-table";
 import { createKey } from "./inventory";
 import { makeStats, type ExitsArg } from "../test-utils";
+import { EMIT_CUE } from "./presentation";
+import type { PresentationCue } from "./presentation";
 
 // `Campaign` only stores players and compares them by identity, so distinct
 // stub objects cast to `IPlayerCharacter` are enough (WeakMap needs objects).
@@ -555,6 +557,46 @@ describe("Campaign", () => {
       campaign.beginCampaign();
 
       expect(campaign.started).toBe(true);
+    });
+  });
+
+  describe("cue stream", () => {
+    it("delivers an emitted cue to subscribers and stops after offCue", () => {
+      const campaign = new Campaign("C");
+      const seen: PresentationCue[] = [];
+      const handler = (cue: PresentationCue) => seen.push(cue);
+
+      campaign.onCue(handler);
+      campaign[EMIT_CUE]({ kind: "encounter", mob: { id: "m1", name: "Imp" }, room: { id: "r1", name: "Cell" }, sound: "screech.ogg" });
+      campaign.offCue(handler);
+      campaign[EMIT_CUE]({ kind: "encounter", mob: { id: "m2", name: "Rat" }, room: { id: "r1", name: "Cell" } });
+
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).toMatchObject({ kind: "encounter", sound: "screech.ogg" });
+    });
+
+    it("fills an action cue's missing sound from the campaign default map", () => {
+      const campaign = new Campaign("C", 100, [], { actionSounds: { move: "marching.ogg" } });
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => seen.push(cue));
+
+      campaign[EMIT_CUE]({ kind: "action", action: "move", actor: { id: "p1", name: "Hero" } });
+      campaign[EMIT_CUE]({ kind: "action", action: "move", actor: { id: "p1", name: "Hero" }, sound: "tiptoe.ogg" });
+
+      expect(seen[0]).toMatchObject({ action: "move", sound: "marching.ogg" }); // default applied
+      expect(seen[1]).toMatchObject({ action: "move", sound: "tiptoe.ogg" });   // explicit wins
+    });
+
+    it("isolates a throwing subscriber so others still receive the cue", () => {
+      const campaign = new Campaign("C");
+      const seen: PresentationCue[] = [];
+      campaign.onCue(() => { throw new Error("bad handler"); });
+      campaign.onCue((cue) => seen.push(cue));
+
+      expect(() =>
+        campaign[EMIT_CUE]({ kind: "encounter", mob: { id: "m", name: "M" }, room: { id: "r", name: "R" } }),
+      ).not.toThrow();
+      expect(seen).toHaveLength(1);
     });
   });
 });

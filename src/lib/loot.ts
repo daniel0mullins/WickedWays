@@ -1,6 +1,7 @@
 import { Brand } from "./brand";
 import { CLAIM, IItem, IItemHolder, ItemId, STASH_DROP } from "./inventory";
 import { ContainerFullException, ProceduralViolation, generateId } from "./util";
+import type { Presentation } from "./presentation";
 
 /** Unique identifier for a {@link Loot} container. */
 export type LootId = Brand<string, "LootId">;
@@ -26,6 +27,8 @@ export interface ILoot extends IItemHolder {
   [STASH_DROP]: (item: IItem) => void;
   /** Maximum number of items the container can hold. */
   readonly capacity: number;
+  /** Optional presentation metadata (image/sound), or `undefined` if none. */
+  get presentation(): Presentation | undefined;
 }
 
 /**
@@ -39,9 +42,14 @@ export class Loot implements ILoot {
   description: string;
   contents: IItem[];
   #capacity: number;
+  #presentation?: Presentation;
 
   get capacity() {
     return this.#capacity;
+  }
+
+  get presentation(): Presentation | undefined {
+    return this.#presentation;
   }
 
   /**
@@ -50,7 +58,7 @@ export class Loot implements ILoot {
    *   each is claimed by this container.
    * @throws {@link ProceduralViolation} if any initial item is a key.
    */
-  constructor(description: string, contents: IItem[]) {
+  constructor(description: string, contents: IItem[], presentation?: Presentation) {
     if (contents.some((item) => item.type === "key")) {
       throw new ProceduralViolation("Keys cannot be stored in a loot container.");
     }
@@ -58,6 +66,7 @@ export class Loot implements ILoot {
     this.description = description;
     this.contents = contents;
     this.#capacity = contents.length + 2;
+    this.#presentation = presentation;
     for (const item of contents) {
       item[CLAIM](this);
     }

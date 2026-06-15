@@ -1,6 +1,7 @@
 import { Brand } from "./brand";
 import { MaterialMap } from "./inventory";
 import { generateId } from "./util";
+import type { Presentation } from "./presentation";
 
 /** Unique identifier for a {@link MaterialCache}. */
 export type MaterialCacheId = Brand<string, "MaterialCacheId">;
@@ -30,6 +31,8 @@ export interface IMaterialCache {
    * returns `{}` and changes nothing. For {@link Character.harvest} only.
    */
   [DEPLETE](): MaterialMap;
+  /** Optional presentation metadata (image/sound), or `undefined` if none. */
+  get presentation(): Presentation | undefined;
 }
 
 /**
@@ -41,6 +44,7 @@ export class MaterialCache implements IMaterialCache {
 
   #contents: MaterialMap;
   #depleted = false;
+  #presentation?: Presentation;
 
   get depleted() {
     return this.#depleted;
@@ -50,10 +54,15 @@ export class MaterialCache implements IMaterialCache {
     return { ...this.#contents };
   }
 
+  get presentation(): Presentation | undefined {
+    return this.#presentation;
+  }
+
   /** @param contents - The materials this cache yields when harvested. */
-  constructor(contents: MaterialMap) {
+  constructor(contents: MaterialMap, presentation?: Presentation) {
     this.id = generateId<MaterialCacheId>();
     this.#contents = { ...contents };
+    this.#presentation = presentation;
   }
 
   [DEPLETE](): MaterialMap {

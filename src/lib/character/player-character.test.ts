@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { IItem, ItemId } from "../inventory";
 import type { IRoom } from "../room";
+import type { PresentationCue } from "../presentation";
 
 import { Campaign } from "../campaign";
 import { CLAIM, HELD_BY, Item, createKey } from "../inventory";
@@ -695,6 +696,47 @@ describe("PlayerCharacter", () => {
     });
   });
 
+  describe("loot box presentation cues", () => {
+    it("attributes a loot-box pickup cue to the container's sound", () => {
+      const campaign = new Campaign("Loot");
+      const item = makeLootItem("coin");
+      const box = new Loot("chest", [item], { sound: "coins.ogg" });
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      const room = new Room("Vault", "Vault", [box], {} as ExitsArg);
+      pc.move(room);
+      pc.startTurn();
+
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => seen.push(cue));
+
+      pc.takeFromLootBox(box, item);
+
+      expect(seen).toContainEqual(
+        expect.objectContaining({ kind: "action", action: "pickUp", sound: "coins.ogg" }),
+      );
+    });
+
+    it("attributes a loot-box drop cue to the container's sound", () => {
+      const campaign = new Campaign("Loot");
+      const item = makeLootItem("coin");
+      const box = new Loot("chest", [], { sound: "coins.ogg" });
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      const room = new Room("Vault", "Vault", [box], {} as ExitsArg);
+      pc.move(room);
+      pc.startTurn();
+      pc.addToInventory(item);
+
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => seen.push(cue));
+
+      pc.putInLootBox(box, item);
+
+      expect(seen).toContainEqual(
+        expect.objectContaining({ kind: "action", action: "drop", sound: "coins.ogg" }),
+      );
+    });
+  });
+
   describe("status consequences — gating", () => {
     it("a Panicked player's attack throws", () => {
       const pc = makePc({ stats: { [StatType.Sanity]: 0 }, rng: () => 0.999 });
@@ -900,6 +942,76 @@ describe("PlayerCharacter", () => {
 
       expect(() => pc.move(cave)).toThrow();
       expect(cave.occupants).toHaveLength(0);
+    });
+  });
+
+  describe("encounter cues", () => {
+    it("fires once on first encounter per (character, mob) and not on re-entry", () => {
+      const campaign = new Campaign("Enc");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+      const hob = new Mob(campaign, "Hobgoblin", makeStats(), 2, 2, [], {
+        presentation: { sound: "growl.ogg" },
+      });
+      const lair = new Room("Lair", "Lair", [], {} as ExitsArg);
+      lair.placeMob(hob);
+      const hall = new Room("Hall", "Hall", [], {} as ExitsArg);
+
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => { if (cue.kind === "encounter") seen.push(cue); });
+
+      pc.startTurn();
+      pc.move(lair);   // first encounter → fires
+      pc.move(hall);   // leaves
+      pc.startTurn();
+      pc.move(lair);   // re-entry → no repeat
+
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).toMatchObject({ kind: "encounter", mob: { name: "Hobgoblin" }, sound: "growl.ogg" });
+    });
+
+    it("fires separately for a second character meeting the same mob", () => {
+      const campaign = new Campaign("Enc");
+      const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+      const ally = new PlayerCharacter(campaign, "Ally", makeStats());
+      hero.joinCampaign();
+      ally.joinCampaign();
+      const hob = new Mob(campaign, "Hobgoblin", makeStats(), 2, 2, [], {
+        presentation: { sound: "growl.ogg" },
+      });
+      const lair = new Room("Lair", "Lair", [], {} as ExitsArg);
+      lair.placeMob(hob);
+
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => { if (cue.kind === "encounter") seen.push(cue); });
+
+      hero.startTurn();
+      hero.move(lair); // hero's first encounter → fires
+      ally.startTurn();
+      ally.move(lair); // ally's first encounter with the same mob → fires too
+
+      expect(seen).toHaveLength(2);
+    });
+
+    it("does not fire for a KO'd mob", () => {
+      const campaign = new Campaign("Enc");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+      const downed = new Mob(campaign, "Husk", makeStats({ [StatType.Health]: 0 }), 2, 2, []);
+      const room = new Room("Crypt", "Crypt", [], {} as ExitsArg);
+      room.placeMob(downed);
+      // A freshly built mob has not reconciled yet, so KO is not latched until a
+      // reconcile runs. A zero-strength hit forces the reconcile (no actual damage)
+      // and latches KO from the 0 Health.
+      downed.takeDamage(0, StatType.Energy);
+
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => { if (cue.kind === "encounter") seen.push(cue); });
+
+      pc.startTurn();
+      pc.move(room);
+
+      expect(seen).toHaveLength(0);
     });
   });
 });

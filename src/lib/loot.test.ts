@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CLAIM, STASH_DROP, createKey, type IItem, type ItemId } from "./inventory";
 import { Loot } from "./loot";
 import { ContainerFullException, ProceduralViolation, generateId } from "./util";
+import type { Presentation } from "./presentation";
 
 const HELD_BY = Symbol.for("heldBy");
 
@@ -212,6 +213,14 @@ describe("Loot", () => {
       const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
 
       expect(() => new Loot("chest", [key])).toThrow(ProceduralViolation);
+    });
+  });
+
+  describe("presentation", () => {
+    it("exposes supplied presentation and is undefined when omitted", () => {
+      const pres: Presentation = { sound: "coins.ogg" };
+      expect(new Loot("chest", [], pres).presentation).toBe(pres);
+      expect(new Loot("plain", []).presentation).toBeUndefined();
     });
   });
 

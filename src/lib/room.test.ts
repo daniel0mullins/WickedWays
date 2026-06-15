@@ -7,6 +7,7 @@ import { Mob } from "./character/mob";
 import { Room } from "./room";
 import type { IScene, Scene } from "./scene";
 import { ProceduralViolation } from "./util";
+import type { Presentation } from "./presentation";
 
 import { type ExitsArg, makeCampaign, makeStats } from "../test-utils";
 
@@ -78,6 +79,16 @@ describe("Room", () => {
 
     it("defaults to no material caches", () => {
       expect(makeRoom().materials.size).toBe(0);
+    });
+  });
+
+  describe("presentation", () => {
+    it("exposes supplied presentation and is undefined when omitted", () => {
+      const pres: Presentation = { image: "hall.png" };
+      const withPres = new Room("Hall", "A hall", [], {} as ExitsArg, [], 1, [], pres);
+      const without = new Room("Cell", "A cell", [], {} as ExitsArg);
+      expect(withPres.presentation).toBe(pres);
+      expect(without.presentation).toBeUndefined();
     });
   });
 

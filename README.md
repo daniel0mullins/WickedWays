@@ -85,6 +85,23 @@ shape as the existing GM-membership requirement.
 - A `Scene` runs its `script(room)` only when the trigger phase (`"enter"` / `"exit"`) matches
   **and** all of its `preconditions` pass — preconditions short-circuit on the first failure.
 
+### Presentation assets & cues
+
+The engine is pure logic, but it carries optional hooks for a host renderer/audio layer
+(a "Play Surface"). Every presentable entity — characters, [`Room`](src/lib/room.ts),
+[`Item`](src/lib/inventory.ts), [`Loot`](src/lib/loot.ts), and material caches — accepts an
+optional [`Presentation`](src/lib/presentation.ts) descriptor (`{ image?, sound? }`, where each
+value is an opaque host-interpreted `AssetRef`). The host reads `presentation.image` when it
+draws an entity.
+
+Sounds are delivered as a push **cue stream**: subscribe with `Campaign.onCue(handler)` (and
+`offCue`). The engine emits an `action` cue for every recorded action (move, pickUp, attack, …)
+and an `encounter` cue the first time a character meets a given mob (once per character/mob pair,
+covering both spawned and resident mobs). Each cue carries a pre-resolved `sound`: the involved
+entity's sound wins (a chest's coins on a loot pickup, a hobgoblin's growl on encounter), falling
+back to the campaign's `actionSounds` default for that action kind (e.g. `move → marching`), else
+none. Subscriber errors are isolated so a faulty handler can't disrupt the turn loop.
+
 ### Loot and inventory
 
 - [`Loot`](src/lib/loot.ts) is a fixed-capacity container (default: initial contents + 2 slots).

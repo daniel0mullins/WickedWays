@@ -6,6 +6,7 @@ import type { Archetype, ArchetypeId } from "./lib/archetype";
 import type { IPlayerCharacter } from "./lib/character/player-character";
 import { StatType, type Stats } from "./lib/character/stats";
 import { Room } from "./lib/room";
+import { EMIT_CUE, NOTE_ENCOUNTERS } from "./lib/presentation";
 
 // The Room constructor types `exits` as a full Record<Direction, IRoom>, but the
 // body only iterates whatever keys are present, so tests recover the parameter
@@ -28,6 +29,8 @@ export function makeCampaign(): ICampaign {
   return {
     maybeSpawn: () => [],
     addFormation: () => {},
+    [EMIT_CUE]: () => {},
+    [NOTE_ENCOUNTERS]: () => {},
   } as unknown as ICampaign;
 }
 
