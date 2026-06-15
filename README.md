@@ -56,6 +56,20 @@ Character
 - [`NonPlayerCharacter`](src/lib/character/non-player-character.ts) stays on `Character`
   directly and exposes `dialogue(prompt?)` over a list of dialogue blocks.
 
+### Character archetypes
+
+Player characters choose an [`Archetype`](src/lib/archetype.ts) during setup. Archetypes are
+authored, declarative descriptors registered on the campaign via `Campaign.registerArchetype`
+(idempotent by id, like recipes), and a character adopts one with
+`PlayerCharacter.selectArchetype(id)`. Selecting an archetype modifies the character's baseline
+exactly once: `statModifiers` are added to the base stats, `inventorySlots` adjusts inventory
+capacity (floored at 0), and `immunities` become a standing passive trait — a new source unioned
+with equipped-gear immunities (Panic/Fear/Confused only; KO is never immunizable).
+
+Selection is **once-only** and **setup-only** (it throws after the campaign begins), and
+`Campaign.beginCampaign()` throws unless **every** party member has chosen an archetype — the same
+shape as the existing GM-membership requirement.
+
 ### Rooms, the map, and scenes
 
 - A [`Room`](src/lib/room.ts) has a description, a `loot` map, an `exits` map keyed by compass
