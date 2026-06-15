@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { Campaign } from "./campaign";
 import type { IPlayerCharacter } from "./character/player-character";
+import type { Archetype, ArchetypeId } from "./archetype";
 import { ProceduralViolation } from "./util";
 import { DEPOSIT_MATERIALS } from "./inventory";
 import type { CraftingRecipe, RecipeId } from "./crafting";
@@ -497,6 +498,45 @@ describe("Campaign", () => {
         ],
       };
       expect(() => campaign.addFormation(bad)).toThrow();
+    });
+  });
+
+  describe("archetype catalog", () => {
+    function makeArchetype(id: string): Archetype {
+      return { id: id as ArchetypeId, name: id };
+    }
+
+    it("registers an archetype and exposes it via the read-only view", () => {
+      const campaign = new Campaign("C");
+      const brawler = makeArchetype("brawler");
+
+      campaign.registerArchetype(brawler);
+
+      expect(campaign.archetypes.get(brawler.id)).toBe(brawler);
+    });
+
+    it("is idempotent by id (first definition wins)", () => {
+      const campaign = new Campaign("C");
+      const first = makeArchetype("brawler");
+      const second: Archetype = { id: "brawler" as ArchetypeId, name: "Other" };
+
+      campaign.registerArchetype(first);
+      campaign.registerArchetype(second);
+
+      expect(campaign.archetypes.get(first.id)).toBe(first);
+      expect(campaign.archetypes.size).toBe(1);
+    });
+
+    it("reports started=false before begin and true after", () => {
+      const campaign = new Campaign("C");
+      expect(campaign.started).toBe(false);
+
+      const pc = { id: "pc-arch", archetype: {} } as unknown as IPlayerCharacter;
+      campaign.party.push(pc);
+      campaign.gm = pc;
+      campaign.beginCampaign();
+
+      expect(campaign.started).toBe(true);
     });
   });
 });
