@@ -924,4 +924,51 @@ describe("PlayerCharacter", () => {
       expect(cave.occupants).toHaveLength(0);
     });
   });
+
+  describe("encounter cues", () => {
+    it("fires once on first encounter per (character, mob) and not on re-entry", () => {
+      const campaign = new Campaign("Enc");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+      const hob = new Mob(campaign, "Hobgoblin", makeStats(), 2, 2, [], {
+        presentation: { sound: "growl.ogg" },
+      });
+      const lair = new Room("Lair", "Lair", [], {} as ExitsArg);
+      lair.placeMob(hob);
+      const hall = new Room("Hall", "Hall", [], {} as ExitsArg);
+
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => { if (cue.kind === "encounter") seen.push(cue); });
+
+      pc.startTurn();
+      pc.move(lair);   // first encounter → fires
+      pc.move(hall);   // leaves
+      pc.startTurn();
+      pc.move(lair);   // re-entry → no repeat
+
+      expect(seen).toHaveLength(1);
+      expect(seen[0]).toMatchObject({ kind: "encounter", mob: { name: "Hobgoblin" }, sound: "growl.ogg" });
+    });
+
+    it("does not fire for a KO'd mob", () => {
+      const campaign = new Campaign("Enc");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+      const downed = new Mob(campaign, "Husk", makeStats({ [StatType.Health]: 0 }), 2, 2, []);
+      const room = new Room("Crypt", "Crypt", [], {} as ExitsArg);
+      room.placeMob(downed);
+      // A freshly built mob has not reconciled yet, so KO is not latched until a
+      // reconcile runs. A zero-strength hit forces the reconcile (no actual damage)
+      // and latches KO from the 0 Health.
+      downed.takeDamage(0, StatType.Energy);
+
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => { if (cue.kind === "encounter") seen.push(cue); });
+
+      pc.startTurn();
+      pc.move(room);
+
+      expect(seen).toHaveLength(0);
+    });
+  });
 });

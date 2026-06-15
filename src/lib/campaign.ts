@@ -7,8 +7,10 @@ import { EncounterTable, type Formation } from "./encounter-table";
 import type { IRoom } from "./room";
 import type { IMob } from "./character/mob";
 import type { Archetype, ArchetypeId } from "./archetype";
-import { EMIT_CUE } from "./presentation";
+import { EMIT_CUE, NOTE_ENCOUNTERS } from "./presentation";
 import type { ActionKind, AssetRef, PresentationCue } from "./presentation";
+import { Status } from "./status";
+import type { ICharacter } from "./character/character";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -85,6 +87,8 @@ export interface ICampaign {
   addFormation: (formation: Formation) => void;
   /** Spawn check for a player entering `room`; returns any mobs spawned. */
   maybeSpawn: (room: IRoom) => IMob[];
+  /** Emits first-encounter cues for active mobs in a room a character entered. Engine-internal. */
+  [NOTE_ENCOUNTERS]: (character: ICharacter, room: IRoom) => void;
 }
 
 /**
@@ -112,6 +116,7 @@ export class Campaign implements ICampaign {
   #actedThisRound: WeakMap<IPlayerCharacter, boolean>;
   #encounterTable: EncounterTable;
   #cueHandlers: Array<(cue: PresentationCue) => void> = [];
+  #encountered: Set<string> = new Set<string>();
   #actionSounds: Partial<Record<ActionKind, AssetRef>>;
 
   get round() {
@@ -452,6 +457,29 @@ export class Campaign implements ICampaign {
         ? { ...cue, sound: this.#actionSounds[cue.action] }
         : cue;
     this.#dispatch(finalCue);
+  }
+
+  /**
+   * Scans `room` (which `character` just entered) and emits one `encounter` cue
+   * per active (non-KO), non-party occupant the character has not encountered
+   * before. Dedup is per (characterId, mobId), so re-entry — or the mob leaving
+   * and returning — never replays the cue for that character. Engine-internal.
+   */
+  [NOTE_ENCOUNTERS](character: ICharacter, room: IRoom) {
+    const partyIds = new Set(this.party.map((p) => p.id));
+    for (const occupant of room.occupants) {
+      if (partyIds.has(occupant.id)) continue;
+      if (occupant.status.includes(Status.KO)) continue;
+      const key = `${character.id}:${occupant.id}`;
+      if (this.#encountered.has(key)) continue;
+      this.#encountered.add(key);
+      this.#dispatch({
+        kind: "encounter",
+        mob: { id: occupant.id, name: occupant.name },
+        room: { id: room.id, name: room.name },
+        sound: occupant.presentation?.sound,
+      });
+    }
   }
 
   /**

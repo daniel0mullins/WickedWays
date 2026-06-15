@@ -3,6 +3,7 @@ import { IItem } from "../inventory";
 import { ILoot } from "../loot";
 import type { IRoom } from "../room";
 import { ProceduralViolation, typedEntries } from "../util";
+import { NOTE_ENCOUNTERS } from "../presentation";
 import { Combatant, ICombatant } from "./combatant";
 import { StatType, type Stats } from "./stats";
 import type { CharacterOptions } from "./character";
@@ -111,6 +112,7 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     super.move(room);
     if (this.currentRoom === room) {
       this.campaign.maybeSpawn(room);
+      this.campaign[NOTE_ENCOUNTERS](this, room);
     }
   }
 
