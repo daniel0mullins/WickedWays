@@ -6,6 +6,7 @@ import type { IMaterialCache, MaterialCacheId } from "./material-cache";
 import type { IMob } from "./character/mob";
 import { IScene, Scene } from "./scene";
 import { generateId, ProceduralViolation } from "./util";
+import type { Presentation } from "./presentation";
 
 /** Unique identifier for a {@link Room}. */
 export type RoomId = Brand<string, "RoomId">;
@@ -58,6 +59,8 @@ export interface IRoom {
   removeExit: (direction: Direction) => void;
   /** Seats `mob` as a room-attached resident (origin `"room"`). */
   placeMob: (mob: IMob) => void;
+  /** Optional presentation metadata (image/sound), or `undefined` if none. */
+  get presentation(): Presentation | undefined;
 }
 
 /**
@@ -75,9 +78,14 @@ export class Room implements IRoom {
   spawnModifier: number;
   #occupants: Map<CharacterId, ICharacter>;
   #scenes: IScene[];
+  #presentation?: Presentation;
 
   get occupants() {
     return [...this.#occupants.values()];
+  }
+
+  get presentation(): Presentation | undefined {
+    return this.#presentation;
   }
 
   /**
@@ -106,6 +114,7 @@ export class Room implements IRoom {
     materials: IMaterialCache[] = [],
     spawnModifier: number = 1,
     mobs: IMob[] = [],
+    presentation?: Presentation,
   ) {
     this.id = generateId<RoomId>();
     this.name = name;
@@ -129,6 +138,7 @@ export class Room implements IRoom {
     }
 
     this.spawnModifier = spawnModifier;
+    this.#presentation = presentation;
 
     for (const mob of mobs) {
       this.placeMob(mob);

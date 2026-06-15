@@ -8,6 +8,7 @@ import { ProceduralViolation } from "./util";
 import type { CraftingRecipe } from "./crafting";
 import type { SlotKind } from "./equipment";
 import { Status } from "./status";
+import type { Presentation } from "./presentation";
 
 /** The kinds of item the engine recognises. */
 const ItemType = {
@@ -245,6 +246,8 @@ export interface IItem {
   [CLAIM](holder: ItemHolder | null): void;
   /** Bound interaction handlers (pick up, equip, use, transfer, destroy, …). */
   actions: ItemActions;
+  /** Optional presentation metadata (image/sound), or `undefined` if none. */
+  get presentation(): Presentation | undefined;
 }
 
 /**
@@ -274,6 +277,7 @@ export class Item implements IItem {
   readonly slot?: SlotKind;
   readonly twoHanded?: boolean;
   #durability?: number;
+  #presentation?: Presentation;
   // The raw equip/unequip behavior and events, captured from the constructor so
   // the class-level {@link EQUIP}/{@link UNEQUIP} methods can reach them (unlike
   // the other action wrappers, which close over the constructor params inline).
@@ -288,6 +292,10 @@ export class Item implements IItem {
 
   get isBroken(): boolean {
     return this.maxDurability !== undefined && this.#durability === 0;
+  }
+
+  get presentation(): Presentation | undefined {
+    return this.#presentation;
   }
 
   [SET_DURABILITY](value: number) {
@@ -371,6 +379,7 @@ export class Item implements IItem {
       durability,
       slot,
       twoHanded,
+      presentation,
     }: {
       type: ItemType;
       recipe: Recipe;
@@ -386,6 +395,7 @@ export class Item implements IItem {
       durability?: number;
       slot?: SlotKind;
       twoHanded?: boolean;
+      presentation?: Presentation;
     },
     properties: ItemProperties,
     actions: ItemActions,
@@ -406,6 +416,7 @@ export class Item implements IItem {
     this.maxDurability = maxDurability;
     this.slot = slot;
     this.twoHanded = twoHanded;
+    this.#presentation = presentation;
     this.#durability =
       maxDurability === undefined
         ? undefined

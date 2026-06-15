@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DEPLETE, MaterialCache } from "./material-cache";
+import type { Presentation } from "./presentation";
 
 describe("MaterialCache", () => {
   it("assigns an id and starts undepleted with the given contents", () => {
@@ -35,5 +36,11 @@ describe("MaterialCache", () => {
     cache[DEPLETE]();
 
     expect(cache[DEPLETE]()).toEqual({});
+  });
+
+  it("exposes supplied presentation and is undefined when omitted", () => {
+    const pres: Presentation = { image: "ore.png" };
+    expect(new MaterialCache({ metal: 1 }, pres).presentation).toBe(pres);
+    expect(new MaterialCache({ metal: 1 }).presentation).toBeUndefined();
   });
 });

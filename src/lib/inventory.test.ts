@@ -5,6 +5,7 @@ import { StatType } from "./character/stats";
 import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, Item, SET_DURABILITY, UNEQUIP, createKey, type IItem, type IItemHolder } from "./inventory";
 import { ProceduralViolation } from "./util";
 import type { CraftingRecipe, RecipeId } from "./crafting";
+import type { Presentation } from "./presentation";
 
 // `ItemProperties` is not exported, so we recover the shape the constructor
 // expects straight from its parameter list.
@@ -177,6 +178,26 @@ describe("Item", () => {
       expect(() => {
         (item as unknown as { heldBy: ICharacter | null }).heldBy = makeHolder();
       }).toThrow(ProceduralViolation);
+    });
+  });
+
+  describe("presentation", () => {
+    it("exposes supplied presentation and is undefined when omitted", () => {
+      const pres: Presentation = { image: "sword.png" };
+      const withPres = new Item(
+        { type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, name: "Rusty Sword", presentation: pres },
+        { equippable: true, equipped: false, destroyable: true, usable: true },
+        makeActions(),
+        makeEvents(),
+      );
+      const without = new Item(
+        { type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, name: "Plain Sword" },
+        { equippable: true, equipped: false, destroyable: true, usable: true },
+        makeActions(),
+        makeEvents(),
+      );
+      expect(withPres.presentation).toBe(pres);
+      expect(without.presentation).toBeUndefined();
     });
   });
 
