@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { IItem, ItemId } from "../inventory";
 import type { IRoom } from "../room";
+import type { PresentationCue } from "../presentation";
 
 import { Campaign } from "../campaign";
 import { CLAIM, HELD_BY, Item, createKey } from "../inventory";
@@ -692,6 +693,27 @@ describe("PlayerCharacter", () => {
       const drops = pc.history.slice(before).filter((e) => e.kind === "drop");
       expect(drops).toHaveLength(1);
       expect(drops[0]).toMatchObject({ items: [{ id: target.id, name: target.name }] });
+    });
+  });
+
+  describe("loot box presentation cues", () => {
+    it("attributes a loot-box pickup cue to the container's sound", () => {
+      const campaign = new Campaign("Loot");
+      const item = makeLootItem("coin");
+      const box = new Loot("chest", [item], { sound: "coins.ogg" });
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      const room = new Room("Vault", "Vault", [box], {} as ExitsArg);
+      pc.move(room);
+      pc.startTurn();
+
+      const seen: PresentationCue[] = [];
+      campaign.onCue((cue) => seen.push(cue));
+
+      pc.takeFromLootBox(box, item);
+
+      expect(seen).toContainEqual(
+        expect.objectContaining({ kind: "action", action: "pickUp", sound: "coins.ogg" }),
+      );
     });
   });
 

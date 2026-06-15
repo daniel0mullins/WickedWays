@@ -163,7 +163,11 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     const toTake = present.slice(0, free);
     const removed = lootBox.removeItems(toTake.map((taken) => taken.id));
     if (removed.length > 0) {
-      this.withGateSuppressed(() => this.addToInventory(removed));
+      this.withGateSuppressed(() =>
+        this.withCueSound(lootBox.presentation?.sound, () =>
+          this.addToInventory(removed),
+        ),
+      );
     }
     return removed;
   }
@@ -194,7 +198,11 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     const free = lootBox.capacity - lootBox.contents.length;
     const toPut = present.slice(0, free);
     if (toPut.length > 0) {
-      this.withGateSuppressed(() => this.removeFromInventory(toPut));
+      this.withGateSuppressed(() =>
+        this.withCueSound(lootBox.presentation?.sound, () =>
+          this.removeFromInventory(toPut),
+        ),
+      );
       for (const putItem of toPut) {
         lootBox.stowItem(putItem);
       }
