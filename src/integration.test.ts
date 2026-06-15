@@ -7,6 +7,7 @@ import { Room } from "./lib/room";
 import { Scene } from "./lib/scene";
 import { ProceduralViolation } from "./lib/util";
 import { Character } from "./lib/character/character";
+import { Mob } from "./lib/character/mob";
 import { NonPlayerCharacter } from "./lib/character/non-player-character";
 import { PlayerCharacter } from "./lib/character/player-character";
 import { StatType } from "./lib/character/stats";
@@ -14,6 +15,7 @@ import { buildMap } from "./utils/build-map";
 import { assignNeutralArchetype, type ExitsArg, makeRng, makeStats } from "./test-utils";
 import type { ArchetypeId } from "./lib/archetype";
 import { Status } from "./lib/status";
+import type { PresentationCue } from "./lib/presentation";
 
 // A real weapon Item with inert actions/events, usable in inventories and boxes.
 function makeWeapon(modifier = 3): Item {
@@ -222,5 +224,33 @@ describe("Campaign integration", () => {
     hero.startTurn();
     hero.takeDamage(0, StatType.Energy);
     expect(hero.status).not.toContain(Status.Confused);
+  });
+
+  it("emits action and encounter cues with resolved sounds across a turn", () => {
+    const campaign = new Campaign("Wicked Ways", 100, [], { actionSounds: { move: "marching.ogg" } });
+    const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+    hero.joinCampaign();
+    campaign.gm = hero;
+
+    const coin = makeWeapon(); // any item; used as loot
+    const chest = new Loot("chest", [coin], { sound: "coins.ogg" });
+    const hob = new Mob(campaign, "Hobgoblin", makeStats(), 2, 2, [], { presentation: { sound: "growl.ogg" } });
+    const lair = new Room("Lair", "A lair", [chest], {} as ExitsArg);
+    lair.placeMob(hob);
+
+    // Archetype requirement from the prior feature: give the PC a neutral one.
+    assignNeutralArchetype(campaign, hero);
+    campaign.beginCampaign();
+
+    const cues: PresentationCue[] = [];
+    campaign.onCue((cue) => cues.push(cue));
+
+    hero.startTurn();
+    hero.move(lair);                 // move cue (marching) + encounter cue (growl)
+    hero.takeFromLootBox(chest, coin); // pickUp cue (coins, from the container)
+
+    expect(cues).toContainEqual(expect.objectContaining({ kind: "action", action: "move", sound: "marching.ogg" }));
+    expect(cues).toContainEqual(expect.objectContaining({ kind: "encounter", mob: expect.objectContaining({ name: "Hobgoblin" }), sound: "growl.ogg" }));
+    expect(cues).toContainEqual(expect.objectContaining({ kind: "action", action: "pickUp", sound: "coins.ogg" }));
   });
 });
