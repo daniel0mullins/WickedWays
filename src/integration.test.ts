@@ -12,6 +12,8 @@ import { PlayerCharacter } from "./lib/character/player-character";
 import { StatType } from "./lib/character/stats";
 import { buildMap } from "./utils/build-map";
 import { assignNeutralArchetype, type ExitsArg, makeRng, makeStats } from "./test-utils";
+import type { ArchetypeId } from "./lib/archetype";
+import { Status } from "./lib/status";
 
 // A real weapon Item with inert actions/events, usable in inventories and boxes.
 function makeWeapon(modifier = 3): Item {
@@ -193,5 +195,32 @@ describe("Campaign integration", () => {
     // is visible to the script.
     expect(firedWithOccupants).toBe(1);
     expect(hall.occupants).toContain(hero);
+  });
+
+  it("applies a selected archetype's stat, slot, and immunity effects through setup", () => {
+    const campaign = new Campaign("Wicked Ways");
+    const hero = new PlayerCharacter(campaign, "Hero", makeStats({ [StatType.Energy]: 0 }), 5);
+    hero.joinCampaign();
+    campaign.gm = hero;
+
+    campaign.registerArchetype({
+      id: "stoic-packer" as ArchetypeId,
+      name: "Stoic Packer",
+      statModifiers: { [StatType.Health]: 2 },
+      inventorySlots: 3,
+      immunities: [Status.Confused],
+    });
+    hero.selectArchetype("stoic-packer" as ArchetypeId);
+    campaign.beginCampaign();
+
+    // Stat delta layered on the base.
+    expect(hero.stats[StatType.Health]).toBe(12);
+    // Slot delta applied to capacity.
+    expect(hero.inventory.slots).toBe(8);
+
+    // Standing immunity holds through a reconcile that would otherwise latch Confused.
+    hero.startTurn();
+    hero.takeDamage(0, StatType.Energy);
+    expect(hero.status).not.toContain(Status.Confused);
   });
 });
