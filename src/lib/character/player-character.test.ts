@@ -820,6 +820,19 @@ describe("PlayerCharacter", () => {
       campaign.registerArchetype(other);
       expect(() => pc.selectArchetype(other.id)).toThrow(/begun/);
     });
+
+    it("grants standing immunity to a status the stats would otherwise trigger", () => {
+      const campaign = new Campaign("Quest");
+      // Energy 0 would normally latch Confused on reconcile.
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats({ [StatType.Energy]: 0 }));
+      const stoic = makeArchetype({ immunities: [Status.Confused] });
+      campaign.registerArchetype(stoic);
+      pc.selectArchetype(stoic.id);
+
+      pc.takeDamage(0, StatType.Energy); // forces a reconcile
+
+      expect(pc.status).not.toContain(Status.Confused);
+    });
   });
 
   describe("move triggers encounters", () => {

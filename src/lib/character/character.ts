@@ -214,13 +214,14 @@ export class Character implements ICharacter {
     };
   }
 
-  /** Statuses currently immunized by equipped, intact gear (passive immunity). */
+  /** Statuses currently immunized by equipped, intact gear or the selected archetype. */
   #passiveImmunities(): Set<Status> {
     const set = new Set<Status>();
     for (const item of this.#inventory.items) {
       if (!item.properties.equipped || item.isBroken || !item.immunities) continue;
       for (const s of item.immunities) set.add(s);
     }
+    for (const s of this.archetypeImmunities) set.add(s);
     return set;
   }
 
