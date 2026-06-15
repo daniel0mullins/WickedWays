@@ -162,6 +162,13 @@ export class Character implements ICharacter {
   // appears under both hand keys.
   #equipment: Map<EquipmentSlot, IItem> = new Map();
   #slots: readonly EquipmentSlot[] = DEFAULT_EQUIPMENT_SLOTS;
+  /**
+   * Standing status immunities granted by a selected archetype. Set only by
+   * PlayerCharacter.selectArchetype; read by #passiveImmunities. Protected (not
+   * public) so untrusted code can't forge it — same hidden-state discipline as
+   * the rest of the character.
+   */
+  protected archetypeImmunities: Status[] = [];
   #afflictions: Afflictions;
   protected actionsThisRound: number;
 

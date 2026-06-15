@@ -110,6 +110,7 @@ function makeHandWeapon(opts: {
 
 import { Status } from "../status";
 import type { Stats } from "./stats";
+import type { Archetype, ArchetypeId } from "../archetype";
 
 function makePc(opts: { inventorySlots?: number; stats?: Partial<Stats>; rng?: () => number } = {}) {
   return new PlayerCharacter(
@@ -746,6 +747,78 @@ describe("PlayerCharacter", () => {
       pc.takeDamage(0, StatType.Sanity); // reconcile → Panic
       expect(pc.status).toContain(Status.Panic);
       expect(() => pc.putInLootBox(box, item)).toThrow(/Panicked/);
+    });
+  });
+
+  describe("selectArchetype", () => {
+    function makeArchetype(overrides: Partial<Archetype> = {}): Archetype {
+      return { id: "brawler" as ArchetypeId, name: "Brawler", ...overrides };
+    }
+
+    it("layers stat deltas onto the base stats", () => {
+      const campaign = new Campaign("Quest");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats({ [StatType.Health]: 6 }));
+      const brawler = makeArchetype({ statModifiers: { [StatType.Health]: 3 } });
+      campaign.registerArchetype(brawler);
+
+      pc.selectArchetype(brawler.id);
+
+      expect(pc.stats[StatType.Health]).toBe(9);
+      expect(pc.archetype).toBe(brawler);
+    });
+
+    it("adds the inventory-slot delta to capacity", () => {
+      const campaign = new Campaign("Quest");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats(), 5);
+      const packer = makeArchetype({ inventorySlots: 2 });
+      campaign.registerArchetype(packer);
+
+      pc.selectArchetype(packer.id);
+
+      expect(pc.inventory.slots).toBe(7);
+    });
+
+    it("floors resulting inventory capacity at 0", () => {
+      const campaign = new Campaign("Quest");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats(), 1);
+      const burdened = makeArchetype({ inventorySlots: -5 });
+      campaign.registerArchetype(burdened);
+
+      pc.selectArchetype(burdened.id);
+
+      expect(pc.inventory.slots).toBe(0);
+    });
+
+    it("throws on an unknown archetype id", () => {
+      const campaign = new Campaign("Quest");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+
+      expect(() => pc.selectArchetype("ghost" as ArchetypeId)).toThrow(ProceduralViolation);
+    });
+
+    it("throws when an archetype is already selected", () => {
+      const campaign = new Campaign("Quest");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      const brawler = makeArchetype();
+      campaign.registerArchetype(brawler);
+      pc.selectArchetype(brawler.id);
+
+      expect(() => pc.selectArchetype(brawler.id)).toThrow(ProceduralViolation);
+    });
+
+    it("throws when the campaign has already begun", () => {
+      const campaign = new Campaign("Quest");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      const brawler = makeArchetype();
+      campaign.registerArchetype(brawler);
+      pc.joinCampaign();
+      pc.selectArchetype(brawler.id);
+      campaign.gm = pc;
+      campaign.beginCampaign();
+
+      const other: Archetype = { id: "rogue" as ArchetypeId, name: "Rogue" };
+      campaign.registerArchetype(other);
+      expect(() => pc.selectArchetype(other.id)).toThrow(/begun/);
     });
   });
 
