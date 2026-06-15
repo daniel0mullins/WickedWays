@@ -17,7 +17,7 @@ import { makeStats, type ExitsArg } from "../test-utils";
 // stub objects cast to `IPlayerCharacter` are enough (WeakMap needs objects).
 let counter = 0;
 function makePlayer(): IPlayerCharacter {
-  return { id: `pc-${++counter}` } as unknown as IPlayerCharacter;
+  return { id: `pc-${++counter}`, archetype: {} } as unknown as IPlayerCharacter;
 }
 
 function makeRecipe(id: string): CraftingRecipe {
@@ -311,6 +311,24 @@ describe("Campaign", () => {
       const gm = makePlayer();
       campaign.party.push(gm);
       campaign.gm = gm;
+
+      expect(() => campaign.beginCampaign()).not.toThrow();
+    });
+
+    it("throws if a party member has not chosen an archetype", () => {
+      const campaign = new Campaign("C");
+      const noArchetype = { id: "pc-bare" } as unknown as IPlayerCharacter;
+      campaign.party.push(noArchetype);
+      campaign.gm = noArchetype;
+
+      expect(() => campaign.beginCampaign()).toThrow(/archetype/);
+    });
+
+    it("begins when every party member has an archetype", () => {
+      const campaign = new Campaign("C");
+      const withArchetype = { id: "pc-ok", archetype: {} } as unknown as IPlayerCharacter;
+      campaign.party.push(withArchetype);
+      campaign.gm = withArchetype;
 
       expect(() => campaign.beginCampaign()).not.toThrow();
     });

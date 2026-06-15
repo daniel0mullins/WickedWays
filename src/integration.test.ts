@@ -11,7 +11,7 @@ import { NonPlayerCharacter } from "./lib/character/non-player-character";
 import { PlayerCharacter } from "./lib/character/player-character";
 import { StatType } from "./lib/character/stats";
 import { buildMap } from "./utils/build-map";
-import { type ExitsArg, makeRng, makeStats } from "./test-utils";
+import { assignNeutralArchetype, type ExitsArg, makeRng, makeStats } from "./test-utils";
 
 // A real weapon Item with inert actions/events, usable in inventories and boxes.
 function makeWeapon(modifier = 3): Item {
@@ -83,6 +83,7 @@ describe("Campaign integration", () => {
     });
     rooms[0]!.registerScene(watcher);
 
+    assignNeutralArchetype(campaign, hero, seer);
     campaign.beginCampaign();
 
     // Seed each PC into the first room before the loop.
@@ -129,6 +130,7 @@ describe("Campaign integration", () => {
     );
 
     const crypt = new Room("Crypt", "Crypt", [], {} as ExitsArg);
+    assignNeutralArchetype(campaign, hero);
     campaign.beginCampaign();
     hero.move(crypt);
     ghoul.move(crypt);
@@ -153,6 +155,7 @@ describe("Campaign integration", () => {
     const chest = new Loot("treasure chest", [sword]);
     const vault = new Room("Vault", "Vault", [chest], {} as ExitsArg);
 
+    assignNeutralArchetype(campaign, hero);
     campaign.beginCampaign();
     hero.move(vault);
     hero.startTurn();
@@ -182,6 +185,7 @@ describe("Campaign integration", () => {
     const hall = new Room("Trapped Hall", "Trapped Hall", [], {} as ExitsArg);
     hall.registerScene(trap);
 
+    assignNeutralArchetype(campaign, hero);
     campaign.beginCampaign();
     hero.move(hall);
 

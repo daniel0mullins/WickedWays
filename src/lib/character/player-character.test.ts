@@ -11,7 +11,7 @@ import { Character } from "./character";
 import { PlayerCharacter } from "./player-character";
 import { StatType } from "./stats";
 
-import { makeCampaign, makeDefender, makeStats, type ExitsArg } from "../../test-utils";
+import { assignNeutralArchetype, makeCampaign, makeDefender, makeStats, type ExitsArg } from "../../test-utils";
 import { Mob } from "./mob";
 import { Room } from "../room";
 
@@ -841,6 +841,7 @@ describe("PlayerCharacter", () => {
       const pc = new PlayerCharacter(campaign, "Hero", makeStats());
       pc.joinCampaign();
       campaign.gm = pc;
+      assignNeutralArchetype(campaign, pc);
       campaign.beginCampaign();
       campaign.addFormation({
         id: "goblins",
@@ -867,6 +868,7 @@ describe("PlayerCharacter", () => {
       );
       pc.joinCampaign();
       campaign.gm = pc;
+      assignNeutralArchetype(campaign, pc);
       campaign.beginCampaign();
       campaign.addFormation({
         id: "goblins",
@@ -887,6 +889,7 @@ describe("PlayerCharacter", () => {
       const pc = new PlayerCharacter(campaign, "Hero", makeStats({ [StatType.Health]: 0 }));
       pc.joinCampaign();
       campaign.gm = pc;
+      assignNeutralArchetype(campaign, pc);
       campaign.beginCampaign();
       campaign.addFormation({
         id: "goblins",

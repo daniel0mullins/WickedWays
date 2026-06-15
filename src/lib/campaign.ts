@@ -222,7 +222,8 @@ export class Campaign implements ICampaign {
    * turn management becomes available.
    *
    * @throws {@link ProceduralViolation} if already started, if the party is
-   *   empty, or if the GM is not a member of the party.
+   *   empty, if the GM is not a member of the party, or if any party member has
+   *   not chosen an archetype.
    */
   beginCampaign() {
     if (this.#started) {
@@ -234,6 +235,11 @@ export class Campaign implements ICampaign {
     if (!this.#gm || !this.party.includes(this.#gm)) {
       throw new ProceduralViolation(
         "Cannot begin a campaign whose GM is not a member of the party",
+      );
+    }
+    if (this.party.some((member) => member.archetype === undefined)) {
+      throw new ProceduralViolation(
+        "Cannot begin a campaign whose party members have not all chosen an archetype",
       );
     }
     this.#started = true;
