@@ -7,6 +7,8 @@ import { EncounterTable, type Formation } from "./encounter-table";
 import type { IRoom } from "./room";
 import type { IMob } from "./character/mob";
 import type { Archetype, ArchetypeId } from "./archetype";
+import { EMIT_CUE } from "./presentation";
+import type { ActionKind, AssetRef, PresentationCue } from "./presentation";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -47,6 +49,12 @@ export interface ICampaign {
   get round(): number;
 
   // ### Methods
+  /** Subscribes a handler to the presentation cue stream. */
+  onCue: (handler: (cue: PresentationCue) => void) => void;
+  /** Removes a previously-subscribed cue handler (no-op if not subscribed). */
+  offCue: (handler: (cue: PresentationCue) => void) => void;
+  /** Publishes a cue to subscribers. Engine-internal; see {@link EMIT_CUE}. */
+  [EMIT_CUE]: (cue: PresentationCue) => void;
   /** Whether the pool currently holds at least `mats`. */
   canAfford: (mats: MaterialMap) => boolean;
   /** Removes materials from the pool. Throws if the pool is short. */
@@ -103,6 +111,8 @@ export class Campaign implements ICampaign {
   #activeCharacterIndex: number = 0;
   #actedThisRound: WeakMap<IPlayerCharacter, boolean>;
   #encounterTable: EncounterTable;
+  #cueHandlers: Array<(cue: PresentationCue) => void> = [];
+  #actionSounds: Partial<Record<ActionKind, AssetRef>>;
 
   get round() {
     return this.#round;
@@ -193,7 +203,11 @@ export class Campaign implements ICampaign {
     title: string,
     maxRounds: number = 100,
     knownRecipes: CraftingRecipe[] = [],
-    options: { rng?: () => number; baseEncounterChance?: number } = {},
+    options: {
+      rng?: () => number;
+      baseEncounterChance?: number;
+      actionSounds?: Partial<Record<ActionKind, AssetRef>>;
+    } = {},
   ) {
     this.id = generateId<CampaignId>();
     this.title = title;
@@ -211,6 +225,8 @@ export class Campaign implements ICampaign {
     this.#resetActivity();
 
     this.#activeCharacterIndex = 0;
+
+    this.#actionSounds = options.actionSounds ?? {};
 
     for (const recipe of knownRecipes) {
       this.discoverRecipe(recipe);
@@ -398,6 +414,44 @@ export class Campaign implements ICampaign {
    */
   knows(recipeId: RecipeId): boolean {
     return this.#knownRecipes.has(recipeId);
+  }
+
+  /** Subscribes `handler` to the presentation cue stream. */
+  onCue(handler: (cue: PresentationCue) => void) {
+    this.#cueHandlers.push(handler);
+  }
+
+  /** Removes `handler` from the cue stream; a no-op if it was not subscribed. */
+  offCue(handler: (cue: PresentationCue) => void) {
+    const index = this.#cueHandlers.indexOf(handler);
+    if (index !== -1) {
+      this.#cueHandlers.splice(index, 1);
+    }
+  }
+
+  // Fans a cue out to every subscriber. A throwing handler is isolated so one bad
+  // presentation subscriber cannot break the turn loop (the engine has no logger,
+  // and a handler failure is not a game-rule violation).
+  #dispatch(cue: PresentationCue) {
+    for (const handler of [...this.#cueHandlers]) {
+      try {
+        handler(cue);
+      } catch {
+        // Intentionally swallowed: presentation is best-effort, never load-bearing.
+      }
+    }
+  }
+
+  /**
+   * Publishes a cue to subscribers. For an action cue with no resolved sound,
+   * fills in the campaign default for that action kind. Engine-internal.
+   */
+  [EMIT_CUE](cue: PresentationCue) {
+    const finalCue: PresentationCue =
+      cue.kind === "action" && cue.sound === undefined
+        ? { ...cue, sound: this.#actionSounds[cue.action] }
+        : cue;
+    this.#dispatch(finalCue);
   }
 
   /**
