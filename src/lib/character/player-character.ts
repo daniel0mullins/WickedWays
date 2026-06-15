@@ -2,10 +2,11 @@ import { ICampaign } from "../campaign";
 import { IItem } from "../inventory";
 import { ILoot } from "../loot";
 import type { IRoom } from "../room";
-import { ProceduralViolation } from "../util";
+import { ProceduralViolation, typedEntries } from "../util";
 import { Combatant, ICombatant } from "./combatant";
-import { Stats } from "./stats";
+import { StatType, type Stats } from "./stats";
 import type { AfflictionConfig } from "./afflictions";
+import type { Archetype, ArchetypeId } from "../archetype";
 
 /**
  * A player-controlled {@link ICombatant}. Adds campaign membership and the
@@ -20,6 +21,13 @@ export interface IPlayerCharacter extends ICombatant {
   takeFromLootBox: (lootBox: ILoot, item: IItem | IItem[]) => IItem[];
   /** Stows item(s) from inventory into a loot box, limited by its capacity. */
   putInLootBox: (lootBox: ILoot, item: IItem | IItem[]) => IItem[];
+  /** The archetype this character selected, or `undefined` if none yet. */
+  get archetype(): Archetype | undefined;
+  /**
+   * Selects a campaign-registered archetype, applying its stat and slot deltas
+   * once and adopting its standing immunities. Setup-only and once-only.
+   */
+  selectArchetype: (id: ArchetypeId) => void;
 }
 
 /**
@@ -28,6 +36,12 @@ export interface IPlayerCharacter extends ICombatant {
  * in the room it currently occupies.
  */
 export class PlayerCharacter extends Combatant implements IPlayerCharacter {
+  #archetype?: Archetype;
+
+  get archetype(): Archetype | undefined {
+    return this.#archetype;
+  }
+
   /** See {@link Character} for parameters; also registers `move` as a budgeted action. */
   constructor(
     campaign: ICampaign,
@@ -41,6 +55,49 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     // `this.move` is the override (PlayerCharacter.prototype.move); super.move's
     // recordAction(this.move, …) resolves to that same override, so the budget ticks.
     this.isActionMap.set(this.move, true);
+  }
+
+  /**
+   * Selects an archetype from the campaign catalog, applying its effects exactly
+   * once: stat deltas are added to the base stats, the slot delta adjusts
+   * inventory capacity (floored at 0), and the immunities become a standing
+   * passive trait. A setup-only, once-only operation.
+   *
+   * @param id - The id of an archetype registered on the campaign.
+   * @throws {@link ProceduralViolation} if the campaign has already begun, an
+   *   archetype is already selected, or `id` is not in the catalog.
+   */
+  selectArchetype(id: ArchetypeId) {
+    if (this.campaign.started) {
+      throw new ProceduralViolation(
+        "Cannot select an archetype after the campaign has begun.",
+      );
+    }
+    if (this.#archetype) {
+      throw new ProceduralViolation(
+        "Character has already selected an archetype.",
+      );
+    }
+    const archetype = this.campaign.archetypes.get(id);
+    if (!archetype) {
+      throw new ProceduralViolation("Unknown archetype.");
+    }
+
+    if (archetype.statModifiers) {
+      for (const [stat, delta] of typedEntries(archetype.statModifiers) as Array<
+        [StatType, number | undefined]
+      >) {
+        if (delta === undefined) continue;
+        this.stats[stat] = this.stats[stat] + delta;
+      }
+    }
+    if (archetype.inventorySlots !== undefined) {
+      // `inventory` returns the live inventory object, so this mutates capacity.
+      this.inventory.slots = Math.max(0, this.inventory.slots + archetype.inventorySlots);
+    }
+
+    this.#archetype = archetype;
+    this.archetypeImmunities = archetype.immunities ?? [];
   }
 
   /**

@@ -6,6 +6,7 @@ import type { CraftingRecipe, RecipeId } from "./crafting";
 import { EncounterTable, type Formation } from "./encounter-table";
 import type { IRoom } from "./room";
 import type { IMob } from "./character/mob";
+import type { Archetype, ArchetypeId } from "./archetype";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -28,6 +29,10 @@ export interface ICampaign {
   [DEPOSIT_MATERIALS](mats: MaterialMap): void;
   /** Read-only view of the recipes the party can currently craft. */
   get knownRecipes(): ReadonlyMap<RecipeId, CraftingRecipe>;
+  /** Read-only view of the archetypes registered on this campaign. */
+  get archetypes(): ReadonlyMap<ArchetypeId, Archetype>;
+  /** Whether the campaign has begun (turn management active). */
+  get started(): boolean;
 
   /** Round count at which the campaign automatically ends. */
   readonly maxRounds: number;
@@ -52,6 +57,8 @@ export interface ICampaign {
   knows: (recipeId: RecipeId) => boolean;
   /** Marks a recipe known to the whole party; idempotent by id (first wins). */
   discoverRecipe: (recipe: CraftingRecipe) => void;
+  /** Registers an archetype in the catalog; idempotent by id (first wins). */
+  registerArchetype: (archetype: Archetype) => void;
   /** Starts the campaign once a valid party and GM are in place. */
   beginCampaign: () => void;
   /** Marks a running campaign finished. */
@@ -90,6 +97,7 @@ export class Campaign implements ICampaign {
   #materials: MaterialMap = {};
   #claims: Set<string> = new Set<string>();
   #knownRecipes: Map<RecipeId, CraftingRecipe> = new Map();
+  #archetypes: Map<ArchetypeId, Archetype> = new Map();
   #started = false;
   #finished = false;
   #activeCharacterIndex: number = 0;
@@ -110,6 +118,17 @@ export class Campaign implements ICampaign {
     // would be wasteful, and the read-only type is a sufficient boundary. Mutation
     // is funnelled through `discoverRecipe`.
     return this.#knownRecipes;
+  }
+
+  get archetypes(): ReadonlyMap<ArchetypeId, Archetype> {
+    // Live map exposed as ReadonlyMap, matching knownRecipes: selection reads it
+    // via .get(id), so a per-access copy would be wasteful. Mutation is funnelled
+    // through registerArchetype.
+    return this.#archetypes;
+  }
+
+  get started(): boolean {
+    return this.#started;
   }
 
   /**
@@ -203,7 +222,8 @@ export class Campaign implements ICampaign {
    * turn management becomes available.
    *
    * @throws {@link ProceduralViolation} if already started, if the party is
-   *   empty, or if the GM is not a member of the party.
+   *   empty, if the GM is not a member of the party, or if any party member has
+   *   not chosen an archetype.
    */
   beginCampaign() {
     if (this.#started) {
@@ -215,6 +235,11 @@ export class Campaign implements ICampaign {
     if (!this.#gm || !this.party.includes(this.#gm)) {
       throw new ProceduralViolation(
         "Cannot begin a campaign whose GM is not a member of the party",
+      );
+    }
+    if (this.party.some((member) => member.archetype === undefined)) {
+      throw new ProceduralViolation(
+        "Cannot begin a campaign whose party members have not all chosen an archetype",
       );
     }
     this.#started = true;
@@ -386,6 +411,19 @@ export class Campaign implements ICampaign {
       return;
     }
     this.#knownRecipes.set(recipe.id, recipe);
+  }
+
+  /**
+   * Registers an archetype in the campaign catalog. Idempotent by id: the first
+   * definition for an id wins; later calls with that id are ignored.
+   *
+   * @param archetype - The archetype to register.
+   */
+  registerArchetype(archetype: Archetype) {
+    if (this.#archetypes.has(archetype.id)) {
+      return;
+    }
+    this.#archetypes.set(archetype.id, archetype);
   }
 
   /**

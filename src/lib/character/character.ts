@@ -162,6 +162,13 @@ export class Character implements ICharacter {
   // appears under both hand keys.
   #equipment: Map<EquipmentSlot, IItem> = new Map();
   #slots: readonly EquipmentSlot[] = DEFAULT_EQUIPMENT_SLOTS;
+  /**
+   * Standing status immunities granted by a selected archetype. Set only by
+   * PlayerCharacter.selectArchetype; read by #passiveImmunities. Protected (not
+   * public) so untrusted code can't forge it — same hidden-state discipline as
+   * the rest of the character.
+   */
+  protected archetypeImmunities: Status[] = [];
   #afflictions: Afflictions;
   protected actionsThisRound: number;
 
@@ -207,13 +214,14 @@ export class Character implements ICharacter {
     };
   }
 
-  /** Statuses currently immunized by equipped, intact gear (passive immunity). */
+  /** Statuses currently immunized by equipped, intact gear or the selected archetype. */
   #passiveImmunities(): Set<Status> {
     const set = new Set<Status>();
     for (const item of this.#inventory.items) {
       if (!item.properties.equipped || item.isBroken || !item.immunities) continue;
       for (const s of item.immunities) set.add(s);
     }
+    for (const s of this.archetypeImmunities) set.add(s);
     return set;
   }
 

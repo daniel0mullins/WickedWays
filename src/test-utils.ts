@@ -2,6 +2,8 @@ import { vi } from "vitest";
 
 import type { ICampaign } from "./lib/campaign";
 import type { ICharacter } from "./lib/character/character";
+import type { Archetype, ArchetypeId } from "./lib/archetype";
+import type { IPlayerCharacter } from "./lib/character/player-character";
 import { StatType, type Stats } from "./lib/character/stats";
 import { Room } from "./lib/room";
 
@@ -32,6 +34,25 @@ export function makeCampaign(): ICampaign {
 // A defender that only needs to record the damage calls made against it.
 export function makeDefender(): ICharacter {
   return { id: "defender-1", name: "Goblin", takeDamage: vi.fn() } as unknown as ICharacter;
+}
+
+// A no-op archetype for tests that must satisfy beginCampaign's requirement
+// without exercising any archetype effect.
+export const NEUTRAL_ARCHETYPE: Archetype = {
+  id: "neutral" as ArchetypeId,
+  name: "Neutral",
+};
+
+// Registers NEUTRAL_ARCHETYPE on the campaign and assigns it to each PC, so
+// beginCampaign's archetype requirement is satisfied.
+export function assignNeutralArchetype(
+  campaign: ICampaign,
+  ...pcs: IPlayerCharacter[]
+): void {
+  campaign.registerArchetype(NEUTRAL_ARCHETYPE);
+  for (const pc of pcs) {
+    pc.selectArchetype(NEUTRAL_ARCHETYPE.id);
+  }
 }
 
 // Deterministic mulberry32 PRNG so buildMap produces a fixed topology.
