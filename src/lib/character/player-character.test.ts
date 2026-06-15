@@ -10,6 +10,9 @@ import { ProceduralViolation } from "../util";
 import { Character } from "./character";
 import { PlayerCharacter } from "./player-character";
 import { StatType } from "./stats";
+import type { Stats } from "./stats";
+import { Status } from "../status";
+import type { Archetype, ArchetypeId } from "../archetype";
 
 import { assignNeutralArchetype, makeCampaign, makeDefender, makeStats, type ExitsArg } from "../../test-utils";
 import { Mob } from "./mob";
@@ -107,10 +110,6 @@ function makeHandWeapon(opts: {
     { onPickUp: noop },
   );
 }
-
-import { Status } from "../status";
-import type { Stats } from "./stats";
-import type { Archetype, ArchetypeId } from "../archetype";
 
 function makePc(opts: { inventorySlots?: number; stats?: Partial<Stats>; rng?: () => number } = {}) {
   return new PlayerCharacter(
