@@ -147,6 +147,26 @@ describe("buildMap", () => {
     });
   });
 
+  describe("requiredConnections", () => {
+    function directionBetween(a: IRoom, b: IRoom): string | undefined {
+      for (const [dir, dest] of a.exits.entries()) {
+        if (dest === b) return dir;
+      }
+      return undefined;
+    }
+
+    it("makes a required pair directly adjacent on opposite directions", () => {
+      const rooms = makeRooms(12);
+      const [a, b] = [rooms[0]!, rooms[7]!];
+
+      buildMap(rooms, { rng: makeRng(42), requiredConnections: [[a, b]] });
+
+      const dir = directionBetween(a, b);
+      expect(dir).toBeDefined();
+      expect(b.exits.get(OPPOSITE[dir!]! as keyof ExitsArg)).toBe(a);
+    });
+  });
+
   describe("determinism", () => {
     it("produces identical structure for the same seed", () => {
       const first = buildMap(makeRooms(15), {
