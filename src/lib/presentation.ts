@@ -26,7 +26,8 @@ export type ActionKind = ActionDetail["kind"];
  */
 export type PresentationCue =
   | { kind: "action"; action: ActionKind; actor: EntityRef; sound?: AssetRef }
-  | { kind: "encounter"; mob: EntityRef; room: EntityRef; sound?: AssetRef };
+  | { kind: "encounter"; mob: EntityRef; room: EntityRef; sound?: AssetRef }
+  | { kind: "visibility"; room: EntityRef; lit: boolean };
 
 /**
  * Engine-internal seam for publishing a cue to the campaign's subscribers.

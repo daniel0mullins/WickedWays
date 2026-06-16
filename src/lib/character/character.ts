@@ -1,6 +1,6 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, MaterialMap, PLACE, SET_DURABILITY, UNEQUIP } from "../inventory";
+import { ADD_LIGHT_SOURCE, CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, MaterialMap, PLACE, REMOVE_LIGHT_SOURCE, SET_DURABILITY, UNEQUIP } from "../inventory";
 import {
   DEFAULT_EQUIPMENT_SLOTS,
   EquipmentSlot,
@@ -27,6 +27,9 @@ export type CharacterId = Brand<string, "CharacterId">;
 // MITIGATION_PER_POINT of the incoming damage multiplier.
 const MAX_STAT = 10;
 const MITIGATION_PER_POINT = 0.2;
+
+/** Damage multiplier applied to a light-averse creature while its room is lit. */
+export const LIGHT_VULNERABILITY = 1.5;
 
 /**
  * Any callable, used purely as an identity key in the action-tracking maps.
@@ -73,6 +76,10 @@ export interface ICharacter extends IItemHolder {
   get presentation(): Presentation | undefined;
   /** The room the character currently occupies, or `null` if none. */
   get currentRoom(): IRoom | null;
+  /** True when the character has an equipped, non-broken light source in a hand slot. */
+  get hasLight(): boolean;
+  /** Whether this actor can act (attack/loot/harvest) in an unlit room. */
+  get seesInDark(): boolean;
   /** Wires this character into `room` (current room + occupancy) with no gating, history, or budget tick. */
   [PLACE]: (room: IRoom) => void;
   /** Immutable copy of the character's recorded action history. */
@@ -96,6 +103,10 @@ export interface ICharacter extends IItemHolder {
   transferKey: (key: IItem, recipient: ICharacter) => void;
   /** Harvests a co-located material cache into the party pool (free; idempotent). */
   harvest: (cache: IMaterialCache) => void;
+  /** Moves a held emitsLight item into the current room's light sources (free). */
+  placeLight: (item: IItem) => void;
+  /** Moves a placed light source from the current room back into inventory (free). */
+  takeLight: (item: IItem) => void;
   /** Spends a key, removing it from the keyring. The sanctioned "story consumed this key" path. */
   consumeKey: (key: IItem) => void;
   /** Logs an action to history and advances the turn if the budget is spent. */
@@ -196,6 +207,38 @@ export class Character implements ICharacter {
     return this.#currentRoom;
   }
 
+  /** Whether this actor can act (attack/loot/harvest) in an unlit room. Default false; light-averse mobs override. */
+  get seesInDark(): boolean {
+    return false;
+  }
+
+  /** Whether this actor takes amplified damage while its room is lit. Default false; light-averse subclasses override. */
+  protected get lightAverse(): boolean {
+    return false;
+  }
+
+  /**
+   * Throws if the actor is in an unlit room and cannot see in the dark. Targeting
+   * actions (attack/loot/harvest) call this; movement and light actions do not.
+   *
+   * @param verb - The blocked action, for the error message.
+   */
+  protected requireVisibleTarget(verb: string) {
+    const room = this.#currentRoom;
+    if (room && !room.isLit && !this.seesInDark) {
+      throw new ProceduralViolation(`Cannot ${verb} in the dark`);
+    }
+  }
+
+  /** True when the character has an equipped, non-broken light source in a hand slot. */
+  get hasLight(): boolean {
+    for (const slot of [EquipmentSlot.LeftHand, EquipmentSlot.RightHand]) {
+      const item = this.equipment.get(slot);
+      if (item?.emitsLight && !item.isBroken) return true;
+    }
+    return false;
+  }
+
   get history(): readonly ActionHistoryEntry[] {
     return [...this.#history];
   }
@@ -277,6 +320,11 @@ export class Character implements ICharacter {
   // actor. Mirrors #suppressGate.
   #cueSoundOverride: AssetRef | undefined;
 
+  // Set while a composite light action (placeLight) performs an internal unequip,
+  // so the nested unequip's transient lit:false flicker is not emitted — only the
+  // composite's net flip is. Mirrors #suppressGate.
+  #suppressVisibility = false;
+
   /** Runs `fn` with affliction gating suppressed (same-character composition only). */
   protected withGateSuppressed<T>(fn: () => T): T {
     const prev = this.#suppressGate;
@@ -285,6 +333,22 @@ export class Character implements ICharacter {
       return fn();
     } finally {
       this.#suppressGate = prev;
+    }
+  }
+
+  /**
+   * Runs `fn` with visibility-cue emission suppressed, so a composite light
+   * action (e.g. an `equip` auto-swap, or `placeLight`'s internal unequip) does
+   * not emit the transient lit-state flickers of its inner steps. The composite
+   * emits its own net flip once, after `fn` completes.
+   */
+  #withVisibilitySuppressed<T>(fn: () => T): T {
+    const prev = this.#suppressVisibility;
+    this.#suppressVisibility = true;
+    try {
+      return fn();
+    } finally {
+      this.#suppressVisibility = prev;
     }
   }
 
@@ -579,6 +643,8 @@ export class Character implements ICharacter {
    */
   equip(item: IItem, targetSlot?: EquipmentSlot) {
     if (!this.attemptAction(this.equip, false)) return;
+    const flipRoom = this.#currentRoom;
+    const flipWasLit = flipRoom?.isLit ?? true;
     if (!this.#inventory.items.some((i) => i.id === item.id)) {
       throw new ProceduralViolation("Cannot equip an item the character is not holding.");
     }
@@ -588,20 +654,26 @@ export class Character implements ICharacter {
     if (item.slot === undefined) {
       throw new ProceduralViolation("Item has no equipment slot.");
     }
-    // Re-equipping a worn item: free its current slot(s) first.
+    // Re-equipping a worn item: free its current slot(s) first. Suppress this
+    // preliminary unequip's visibility flicker — the re-equip as a whole is one
+    // net transition, emitted once at the end against flipWasLit.
     if (item.properties.equipped) {
-      this.withGateSuppressed(() => this.unequip(item));
+      this.#withVisibilitySuppressed(() => this.withGateSuppressed(() => this.unequip(item)));
     }
 
     // Two-handed weapons span both hands.
     if (item.type === "weapon" && item.twoHanded) {
-      for (const hand of [EquipmentSlot.LeftHand, EquipmentSlot.RightHand]) {
-        const occupant = this.#equipment.get(hand);
-        if (occupant) this.withGateSuppressed(() => this.unequip(occupant));
-      }
-      this.#equipment.set(EquipmentSlot.LeftHand, item);
-      this.#equipment.set(EquipmentSlot.RightHand, item);
-      item[EQUIP](this);
+      // Suppress the inner unequips' transient flickers; emit the net flip once.
+      this.#withVisibilitySuppressed(() => {
+        for (const hand of [EquipmentSlot.LeftHand, EquipmentSlot.RightHand]) {
+          const occupant = this.#equipment.get(hand);
+          if (occupant) this.withGateSuppressed(() => this.unequip(occupant));
+        }
+        this.#equipment.set(EquipmentSlot.LeftHand, item);
+        this.#equipment.set(EquipmentSlot.RightHand, item);
+        item[EQUIP](this);
+      });
+      this.#emitVisibilityIfFlipped(flipRoom ?? undefined, flipWasLit);
       return;
     }
 
@@ -621,12 +693,16 @@ export class Character implements ICharacter {
       slot = eligible.find((s) => !this.#equipment.has(s)) ?? eligible[0]!;
     }
 
-    const occupant = this.#equipment.get(slot);
-    if (occupant && occupant.id !== item.id) {
-      this.withGateSuppressed(() => this.unequip(occupant)); // auto-swap (a 2H occupant frees both hands)
-    }
-    this.#equipment.set(slot, item);
-    item[EQUIP](this);
+    // Suppress the auto-swap unequip's transient flicker; emit the net flip once.
+    this.#withVisibilitySuppressed(() => {
+      const occupant = this.#equipment.get(slot);
+      if (occupant && occupant.id !== item.id) {
+        this.withGateSuppressed(() => this.unequip(occupant)); // auto-swap (a 2H occupant frees both hands)
+      }
+      this.#equipment.set(slot, item);
+      item[EQUIP](this);
+    });
+    this.#emitVisibilityIfFlipped(flipRoom ?? undefined, flipWasLit);
   }
 
   /**
@@ -638,6 +714,8 @@ export class Character implements ICharacter {
    */
   unequip(item: IItem) {
     if (!this.attemptAction(this.unequip, false)) return;
+    const flipRoom = this.#currentRoom;
+    const flipWasLit = flipRoom?.isLit ?? true;
     if (!this.#inventory.items.some((i) => i.id === item.id)) {
       throw new ProceduralViolation("Cannot unequip an item the character is not holding.");
     }
@@ -650,6 +728,7 @@ export class Character implements ICharacter {
       }
     }
     item[UNEQUIP](this);
+    this.#emitVisibilityIfFlipped(flipRoom ?? undefined, flipWasLit);
   }
 
   /**
@@ -690,12 +769,65 @@ export class Character implements ICharacter {
    * @throws {@link ProceduralViolation} if the cache is not in the current room.
    */
   harvest(cache: IMaterialCache) {
+    this.requireVisibleTarget("harvest");
     if (!this.#currentRoom?.materials.has(cache.id)) {
       throw new ProceduralViolation(
         "Cannot harvest a material cache that is not in the current room",
       );
     }
     this.campaign[DEPOSIT_MATERIALS](cache[DEPLETE]());
+  }
+
+  /**
+   * Moves an emitsLight item the character holds into the current room's light
+   * sources, where it stays lit regardless of occupancy. If the light was equipped
+   * in a hand it is unequipped first (clearing its slot). Free action (no budget tick).
+   *
+   * @throws {@link ProceduralViolation} if the character is not in a room, the item
+   *   is not an emitsLight item, or the character does not hold it.
+   */
+  placeLight(item: IItem) {
+    const room = this.#currentRoom;
+    if (!room) {
+      throw new ProceduralViolation("Cannot place a light while not in a room");
+    }
+    // Capture before any state change (the unequip-on-place step below can move
+    // the room's lit state) so the flip is detected against the original state.
+    const wasLit = room.isLit;
+    if (!item.emitsLight) {
+      throw new ProceduralViolation("Cannot place a non-light item as a light source");
+    }
+    if (!this.#inventory.items.some((i) => i.id === item.id)) {
+      throw new ProceduralViolation("Cannot place a light the character does not hold");
+    }
+    // A carried light may be equipped in a hand; clear its slot first so the
+    // placed item isn't left with a phantom #equipment reference / equipped flag.
+    // Suppress the nested unequip's visibility flicker — the place as a whole is
+    // the meaningful transition, emitted once at the end against `wasLit`.
+    if (item.properties.equipped) {
+      this.#withVisibilitySuppressed(() => this.withGateSuppressed(() => this.unequip(item)));
+    }
+    this.relinquishItem(item);
+    room[ADD_LIGHT_SOURCE](item);
+    item[CLAIM](null);
+    this.#emitVisibilityIfFlipped(room, wasLit);
+  }
+
+  /**
+   * Moves a placed light source from the current room back into the character's
+   * inventory. Free action (no budget tick).
+   *
+   * @throws {@link ProceduralViolation} if the item is not in the room's light sources.
+   */
+  takeLight(item: IItem) {
+    const room = this.#currentRoom;
+    if (!room || !room.lightSources.has(item.id)) {
+      throw new ProceduralViolation("Cannot take a light that is not in the room");
+    }
+    const wasLit = room.isLit;
+    room[REMOVE_LIGHT_SOURCE](item.id);
+    this.receiveItem(item);
+    this.#emitVisibilityIfFlipped(room, wasLit);
   }
 
   effectiveStat(stat: StatType): number {
@@ -740,7 +872,9 @@ export class Character implements ICharacter {
 
     const mitigator = this.effectiveStat(MitigatorStatType[attackStat]);
     const damageMultiplier = Math.max(0, MAX_STAT - mitigator) * MITIGATION_PER_POINT;
-    const finalAttackStrength = mitigatedStrength * damageMultiplier;
+    const lightMultiplier =
+      this.lightAverse && this.#currentRoom?.isLit ? LIGHT_VULNERABILITY : 1;
+    const finalAttackStrength = mitigatedStrength * damageMultiplier * lightMultiplier;
 
     this.stats[attackStat] = this.stats[attackStat] - finalAttackStrength;
 
@@ -767,11 +901,35 @@ export class Character implements ICharacter {
    * spawned mobs (see {@link Room.placeMob} and the encounter spawn path).
    */
   [PLACE](room: IRoom) {
+    // Mob seating / test co-location: intentionally no party-facing visibility cue.
+    this.#enterRoom(room);
+  }
+
+  /**
+   * Shared room-entry body for {@link Character.move} and the {@link PLACE} seam:
+   * exits any current room and enters `room`, firing exit/enter scenes. Does NOT
+   * emit a visibility cue — the enter-cue is party-facing and belongs to the
+   * gameplay navigation path only ({@link Character.move}), not the ungated
+   * placement seam ({@link PLACE}) used to seat resident/spawned mobs.
+   */
+  #enterRoom(room: IRoom) {
     if (this.#currentRoom) {
       this.#currentRoom.exitRoom(this);
     }
     this.#currentRoom = room;
     room.enterRoom(this);
+  }
+
+  /** Emits a visibility cue if a dark room's lit state changed across a light action. */
+  #emitVisibilityIfFlipped(room: IRoom | undefined, wasLit: boolean) {
+    if (this.#suppressVisibility) return;
+    if (room && room.dark && room.isLit !== wasLit) {
+      this.campaign[EMIT_CUE]({
+        kind: "visibility",
+        room: { id: room.id, name: room.name },
+        lit: room.isLit,
+      });
+    }
   }
 
   /**
@@ -783,11 +941,14 @@ export class Character implements ICharacter {
    */
   move(room: IRoom) {
     if (!this.attemptAction(this.move, true)) return;
-    if (this.#currentRoom) {
-      this.#currentRoom.exitRoom(this);
+    this.#enterRoom(room);
+    if (!room.isLit) {
+      this.campaign[EMIT_CUE]({
+        kind: "visibility",
+        room: { id: room.id, name: room.name },
+        lit: false,
+      });
     }
-    this.#currentRoom = room;
-    room.enterRoom(this);
     this.recordAction(this.move, {
       kind: "move",
       room: { id: room.id, name: room.name },

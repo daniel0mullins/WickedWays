@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CLAIM, Item, PLACE, createKey, type IItem, type ItemId } from "../inventory";
+import { CLAIM, Item, PLACE, SET_DURABILITY, createKey, type IItem, type ItemId } from "../inventory";
 import { EquipmentSlot, SlotKind } from "../equipment";
 import type { IRoom, RoomId } from "../room";
 import { Status } from "../status";
@@ -8,6 +8,7 @@ import { ProceduralViolation } from "../util";
 
 import type { ICampaign } from "../campaign";
 import { Character } from "./character";
+import { Mob } from "./mob";
 import type { ActionHistoryEntry } from "./history";
 import { StatType, type Stats } from "./stats";
 
@@ -112,6 +113,8 @@ function makeGear(opts: {
   usable?: boolean;
   immunities?: Status[];
   grantsImmunity?: { statuses: Status[]; turns: number };
+  emitsLight?: boolean;
+  maxDurability?: number;
 }): Item {
   const noop = () => {};
   return new Item(
@@ -125,6 +128,8 @@ function makeGear(opts: {
       twoHanded: opts.twoHanded,
       immunities: opts.immunities,
       grantsImmunity: opts.grantsImmunity,
+      emitsLight: opts.emitsLight,
+      maxDurability: opts.maxDurability,
     },
     { equippable: opts.equippable ?? true, equipped: false, destroyable: true, usable: opts.usable ?? false },
     { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
@@ -146,6 +151,18 @@ function makeCharacter(opts: {
     opts.actionsPerRound,
     { rng: opts.rng },
   );
+}
+
+// Builds a Hero on a real Campaign and wires the passed array up as a cue sink
+// via the public `onCue` subscription, so every cue the character emits through
+// `campaign[EMIT_CUE]` is recorded. A real Campaign is used (rather than the
+// no-op makeCampaign stub) because its `[EMIT_CUE]` actually dispatches to
+// `onCue` handlers — mirroring the existing "action cues" tests.
+function makeCharacterWithCueSink(cues: PresentationCue[]): Character {
+  const campaign = new Campaign("Cues");
+  const hero = new Character(campaign, "Hero", makeStats());
+  campaign.onCue((cue) => cues.push(cue));
+  return hero;
 }
 
 describe("Character", () => {
@@ -202,6 +219,121 @@ describe("Character", () => {
 
       expect(character.isActionMap.get(character.addToInventory)).toBe(true);
       expect(character.isActionMap.get(character.removeFromInventory)).toBe(true);
+    });
+  });
+
+  describe("hasLight", () => {
+    it("is false with nothing equipped", () => {
+      expect(makeCharacter().hasLight).toBe(false);
+    });
+
+    it("is true with an equipped, non-broken light in a hand", () => {
+      const hero = makeCharacter();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.equip(torch, EquipmentSlot.LeftHand);
+      expect(hero.hasLight).toBe(true);
+    });
+
+    it("is false when the only light is broken", () => {
+      const hero = makeCharacter();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true, maxDurability: 1 });
+      hero.addToInventory(torch);
+      hero.equip(torch, EquipmentSlot.LeftHand);
+      torch[SET_DURABILITY](0);
+      expect(hero.hasLight).toBe(false);
+    });
+  });
+
+  describe("placeLight / takeLight", () => {
+    // Build a real authored-dark Room and co-locate the hero in it via the
+    // engine-internal [PLACE] seam, which sets currentRoom + occupancy.
+    function darkRoomWithHero() {
+      const room = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const hero = makeCharacter();
+      hero[PLACE](room);
+      return { room, hero };
+    }
+
+    it("placeLight moves a held light into the room and lights it", () => {
+      const { room, hero } = darkRoomWithHero();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.placeLight(torch);
+      expect(room.lightSources.get(torch.id)).toBe(torch);
+      expect(hero.inventory.items.some((i) => i.id === torch.id)).toBe(false);
+      expect(room.isLit).toBe(true);
+    });
+
+    it("takeLight moves a placed light back into inventory and re-darkens", () => {
+      const { room, hero } = darkRoomWithHero();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.placeLight(torch);
+      hero.takeLight(torch);
+      expect(room.lightSources.has(torch.id)).toBe(false);
+      expect(hero.inventory.items.some((i) => i.id === torch.id)).toBe(true);
+      expect(room.isLit).toBe(false);
+    });
+
+    it("placeLight unequips an equipped hand-light, leaving no phantom equipment", () => {
+      const { room, hero } = darkRoomWithHero();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.equip(torch, EquipmentSlot.LeftHand);
+      expect(hero.hasLight).toBe(true);
+
+      hero.placeLight(torch);
+
+      // Placed into the room, and fully detached from the character: no slot
+      // reference, no lingering equipped flag, no carried-light.
+      expect(room.lightSources.get(torch.id)).toBe(torch);
+      expect(hero.equipment.get(EquipmentSlot.LeftHand)).toBeUndefined();
+      expect(torch.properties.equipped).toBe(false);
+      expect(hero.hasLight).toBe(false);
+      expect(hero.inventory.items.some((i) => i.id === torch.id)).toBe(false);
+    });
+
+    it("placeLight throws for a non-light item", () => {
+      const { hero } = darkRoomWithHero();
+      const rock = makeGear({ name: "Rock", emitsLight: false });
+      hero.addToInventory(rock);
+      expect(() => hero.placeLight(rock)).toThrow(ProceduralViolation);
+    });
+
+    it("placeLight throws when the character holds no such item", () => {
+      const { hero } = darkRoomWithHero();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      expect(() => hero.placeLight(torch)).toThrow(ProceduralViolation);
+    });
+
+    it("placeLight throws when not in a room", () => {
+      const hero = makeCharacter(); // no room
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      expect(() => hero.placeLight(torch)).toThrow(ProceduralViolation);
+    });
+
+    it("takeLight throws when the light is not in the room", () => {
+      const { hero } = darkRoomWithHero();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      expect(() => hero.takeLight(torch)).toThrow(ProceduralViolation);
+    });
+
+    it("placeLight/takeLight are free actions (record no history)", () => {
+      const { hero } = darkRoomWithHero();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      const before = hero.history.length;
+      hero.placeLight(torch);
+      hero.takeLight(torch);
+      // Free: no history entries and the budget is never touched, so repeated
+      // calls never exhaust the budget or throw a budget error.
+      expect(hero.history.length).toBe(before);
+      expect(() => {
+        hero.placeLight(torch);
+        hero.takeLight(torch);
+      }).not.toThrow();
     });
   });
 
@@ -883,6 +1015,34 @@ describe("Character", () => {
       character.harvest(cache);
 
       expect(character.history.length).toBe(before);
+    });
+
+    it("throws in an unlit room when the harvester cannot see in the dark", () => {
+      const campaign = new Campaign("Materials");
+      const character = new Character(campaign, "Hero", makeStats());
+      const cache = new MaterialCache({ metal: 3 });
+      // Authored-dark room holding the cache; co-locate via the [PLACE] seam.
+      const room = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [cache], 1, [], undefined, true);
+      character[PLACE](room);
+
+      expect(room.isLit).toBe(false);
+      expect(character.seesInDark).toBe(false);
+      expect(() => character.harvest(cache)).toThrow(ProceduralViolation);
+    });
+
+    it("does not throw once the dark room is lit", () => {
+      const campaign = new Campaign("Materials");
+      const character = new Character(campaign, "Hero", makeStats());
+      const cache = new MaterialCache({ metal: 3 });
+      const room = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [cache], 1, [], undefined, true);
+      character[PLACE](room);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      character.addToInventory(torch);
+      character.placeLight(torch);
+
+      expect(room.isLit).toBe(true);
+      expect(() => character.harvest(cache)).not.toThrow();
+      expect(campaign.materials).toEqual({ metal: 3 });
     });
   });
 
@@ -1840,6 +2000,161 @@ describe("Character", () => {
       expect(seen).toContainEqual(
         expect.objectContaining({ kind: "action", action: "move", sound: "marching.ogg" }),
       );
+    });
+  });
+
+  describe("visibility cue", () => {
+    it("entering an unlit (dark) room emits { kind: 'visibility', lit: false }", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      // The party-navigation path (move) is the cue-emitting path, not the [PLACE] seam.
+      hero.move(darkRoom);
+      expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: false }));
+    });
+
+    it("entering a lit room emits no visibility cue", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const litRoom = new Room("Hall", "lit hall", [], {} as ExitsArg); // not dark => isLit true
+      hero.move(litRoom);
+      expect(cues.some((c) => c.kind === "visibility")).toBe(false);
+    });
+
+    it("[PLACE] (mob seating) into a dark room emits NO visibility cue", () => {
+      const cues: PresentationCue[] = [];
+      const actor = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      // The ungated placement seam (used to seat resident/spawned mobs) is party-silent.
+      actor[PLACE](darkRoom);
+      expect(cues.filter((c) => c.kind === "visibility").length).toBe(0);
+    });
+
+    it("entering (via move) a dark room pre-seated with a resident mob emits EXACTLY ONE lit:false cue", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      // Seat a resident mob via placeMob -> mob[PLACE](room); this must NOT emit a cue.
+      const mob = new Mob(hero.campaign, "Ghoul", makeStats(), 2, 2, []);
+      darkRoom.placeMob(mob);
+      expect(cues.filter((c) => c.kind === "visibility").length).toBe(0);
+      // The player then navigates in — exactly one (the player's) enter cue.
+      hero.move(darkRoom);
+      expect(cues.filter((c) => c.kind === "visibility").length).toBe(1);
+    });
+
+    it("entering an unlit (dark) room via move() emits { kind: 'visibility', lit: false }", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      // The real gameplay navigation path — not the [PLACE] seam — must emit the cue.
+      hero.move(darkRoom);
+      expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: false }));
+    });
+
+    it("entering a lit room via move() emits no visibility cue", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const litRoom = new Room("Hall", "lit hall", [], {} as ExitsArg); // not dark => isLit true
+      hero.move(litRoom);
+      expect(cues.some((c) => c.kind === "visibility")).toBe(false);
+    });
+
+    it("placing a light in a dark room emits { kind: 'visibility', lit: true }", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      cues.length = 0; // ignore the enter cue
+      hero.placeLight(torch);
+      expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: true }));
+    });
+
+    it("taking the only light from a dark room emits { lit: false }", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.placeLight(torch);
+      cues.length = 0;
+      hero.takeLight(torch);
+      expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: false }));
+    });
+
+    it("equipping a hand light in a dark room flips it lit", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      cues.length = 0;
+      hero.equip(torch);
+      expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: true }));
+    });
+
+    it("unequipping the only hand light in a dark room flips it dark", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.equip(torch);
+      cues.length = 0;
+      hero.unequip(torch);
+      expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: false }));
+    });
+
+    it("auto-swapping one hand light for another in a dark room emits no cue (net lit unchanged)", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const first = makeGear({ name: "Torch A", slot: SlotKind.Hand, emitsLight: true });
+      const second = makeGear({ name: "Torch B", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(first);
+      hero.addToInventory(second);
+      hero.equip(first, EquipmentSlot.LeftHand);
+      cues.length = 0;
+      // Equipping `second` into the same hand auto-swaps `first` out; the room
+      // stays lit throughout, so the transient unequip flicker must be suppressed.
+      hero.equip(second, EquipmentSlot.LeftHand);
+      expect(cues.some((c) => c.kind === "visibility")).toBe(false);
+    });
+
+    it("re-equipping an already-equipped hand light to another slot in a dark room emits no cue", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.equip(torch, EquipmentSlot.LeftHand);
+      cues.length = 0;
+      // The preliminary "free its current slot first" unequip momentarily darkens
+      // the room; that flicker is suppressed, and the net state is lit→lit.
+      hero.equip(torch, EquipmentSlot.RightHand);
+      expect(cues.some((c) => c.kind === "visibility")).toBe(false);
+    });
+
+    it("placing a hand-equipped light in a dark room emits no cue (lit before via carry, lit after via placement)", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.equip(torch); // room is already lit by the carried light
+      cues.length = 0;
+      // The internal unequip would momentarily darken the room; that flicker is
+      // suppressed, and since the net state is lit→lit, no cue is emitted.
+      hero.placeLight(torch);
+      expect(cues.some((c) => c.kind === "visibility")).toBe(false);
     });
   });
 });

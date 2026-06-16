@@ -156,6 +156,7 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
    */
   takeFromLootBox(lootBox: ILoot, item: IItem | IItem[]): IItem[] {
     if (!this.attemptAction(this.takeFromLootBox, false)) return [];
+    this.requireVisibleTarget("loot");
     this.#requireCoLocated(lootBox);
     const requested = Array.isArray(item) ? item : [item];
     const present = requested.filter((requestedItem) =>

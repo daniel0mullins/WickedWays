@@ -5,6 +5,7 @@ import { Item, createKey, PLACE, SET_ORIGIN, type IItem, type MaterialMap } from
 import { Room } from "../room";
 import { Combatant } from "./combatant";
 import { Mob } from "./mob";
+import { LIGHT_VULNERABILITY } from "./character";
 import { Status } from "../status";
 import { StatType } from "./stats";
 import type { Stats } from "./stats";
@@ -40,6 +41,7 @@ function makeMob(
     stats?: Partial<Stats>;
     rng?: () => number;
     campaign?: Campaign;
+    lightAverse?: boolean;
   } = {},
 ) {
   return new Mob(
@@ -49,7 +51,7 @@ function makeMob(
     2,
     opts.actionsPerRound ?? 2,
     opts.drops ?? [],
-    { rng: opts.rng, materialDrops: opts.materialDrops },
+    { rng: opts.rng, materialDrops: opts.materialDrops, lightAverse: opts.lightAverse },
   );
 }
 
@@ -306,6 +308,64 @@ describe("Mob", () => {
 
       expect(withPres.presentation).toBe(pres);
       expect(without.presentation).toBeUndefined();
+    });
+  });
+
+  // A Health attack is mitigated by Sanity (see MitigatorStatType); Sanity 5
+  // yields a (10 - 5) * 0.2 = 1.0 multiplier, so raw strength passes through
+  // unchanged with no armor — making the light multiplier the only variable.
+  // Health is raised to 30 so the amplified 15-point hit lands without the
+  // floor-at-0 clamp in #reconcile masking the difference.
+  describe("light-averse mob", () => {
+    it("seesInDark is true", () => {
+      expect(makeMob({ lightAverse: true }).seesInDark).toBe(true);
+    });
+
+    it("defaults to not light-averse (seesInDark false)", () => {
+      expect(makeMob().seesInDark).toBe(false);
+    });
+
+    it("takes LIGHT_VULNERABILITY-amplified damage while its room is lit", () => {
+      // non-dark room => always lit; neutral mitigation, no armor => 10 * 1.5 = 15.
+      const litRoom = new Room("Hall", "lit hall", [], {} as ExitsArg);
+      const mob = makeMob({
+        lightAverse: true,
+        stats: { [StatType.Sanity]: 5, [StatType.Health]: 30 },
+      });
+      mob[PLACE](litRoom);
+      const before = mob.stats[StatType.Health];
+
+      mob.takeDamage(10, StatType.Health);
+
+      expect(before - mob.stats[StatType.Health]).toBeCloseTo(10 * LIGHT_VULNERABILITY);
+    });
+
+    it("takes normal damage while its room is dark/unlit", () => {
+      // trailing `true` is the Room ctor's `dark` flag => unlit with no light source.
+      const darkRoom = new Room("Cave", "dark cave", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const mob = makeMob({
+        lightAverse: true,
+        stats: { [StatType.Sanity]: 5, [StatType.Health]: 30 },
+      });
+      mob[PLACE](darkRoom);
+      const before = mob.stats[StatType.Health];
+
+      mob.takeDamage(10, StatType.Health);
+
+      expect(before - mob.stats[StatType.Health]).toBeCloseTo(10);
+    });
+
+    it("a non-light-averse defender is unaffected by room lit state", () => {
+      const litRoom = new Room("Hall", "lit hall", [], {} as ExitsArg);
+      const mob = makeMob({
+        stats: { [StatType.Sanity]: 5, [StatType.Health]: 30 },
+      }); // not light-averse
+      mob[PLACE](litRoom);
+      const before = mob.stats[StatType.Health];
+
+      mob.takeDamage(10, StatType.Health);
+
+      expect(before - mob.stats[StatType.Health]).toBeCloseTo(10);
     });
   });
 

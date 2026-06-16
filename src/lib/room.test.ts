@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { CharacterId, ICharacter } from "./character/character";
+import { Character, type CharacterId, type ICharacter } from "./character/character";
+import { StatType } from "./character/stats";
+import { EquipmentSlot, SlotKind } from "./equipment";
+import { ADD_LIGHT_SOURCE, Item, REMOVE_LIGHT_SOURCE, SET_DURABILITY } from "./inventory";
 import type { ILoot, LootId } from "./loot";
 import { MaterialCache } from "./material-cache";
 import { Mob } from "./character/mob";
@@ -32,7 +35,43 @@ function makeRoom(loot: ILoot[] = [], exits: Partial<ExitsArg> = {}): Room {
   return new Room("A Dim Room", "a dim room", loot, exits as ExitsArg);
 }
 
+// Only the item's `id` and `emitsLight` flag matter to these tests; the rest of
+// the fields just satisfy the `Item` constructor.
+function makeLight(): Item {
+  const noop = () => {};
+  return new Item(
+    { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Candle", slot: SlotKind.Hand, emitsLight: true },
+    { equippable: true, equipped: false, destroyable: true, usable: false },
+    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    { onPickUp: noop },
+  );
+}
+
+function makeDarkRoom(): Room {
+  return new Room(
+    "Cellar",
+    "a pitch-black cellar",
+    [],
+    {} as ExitsArg,
+    [],          // materials
+    1,           // spawnModifier
+    [],          // mobs
+    undefined,   // presentation
+    true,        // dark
+  );
+}
+
 describe("Room", () => {
+  describe("dark", () => {
+    it("defaults to false", () => {
+      expect(makeRoom().dark).toBe(false);
+    });
+
+    it("is true when authored dark", () => {
+      expect(makeDarkRoom().dark).toBe(true);
+    });
+  });
+
   describe("constructor", () => {
     it("assigns an id and the description", () => {
       const room = makeRoom();
@@ -260,6 +299,95 @@ describe("Room", () => {
     it("defaults spawnModifier to 1", () => {
       const room = new Room("Hall", "Hall", [], {} as ExitsArg);
       expect(room.spawnModifier).toBe(1);
+    });
+  });
+
+  describe("lightSources", () => {
+    it("can be authored with light sources present", () => {
+      const candle = makeLight();
+      const room = new Room("Hall", "a hall", [], {} as ExitsArg, [], 1, [], undefined, true, [candle]);
+      expect(room.lightSources.get(candle.id)).toBe(candle);
+    });
+
+    it("is mutated only through the symbol seams", () => {
+      const room = makeRoom();
+      const candle = makeLight();
+      room[ADD_LIGHT_SOURCE](candle);
+      expect(room.lightSources.get(candle.id)).toBe(candle);
+      room[REMOVE_LIGHT_SOURCE](candle.id);
+      expect(room.lightSources.has(candle.id)).toBe(false);
+    });
+
+    it("does not expose a public setter for lightSources", () => {
+      const room = makeRoom();
+      expect(() => {
+        // @ts-expect-error lightSources is read-only
+        room.lightSources = new Map();
+      }).toThrow();
+    });
+  });
+
+  describe("isLit", () => {
+    // Helper: a Character holding an equipped, non-broken hand light.
+    function makeLitHero(): Character {
+      const hero = new Character(makeCampaign(), "Torchbearer", makeStats());
+      const noop = () => {};
+      const torch = new Item(
+        { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Torch", slot: SlotKind.Hand, emitsLight: true },
+        { equippable: true, equipped: false, destroyable: true, usable: false },
+        { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+        { onPickUp: noop },
+      );
+      hero.addToInventory(torch);
+      hero.equip(torch, EquipmentSlot.LeftHand);
+      return hero;
+    }
+
+    // Helper: a placed light that is broken (does not count toward isLit).
+    function makeBrokenLight(): Item {
+      const noop = () => {};
+      const light = new Item(
+        { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Dead Lamp", slot: SlotKind.Hand, emitsLight: true, maxDurability: 1 },
+        { equippable: true, equipped: false, destroyable: true, usable: false },
+        { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+        { onPickUp: noop },
+      );
+      light[SET_DURABILITY](0);
+      return light;
+    }
+
+    it("a non-dark room is always lit, even with nothing", () => {
+      expect(makeRoom().isLit).toBe(true);
+    });
+
+    it("a dark room with nothing is unlit", () => {
+      expect(makeDarkRoom().isLit).toBe(false);
+    });
+
+    it("a dark room lit by a placed light source is lit", () => {
+      const room = makeDarkRoom();
+      room[ADD_LIGHT_SOURCE](makeLight());
+      expect(room.isLit).toBe(true);
+    });
+
+    it("a dark room is not lit by a broken placed light source", () => {
+      const room = makeDarkRoom();
+      room[ADD_LIGHT_SOURCE](makeBrokenLight());
+      expect(room.isLit).toBe(false);
+    });
+
+    it("a dark room is lit by an occupant carrying an equipped light", () => {
+      const room = makeDarkRoom();
+      room.enterRoom(makeLitHero());
+      expect(room.isLit).toBe(true);
+    });
+
+    it("goes dark again when the carried light's holder leaves", () => {
+      const room = makeDarkRoom();
+      const hero = makeLitHero();
+      room.enterRoom(hero);
+      room.exitRoom(hero);
+      expect(room.isLit).toBe(false);
     });
   });
 });

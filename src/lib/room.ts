@@ -1,6 +1,6 @@
 import { Brand } from "./brand";
 import { CharacterId, ICharacter } from "./character/character";
-import { PLACE, SET_ORIGIN } from "./inventory";
+import { ADD_LIGHT_SOURCE, IItem, ItemId, PLACE, REMOVE_LIGHT_SOURCE, SET_ORIGIN } from "./inventory";
 import { ILoot, LootId } from "./loot";
 import type { IMaterialCache, MaterialCacheId } from "./material-cache";
 import type { IMob } from "./character/mob";
@@ -61,6 +61,14 @@ export interface IRoom {
   placeMob: (mob: IMob) => void;
   /** Optional presentation metadata (image/sound), or `undefined` if none. */
   get presentation(): Presentation | undefined;
+  /** Author-time darkness flag. A dark room conceals its contents until lit. Fixed at authoring. */
+  get dark(): boolean;
+  /** Active placed light sources resident in this room, keyed by item id. Read-only. */
+  get lightSources(): ReadonlyMap<ItemId, IItem>;
+  /** Whether the room is currently lit (always true for non-dark rooms). */
+  get isLit(): boolean;
+  [ADD_LIGHT_SOURCE](item: IItem): void;
+  [REMOVE_LIGHT_SOURCE](id: ItemId): void;
 }
 
 /**
@@ -79,6 +87,8 @@ export class Room implements IRoom {
   #occupants: Map<CharacterId, ICharacter>;
   #scenes: IScene[];
   #presentation?: Presentation;
+  #dark: boolean;
+  #lightSources: Map<ItemId, IItem>;
 
   get occupants() {
     return [...this.#occupants.values()];
@@ -86,6 +96,37 @@ export class Room implements IRoom {
 
   get presentation(): Presentation | undefined {
     return this.#presentation;
+  }
+
+  /** Author-time darkness flag. A dark room conceals its contents until lit. Fixed at authoring. */
+  get dark(): boolean {
+    return this.#dark;
+  }
+
+  /** Active placed light sources resident in this room, keyed by item id. Read-only. */
+  get lightSources(): ReadonlyMap<ItemId, IItem> {
+    return this.#lightSources;
+  }
+
+  /**
+   * Whether the room is currently lit. A non-dark room is always lit. A dark room
+   * is lit iff it holds a non-broken placed light source, or an occupant carries
+   * an equipped, non-broken light.
+   */
+  get isLit(): boolean {
+    if (!this.#dark) return true;
+    for (const light of this.#lightSources.values()) {
+      if (!light.isBroken) return true;
+    }
+    return this.occupants.some((occupant) => occupant.hasLight);
+  }
+
+  [ADD_LIGHT_SOURCE](item: IItem) {
+    this.#lightSources.set(item.id, item);
+  }
+
+  [REMOVE_LIGHT_SOURCE](id: ItemId) {
+    this.#lightSources.delete(id);
   }
 
   /**
@@ -105,6 +146,9 @@ export class Room implements IRoom {
    * @param materials - Material caches initially present in the room.
    * @param spawnModifier - Multiplier on the campaign's base encounter chance (default 1; 0 = never spawns).
    * @param mobs - Resident mobs seated immediately via {@link Room.placeMob} (origin `"room"`).
+   * @param presentation - Optional presentation metadata (image/sound).
+   * @param dark - Author-time darkness flag (default `false`); a dark room conceals its contents until lit.
+   * @param lightSources - Light sources initially present in the room (keyed by item id).
    */
   constructor(
     name: string,
@@ -115,6 +159,8 @@ export class Room implements IRoom {
     spawnModifier: number = 1,
     mobs: IMob[] = [],
     presentation?: Presentation,
+    dark: boolean = false,
+    lightSources: IItem[] = [],
   ) {
     this.id = generateId<RoomId>();
     this.name = name;
@@ -137,8 +183,14 @@ export class Room implements IRoom {
       this.exits.set(direction as Direction, room);
     }
 
+    this.#lightSources = new Map<ItemId, IItem>();
+    for (const light of lightSources) {
+      this.#lightSources.set(light.id, light);
+    }
+
     this.spawnModifier = spawnModifier;
     this.#presentation = presentation;
+    this.#dark = dark;
 
     for (const mob of mobs) {
       this.placeMob(mob);
