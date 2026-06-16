@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { CharacterId, ICharacter } from "./character/character";
+import { Character, type CharacterId, type ICharacter } from "./character/character";
 import { StatType } from "./character/stats";
-import { SlotKind } from "./equipment";
-import { ADD_LIGHT_SOURCE, Item, REMOVE_LIGHT_SOURCE } from "./inventory";
+import { EquipmentSlot, SlotKind } from "./equipment";
+import { ADD_LIGHT_SOURCE, Item, REMOVE_LIGHT_SOURCE, SET_DURABILITY } from "./inventory";
 import type { ILoot, LootId } from "./loot";
 import { MaterialCache } from "./material-cache";
 import { Mob } from "./character/mob";
@@ -324,6 +324,70 @@ describe("Room", () => {
         // @ts-expect-error lightSources is read-only
         room.lightSources = new Map();
       }).toThrow();
+    });
+  });
+
+  describe("isLit", () => {
+    // Helper: a Character holding an equipped, non-broken hand light.
+    function makeLitHero(): Character {
+      const hero = new Character(makeCampaign(), "Torchbearer", makeStats());
+      const noop = () => {};
+      const torch = new Item(
+        { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Torch", slot: SlotKind.Hand, emitsLight: true },
+        { equippable: true, equipped: false, destroyable: true, usable: false },
+        { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+        { onPickUp: noop },
+      );
+      hero.addToInventory(torch);
+      hero.equip(torch, EquipmentSlot.LeftHand);
+      return hero;
+    }
+
+    // Helper: a placed light that is broken (does not count toward isLit).
+    function makeBrokenLight(): Item {
+      const noop = () => {};
+      const light = new Item(
+        { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Dead Lamp", slot: SlotKind.Hand, emitsLight: true, maxDurability: 1 },
+        { equippable: true, equipped: false, destroyable: true, usable: false },
+        { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+        { onPickUp: noop },
+      );
+      light[SET_DURABILITY](0);
+      return light;
+    }
+
+    it("a non-dark room is always lit, even with nothing", () => {
+      expect(makeRoom().isLit).toBe(true);
+    });
+
+    it("a dark room with nothing is unlit", () => {
+      expect(makeDarkRoom().isLit).toBe(false);
+    });
+
+    it("a dark room lit by a placed light source is lit", () => {
+      const room = makeDarkRoom();
+      room[ADD_LIGHT_SOURCE](makeLight());
+      expect(room.isLit).toBe(true);
+    });
+
+    it("a dark room is not lit by a broken placed light source", () => {
+      const room = makeDarkRoom();
+      room[ADD_LIGHT_SOURCE](makeBrokenLight());
+      expect(room.isLit).toBe(false);
+    });
+
+    it("a dark room is lit by an occupant carrying an equipped light", () => {
+      const room = makeDarkRoom();
+      room.enterRoom(makeLitHero());
+      expect(room.isLit).toBe(true);
+    });
+
+    it("goes dark again when the carried light's holder leaves", () => {
+      const room = makeDarkRoom();
+      const hero = makeLitHero();
+      room.enterRoom(hero);
+      room.exitRoom(hero);
+      expect(room.isLit).toBe(false);
     });
   });
 });

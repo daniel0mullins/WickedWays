@@ -65,6 +65,8 @@ export interface IRoom {
   get dark(): boolean;
   /** Active placed light sources resident in this room, keyed by item id. Read-only. */
   get lightSources(): ReadonlyMap<ItemId, IItem>;
+  /** Whether the room is currently lit (always true for non-dark rooms). */
+  get isLit(): boolean;
   [ADD_LIGHT_SOURCE](item: IItem): void;
   [REMOVE_LIGHT_SOURCE](id: ItemId): void;
 }
@@ -104,6 +106,19 @@ export class Room implements IRoom {
   /** Active placed light sources resident in this room, keyed by item id. Read-only. */
   get lightSources(): ReadonlyMap<ItemId, IItem> {
     return this.#lightSources;
+  }
+
+  /**
+   * Whether the room is currently lit. A non-dark room is always lit. A dark room
+   * is lit iff it holds a non-broken placed light source, or an occupant carries
+   * an equipped, non-broken light.
+   */
+  get isLit(): boolean {
+    if (!this.#dark) return true;
+    for (const light of this.#lightSources.values()) {
+      if (!light.isBroken) return true;
+    }
+    return this.occupants.some((occupant) => occupant.hasLight);
   }
 
   [ADD_LIGHT_SOURCE](item: IItem) {
