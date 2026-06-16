@@ -147,6 +147,111 @@ describe("buildMap", () => {
     });
   });
 
+  describe("requiredConnections", () => {
+    function directionBetween(a: IRoom, b: IRoom): string | undefined {
+      for (const [dir, dest] of a.exits.entries()) {
+        if (dest === b) return dir;
+      }
+      return undefined;
+    }
+
+    it("makes a required pair directly adjacent on opposite directions", () => {
+      const rooms = makeRooms(12);
+      const [a, b] = [rooms[0]!, rooms[7]!];
+
+      buildMap(rooms, { rng: makeRng(42), requiredConnections: [[a, b]] });
+
+      const dir = directionBetween(a, b);
+      expect(dir).toBeDefined();
+      expect(b.exits.get(OPPOSITE[dir!]! as keyof ExitsArg)).toBe(a);
+    });
+
+    it("honors multiple required pairs at once", () => {
+      const rooms = makeRooms(12);
+      const pairs: [IRoom, IRoom][] = [
+        [rooms[0]!, rooms[1]!],
+        [rooms[2]!, rooms[3]!],
+        [rooms[4]!, rooms[5]!],
+      ];
+
+      buildMap(rooms, { rng: makeRng(7), requiredConnections: pairs });
+
+      for (const [a, b] of pairs) {
+        expect([...a.exits.values()]).toContain(b);
+        expect([...b.exits.values()]).toContain(a);
+      }
+    });
+
+    it("keeps every room reachable with required edges present", () => {
+      const rooms = makeRooms(12);
+
+      buildMap(rooms, {
+        rng: makeRng(3),
+        requiredConnections: [
+          [rooms[0]!, rooms[11]!],
+          [rooms[5]!, rooms[6]!],
+        ],
+      });
+
+      expect(reachableCount(rooms[0]!)).toBe(12);
+    });
+
+    it("skips a self-pair without throwing and still builds the map", () => {
+      const rooms = makeRooms(12);
+
+      expect(() =>
+        buildMap(rooms, {
+          rng: makeRng(9),
+          requiredConnections: [[rooms[0]!, rooms[0]!]],
+        }),
+      ).not.toThrow();
+
+      expect([...rooms[0]!.exits.values()]).not.toContain(rooms[0]!);
+      expect(reachableCount(rooms[0]!)).toBe(12);
+    });
+
+    it("skips required edges beyond a room's 8-direction capacity", () => {
+      // 10 partners all required-adjacent to one hub: at most 8 can attach.
+      const rooms = makeRooms(11);
+      const hub = rooms[0]!;
+      const pairs = rooms.slice(1).map((r) => [hub, r] as [IRoom, IRoom]);
+
+      buildMap(rooms, { rng: makeRng(11), requiredConnections: pairs });
+
+      expect(hub.exits.size).toBeLessThanOrEqual(8);
+      expect(reachableCount(rooms[0]!)).toBe(11);
+    });
+
+    it("coexists with extraConnections", () => {
+      const rooms = makeRooms(12);
+
+      buildMap(rooms, {
+        rng: makeRng(5),
+        requiredConnections: [[rooms[0]!, rooms[1]!]],
+        extraConnections: 3,
+      });
+
+      expect([...rooms[0]!.exits.values()]).toContain(rooms[1]!);
+      expect(reachableCount(rooms[0]!)).toBe(12);
+      for (const room of rooms) {
+        expect(room.exits.size).toBeLessThanOrEqual(8);
+      }
+    });
+
+    it("is deterministic for the same seed and required pairs", () => {
+      const build = () => {
+        const rooms = makeRooms(15);
+        return buildMap(rooms, {
+          rng: makeRng(42),
+          requiredConnections: [[rooms[0]!, rooms[9]!]],
+          extraConnections: 2,
+        });
+      };
+
+      expect(exitSignature(build())).toBe(exitSignature(build()));
+    });
+  });
+
   describe("determinism", () => {
     it("produces identical structure for the same seed", () => {
       const first = buildMap(makeRooms(15), {

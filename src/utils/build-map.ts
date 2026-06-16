@@ -26,16 +26,27 @@ export interface BuildMapOptions {
    * Delivery is best-effort; fewer edges are added if the graph is saturated.
    */
   extraConnections?: number;
+  /**
+   * Pairs of rooms that must share a direct exit. Laid down before the
+   * spanning tree so they're (almost) always honored. Best-effort: a pair is
+   * skipped if it can't be placed (same room, already adjacent, or no free
+   * direction left on either room). Order within a pair is irrelevant; exits
+   * are bidirectional.
+   */
+  requiredConnections?: [IRoom, IRoom][];
 }
 
 /**
  * Connects a set of rooms into a navigable map in place.
  *
- * First lays down a random spanning tree so every room is reachable, then adds
- * up to {@link BuildMapOptions.extraConnections} loop/shortcut edges. Each
+ * First lays down any {@link BuildMapOptions.requiredConnections} as direct
+ * adjacencies, then a random spanning tree so every room is reachable, then up
+ * to {@link BuildMapOptions.extraConnections} loop/shortcut edges. Each
  * connection is bidirectional, using opposite compass directions, and respects
- * the eight available directions per room. The same `rooms` array is returned
- * (mutated); a single room or empty array is returned untouched.
+ * the eight available directions per room. Required connections are best-effort:
+ * an impossible pair (same room, already adjacent, or no free direction) is
+ * skipped. The same `rooms` array is returned (mutated); a single room or empty
+ * array is returned untouched.
  *
  * @param rooms - The rooms to wire together; their `exits` are mutated.
  * @param options - Randomness source and extra-edge configuration.
@@ -45,23 +56,77 @@ export function buildMap(
   rooms: IRoom[],
   options: BuildMapOptions = {},
 ): IRoom[] {
-  const { rng = Math.random, extraConnections = 0 } = options;
+  const {
+    rng = Math.random,
+    extraConnections = 0,
+    requiredConnections = [],
+  } = options;
 
   if (rooms.length <= 1) {
     return rooms;
   }
 
-  const order = shuffle(rooms, rng);
-  const connected: IRoom[] = [order[0]!];
+  // Phase 1: honor required adjacencies first, before the tree and extras
+  // compete for direction slots. connect() is best-effort: it returns false
+  // for same-room, already-adjacent, or saturated pairs, which we skip.
+  for (const [a, b] of requiredConnections) {
+    connect(a, b, rng);
+  }
 
-  for (let i = 1; i < order.length; i++) {
-    const room = order[i]!;
-    // A spanning tree always has a connected room with a free slot (leaves have
-    // degree 1), so this list is never empty during tree construction.
+  // Phase 2: spanning tree over the components the required edges created.
+  // Union-find tracks which rooms are already mutually reachable so we only
+  // add the filler edges needed to merge everything into one component.
+  const parent = new Map<IRoom, IRoom>();
+  const find = (room: IRoom): IRoom => {
+    let root = room;
+    while (parent.get(root) !== root) {
+      root = parent.get(root)!;
+    }
+    let cursor = room;
+    while (parent.get(cursor) !== root) {
+      const next = parent.get(cursor)!;
+      parent.set(cursor, root);
+      cursor = next;
+    }
+    return root;
+  };
+  const union = (a: IRoom, b: IRoom): void => {
+    parent.set(find(a), find(b));
+  };
+
+  for (const room of rooms) {
+    parent.set(room, room);
+  }
+  for (const room of rooms) {
+    for (const neighbor of room.exits.values()) {
+      union(room, neighbor);
+    }
+  }
+
+  const order = shuffle(rooms, rng);
+  const anchor = order[0]!;
+  const connected: IRoom[] = order.filter((r) => find(r) === find(anchor));
+
+  for (const room of order) {
+    if (find(room) === find(anchor)) {
+      continue;
+    }
     const candidates = connected.filter((r) => freeDirections(r).length > 0);
+    // Only empty if every room already in the main component is saturated,
+    // which requires pathologically dense requiredConnections. Best-effort:
+    // skip rather than throw (the straggler stays unreachable).
+    if (candidates.length === 0) {
+      continue;
+    }
     const target = candidates[Math.floor(rng() * candidates.length)]!;
-    connect(target, room, rng);
-    connected.push(room);
+    if (connect(target, room, rng)) {
+      union(target, room);
+      for (const r of order) {
+        if (find(r) === find(anchor) && !connected.includes(r)) {
+          connected.push(r);
+        }
+      }
+    }
   }
 
   const extra = resolveExtraConnections(extraConnections, rooms.length);
