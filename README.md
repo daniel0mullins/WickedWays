@@ -85,6 +85,37 @@ shape as the existing GM-membership requirement.
 - A `Scene` runs its `script(room)` only when the trigger phase (`"enter"` / `"exit"`) matches
   **and** all of its `preconditions` pass — preconditions short-circuit on the first failure.
 
+### Darkness & light
+
+- A [`Room`](src/lib/room.ts) can be authored **dark** (the trailing `dark` constructor flag,
+  fixed at authoring; non-dark rooms are always lit). A dark room conceals its contents until lit,
+  but its **exits stay visible** — navigation always works, so a party is never trapped by the
+  dark.
+- A **light source** is any [`Item`](src/lib/inventory.ts) with `emitsLight`. A light is active
+  either **carried** (equipped in a hand by an occupant) or **placed** in the room
+  (`Room.lightSources`, managed through the `ADD_LIGHT_SOURCE` / `REMOVE_LIGHT_SOURCE` seams).
+  Lights are **persistent** — there is no fuel or burn-down; a placed light keeps a room lit
+  regardless of occupancy.
+- `Character.placeLight(item)` moves a held light into the room; `takeLight(item)` returns a placed
+  light to inventory. Both are **free** actions (no budget tick, no history). `Room.isLit` is
+  derived, not stored: a non-dark room is always lit; a dark room is lit iff it holds a non-broken
+  placed light **or** an occupant carries an equipped, non-broken light.
+- **The targeting gate.** In an unlit room, `attack`, `takeFromLootBox` (looting), and `harvest`
+  throw [`ProceduralViolation`](src/lib/util.ts) (via `requireVisibleTarget`) — you can't hit, loot,
+  or mine what you can't see — *unless* the actor `seesInDark`. Movement and the light actions
+  themselves are **never** gated, and `openLootBox` (merely viewing contents) is **not** gated:
+  concealment of the description / occupant / loot lists is a **renderer** concern driven by the
+  `visibility` cue, while the underlying data model stays fully intact.
+- **Light-averse mobs** (`lightAverse`) thrive in darkness: their `seesInDark` is true (so the gate
+  never blocks them, even in the pitch dark), but they take `LIGHT_VULNERABILITY` (×1.5) amplified
+  damage while their room is lit. Lighting a dark room therefore both *enables* the party to target
+  the mob and *punishes* the mob for being in the light.
+- A `visibility` presentation cue (`{ room, lit }`) fires when a character enters an unlit room, and
+  when a light action flips a dark room's lit state. See **Presentation assets & cues** below.
+- **Non-goals:** no torch fuel or burn-down (lights are permanent); exits are never hidden; there is
+  no player-side darkvision (only `lightAverse` mobs see in the dark); and darkness does not affect
+  encounter spawn rates.
+
 ### Presentation assets & cues
 
 The engine is pure logic, but it carries optional hooks for a host renderer/audio layer

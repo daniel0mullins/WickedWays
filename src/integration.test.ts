@@ -1,16 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import { Campaign } from "./lib/campaign";
-import { HELD_BY, Item } from "./lib/inventory";
+import { HELD_BY, Item, PLACE } from "./lib/inventory";
 import { Loot } from "./lib/loot";
 import { Room } from "./lib/room";
 import { Scene } from "./lib/scene";
 import { ProceduralViolation } from "./lib/util";
-import { Character } from "./lib/character/character";
+import { Character, LIGHT_VULNERABILITY } from "./lib/character/character";
 import { Mob } from "./lib/character/mob";
 import { NonPlayerCharacter } from "./lib/character/non-player-character";
 import { PlayerCharacter } from "./lib/character/player-character";
 import { StatType } from "./lib/character/stats";
+import { SlotKind } from "./lib/equipment";
 import { buildMap } from "./utils/build-map";
 import { assignNeutralArchetype, type ExitsArg, makeRng, makeStats } from "./test-utils";
 import type { ArchetypeId } from "./lib/archetype";
@@ -26,6 +27,32 @@ function makeWeapon(modifier = 3): Item {
       recipe: { metal: 1 },
       modifier,
       stat: StatType.Health,
+    },
+    { equippable: true, equipped: false, destroyable: false, usable: false },
+    {
+      pickUp: () => {},
+      equip: () => {},
+      unequip: () => {},
+      transfer: () => {},
+      use: () => {},
+      destroy: () => null,
+    },
+    { onPickUp: () => {} },
+  );
+}
+
+// A real hand-held light source: an emitsLight Item that can be carried,
+// equipped, or placed in a room.
+function makeLight(name = "Candle"): Item {
+  return new Item(
+    {
+      name,
+      type: "weapon",
+      recipe: { metal: 1 },
+      modifier: 0,
+      stat: StatType.Health,
+      slot: SlotKind.Hand,
+      emitsLight: true,
     },
     { equippable: true, equipped: false, destroyable: false, usable: false },
     {
@@ -252,5 +279,131 @@ describe("Campaign integration", () => {
     expect(cues).toContainEqual(expect.objectContaining({ kind: "action", action: "move", sound: "marching.ogg" }));
     expect(cues).toContainEqual(expect.objectContaining({ kind: "encounter", mob: expect.objectContaining({ name: "Hobgoblin" }), sound: "growl.ogg" }));
     expect(cues).toContainEqual(expect.objectContaining({ kind: "action", action: "pickUp", sound: "coins.ogg" }));
+  });
+});
+
+// End-to-end proof of the darkness mechanic: a dark room conceals its contents
+// so a player can't target the resident mob or loot, but the light-averse mob —
+// which sees in the dark — can attack freely. Lighting the room flips the gate
+// open and makes the light-averse mob take amplified damage.
+//
+// Mitigation is held neutral so the light multiplier is the only variable: a
+// Health attack is mitigated by Sanity, and Sanity 5 yields a (10 - 5) * 0.2 = 1.0
+// multiplier, so raw strength passes through unchanged with no armor. Mob Health
+// is raised to 30 so the amplified hit lands without the floor-at-0 clamp.
+describe("darkness mechanic", () => {
+  function darknessSetup() {
+    const campaign = new Campaign("Wicked Ways");
+    // Sanity 5 so the mob's 1-point unarmed Health attack lands (x1 mitigation).
+    const hero = new PlayerCharacter(campaign, "Hero", makeStats({ [StatType.Sanity]: 5 }));
+    hero.joinCampaign();
+    campaign.gm = hero;
+
+    // The resident, light-averse mob: high Health to survive, Sanity 5 for
+    // neutral (x1) mitigation of an incoming Health attack.
+    const lurker = new Mob(
+      campaign,
+      "Lurker",
+      makeStats({ [StatType.Sanity]: 5, [StatType.Health]: 30 }),
+      2,
+      2,
+      [],
+      { lightAverse: true },
+    );
+
+    const sword = makeWeapon();
+    const chest = new Loot("buried cache", [sword]);
+
+    // Author-time DARK room (trailing `dark = true`) holding the mob and the box.
+    const crypt = new Room(
+      "Black Crypt",
+      "A lightless crypt",
+      [chest],
+      {} as ExitsArg,
+      [],
+      1,
+      [lurker],
+      undefined,
+      true,
+    );
+
+    assignNeutralArchetype(campaign, hero);
+    campaign.beginCampaign();
+
+    const cues: PresentationCue[] = [];
+    campaign.onCue((cue) => cues.push(cue));
+
+    return { campaign, hero, lurker, sword, chest, crypt, cues };
+  }
+
+  it("conceals targets in the dark, then lighting it opens the gate and amplifies damage", () => {
+    const { hero, lurker, sword, chest, crypt, cues } = darknessSetup();
+
+    // 1) The hero enters the dark room. The enter path emits a "not lit" cue.
+    hero[PLACE](crypt);
+    expect(crypt.isLit).toBe(false);
+    expect(cues).toContainEqual(
+      expect.objectContaining({ kind: "visibility", lit: false }),
+    );
+
+    hero.startTurn();
+
+    // 2) While unlit, the hero cannot loot or attack — both are gated.
+    expect(() => hero.takeFromLootBox(chest, sword)).toThrow(ProceduralViolation);
+    expect(() => hero.attack(lurker)).toThrow(ProceduralViolation);
+
+    // 3) The light-averse mob sees in the dark, so its attack lands and hurts.
+    expect(lurker.seesInDark).toBe(true);
+    const heroHealthBefore = hero.stats[StatType.Health];
+    lurker.startTurn();
+    expect(() => lurker.attack(hero)).not.toThrow();
+    expect(hero.stats[StatType.Health]).toBeLessThan(heroHealthBefore);
+
+    // 4) The hero lights the room by placing a candle. The flip emits a "lit" cue.
+    const candle = makeLight();
+    hero.receiveItem(candle);
+    cues.length = 0; // ignore everything up to the deliberate flip
+    hero.placeLight(candle);
+    expect(crypt.isLit).toBe(true);
+    expect(cues).toContainEqual(
+      expect.objectContaining({ kind: "visibility", lit: true }),
+    );
+
+    // 5) While lit, the hero CAN now attack the mob — the gate is open.
+    const mobHealthBefore = lurker.stats[StatType.Health];
+    hero.startTurn();
+    expect(() => hero.attack(lurker)).not.toThrow();
+    const litDamage = mobHealthBefore - lurker.stats[StatType.Health];
+
+    // 6) The damage is LIGHT_VULNERABILITY-amplified. Baseline: the same raw
+    //    1-point unarmed Health attack against an identical light-averse mob in
+    //    a dark room (computed directly, since the hero can't attack in the dark).
+    const darkRoom = new Room(
+      "Shadow Hollow",
+      "A lightless hollow",
+      [],
+      {} as ExitsArg,
+      [],
+      1,
+      [],
+      undefined,
+      true,
+    );
+    const baseline = new Mob(
+      lurker.campaign,
+      "Lurker",
+      makeStats({ [StatType.Sanity]: 5, [StatType.Health]: 30 }),
+      2,
+      2,
+      [],
+      { lightAverse: true },
+    );
+    baseline[PLACE](darkRoom);
+    const baselineBefore = baseline.stats[StatType.Health];
+    baseline.takeDamage(1, StatType.Health); // raw strength the unarmed attack deals
+    const darkDamage = baselineBefore - baseline.stats[StatType.Health];
+
+    expect(darkDamage).toBeCloseTo(1);
+    expect(litDamage).toBeCloseTo(darkDamage * LIGHT_VULNERABILITY);
   });
 });
