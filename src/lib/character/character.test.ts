@@ -263,6 +263,24 @@ describe("Character", () => {
       expect(room.isLit).toBe(false);
     });
 
+    it("placeLight unequips an equipped hand-light, leaving no phantom equipment", () => {
+      const { room, hero } = darkRoomWithHero();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.equip(torch, EquipmentSlot.LeftHand);
+      expect(hero.hasLight).toBe(true);
+
+      hero.placeLight(torch);
+
+      // Placed into the room, and fully detached from the character: no slot
+      // reference, no lingering equipped flag, no carried-light.
+      expect(room.lightSources.get(torch.id)).toBe(torch);
+      expect(hero.equipment.get(EquipmentSlot.LeftHand)).toBeUndefined();
+      expect(torch.properties.equipped).toBe(false);
+      expect(hero.hasLight).toBe(false);
+      expect(hero.inventory.items.some((i) => i.id === torch.id)).toBe(false);
+    });
+
     it("placeLight throws for a non-light item", () => {
       const { hero } = darkRoomWithHero();
       const rock = makeGear({ name: "Rock", emitsLight: false });

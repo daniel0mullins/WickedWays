@@ -715,10 +715,11 @@ export class Character implements ICharacter {
 
   /**
    * Moves an emitsLight item the character holds into the current room's light
-   * sources, where it stays lit regardless of occupancy. Free action (no budget tick).
+   * sources, where it stays lit regardless of occupancy. If the light was equipped
+   * in a hand it is unequipped first (clearing its slot). Free action (no budget tick).
    *
-   * @throws {@link ProceduralViolation} if the item is not an emitsLight item the
-   *   character holds, or the character is not in a room.
+   * @throws {@link ProceduralViolation} if the character is not in a room, the item
+   *   is not an emitsLight item, or the character does not hold it.
    */
   placeLight(item: IItem) {
     const room = this.#currentRoom;
@@ -730,6 +731,11 @@ export class Character implements ICharacter {
     }
     if (!this.#inventory.items.some((i) => i.id === item.id)) {
       throw new ProceduralViolation("Cannot place a light the character does not hold");
+    }
+    // A carried light may be equipped in a hand; clear its slot first so the
+    // placed item isn't left with a phantom #equipment reference / equipped flag.
+    if (item.properties.equipped) {
+      this.withGateSuppressed(() => this.unequip(item));
     }
     this.relinquishItem(item);
     room[ADD_LIGHT_SOURCE](item);
