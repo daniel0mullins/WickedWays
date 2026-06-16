@@ -9,3 +9,6 @@ vendor
 composer.*
 .vscode
 .claude/
+docs-site/.vitepress/dist/
+docs-site/.vitepress/cache/
+docs-site/api/

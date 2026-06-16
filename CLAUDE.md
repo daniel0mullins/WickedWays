@@ -18,6 +18,8 @@ npm test              # vitest run (whole suite, once)
 npm run typecheck     # tsc --noEmit
 npm run lint:fix      # eslint --fix
 npm run build         # compile to dist/ via tsconfig.build.json (excludes *.test.ts + test-utils)
+npm run docs:dev      # VitePress docs site with hot reload (docs-site/)
+npm run docs:build    # build the docs site (runs TypeDoc, then VitePress)
 ```
 
 Run a **single test file** or filter by name:
@@ -38,6 +40,10 @@ directory plus `vendor/`, `composer.json`, and `composer.lock` are a separate **
 landing page** (Slim + Mailchimp subscribe form) — they are not part of the engine, not built by
 `npm run build`, and unaffected by the TS tooling. `src/index.ts` is intentionally empty: there is
 no barrel export, so consumers import directly from `src/lib/...`.
+
+The `docs-site/` directory is the VitePress documentation site (prose guide +
+TypeDoc API reference) published to GitHub Pages; like `landing/`, it is separate
+from the engine and not built by `npm run build`.
 
 ## Conventions that affect edits
 
