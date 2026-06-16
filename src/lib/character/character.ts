@@ -212,7 +212,7 @@ export class Character implements ICharacter {
     return false;
   }
 
-  /** Whether this actor takes amplified damage while its room is lit. Default false; light-averse mobs override. */
+  /** Whether this actor takes amplified damage while its room is lit. Default false; light-averse subclasses override. */
   protected get lightAverse(): boolean {
     return false;
   }

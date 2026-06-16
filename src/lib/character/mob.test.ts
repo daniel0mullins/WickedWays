@@ -341,6 +341,7 @@ describe("Mob", () => {
     });
 
     it("takes normal damage while its room is dark/unlit", () => {
+      // trailing `true` is the Room ctor's `dark` flag => unlit with no light source.
       const darkRoom = new Room("Cave", "dark cave", [], {} as ExitsArg, [], 1, [], undefined, true);
       const mob = makeMob({
         lightAverse: true,
