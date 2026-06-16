@@ -1,6 +1,6 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, MaterialMap, PLACE, SET_DURABILITY, UNEQUIP } from "../inventory";
+import { ADD_LIGHT_SOURCE, CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, MaterialMap, PLACE, REMOVE_LIGHT_SOURCE, SET_DURABILITY, UNEQUIP } from "../inventory";
 import {
   DEFAULT_EQUIPMENT_SLOTS,
   EquipmentSlot,
@@ -98,6 +98,10 @@ export interface ICharacter extends IItemHolder {
   transferKey: (key: IItem, recipient: ICharacter) => void;
   /** Harvests a co-located material cache into the party pool (free; idempotent). */
   harvest: (cache: IMaterialCache) => void;
+  /** Moves a held emitsLight item into the current room's light sources (free). */
+  placeLight: (item: IItem) => void;
+  /** Moves a placed light source from the current room back into inventory (free). */
+  takeLight: (item: IItem) => void;
   /** Spends a key, removing it from the keyring. The sanctioned "story consumed this key" path. */
   consumeKey: (key: IItem) => void;
   /** Logs an action to history and advances the turn if the budget is spent. */
@@ -707,6 +711,44 @@ export class Character implements ICharacter {
       );
     }
     this.campaign[DEPOSIT_MATERIALS](cache[DEPLETE]());
+  }
+
+  /**
+   * Moves an emitsLight item the character holds into the current room's light
+   * sources, where it stays lit regardless of occupancy. Free action (no budget tick).
+   *
+   * @throws {@link ProceduralViolation} if the item is not an emitsLight item the
+   *   character holds, or the character is not in a room.
+   */
+  placeLight(item: IItem) {
+    const room = this.#currentRoom;
+    if (!room) {
+      throw new ProceduralViolation("Cannot place a light while not in a room");
+    }
+    if (!item.emitsLight) {
+      throw new ProceduralViolation("Cannot place a non-light item as a light source");
+    }
+    if (!this.#inventory.items.some((i) => i.id === item.id)) {
+      throw new ProceduralViolation("Cannot place a light the character does not hold");
+    }
+    this.relinquishItem(item);
+    room[ADD_LIGHT_SOURCE](item);
+    item[CLAIM](null);
+  }
+
+  /**
+   * Moves a placed light source from the current room back into the character's
+   * inventory. Free action (no budget tick).
+   *
+   * @throws {@link ProceduralViolation} if the item is not in the room's light sources.
+   */
+  takeLight(item: IItem) {
+    const room = this.#currentRoom;
+    if (!room || !room.lightSources.has(item.id)) {
+      throw new ProceduralViolation("Cannot take a light that is not in the room");
+    }
+    room[REMOVE_LIGHT_SOURCE](item.id);
+    this.receiveItem(item);
   }
 
   effectiveStat(stat: StatType): number {

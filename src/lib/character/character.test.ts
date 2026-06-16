@@ -232,6 +232,80 @@ describe("Character", () => {
     });
   });
 
+  describe("placeLight / takeLight", () => {
+    // Build a real authored-dark Room and co-locate the hero in it via the
+    // engine-internal [PLACE] seam, which sets currentRoom + occupancy.
+    function darkRoomWithHero() {
+      const room = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const hero = makeCharacter();
+      hero[PLACE](room);
+      return { room, hero };
+    }
+
+    it("placeLight moves a held light into the room and lights it", () => {
+      const { room, hero } = darkRoomWithHero();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.placeLight(torch);
+      expect(room.lightSources.get(torch.id)).toBe(torch);
+      expect(hero.inventory.items.some((i) => i.id === torch.id)).toBe(false);
+      expect(room.isLit).toBe(true);
+    });
+
+    it("takeLight moves a placed light back into inventory and re-darkens", () => {
+      const { room, hero } = darkRoomWithHero();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.placeLight(torch);
+      hero.takeLight(torch);
+      expect(room.lightSources.has(torch.id)).toBe(false);
+      expect(hero.inventory.items.some((i) => i.id === torch.id)).toBe(true);
+      expect(room.isLit).toBe(false);
+    });
+
+    it("placeLight throws for a non-light item", () => {
+      const { hero } = darkRoomWithHero();
+      const rock = makeGear({ name: "Rock", emitsLight: false });
+      hero.addToInventory(rock);
+      expect(() => hero.placeLight(rock)).toThrow(ProceduralViolation);
+    });
+
+    it("placeLight throws when the character holds no such item", () => {
+      const { hero } = darkRoomWithHero();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      expect(() => hero.placeLight(torch)).toThrow(ProceduralViolation);
+    });
+
+    it("placeLight throws when not in a room", () => {
+      const hero = makeCharacter(); // no room
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      expect(() => hero.placeLight(torch)).toThrow(ProceduralViolation);
+    });
+
+    it("takeLight throws when the light is not in the room", () => {
+      const { hero } = darkRoomWithHero();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      expect(() => hero.takeLight(torch)).toThrow(ProceduralViolation);
+    });
+
+    it("placeLight/takeLight are free actions (record no history)", () => {
+      const { hero } = darkRoomWithHero();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      const before = hero.history.length;
+      hero.placeLight(torch);
+      hero.takeLight(torch);
+      // Free: no history entries and the budget is never touched, so repeated
+      // calls never exhaust the budget or throw a budget error.
+      expect(hero.history.length).toBe(before);
+      expect(() => {
+        hero.placeLight(torch);
+        hero.takeLight(torch);
+      }).not.toThrow();
+    });
+  });
+
   describe("addToInventory", () => {
     it("adds a single item and notifies the item it was picked up", () => {
       const character = makeCharacter();
