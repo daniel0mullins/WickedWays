@@ -336,6 +336,22 @@ export class Character implements ICharacter {
     }
   }
 
+  /**
+   * Runs `fn` with visibility-cue emission suppressed, so a composite light
+   * action (e.g. an `equip` auto-swap, or `placeLight`'s internal unequip) does
+   * not emit the transient lit-state flickers of its inner steps. The composite
+   * emits its own net flip once, after `fn` completes.
+   */
+  #withVisibilitySuppressed<T>(fn: () => T): T {
+    const prev = this.#suppressVisibility;
+    this.#suppressVisibility = true;
+    try {
+      return fn();
+    } finally {
+      this.#suppressVisibility = prev;
+    }
+  }
+
   /** Runs `fn` with `sound` as the cue-sound override for any action it records. */
   protected withCueSound<T>(sound: AssetRef | undefined, fn: () => T): T {
     const prev = this.#cueSoundOverride;
@@ -645,13 +661,16 @@ export class Character implements ICharacter {
 
     // Two-handed weapons span both hands.
     if (item.type === "weapon" && item.twoHanded) {
-      for (const hand of [EquipmentSlot.LeftHand, EquipmentSlot.RightHand]) {
-        const occupant = this.#equipment.get(hand);
-        if (occupant) this.withGateSuppressed(() => this.unequip(occupant));
-      }
-      this.#equipment.set(EquipmentSlot.LeftHand, item);
-      this.#equipment.set(EquipmentSlot.RightHand, item);
-      item[EQUIP](this);
+      // Suppress the inner unequips' transient flickers; emit the net flip once.
+      this.#withVisibilitySuppressed(() => {
+        for (const hand of [EquipmentSlot.LeftHand, EquipmentSlot.RightHand]) {
+          const occupant = this.#equipment.get(hand);
+          if (occupant) this.withGateSuppressed(() => this.unequip(occupant));
+        }
+        this.#equipment.set(EquipmentSlot.LeftHand, item);
+        this.#equipment.set(EquipmentSlot.RightHand, item);
+        item[EQUIP](this);
+      });
       this.#emitVisibilityIfFlipped(flipRoom ?? undefined, flipWasLit);
       return;
     }
@@ -672,12 +691,15 @@ export class Character implements ICharacter {
       slot = eligible.find((s) => !this.#equipment.has(s)) ?? eligible[0]!;
     }
 
-    const occupant = this.#equipment.get(slot);
-    if (occupant && occupant.id !== item.id) {
-      this.withGateSuppressed(() => this.unequip(occupant)); // auto-swap (a 2H occupant frees both hands)
-    }
-    this.#equipment.set(slot, item);
-    item[EQUIP](this);
+    // Suppress the auto-swap unequip's transient flicker; emit the net flip once.
+    this.#withVisibilitySuppressed(() => {
+      const occupant = this.#equipment.get(slot);
+      if (occupant && occupant.id !== item.id) {
+        this.withGateSuppressed(() => this.unequip(occupant)); // auto-swap (a 2H occupant frees both hands)
+      }
+      this.#equipment.set(slot, item);
+      item[EQUIP](this);
+    });
     this.#emitVisibilityIfFlipped(flipRoom ?? undefined, flipWasLit);
   }
 
@@ -781,13 +803,7 @@ export class Character implements ICharacter {
     // Suppress the nested unequip's visibility flicker — the place as a whole is
     // the meaningful transition, emitted once at the end against `wasLit`.
     if (item.properties.equipped) {
-      const prev = this.#suppressVisibility;
-      this.#suppressVisibility = true;
-      try {
-        this.withGateSuppressed(() => this.unequip(item));
-      } finally {
-        this.#suppressVisibility = prev;
-      }
+      this.#withVisibilitySuppressed(() => this.withGateSuppressed(() => this.unequip(item)));
     }
     this.relinquishItem(item);
     room[ADD_LIGHT_SOURCE](item);

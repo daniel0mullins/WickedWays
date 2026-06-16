@@ -2068,5 +2068,37 @@ describe("Character", () => {
       hero.unequip(torch);
       expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: false }));
     });
+
+    it("auto-swapping one hand light for another in a dark room emits no cue (net lit unchanged)", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const first = makeGear({ name: "Torch A", slot: SlotKind.Hand, emitsLight: true });
+      const second = makeGear({ name: "Torch B", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(first);
+      hero.addToInventory(second);
+      hero.equip(first, EquipmentSlot.LeftHand);
+      cues.length = 0;
+      // Equipping `second` into the same hand auto-swaps `first` out; the room
+      // stays lit throughout, so the transient unequip flicker must be suppressed.
+      hero.equip(second, EquipmentSlot.LeftHand);
+      expect(cues.some((c) => c.kind === "visibility")).toBe(false);
+    });
+
+    it("placing a hand-equipped light in a dark room emits no cue (lit before via carry, lit after via placement)", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.equip(torch); // room is already lit by the carried light
+      cues.length = 0;
+      // The internal unequip would momentarily darken the room; that flicker is
+      // suppressed, and since the net state is lit→lit, no cue is emitted.
+      hero.placeLight(torch);
+      expect(cues.some((c) => c.kind === "visibility")).toBe(false);
+    });
   });
 });
