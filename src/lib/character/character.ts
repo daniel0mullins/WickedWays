@@ -901,14 +901,16 @@ export class Character implements ICharacter {
    * spawned mobs (see {@link Room.placeMob} and the encounter spawn path).
    */
   [PLACE](room: IRoom) {
+    // Mob seating / test co-location: intentionally no party-facing visibility cue.
     this.#enterRoom(room);
   }
 
   /**
    * Shared room-entry body for {@link Character.move} and the {@link PLACE} seam:
-   * exits any current room, enters `room`, and emits a visibility cue when the
-   * entered room is unlit. Centralizes the enter logic so both the gameplay
-   * navigation path and the engine-internal placement seam fire the enter-cue.
+   * exits any current room and enters `room`, firing exit/enter scenes. Does NOT
+   * emit a visibility cue — the enter-cue is party-facing and belongs to the
+   * gameplay navigation path only ({@link Character.move}), not the ungated
+   * placement seam ({@link PLACE}) used to seat resident/spawned mobs.
    */
   #enterRoom(room: IRoom) {
     if (this.#currentRoom) {
@@ -916,13 +918,6 @@ export class Character implements ICharacter {
     }
     this.#currentRoom = room;
     room.enterRoom(this);
-    if (!room.isLit) {
-      this.campaign[EMIT_CUE]({
-        kind: "visibility",
-        room: { id: room.id, name: room.name },
-        lit: false,
-      });
-    }
   }
 
   /** Emits a visibility cue if a dark room's lit state changed across a light action. */
@@ -947,6 +942,13 @@ export class Character implements ICharacter {
   move(room: IRoom) {
     if (!this.attemptAction(this.move, true)) return;
     this.#enterRoom(room);
+    if (!room.isLit) {
+      this.campaign[EMIT_CUE]({
+        kind: "visibility",
+        room: { id: room.id, name: room.name },
+        lit: false,
+      });
+    }
     this.recordAction(this.move, {
       kind: "move",
       room: { id: room.id, name: room.name },

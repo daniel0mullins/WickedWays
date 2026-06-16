@@ -131,10 +131,11 @@ an `encounter` cue the first time a character meets a given mob (once per charac
 covering both spawned and resident mobs), and a `visibility` cue (`{ room, lit }`) when a character
 enters an unlit room or a light action (`equip`/`unequip`/`placeLight`/`takeLight`) flips a dark
 room's lit state — the renderer uses it to reveal or conceal the room's contents (the data model is
-never hidden). Each cue carries a pre-resolved `sound`: the involved
+never hidden). The `action` and `encounter` cues carry a pre-resolved `sound`: the involved
 entity's sound wins (a chest's coins on a loot pickup, a hobgoblin's growl on encounter), falling
 back to the campaign's `actionSounds` default for that action kind (e.g. `move → marching`), else
-none. Subscriber errors are isolated so a faulty handler can't disrupt the turn loop.
+none. The `visibility` cue carries no `sound` (it drives reveal/conceal, not audio). Subscriber
+errors are isolated so a faulty handler can't disrupt the turn loop.
 
 ### Loot and inventory
 

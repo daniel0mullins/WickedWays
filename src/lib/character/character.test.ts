@@ -8,6 +8,7 @@ import { ProceduralViolation } from "../util";
 
 import type { ICampaign } from "../campaign";
 import { Character } from "./character";
+import { Mob } from "./mob";
 import type { ActionHistoryEntry } from "./history";
 import { StatType, type Stats } from "./stats";
 
@@ -2007,7 +2008,8 @@ describe("Character", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
       const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
-      hero[PLACE](darkRoom);
+      // The party-navigation path (move) is the cue-emitting path, not the [PLACE] seam.
+      hero.move(darkRoom);
       expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: false }));
     });
 
@@ -2015,8 +2017,30 @@ describe("Character", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
       const litRoom = new Room("Hall", "lit hall", [], {} as ExitsArg); // not dark => isLit true
-      hero[PLACE](litRoom);
+      hero.move(litRoom);
       expect(cues.some((c) => c.kind === "visibility")).toBe(false);
+    });
+
+    it("[PLACE] (mob seating) into a dark room emits NO visibility cue", () => {
+      const cues: PresentationCue[] = [];
+      const actor = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      // The ungated placement seam (used to seat resident/spawned mobs) is party-silent.
+      actor[PLACE](darkRoom);
+      expect(cues.filter((c) => c.kind === "visibility").length).toBe(0);
+    });
+
+    it("entering (via move) a dark room pre-seated with a resident mob emits EXACTLY ONE lit:false cue", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      // Seat a resident mob via placeMob -> mob[PLACE](room); this must NOT emit a cue.
+      const mob = new Mob(hero.campaign, "Ghoul", makeStats(), 2, 2, []);
+      darkRoom.placeMob(mob);
+      expect(cues.filter((c) => c.kind === "visibility").length).toBe(0);
+      // The player then navigates in — exactly one (the player's) enter cue.
+      hero.move(darkRoom);
+      expect(cues.filter((c) => c.kind === "visibility").length).toBe(1);
     });
 
     it("entering an unlit (dark) room via move() emits { kind: 'visibility', lit: false }", () => {
