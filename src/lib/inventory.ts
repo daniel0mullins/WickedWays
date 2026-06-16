@@ -203,6 +203,18 @@ export const PLACE = Symbol("place");
 export const SET_ORIGIN = Symbol("setOrigin");
 
 /**
+ * Symbol-keyed method that adds a light source to a room's `lightSources`.
+ * Only {@link Character.placeLight} and room authoring call it.
+ */
+export const ADD_LIGHT_SOURCE = Symbol("addLightSource");
+
+/**
+ * Symbol-keyed method that removes a light source from a room's `lightSources`.
+ * Only {@link Character.takeLight} calls it.
+ */
+export const REMOVE_LIGHT_SOURCE = Symbol("removeLightSource");
+
+/**
  * A game item: a typed, craftable object that lives in a holder's inventory and
  * can be picked up, equipped, used, transferred, or destroyed via {@link IItem.actions}.
  */

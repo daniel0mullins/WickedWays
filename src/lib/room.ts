@@ -1,6 +1,6 @@
 import { Brand } from "./brand";
 import { CharacterId, ICharacter } from "./character/character";
-import { PLACE, SET_ORIGIN } from "./inventory";
+import { ADD_LIGHT_SOURCE, IItem, ItemId, PLACE, REMOVE_LIGHT_SOURCE, SET_ORIGIN } from "./inventory";
 import { ILoot, LootId } from "./loot";
 import type { IMaterialCache, MaterialCacheId } from "./material-cache";
 import type { IMob } from "./character/mob";
@@ -63,6 +63,10 @@ export interface IRoom {
   get presentation(): Presentation | undefined;
   /** Author-time darkness flag. A dark room conceals its contents until lit. Fixed at authoring. */
   get dark(): boolean;
+  /** Active placed light sources resident in this room, keyed by item id. Read-only. */
+  get lightSources(): ReadonlyMap<ItemId, IItem>;
+  [ADD_LIGHT_SOURCE](item: IItem): void;
+  [REMOVE_LIGHT_SOURCE](id: ItemId): void;
 }
 
 /**
@@ -82,6 +86,7 @@ export class Room implements IRoom {
   #scenes: IScene[];
   #presentation?: Presentation;
   #dark: boolean;
+  #lightSources: Map<ItemId, IItem>;
 
   get occupants() {
     return [...this.#occupants.values()];
@@ -94,6 +99,19 @@ export class Room implements IRoom {
   /** Author-time darkness flag. A dark room conceals its contents until lit. Fixed at authoring. */
   get dark(): boolean {
     return this.#dark;
+  }
+
+  /** Active placed light sources resident in this room, keyed by item id. Read-only. */
+  get lightSources(): ReadonlyMap<ItemId, IItem> {
+    return this.#lightSources;
+  }
+
+  [ADD_LIGHT_SOURCE](item: IItem) {
+    this.#lightSources.set(item.id, item);
+  }
+
+  [REMOVE_LIGHT_SOURCE](id: ItemId) {
+    this.#lightSources.delete(id);
   }
 
   /**
@@ -115,6 +133,7 @@ export class Room implements IRoom {
    * @param mobs - Resident mobs seated immediately via {@link Room.placeMob} (origin `"room"`).
    * @param presentation - Optional presentation metadata (image/sound).
    * @param dark - Author-time darkness flag (default `false`); a dark room conceals its contents until lit.
+   * @param lightSources - Light sources initially present in the room (keyed by item id).
    */
   constructor(
     name: string,
@@ -126,6 +145,7 @@ export class Room implements IRoom {
     mobs: IMob[] = [],
     presentation?: Presentation,
     dark: boolean = false,
+    lightSources: IItem[] = [],
   ) {
     this.id = generateId<RoomId>();
     this.name = name;
@@ -146,6 +166,11 @@ export class Room implements IRoom {
     this.exits = new Map<Direction, IRoom>();
     for (const [direction, room] of Object.entries(exits)) {
       this.exits.set(direction as Direction, room);
+    }
+
+    this.#lightSources = new Map<ItemId, IItem>();
+    for (const light of lightSources) {
+      this.#lightSources.set(light.id, light);
     }
 
     this.spawnModifier = spawnModifier;

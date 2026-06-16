@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { CharacterId, ICharacter } from "./character/character";
+import { StatType } from "./character/stats";
+import { SlotKind } from "./equipment";
+import { ADD_LIGHT_SOURCE, Item, REMOVE_LIGHT_SOURCE } from "./inventory";
 import type { ILoot, LootId } from "./loot";
 import { MaterialCache } from "./material-cache";
 import { Mob } from "./character/mob";
@@ -30,6 +33,18 @@ function makeScene(): IScene & { playScene: ReturnType<typeof vi.fn> } {
 
 function makeRoom(loot: ILoot[] = [], exits: Partial<ExitsArg> = {}): Room {
   return new Room("A Dim Room", "a dim room", loot, exits as ExitsArg);
+}
+
+// Only the item's `id` and `emitsLight` flag matter to these tests; the rest of
+// the fields just satisfy the `Item` constructor.
+function makeLight(): Item {
+  const noop = () => {};
+  return new Item(
+    { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Candle", slot: SlotKind.Hand, emitsLight: true },
+    { equippable: true, equipped: false, destroyable: true, usable: false },
+    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    { onPickUp: noop },
+  );
 }
 
 function makeDarkRoom(): Room {
@@ -284,6 +299,31 @@ describe("Room", () => {
     it("defaults spawnModifier to 1", () => {
       const room = new Room("Hall", "Hall", [], {} as ExitsArg);
       expect(room.spawnModifier).toBe(1);
+    });
+  });
+
+  describe("lightSources", () => {
+    it("can be authored with light sources present", () => {
+      const candle = makeLight();
+      const room = new Room("Hall", "a hall", [], {} as ExitsArg, [], 1, [], undefined, true, [candle]);
+      expect(room.lightSources.get(candle.id)).toBe(candle);
+    });
+
+    it("is mutated only through the symbol seams", () => {
+      const room = makeRoom();
+      const candle = makeLight();
+      room[ADD_LIGHT_SOURCE](candle);
+      expect(room.lightSources.get(candle.id)).toBe(candle);
+      room[REMOVE_LIGHT_SOURCE](candle.id);
+      expect(room.lightSources.has(candle.id)).toBe(false);
+    });
+
+    it("does not expose a public setter for lightSources", () => {
+      const room = makeRoom();
+      expect(() => {
+        // @ts-expect-error lightSources is read-only
+        room.lightSources = new Map();
+      }).toThrow();
     });
   });
 });
