@@ -1,0 +1,12 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/lib"],
+  "entryPointStrategy": "expand",
+  "exclude": ["**/*.test.ts", "**/*.spec.ts", "**/test-utils.ts", "**/*.d.ts"],
+  "tsconfig": "tsconfig.json",
+  "plugin": ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
+  "out": "docs-site/api",
+  "readme": "none",
+  "githubPages": false,
+  "skipErrorChecking": true
+}

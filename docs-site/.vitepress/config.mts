@@ -1,4 +1,5 @@
 import { defineConfig } from "vitepress";
+import typedocSidebar from "../api/typedoc-sidebar.json";
 
 // Project site is served from https://daniel0mullins.github.io/WickedWays/,
 // so every asset/link is prefixed with this base.
@@ -11,7 +12,10 @@ export default defineConfig({
   // rather than rewrite every source link.
   ignoreDeadLinks: true,
   themeConfig: {
-    nav: [{ text: "Guide", link: "/guide/introduction" }],
+    nav: [
+      { text: "Guide", link: "/guide/introduction" },
+      { text: "API", link: "/api/" },
+    ],
     sidebar: {
       "/guide/": [
         {
@@ -22,6 +26,7 @@ export default defineConfig({
           ],
         },
       ],
+      "/api/": [{ text: "API Reference", items: typedocSidebar }],
     },
     socialLinks: [
       { icon: "github", link: "https://github.com/daniel0mullins/WickedWays" },
