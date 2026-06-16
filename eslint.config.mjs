@@ -5,7 +5,7 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   // Generated output and dependencies are never linted.
   {
-    ignores: ["dist/", "coverage/", "node_modules/"],
+    ignores: ["dist/", "coverage/", "node_modules/", "docs-site/"],
   },
 
   // Baseline JS rules apply to every file (including this config).
