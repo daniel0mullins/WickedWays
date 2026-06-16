@@ -339,8 +339,10 @@ describe("darkness mechanic", () => {
   it("conceals targets in the dark, then lighting it opens the gate and amplifies damage", () => {
     const { hero, lurker, sword, chest, crypt, cues } = darknessSetup();
 
-    // 1) The hero enters the dark room. The enter path emits a "not lit" cue.
-    hero[PLACE](crypt);
+    // 1) The hero enters the dark room via the real `move` gameplay path
+    //    (movement is never darkness-gated). The enter path emits a "not lit" cue.
+    hero.move(crypt);
+    expect(hero.currentRoom).toBe(crypt);
     expect(crypt.isLit).toBe(false);
     expect(cues).toContainEqual(
       expect.objectContaining({ kind: "visibility", lit: false }),

@@ -901,6 +901,16 @@ export class Character implements ICharacter {
    * spawned mobs (see {@link Room.placeMob} and the encounter spawn path).
    */
   [PLACE](room: IRoom) {
+    this.#enterRoom(room);
+  }
+
+  /**
+   * Shared room-entry body for {@link Character.move} and the {@link PLACE} seam:
+   * exits any current room, enters `room`, and emits a visibility cue when the
+   * entered room is unlit. Centralizes the enter logic so both the gameplay
+   * navigation path and the engine-internal placement seam fire the enter-cue.
+   */
+  #enterRoom(room: IRoom) {
     if (this.#currentRoom) {
       this.#currentRoom.exitRoom(this);
     }
@@ -936,11 +946,7 @@ export class Character implements ICharacter {
    */
   move(room: IRoom) {
     if (!this.attemptAction(this.move, true)) return;
-    if (this.#currentRoom) {
-      this.#currentRoom.exitRoom(this);
-    }
-    this.#currentRoom = room;
-    room.enterRoom(this);
+    this.#enterRoom(room);
     this.recordAction(this.move, {
       kind: "move",
       room: { id: room.id, name: room.name },

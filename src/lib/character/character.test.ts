@@ -2019,6 +2019,23 @@ describe("Character", () => {
       expect(cues.some((c) => c.kind === "visibility")).toBe(false);
     });
 
+    it("entering an unlit (dark) room via move() emits { kind: 'visibility', lit: false }", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      // The real gameplay navigation path — not the [PLACE] seam — must emit the cue.
+      hero.move(darkRoom);
+      expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: false }));
+    });
+
+    it("entering a lit room via move() emits no visibility cue", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const litRoom = new Room("Hall", "lit hall", [], {} as ExitsArg); // not dark => isLit true
+      hero.move(litRoom);
+      expect(cues.some((c) => c.kind === "visibility")).toBe(false);
+    });
+
     it("placing a light in a dark room emits { kind: 'visibility', lit: true }", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
