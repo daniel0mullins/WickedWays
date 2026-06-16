@@ -1003,6 +1003,34 @@ describe("Character", () => {
 
       expect(character.history.length).toBe(before);
     });
+
+    it("throws in an unlit room when the harvester cannot see in the dark", () => {
+      const campaign = new Campaign("Materials");
+      const character = new Character(campaign, "Hero", makeStats());
+      const cache = new MaterialCache({ metal: 3 });
+      // Authored-dark room holding the cache; co-locate via the [PLACE] seam.
+      const room = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [cache], 1, [], undefined, true);
+      character[PLACE](room);
+
+      expect(room.isLit).toBe(false);
+      expect(character.seesInDark).toBe(false);
+      expect(() => character.harvest(cache)).toThrow(ProceduralViolation);
+    });
+
+    it("does not throw once the dark room is lit", () => {
+      const campaign = new Campaign("Materials");
+      const character = new Character(campaign, "Hero", makeStats());
+      const cache = new MaterialCache({ metal: 3 });
+      const room = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [cache], 1, [], undefined, true);
+      character[PLACE](room);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      character.addToInventory(torch);
+      character.placeLight(torch);
+
+      expect(room.isLit).toBe(true);
+      expect(() => character.harvest(cache)).not.toThrow();
+      expect(campaign.materials).toEqual({ metal: 3 });
+    });
   });
 
   describe("repair", () => {

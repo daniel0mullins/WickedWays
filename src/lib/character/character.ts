@@ -75,6 +75,8 @@ export interface ICharacter extends IItemHolder {
   get currentRoom(): IRoom | null;
   /** True when the character has an equipped, non-broken light source in a hand slot. */
   get hasLight(): boolean;
+  /** Whether this actor can act (attack/loot/harvest) in an unlit room. */
+  get seesInDark(): boolean;
   /** Wires this character into `room` (current room + occupancy) with no gating, history, or budget tick. */
   [PLACE]: (room: IRoom) => void;
   /** Immutable copy of the character's recorded action history. */
@@ -200,6 +202,24 @@ export class Character implements ICharacter {
 
   get currentRoom() {
     return this.#currentRoom;
+  }
+
+  /** Whether this actor can act (attack/loot/harvest) in an unlit room. Default false; light-averse mobs override. */
+  get seesInDark(): boolean {
+    return false;
+  }
+
+  /**
+   * Throws if the actor is in an unlit room and cannot see in the dark. Targeting
+   * actions (attack/loot/harvest) call this; movement and light actions do not.
+   *
+   * @param verb - The blocked action, for the error message.
+   */
+  protected requireVisibleTarget(verb: string) {
+    const room = this.#currentRoom;
+    if (room && !room.isLit && !this.seesInDark) {
+      throw new ProceduralViolation(`Cannot ${verb} in the dark`);
+    }
   }
 
   /** True when the character has an equipped, non-broken light source in a hand slot. */
@@ -705,6 +725,7 @@ export class Character implements ICharacter {
    * @throws {@link ProceduralViolation} if the cache is not in the current room.
    */
   harvest(cache: IMaterialCache) {
+    this.requireVisibleTarget("harvest");
     if (!this.#currentRoom?.materials.has(cache.id)) {
       throw new ProceduralViolation(
         "Cannot harvest a material cache that is not in the current room",

@@ -38,6 +38,7 @@ export abstract class Combatant extends Character implements ICombatant {
    */
   attack(c: ICharacter) {
     if (!this.attemptAction(this.attack, false)) return;
+    this.requireVisibleTarget("attack");
     // Only intact (non-broken) equipped weapons fight; broken ones contribute nothing.
     const weapons = this.inventory.items.filter(
       (item) => item.properties.equipped && item.type === "weapon" && !item.isBroken,

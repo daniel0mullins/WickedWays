@@ -5,7 +5,8 @@ import type { IRoom } from "../room";
 import type { PresentationCue } from "../presentation";
 
 import { Campaign } from "../campaign";
-import { CLAIM, HELD_BY, Item, createKey } from "../inventory";
+import { ADD_LIGHT_SOURCE, CLAIM, HELD_BY, Item, PLACE, createKey } from "../inventory";
+import { SlotKind } from "../equipment";
 import { Loot } from "../loot";
 import { ProceduralViolation } from "../util";
 import { Character } from "./character";
@@ -143,9 +144,11 @@ function makeLootItem(id: string): IItem {
 }
 
 // A room whose loot map contains `box`, so the player can be co-located with it.
+// `isLit` is true: a normal, lit room, so the darkness gate never trips here.
 function makeRoomWith(box: Loot): IRoom {
   return {
     loot: new Map([[box.id, box]]),
+    isLit: true,
     enterRoom: vi.fn(),
     exitRoom: vi.fn(),
   } as unknown as IRoom;
@@ -582,6 +585,59 @@ describe("PlayerCharacter", () => {
       expect(() => pc.takeFromLootBox(box, box.contents[0]!)).toThrow(
         ProceduralViolation,
       );
+    });
+  });
+
+  describe("loot box darkness gate", () => {
+    // A real light item; only `emitsLight` (and id) matter to room lighting.
+    function makeLight(): Item {
+      const noop = () => {};
+      return new Item(
+        { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Candle", slot: SlotKind.Hand, emitsLight: true },
+        { equippable: true, equipped: false, destroyable: true, usable: false },
+        { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+        { onPickUp: noop },
+      );
+    }
+
+    // A real authored-dark Room holding `box`, with the PC co-located via [PLACE].
+    function darkRoomWith(box: Loot) {
+      const room = new Room("Cellar", "dark cellar", [box], {} as ExitsArg, [], 1, [], undefined, true);
+      const pc = new PlayerCharacter(makeCampaign(), "Hero", makeStats());
+      pc[PLACE](room);
+      return { room, pc };
+    }
+
+    it("takeFromLootBox throws in an unlit room when the player cannot see in the dark", () => {
+      const box = new Loot("chest", [makeLootItem("a")]);
+      const { room, pc } = darkRoomWith(box);
+
+      expect(room.isLit).toBe(false);
+      expect(pc.seesInDark).toBe(false);
+      expect(() => pc.takeFromLootBox(box, box.contents[0]!)).toThrow(
+        ProceduralViolation,
+      );
+    });
+
+    it("takeFromLootBox succeeds once the dark room is lit", () => {
+      const target = makeLootItem("a");
+      const box = new Loot("chest", [target]);
+      const { room, pc } = darkRoomWith(box);
+      room[ADD_LIGHT_SOURCE](makeLight());
+
+      expect(room.isLit).toBe(true);
+      const taken = pc.takeFromLootBox(box, target);
+      expect(taken).toEqual([target]);
+      expect(pc.inventory.items).toContain(target);
+    });
+
+    it("openLootBox is not gated: viewing works in the dark", () => {
+      const contents = [makeLootItem("a"), makeLootItem("b")];
+      const box = new Loot("chest", contents);
+      const { room, pc } = darkRoomWith(box);
+
+      expect(room.isLit).toBe(false);
+      expect(pc.openLootBox(box)).toEqual(contents);
     });
   });
 
