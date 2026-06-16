@@ -9,6 +9,20 @@ accumulating damage across three interlocking stats. Game rules are enforced bot
 type system (branded IDs, hidden state) and at runtime (lifecycle guards that throw on
 illegal moves).
 
+## Documentation site
+
+Full docs are published to GitHub Pages at
+**<https://daniel0mullins.github.io/WickedWays/>** — a prose guide (this README,
+rendered) plus an API reference generated from the source TSDoc. The site is
+built with VitePress + TypeDoc and lives in `docs-site/`. Work on it locally with:
+
+```bash
+npm run docs:dev       # serve the site with hot reload
+npm run docs:build     # production build into docs-site/.vitepress/dist
+```
+
+It deploys automatically on every push to `main` via `.github/workflows/docs.yml`.
+
 ## Core concepts
 
 ### Campaign
