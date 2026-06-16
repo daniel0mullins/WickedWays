@@ -28,6 +28,9 @@ export type CharacterId = Brand<string, "CharacterId">;
 const MAX_STAT = 10;
 const MITIGATION_PER_POINT = 0.2;
 
+/** Damage multiplier applied to a light-averse creature while its room is lit. */
+export const LIGHT_VULNERABILITY = 1.5;
+
 /**
  * Any callable, used purely as an identity key in the action-tracking maps.
  * Preferred over the unsafe built-in `Function` type.
@@ -206,6 +209,11 @@ export class Character implements ICharacter {
 
   /** Whether this actor can act (attack/loot/harvest) in an unlit room. Default false; light-averse mobs override. */
   get seesInDark(): boolean {
+    return false;
+  }
+
+  /** Whether this actor takes amplified damage while its room is lit. Default false; light-averse mobs override. */
+  protected get lightAverse(): boolean {
     return false;
   }
 
@@ -820,7 +828,9 @@ export class Character implements ICharacter {
 
     const mitigator = this.effectiveStat(MitigatorStatType[attackStat]);
     const damageMultiplier = Math.max(0, MAX_STAT - mitigator) * MITIGATION_PER_POINT;
-    const finalAttackStrength = mitigatedStrength * damageMultiplier;
+    const lightMultiplier =
+      this.lightAverse && this.#currentRoom?.isLit ? LIGHT_VULNERABILITY : 1;
+    const finalAttackStrength = mitigatedStrength * damageMultiplier * lightMultiplier;
 
     this.stats[attackStat] = this.stats[attackStat] - finalAttackStrength;
 

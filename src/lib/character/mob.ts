@@ -33,6 +33,7 @@ export class Mob extends Combatant implements IMob {
   #origin: MobOrigin = "unbound";
   #baseEscapeChance: number;
   #materialDrops: MaterialMap;
+  #lightAverse: boolean;
 
   /**
    * @param campaign - The campaign the mob belongs to.
@@ -53,6 +54,7 @@ export class Mob extends Combatant implements IMob {
     options: CharacterOptions & {
       baseEscapeChance?: number;
       materialDrops?: MaterialMap;
+      lightAverse?: boolean;
     } = {},
   ) {
     const _inventorySlots = Math.max(inventorySlots, drops.length);
@@ -60,12 +62,23 @@ export class Mob extends Combatant implements IMob {
 
     this.#baseEscapeChance = options.baseEscapeChance ?? 50;
     this.#materialDrops = options.materialDrops ?? {};
+    this.#lightAverse = options.lightAverse ?? false;
     // Load drops into the inventory so "what the mob carries" IS its loot.
     for (const drop of drops) {
       this.receiveItem(drop);
     }
 
     this.isActionMap.set(this.escape, true);
+  }
+
+  /** A light-averse mob sees in the dark (can act there) but takes amplified damage when its room is lit. */
+  override get seesInDark(): boolean {
+    return this.#lightAverse;
+  }
+
+  /** A light-averse mob takes amplified damage while its room is lit. */
+  protected override get lightAverse(): boolean {
+    return this.#lightAverse;
   }
 
   /** Sets the mob's origin. Engine-internal seam. */
