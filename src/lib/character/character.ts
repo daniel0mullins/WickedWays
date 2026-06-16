@@ -654,9 +654,11 @@ export class Character implements ICharacter {
     if (item.slot === undefined) {
       throw new ProceduralViolation("Item has no equipment slot.");
     }
-    // Re-equipping a worn item: free its current slot(s) first.
+    // Re-equipping a worn item: free its current slot(s) first. Suppress this
+    // preliminary unequip's visibility flicker — the re-equip as a whole is one
+    // net transition, emitted once at the end against flipWasLit.
     if (item.properties.equipped) {
-      this.withGateSuppressed(() => this.unequip(item));
+      this.#withVisibilitySuppressed(() => this.withGateSuppressed(() => this.unequip(item)));
     }
 
     // Two-handed weapons span both hands.

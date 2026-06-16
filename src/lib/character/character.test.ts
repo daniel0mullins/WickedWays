@@ -2086,6 +2086,21 @@ describe("Character", () => {
       expect(cues.some((c) => c.kind === "visibility")).toBe(false);
     });
 
+    it("re-equipping an already-equipped hand light to another slot in a dark room emits no cue", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.equip(torch, EquipmentSlot.LeftHand);
+      cues.length = 0;
+      // The preliminary "free its current slot first" unequip momentarily darkens
+      // the room; that flicker is suppressed, and the net state is lit→lit.
+      hero.equip(torch, EquipmentSlot.RightHand);
+      expect(cues.some((c) => c.kind === "visibility")).toBe(false);
+    });
+
     it("placing a hand-equipped light in a dark room emits no cue (lit before via carry, lit after via placement)", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
