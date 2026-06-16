@@ -320,6 +320,11 @@ export class Character implements ICharacter {
   // actor. Mirrors #suppressGate.
   #cueSoundOverride: AssetRef | undefined;
 
+  // Set while a composite light action (placeLight) performs an internal unequip,
+  // so the nested unequip's transient lit:false flicker is not emitted — only the
+  // composite's net flip is. Mirrors #suppressGate.
+  #suppressVisibility = false;
+
   /** Runs `fn` with affliction gating suppressed (same-character composition only). */
   protected withGateSuppressed<T>(fn: () => T): T {
     const prev = this.#suppressGate;
@@ -622,6 +627,8 @@ export class Character implements ICharacter {
    */
   equip(item: IItem, targetSlot?: EquipmentSlot) {
     if (!this.attemptAction(this.equip, false)) return;
+    const flipRoom = this.#currentRoom;
+    const flipWasLit = flipRoom?.isLit ?? true;
     if (!this.#inventory.items.some((i) => i.id === item.id)) {
       throw new ProceduralViolation("Cannot equip an item the character is not holding.");
     }
@@ -645,6 +652,7 @@ export class Character implements ICharacter {
       this.#equipment.set(EquipmentSlot.LeftHand, item);
       this.#equipment.set(EquipmentSlot.RightHand, item);
       item[EQUIP](this);
+      this.#emitVisibilityIfFlipped(flipRoom ?? undefined, flipWasLit);
       return;
     }
 
@@ -670,6 +678,7 @@ export class Character implements ICharacter {
     }
     this.#equipment.set(slot, item);
     item[EQUIP](this);
+    this.#emitVisibilityIfFlipped(flipRoom ?? undefined, flipWasLit);
   }
 
   /**
@@ -681,6 +690,8 @@ export class Character implements ICharacter {
    */
   unequip(item: IItem) {
     if (!this.attemptAction(this.unequip, false)) return;
+    const flipRoom = this.#currentRoom;
+    const flipWasLit = flipRoom?.isLit ?? true;
     if (!this.#inventory.items.some((i) => i.id === item.id)) {
       throw new ProceduralViolation("Cannot unequip an item the character is not holding.");
     }
@@ -693,6 +704,7 @@ export class Character implements ICharacter {
       }
     }
     item[UNEQUIP](this);
+    this.#emitVisibilityIfFlipped(flipRoom ?? undefined, flipWasLit);
   }
 
   /**
@@ -755,6 +767,9 @@ export class Character implements ICharacter {
     if (!room) {
       throw new ProceduralViolation("Cannot place a light while not in a room");
     }
+    // Capture before any state change (the unequip-on-place step below can move
+    // the room's lit state) so the flip is detected against the original state.
+    const wasLit = room.isLit;
     if (!item.emitsLight) {
       throw new ProceduralViolation("Cannot place a non-light item as a light source");
     }
@@ -763,12 +778,21 @@ export class Character implements ICharacter {
     }
     // A carried light may be equipped in a hand; clear its slot first so the
     // placed item isn't left with a phantom #equipment reference / equipped flag.
+    // Suppress the nested unequip's visibility flicker — the place as a whole is
+    // the meaningful transition, emitted once at the end against `wasLit`.
     if (item.properties.equipped) {
-      this.withGateSuppressed(() => this.unequip(item));
+      const prev = this.#suppressVisibility;
+      this.#suppressVisibility = true;
+      try {
+        this.withGateSuppressed(() => this.unequip(item));
+      } finally {
+        this.#suppressVisibility = prev;
+      }
     }
     this.relinquishItem(item);
     room[ADD_LIGHT_SOURCE](item);
     item[CLAIM](null);
+    this.#emitVisibilityIfFlipped(room, wasLit);
   }
 
   /**
@@ -782,8 +806,10 @@ export class Character implements ICharacter {
     if (!room || !room.lightSources.has(item.id)) {
       throw new ProceduralViolation("Cannot take a light that is not in the room");
     }
+    const wasLit = room.isLit;
     room[REMOVE_LIGHT_SOURCE](item.id);
     this.receiveItem(item);
+    this.#emitVisibilityIfFlipped(room, wasLit);
   }
 
   effectiveStat(stat: StatType): number {
@@ -862,6 +888,25 @@ export class Character implements ICharacter {
     }
     this.#currentRoom = room;
     room.enterRoom(this);
+    if (!room.isLit) {
+      this.campaign[EMIT_CUE]({
+        kind: "visibility",
+        room: { id: room.id, name: room.name },
+        lit: false,
+      });
+    }
+  }
+
+  /** Emits a visibility cue if a dark room's lit state changed across a light action. */
+  #emitVisibilityIfFlipped(room: IRoom | undefined, wasLit: boolean) {
+    if (this.#suppressVisibility) return;
+    if (room && room.dark && room.isLit !== wasLit) {
+      this.campaign[EMIT_CUE]({
+        kind: "visibility",
+        room: { id: room.id, name: room.name },
+        lit: room.isLit,
+      });
+    }
   }
 
   /**

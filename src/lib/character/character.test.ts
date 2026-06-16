@@ -152,6 +152,18 @@ function makeCharacter(opts: {
   );
 }
 
+// Builds a Hero on a real Campaign and wires the passed array up as a cue sink
+// via the public `onCue` subscription, so every cue the character emits through
+// `campaign[EMIT_CUE]` is recorded. A real Campaign is used (rather than the
+// no-op makeCampaign stub) because its `[EMIT_CUE]` actually dispatches to
+// `onCue` handlers — mirroring the existing "action cues" tests.
+function makeCharacterWithCueSink(cues: PresentationCue[]): Character {
+  const campaign = new Campaign("Cues");
+  const hero = new Character(campaign, "Hero", makeStats());
+  campaign.onCue((cue) => cues.push(cue));
+  return hero;
+}
+
 describe("Character", () => {
   beforeEach(() => {
     itemCounter = 0;
@@ -1987,6 +1999,74 @@ describe("Character", () => {
       expect(seen).toContainEqual(
         expect.objectContaining({ kind: "action", action: "move", sound: "marching.ogg" }),
       );
+    });
+  });
+
+  describe("visibility cue", () => {
+    it("entering an unlit (dark) room emits { kind: 'visibility', lit: false }", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: false }));
+    });
+
+    it("entering a lit room emits no visibility cue", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const litRoom = new Room("Hall", "lit hall", [], {} as ExitsArg); // not dark => isLit true
+      hero[PLACE](litRoom);
+      expect(cues.some((c) => c.kind === "visibility")).toBe(false);
+    });
+
+    it("placing a light in a dark room emits { kind: 'visibility', lit: true }", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      cues.length = 0; // ignore the enter cue
+      hero.placeLight(torch);
+      expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: true }));
+    });
+
+    it("taking the only light from a dark room emits { lit: false }", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.placeLight(torch);
+      cues.length = 0;
+      hero.takeLight(torch);
+      expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: false }));
+    });
+
+    it("equipping a hand light in a dark room flips it lit", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      cues.length = 0;
+      hero.equip(torch);
+      expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: true }));
+    });
+
+    it("unequipping the only hand light in a dark room flips it dark", () => {
+      const cues: PresentationCue[] = [];
+      const hero = makeCharacterWithCueSink(cues);
+      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      hero[PLACE](darkRoom);
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.equip(torch);
+      cues.length = 0;
+      hero.unequip(torch);
+      expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: false }));
     });
   });
 });
