@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CLAIM, Item, PLACE, createKey, type IItem, type ItemId } from "../inventory";
+import { CLAIM, Item, PLACE, SET_DURABILITY, createKey, type IItem, type ItemId } from "../inventory";
 import { EquipmentSlot, SlotKind } from "../equipment";
 import type { IRoom, RoomId } from "../room";
 import { Status } from "../status";
@@ -206,6 +206,29 @@ describe("Character", () => {
 
       expect(character.isActionMap.get(character.addToInventory)).toBe(true);
       expect(character.isActionMap.get(character.removeFromInventory)).toBe(true);
+    });
+  });
+
+  describe("hasLight", () => {
+    it("is false with nothing equipped", () => {
+      expect(makeCharacter().hasLight).toBe(false);
+    });
+
+    it("is true with an equipped, non-broken light in a hand", () => {
+      const hero = makeCharacter();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
+      hero.addToInventory(torch);
+      hero.equip(torch, EquipmentSlot.LeftHand);
+      expect(hero.hasLight).toBe(true);
+    });
+
+    it("is false when the only light is broken", () => {
+      const hero = makeCharacter();
+      const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true, maxDurability: 1 });
+      hero.addToInventory(torch);
+      hero.equip(torch, EquipmentSlot.LeftHand);
+      torch[SET_DURABILITY](0);
+      expect(hero.hasLight).toBe(false);
     });
   });
 

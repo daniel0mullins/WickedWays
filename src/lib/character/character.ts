@@ -73,6 +73,8 @@ export interface ICharacter extends IItemHolder {
   get presentation(): Presentation | undefined;
   /** The room the character currently occupies, or `null` if none. */
   get currentRoom(): IRoom | null;
+  /** True when the character has an equipped, non-broken light source in a hand slot. */
+  get hasLight(): boolean;
   /** Wires this character into `room` (current room + occupancy) with no gating, history, or budget tick. */
   [PLACE]: (room: IRoom) => void;
   /** Immutable copy of the character's recorded action history. */
@@ -194,6 +196,15 @@ export class Character implements ICharacter {
 
   get currentRoom() {
     return this.#currentRoom;
+  }
+
+  /** True when the character has an equipped, non-broken light source in a hand slot. */
+  get hasLight(): boolean {
+    for (const slot of [EquipmentSlot.LeftHand, EquipmentSlot.RightHand]) {
+      const item = this.equipment.get(slot);
+      if (item?.emitsLight && !item.isBroken) return true;
+    }
+    return false;
   }
 
   get history(): readonly ActionHistoryEntry[] {
