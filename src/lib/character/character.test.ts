@@ -112,6 +112,8 @@ function makeGear(opts: {
   usable?: boolean;
   immunities?: Status[];
   grantsImmunity?: { statuses: Status[]; turns: number };
+  emitsLight?: boolean;
+  maxDurability?: number;
 }): Item {
   const noop = () => {};
   return new Item(
@@ -125,6 +127,8 @@ function makeGear(opts: {
       twoHanded: opts.twoHanded,
       immunities: opts.immunities,
       grantsImmunity: opts.grantsImmunity,
+      emitsLight: opts.emitsLight,
+      maxDurability: opts.maxDurability,
     },
     { equippable: opts.equippable ?? true, equipped: false, destroyable: true, usable: opts.usable ?? false },
     { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },

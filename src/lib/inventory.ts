@@ -234,6 +234,8 @@ export interface IItem {
   readonly slot?: SlotKind;
   /** Weapons only: occupies both hand slots when equipped. */
   readonly twoHanded?: boolean;
+  /** Light sources only: when active (carried or placed) this item lights its room. */
+  readonly emitsLight?: boolean;
   /** A recipe this item imparts to the party when picked up. */
   readonly teaches?: CraftingRecipe;
   /** Statuses this item confers immunity to while equipped (passive immunity). */
@@ -276,6 +278,7 @@ export class Item implements IItem {
   readonly maxDurability?: number;
   readonly slot?: SlotKind;
   readonly twoHanded?: boolean;
+  readonly emitsLight?: boolean;
   #durability?: number;
   #presentation?: Presentation;
   // The raw equip/unequip behavior and events, captured from the constructor so
@@ -359,6 +362,7 @@ export class Item implements IItem {
    * @param descriptor.durability - Starting durability; defaults to `maxDurability`.
    * @param descriptor.slot - The {@link SlotKind} this item equips into (optional).
    * @param descriptor.twoHanded - Weapons only: occupies both hands when equipped.
+   * @param descriptor.emitsLight - Light sources only: lights its room when active.
    * @param properties - Initial mutable flags (equippable, equipped, …).
    * @param actions - Core behaviour for each interaction; wrapped on construction.
    * @param events - Observer hooks fired after the matching action runs.
@@ -379,6 +383,7 @@ export class Item implements IItem {
       durability,
       slot,
       twoHanded,
+      emitsLight,
       presentation,
     }: {
       type: ItemType;
@@ -395,6 +400,7 @@ export class Item implements IItem {
       durability?: number;
       slot?: SlotKind;
       twoHanded?: boolean;
+      emitsLight?: boolean;
       presentation?: Presentation;
     },
     properties: ItemProperties,
@@ -416,6 +422,7 @@ export class Item implements IItem {
     this.maxDurability = maxDurability;
     this.slot = slot;
     this.twoHanded = twoHanded;
+    this.emitsLight = emitsLight;
     this.#presentation = presentation;
     this.#durability =
       maxDurability === undefined

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { ICharacter } from "./character/character";
 import { StatType } from "./character/stats";
+import { SlotKind } from "./equipment";
 import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, Item, SET_DURABILITY, UNEQUIP, createKey, type IItem, type IItemHolder } from "./inventory";
 import { ProceduralViolation } from "./util";
 import type { CraftingRecipe, RecipeId } from "./crafting";
@@ -199,6 +200,33 @@ describe("Item", () => {
       expect(withPres.presentation).toBe(pres);
       expect(without.presentation).toBeUndefined();
     });
+  });
+
+  it("exposes emitsLight when set, and leaves it undefined otherwise", () => {
+    const noop = () => {};
+    const torch = new Item(
+      {
+        type: "weapon",
+        recipe: { item: 1 },
+        modifier: 0,
+        stat: StatType.Health,
+        name: "Torch",
+        slot: SlotKind.Hand,
+        emitsLight: true,
+      },
+      { equippable: true, equipped: false, destroyable: true, usable: false },
+      { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+      { onPickUp: noop },
+    );
+    const rock = new Item(
+      { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Rock" },
+      { equippable: false, equipped: false, destroyable: true, usable: false },
+      { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+      { onPickUp: noop },
+    );
+
+    expect(torch.emitsLight).toBe(true);
+    expect(rock.emitsLight).toBeUndefined();
   });
 
   describe("pickUp", () => {
