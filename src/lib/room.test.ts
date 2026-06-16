@@ -32,7 +32,31 @@ function makeRoom(loot: ILoot[] = [], exits: Partial<ExitsArg> = {}): Room {
   return new Room("A Dim Room", "a dim room", loot, exits as ExitsArg);
 }
 
+function makeDarkRoom(): Room {
+  return new Room(
+    "Cellar",
+    "a pitch-black cellar",
+    [],
+    {} as ExitsArg,
+    [],          // materials
+    1,           // spawnModifier
+    [],          // mobs
+    undefined,   // presentation
+    true,        // dark
+  );
+}
+
 describe("Room", () => {
+  describe("dark", () => {
+    it("defaults to false", () => {
+      expect(makeRoom().dark).toBe(false);
+    });
+
+    it("is true when authored dark", () => {
+      expect(makeDarkRoom().dark).toBe(true);
+    });
+  });
+
   describe("constructor", () => {
     it("assigns an id and the description", () => {
       const room = makeRoom();

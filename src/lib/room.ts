@@ -61,6 +61,8 @@ export interface IRoom {
   placeMob: (mob: IMob) => void;
   /** Optional presentation metadata (image/sound), or `undefined` if none. */
   get presentation(): Presentation | undefined;
+  /** Author-time darkness flag. A dark room conceals its contents until lit. Fixed at authoring. */
+  get dark(): boolean;
 }
 
 /**
@@ -79,6 +81,7 @@ export class Room implements IRoom {
   #occupants: Map<CharacterId, ICharacter>;
   #scenes: IScene[];
   #presentation?: Presentation;
+  #dark: boolean;
 
   get occupants() {
     return [...this.#occupants.values()];
@@ -86,6 +89,11 @@ export class Room implements IRoom {
 
   get presentation(): Presentation | undefined {
     return this.#presentation;
+  }
+
+  /** Author-time darkness flag. A dark room conceals its contents until lit. Fixed at authoring. */
+  get dark(): boolean {
+    return this.#dark;
   }
 
   /**
@@ -105,6 +113,8 @@ export class Room implements IRoom {
    * @param materials - Material caches initially present in the room.
    * @param spawnModifier - Multiplier on the campaign's base encounter chance (default 1; 0 = never spawns).
    * @param mobs - Resident mobs seated immediately via {@link Room.placeMob} (origin `"room"`).
+   * @param presentation - Optional presentation metadata (image/sound).
+   * @param dark - Author-time darkness flag (default `false`); a dark room conceals its contents until lit.
    */
   constructor(
     name: string,
@@ -115,6 +125,7 @@ export class Room implements IRoom {
     spawnModifier: number = 1,
     mobs: IMob[] = [],
     presentation?: Presentation,
+    dark: boolean = false,
   ) {
     this.id = generateId<RoomId>();
     this.name = name;
@@ -139,6 +150,7 @@ export class Room implements IRoom {
 
     this.spawnModifier = spawnModifier;
     this.#presentation = presentation;
+    this.#dark = dark;
 
     for (const mob of mobs) {
       this.placeMob(mob);
