@@ -12,6 +12,7 @@ import { Status } from "../status";
 import { Afflictions, AfflictionConfig, DEFAULT_AFFLICTION_CONFIG } from "./afflictions";
 import { EMIT_CUE } from "../presentation";
 import type { AssetRef, Presentation } from "../presentation";
+import { RECORD_ENCOUNTER } from "../codex";
 
 import { generateId, ProceduralViolation, typedEntries } from "../util";
 import { CharacterEvents, ICharacterEvents } from "./events";
@@ -524,6 +525,7 @@ export class Character implements ICharacter {
       if (current.teaches) {
         this.campaign.discoverRecipe(current.teaches);
       }
+      this.campaign[RECORD_ENCOUNTER]({ kind: "item", item: current }, this, this.currentRoom);
     }
     this.recordAction(this.addToInventory, {
       kind: "pickUp",

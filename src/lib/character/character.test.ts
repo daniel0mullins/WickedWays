@@ -15,6 +15,7 @@ import { StatType, type Stats } from "./stats";
 import type { CraftingRecipe, RecipeId } from "../crafting";
 import { makeCampaign, makeStats } from "../../test-utils";
 import { Campaign } from "../campaign";
+import { PlayerCharacter } from "./player-character";
 import { Room } from "../room";
 import { MaterialCache } from "../material-cache";
 import type { ExitsArg } from "../../test-utils";
@@ -962,6 +963,44 @@ describe("Character", () => {
       const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: true });
 
       expect(() => character.consumeKey(key)).toThrow(ProceduralViolation);
+    });
+  });
+
+  describe("addToInventory codex (items & keys)", () => {
+    function makeSword(): Item {
+      return new Item(
+        { name: "Sword", type: "weapon", recipe: { metal: 1 }, modifier: 3, stat: StatType.Health, slot: SlotKind.Hand },
+        { equippable: true, equipped: false, destroyable: false, usable: false },
+        { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
+        { onPickUp: () => {} },
+      );
+    }
+
+    it("records a picked-up item, attributed to the party member", () => {
+      const campaign = new Campaign("Codex");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+
+      pc.addToInventory(makeSword());
+
+      const entry = campaign.codex.items[0]!;
+      expect(entry.snapshot.name).toBe("Sword");
+      expect(entry.snapshot.type).toBe("weapon");
+      expect(entry.snapshot.slot).toBe(SlotKind.Hand);
+      expect(entry.firstSeen.characterId).toBe(pc.id);
+    });
+
+    it("records a picked-up key under the key kind, not the item kind", () => {
+      const campaign = new Campaign("Codex");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+      const key = createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: true });
+
+      pc.addToInventory(key);
+
+      expect(campaign.codex.items).toHaveLength(0);
+      const entry = campaign.codex.keys[0]!;
+      expect(entry.snapshot).toEqual({ name: "Vault Key", keyCode: "vault", consumeOnUse: true });
     });
   });
 
