@@ -164,7 +164,7 @@ describe("Room", () => {
     it("plays registered scenes with the 'enter' phase and this room", () => {
       const room = makeRoom();
       const scene = makeScene();
-      room.registerScene(scene as unknown as Scene);
+      room.registerScene(scene);
 
       room.enterRoom(makeCharacter());
 
@@ -198,7 +198,7 @@ describe("Room", () => {
     it("plays registered scenes with the 'exit' phase and this room", () => {
       const room = makeRoom();
       const scene = makeScene();
-      room.registerScene(scene as unknown as Scene);
+      room.registerScene(scene);
       const character = makeCharacter();
       room.enterRoom(character);
       scene.playScene.mockClear();
@@ -253,7 +253,7 @@ describe("Room", () => {
       const room = makeRoom();
       const scene = makeScene();
 
-      room.registerScene(scene as unknown as Scene);
+      room.registerScene(scene);
       room.enterRoom(makeCharacter());
 
       expect(scene.playScene).toHaveBeenCalledOnce();
@@ -263,8 +263,8 @@ describe("Room", () => {
       const room = makeRoom();
       const first = makeScene();
       const second = makeScene();
-      room.registerScene(first as unknown as Scene);
-      room.registerScene(second as unknown as Scene);
+      room.registerScene(first);
+      room.registerScene(second);
 
       room.enterRoom(makeCharacter());
 

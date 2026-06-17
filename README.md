@@ -98,8 +98,12 @@ shape as the existing GM-membership requirement.
   when between 0 and 1), `requiredConnections` pins specific room pairs as direct neighbors
   before the tree is laid down (best-effort: an impossible pair is skipped), and an injectable
   `rng` makes generation deterministic.
-- A `Scene` runs its `script(room)` only when the trigger phase (`"enter"` / `"exit"`) matches
-  **and** all of its `preconditions` pass — preconditions short-circuit on the first failure.
+- A `Scene` runs its `script(room, state)` only when the trigger phase (`"enter"` / `"exit"`)
+  matches **and** all of its `preconditions` pass — preconditions short-circuit on the first
+  failure. Each scene owns a private, typed **state bag** (seeded by `initialState`, empty by
+  default) that persists across room visits for the life of the scene: the `script` may mutate
+  it and `preconditions` read it (read-only), enabling fire-once events, world-state flags, and
+  visit counters. The state is internal to the scene — nothing outside reads it.
 
 ### Darkness & light
 
