@@ -4,7 +4,7 @@ import { ADD_LIGHT_SOURCE, IItem, ItemId, PLACE, REMOVE_LIGHT_SOURCE, SET_ORIGIN
 import { ILoot, LootId } from "./loot";
 import type { IMaterialCache, MaterialCacheId } from "./material-cache";
 import type { IMob } from "./character/mob";
-import { IScene, Scene } from "./scene";
+import { IScene } from "./scene";
 import { generateId, ProceduralViolation } from "./util";
 import type { Presentation } from "./presentation";
 
@@ -54,7 +54,7 @@ export interface IRoom {
   /** Connects `room` as the exit in `direction` (one-way at this level). */
   addExit: (direction: Direction, room: IRoom) => void;
   /** Registers a scene to be considered on enter/exit. */
-  registerScene: (scene: Scene) => void;
+  registerScene: (scene: IScene) => void;
   /** Removes the exit in `direction`, if any. */
   removeExit: (direction: Direction) => void;
   /** Seats `mob` as a room-attached resident (origin `"room"`). */
@@ -227,7 +227,7 @@ export class Room implements IRoom {
   }
 
   /** Registers a scene to evaluate when characters enter or exit. */
-  registerScene(scene: Scene) {
+  registerScene(scene: IScene) {
     this.#scenes.push(scene);
   }
 

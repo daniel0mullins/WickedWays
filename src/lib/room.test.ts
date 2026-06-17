@@ -8,7 +8,7 @@ import type { ILoot, LootId } from "./loot";
 import { MaterialCache } from "./material-cache";
 import { Mob } from "./character/mob";
 import { Room } from "./room";
-import type { IScene, Scene } from "./scene";
+import { Scene, type IScene } from "./scene";
 import { ProceduralViolation } from "./util";
 import type { Presentation } from "./presentation";
 
@@ -164,7 +164,7 @@ describe("Room", () => {
     it("plays registered scenes with the 'enter' phase and this room", () => {
       const room = makeRoom();
       const scene = makeScene();
-      room.registerScene(scene as unknown as Scene);
+      room.registerScene(scene);
 
       room.enterRoom(makeCharacter());
 
@@ -198,7 +198,7 @@ describe("Room", () => {
     it("plays registered scenes with the 'exit' phase and this room", () => {
       const room = makeRoom();
       const scene = makeScene();
-      room.registerScene(scene as unknown as Scene);
+      room.registerScene(scene);
       const character = makeCharacter();
       room.enterRoom(character);
       scene.playScene.mockClear();
@@ -253,7 +253,7 @@ describe("Room", () => {
       const room = makeRoom();
       const scene = makeScene();
 
-      room.registerScene(scene as unknown as Scene);
+      room.registerScene(scene);
       room.enterRoom(makeCharacter());
 
       expect(scene.playScene).toHaveBeenCalledOnce();
@@ -263,13 +263,32 @@ describe("Room", () => {
       const room = makeRoom();
       const first = makeScene();
       const second = makeScene();
-      room.registerScene(first as unknown as Scene);
-      room.registerScene(second as unknown as Scene);
+      room.registerScene(first);
+      room.registerScene(second);
 
       room.enterRoom(makeCharacter());
 
       expect(first.playScene).toHaveBeenCalledWith("enter", room);
       expect(second.playScene).toHaveBeenCalledWith("enter", room);
+    });
+
+    it("persists a registered scene's state across repeated enterRoom calls", () => {
+      const body = vi.fn();
+      const scene = new Scene<{ fired: boolean }>({
+        preconditions: [(_room, state) => !state.fired],
+        script: (_room, state) => {
+          body();
+          state.fired = true;
+        },
+        initialState: { fired: false },
+      });
+      const room = makeRoom();
+      room.registerScene(scene);
+
+      room.enterRoom(makeCharacter());
+      room.enterRoom(makeCharacter());
+
+      expect(body).toHaveBeenCalledOnce();
     });
   });
 

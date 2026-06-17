@@ -61,7 +61,7 @@ describe("Scene", () => {
       scene.playScene("enter", room);
 
       expect(script).toHaveBeenCalledOnce();
-      expect(script).toHaveBeenCalledWith(room);
+      expect(script).toHaveBeenCalledWith(room, {});
     });
 
     it("runs the script when there are no preconditions", () => {
@@ -97,8 +97,8 @@ describe("Scene", () => {
 
       scene.playScene("enter", room);
 
-      expect(first).toHaveBeenCalledWith(room);
-      expect(second).toHaveBeenCalledWith(room);
+      expect(first).toHaveBeenCalledWith(room, {});
+      expect(second).toHaveBeenCalledWith(room, {});
     });
 
     it("stops at the first failing precondition (short-circuits)", () => {
@@ -156,7 +156,76 @@ describe("Scene", () => {
       scene.playScene("enter", room);
 
       expect(script).toHaveBeenCalledOnce();
-      expect(script).toHaveBeenCalledWith(room);
+      expect(script).toHaveBeenCalledWith(room, {});
+    });
+  });
+
+  describe("persistent state", () => {
+    it("runs a fire-once scene's body only once across repeated visits", () => {
+      const body = vi.fn();
+      const scene = new Scene<{ fired: boolean }>({
+        preconditions: [(_room, state) => !state.fired],
+        script: (_room, state) => {
+          body();
+          state.fired = true;
+        },
+        initialState: { fired: false },
+      });
+      const room = makeRoom();
+
+      scene.playScene("enter", room);
+      scene.playScene("enter", room);
+      scene.playScene("enter", room);
+
+      expect(body).toHaveBeenCalledOnce();
+    });
+
+    it("accumulates a counter in state and can gate a precondition on it", () => {
+      const body = vi.fn();
+      const scene = new Scene<{ visits: number }>({
+        preconditions: [(_room, state) => state.visits < 2],
+        script: (_room, state) => {
+          state.visits += 1;
+          body();
+        },
+        initialState: { visits: 0 },
+      });
+      const room = makeRoom();
+
+      scene.playScene("enter", room); // visits 0 -> 1
+      scene.playScene("enter", room); // visits 1 -> 2
+      scene.playScene("enter", room); // gate closed (visits === 2)
+
+      expect(body).toHaveBeenCalledTimes(2);
+    });
+
+    it("passes the same live state object to preconditions and the script", () => {
+      const initialState = { visits: 0 };
+      const precondition = vi.fn(() => true);
+      const script = vi.fn();
+      const scene = new Scene<{ visits: number }>({
+        preconditions: [precondition],
+        script,
+        initialState,
+      });
+      const room = makeRoom();
+
+      scene.playScene("enter", room);
+
+      expect(precondition).toHaveBeenCalledWith(room, initialState);
+      expect(script).toHaveBeenCalledWith(room, initialState);
+    });
+
+    it("defaults to an empty state bag and fires every matching enter when stateless", () => {
+      const script = vi.fn();
+      const scene = new Scene({ preconditions: [], script });
+      const room = makeRoom();
+
+      scene.playScene("enter", room);
+      scene.playScene("enter", room);
+
+      expect(script).toHaveBeenCalledTimes(2);
+      expect(script).toHaveBeenCalledWith(room, {});
     });
   });
 });
