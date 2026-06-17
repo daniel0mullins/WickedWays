@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { Campaign } from "./lib/campaign";
-import { HELD_BY, Item, PLACE } from "./lib/inventory";
+import { HELD_BY, Item, PLACE, createKey } from "./lib/inventory";
+import { MaterialCache } from "./lib/material-cache";
+import type { CraftingRecipe, RecipeId } from "./lib/crafting";
 import { Loot } from "./lib/loot";
 import { Room } from "./lib/room";
 import { Scene } from "./lib/scene";
@@ -407,5 +409,54 @@ describe("darkness mechanic", () => {
 
     expect(darkDamage).toBeCloseTo(1);
     expect(litDamage).toBeCloseTo(darkDamage * LIGHT_VULNERABILITY);
+  });
+});
+
+describe("Codex integration", () => {
+  it("populates every kind from a scripted party run with correct first-seen stamps", () => {
+    const campaign = new Campaign("Codex Run");
+    const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+    hero.joinCampaign();
+
+    // Room + mob (mob recorded on entry via NOTE_ENCOUNTERS).
+    const cache = new MaterialCache({ metal: 2 });
+    const lair = new Room("Lair", "a damp lair", [], {} as ExitsArg, [cache]);
+    const goblin = new Mob(campaign, "Goblin", makeStats(), 2, 2, []);
+    lair.enterRoom(goblin);
+    hero.move(lair);
+
+    // Item pickup that also teaches a recipe.
+    const teaches: CraftingRecipe = {
+      id: "iron-sword" as RecipeId,
+      materials: { metal: 2 },
+      create: () => makeWeapon(),
+    };
+    const blade = new Item(
+      { name: "Blade", type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, slot: SlotKind.Hand, teaches },
+      { equippable: true, equipped: false, destroyable: false, usable: false },
+      { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
+      { onPickUp: () => {} },
+    );
+    hero.addToInventory(blade);
+
+    // Key pickup.
+    hero.addToInventory(createKey({ name: "Lair Key", keyCode: "lair", consumeOnUse: false }));
+
+    // Material harvest.
+    hero.harvest(cache);
+
+    const { codex } = campaign;
+    expect(codex.mobs.map((e) => e.snapshot.name)).toEqual(["Goblin"]);
+    expect(codex.rooms.map((e) => e.snapshot.name)).toEqual(["Lair"]);
+    expect(codex.items.map((e) => e.snapshot.name)).toEqual(["Blade"]);
+    expect(codex.keys.map((e) => e.snapshot.name)).toEqual(["Lair Key"]);
+    expect(codex.recipes.map((e) => e.snapshot.id)).toEqual(["iron-sword"]);
+    expect(codex.materials.map((e) => e.snapshot.type)).toEqual(["metal"]);
+
+    // Every party-driven encounter is attributed to the hero.
+    for (const entry of [codex.mobs[0]!, codex.rooms[0]!, codex.items[0]!, codex.keys[0]!, codex.recipes[0]!, codex.materials[0]!]) {
+      expect(entry.firstSeen.characterId).toBe(hero.id);
+    }
+    expect(codex.size).toBe(6);
   });
 });
