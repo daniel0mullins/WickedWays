@@ -112,6 +112,24 @@ describe("Campaign", () => {
       expect(entry.firstSeen.roomId).toBeUndefined();
     });
 
+    it("records a scene-granted recipe as party-attributed (no character)", () => {
+      const { campaign } = makeCampaign(1, undefined, false);
+
+      campaign.discoverRecipe(makeRecipe("iron-sword"));
+
+      const entry = campaign.codex.recipes[0]!;
+      expect(entry.snapshot.id).toBe("iron-sword");
+      expect(entry.snapshot.outputName).toBe("iron-sword");
+      expect(entry.firstSeen.characterId).toBeUndefined();
+    });
+
+    it("does not double-record a recipe discovered twice", () => {
+      const { campaign } = makeCampaign(1, undefined, false);
+      campaign.discoverRecipe(makeRecipe("iron-sword"));
+      campaign.discoverRecipe(makeRecipe("iron-sword"));
+      expect(campaign.codex.recipes).toHaveLength(1);
+    });
+
     it("records mobs encountered on room entry, attributed to the entering party member", () => {
       const { campaign, party } = makeCampaign(1, undefined, false);
       const character = party[0] as unknown as ICharacter;

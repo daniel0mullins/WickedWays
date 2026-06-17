@@ -70,7 +70,7 @@ export interface ICampaign {
   /** Whether the party knows `recipeId`. */
   knows: (recipeId: RecipeId) => boolean;
   /** Marks a recipe known to the whole party; idempotent by id (first wins). */
-  discoverRecipe: (recipe: CraftingRecipe) => void;
+  discoverRecipe: (recipe: CraftingRecipe, discoveredBy?: ICharacter) => void;
   /** Registers an archetype in the catalog; idempotent by id (first wins). */
   registerArchetype: (archetype: Archetype) => void;
   /** Starts the campaign once a valid party and GM are in place. */
@@ -525,11 +525,16 @@ export class Campaign implements ICampaign {
    *
    * @param recipe - The recipe to learn.
    */
-  discoverRecipe(recipe: CraftingRecipe) {
+  discoverRecipe(recipe: CraftingRecipe, discoveredBy?: ICharacter) {
     if (this.#knownRecipes.has(recipe.id)) {
       return;
     }
     this.#knownRecipes.set(recipe.id, recipe);
+    this[RECORD_ENCOUNTER](
+      { kind: "recipe", recipe },
+      discoveredBy,
+      discoveredBy?.currentRoom ?? null,
+    );
   }
 
   /**

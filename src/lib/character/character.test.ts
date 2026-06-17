@@ -1002,6 +1002,25 @@ describe("Character", () => {
       const entry = campaign.codex.keys[0]!;
       expect(entry.snapshot).toEqual({ name: "Vault Key", keyCode: "vault", consumeOnUse: true });
     });
+
+    it("records a recipe taught by a picked-up item, attributed to the picker", () => {
+      const campaign = new Campaign("Codex");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+      const recipe = { id: "potion", materials: { healing: 1 }, create: () => makeSword() } as unknown as Parameters<typeof campaign.discoverRecipe>[0];
+      const scroll = new Item(
+        { name: "Scroll", type: "consumable", recipe: { metal: 1 }, modifier: 0, stat: StatType.Health, teaches: recipe },
+        { equippable: false, equipped: false, destroyable: false, usable: false },
+        { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
+        { onPickUp: () => {} },
+      );
+
+      pc.addToInventory(scroll);
+
+      const entry = campaign.codex.recipes[0]!;
+      expect(entry.snapshot.id).toBe("potion");
+      expect(entry.firstSeen.characterId).toBe(pc.id);
+    });
   });
 
   describe("harvest", () => {

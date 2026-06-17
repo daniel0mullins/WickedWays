@@ -523,7 +523,7 @@ export class Character implements ICharacter {
       }
       // A picked-up item may impart a recipe to the whole party.
       if (current.teaches) {
-        this.campaign.discoverRecipe(current.teaches);
+        this.campaign.discoverRecipe(current.teaches, this);
       }
       this.campaign[RECORD_ENCOUNTER]({ kind: "item", item: current }, this, this.currentRoom);
     }
