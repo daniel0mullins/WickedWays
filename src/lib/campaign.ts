@@ -11,6 +11,8 @@ import { EMIT_CUE, NOTE_ENCOUNTERS } from "./presentation";
 import type { ActionKind, AssetRef, PresentationCue } from "./presentation";
 import { Status } from "./status";
 import type { ICharacter } from "./character/character";
+import { Codex, RECORD_ENCOUNTER } from "./codex";
+import type { CodexEncounterEvent, ICodex } from "./codex";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -35,6 +37,8 @@ export interface ICampaign {
   get knownRecipes(): ReadonlyMap<RecipeId, CraftingRecipe>;
   /** Read-only view of the archetypes registered on this campaign. */
   get archetypes(): ReadonlyMap<ArchetypeId, Archetype>;
+  /** Read-only view of everything the party has encountered. */
+  get codex(): ICodex;
   /** Whether the campaign has begun (turn management active). */
   get started(): boolean;
 
@@ -89,6 +93,12 @@ export interface ICampaign {
   maybeSpawn: (room: IRoom) => IMob[];
   /** Emits first-encounter cues for active mobs in a room a character entered. Engine-internal. */
   [NOTE_ENCOUNTERS]: (character: ICharacter, room: IRoom) => void;
+  /** Records a party encounter into the codex. Engine-internal; see {@link RECORD_ENCOUNTER}. */
+  [RECORD_ENCOUNTER]: (
+    event: CodexEncounterEvent,
+    by: ICharacter | undefined,
+    where: IRoom | null,
+  ) => void;
 }
 
 /**
@@ -118,6 +128,7 @@ export class Campaign implements ICampaign {
   #cueHandlers: Array<(cue: PresentationCue) => void> = [];
   #encountered: Set<string> = new Set<string>();
   #actionSounds: Partial<Record<ActionKind, AssetRef>>;
+  #codex = new Codex();
 
   get round() {
     return this.#round;
@@ -140,6 +151,10 @@ export class Campaign implements ICampaign {
     // via .get(id), so a per-access copy would be wasteful. Mutation is funnelled
     // through registerArchetype.
     return this.#archetypes;
+  }
+
+  get codex(): ICodex {
+    return this.#codex;
   }
 
   get started(): boolean {
@@ -480,6 +495,27 @@ export class Campaign implements ICampaign {
         sound: occupant.presentation?.sound,
       });
     }
+  }
+
+  /**
+   * Records a party encounter into the codex. Ignored when `by` is a character
+   * that is not a current party member, so only party encounters are tracked.
+   * `by === undefined` is a party-level attribution (e.g. a mob material drop
+   * with no resolvable defeater). Engine-internal; first-write-wins per kind/key.
+   */
+  [RECORD_ENCOUNTER](
+    event: CodexEncounterEvent,
+    by: ICharacter | undefined,
+    where: IRoom | null,
+  ) {
+    if (by !== undefined && !this.party.some((p) => p.id === by.id)) {
+      return;
+    }
+    this.#codex.record(event, {
+      round: this.#round,
+      characterId: by?.id,
+      roomId: where?.id,
+    });
   }
 
   /**

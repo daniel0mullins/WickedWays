@@ -14,6 +14,9 @@ import { createKey } from "./inventory";
 import { makeStats, type ExitsArg } from "../test-utils";
 import { EMIT_CUE } from "./presentation";
 import type { PresentationCue } from "./presentation";
+import { RECORD_ENCOUNTER } from "./codex";
+import type { ICharacter } from "./character/character";
+import type { IRoom } from "./room";
 
 // `Campaign` only stores players and compares them by identity, so distinct
 // stub objects cast to `IPlayerCharacter` are enough (WeakMap needs objects).
@@ -69,6 +72,44 @@ describe("Campaign", () => {
 
     it("honors a provided maxRounds", () => {
       expect(makeCampaign(1, 7).campaign.maxRounds).toBe(7);
+    });
+  });
+
+  describe("codex (RECORD_ENCOUNTER seam)", () => {
+    it("starts empty", () => {
+      const { campaign } = makeCampaign(1);
+      expect(campaign.codex.size).toBe(0);
+    });
+
+    it("records a party member's encounter with round/character/room stamp", () => {
+      const { campaign, party } = makeCampaign(1, undefined, false);
+      const by = party[0] as unknown as ICharacter;
+      const where = { id: "room-7" } as unknown as IRoom;
+
+      campaign[RECORD_ENCOUNTER]({ kind: "material", material: "metal" }, by, where);
+
+      const entry = campaign.codex.materials[0]!;
+      expect(entry.snapshot.type).toBe("metal");
+      expect(entry.firstSeen).toEqual({ round: 0, characterId: by.id, roomId: "room-7" });
+    });
+
+    it("ignores an encounter from a character not in the party", () => {
+      const { campaign } = makeCampaign(1, undefined, false);
+      const stranger = { id: "stranger" } as unknown as ICharacter;
+
+      campaign[RECORD_ENCOUNTER]({ kind: "material", material: "glass" }, stranger, null);
+
+      expect(campaign.codex.size).toBe(0);
+    });
+
+    it("allows a party-attributed encounter with no character (characterId undefined)", () => {
+      const { campaign } = makeCampaign(1, undefined, false);
+
+      campaign[RECORD_ENCOUNTER]({ kind: "material", material: "food" }, undefined, null);
+
+      const entry = campaign.codex.materials[0]!;
+      expect(entry.firstSeen.characterId).toBeUndefined();
+      expect(entry.firstSeen.roomId).toBeUndefined();
     });
   });
 
