@@ -168,6 +168,37 @@ errors are isolated so a faulty handler can't disrupt the turn loop.
   `SET_DURABILITY`, and equip/unequip through `EQUIP` / `UNEQUIP` — so external code can't
   silently re-point a holder, refill durability, or bypass slot capacity.
 
+### Codex
+
+The **Codex** is a party-wide record of every distinct kind of thing the party has
+encountered: mobs, items, keyring keys, rooms, recipes, and material types. It is owned by
+the campaign and consultable at any time by any player via [`campaign.codex`](src/lib/codex.ts)
+(read-only); recording costs no action — it is a passive side-effect of play.
+
+Each entry stores a **frozen snapshot** of the thing's stable, descriptive fields (including
+any `presentation` image/sound, so a host can render it without the live entity) plus a
+**first-seen stamp**: the round, the party character who first encountered it, and the room
+where (some discoveries are non-spatial). Entries are tracked by *kind*, not by instance —
+every "Goblin" is one mob entry, every "Rusty Sword" one item entry — and are first-write-wins,
+so the original first-seen stamp survives re-encounter. Mob entries carry full stats (a
+bestiary); keys are tracked separately from regular items.
+
+Encounters are recorded at the natural moments: entering a room (the room, plus any active
+mobs in it), picking up or being handed an item or key, discovering a recipe, and gaining
+materials by harvesting a cache or defeating a mob that drops them. A mob material drop with
+no resolvable defeater is attributed to the party (no character). Only party player characters
+populate the Codex; recording is silent and never throws (a non-party or repeat encounter is a
+no-op), so it can never break the turn loop. Recipes passed to the `Campaign` constructor's
+`knownRecipes` are seeded the same way, so they appear in `codex.recipes` from the start as
+round-0, party-attributed entries (no character/room) — the Codex can be non-empty before play.
+
+Read it via `campaign.codex`: `mobs`, `items`, `keys`, `rooms`, `recipes`, `materials` (each
+sorted by name), `all` (every entry, discovery order), `get(kind, key)` (a single entry), and
+`size`. Recording is gated behind the `RECORD_ENCOUNTER` symbol seam so scene/external code
+cannot forge entries. Discovery/completion tracking (e.g. "12 of 30 materials found") is
+intentionally **not** part of the Codex — it is left to a separate future achievements feature,
+which can read the Codex's structured entries.
+
 ## Key mechanics
 
 ### Action budget

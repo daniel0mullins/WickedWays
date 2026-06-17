@@ -11,6 +11,8 @@ import { EMIT_CUE, NOTE_ENCOUNTERS } from "./presentation";
 import type { ActionKind, AssetRef, PresentationCue } from "./presentation";
 import { Status } from "./status";
 import type { ICharacter } from "./character/character";
+import { Codex, RECORD_ENCOUNTER } from "./codex";
+import type { CodexEncounterEvent, ICodex } from "./codex";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -35,6 +37,8 @@ export interface ICampaign {
   get knownRecipes(): ReadonlyMap<RecipeId, CraftingRecipe>;
   /** Read-only view of the archetypes registered on this campaign. */
   get archetypes(): ReadonlyMap<ArchetypeId, Archetype>;
+  /** Read-only view of everything the party has encountered. */
+  get codex(): ICodex;
   /** Whether the campaign has begun (turn management active). */
   get started(): boolean;
 
@@ -66,7 +70,7 @@ export interface ICampaign {
   /** Whether the party knows `recipeId`. */
   knows: (recipeId: RecipeId) => boolean;
   /** Marks a recipe known to the whole party; idempotent by id (first wins). */
-  discoverRecipe: (recipe: CraftingRecipe) => void;
+  discoverRecipe: (recipe: CraftingRecipe, discoveredBy?: ICharacter) => void;
   /** Registers an archetype in the catalog; idempotent by id (first wins). */
   registerArchetype: (archetype: Archetype) => void;
   /** Starts the campaign once a valid party and GM are in place. */
@@ -89,6 +93,12 @@ export interface ICampaign {
   maybeSpawn: (room: IRoom) => IMob[];
   /** Emits first-encounter cues for active mobs in a room a character entered. Engine-internal. */
   [NOTE_ENCOUNTERS]: (character: ICharacter, room: IRoom) => void;
+  /** Records a party encounter into the codex. Engine-internal; see {@link RECORD_ENCOUNTER}. */
+  [RECORD_ENCOUNTER]: (
+    event: CodexEncounterEvent,
+    by: ICharacter | undefined,
+    where: IRoom | null,
+  ) => void;
 }
 
 /**
@@ -118,6 +128,7 @@ export class Campaign implements ICampaign {
   #cueHandlers: Array<(cue: PresentationCue) => void> = [];
   #encountered: Set<string> = new Set<string>();
   #actionSounds: Partial<Record<ActionKind, AssetRef>>;
+  #codex = new Codex();
 
   get round() {
     return this.#round;
@@ -140,6 +151,10 @@ export class Campaign implements ICampaign {
     // via .get(id), so a per-access copy would be wasteful. Mutation is funnelled
     // through registerArchetype.
     return this.#archetypes;
+  }
+
+  get codex(): ICodex {
+    return this.#codex;
   }
 
   get started(): boolean {
@@ -479,7 +494,29 @@ export class Campaign implements ICampaign {
         room: { id: room.id, name: room.name },
         sound: occupant.presentation?.sound,
       });
+      this[RECORD_ENCOUNTER]({ kind: "mob", mob: occupant }, character, room);
     }
+  }
+
+  /**
+   * Records a party encounter into the codex. Ignored when `by` is a character
+   * that is not a current party member, so only party encounters are tracked.
+   * `by === undefined` is a party-level attribution (e.g. a mob material drop
+   * with no resolvable defeater). Engine-internal; first-write-wins per kind/key.
+   */
+  [RECORD_ENCOUNTER](
+    event: CodexEncounterEvent,
+    by: ICharacter | undefined,
+    where: IRoom | null,
+  ) {
+    if (by !== undefined && !this.party.some((p) => p.id === by.id)) {
+      return;
+    }
+    this.#codex.record(event, {
+      round: this.#round,
+      characterId: by?.id,
+      roomId: where?.id,
+    });
   }
 
   /**
@@ -488,11 +525,16 @@ export class Campaign implements ICampaign {
    *
    * @param recipe - The recipe to learn.
    */
-  discoverRecipe(recipe: CraftingRecipe) {
+  discoverRecipe(recipe: CraftingRecipe, discoveredBy?: ICharacter) {
     if (this.#knownRecipes.has(recipe.id)) {
       return;
     }
     this.#knownRecipes.set(recipe.id, recipe);
+    this[RECORD_ENCOUNTER](
+      { kind: "recipe", recipe },
+      discoveredBy,
+      discoveredBy?.currentRoom ?? null,
+    );
   }
 
   /**

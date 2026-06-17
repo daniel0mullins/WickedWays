@@ -15,6 +15,7 @@ import { StatType, type Stats } from "./stats";
 import type { CraftingRecipe, RecipeId } from "../crafting";
 import { makeCampaign, makeStats } from "../../test-utils";
 import { Campaign } from "../campaign";
+import { PlayerCharacter } from "./player-character";
 import { Room } from "../room";
 import { MaterialCache } from "../material-cache";
 import type { ExitsArg } from "../../test-utils";
@@ -965,6 +966,63 @@ describe("Character", () => {
     });
   });
 
+  describe("addToInventory codex (items & keys)", () => {
+    function makeSword(): Item {
+      return new Item(
+        { name: "Sword", type: "weapon", recipe: { metal: 1 }, modifier: 3, stat: StatType.Health, slot: SlotKind.Hand },
+        { equippable: true, equipped: false, destroyable: false, usable: false },
+        { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
+        { onPickUp: () => {} },
+      );
+    }
+
+    it("records a picked-up item, attributed to the party member", () => {
+      const campaign = new Campaign("Codex");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+
+      pc.addToInventory(makeSword());
+
+      const entry = campaign.codex.items[0]!;
+      expect(entry.snapshot.name).toBe("Sword");
+      expect(entry.snapshot.type).toBe("weapon");
+      expect(entry.snapshot.slot).toBe(SlotKind.Hand);
+      expect(entry.firstSeen.characterId).toBe(pc.id);
+    });
+
+    it("records a picked-up key under the key kind, not the item kind", () => {
+      const campaign = new Campaign("Codex");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+      const key = createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: true });
+
+      pc.addToInventory(key);
+
+      expect(campaign.codex.items).toHaveLength(0);
+      const entry = campaign.codex.keys[0]!;
+      expect(entry.snapshot).toEqual({ name: "Vault Key", keyCode: "vault", consumeOnUse: true });
+    });
+
+    it("records a recipe taught by a picked-up item, attributed to the picker", () => {
+      const campaign = new Campaign("Codex");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+      const recipe = { id: "potion", materials: { healing: 1 }, create: () => makeSword() } as unknown as Parameters<typeof campaign.discoverRecipe>[0];
+      const scroll = new Item(
+        { name: "Scroll", type: "consumable", recipe: { metal: 1 }, modifier: 0, stat: StatType.Health, teaches: recipe },
+        { equippable: false, equipped: false, destroyable: false, usable: false },
+        { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
+        { onPickUp: () => {} },
+      );
+
+      pc.addToInventory(scroll);
+
+      const entry = campaign.codex.recipes[0]!;
+      expect(entry.snapshot.id).toBe("potion");
+      expect(entry.firstSeen.characterId).toBe(pc.id);
+    });
+  });
+
   describe("harvest", () => {
     function setup() {
       const campaign = new Campaign("Materials");
@@ -974,6 +1032,20 @@ describe("Character", () => {
       character.move(room);
       return { campaign, character, cache };
     }
+
+    it("records harvested material kinds in the codex, attributed to a party member", () => {
+      const campaign = new Campaign("Materials");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+      const cache = new MaterialCache({ metal: 3, glass: 1 });
+      const room = new Room("Vault", "a vault", [], {} as ExitsArg, [cache]);
+      pc.move(room);
+
+      pc.harvest(cache);
+
+      expect(campaign.codex.materials.map((m) => m.snapshot.type).sort()).toEqual(["glass", "metal"]);
+      expect(campaign.codex.materials.every((m) => m.firstSeen.characterId === pc.id)).toBe(true);
+    });
 
     it("deposits a co-located cache into the party pool and depletes it", () => {
       const { campaign, character, cache } = setup();

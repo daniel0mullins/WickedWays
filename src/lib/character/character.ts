@@ -12,6 +12,7 @@ import { Status } from "../status";
 import { Afflictions, AfflictionConfig, DEFAULT_AFFLICTION_CONFIG } from "./afflictions";
 import { EMIT_CUE } from "../presentation";
 import type { AssetRef, Presentation } from "../presentation";
+import { RECORD_ENCOUNTER } from "../codex";
 
 import { generateId, ProceduralViolation, typedEntries } from "../util";
 import { CharacterEvents, ICharacterEvents } from "./events";
@@ -522,8 +523,9 @@ export class Character implements ICharacter {
       }
       // A picked-up item may impart a recipe to the whole party.
       if (current.teaches) {
-        this.campaign.discoverRecipe(current.teaches);
+        this.campaign.discoverRecipe(current.teaches, this);
       }
+      this.campaign[RECORD_ENCOUNTER]({ kind: "item", item: current }, this, this.currentRoom);
     }
     this.recordAction(this.addToInventory, {
       kind: "pickUp",
@@ -775,7 +777,18 @@ export class Character implements ICharacter {
         "Cannot harvest a material cache that is not in the current room",
       );
     }
-    this.campaign[DEPOSIT_MATERIALS](cache[DEPLETE]());
+    const mats = cache[DEPLETE]();
+    this.campaign[DEPOSIT_MATERIALS](mats);
+    for (const [component, qty] of typedEntries(mats) as Array<
+      [keyof MaterialMap, number | undefined]
+    >) {
+      if (qty === undefined) continue;
+      this.campaign[RECORD_ENCOUNTER](
+        { kind: "material", material: component },
+        this,
+        this.#currentRoom,
+      );
+    }
   }
 
   /**

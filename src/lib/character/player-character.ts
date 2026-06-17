@@ -4,6 +4,7 @@ import { ILoot } from "../loot";
 import type { IRoom } from "../room";
 import { ProceduralViolation, typedEntries } from "../util";
 import { NOTE_ENCOUNTERS } from "../presentation";
+import { RECORD_ENCOUNTER } from "../codex";
 import { Combatant, ICombatant } from "./combatant";
 import { StatType, type Stats } from "./stats";
 import type { CharacterOptions } from "./character";
@@ -113,6 +114,7 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     if (this.currentRoom === room) {
       this.campaign.maybeSpawn(room);
       this.campaign[NOTE_ENCOUNTERS](this, room);
+      this.campaign[RECORD_ENCOUNTER]({ kind: "room", room }, this, room);
     }
   }
 

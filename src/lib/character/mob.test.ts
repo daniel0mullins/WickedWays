@@ -228,6 +228,25 @@ describe("Mob", () => {
       expect(campaign.materials.metal).toBe(3);
     });
 
+    it("records dropped material kinds in the codex (party-attributed, mob's room)", () => {
+      const campaign = realCampaign();
+      const lair = room();
+      const mob = makeMob({
+        campaign,
+        materialDrops: { metal: 3 },
+        stats: { [StatType.Health]: 0 },
+      });
+      mob[SET_ORIGIN]("room");
+      mob[PLACE](lair);
+
+      mob.takeDamage(0);
+
+      const entry = campaign.codex.materials[0]!;
+      expect(entry.snapshot.type).toBe("metal");
+      expect(entry.firstSeen.characterId).toBeUndefined();
+      expect(entry.firstSeen.roomId).toBe(lair.id);
+    });
+
     it("drops a key item into the loot box for a room-origin mob", () => {
       const key = createKey({ name: "Cell Key", keyCode: "cell", consumeOnUse: false });
       const lair = room();

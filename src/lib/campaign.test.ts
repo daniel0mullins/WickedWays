@@ -12,8 +12,11 @@ import { Room } from "./room";
 import { type Formation } from "./encounter-table";
 import { createKey } from "./inventory";
 import { makeStats, type ExitsArg } from "../test-utils";
-import { EMIT_CUE } from "./presentation";
+import { EMIT_CUE, NOTE_ENCOUNTERS } from "./presentation";
 import type { PresentationCue } from "./presentation";
+import { RECORD_ENCOUNTER } from "./codex";
+import type { ICharacter } from "./character/character";
+import type { IRoom } from "./room";
 
 // `Campaign` only stores players and compares them by identity, so distinct
 // stub objects cast to `IPlayerCharacter` are enough (WeakMap needs objects).
@@ -69,6 +72,78 @@ describe("Campaign", () => {
 
     it("honors a provided maxRounds", () => {
       expect(makeCampaign(1, 7).campaign.maxRounds).toBe(7);
+    });
+  });
+
+  describe("codex (RECORD_ENCOUNTER seam)", () => {
+    it("starts empty", () => {
+      const { campaign } = makeCampaign(1);
+      expect(campaign.codex.size).toBe(0);
+    });
+
+    it("records a party member's encounter with round/character/room stamp", () => {
+      const { campaign, party } = makeCampaign(1, undefined, false);
+      const by = party[0] as unknown as ICharacter;
+      const where = { id: "room-7" } as unknown as IRoom;
+
+      campaign[RECORD_ENCOUNTER]({ kind: "material", material: "metal" }, by, where);
+
+      const entry = campaign.codex.materials[0]!;
+      expect(entry.snapshot.type).toBe("metal");
+      expect(entry.firstSeen).toEqual({ round: 0, characterId: by.id, roomId: "room-7" });
+    });
+
+    it("ignores an encounter from a character not in the party", () => {
+      const { campaign } = makeCampaign(1, undefined, false);
+      const stranger = { id: "stranger" } as unknown as ICharacter;
+
+      campaign[RECORD_ENCOUNTER]({ kind: "material", material: "glass" }, stranger, null);
+
+      expect(campaign.codex.size).toBe(0);
+    });
+
+    it("allows a party-attributed encounter with no character (characterId undefined)", () => {
+      const { campaign } = makeCampaign(1, undefined, false);
+
+      campaign[RECORD_ENCOUNTER]({ kind: "material", material: "food" }, undefined, null);
+
+      const entry = campaign.codex.materials[0]!;
+      expect(entry.firstSeen.characterId).toBeUndefined();
+      expect(entry.firstSeen.roomId).toBeUndefined();
+    });
+
+    it("records a scene-granted recipe as party-attributed (no character)", () => {
+      const { campaign } = makeCampaign(1, undefined, false);
+
+      campaign.discoverRecipe(makeRecipe("iron-sword"));
+
+      const entry = campaign.codex.recipes[0]!;
+      expect(entry.snapshot.id).toBe("iron-sword");
+      expect(entry.snapshot.outputName).toBe("iron-sword");
+      expect(entry.firstSeen.characterId).toBeUndefined();
+    });
+
+    it("does not double-record a recipe discovered twice", () => {
+      const { campaign } = makeCampaign(1, undefined, false);
+      campaign.discoverRecipe(makeRecipe("iron-sword"));
+      campaign.discoverRecipe(makeRecipe("iron-sword"));
+      expect(campaign.codex.recipes).toHaveLength(1);
+    });
+
+    it("records mobs encountered on room entry, attributed to the entering party member", () => {
+      const { campaign, party } = makeCampaign(1, undefined, false);
+      const character = party[0] as unknown as ICharacter;
+      const room = new Room("Lair", "a lair", [], {} as ExitsArg);
+      const mob = new Mob(campaign, "Goblin", makeStats(), 2, 2, []);
+      room.enterRoom(mob);
+
+      campaign[NOTE_ENCOUNTERS](character, room);
+
+      const entry = campaign.codex.mobs[0]!;
+      expect(entry.snapshot.name).toBe("Goblin");
+      expect(entry.snapshot.stats).toEqual({ health: 10, sanity: 10, energy: 10 });
+      expect(entry.firstSeen.characterId).toBe(character.id);
+      expect(entry.firstSeen.roomId).toBe(room.id);
     });
   });
 

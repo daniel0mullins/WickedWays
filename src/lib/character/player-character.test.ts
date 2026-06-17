@@ -202,6 +202,22 @@ describe("PlayerCharacter", () => {
     });
   });
 
+  describe("codex (rooms)", () => {
+    it("records the room a party member moves into", () => {
+      const campaign = new Campaign("Codex");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+      const room = new Room("Vault", "a vault", [], {} as ExitsArg);
+
+      pc.move(room);
+
+      const entry = campaign.codex.rooms[0]!;
+      expect(entry.snapshot).toEqual({ name: "Vault", description: "a vault" });
+      expect(entry.firstSeen.characterId).toBe(pc.id);
+      expect(entry.firstSeen.roomId).toBe(room.id);
+    });
+  });
+
   describe("joinCampaign", () => {
     it("adds itself to the campaign party", () => {
       const campaign = new Campaign("Quest");
