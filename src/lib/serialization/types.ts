@@ -35,9 +35,10 @@ export interface LootSnapshot {
 
 export interface MaterialCacheSnapshot {
   id: string;
-  // exact fields confirmed against src/lib/material-cache.ts in Task 3
-  type: keyof MaterialMap;
-  quantity: number;
+  /** Remaining materials (empty object once depleted). Confirmed against MaterialCache fields in Task 3. */
+  contents: MaterialMap;
+  /** Whether this cache has already been harvested. */
+  depleted: boolean;
 }
 
 export interface SceneSnapshot {

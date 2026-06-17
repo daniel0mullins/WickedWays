@@ -2,9 +2,18 @@ import { Brand } from "./brand";
 import { CLAIM, IItem, IItemHolder, ItemId, STASH_DROP } from "./inventory";
 import { ContainerFullException, ProceduralViolation, generateId } from "./util";
 import type { Presentation } from "./presentation";
+import { SERIALIZE } from "./serialization/symbols";
+import type { LootSnapshot } from "./serialization/types";
+import type { HydrateContext } from "./serialization/context";
 
 /** Unique identifier for a {@link Loot} container. */
 export type LootId = Brand<string, "LootId">;
+
+/**
+ * Engine-internal seam: sets `#capacity` on a {@link Loot} during hydration so
+ * the restored snapshot value is preserved exactly as persisted.
+ */
+export const SET_CAPACITY = Symbol("setLootCapacity");
 
 /**
  * A loot container: an {@link IItemHolder} that stores items in a room for
@@ -142,4 +151,38 @@ export class Loot implements ILoot {
     this.contents.push(item);
     item[CLAIM](this);
   }
+
+  /** Engine-internal: restores `#capacity` from a persisted snapshot. */
+  [SET_CAPACITY](value: number) {
+    this.#capacity = value;
+  }
+
+  /** Returns a plain-data snapshot suitable for persistence. */
+  [SERIALIZE](): LootSnapshot {
+    return {
+      id: this.id,
+      description: this.description,
+      capacity: this.capacity,
+      contentIds: this.contents.map((i) => i.id),
+    };
+  }
+}
+
+/**
+ * Reconstructs a {@link Loot} from its snapshot. Contents must already be
+ * indexed in `ctx` (items hydrate before containers in the deserializer ordering).
+ *
+ * @param data - Plain-data snapshot produced by {@link Loot[SERIALIZE]}.
+ * @param ctx - Hydration context carrying the id→instance index and registry.
+ * @returns The reconstructed loot box, registered in `ctx`.
+ */
+export function hydrateLoot(data: LootSnapshot, ctx: HydrateContext): Loot {
+  const loot = new Loot(data.description, []);
+  loot.id = data.id as LootId;
+  loot[SET_CAPACITY](data.capacity);
+  for (const itemId of data.contentIds) {
+    loot.receiveItem(ctx.item(itemId));
+  }
+  ctx.put(loot.id, loot);
+  return loot;
 }
