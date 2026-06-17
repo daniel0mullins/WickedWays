@@ -188,7 +188,9 @@ mobs in it), picking up or being handed an item or key, discovering a recipe, an
 materials by harvesting a cache or defeating a mob that drops them. A mob material drop with
 no resolvable defeater is attributed to the party (no character). Only party player characters
 populate the Codex; recording is silent and never throws (a non-party or repeat encounter is a
-no-op), so it can never break the turn loop.
+no-op), so it can never break the turn loop. Recipes passed to the `Campaign` constructor's
+`knownRecipes` are seeded the same way, so they appear in `codex.recipes` from the start as
+round-0, party-attributed entries (no character/room) — the Codex can be non-empty before play.
 
 Read it via `campaign.codex`: `mobs`, `items`, `keys`, `rooms`, `recipes`, `materials` (each
 sorted by name), `all` (every entry, discovery order), `get(kind, key)` (a single entry), and
