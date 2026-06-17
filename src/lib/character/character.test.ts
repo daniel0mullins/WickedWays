@@ -1033,6 +1033,20 @@ describe("Character", () => {
       return { campaign, character, cache };
     }
 
+    it("records harvested material kinds in the codex, attributed to a party member", () => {
+      const campaign = new Campaign("Materials");
+      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      pc.joinCampaign();
+      const cache = new MaterialCache({ metal: 3, glass: 1 });
+      const room = new Room("Vault", "a vault", [], {} as ExitsArg, [cache]);
+      pc.move(room);
+
+      pc.harvest(cache);
+
+      expect(campaign.codex.materials.map((m) => m.snapshot.type).sort()).toEqual(["glass", "metal"]);
+      expect(campaign.codex.materials.every((m) => m.firstSeen.characterId === pc.id)).toBe(true);
+    });
+
     it("deposits a co-located cache into the party pool and depletes it", () => {
       const { campaign, character, cache } = setup();
 

@@ -777,7 +777,18 @@ export class Character implements ICharacter {
         "Cannot harvest a material cache that is not in the current room",
       );
     }
-    this.campaign[DEPOSIT_MATERIALS](cache[DEPLETE]());
+    const mats = cache[DEPLETE]();
+    this.campaign[DEPOSIT_MATERIALS](mats);
+    for (const [component, qty] of typedEntries(mats) as Array<
+      [keyof MaterialMap, number | undefined]
+    >) {
+      if (qty === undefined) continue;
+      this.campaign[RECORD_ENCOUNTER](
+        { kind: "material", material: component },
+        this,
+        this.#currentRoom,
+      );
+    }
   }
 
   /**

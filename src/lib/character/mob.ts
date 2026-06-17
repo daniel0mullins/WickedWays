@@ -8,7 +8,9 @@ import {
 } from "../inventory";
 import { Loot } from "../loot";
 import { roll } from "../dice";
-import { clamp } from "../util";
+import { clamp, typedEntries } from "../util";
+import { RECORD_ENCOUNTER } from "../codex";
+import type { ICharacter } from "./character";
 import { Combatant, ICombatant } from "./combatant";
 import { Stats, StatType } from "./stats";
 import type { CharacterOptions } from "./character";
@@ -119,6 +121,22 @@ export class Mob extends Combatant implements IMob {
   protected override onKnockOut() {
     if (Object.keys(this.#materialDrops).length > 0) {
       this.campaign[DEPOSIT_MATERIALS](this.#materialDrops);
+      let by: ICharacter | undefined;
+      try {
+        by = this.campaign.activeCharacter;
+      } catch {
+        by = undefined;
+      }
+      for (const [component, qty] of typedEntries(this.#materialDrops) as Array<
+        [keyof MaterialMap, number | undefined]
+      >) {
+        if (qty === undefined) continue;
+        this.campaign[RECORD_ENCOUNTER](
+          { kind: "material", material: component },
+          by,
+          this.currentRoom,
+        );
+      }
     }
 
     const room = this.currentRoom;
