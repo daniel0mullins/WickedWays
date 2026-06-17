@@ -8,7 +8,7 @@ import type { ILoot, LootId } from "./loot";
 import { MaterialCache } from "./material-cache";
 import { Mob } from "./character/mob";
 import { Room } from "./room";
-import type { IScene, Scene } from "./scene";
+import { Scene, type IScene } from "./scene";
 import { ProceduralViolation } from "./util";
 import type { Presentation } from "./presentation";
 
@@ -270,6 +270,25 @@ describe("Room", () => {
 
       expect(first.playScene).toHaveBeenCalledWith("enter", room);
       expect(second.playScene).toHaveBeenCalledWith("enter", room);
+    });
+
+    it("persists a registered scene's state across repeated enterRoom calls", () => {
+      const body = vi.fn();
+      const scene = new Scene<{ fired: boolean }>({
+        preconditions: [(_room, state) => !state.fired],
+        script: (_room, state) => {
+          body();
+          state.fired = true;
+        },
+        initialState: { fired: false },
+      });
+      const room = makeRoom();
+      room.registerScene(scene);
+
+      room.enterRoom(makeCharacter());
+      room.enterRoom(makeCharacter());
+
+      expect(body).toHaveBeenCalledOnce();
     });
   });
 
