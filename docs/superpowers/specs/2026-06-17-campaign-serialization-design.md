@@ -146,7 +146,7 @@ JSON, version-tagged:
     // non-key item: factory (by behaviorKey) reproduces all static config;
     // snapshot carries only id + key + mutable state
     { "id": "...", "behaviorKey": "healing-potion",
-      "durability": 3, "equipped": false, "modifier": 0 },
+      "durability": 3, "modifier": 0 },  // equipped-ness comes from the owner's equipment map
     // key: rebuilt by the engine createKey() factory from its config (no behaviorKey)
     { "id": "...", "kind": "key",
       "name": "Brass Key", "keyCode": "crypt", "consumeOnUse": false }
