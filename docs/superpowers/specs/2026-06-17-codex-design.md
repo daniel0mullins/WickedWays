@@ -67,12 +67,24 @@ is a no-op (first-write-wins; preserves the original `firstSeen`).
 
 | Kind | Grouping key | Snapshot fields |
 |------|-------------|-----------------|
-| `mob` | `name` | `{ name, description?, stats: { health, sanity, energy } }` |
-| `item` | `${type}:${name}` | `{ name, type, slot?, twoHanded?, emitsLight? }` |
-| `key` | `${keyCode}:${name}` | `{ name, keyCode, consumeOnUse }` |
-| `room` | `RoomId` | `{ name, description }` |
-| `recipe` | `RecipeId` | `{ id, materials?, keys?, outputName }` |
+| `mob` | `name` | `{ name, description?, stats: { health, sanity, energy }, presentation? }` |
+| `item` | `${type}:${name}` | `{ name, type, slot?, twoHanded?, emitsLight?, presentation? }` |
+| `key` | `${keyCode}:${name}` | `{ name, keyCode, consumeOnUse, presentation? }` |
+| `room` | `RoomId` | `{ name, description, presentation? }` |
+| `recipe` | `RecipeId` | `{ id, materials?, keys?, outputName, outputPresentation? }` |
 | `material` | the `ItemComponentType` literal | `{ type }` |
+
+### Presentation data
+
+Mobs, items (including keys), and rooms each carry an optional
+`presentation?: Presentation` (`{ image?: AssetRef; sound?: AssetRef }`); the
+Codex snapshots it so an entry is self-contained for display — a host can render
+a mob's portrait or play a room's signature sound straight from the Codex
+without resolving the live entity. For recipes, the snapshot captures the output
+item's presentation as `outputPresentation` (read from `recipe.create()`, the
+same call that yields `outputName`). Materials have no presentation. The
+presentation snapshot is deep-frozen with the rest of the entry; absent
+presentation is simply omitted.
 
 Mob entries deliberately expose **full stats** (Health/Sanity/Energy) — a proper
 bestiary. Keys are their own kind, separate from items, matching the
