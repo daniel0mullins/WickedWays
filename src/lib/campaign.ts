@@ -494,6 +494,7 @@ export class Campaign implements ICampaign {
         room: { id: room.id, name: room.name },
         sound: occupant.presentation?.sound,
       });
+      this[RECORD_ENCOUNTER]({ kind: "mob", mob: occupant }, character, room);
     }
   }
 

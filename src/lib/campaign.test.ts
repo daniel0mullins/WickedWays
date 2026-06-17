@@ -12,7 +12,7 @@ import { Room } from "./room";
 import { type Formation } from "./encounter-table";
 import { createKey } from "./inventory";
 import { makeStats, type ExitsArg } from "../test-utils";
-import { EMIT_CUE } from "./presentation";
+import { EMIT_CUE, NOTE_ENCOUNTERS } from "./presentation";
 import type { PresentationCue } from "./presentation";
 import { RECORD_ENCOUNTER } from "./codex";
 import type { ICharacter } from "./character/character";
@@ -110,6 +110,22 @@ describe("Campaign", () => {
       const entry = campaign.codex.materials[0]!;
       expect(entry.firstSeen.characterId).toBeUndefined();
       expect(entry.firstSeen.roomId).toBeUndefined();
+    });
+
+    it("records mobs encountered on room entry, attributed to the entering party member", () => {
+      const { campaign, party } = makeCampaign(1, undefined, false);
+      const character = party[0] as unknown as ICharacter;
+      const room = new Room("Lair", "a lair", [], {} as ExitsArg);
+      const mob = new Mob(campaign, "Goblin", makeStats(), 2, 2, []);
+      room.enterRoom(mob);
+
+      campaign[NOTE_ENCOUNTERS](character, room);
+
+      const entry = campaign.codex.mobs[0]!;
+      expect(entry.snapshot.name).toBe("Goblin");
+      expect(entry.snapshot.stats).toEqual({ health: 10, sanity: 10, energy: 10 });
+      expect(entry.firstSeen.characterId).toBe(character.id);
+      expect(entry.firstSeen.roomId).toBe(room.id);
     });
   });
 
