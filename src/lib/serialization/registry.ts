@@ -48,7 +48,7 @@ export class CampaignRegistry {
 
   #require<T>(value: T | undefined, kind: string, key: string): T {
     if (value === undefined) {
-      throw new ProceduralViolation(`No ${kind} behavior registered for key '${key}'.`);
+      throw new ProceduralViolation(`No ${kind} registered for key '${key}'.`);
     }
     return value;
   }

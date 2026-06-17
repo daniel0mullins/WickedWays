@@ -19,7 +19,7 @@ export class HydrateContext {
   }
   #get<T>(id: string, kind: string): T {
     const found = this.index.get(id);
-    if (found === undefined) {
+    if (found == null) {
       throw new ProceduralViolation(`Corrupt snapshot: dangling ${kind} id '${id}'.`);
     }
     return found as T;
