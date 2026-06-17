@@ -181,7 +181,7 @@ export function hydrateLoot(data: LootSnapshot, ctx: HydrateContext): Loot {
   loot.id = data.id as LootId;
   loot[SET_CAPACITY](data.capacity);
   for (const itemId of data.contentIds) {
-    loot.receiveItem(ctx.item(itemId));
+    loot[STASH_DROP](ctx.item(itemId));
   }
   ctx.put(loot.id, loot);
   return loot;

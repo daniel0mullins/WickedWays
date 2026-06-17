@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Item, ItemType, StatType } from "./inventory";
+import { Item, ItemType, StatType, createKey, STASH_DROP } from "./inventory";
 import { Loot } from "./loot";
 import { SERIALIZE } from "./serialization/symbols";
 import { hydrateLoot } from "./loot";
@@ -50,5 +50,20 @@ describe("Loot serialization", () => {
 
     const restored = hydrateLoot(snap, ctx);
     expect(restored.capacity).toBe(2);
+  });
+
+  it("round-trips a loot box containing a key (STASH_DROP path)", () => {
+    const ctx = new HydrateContext(new CampaignRegistry(), () => 0.5);
+
+    const key = createKey({ name: "Brass Key", keyCode: "brass", consumeOnUse: false });
+    const loot = new Loot("Chest", []);
+    loot[STASH_DROP](key);
+
+    const snap = loot[SERIALIZE]();
+    expect(snap.contentIds).toContain(key.id);
+
+    hydrateItem(key[SERIALIZE](), ctx); // key must be indexed before the loot
+    const restored = hydrateLoot(snap, ctx);
+    expect(restored.contents.map((i) => i.id)).toContain(key.id);
   });
 });
