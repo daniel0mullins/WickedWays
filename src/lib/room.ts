@@ -273,25 +273,31 @@ export class Room implements IRoom {
    * from the hydration context index into this bare room. Called in pass 2.
    */
   [HYDRATE](data: RoomSnapshot, ctx: HydrateContext) {
+    this.exits.clear();
     for (const [dir, roomId] of Object.entries(data.exits)) {
       this.exits.set(dir as Direction, ctx.room(roomId));
     }
+    this.loot.clear();
     for (const lootId of data.lootIds) {
       const loot = ctx.loot(lootId);
       this.loot.set(loot.id, loot);
     }
+    this.materials.clear();
     for (const cacheId of data.materialCacheIds) {
       const cache = ctx.materialCache(cacheId);
       this.materials.set(cache.id, cache);
     }
+    this.#lightSources.clear();
     for (const itemId of data.lightSourceIds) {
       const light = ctx.item(itemId);
       this.#lightSources.set(light.id, light);
     }
+    this.#occupants.clear();
     for (const charId of data.occupantIds) {
       const character = ctx.character(charId);
       this.#occupants.set(character.id, character);
     }
+    this.#scenes.length = 0;
     for (const sceneData of data.scenes) {
       this.registerScene(hydrateScene(sceneData, ctx));
     }

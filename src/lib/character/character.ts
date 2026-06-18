@@ -1048,11 +1048,13 @@ export class Character implements ICharacter {
     this.archetypeImmunities = [...data.archetypeImmunities];
     this.#currentRoom = data.currentRoomId ? ctx.room(data.currentRoomId) : null;
     this.#inventory.slots = data.inventory.slots;
+    this.#inventory.items.length = 0;
     for (const id of data.inventory.itemIds) {
       const item = ctx.item(id);
       this.#inventory.items.push(item);
       item[CLAIM](this);
     }
+    this.#inventory.keys.length = 0;
     for (const id of data.inventory.keyIds) {
       const key = ctx.item(id);
       this.#inventory.keys.push(key);
@@ -1061,6 +1063,7 @@ export class Character implements ICharacter {
     // Equipment: populate the map directly and mark equipped. Do NOT call [EQUIP]:
     // equip side-effects (and any derived bonuses) are already reflected in the
     // restored base stats / equipped flags, so replaying them would double-apply.
+    this.#equipment.clear();
     for (const [slot, itemId] of Object.entries(data.equipment)) {
       const item = ctx.item(itemId);
       this.#equipment.set(slot as EquipmentSlot, item);

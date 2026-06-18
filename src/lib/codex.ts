@@ -270,6 +270,7 @@ export class Codex implements ICodex {
 
   /** Restores pre-built frozen entries directly, preserving each entry's original `firstSeen`. */
   [HYDRATE_CODEX](entries: CodexEntry[]): void {
+    this.#entries.clear();
     for (const entry of entries) {
       deepFreeze(entry);
       this.#entries.set(`${entry.kind}::${entry.key}`, entry);
