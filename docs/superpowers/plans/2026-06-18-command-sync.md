@@ -27,7 +27,7 @@ These are documented here and were flagged to the user at plan handoff:
 1. **Item/Loot/MaterialCache gain *new* in-place `[HYDRATE]` seams.** The spec framed the Spec-1 touch-up as "reset collections in existing `[HYDRATE]`." In reality those three types have **no `[HYDRATE]` method at all** — only free-function factories (`hydrateItem`/`hydrateLoot`/`hydrateMaterialCache`) that build fresh instances. Since `changed`-deltas must update an entity **in place** (other entities hold its reference by identity), these three need real in-place hydrate methods. Task 2 adds them.
 2. **Resolver/Coordinator responsibility split.** The spec says the `Resolver` "computes the delta." In this plan the `Resolver` produces the authoritative state change (authorize + resolve-ids + run the engine), and the `SyncCoordinator` derives the delta from before/after snapshots and owns the campaign lifecycle (the restore-swap on reject/conflict). Same authority boundary; cleaner unit responsibilities.
 3. **`EntityIndex` is sourced from the serialize walk.** `serializeCampaign` is refactored to expose the id→instance map it already builds (`serializeCampaignWithIndex`), so the index can never drift from the snapshot. No duplicated BFS.
-4. **`addPlayer` and `joinCampaign` are deferred.** Both carry only a `characterId`/`actorId` with no character payload, so a replica cannot materialize a brand-new character from them. They require a future `createCharacter`-style command that ships the character's initial data. The roster is assumed established at campaign setup and distributed via the initial snapshot / late-join. `leaveCampaign` and `transferGM` operate on existing party members and **are** implemented.
+4. **`joinCampaign` carries a `CharacterSnapshot` (new-player-join is in scope).** The spec's `joinCampaign { actorId }` carried only an id, which a replica cannot materialize a brand-new character from. The fix: `joinCampaign { character: CharacterSnapshot }`. The resolver constructs the player from the snapshot's identity+stats and joins it to the party; the joined character then propagates to every replica through the **ordinary `created`-delta path** (it becomes reachable via the party, so `DeltaComputer` sees it as `created` and `DeltaApplier` constructs it — no special replica code). A character joins "bare" (identity + stats; default action state, no room/inventory); richer initial state is applied by subsequent commands (`selectArchetype`, `move`, `pickUp`). **`addPlayer` (GM-initiated add of someone else's character) remains deferred** — it is a near-duplicate of `joinCampaign` that adds no new capability for Spec 2 and would need a seat-ownership model. `leaveCampaign` and `transferGM` operate on existing party members and are implemented.
 
 ---
 
@@ -763,6 +763,7 @@ Define the serializable command union, the delta/log/result types, and the class
   - `isTurnAction(command: Command): boolean`
   - `isSetupCommand(command: Command): boolean`
   - `isGmCommand(command: Command): boolean`
+  - `isJoinCommand(command: Command): command is Extract<Command, { kind: "joinCampaign" }>`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -770,7 +771,7 @@ Create `src/lib/sync/types.test.ts`:
 
 ```ts
 import { describe, it, expect } from "vitest";
-import { commandActorId, isTurnAction, isGmCommand, isSetupCommand } from "./types";
+import { commandActorId, isTurnAction, isGmCommand, isSetupCommand, isJoinCommand } from "./types";
 import type { Command } from "./types";
 
 describe("command classifiers", () => {
@@ -792,6 +793,14 @@ describe("command classifiers", () => {
     const sel: Command = { kind: "selectArchetype", actorId: "c1" as never, archetypeId: "a1" as never };
     expect(isSetupCommand(sel)).toBe(true);
     expect(isTurnAction(sel)).toBe(false);
+  });
+
+  it("classifies a join command and exposes no actorId", () => {
+    const join: Command = { kind: "joinCampaign", character: { kind: "player", id: "c9" } as never };
+    expect(isJoinCommand(join)).toBe(true);
+    expect(isTurnAction(join)).toBe(false);
+    expect(isGmCommand(join)).toBe(false);
+    expect(commandActorId(join)).toBeNull();
   });
 });
 ```
@@ -843,6 +852,9 @@ export type Command =
   | { kind: "harvest"; actorId: CharacterId; cacheId: MaterialCacheId }
   // setup — pre-start, on your own character
   | { kind: "selectArchetype"; actorId: CharacterId; archetypeId: ArchetypeId }
+  // join — self-service; carries the new character's bare snapshot so it can be
+  // constructed on the resolving client and propagated to replicas via the delta
+  | { kind: "joinCampaign"; character: CharacterSnapshot }
   // GM / lifecycle / NPC — issued by the GM
   | { kind: "beginCampaign" }
   | { kind: "endCampaign" }
@@ -899,6 +911,10 @@ export function isSetupCommand(command: Command): boolean {
 }
 export function isGmCommand(command: Command): boolean {
   return GM_KINDS.has(command.kind);
+}
+/** Self-service join carrying a new character's bare snapshot. */
+export function isJoinCommand(command: Command): command is Extract<Command, { kind: "joinCampaign" }> {
+  return command.kind === "joinCampaign";
 }
 
 /** The acting player's id for turn/setup commands; null for GM/lifecycle/NPC commands. */
@@ -1431,7 +1447,7 @@ The authority: the authorization gate and the engine dispatch table. Resolves co
 - Test: `src/lib/sync/resolver.test.ts`
 
 **Interfaces:**
-- Consumes: `Command`, classifiers (Task 4); `EntityIndex` (Task 3); `ICampaign`, `IPlayerCharacter`, `IMob`, `ICharacter`; `ProceduralViolation`; engine action methods (verbatim signatures below); `ItemAction.Use` invocation; `Campaign.finished` (Task 1).
+- Consumes: `Command`, classifiers incl. `isJoinCommand` (Task 4); `EntityIndex` (Task 3); `ICampaign`, `IPlayerCharacter`, `PlayerCharacter`, `IMob`, `ICharacter`; `constructBareCharacter` (`../character/hydrate`); `ProceduralViolation`; engine action methods (verbatim signatures below); `ItemAction.Use` invocation; `Campaign.finished` (Task 1).
 - Produces:
   - `type AuthResult = { ok: true } | { ok: false; reason: string }`
   - `class Resolver { authorize(campaign: ICampaign, command: Command): AuthResult; apply(campaign: ICampaign, command: Command, index: EntityIndex): void }`
@@ -1440,6 +1456,7 @@ The authority: the authorization gate and the engine dispatch table. Resolves co
 **Authorization gate (verbatim from spec):**
 - **Turn-action:** accept iff `campaign.started && !campaign.finished && command.actorId === campaign.activeCharacter.id`. (Guard `started` first so `activeCharacter` resolves.)
 - **Setup (`selectArchetype`):** accept iff `!campaign.started` and the actor exists in the index.
+- **Join (`joinCampaign`):** self-service — accept iff `!campaign.finished` and `command.character.kind === "player"`. (Seat-ownership authentication of the joining connection is the deferred network concern.)
 - **GM/lifecycle/NPC:** require `campaign.gm !== undefined`; `beginCampaign` additionally requires `!campaign.started`; all other GM commands require `campaign.started`. (Verifying the *issuer* is the GM is the deferred authentication boundary — not checked here.)
 - After the gate, the engine's own `ProceduralViolation` guards catch the rest.
 
@@ -1454,7 +1471,9 @@ import { describe, it, expect } from "vitest";
 import { Resolver } from "./resolver";
 import { EntityIndex } from "./entity-index";
 import { ProceduralViolation } from "../util";
-import { buildStartedCampaign } from "../serialization/roundtrip.test-helpers";
+import { PlayerCharacter } from "../character/player-character";
+import { SERIALIZE } from "../serialization/symbols";
+import { buildStartedCampaign, makeStats } from "../serialization/roundtrip.test-helpers";
 
 describe("Resolver.authorize", () => {
   it("accepts a turn-action from the active character", () => {
@@ -1509,10 +1528,24 @@ describe("Resolver.apply", () => {
       new Resolver().apply(campaign, { kind: "move", actorId: active.id, roomId: "not-adjacent" as never }, index),
     ).toThrow(ProceduralViolation);
   });
+
+  it("joins a brand-new player carried by the command into the party", () => {
+    const { campaign } = buildStartedCampaign();
+    // Build a bare player off the live campaign, snapshot it, discard the instance.
+    const newcomer = new PlayerCharacter(campaign, "Newcomer", makeStats());
+    const characterSnapshot = newcomer[SERIALIZE]();
+    const partyBefore = campaign.party.length;
+
+    const index = EntityIndex.fromCampaign(campaign);
+    new Resolver().apply(campaign, { kind: "joinCampaign", character: characterSnapshot }, index);
+
+    expect(campaign.party).toHaveLength(partyBefore + 1);
+    expect(campaign.party.some((p) => p.id === characterSnapshot.id)).toBe(true);
+  });
 });
 ```
 
-> **Implementer:** add `buildStartedCampaign(opts?: { withGm?: boolean }): { campaign: Campaign; registry: CampaignRegistry }` to `roundtrip.test-helpers.ts` — a campaign that has been `beginCampaign()`'d (started, GM set, party with archetypes, an active character in a room with at least one exit and a craftable recipe). Reuse the existing test fixtures.
+> **Implementer:** add `buildStartedCampaign(opts?: { withGm?: boolean }): { campaign: Campaign; registry: CampaignRegistry }` to `roundtrip.test-helpers.ts` — a campaign that has been `beginCampaign()`'d (started, GM set, party with archetypes, an active character in a room with at least one exit and a craftable recipe). Also export `makeStats(): Stats` (a default stat block) from the same helper file for constructing throwaway characters. Reuse the existing test fixtures. The join test constructs a throwaway `PlayerCharacter` (the constructor does **not** auto-join the party), snapshots it via `[SERIALIZE]`, and submits that snapshot — the resolver builds a fresh instance with the same id.
 
 - [ ] **Step 2: Run it to verify it fails**
 
@@ -1526,11 +1559,13 @@ Create `src/lib/sync/resolver.ts` with the gate first:
 ```ts
 import { ProceduralViolation } from "../util";
 import { ItemAction } from "../inventory";
-import { commandActorId, isTurnAction, isSetupCommand, isGmCommand } from "./types";
+import { commandActorId, isTurnAction, isSetupCommand, isGmCommand, isJoinCommand } from "./types";
+import { constructBareCharacter } from "../character/hydrate";
 import type { Command } from "./types";
 import type { EntityIndex } from "./entity-index";
 import type { ICampaign } from "../campaign";
 import type { IPlayerCharacter } from "../character/player-character";
+import type { PlayerCharacter } from "../character/player-character";
 import type { IMob } from "../character/mob";
 import type { ICharacter } from "../character/character";
 
@@ -1559,6 +1594,14 @@ export class Resolver {
       const actorId = commandActorId(command)!;
       // Resolved against the index at apply time; existence checked there.
       void actorId;
+      return { ok: true };
+    }
+
+    if (isJoinCommand(command)) {
+      if (campaign.finished) return { ok: false, reason: "Campaign has finished." };
+      if (command.character.kind !== "player") {
+        return { ok: false, reason: "Only player characters can join a campaign." };
+      }
       return { ok: true };
     }
 
@@ -1681,6 +1724,18 @@ apply(campaign: ICampaign, command: Command, index: EntityIndex): void {
       actor.selectArchetype(command.archetypeId);
       return;
     }
+    // ---- join (self-service) ----
+    case "joinCampaign": {
+      if (command.character.kind !== "player") {
+        throw new ProceduralViolation("Only player characters can join a campaign.");
+      }
+      // Construct the player from the snapshot's identity + stats and join it.
+      // The new character propagates to replicas via the created-delta; richer
+      // initial state (archetype, items, placement) follows in later commands.
+      const ch = constructBareCharacter(command.character, campaign) as PlayerCharacter;
+      ch.joinCampaign();
+      return;
+    }
     // ---- GM / lifecycle / NPC ----
     case "beginCampaign":
       campaign.beginCampaign();
@@ -1768,7 +1823,9 @@ import { describe, it, expect } from "vitest";
 import { SyncCoordinator } from "./coordinator";
 import { InProcessTransport } from "./transport";
 import { serializeCampaign } from "../serialization/serializer";
-import { buildStartedCampaign } from "../serialization/roundtrip.test-helpers";
+import { PlayerCharacter } from "../character/player-character";
+import { SERIALIZE } from "../serialization/symbols";
+import { buildStartedCampaign, makeStats } from "../serialization/roundtrip.test-helpers";
 
 describe("SyncCoordinator two-client convergence", () => {
   it("replica B converges to A after each command", () => {
@@ -1981,6 +2038,22 @@ it("a second submitter sharing a baseSeq conflicts, then succeeds after re-sync"
   expect(transport.head()).toBeGreaterThanOrEqual(0);
 });
 
+it("a newly joined player propagates to a replica via the created-delta", () => {
+  const { campaign: a, registry } = buildStartedCampaign();
+  const transport = new InProcessTransport();
+  const A = new SyncCoordinator({ campaign: a, registry, transport, rng: () => 0.5 });
+  const B = SyncCoordinator.join({ registry, transport, rng: () => { throw new Error("replica must not roll"); } });
+  A.start(); B.start();
+
+  // Build a throwaway bare player off A's campaign, snapshot it, submit the join.
+  const newcomer = new PlayerCharacter(A.campaign, "Newcomer", makeStats());
+  const res = A.submit({ kind: "joinCampaign", character: newcomer[SERIALIZE]() });
+  expect(res.ok).toBe(true);
+
+  expect(B.campaign.party.some((p) => p.id === newcomer.id)).toBe(true);
+  expect(serializeCampaign(B.campaign)).toEqual(serializeCampaign(A.campaign));
+});
+
 it("late-join reconstructs from a checkpoint and replays deltas-since", () => {
   const { campaign: a, registry } = buildStartedCampaign();
   const transport = new InProcessTransport();
@@ -2079,7 +2152,9 @@ git commit -m "docs: document the multiplayer sync layer (README + TSDoc)"
 - Testing matrix (round-trip, convergence, replica-never-rolls, authorization, atomicity, CAS, idempotency, created/removed, late-join) → Tasks 6 & 9 tests, plus 1, 2, 8.
 - Docs → Task 10.
 
-**Known scope reductions (documented in "Deviations" above and flagged to user):** `addPlayer`/`joinCampaign` deferred (need a character-creation command with payload). Everything else in the spec is covered.
+**New-player-join** → Task 4 (`joinCampaign { character: CharacterSnapshot }` + `isJoinCommand`), Task 8 (join authorization + construct-and-join dispatch), Task 9 (created-delta propagation test). Replica side needs no special code — Task 6's `created` path constructs the joined character.
+
+**Known scope reductions (documented in "Deviations" above and flagged to user):** `addPlayer` (GM-initiated add of someone else's character) deferred as a near-duplicate of `joinCampaign`. Everything else in the spec is covered.
 
 **2. Placeholder scan** — code steps carry real code. The few `// implementer:` notes are bounded, concrete decisions (test fixture construction, a deterministic CAS race), not hand-waves; each names exactly what to do and a safe fallback.
 
