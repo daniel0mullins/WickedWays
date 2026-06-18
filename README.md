@@ -490,8 +490,28 @@ const restored = deserializeCampaign(snap2, { registry });
 // restored is a live Campaign, identical to campaign at the moment of save.
 ```
 
-**Out of scope (not yet implemented):** incremental deltas, multiplayer sync, and
-network transport. The snapshot is a standalone save-file format only.
+## Multi-client sync
+
+The same snapshot format powers multiplayer over an ordered, compare-and-swap log
+([`src/lib/sync/`](src/lib/sync/)). Each client runs a `SyncCoordinator`, the seam that owns the
+local campaign and is the only unit that changes for a future authoritative-server topology.
+
+`coordinator.submit(command)` orchestrates: `Resolver.authorize` (lifecycle/turn/GM gate) → on pass,
+snapshot `before` and build an `EntityIndex` from the same walk → `Resolver.apply` mutates the local
+campaign (an illegal engine transition throws `ProceduralViolation`, which rebuilds `local` from
+`before` and returns `{ rejected: true }`) → `DeltaComputer.diff(before, after)` → CAS
+`transport.append({ seq, baseSeq, command, delta })`. On a stale base the append is rejected
+(`{ conflict: true }`); the coordinator rebuilds from `before`, re-syncs to the new head, and the
+caller retries. On success it returns `{ ok: true, seq, delta }`.
+
+Inbound, `start()` subscribes from `lastApplied + 1`; remote entries already incorporated (including
+the client's own just-appended seq) are skipped, the next in-order delta is applied to the replica via
+`DeltaApplier` (which patches state and **never draws rng or runs game logic**, so replicas converge
+deterministically), and gaps heal via `entriesSince`. `SyncCoordinator.join(...)` brings a late
+client up to date from the transport's latest checkpoint plus the deltas since.
+
+Because a rejection or conflict swaps in a freshly deserialized `Campaign`, consumers must always read
+state through `coordinator.campaign` and never cache the reference across a `submit`.
 
 ## Notable patterns
 
