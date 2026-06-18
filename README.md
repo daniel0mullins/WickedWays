@@ -432,6 +432,29 @@ dialogue block. Blocks match either **exactly** (case-insensitive whole-prompt m
 **fuzzily** (every word in the trigger set appears somewhere in the prompt), and each block may
 carry a `precondition(character)` gate. With no prompt it returns the NPC's initial line.
 
+### Serialization (save/load)
+
+A whole in-play campaign round-trips through a plain-data `CampaignSnapshot`
+([`src/lib/serialization/`](src/lib/serialization/)). `serializeCampaign(campaign)` walks the live
+object graph — the party plus every room reachable from a party member's `currentRoom` via `exits`
+(BFS), and those rooms' occupants, loot, material caches, and all characters' inventory/keyring/
+equipment items — and emits a self-contained, JSON-friendly snapshot (`schemaVersion`, campaign
+core state, rooms, characters, items, loot, material caches, codex). Each entity exposes a gated
+`[SERIALIZE]` seam; a non-key item lacking a registered behavior key throws there, so an
+unrestorable snapshot fails fast at save time. (Rooms that no party member occupies and that
+nothing links to are not captured — reachable-from-party is the playable world for save/load.)
+
+`deserializeCampaign(data, { registry, rng })` rebuilds it in **two passes**. A
+`CampaignRegistry` supplies the author-side closures (recipes, formations, scene/item behaviors)
+that are never serialized, and the `rng` is re-injected fresh. Pass 1 constructs and indexes every
+entity with placeholder references (the campaign shell first, then its archetype + recipe catalog,
+then items → loot → caches → rooms → characters); pass 2 wires all cross-references through a
+`HydrateContext` id→instance index. The catalog is restored before characters hydrate so a player
+can resolve its archetype. Fail-fast throughout: an unknown `schemaVersion` is rejected by
+`migrate`, and any dangling id reference throws from the `HydrateContext` resolvers. A restored
+campaign keeps playing identically — the same turn position, acted-this-round set, materials,
+claims, codex, and encounter table.
+
 ## Notable patterns
 
 - **Branded ID types** ([`brand.d.ts`](src/lib/brand.d.ts)) give `CampaignId`, `CharacterId`,

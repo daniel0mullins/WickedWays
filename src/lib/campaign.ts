@@ -12,7 +12,17 @@ import type { ActionKind, AssetRef, PresentationCue } from "./presentation";
 import { Status } from "./status";
 import type { ICharacter } from "./character/character";
 import { Codex, RECORD_ENCOUNTER } from "./codex";
-import type { CodexEncounterEvent, ICodex } from "./codex";
+import type { CodexEncounterEvent, CodexEntry, ICodex } from "./codex";
+import {
+  SERIALIZE,
+  HYDRATE,
+  HYDRATE_CODEX,
+  HYDRATE_CATALOG,
+  HYDRATE_CODEX_ENTRIES,
+} from "./serialization/symbols";
+import type { CampaignCoreSnapshot } from "./serialization/types";
+import type { HydrateContext } from "./serialization/context";
+import type { CampaignRegistry } from "./serialization/registry";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -590,5 +600,85 @@ export class Campaign implements ICampaign {
    */
   maybeSpawn(room: IRoom): IMob[] {
     return this.#encounterTable.maybeSpawn(room, this);
+  }
+
+  /**
+   * Emits a plain-data snapshot of all campaign-level state. References to
+   * entities (party, gm, characters that acted) are captured by id; the rng and
+   * cue handlers are runtime-only and deliberately omitted. Engine-internal seam.
+   */
+  [SERIALIZE](): CampaignCoreSnapshot {
+    return {
+      id: this.id,
+      title: this.title,
+      maxRounds: this.maxRounds,
+      round: this.#round,
+      started: this.#started,
+      finished: this.#finished,
+      activeCharacterIndex: this.#activeCharacterIndex,
+      partyIds: this.party.map((p) => p.id),
+      actedThisRound: this.party
+        .filter((p) => this.#actedThisRound.get(p))
+        .map((p) => p.id),
+      gmId: this.#gm?.id ?? null,
+      materials: { ...this.#materials },
+      claims: [...this.#claims],
+      encountered: [...this.#encountered],
+      knownRecipes: [...this.#knownRecipes.keys()],
+      archetypes: [...this.#archetypes.values()].map((a) => ({ ...a })),
+      actionSounds: { ...this.#actionSounds },
+      encounterTable: this.#encounterTable[SERIALIZE](),
+    };
+  }
+
+  /**
+   * PASS 1 of campaign hydration: restores the archetype + recipe catalog. Must
+   * run before any character `[HYDRATE]`, since `PlayerCharacter.hydrateExtra`
+   * resolves its archetype against `campaign.archetypes`. Engine-internal seam.
+   */
+  [HYDRATE_CATALOG](core: CampaignCoreSnapshot, registry: CampaignRegistry): void {
+    for (const archetype of core.archetypes) {
+      this.#archetypes.set(archetype.id, { ...archetype });
+    }
+    for (const key of core.knownRecipes) {
+      const recipe = registry.recipe(key);
+      this.#knownRecipes.set(recipe.id, recipe);
+    }
+  }
+
+  /**
+   * PASS 2 of campaign hydration: restores lifecycle/turn state and wires party,
+   * GM, acted-this-round, the encounter table, and per-room shared state. Assumes
+   * the catalog is already populated (see {@link Campaign[HYDRATE_CATALOG]}) and
+   * all characters are already indexed in `ctx`. Engine-internal seam.
+   */
+  [HYDRATE](core: CampaignCoreSnapshot, ctx: HydrateContext): void {
+    this.#round = core.round;
+    this.#started = core.started;
+    this.#finished = core.finished;
+    this.#activeCharacterIndex = core.activeCharacterIndex;
+    this.#materials = { ...core.materials };
+    for (const claim of core.claims) this.#claims.add(claim);
+    for (const key of core.encountered) this.#encountered.add(key);
+    this.#actionSounds = { ...core.actionSounds };
+    for (const id of core.partyIds) {
+      this.party.push(ctx.character(id) as IPlayerCharacter);
+    }
+    this.#gm = core.gmId
+      ? (ctx.character(core.gmId) as IPlayerCharacter)
+      : undefined;
+    for (const id of core.actedThisRound) {
+      this.#actedThisRound.set(ctx.character(id) as IPlayerCharacter, true);
+    }
+    this.#encounterTable[HYDRATE](core.encounterTable, ctx.registry);
+  }
+
+  /**
+   * Injects already-built codex entries into the private codex. Threaded
+   * separately from {@link Campaign[HYDRATE]} because the entries live on the
+   * full snapshot, not on the campaign-core snapshot. Engine-internal seam.
+   */
+  [HYDRATE_CODEX_ENTRIES](entries: CodexEntry[]): void {
+    this.#codex[HYDRATE_CODEX](entries);
   }
 }
