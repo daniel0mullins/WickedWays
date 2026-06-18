@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { DEPLETE, MaterialCache } from "./material-cache";
 import type { Presentation } from "./presentation";
+import { HYDRATE } from "./serialization/symbols";
 
 describe("MaterialCache", () => {
   it("assigns an id and starts undepleted with the given contents", () => {
@@ -43,4 +44,14 @@ describe("MaterialCache", () => {
     expect(new MaterialCache({ metal: 1 }, pres).presentation).toBe(pres);
     expect(new MaterialCache({ metal: 1 }).presentation).toBeUndefined();
   });
+});
+
+it("MaterialCache[HYDRATE] restores contents and depleted in place", () => {
+  const cache = new MaterialCache({ metal: 2 });
+  cache[HYDRATE]({ id: cache.id, contents: {}, depleted: true });
+  expect(cache.depleted).toBe(true);
+  expect(cache.contents).toEqual({});
+  // re-apply (idempotent)
+  cache[HYDRATE]({ id: cache.id, contents: {}, depleted: true });
+  expect(cache.depleted).toBe(true);
 });

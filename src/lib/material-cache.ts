@@ -2,7 +2,7 @@ import { Brand } from "./brand";
 import { MaterialMap } from "./inventory";
 import { generateId } from "./util";
 import type { Presentation } from "./presentation";
-import { SERIALIZE } from "./serialization/symbols";
+import { HYDRATE, SERIALIZE } from "./serialization/symbols";
 import type { MaterialCacheSnapshot } from "./serialization/types";
 import type { HydrateContext } from "./serialization/context";
 
@@ -90,25 +90,25 @@ export class MaterialCache implements IMaterialCache {
       depleted: this.#depleted,
     };
   }
+
+  /** In-place restore of mutable cache state. Safe to re-apply (idempotent). */
+  [HYDRATE](data: MaterialCacheSnapshot): void {
+    this.#contents = { ...data.contents };
+    this.#depleted = data.depleted;
+  }
 }
 
 /**
  * Reconstructs a {@link MaterialCache} from its snapshot.
- *
- * An intact cache is restored by constructing with its contents; a depleted
- * cache is constructed with an empty map and `DEPLETE` is called so the
- * one-way state transition is respected.
  *
  * @param data - Plain-data snapshot produced by {@link MaterialCache[SERIALIZE]}.
  * @param ctx - Hydration context carrying the id→instance index and registry.
  * @returns The reconstructed cache, registered in `ctx`.
  */
 export function hydrateMaterialCache(data: MaterialCacheSnapshot, ctx: HydrateContext): MaterialCache {
-  const cache = new MaterialCache(data.contents);
+  const cache = new MaterialCache({});
   cache.id = data.id as MaterialCacheId;
-  if (data.depleted) {
-    cache[DEPLETE]();
-  }
+  cache[HYDRATE](data);
   ctx.put(cache.id, cache);
   return cache;
 }
