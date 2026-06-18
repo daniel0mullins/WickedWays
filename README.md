@@ -505,7 +505,9 @@ campaign (an illegal engine transition throws `ProceduralViolation`, which rebui
 caller retries. On success it returns `{ ok: true, seq, delta }`.
 
 Inbound, `start()` subscribes from `lastApplied + 1`; remote entries already incorporated (including
-the client's own just-appended seq) are skipped, the next in-order delta is applied to the replica via
+the client's own just-appended seq — `submit` advances `lastApplied` *before* the CAS append, so the
+synchronous self-notification is genuinely skipped rather than relying on idempotency) are skipped,
+the next in-order delta is applied to the replica via
 `DeltaApplier` (which patches state and **never draws rng or runs game logic**, so replicas converge
 deterministically), and gaps heal via `entriesSince`. `SyncCoordinator.join(...)` brings a late
 client up to date from the transport's latest checkpoint plus the deltas since.

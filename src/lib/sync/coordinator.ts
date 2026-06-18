@@ -109,13 +109,21 @@ export class SyncCoordinator {
     const delta = this.#deltaComputer.diff(before, after);
     const baseSeq = this.#transport.head();
     const seq = baseSeq + 1;
+    // Advance #lastApplied BEFORE append so the synchronous self-notification
+    // (InProcessTransport.append notifies subscribers inline) sees
+    // `entry.seq <= #lastApplied` and genuinely skips our own entry — no reliance
+    // on DeltaApplier idempotency. resolver.apply already advanced #local.
+    this.#lastApplied = seq;
     const res = this.#transport.append({ seq, baseSeq, command, delta });
     if (!res.ok) {
+      // Roll #lastApplied back to baseSeq so #syncTo replays EVERY missed entry
+      // from baseSeq+1..res.head — including the conflicting foreign entry — onto
+      // the rebuilt-from-`before` campaign.
+      this.#lastApplied = baseSeq;
       this.#restore(before);
       this.#syncTo(res.head);
       return { ok: false, conflict: true, reason: `Stale base ${baseSeq}; head is ${res.head}. Retry.` };
     }
-    this.#lastApplied = seq;
     if (seq % this.#snapshotEvery === 0) {
       this.#transport.putSnapshot(seq, after);
     }
