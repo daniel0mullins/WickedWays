@@ -78,6 +78,9 @@ export function serializeCampaign(campaign: ICampaign): CampaignSnapshot {
     for (const [, cache] of r.materials) {
       materialCaches.push((cache as MaterialCache)[SERIALIZE]());
     }
+    // Placed light sources are held only by the room (no inventory/equipment/
+    // loot), so they must be captured here or Room[HYDRATE] dangles on restore.
+    for (const [, light] of r.lightSources) addItem(light);
   }
 
   // Characters' inventory, keyring, and equipped items.

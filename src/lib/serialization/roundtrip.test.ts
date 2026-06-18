@@ -8,6 +8,28 @@ import type { ExitsArg } from "../../test-utils";
 import { serializeCampaign } from "./serializer";
 import { deserializeCampaign } from "./deserializer";
 import { CampaignRegistry } from "./registry";
+import { Item } from "../inventory";
+import type { IItem } from "../inventory";
+import { SlotKind } from "../equipment";
+
+function makeTorch(): Item {
+  const noop = () => {};
+  return new Item(
+    {
+      type: "weapon",
+      recipe: { item: 1 },
+      modifier: 0,
+      stat: StatType.Health,
+      name: "Torch",
+      slot: SlotKind.Hand,
+      emitsLight: true,
+      behaviorKey: "torch",
+    },
+    { equippable: true, equipped: false, destroyable: true, usable: false },
+    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    { onPickUp: noop },
+  );
+}
 
 function makeStats() {
   return {
@@ -76,5 +98,26 @@ describe("campaign round-trip", () => {
         { registry: new CampaignRegistry() },
       ),
     ).toThrow(/schemaVersion/);
+  });
+
+  it("captures and restores a light source placed in a room", () => {
+    const { campaign, pc, start } = buildCampaign();
+    const torch = makeTorch();
+    pc.addToInventory(torch);
+    pc.placeLight(torch); // now held only by the room, not by any inventory
+    expect(start.lightSources.has(torch.id as never)).toBe(true);
+
+    const snap = serializeCampaign(campaign);
+    // The placed light must be captured, or hydration would dangle.
+    expect(snap.items.some((i) => i.id === torch.id)).toBe(true);
+
+    const registry = new CampaignRegistry();
+    registry.registerItem("torch", makeTorch);
+    const restored = deserializeCampaign(snap, { registry, rng: () => 0.5 });
+
+    const restoredRoom = restored.party[0]!.currentRoom!;
+    const lights = [...restoredRoom.lightSources.values()] as IItem[];
+    expect(lights.map((l) => l.id)).toContain(torch.id);
+    expect(restoredRoom.isLit).toBe(true);
   });
 });
