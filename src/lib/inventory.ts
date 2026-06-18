@@ -407,6 +407,9 @@ export class Item implements IItem {
    * @param descriptor.slot - The {@link SlotKind} this item equips into (optional).
    * @param descriptor.twoHanded - Weapons only: occupies both hands when equipped.
    * @param descriptor.emitsLight - Light sources only: lights its room when active.
+   * @param descriptor.behaviorKey - Registry key used by the `CampaignRegistry` to
+   *   restore this item's factory at deserialize time. Required for non-key items
+   *   that must survive serialization; omit only for key items (`keyCode` set).
    * @param properties - Initial mutable flags (equippable, equipped, …).
    * @param actions - Core behaviour for each interaction; wrapped on construction.
    * @param events - Observer hooks fired after the matching action runs.

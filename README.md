@@ -443,17 +443,55 @@ core state, rooms, characters, items, loot, material caches, codex). Each entity
 `[SERIALIZE]` seam; a non-key item lacking a registered behavior key throws there, so an
 unrestorable snapshot fails fast at save time. (Rooms that no party member occupies and that
 nothing links to are not captured — reachable-from-party is the playable world for save/load.)
+Affliction state (active statuses, per-status turn counters, shaken-off set, and immunity stacks)
+is captured in full; a restored campaign is indistinguishable mid-turn from the original.
 
-`deserializeCampaign(data, { registry, rng })` rebuilds it in **two passes**. A
-`CampaignRegistry` supplies the author-side closures (recipes, formations, scene/item behaviors)
-that are never serialized, and the `rng` is re-injected fresh. Pass 1 constructs and indexes every
-entity with placeholder references (the campaign shell first, then its archetype + recipe catalog,
-then items → loot → caches → rooms → characters); pass 2 wires all cross-references through a
+**Behavior keys.** Closures can't be serialized; instead, every `Scene`, non-key `Item`,
+`CraftingRecipe`, and `EncounterTable` formation carries a `behaviorKey` — a stable string that
+maps back to its author-supplied constructor at restore time. Key items (`keyCode` set) are exempt:
+they are rebuilt from their stored `name`/`keyCode`/`consumeOnUse` fields via `createKey` without
+a registry lookup.
+
+**`CampaignRegistry`** is the author-side lookup table that `deserializeCampaign` requires. It
+holds four namespaces registered before the first `deserializeCampaign` call:
+
+| Method | What it registers |
+|---|---|
+| `registerScene(key, behavior)` | `SceneBehavior` (preconditions + script) |
+| `registerRecipe(key, recipe)` | `CraftingRecipe` |
+| `registerFormation(key, behavior)` | `FormationBehavior` (mob-spawning factory) |
+| `registerItem(key, factory)` | `() => Item` factory |
+
+`deserializeCampaign(data, { registry, rng })` rebuilds the campaign in **two passes**. The
+`rng` is re-injected fresh (never serialized); defaults to `Math.random` if omitted. Pass 1
+constructs and indexes every entity with placeholder references (campaign shell → archetype/recipe
+catalog → items → loot → caches → rooms → characters); pass 2 wires all cross-references through a
 `HydrateContext` id→instance index. The catalog is restored before characters hydrate so a player
 can resolve its archetype. Fail-fast throughout: an unknown `schemaVersion` is rejected by
 `migrate`, and any dangling id reference throws from the `HydrateContext` resolvers. A restored
 campaign keeps playing identically — the same turn position, acted-this-round set, materials,
 claims, codex, and encounter table.
+
+```ts
+// 1. Register every behavior key before deserializing.
+const registry = new CampaignRegistry();
+registry.registerItem("sword", () => createSword());
+registry.registerScene("ambush", ambushBehavior);
+registry.registerFormation("wolf-pack", wolfPackFormation);
+registry.registerRecipe("sword-recipe", swordRecipe);
+
+// 2. Serialize an in-play campaign to a plain-data snapshot.
+const snap = serializeCampaign(campaign); // throws if any behaviorKey is missing
+const json = JSON.stringify(snap);
+
+// 3. Deserialize — supply the same registry and a fresh rng.
+const snap2 = JSON.parse(json) as CampaignSnapshot;
+const restored = deserializeCampaign(snap2, { registry });
+// restored is a live Campaign, identical to campaign at the moment of save.
+```
+
+**Out of scope (not yet implemented):** incremental deltas, multiplayer sync, and
+network transport. The snapshot is a standalone save-file format only.
 
 ## Notable patterns
 

@@ -13,22 +13,51 @@ export interface FormationBehavior {
   build: (campaign: ICampaign) => IMob[];
 }
 
-/** Author-supplied behaviors, keyed by stable strings; the restore-side source of every closure. */
+/**
+ * Author-supplied behaviors keyed by stable strings; the restore-side source of
+ * every closure that cannot be serialized (scene scripts, item factories,
+ * crafting recipes, encounter-table formations).
+ *
+ * Populate the registry **before** calling `deserializeCampaign`. Every
+ * `behaviorKey` referenced in the snapshot must have a matching entry or
+ * deserialization throws a {@link ProceduralViolation}.
+ *
+ * Keys are arbitrary stable strings chosen by the game author — typically
+ * namespaced to avoid collisions (e.g. `"items/sword"`, `"scenes/ambush"`).
+ */
 export class CampaignRegistry {
   #scenes = new Map<string, SceneBehavior>();
   #recipes = new Map<string, CraftingRecipe>();
   #formations = new Map<string, FormationBehavior>();
   #items = new Map<string, () => Item>();
 
+  /**
+   * Registers a {@link SceneBehavior} (preconditions + script) under `key`.
+   * Must match the `behaviorKey` passed to each `Scene` constructor that
+   * needs to survive serialization.
+   */
   registerScene(key: string, behavior: SceneBehavior): void {
     this.#scenes.set(key, behavior);
   }
+  /**
+   * Registers a {@link CraftingRecipe} under `key`.
+   * Must match the `behaviorKey` used when the recipe was added to the campaign.
+   */
   registerRecipe(key: string, recipe: CraftingRecipe): void {
     this.#recipes.set(key, recipe);
   }
+  /**
+   * Registers a {@link FormationBehavior} (mob-spawning factory) under `key`.
+   * Must match the `behaviorKey` on every encounter-table formation entry.
+   */
   registerFormation(key: string, behavior: FormationBehavior): void {
     this.#formations.set(key, behavior);
   }
+  /**
+   * Registers an {@link Item} factory under `key`.
+   * Must match the `behaviorKey` passed to the {@link Item} constructor for
+   * every non-key item that needs to survive serialization.
+   */
   registerItem(key: string, factory: () => Item): void {
     this.#items.set(key, factory);
   }
