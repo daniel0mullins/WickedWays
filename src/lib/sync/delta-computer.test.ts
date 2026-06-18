@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { DeltaComputer } from "./delta-computer";
 import { serializeCampaign } from "../serialization/serializer";
 import { buildSerializableCampaign } from "../serialization/roundtrip.test-helpers";
-import type { CampaignCoreSnapshot } from "../serialization/types";
+import type { CampaignCoreSnapshot, CampaignSnapshot } from "../serialization/types";
 
 /** Minimal CampaignCoreSnapshot literal for hand-built snapshot tests. */
 function baseCore(): CampaignCoreSnapshot {
@@ -56,19 +56,39 @@ describe("DeltaComputer", () => {
     const after = serializeCampaign(campaign);
     const delta = new DeltaComputer().diff(before, after);
     expect(delta.changed.some((e) => e.type === "character")).toBe(true);
+    // takeDamage mutates a character snapshot only — campaign core and codex are unchanged.
+    expect(delta.campaignCore).toBeUndefined();
   });
 
   it("captures a created entity", () => {
-    const before = { schemaVersion: 1, campaign: baseCore(), rooms: [], characters: [], items: [], loot: [], materialCaches: [], codex: [] };
-    const after = { ...before, items: [{ kind: "item", id: "new-1", behaviorKey: "k", modifier: 0 }] };
-    const delta = new DeltaComputer().diff(before, after as never);
-    expect(delta.created).toEqual([{ type: "item", data: after.items[0] }]);
+    const before = { schemaVersion: 1, campaign: baseCore(), rooms: [], characters: [], items: [], loot: [], materialCaches: [], codex: [] } as unknown as CampaignSnapshot;
+    const after = { ...before, items: [{ kind: "item", id: "new-1", behaviorKey: "k", modifier: 0 }] } as unknown as CampaignSnapshot;
+    const delta = new DeltaComputer().diff(before, after);
+    expect(delta.created).toEqual([{ type: "item", data: { kind: "item", id: "new-1", behaviorKey: "k", modifier: 0 } }]);
   });
 
   it("captures a removed id", () => {
-    const after = { schemaVersion: 1, campaign: baseCore(), rooms: [], characters: [], items: [], loot: [], materialCaches: [], codex: [] };
-    const before = { ...after, items: [{ kind: "item", id: "gone-1", behaviorKey: "k", modifier: 0 }] };
-    const delta = new DeltaComputer().diff(before as never, after);
+    const after = { schemaVersion: 1, campaign: baseCore(), rooms: [], characters: [], items: [], loot: [], materialCaches: [], codex: [] } as unknown as CampaignSnapshot;
+    const before = { ...after, items: [{ kind: "item", id: "gone-1", behaviorKey: "k", modifier: 0 }] } as unknown as CampaignSnapshot;
+    const delta = new DeltaComputer().diff(before, after);
     expect(delta.removed).toEqual(["gone-1"]);
+  });
+
+  it("captures a campaignCore change when campaign core differs", () => {
+    const beforeCampaign = baseCore();
+    const afterCampaign = { ...baseCore(), round: 2 };
+    const before = { schemaVersion: 1, campaign: beforeCampaign, rooms: [], characters: [], items: [], loot: [], materialCaches: [], codex: [] } as unknown as CampaignSnapshot;
+    const after = { ...before, campaign: afterCampaign };
+    const delta = new DeltaComputer().diff(before, after);
+    expect(delta.campaignCore).toEqual({ core: afterCampaign, codex: [] });
+  });
+
+  it("captures a campaignCore change when only the codex differs", () => {
+    const campaign = baseCore();
+    const codexEntry = { kind: "material", key: "iron", snapshot: { name: "Iron" }, firstSeen: "shop" } as unknown as import("../codex").CodexEntry;
+    const before = { schemaVersion: 1, campaign, rooms: [], characters: [], items: [], loot: [], materialCaches: [], codex: [] } as unknown as CampaignSnapshot;
+    const after = { ...before, codex: [codexEntry] };
+    const delta = new DeltaComputer().diff(before, after);
+    expect(delta.campaignCore).toEqual({ core: campaign, codex: [codexEntry] });
   });
 });
