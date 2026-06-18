@@ -2,6 +2,8 @@
 import { roll } from "../dice";
 import { Status } from "../status";
 import type { Stats } from "./stats";
+import { SERIALIZE, HYDRATE } from "../serialization/symbols";
+import type { AfflictionsSnapshot } from "../serialization/types";
 
 /** The three non-KO statuses that self-clear and can be immunized. */
 const CLEARABLE = [Status.Panic, Status.Fear, Status.Confused] as const;
@@ -187,5 +189,26 @@ export class Afflictions {
       );
       this.#clearEpisode(clearable);
     }
+  }
+
+  /** Returns a plain-data snapshot capturing the full in-flight affliction state. */
+  [SERIALIZE](): AfflictionsSnapshot {
+    const active: Partial<Record<Status, boolean>> = {};
+    for (const [s, on] of this.#active) if (on) active[s] = true;
+    return {
+      active,
+      turnsActive: Object.fromEntries(this.#turnsActive),
+      shakenOff: [...this.#shakenOff],
+      immunity: Object.fromEntries(this.#immunity),
+    };
+  }
+
+  /** Restores the full affliction state from a snapshot. */
+  [HYDRATE](data: AfflictionsSnapshot) {
+    this.#active = new Map();
+    for (const s of [Status.KO, ...CLEARABLE]) this.#active.set(s, data.active[s] ?? false);
+    this.#turnsActive = new Map(Object.entries(data.turnsActive) as [Clearable, number][]);
+    this.#shakenOff = new Set(data.shakenOff as Clearable[]);
+    this.#immunity = new Map(Object.entries(data.immunity) as [Clearable, number][]);
   }
 }
