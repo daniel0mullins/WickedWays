@@ -38,4 +38,26 @@ describe("InProcessTransport", () => {
     t.putSnapshot(5, snap);
     expect(t.loadSnapshot()).toEqual({ seq: 5, snapshot: snap });
   });
+
+  it("unsubscribe thunk stops delivery of subsequent entries", () => {
+    const t = new InProcessTransport();
+    t.append(entry(1, 0));
+    const received: number[] = [];
+    const unsub = t.subscribe(2, (e) => received.push(e.seq));
+    // Nothing in [2..] yet — handler not called on subscribe.
+    expect(received).toEqual([]);
+    unsub();
+    // Append after unsubscribe — handler must NOT fire.
+    t.append(entry(2, 1));
+    expect(received).toEqual([]);
+  });
+
+  it("putSnapshot lower-seq guard: a stale put does not overwrite a higher checkpoint", () => {
+    const t = new InProcessTransport();
+    const snapA = { schemaVersion: 1, _tag: "A" } as never;
+    const snapB = { schemaVersion: 1, _tag: "B" } as never;
+    t.putSnapshot(5, snapA);
+    t.putSnapshot(3, snapB); // lower seq — must not overwrite
+    expect(t.loadSnapshot()).toEqual({ seq: 5, snapshot: snapA });
+  });
 });

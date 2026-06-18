@@ -83,13 +83,21 @@ export class DeltaApplier {
     }
 
     // campaignCore — catalog, core, codex.
+    // Ordering note: HYDRATE_CATALOG currently runs after PASS-2 character hydrate,
+    // which is safe ONLY because no command introduces a new archetype in the same
+    // delta as a character selecting it (archetypes are setup-baseline, present in
+    // every replica). The deserializer deliberately applies the catalog BEFORE
+    // character hydrate; if a future command ever adds an archetype + a character
+    // referencing it atomically, HYDRATE_CATALOG must move ahead of PASS 2 here.
     if (delta.campaignCore) {
       replica[HYDRATE_CATALOG](delta.campaignCore.core, opts.registry);
       replica[HYDRATE](delta.campaignCore.core, ctx);
       replica[HYDRATE_CODEX_ENTRIES](delta.campaignCore.codex);
     }
 
-    // removed — drop from the working index; holders already reset their refs.
+    // No-op for replica state — removal is effected by the changed holder's
+    // collection reset during PASS 2. The index delete only keeps this transient
+    // index tidy (symmetry with `created` registration, useful for debugging).
     for (const id of delta.removed) ctx.index.delete(id);
   }
 }

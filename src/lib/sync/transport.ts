@@ -60,6 +60,7 @@ export class InProcessTransport implements SyncTransport {
   }
 
   putSnapshot(seq: number, snapshot: CampaignSnapshot): void {
+    // Equal-seq re-put replaces (tie-break choice: last writer wins for same checkpoint).
     if (this.snapshot === null || seq >= this.snapshot.seq) {
       this.snapshot = { seq, snapshot };
     }

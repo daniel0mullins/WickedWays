@@ -107,5 +107,8 @@ export function isJoinCommand(command: Command): command is Extract<Command, { k
 
 /** The acting player's id for turn/setup commands; null for GM/lifecycle/NPC commands. */
 export function commandActorId(command: Command): CharacterId | null {
-  return "actorId" in command ? command.actorId : null;
+  if (isTurnAction(command) || isSetupCommand(command)) {
+    return (command as Extract<Command, { actorId: CharacterId }>).actorId;
+  }
+  return null;
 }

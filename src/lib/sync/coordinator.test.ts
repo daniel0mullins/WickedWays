@@ -5,11 +5,38 @@ import { DeltaApplier } from "./delta-applier";
 import { serializeCampaign } from "../serialization/serializer";
 import { deserializeCampaign } from "../serialization/deserializer";
 import { PlayerCharacter } from "../character/player-character";
+import { createKey } from "../inventory";
 import { SERIALIZE } from "../serialization/symbols";
 import { buildStartedCampaign, makeStats } from "../serialization/roundtrip.test-helpers";
 import type { LogEntry } from "./types";
 
 describe("SyncCoordinator two-client convergence", () => {
+  it("replica B converges to A after a removed-entity delta (consumeKey)", () => {
+    // Exercises the `delta.removed` path end-to-end: consumeKey detaches the key
+    // from the character's keyring so it disappears from the serialized graph,
+    // which the DeltaComputer classifies as `removed`. The applier's removed loop
+    // keeps the transient index tidy, while removal from B's state is effected by
+    // re-hydrating the character's changed snapshot (keyring no longer contains the
+    // key). This test asserts the removed path is non-empty AND that B converges.
+    const { campaign: a, registry } = buildStartedCampaign();
+    const transport = new InProcessTransport();
+    const A = new SyncCoordinator({ campaign: a, registry, transport, rng: () => 0.5 });
+    const B = SyncCoordinator.join({ registry, transport, rng: () => { throw new Error("replica must not roll"); } });
+    A.start(); B.start();
+
+    // Give the active character a key directly (bypasses action budget).
+    const active = A.campaign.activeCharacter as PlayerCharacter;
+    const key = createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: true });
+    active.receiveItem(key);
+
+    const res = A.submit({ kind: "consumeKey", actorId: active.id, itemId: key.id });
+    if (!res.ok) throw new Error("consumeKey was rejected: " + JSON.stringify(res));
+    // Verify the removed path was genuinely exercised (not a no-op).
+    expect(res.delta.removed).toContain(key.id);
+    // Both clients must converge.
+    expect(serializeCampaign(B.campaign)).toEqual(serializeCampaign(A.campaign));
+  });
+
   it("replica B converges to A after each command", () => {
     const { campaign: a, registry } = buildStartedCampaign();
     const transport = new InProcessTransport();
