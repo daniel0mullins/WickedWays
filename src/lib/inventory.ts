@@ -61,7 +61,7 @@ type ItemActionSharedEvent = <C extends ICharacter, CC extends ICharacter>(
 ) => void;
 
 /** The interactions an item can be the subject of. */
-const ItemAction = {
+export const ItemAction = {
   PickUp: "pickUp",
   Equip: "equip",
   Unequip: "unequip",

@@ -102,7 +102,7 @@ export interface ICharacter extends IItemHolder {
   /** Moves the character into `room`, leaving the current room first. */
   move: (room: IRoom) => void;
   /** Drops one or more items, recording a single `drop` action. */
-  removeFromInventory: (item: IItem) => void;
+  removeFromInventory: (item: IItem | IItem[]) => void;
   /** Hands a key to another character (keyring to keyring; the only way keys change hands). */
   transferKey: (key: IItem, recipient: ICharacter) => void;
   /** Harvests a co-located material cache into the party pool (free; idempotent). */

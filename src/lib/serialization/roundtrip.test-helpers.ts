@@ -5,6 +5,7 @@
 import { Campaign } from "../campaign";
 import { PlayerCharacter } from "../character/player-character";
 import { Room } from "../room";
+import { Directions } from "../room";
 import { StatType } from "../character/stats";
 import { Item } from "../inventory";
 import { SlotKind } from "../equipment";
@@ -74,8 +75,18 @@ function makeWidgetItem(): Item {
  * recipe is discovered, its materials are claimed, and both the recipe and the
  * item's behaviorKey are registered so the crafted item survives serialization
  * and can be hydrated on a replica.
+ *
+ * The party holds two player characters; the active one stands in a room with a
+ * registered exit (so a `move` to an adjacent room is legal). When `withGm` is
+ * `false` no GM is assigned and the campaign is left un-begun (a campaign cannot
+ * start without a GM) — used to exercise the resolver's "no GM" gate.
+ *
+ * @param opts.withGm - Assign a GM and `beginCampaign()` (default `true`).
  */
-export function buildStartedCampaign(): { campaign: Campaign; registry: CampaignRegistry } {
+export function buildStartedCampaign(
+  opts: { withGm?: boolean } = {},
+): { campaign: Campaign; registry: CampaignRegistry } {
+  const { withGm = true } = opts;
   const campaign = new Campaign("Crypt", 10, [], { rng: () => 0.5 });
   campaign.registerArchetype({
     id: "delver" as ArchetypeId,
@@ -83,11 +94,18 @@ export function buildStartedCampaign(): { campaign: Campaign; registry: Campaign
     statModifiers: { [StatType.Health]: 2 },
   });
   const start = new Room("Start", "the entrance", [], {} as ExitsArg);
+  const next = new Room("Next", "an adjoining chamber", [], {} as ExitsArg);
+  start.addExit(Directions.North, next);
+
   const pc = new PlayerCharacter(campaign, "Ada", makeStats());
   pc.joinCampaign();
-  campaign.gm = pc;
   pc.selectArchetype("delver" as ArchetypeId);
   pc.move(start);
+
+  const ben = new PlayerCharacter(campaign, "Ben", makeStats());
+  ben.joinCampaign();
+  ben.selectArchetype("delver" as ArchetypeId);
+  ben.move(start);
 
   const recipe = {
     id: WIDGET_RECIPE_ID,
@@ -96,7 +114,11 @@ export function buildStartedCampaign(): { campaign: Campaign; registry: Campaign
   };
   campaign.discoverRecipe(recipe);
   campaign.claimMaterials("seed", { metal: 2 });
-  campaign.beginCampaign();
+
+  if (withGm) {
+    campaign.gm = pc;
+    campaign.beginCampaign();
+  }
 
   const registry = new CampaignRegistry();
   registry.registerRecipe(String(WIDGET_RECIPE_ID), recipe);
