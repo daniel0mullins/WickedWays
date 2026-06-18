@@ -4,7 +4,7 @@ import { ADD_LIGHT_SOURCE, IItem, ItemId, PLACE, REMOVE_LIGHT_SOURCE, SET_ORIGIN
 import { ILoot, LootId } from "./loot";
 import type { IMaterialCache, MaterialCacheId } from "./material-cache";
 import type { IMob } from "./character/mob";
-import { IScene, Scene, hydrateScene } from "./scene";
+import { IScene, hydrateScene } from "./scene";
 import { generateId, ProceduralViolation } from "./util";
 import type { Presentation } from "./presentation";
 import { SERIALIZE, HYDRATE } from "./serialization/symbols";
@@ -72,6 +72,8 @@ export interface IRoom {
   get isLit(): boolean;
   [ADD_LIGHT_SOURCE](item: IItem): void;
   [REMOVE_LIGHT_SOURCE](id: ItemId): void;
+  /** Returns a plain-data snapshot of this room's state. See {@link SERIALIZE}. */
+  [SERIALIZE](): RoomSnapshot;
 }
 
 /**
@@ -262,7 +264,7 @@ export class Room implements IRoom {
       lootIds: [...this.loot.keys()],
       materialCacheIds: [...this.materials.keys()],
       lightSourceIds: [...this.#lightSources.keys()],
-      scenes: this.#scenes.map((s) => (s as Scene<never>)[SERIALIZE]()),
+      scenes: this.#scenes.map((s) => s[SERIALIZE]()),
     };
   }
 

@@ -23,7 +23,7 @@ describe("Item serialization", () => {
     const ctx = new HydrateContext(reg, () => 0.5);
 
     const item = potionFactory();
-    (item as { behaviorKey?: string }).behaviorKey = "healing-potion"; // set via constructor in Step 3
+    item.behaviorKey = "healing-potion";
     item[SET_DURABILITY](1);
     item.modifier = 4;
 

@@ -38,6 +38,8 @@ export interface ILoot extends IItemHolder {
   readonly capacity: number;
   /** Optional presentation metadata (image/sound), or `undefined` if none. */
   get presentation(): Presentation | undefined;
+  /** Returns a plain-data snapshot of this loot container. See {@link SERIALIZE}. */
+  [SERIALIZE](): LootSnapshot;
 }
 
 /**

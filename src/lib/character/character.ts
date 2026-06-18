@@ -155,6 +155,9 @@ export interface ICharacter extends IItemHolder {
   // ### Events
   /** Turn-lifecycle event hub for this character. */
   events: ICharacterEvents;
+
+  /** Returns a plain-data snapshot of this character's state. See {@link SERIALIZE}. */
+  [SERIALIZE](): CharacterSnapshot;
 }
 
 /**

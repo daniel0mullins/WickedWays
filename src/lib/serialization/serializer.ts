@@ -1,11 +1,7 @@
 import { Campaign } from "../campaign";
 import type { ICampaign } from "../campaign";
 import type { IItem } from "../inventory";
-import { Room } from "../room";
 import type { IRoom } from "../room";
-import { Loot } from "../loot";
-import { MaterialCache } from "../material-cache";
-import { Character } from "../character/character";
 import type { ICharacter } from "../character/character";
 import { SERIALIZE } from "./symbols";
 import { SCHEMA_VERSION } from "./types";
@@ -68,15 +64,15 @@ export function serializeCampaign(campaign: ICampaign): CampaignSnapshot {
 
   while (roomQueue.length) {
     const r = roomQueue.shift()!;
-    rooms.push((r as Room)[SERIALIZE]());
+    rooms.push(r[SERIALIZE]());
     for (const [, dest] of r.exits) enqueueRoom(dest);
     for (const occ of r.occupants) allCharacters.set(occ.id, occ);
     for (const [, box] of r.loot) {
-      loot.push((box as Loot)[SERIALIZE]());
+      loot.push(box[SERIALIZE]());
       for (const it of box.contents) addItem(it);
     }
     for (const [, cache] of r.materials) {
-      materialCaches.push((cache as MaterialCache)[SERIALIZE]());
+      materialCaches.push(cache[SERIALIZE]());
     }
     // Placed light sources are held only by the room (no inventory/equipment/
     // loot), so they must be captured here or Room[HYDRATE] dangles on restore.
@@ -85,7 +81,7 @@ export function serializeCampaign(campaign: ICampaign): CampaignSnapshot {
 
   // Characters' inventory, keyring, and equipped items.
   for (const ch of allCharacters.values()) {
-    characters.push((ch as Character)[SERIALIZE]());
+    characters.push(ch[SERIALIZE]());
     for (const it of ch.inventory.items) addItem(it);
     for (const k of ch.inventory.keys) addItem(k);
     for (const [, it] of ch.equipment) addItem(it);

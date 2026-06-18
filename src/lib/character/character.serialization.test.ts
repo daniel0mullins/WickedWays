@@ -8,6 +8,8 @@ import { constructBareCharacter } from "./hydrate";
 import { hydrateItem } from "../inventory";
 import { CampaignRegistry } from "../serialization/registry";
 import { HydrateContext } from "../serialization/context";
+import { Status } from "../status";
+import { Afflictions } from "./afflictions";
 
 describe("Character serialization", () => {
   it("round-trips a player's stats, inventory, history, and afflictions", () => {
@@ -20,19 +22,33 @@ describe("Character serialization", () => {
     const snap = pc[SERIALIZE]();
     expect(snap).toMatchObject({ kind: "player", name: "Ada", inventory: { keyIds: [key.id] } });
 
-    hydrateItem(key[SERIALIZE](), ctx);
+    const keySnap = key[SERIALIZE]();
+    const hydratedKey = hydrateItem(keySnap, ctx);
     const restored = constructBareCharacter(snap, campaign);
     ctx.put(restored.id, restored);
     restored[HYDRATE](snap, ctx);
     expect(restored.id).toBe(pc.id);
     expect(restored.stats).toEqual({ health: 8, sanity: 5, energy: 6 });
-    expect(restored.inventory.keys.map((k) => k.id)).toEqual([key.id]);
+    // The restored key in inventory is the same instance returned by hydrateItem.
+    expect(restored.inventory.keys[0]).toBe(hydratedKey);
+
+    // Afflictions round-trip: grant immunity to Confused and verify it survives.
+    const aff = new Afflictions(() => 0.99);
+    aff.grantImmunity([Status.Confused], 3);
+    const affSnap = aff[SERIALIZE]();
+    const aff2 = new Afflictions(() => 0.99);
+    aff2[HYDRATE](affSnap);
+    expect(aff2[SERIALIZE]()).toEqual(affSnap);
   });
 
   it("round-trips a mob's origin, escape chance, and drops", () => {
     const campaign = new Campaign("C", 10);
     const ctx = new HydrateContext(new CampaignRegistry(), () => 0.5);
-    const mob = new Mob(campaign, "Ghoul", { health: 5, sanity: 5, energy: 5 }, 2, 2, [], { baseEscapeChance: 25, lightAverse: true });
+    const mob = new Mob(campaign, "Ghoul", { health: 5, sanity: 5, energy: 5 }, 2, 2, [], {
+      baseEscapeChance: 25,
+      lightAverse: true,
+      materialDrops: { metal: 3 },
+    });
 
     const snap = mob[SERIALIZE]();
     expect(snap).toMatchObject({ kind: "mob", baseEscapeChance: 25, lightAverse: true });
@@ -41,6 +57,12 @@ describe("Character serialization", () => {
     ctx.put(restored.id, restored);
     restored[HYDRATE](snap, ctx);
     expect(restored.id).toBe(mob.id);
-    expect((restored as { baseEscapeChance?: number })).toBeDefined();
+
+    // Re-serialize the restored mob to confirm all mob-specific fields survived hydrate.
+    const restoredSnap = restored[SERIALIZE]();
+    expect(restoredSnap.baseEscapeChance).toBe(snap.baseEscapeChance);
+    expect(restoredSnap.lightAverse).toBe(snap.lightAverse);
+    expect(restoredSnap.origin).toBe(snap.origin);
+    expect(restoredSnap.materialDrops).toEqual(snap.materialDrops);
   });
 });

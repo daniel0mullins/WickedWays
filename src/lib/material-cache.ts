@@ -36,6 +36,8 @@ export interface IMaterialCache {
   [DEPLETE](): MaterialMap;
   /** Optional presentation metadata (image/sound), or `undefined` if none. */
   get presentation(): Presentation | undefined;
+  /** Returns a plain-data snapshot of this material cache. See {@link SERIALIZE}. */
+  [SERIALIZE](): MaterialCacheSnapshot;
 }
 
 /**

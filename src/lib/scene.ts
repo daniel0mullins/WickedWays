@@ -35,6 +35,8 @@ export interface IScene {
    * precondition passes for `room`.
    */
   playScene: (phase: TriggerPhase, room: IRoom) => void;
+  /** Returns a plain-data snapshot of this scene's state. See {@link SERIALIZE}. */
+  [SERIALIZE](): SceneSnapshot;
 }
 
 /**

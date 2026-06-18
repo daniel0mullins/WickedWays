@@ -18,4 +18,23 @@ describe("Afflictions serialization", () => {
     expect(b[SERIALIZE]()).toEqual(snap);
     expect(b.list).toEqual(a.list);
   });
+
+  it("round-trips a non-empty shakenOff set", () => {
+    // rng: () => 0.01 → roll(100) = Math.floor(0.01 * 100) + 1 = 2, which is
+    // <= Fear's base clear chance of 40, so Fear shakes off on the first turn.
+    const a = new Afflictions(() => 0.01);
+    // Apply Fear (sanity 3 < 5 but > 0) then advance one turn so the low roll
+    // triggers shake-off.
+    a.applyFromStats({ health: 10, sanity: 3, energy: 10 }, new Set());
+    a.onTurnStart({ health: 10, sanity: 3, energy: 10 }, new Set());
+
+    const snap = a[SERIALIZE]();
+    // shakenOff must be non-empty for this test to be meaningful.
+    expect(snap.shakenOff.length).toBeGreaterThan(0);
+
+    const b = new Afflictions(() => 0.01);
+    b[HYDRATE](snap);
+    // The restored snapshot must match verbatim — shakenOff is preserved.
+    expect(b[SERIALIZE]()).toEqual(snap);
+  });
 });

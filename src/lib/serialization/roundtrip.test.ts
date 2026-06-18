@@ -82,6 +82,25 @@ describe("campaign round-trip", () => {
     expect(restored.round).toBe(1);
   });
 
+  it("serializes an already-started campaign and restores started state + playability", () => {
+    const { campaign } = buildCampaign();
+    campaign.beginCampaign();
+    expect(campaign.started).toBe(true);
+
+    const snap = serializeCampaign(campaign);
+    expect(snap.campaign.started).toBe(true);
+
+    const restored = deserializeCampaign(snap, {
+      registry: new CampaignRegistry(),
+      rng: () => 0.5,
+    });
+    // started flag survived the round-trip.
+    expect(restored.started).toBe(true);
+    // Can advance the already-started campaign without throwing.
+    expect(() => restored.nextPlayer()).not.toThrow();
+    expect(restored.round).toBe(1);
+  });
+
   it("rejects a dangling reference and an unknown version", () => {
     const { campaign } = buildCampaign();
     const snap = serializeCampaign(campaign);
