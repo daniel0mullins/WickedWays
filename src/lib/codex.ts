@@ -4,6 +4,7 @@ import type { IRoom, RoomId } from "./room";
 import type { CraftingRecipe, KeyCost, RecipeId } from "./crafting";
 import type { SlotKind } from "./equipment";
 import type { Presentation } from "./presentation";
+import { HYDRATE_CODEX } from "./serialization/symbols";
 
 /**
  * Engine-internal seam for recording a party encounter into the campaign Codex.
@@ -265,5 +266,13 @@ export class Codex implements ICodex {
 
   get(kind: CodexKind, key: string): CodexEntry | undefined {
     return this.#entries.get(`${kind}::${key}`);
+  }
+
+  /** Restores pre-built frozen entries directly, preserving each entry's original `firstSeen`. */
+  [HYDRATE_CODEX](entries: CodexEntry[]): void {
+    for (const entry of entries) {
+      deepFreeze(entry);
+      this.#entries.set(`${entry.kind}::${entry.key}`, entry);
+    }
   }
 }
