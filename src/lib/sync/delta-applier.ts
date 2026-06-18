@@ -28,6 +28,11 @@ import type { LootId } from "../loot";
  * by re-hydrating changed entities in place and constructing created ones.
  */
 export class DeltaApplier {
+  /**
+   * Patches `replica` in place to reflect `delta`. Two-pass: pass 1 constructs
+   * created entities and re-hydrates ref-free changed ones; pass 2 wires
+   * cross-references. Never runs game logic and never draws rng.
+   */
   apply(replica: Campaign, delta: Delta, opts: { registry: CampaignRegistry; rng: () => number }): void {
     const { index } = serializeCampaignWithIndex(replica);
     const ctx = new HydrateContext(opts.registry, opts.rng);

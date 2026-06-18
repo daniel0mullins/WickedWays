@@ -9,6 +9,7 @@ import type { IPlayerCharacter, PlayerCharacter } from "../character/player-char
 import type { IMob } from "../character/mob";
 import type { ICombatant } from "../character/combatant";
 
+/** Result of {@link Resolver.authorize}: pass or fail with a human-readable reason. */
 export type AuthResult = { ok: true } | { ok: false; reason: string };
 
 /**

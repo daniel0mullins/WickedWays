@@ -23,6 +23,7 @@ export class EntityIndex {
     return new EntityIndex(serializeCampaignWithIndex(campaign).index);
   }
 
+  /** Returns `true` if `id` is present in the index. */
   has(id: string): boolean {
     return this.raw.has(id);
   }
@@ -35,21 +36,27 @@ export class EntityIndex {
     return found as T;
   }
 
+  /** Returns the character for `id`; throws {@link ProceduralViolation} if not found. */
   character(id: string): ICharacter {
     return this.get<ICharacter>(id, "character");
   }
+  /** Returns the character for `id`, or `undefined` if absent. */
   tryCharacter(id: string): ICharacter | undefined {
     return this.raw.get(id) as ICharacter | undefined;
   }
+  /** Returns the room for `id`; throws {@link ProceduralViolation} if not found. */
   room(id: string): IRoom {
     return this.get<IRoom>(id, "room");
   }
+  /** Returns the item for `id`; throws {@link ProceduralViolation} if not found. */
   item(id: string): IItem {
     return this.get<IItem>(id, "item");
   }
+  /** Returns the loot box for `id`; throws {@link ProceduralViolation} if not found. */
   loot(id: string): ILoot {
     return this.get<ILoot>(id, "loot");
   }
+  /** Returns the material cache for `id`; throws {@link ProceduralViolation} if not found. */
   materialCache(id: string): IMaterialCache {
     return this.get<IMaterialCache>(id, "materialCache");
   }

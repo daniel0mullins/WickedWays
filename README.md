@@ -504,16 +504,38 @@ campaign (an illegal engine transition throws `ProceduralViolation`, which rebui
 (`{ conflict: true }`); the coordinator rebuilds from `before`, re-syncs to the new head, and the
 caller retries. On success it returns `{ ok: true, seq, delta }`.
 
+**Reject ≠ fizzle.** A rejection (`{ ok: false, rejected: true }`) means the command was illegal
+(wrong turn, bad lifecycle state, or an engine constraint thrown by `ProceduralViolation`). A fizzle
+is a legal action that simply had no mechanical effect (e.g. an attack that dealt 0 damage) — those
+are accepted, produce a delta, and propagate normally.
+
 Inbound, `start()` subscribes from `lastApplied + 1`; remote entries already incorporated (including
 the client's own just-appended seq — `submit` advances `lastApplied` *before* the CAS append, so the
 synchronous self-notification is genuinely skipped rather than relying on idempotency) are skipped,
 the next in-order delta is applied to the replica via
 `DeltaApplier` (which patches state and **never draws rng or runs game logic**, so replicas converge
-deterministically), and gaps heal via `entriesSince`. `SyncCoordinator.join(...)` brings a late
-client up to date from the transport's latest checkpoint plus the deltas since.
+deterministically with zero determinism burden), and gaps heal via `entriesSince`.
+`SyncCoordinator.join(...)` brings a late client up to date from the transport's latest checkpoint
+plus the deltas since.
 
 Because a rejection or conflict swaps in a freshly deserialized `Campaign`, consumers must always read
 state through `coordinator.campaign` and never cache the reference across a `submit`.
+
+**`SyncTransport` seam.** The sync core depends only on the `SyncTransport` interface (append, head,
+subscribe, loadSnapshot, putSnapshot). `InProcessTransport` drives tests. A real backend
+(Firestore, WebSockets, etc.) and the authoritative-server topology are deferred — they are a thin
+adapter behind this interface.
+
+```ts
+const transport = new InProcessTransport();
+const host = new SyncCoordinator({ campaign, registry, transport });
+host.start();
+const result = host.submit({ kind: "move", actorId: active.id, roomId: dest.id });
+
+// elsewhere / another client:
+const replica = SyncCoordinator.join({ registry, transport });
+replica.start();
+```
 
 ## Notable patterns
 

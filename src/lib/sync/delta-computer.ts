@@ -5,6 +5,11 @@ type Tagged = EntitySnapshot["type"];
 
 /** Diffs two full campaign snapshots into a minimal entity-delta. */
 export class DeltaComputer {
+  /**
+   * Compares every entity collection between `before` and `after` and returns a
+   * {@link Delta} classifying each entity as changed, created, or removed.
+   * Campaign core and codex are included when they differ.
+   */
   diff(before: CampaignSnapshot, after: CampaignSnapshot): Delta {
     const changed: EntitySnapshot[] = [];
     const created: EntitySnapshot[] = [];

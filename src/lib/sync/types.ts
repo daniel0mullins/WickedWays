@@ -88,12 +88,15 @@ const GM_KINDS = new Set<Command["kind"]>([
   "mobEscape", "mobAttack",
 ]);
 
+/** Returns `true` for player turn-actions (move, attack, equip, etc.). */
 export function isTurnAction(command: Command): boolean {
   return TURN_ACTION_KINDS.has(command.kind);
 }
+/** Returns `true` for pre-start setup commands (selectArchetype). */
 export function isSetupCommand(command: Command): boolean {
   return SETUP_KINDS.has(command.kind);
 }
+/** Returns `true` for GM/lifecycle/NPC commands (beginCampaign, mobAttack, etc.). */
 export function isGmCommand(command: Command): boolean {
   return GM_KINDS.has(command.kind);
 }

@@ -85,11 +85,26 @@ export class SyncCoordinator {
     this.#unsubscribe = this.#transport.subscribe(this.#lastApplied + 1, (entry) => this.#onRemote(entry));
   }
 
+  /** Stops applying inbound remote entries (inverse of {@link SyncCoordinator.start}). */
   stop(): void {
     this.#unsubscribe?.();
     this.#unsubscribe = null;
   }
 
+  /**
+   * Submits a command against the local campaign and, on success, appends it to
+   * the transport under compare-and-swap.
+   *
+   * - `{ ok: true, seq, delta }` — accepted; `delta` reflects all changes.
+   * - `{ ok: false, rejected: true, reason }` — illegal command (auth gate or engine
+   *   constraint); the local campaign is atomically restored to its pre-call state.
+   * - `{ ok: false, conflict: true, reason }` — CAS conflict (stale base); the
+   *   campaign is rebuilt from `before` and fast-forwarded to the current head.
+   *   The caller should retry.
+   *
+   * Always read {@link SyncCoordinator.campaign} after a call — a rejection or
+   * conflict may have swapped in a new `Campaign` instance.
+   */
   submit(command: Command): CommandResult {
     const auth = this.#resolver.authorize(this.#local, command);
     if (!auth.ok) return { ok: false, rejected: true, reason: auth.reason };

@@ -1,6 +1,7 @@
 import type { LogEntry } from "./types";
 import type { CampaignSnapshot } from "../serialization/types";
 
+/** Result of {@link SyncTransport.append}: success, or CAS conflict with the current head seq. */
 export type AppendResult = { ok: true } | { ok: false; conflict: true; head: number };
 
 /**
