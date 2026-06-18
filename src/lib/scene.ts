@@ -1,6 +1,9 @@
 import { Brand } from "./brand";
 import { IRoom } from "./room";
-import { generateId } from "./util";
+import { generateId, ProceduralViolation } from "./util";
+import { SERIALIZE } from "./serialization/symbols";
+import type { SceneSnapshot } from "./serialization/types";
+import type { HydrateContext } from "./serialization/context";
 
 /**
  * Gate evaluated against a room and the scene's persisted state; the scene only
@@ -54,6 +57,7 @@ export class Scene<TState = Record<string, never>> implements IScene {
   #script: ScriptFn<TState>;
   #triggerPhase: TriggerPhase;
   #state: TState;
+  #behaviorKey?: string;
 
   /**
    * @param config - Scene configuration.
@@ -61,23 +65,48 @@ export class Scene<TState = Record<string, never>> implements IScene {
    * @param config.preconditions - Gates that must all pass for the script to run; receive the room and read-only state.
    * @param config.script - Effect to run against the room when the scene fires; may mutate the persisted state.
    * @param config.initialState - Initial persisted state. Defaults to an empty object.
+   * @param config.behaviorKey - Registry key for serialization; required to call `[SERIALIZE]()`.
    */
   constructor({
     phase = "enter",
     preconditions,
     script,
     initialState,
+    behaviorKey,
   }: {
     phase?: TriggerPhase;
     preconditions: PreconditionFn<TState>[];
     script: ScriptFn<TState>;
     initialState?: TState;
+    behaviorKey?: string;
   }) {
     this.id = generateId<SceneId>();
     this.preconditions = preconditions;
     this.#script = script;
     this.#triggerPhase = phase;
     this.#state = initialState ?? ({} as TState);
+    this.#behaviorKey = behaviorKey;
+  }
+
+  /**
+   * Returns a plain-data snapshot of this scene's identity, trigger phase, and
+   * persisted state. Requires a `behaviorKey` to have been supplied at
+   * construction — inline scenes without a key cannot be serialized.
+   *
+   * @throws {ProceduralViolation} When no `behaviorKey` was provided.
+   */
+  [SERIALIZE](): SceneSnapshot {
+    if (this.#behaviorKey === undefined) {
+      throw new ProceduralViolation(
+        `Scene ${this.id} cannot be serialized: no behaviorKey.`,
+      );
+    }
+    return {
+      id: this.id,
+      behaviorKey: this.#behaviorKey,
+      phase: this.#triggerPhase,
+      state: this.#state as Record<string, unknown>,
+    };
   }
 
   /**
@@ -97,4 +126,23 @@ export class Scene<TState = Record<string, never>> implements IScene {
       this.#script(room, this.#state);
     }
   }
+}
+
+/**
+ * Reconstructs a {@link Scene} from a {@link SceneSnapshot}, reattaching its
+ * behavior (preconditions + script) from the registry. The restored scene gets
+ * its persisted `id` assigned; the caller (the room hydrator) is responsible for
+ * registering it — `hydrateScene` does not call `ctx.put`.
+ */
+export function hydrateScene(data: SceneSnapshot, ctx: HydrateContext): Scene<never> {
+  const behavior = ctx.registry.scene(data.behaviorKey);
+  const scene = new Scene<never>({
+    phase: data.phase,
+    preconditions: behavior.preconditions,
+    script: behavior.script,
+    initialState: data.state as never,
+    behaviorKey: data.behaviorKey,
+  });
+  scene.id = data.id as SceneId;
+  return scene;
 }
