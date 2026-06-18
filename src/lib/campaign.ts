@@ -51,6 +51,8 @@ export interface ICampaign {
   get codex(): ICodex;
   /** Whether the campaign has begun (turn management active). */
   get started(): boolean;
+  /** Whether the campaign has ended (lost or completed). */
+  get finished(): boolean;
 
   /** Round count at which the campaign automatically ends. */
   readonly maxRounds: number;
@@ -169,6 +171,11 @@ export class Campaign implements ICampaign {
 
   get started(): boolean {
     return this.#started;
+  }
+
+  /** Whether the campaign has ended (lost or completed). */
+  get finished(): boolean {
+    return this.#finished;
   }
 
   /**
@@ -637,6 +644,8 @@ export class Campaign implements ICampaign {
    * resolves its archetype against `campaign.archetypes`. Engine-internal seam.
    */
   [HYDRATE_CATALOG](core: CampaignCoreSnapshot, registry: CampaignRegistry): void {
+    this.#archetypes.clear();
+    this.#knownRecipes.clear();
     for (const archetype of core.archetypes) {
       this.#archetypes.set(archetype.id, { ...archetype });
     }
@@ -658,15 +667,19 @@ export class Campaign implements ICampaign {
     this.#finished = core.finished;
     this.#activeCharacterIndex = core.activeCharacterIndex;
     this.#materials = { ...core.materials };
+    this.#claims.clear();
     for (const claim of core.claims) this.#claims.add(claim);
+    this.#encountered.clear();
     for (const key of core.encountered) this.#encountered.add(key);
     this.#actionSounds = { ...core.actionSounds };
+    this.party.length = 0;
     for (const id of core.partyIds) {
       this.party.push(ctx.character(id) as IPlayerCharacter);
     }
     this.#gm = core.gmId
       ? (ctx.character(core.gmId) as IPlayerCharacter)
       : undefined;
+    this.#actedThisRound = new WeakMap<IPlayerCharacter, boolean>();
     for (const id of core.actedThisRound) {
       this.#actedThisRound.set(ctx.character(id) as IPlayerCharacter, true);
     }

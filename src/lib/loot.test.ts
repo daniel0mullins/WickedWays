@@ -4,6 +4,9 @@ import { CLAIM, STASH_DROP, createKey, type IItem, type ItemId } from "./invento
 import { Loot } from "./loot";
 import { ContainerFullException, ProceduralViolation, generateId } from "./util";
 import type { Presentation } from "./presentation";
+import { HYDRATE } from "./serialization/symbols";
+import { HydrateContext } from "./serialization/context";
+import { CampaignRegistry } from "./serialization/registry";
 
 const HELD_BY = Symbol.for("heldBy");
 
@@ -246,4 +249,17 @@ describe("Loot", () => {
       expect(loot.contents).toContain(extra);
     });
   });
+});
+
+it("Loot[HYDRATE] resets contents and capacity in place", () => {
+  const loot = new Loot("chest", []);
+  const ctx = new HydrateContext(new CampaignRegistry(), Math.random);
+  const itemA = makeItem("item-a" as ItemId);
+  ctx.put(itemA.id, itemA);
+  loot[HYDRATE]({ id: loot.id, description: "chest", capacity: 5, contentIds: [itemA.id] }, ctx);
+  expect(loot.contents.map((i) => i.id)).toEqual([itemA.id]);
+  expect(loot.capacity).toBe(5);
+  // re-apply identical: no duplication
+  loot[HYDRATE]({ id: loot.id, description: "chest", capacity: 5, contentIds: [itemA.id] }, ctx);
+  expect(loot.contents.length).toBe(1);
 });

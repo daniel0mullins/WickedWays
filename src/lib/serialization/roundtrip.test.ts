@@ -1,16 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { Campaign } from "../campaign";
-import { PlayerCharacter } from "../character/player-character";
-import { Room } from "../room";
 import { StatType } from "../character/stats";
-import type { ArchetypeId } from "../archetype";
-import type { ExitsArg } from "../../test-utils";
 import { serializeCampaign } from "./serializer";
 import { deserializeCampaign } from "./deserializer";
 import { CampaignRegistry } from "./registry";
 import { Item } from "../inventory";
 import type { IItem } from "../inventory";
 import { SlotKind } from "../equipment";
+import { buildSerializableCampaign } from "./roundtrip.test-helpers";
 
 function makeTorch(): Item {
   const noop = () => {};
@@ -31,27 +27,10 @@ function makeTorch(): Item {
   );
 }
 
-function makeStats() {
-  return {
-    [StatType.Health]: 10,
-    [StatType.Sanity]: 10,
-    [StatType.Energy]: 10,
-  };
-}
-
 function buildCampaign() {
-  const campaign = new Campaign("Crypt", 10, [], { rng: () => 0.5 });
-  campaign.registerArchetype({
-    id: "delver" as ArchetypeId,
-    name: "Delver",
-    statModifiers: { [StatType.Health]: 2 },
-  });
-  const start = new Room("Start", "the entrance", [], {} as ExitsArg);
-  const pc = new PlayerCharacter(campaign, "Ada", makeStats());
-  pc.joinCampaign();
-  campaign.gm = pc; // the engine's real GM-assignment API (setter, not setGM)
-  pc.selectArchetype("delver" as ArchetypeId);
-  pc.move(start);
+  const { campaign } = buildSerializableCampaign();
+  const pc = campaign.party[0]!;
+  const start = pc.currentRoom!;
   return { campaign, start, pc };
 }
 

@@ -7,6 +7,7 @@ import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, Item,
 import { ProceduralViolation } from "./util";
 import type { CraftingRecipe, RecipeId } from "./crafting";
 import type { Presentation } from "./presentation";
+import { HYDRATE } from "./serialization/symbols";
 
 // `ItemProperties` is not exported, so we recover the shape the constructor
 // expects straight from its parameter list.
@@ -607,4 +608,18 @@ describe("teaches", () => {
   it("defaults teaches to undefined", () => {
     expect(makeItem().item.teaches).toBeUndefined();
   });
+});
+
+it("Item[HYDRATE] updates durability and modifier in place, preserving identity", () => {
+  const item = makeDurable(10, 10);
+  item.behaviorKey = "items/sword";
+  item.modifier = 0;
+  const before = item;
+  item[HYDRATE]({ kind: "item", id: item.id, behaviorKey: "items/sword", durability: 3, modifier: 2 });
+  expect(item).toBe(before);            // same instance
+  expect(item.durability).toBe(3);
+  expect(item.modifier).toBe(2);
+  // idempotent
+  item[HYDRATE]({ kind: "item", id: item.id, behaviorKey: "items/sword", durability: 3, modifier: 2 });
+  expect(item.durability).toBe(3);
 });

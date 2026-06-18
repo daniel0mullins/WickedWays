@@ -10,7 +10,7 @@ import type { CraftingRecipe } from "./crafting";
 import type { SlotKind } from "./equipment";
 import { Status } from "./status";
 import type { Presentation } from "./presentation";
-import { SERIALIZE } from "./serialization/symbols";
+import { HYDRATE, SERIALIZE } from "./serialization/symbols";
 import type { ItemSnapshot } from "./serialization/types";
 import type { HydrateContext } from "./serialization/context";
 
@@ -61,7 +61,7 @@ type ItemActionSharedEvent = <C extends ICharacter, CC extends ICharacter>(
 ) => void;
 
 /** The interactions an item can be the subject of. */
-const ItemAction = {
+export const ItemAction = {
   PickUp: "pickUp",
   Equip: "equip",
   Unequip: "unequip",
@@ -352,6 +352,14 @@ export class Item implements IItem {
     };
   }
 
+  /** In-place restore of mutable item state. Keys are immutable post-construction. */
+  [HYDRATE](data: ItemSnapshot): void {
+    if (data.kind === "key") return;
+    this.behaviorKey = data.behaviorKey;
+    if (data.durability !== undefined) this[SET_DURABILITY](data.durability);
+    this.modifier = data.modifier;
+  }
+
   #heldBy: ItemHolder | null = null;
 
   get [HELD_BY]() {
@@ -635,9 +643,7 @@ export function hydrateItem(data: ItemSnapshot, ctx: HydrateContext): Item {
     item = createKey({ name: data.name, keyCode: data.keyCode, consumeOnUse: data.consumeOnUse });
   } else {
     item = ctx.registry.item(data.behaviorKey)();
-    item.behaviorKey = data.behaviorKey;
-    if (data.durability !== undefined) item[SET_DURABILITY](data.durability);
-    item.modifier = data.modifier;
+    item[HYDRATE](data);
   }
   item.id = data.id as ItemId;
   ctx.put(item.id, item);

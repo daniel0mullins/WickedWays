@@ -109,7 +109,9 @@ export class EncounterTable {
   /** Restores state from a snapshot, bypassing `addFormation` validation. */
   [HYDRATE](data: EncounterTableSnapshot, registry: CampaignRegistry): void {
     this.#baseChance = data.baseChance;
+    this.#visited.clear();
     for (const id of data.visited) this.#visited.add(id);
+    this.#formations.length = 0;
     for (const f of data.formations) {
       this.#formations.push({ id: f.behaviorKey, weight: f.weight, build: registry.formation(f.behaviorKey).build });
     }

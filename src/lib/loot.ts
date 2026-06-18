@@ -2,7 +2,7 @@ import { Brand } from "./brand";
 import { CLAIM, IItem, IItemHolder, ItemId, STASH_DROP } from "./inventory";
 import { ContainerFullException, ProceduralViolation, generateId } from "./util";
 import type { Presentation } from "./presentation";
-import { SERIALIZE } from "./serialization/symbols";
+import { HYDRATE, SERIALIZE } from "./serialization/symbols";
 import type { LootSnapshot } from "./serialization/types";
 import type { HydrateContext } from "./serialization/context";
 
@@ -168,6 +168,16 @@ export class Loot implements ILoot {
       contentIds: this.contents.map((i) => i.id),
     };
   }
+
+  /** In-place restore of mutable loot state; resets contents before filling to prevent duplication. */
+  [HYDRATE](data: LootSnapshot, ctx: HydrateContext): void {
+    this.description = data.description;
+    this.contents = [];
+    this[SET_CAPACITY](data.capacity);
+    for (const itemId of data.contentIds) {
+      this[STASH_DROP](ctx.item(itemId));
+    }
+  }
 }
 
 /**
@@ -181,10 +191,7 @@ export class Loot implements ILoot {
 export function hydrateLoot(data: LootSnapshot, ctx: HydrateContext): Loot {
   const loot = new Loot(data.description, []);
   loot.id = data.id as LootId;
-  loot[SET_CAPACITY](data.capacity);
-  for (const itemId of data.contentIds) {
-    loot[STASH_DROP](ctx.item(itemId));
-  }
+  loot[HYDRATE](data, ctx);
   ctx.put(loot.id, loot);
   return loot;
 }
