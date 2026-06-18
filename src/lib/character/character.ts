@@ -19,6 +19,9 @@ import { CharacterEvents, ICharacterEvents } from "./events";
 import type { ActionDetail, ActionHistoryEntry } from "./history";
 import { MitigatorStatType, Stats, StatType } from "./stats";
 import type { RecipeId } from "../crafting";
+import { SERIALIZE, HYDRATE } from "../serialization/symbols";
+import type { CharacterSnapshot } from "../serialization/types";
+import type { HydrateContext } from "../serialization/context";
 
 /** Unique identifier for a {@link Character}. */
 export type CharacterId = Brand<string, "CharacterId">;
@@ -152,6 +155,9 @@ export interface ICharacter extends IItemHolder {
   // ### Events
   /** Turn-lifecycle event hub for this character. */
   events: ICharacterEvents;
+
+  /** Returns a plain-data snapshot of this character's state. See {@link SERIALIZE}. */
+  [SERIALIZE](): CharacterSnapshot;
 }
 
 /**
@@ -986,6 +992,89 @@ export class Character implements ICharacter {
       this.#passiveImmunities(),
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Serialization
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Returns a plain-data snapshot of this character suitable for persistence.
+   * Subclasses contribute their own fields via {@link serializeKind} and
+   * {@link serializeExtra}.
+   */
+  [SERIALIZE](): CharacterSnapshot {
+    const base = {
+      kind: this.serializeKind(),
+      id: this.id,
+      name: this.name,
+      stats: { ...this.stats },
+      actionsPerRound: this.actionsPerRound,
+      actionsThisRound: this.actionsThisRound,
+      currentRoomId: this.#currentRoom?.id ?? null,
+      inventory: {
+        slots: this.#inventory.slots,
+        itemIds: this.#inventory.items.map((i) => i.id),
+        keyIds: this.#inventory.keys.map((k) => k.id),
+      },
+      equipment: Object.fromEntries([...this.#equipment].map(([slot, item]) => [slot, item.id])),
+      history: [...this.#history],
+      archetypeImmunities: [...this.archetypeImmunities],
+      afflictions: this.#afflictions[SERIALIZE](),
+    } as CharacterSnapshot;
+    this.serializeExtra(base);
+    return base;
+  }
+
+  /** Subclass discriminant. */
+  protected serializeKind(): "player" | "mob" { return "player"; }
+  /** Subclass hook to add its own fields to the snapshot. Base: none. */
+  protected serializeExtra(_snap: CharacterSnapshot): void {}
+
+  /**
+   * Restores this character's state from a snapshot. Items and rooms must
+   * already be indexed in `ctx` before calling this. Subclasses restore their
+   * own fields via {@link hydrateExtra}.
+   *
+   * Equipment is populated directly (not via `[EQUIP]`): equip side-effects and
+   * derived bonuses are already reflected in the restored base stats and equipped
+   * flags, so replaying them would double-apply.
+   */
+  [HYDRATE](data: CharacterSnapshot, ctx: HydrateContext) {
+    this.id = data.id as CharacterId;
+    this.name = data.name;
+    this.stats = { ...data.stats };
+    this.actionsPerRound = data.actionsPerRound;
+    this.actionsThisRound = data.actionsThisRound;
+    this.archetypeImmunities = [...data.archetypeImmunities];
+    this.#currentRoom = data.currentRoomId ? ctx.room(data.currentRoomId) : null;
+    this.#inventory.slots = data.inventory.slots;
+    for (const id of data.inventory.itemIds) {
+      const item = ctx.item(id);
+      this.#inventory.items.push(item);
+      item[CLAIM](this);
+    }
+    for (const id of data.inventory.keyIds) {
+      const key = ctx.item(id);
+      this.#inventory.keys.push(key);
+      key[CLAIM](this);
+    }
+    // Equipment: populate the map directly and mark equipped. Do NOT call [EQUIP]:
+    // equip side-effects (and any derived bonuses) are already reflected in the
+    // restored base stats / equipped flags, so replaying them would double-apply.
+    for (const [slot, itemId] of Object.entries(data.equipment)) {
+      const item = ctx.item(itemId);
+      this.#equipment.set(slot as EquipmentSlot, item);
+      item.properties.equipped = true;
+    }
+    this.#history = [...data.history];
+    this.#afflictions[HYDRATE](data.afflictions);
+    this.hydrateExtra(data, ctx);
+  }
+
+  /** Subclass hook to restore its own fields. Base: none. */
+  protected hydrateExtra(_data: CharacterSnapshot, _ctx: HydrateContext): void {}
+
+  // ---------------------------------------------------------------------------
 
   /**
    * Crafts the item produced by the recipe identified by `recipeId`. Supports

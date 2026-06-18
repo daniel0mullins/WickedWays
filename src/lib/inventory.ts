@@ -4,14 +4,18 @@ import type { ILoot } from "./loot";
 import type { RequireAtLeastOne } from "type-fest";
 import { v4 as uuid } from "uuid";
 import { StatType } from "./character/stats";
+export { StatType } from "./character/stats";
 import { ProceduralViolation } from "./util";
 import type { CraftingRecipe } from "./crafting";
 import type { SlotKind } from "./equipment";
 import { Status } from "./status";
 import type { Presentation } from "./presentation";
+import { SERIALIZE } from "./serialization/symbols";
+import type { ItemSnapshot } from "./serialization/types";
+import type { HydrateContext } from "./serialization/context";
 
 /** The kinds of item the engine recognises. */
-const ItemType = {
+export const ItemType = {
   Consumable: "consumable",
   Armor: "armor",
   Weapon: "weapon",
@@ -262,6 +266,8 @@ export interface IItem {
   actions: ItemActions;
   /** Optional presentation metadata (image/sound), or `undefined` if none. */
   get presentation(): Presentation | undefined;
+  /** Returns a plain-data snapshot suitable for persistence. See {@link SERIALIZE}. */
+  [SERIALIZE](): ItemSnapshot;
 }
 
 /**
@@ -282,6 +288,8 @@ export class Item implements IItem {
   stat: StatType;
   properties: ItemProperties;
   actions: ItemActions;
+  /** Registry key that maps this item to its factory; required for serialization of non-key items. */
+  behaviorKey?: string;
   readonly keyCode?: string;
   readonly consumeOnUse?: boolean;
   readonly teaches?: CraftingRecipe;
@@ -318,6 +326,30 @@ export class Item implements IItem {
     // tolerated, not guarded: it clamps every write to 0, i.e. always-broken.)
     if (this.maxDurability === undefined) return;
     this.#durability = Math.max(0, Math.min(this.maxDurability, value));
+  }
+
+  [SERIALIZE](): ItemSnapshot {
+    if (this.type === ItemType.Key) {
+      return {
+        kind: "key",
+        id: this.id,
+        name: this.name,
+        keyCode: this.keyCode ?? "",
+        consumeOnUse: this.consumeOnUse ?? false,
+      };
+    }
+    if (this.behaviorKey === undefined) {
+      throw new ProceduralViolation(
+        `Item '${this.name}' (${this.id}) cannot be serialized: no behaviorKey. Register a factory and pass behaviorKey.`,
+      );
+    }
+    return {
+      kind: "item",
+      id: this.id,
+      behaviorKey: this.behaviorKey,
+      ...(this.durability !== undefined ? { durability: this.durability } : {}),
+      modifier: this.modifier,
+    };
   }
 
   #heldBy: ItemHolder | null = null;
@@ -375,6 +407,9 @@ export class Item implements IItem {
    * @param descriptor.slot - The {@link SlotKind} this item equips into (optional).
    * @param descriptor.twoHanded - Weapons only: occupies both hands when equipped.
    * @param descriptor.emitsLight - Light sources only: lights its room when active.
+   * @param descriptor.behaviorKey - Registry key used by the `CampaignRegistry` to
+   *   restore this item's factory at deserialize time. Required for non-key items
+   *   that must survive serialization; omit only for key items (`keyCode` set).
    * @param properties - Initial mutable flags (equippable, equipped, …).
    * @param actions - Core behaviour for each interaction; wrapped on construction.
    * @param events - Observer hooks fired after the matching action runs.
@@ -397,6 +432,7 @@ export class Item implements IItem {
       twoHanded,
       emitsLight,
       presentation,
+      behaviorKey,
     }: {
       type: ItemType;
       recipe: Recipe;
@@ -414,6 +450,7 @@ export class Item implements IItem {
       twoHanded?: boolean;
       emitsLight?: boolean;
       presentation?: Presentation;
+      behaviorKey?: string;
     },
     properties: ItemProperties,
     actions: ItemActions,
@@ -426,6 +463,7 @@ export class Item implements IItem {
     this.modifier = modifier;
     this.stat = stat;
     this.properties = properties;
+    this.behaviorKey = behaviorKey;
     this.keyCode = keyCode;
     this.consumeOnUse = consumeOnUse;
     this.teaches = teaches;
@@ -578,4 +616,30 @@ export function createKey({
     },
     { onPickUp: () => {} },
   );
+}
+
+/**
+ * Reconstructs an {@link Item} from its {@link ItemSnapshot}.
+ *
+ * Keys are rebuilt via {@link createKey}; non-key items are rebuilt by calling
+ * the registered factory from `ctx.registry`, then overlaying the mutable state
+ * (durability, modifier) from the snapshot. The item's id is restored from the
+ * snapshot and registered in `ctx` so that holder references can be wired in a
+ * later pass.
+ *
+ * @throws {@link ProceduralViolation} if a non-key item's `behaviorKey` is not registered.
+ */
+export function hydrateItem(data: ItemSnapshot, ctx: HydrateContext): Item {
+  let item: Item;
+  if (data.kind === "key") {
+    item = createKey({ name: data.name, keyCode: data.keyCode, consumeOnUse: data.consumeOnUse });
+  } else {
+    item = ctx.registry.item(data.behaviorKey)();
+    item.behaviorKey = data.behaviorKey;
+    if (data.durability !== undefined) item[SET_DURABILITY](data.durability);
+    item.modifier = data.modifier;
+  }
+  item.id = data.id as ItemId;
+  ctx.put(item.id, item);
+  return item;
 }

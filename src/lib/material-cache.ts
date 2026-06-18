@@ -2,6 +2,9 @@ import { Brand } from "./brand";
 import { MaterialMap } from "./inventory";
 import { generateId } from "./util";
 import type { Presentation } from "./presentation";
+import { SERIALIZE } from "./serialization/symbols";
+import type { MaterialCacheSnapshot } from "./serialization/types";
+import type { HydrateContext } from "./serialization/context";
 
 /** Unique identifier for a {@link MaterialCache}. */
 export type MaterialCacheId = Brand<string, "MaterialCacheId">;
@@ -33,6 +36,8 @@ export interface IMaterialCache {
   [DEPLETE](): MaterialMap;
   /** Optional presentation metadata (image/sound), or `undefined` if none. */
   get presentation(): Presentation | undefined;
+  /** Returns a plain-data snapshot of this material cache. See {@link SERIALIZE}. */
+  [SERIALIZE](): MaterialCacheSnapshot;
 }
 
 /**
@@ -76,4 +81,34 @@ export class MaterialCache implements IMaterialCache {
     this.#contents = {};
     return yielded;
   }
+
+  /** Returns a plain-data snapshot suitable for persistence. */
+  [SERIALIZE](): MaterialCacheSnapshot {
+    return {
+      id: this.id,
+      contents: { ...this.#contents },
+      depleted: this.#depleted,
+    };
+  }
+}
+
+/**
+ * Reconstructs a {@link MaterialCache} from its snapshot.
+ *
+ * An intact cache is restored by constructing with its contents; a depleted
+ * cache is constructed with an empty map and `DEPLETE` is called so the
+ * one-way state transition is respected.
+ *
+ * @param data - Plain-data snapshot produced by {@link MaterialCache[SERIALIZE]}.
+ * @param ctx - Hydration context carrying the id→instance index and registry.
+ * @returns The reconstructed cache, registered in `ctx`.
+ */
+export function hydrateMaterialCache(data: MaterialCacheSnapshot, ctx: HydrateContext): MaterialCache {
+  const cache = new MaterialCache(data.contents);
+  cache.id = data.id as MaterialCacheId;
+  if (data.depleted) {
+    cache[DEPLETE]();
+  }
+  ctx.put(cache.id, cache);
+  return cache;
 }

@@ -9,6 +9,8 @@ import { Combatant, ICombatant } from "./combatant";
 import { StatType, type Stats } from "./stats";
 import type { CharacterOptions } from "./character";
 import type { Archetype, ArchetypeId } from "../archetype";
+import type { CharacterSnapshot } from "../serialization/types";
+import type { HydrateContext } from "../serialization/context";
 
 /**
  * A player-controlled {@link ICombatant}. Adds campaign membership and the
@@ -58,6 +60,26 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     // recordAction(this.move, …) resolves to that same override, so the budget ticks.
     this.isActionMap.set(this.move, true);
   }
+
+  // ---------------------------------------------------------------------------
+  // Serialization hooks
+  // ---------------------------------------------------------------------------
+
+  protected override serializeKind(): "player" | "mob" { return "player"; }
+
+  protected override serializeExtra(snap: CharacterSnapshot): void {
+    if (this.#archetype) snap.archetypeId = this.#archetype.id;
+  }
+
+  protected override hydrateExtra(data: CharacterSnapshot, _ctx: HydrateContext): void {
+    if (data.archetypeId) {
+      const archetype = this.campaign.archetypes.get(data.archetypeId as ArchetypeId);
+      if (!archetype) throw new ProceduralViolation(`Unknown archetype '${data.archetypeId}' on restore.`);
+      this.#archetype = archetype;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
 
   /**
    * Selects an archetype from the campaign catalog, applying its effects exactly

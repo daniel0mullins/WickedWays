@@ -5,6 +5,9 @@ import { clamp, ProceduralViolation } from "./util";
 import type { ICampaign } from "./campaign";
 import type { IMob } from "./character/mob";
 import type { IRoom } from "./room";
+import { SERIALIZE, HYDRATE } from "./serialization/symbols";
+import type { EncounterTableSnapshot } from "./serialization/types";
+import type { CampaignRegistry } from "./serialization/registry";
 
 /**
  * A roving encounter: a weighted entry in an {@link EncounterTable}. `build`
@@ -92,6 +95,24 @@ export class EncounterTable {
       mob[PLACE](room);
     }
     return mobs;
+  }
+
+  /** Returns a plain-data snapshot of this table's state. */
+  [SERIALIZE](): EncounterTableSnapshot {
+    return {
+      baseChance: this.#baseChance,
+      visited: [...this.#visited],
+      formations: this.#formations.map((f) => ({ behaviorKey: f.id, weight: f.weight })),
+    };
+  }
+
+  /** Restores state from a snapshot, bypassing `addFormation` validation. */
+  [HYDRATE](data: EncounterTableSnapshot, registry: CampaignRegistry): void {
+    this.#baseChance = data.baseChance;
+    for (const id of data.visited) this.#visited.add(id);
+    for (const f of data.formations) {
+      this.#formations.push({ id: f.behaviorKey, weight: f.weight, build: registry.formation(f.behaviorKey).build });
+    }
   }
 
   /** Picks a formation weighted by `weight`. */

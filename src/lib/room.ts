@@ -4,9 +4,12 @@ import { ADD_LIGHT_SOURCE, IItem, ItemId, PLACE, REMOVE_LIGHT_SOURCE, SET_ORIGIN
 import { ILoot, LootId } from "./loot";
 import type { IMaterialCache, MaterialCacheId } from "./material-cache";
 import type { IMob } from "./character/mob";
-import { IScene } from "./scene";
+import { IScene, hydrateScene } from "./scene";
 import { generateId, ProceduralViolation } from "./util";
 import type { Presentation } from "./presentation";
+import { SERIALIZE, HYDRATE } from "./serialization/symbols";
+import type { RoomSnapshot } from "./serialization/types";
+import type { HydrateContext } from "./serialization/context";
 
 /** Unique identifier for a {@link Room}. */
 export type RoomId = Brand<string, "RoomId">;
@@ -24,7 +27,7 @@ export const Directions = {
 } as const;
 
 /** One of the {@link Directions} values. */
-type Direction = (typeof Directions)[keyof typeof Directions];
+export type Direction = (typeof Directions)[keyof typeof Directions];
 
 /**
  * A location in the game world. Rooms hold loot, track their occupants, connect
@@ -69,6 +72,8 @@ export interface IRoom {
   get isLit(): boolean;
   [ADD_LIGHT_SOURCE](item: IItem): void;
   [REMOVE_LIGHT_SOURCE](id: ItemId): void;
+  /** Returns a plain-data snapshot of this room's state. See {@link SERIALIZE}. */
+  [SERIALIZE](): RoomSnapshot;
 }
 
 /**
@@ -245,4 +250,61 @@ export class Room implements IRoom {
     mob[SET_ORIGIN]("room");
     mob[PLACE](this);
   }
+
+  /** Returns a plain-data snapshot of this room's state. */
+  [SERIALIZE](): RoomSnapshot {
+    return {
+      id: this.id,
+      name: this.name,
+      description: this.description,
+      exits: Object.fromEntries([...this.exits].map(([dir, room]) => [dir, room.id])),
+      dark: this.#dark,
+      spawnModifier: this.spawnModifier,
+      occupantIds: [...this.#occupants.keys()],
+      lootIds: [...this.loot.keys()],
+      materialCacheIds: [...this.materials.keys()],
+      lightSourceIds: [...this.#lightSources.keys()],
+      scenes: this.#scenes.map((s) => s[SERIALIZE]()),
+    };
+  }
+
+  /**
+   * Wires all references (exits, loot, materials, light sources, occupants, scenes)
+   * from the hydration context index into this bare room. Called in pass 2.
+   */
+  [HYDRATE](data: RoomSnapshot, ctx: HydrateContext) {
+    for (const [dir, roomId] of Object.entries(data.exits)) {
+      this.exits.set(dir as Direction, ctx.room(roomId));
+    }
+    for (const lootId of data.lootIds) {
+      const loot = ctx.loot(lootId);
+      this.loot.set(loot.id, loot);
+    }
+    for (const cacheId of data.materialCacheIds) {
+      const cache = ctx.materialCache(cacheId);
+      this.materials.set(cache.id, cache);
+    }
+    for (const itemId of data.lightSourceIds) {
+      const light = ctx.item(itemId);
+      this.#lightSources.set(light.id, light);
+    }
+    for (const charId of data.occupantIds) {
+      const character = ctx.character(charId);
+      this.#occupants.set(character.id, character);
+    }
+    for (const sceneData of data.scenes) {
+      this.registerScene(hydrateScene(sceneData, ctx));
+    }
+  }
+}
+
+/**
+ * Pass-1 factory: builds a bare {@link Room} with empty collections from a
+ * {@link RoomSnapshot}. The caller must assign the returned room into
+ * `HydrateContext` before running pass 2 ({@link Room[HYDRATE]}).
+ */
+export function constructBareRoom(data: RoomSnapshot): Room {
+  const room = new Room(data.name, data.description, [], {} as Record<Direction, IRoom>, [], data.spawnModifier, [], undefined, data.dark);
+  room.id = data.id as RoomId;
+  return room;
 }

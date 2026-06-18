@@ -14,6 +14,8 @@ import type { ICharacter } from "./character";
 import { Combatant, ICombatant } from "./combatant";
 import { Stats, StatType } from "./stats";
 import type { CharacterOptions } from "./character";
+import type { CharacterSnapshot } from "../serialization/types";
+import type { HydrateContext } from "../serialization/context";
 
 /** Where a mob comes from; gates key-item drops (see {@link Mob.onKnockOut}). */
 export type MobOrigin = "room" | "campaign" | "unbound";
@@ -87,6 +89,26 @@ export class Mob extends Combatant implements IMob {
   [SET_ORIGIN](origin: MobOrigin) {
     this.#origin = origin;
   }
+
+  // ---------------------------------------------------------------------------
+  // Serialization hooks
+  // ---------------------------------------------------------------------------
+
+  protected override serializeKind(): "player" | "mob" { return "mob"; }
+
+  protected override serializeExtra(snap: CharacterSnapshot): void {
+    snap.origin = this.#origin;
+    snap.baseEscapeChance = this.#baseEscapeChance;
+    snap.materialDrops = { ...this.#materialDrops };
+    snap.lightAverse = this.#lightAverse;
+  }
+
+  protected override hydrateExtra(data: CharacterSnapshot, _ctx: HydrateContext): void {
+    if (data.origin) this.#origin = data.origin;
+    // #baseEscapeChance/#materialDrops/#lightAverse were set from options in the bare ctor.
+  }
+
+  // ---------------------------------------------------------------------------
 
   /**
    * Attempts to flee the current room. Success is a Health-gated roll:
