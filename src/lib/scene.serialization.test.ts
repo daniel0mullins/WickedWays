@@ -4,6 +4,7 @@ import { SERIALIZE } from "./serialization/symbols";
 import { hydrateScene } from "./scene";
 import { CampaignRegistry } from "./serialization/registry";
 import { HydrateContext } from "./serialization/context";
+import { ProceduralViolation } from "./util";
 
 describe("Scene serialization", () => {
   it("round-trips phase + persisted state and reattaches behavior from the registry", () => {
@@ -28,6 +29,7 @@ describe("Scene serialization", () => {
 
   it("throws on serialize when behaviorKey is missing", () => {
     const scene = new Scene({ preconditions: [], script: () => {} });
+    expect(() => scene[SERIALIZE]()).toThrow(ProceduralViolation);
     expect(() => scene[SERIALIZE]()).toThrow(/behaviorKey/);
   });
 });
