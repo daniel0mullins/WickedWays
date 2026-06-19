@@ -13,6 +13,20 @@ export interface WireLogEntry {
   delta: unknown;
 }
 
+/** An authenticated identity, opaque to the engine (chosen by the host's verifier). */
+export type Identity = string;
+
+/**
+ * The actor an append acts as, declared at the envelope so the server can enforce
+ * ownership without parsing the opaque command. `character` = an owned seat; `gm` =
+ * GM/lifecycle/NPC; `join` = self-claim a NEW seat (the joinCampaign append; the
+ * client surfaces the new character's id).
+ */
+export type Actor =
+  | { kind: "character"; actorId: string }
+  | { kind: "gm" }
+  | { kind: "join"; characterId: string };
+
 /** Messages a client sends to the room server. */
 export type ClientMsg =
   | { t: "join"; campaignId: string; clientId: string; fromSeq: number }
