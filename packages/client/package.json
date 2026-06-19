@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "wickedways": "workspace:*",
+    "@wickedways/seed": "workspace:*",
     "@wickedways/transport-shared": "workspace:*"
   },
   "devDependencies": {

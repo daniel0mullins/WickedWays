@@ -54,6 +54,9 @@ importers:
 
   packages/client:
     dependencies:
+      '@wickedways/seed':
+        specifier: workspace:*
+        version: link:../seed
       '@wickedways/transport-shared':
         specifier: workspace:*
         version: link:../transport-shared
@@ -76,6 +79,16 @@ importers:
       ws:
         specifier: ^8.18.0
         version: 8.21.0
+
+  packages/seed:
+    dependencies:
+      wickedways:
+        specifier: workspace:*
+        version: link:../..
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.21
 
   packages/server:
     dependencies:
