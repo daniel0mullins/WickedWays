@@ -100,12 +100,17 @@ function runContract(name: string, makeBackend: () => Backend): void {
 
     it("round-trips a snapshot to a client that connects afterward", async () => {
       const a = await backend.connect();
+      // Append twice so head reaches 2 before writing the checkpoint.
+      // The server requires seq <= head (GM-gate), so the snapshot must come after
+      // the entries it covers; await both commits for a causal ordering guarantee.
+      await a.append(entry(1, 0));
+      await a.append(entry(2, 1));
       a.putSnapshot(2, snap());
       expect(a.loadSnapshot()).toEqual({ seq: 2, snapshot: snap() });
       // The server processes one socket's messages in order, so awaiting a committed
       // append guarantees the earlier putSnapshot was applied before c connects —
       // a causal guarantee, not a timing race.
-      await a.append(entry(1, 0));
+      await a.append(entry(3, 2));
       const c = await backend.connect();
       expect(c.loadSnapshot()?.seq).toBe(2);
     });

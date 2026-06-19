@@ -117,8 +117,13 @@ describe("createServer", () => {
     a.send(JSON.stringify({ t: "getSnapshot", campaignId: "c1" }));
     expect(await none).toEqual([{ t: "snapshot", seq: 0, snapshot: null }]);
 
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    // Must join as GM so putSnapshot is accepted (GM-gate), and seq must be <= head
+    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
     await collect(a, 2); // joined + presence
+    // Append twice so head reaches 2, then putSnapshot at seq 2
+    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
+    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 1), actor: { kind: "gm" } }));
+    await collect(a, 4); // appendOk(1) + entry(1) + appendOk(2) + entry(2)
     a.send(JSON.stringify({ t: "putSnapshot", campaignId: "c1", seq: 2, snapshot: { tag: "two" } }));
     const got = collect(a, 1);
     a.send(JSON.stringify({ t: "getSnapshot", campaignId: "c1" }));
@@ -261,6 +266,72 @@ describe("createServer", () => {
     const p = await afterClose;
     expect(p).toEqual([{ t: "presence", campaignId: "c1", seats: [{ characterId: "cAda", owner: "ada", online: true }], gm: { identity: "gm", online: true } }]); // still online via a2
     g.close(); a2.close();
+  });
+
+  it("putSnapshot GM-gate: non-GM snapshot is ignored; GM snapshot is stored", async () => {
+    // gmIdentityFor returns "gm" so token "gm" is the GM, token "ada" is not
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const g = await open(handle.port);
+    const a = await open(handle.port);
+    // GM joins and appends once so head = 1
+    g.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
+    await collect(g, 2); // joined + presence
+    g.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
+    await collect(g, 2); // appendOk(1) + entry(1)
+
+    // Non-GM (ada) joins and attempts putSnapshot — must be silently ignored
+    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    await collect(a, 3); // joined + backfill entry(1) + presence
+    a.send(JSON.stringify({ t: "putSnapshot", campaignId: "c1", seq: 1, snapshot: { tag: "nonGM" } }));
+    const afterNonGm = collect(a, 1);
+    a.send(JSON.stringify({ t: "getSnapshot", campaignId: "c1" }));
+    // Snapshot should still be absent (non-GM putSnapshot was ignored)
+    expect(await afterNonGm).toEqual([{ t: "snapshot", seq: 0, snapshot: null }]);
+
+    // GM putSnapshot with seq <= head IS stored
+    g.send(JSON.stringify({ t: "putSnapshot", campaignId: "c1", seq: 1, snapshot: { tag: "gmSnap" } }));
+    const afterGm = collect(g, 1);
+    g.send(JSON.stringify({ t: "getSnapshot", campaignId: "c1" }));
+    expect(await afterGm).toEqual([{ t: "snapshot", seq: 1, snapshot: { tag: "gmSnap" } }]);
+    g.close(); a.close();
+  });
+
+  it("putSnapshot seq cap: GM putSnapshot with seq > head is ignored", async () => {
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const g = await open(handle.port);
+    g.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
+    await collect(g, 2); // joined + presence (head = 0)
+    // seq: 5 > head: 0 → must be ignored
+    g.send(JSON.stringify({ t: "putSnapshot", campaignId: "c1", seq: 5, snapshot: { tag: "future" } }));
+    const got = collect(g, 1);
+    g.send(JSON.stringify({ t: "getSnapshot", campaignId: "c1" }));
+    expect(await got).toEqual([{ t: "snapshot", seq: 0, snapshot: null }]);
+    g.close();
+  });
+
+  it("second join on same connection is rejected: same campaign or different identity", async () => {
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const a = await open(handle.port);
+    // First join succeeds
+    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    await collect(a, 2); // joined + presence
+
+    // Second join to the SAME campaign on the same connection → denied
+    const sameAgain = collect(a, 1);
+    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    expect(await sameAgain).toEqual([{ t: "denied", reason: "already joined this campaign" }]);
+
+    // Join with a DIFFERENT token/identity on the same connection → denied
+    const diffId = collect(a, 1);
+    a.send(JSON.stringify({ t: "join", campaignId: "c2", token: "bob", fromSeq: 0 }));
+    expect(await diffId).toEqual([{ t: "denied", reason: "different identity on one connection" }]);
+
+    // Joining a NEW campaign with the SAME identity is still allowed
+    const newCampaign = collect(a, 2); // joined + presence
+    a.send(JSON.stringify({ t: "join", campaignId: "c2", token: "ada", fromSeq: 0 }));
+    const msgs = await newCampaign;
+    expect(msgs[0]).toEqual({ t: "joined", head: 0 });
+    a.close();
   });
 
   it("GM assignSeat lets the assigned identity act; unassign revokes", async () => {

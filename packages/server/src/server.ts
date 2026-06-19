@@ -88,10 +88,9 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
       switch (msg.t) {
         case "join": {
           const id = verify(msg.token);
-          if (id === null) {
-            send({ t: "denied", reason: "authentication failed" });
-            return;
-          }
+          if (id === null) { send({ t: "denied", reason: "authentication failed" }); return; }
+          if (identity !== null && id !== identity) { send({ t: "denied", reason: "different identity on one connection" }); break; }
+          if (joined.has(msg.campaignId)) { send({ t: "denied", reason: "already joined this campaign" }); break; }
           identity = id;
           tableFor(msg.campaignId).join(send, msg.fromSeq);
           joined.add(msg.campaignId);
@@ -125,13 +124,16 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
         case "getSnapshot":
           tableFor(msg.campaignId).sendSnapshot(send); // read-only observation, pre-auth allowed
           break;
-        case "putSnapshot":
-          if (identity === null) {
-            send({ t: "denied", reason: "not authenticated" });
-            break;
+        case "putSnapshot": {
+          if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
+          const t = tableFor(msg.campaignId);
+          // Only the GM may write the checkpoint late-joiners trust, and never ahead of
+          // the committed log. A non-GM / stale putSnapshot is ignored (fire-and-forget).
+          if (identity === membershipFor(msg.campaignId).gmIdentity && msg.seq <= t.head()) {
+            t.putSnapshot(msg.seq, msg.snapshot);
           }
-          tableFor(msg.campaignId).putSnapshot(msg.seq, msg.snapshot);
           break;
+        }
       }
     });
 
