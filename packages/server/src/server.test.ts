@@ -14,6 +14,7 @@ function open(port: number): Promise<WebSocket> {
   const ws = new WebSocket(`ws://127.0.0.1:${port}`);
   return new Promise((resolve, reject) => {
     ws.addEventListener("open", () => resolve(ws));
+    // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
     ws.addEventListener("error", (e) => reject(e));
   });
 }
@@ -26,10 +27,12 @@ function collect(ws: WebSocket, n: number): Promise<ServerMsg[]> {
       const msg = parseServerMsg(JSON.parse(String(ev.data)));
       if (msg) out.push(msg);
       if (out.length >= n) {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
         ws.removeEventListener("message", onMsg as never);
         resolve(out);
       }
     };
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     ws.addEventListener("message", onMsg as never);
   });
 }
