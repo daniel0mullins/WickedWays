@@ -8,7 +8,9 @@ import { PlayerCharacter } from "../character/player-character";
 import { createKey } from "../inventory";
 import { SERIALIZE } from "../serialization/symbols";
 import { buildStartedCampaign, makeStats } from "../serialization/roundtrip.test-helpers";
+import { Directions } from "../room";
 import type { LogEntry } from "./types";
+import type { SyncTransport } from "./transport";
 
 describe("SyncCoordinator two-client convergence", () => {
   it("replica B converges to A after a removed-entity delta (consumeKey)", async () => {
@@ -205,6 +207,31 @@ describe("SyncCoordinator join + late-join", () => {
 
     const C = SyncCoordinator.join({ registry, transport, rng: () => { throw new Error("no roll"); } });
     expect(serializeCampaign(C.campaign)).toEqual(serializeCampaign(A.campaign));
+  });
+});
+
+describe("SyncCoordinator denied append", () => {
+  it("treats a denied append as a terminal rejection and restores local state", async () => {
+    const { campaign, registry } = buildStartedCampaign();
+    const transport = new InProcessTransport();
+    // A transport that accepts the seed snapshot but denies every append.
+    const denying: SyncTransport = {
+      head: () => transport.head(),
+      append: () => Promise.resolve({ ok: false, denied: true, reason: "not your seat" }),
+      entriesSince: (n) => transport.entriesSince(n),
+      subscribe: (n, h) => transport.subscribe(n, h),
+      loadSnapshot: () => transport.loadSnapshot(),
+      putSnapshot: (s, snap) => transport.putSnapshot(s, snap),
+    };
+    const coord = new SyncCoordinator({ campaign, registry, transport: denying });
+    const before = serializeCampaign(coord.campaign);
+
+    const active = coord.campaign.activeCharacter;
+    const res = await coord.submit({ kind: "move", actorId: active.id, roomId: active.currentRoom!.exits.get(Directions.North)!.id });
+
+    expect(res).toEqual({ ok: false, rejected: true, reason: "not your seat" });
+    expect(serializeCampaign(coord.campaign)).toEqual(before); // local rolled back
+    expect(coord.campaign.activeCharacter.id).toBe(active.id); // unchanged
   });
 });
 
