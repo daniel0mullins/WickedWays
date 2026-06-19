@@ -1,5 +1,5 @@
 import { WebSocketServer, type WebSocket } from "ws";
-import { parseClientMsg, type ServerMsg, type Identity } from "@wickedways/transport-shared";
+import { parseClientMsg, type ServerMsg, type Identity, type PresenceEntry } from "@wickedways/transport-shared";
 import { Table, type Subscriber } from "./table.js";
 import { Membership } from "./membership.js";
 
@@ -40,6 +40,22 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
     return m;
   };
 
+  const online = new Map<string, Map<Identity, number>>();
+  const bump = (campaignId: string, id: Identity, delta: number): void => {
+    let map = online.get(campaignId);
+    if (map === undefined) { map = new Map(); online.set(campaignId, map); }
+    const n = (map.get(id) ?? 0) + delta;
+    if (n <= 0) map.delete(id); else map.set(id, n);
+  };
+  const presenceOf = (campaignId: string): ServerMsg => {
+    const m = membershipFor(campaignId);
+    const onlineMap = online.get(campaignId);
+    const isOnline = (id: Identity): boolean => (onlineMap?.get(id) ?? 0) > 0;
+    const seats: PresenceEntry[] = m.seats().map(([characterId, owner]) => ({ characterId, owner, online: isOnline(owner) }));
+    return { t: "presence", campaignId, seats, gm: { identity: m.gmIdentity, online: isOnline(m.gmIdentity) } };
+  };
+  const broadcastPresence = (campaignId: string): void => tableFor(campaignId).broadcast(presenceOf(campaignId));
+
   const verify = (token: string): Identity | null => {
     try {
       return opts.verifyToken(token);
@@ -79,6 +95,8 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           identity = id;
           tableFor(msg.campaignId).join(send, msg.fromSeq);
           joined.add(msg.campaignId);
+          bump(msg.campaignId, id, 1);
+          broadcastPresence(msg.campaignId);
           break;
         }
         case "append": {
@@ -88,7 +106,7 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           const result = tableFor(msg.campaignId).append(msg.entry, send);
           if (msg.actor.kind === "join" && result.committed) {
             m.claim(msg.actor.characterId, identity); // self-service seat claim, on commit
-            // Task 5 broadcasts presence here.
+            broadcastPresence(msg.campaignId);
           }
           break;
         }
@@ -101,7 +119,7 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           if (msg.t === "assignSeat") m.assign(msg.characterId, msg.identity);
           else if (msg.t === "unassignSeat") m.unassign(msg.characterId);
           else m.transferGM(msg.identity);
-          // Task 5 broadcasts presence here.
+          broadcastPresence(msg.campaignId);
           break;
         }
         case "getSnapshot":
@@ -118,7 +136,11 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
     });
 
     ws.on("close", () => {
-      for (const id of joined) tables.get(id)?.leave(send);
+      for (const id of joined) {
+        tables.get(id)?.leave(send);
+        if (identity !== null) bump(id, identity, -1);
+        broadcastPresence(id);
+      }
     });
   });
 

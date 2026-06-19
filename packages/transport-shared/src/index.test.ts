@@ -56,4 +56,10 @@ describe("parseServerMsg", () => {
     expect(parseServerMsg({ t: "snapshot", seq: 1 })).toBeNull(); // missing snapshot key
     expect(parseServerMsg(42)).toBeNull();
   });
+
+  it("accepts presence; rejects malformed presence", () => {
+    const p = { t: "presence", campaignId: "c1", seats: [{ characterId: "ch", owner: "ada", online: true }], gm: { identity: "gm", online: false } };
+    expect(parseServerMsg(p)).toEqual(p);
+    expect(parseServerMsg({ t: "presence", campaignId: "c1", seats: [{ characterId: "ch" }], gm: { identity: "gm", online: true } })).toBeNull();
+  });
 });

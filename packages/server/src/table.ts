@@ -72,4 +72,9 @@ export class Table {
       this.#snapshot = { seq, snapshot };
     }
   }
+
+  /** Sends a server message to every current participant (used for presence). */
+  broadcast(msg: ServerMsg): void {
+    for (const p of this.#participants) p(msg);
+  }
 }

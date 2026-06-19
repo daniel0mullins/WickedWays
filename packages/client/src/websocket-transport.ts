@@ -3,7 +3,7 @@ import type { LogEntry } from "wickedways/lib/sync/types";
 import { commandActorId, isJoinCommand } from "wickedways/lib/sync/types";
 import type { Command } from "wickedways/lib/sync/types";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
-import { parseServerMsg, type Actor, type ClientMsg, type WireLogEntry } from "@wickedways/transport-shared";
+import { parseServerMsg, type Actor, type ClientMsg, type WireLogEntry, type ServerMsg } from "@wickedways/transport-shared";
 
 /** A message event carrying string data (browser `MessageEvent` and `ws` both satisfy this). */
 export interface WSMessageEvent {
@@ -30,6 +30,7 @@ interface ConnectOpts {
   campaignId: string;
   token: string;
   factory?: WebSocketFactory;
+  onPresence?: (p: Extract<ServerMsg, { t: "presence" }>) => void;
 }
 
 /**
@@ -53,6 +54,7 @@ export class WebSocketTransport implements SyncTransport {
   #buffer = new Map<number, LogEntry>();
   #headWaiters: { target: number; resolve: () => void }[] = [];
 
+  #latestPresence: Extract<ServerMsg, { t: "presence" }> | null = null;
   #pendingAppend: { resolve: (r: AppendResult) => void; entry: LogEntry } | null = null;
   #snapshotWaiter: ((m: { seq: number; snapshot: unknown }) => void) | null = null;
   #joinedWaiter: ((m: { head: number }) => void) | null = null;
@@ -198,7 +200,15 @@ export class WebSocketTransport implements SyncTransport {
       case "error":
         console.error("room server error:", msg.message);
         break;
+      case "presence":
+        this.#latestPresence = msg;
+        this.#opts.onPresence?.(msg);
+        break;
     }
+  }
+
+  get latestPresence(): Extract<ServerMsg, { t: "presence" }> | null {
+    return this.#latestPresence;
   }
 
   #applyEntry(entry: LogEntry): void {

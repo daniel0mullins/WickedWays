@@ -37,6 +37,9 @@ export type ClientMsg =
   | { t: "unassignSeat"; campaignId: string; characterId: string }
   | { t: "transferGM"; campaignId: string; identity: string };
 
+/** One seat's presence: its owner (or null if unclaimed) and whether that owner is online. */
+export interface PresenceEntry { characterId: string; owner: string | null; online: boolean }
+
 /** Messages the room server sends to a client. */
 export type ServerMsg =
   | { t: "joined"; head: number }
@@ -45,7 +48,8 @@ export type ServerMsg =
   | { t: "appendConflict"; head: number }
   | { t: "snapshot"; seq: number; snapshot: unknown }
   | { t: "denied"; reason: string }
-  | { t: "error"; message: string };
+  | { t: "error"; message: string }
+  | { t: "presence"; campaignId: string; seats: PresenceEntry[]; gm: { identity: string; online: boolean } };
 
 function isObj(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null;
@@ -53,6 +57,11 @@ function isObj(x: unknown): x is Record<string, unknown> {
 
 function isWireLogEntry(x: unknown): x is WireLogEntry {
   return isObj(x) && typeof x.seq === "number" && typeof x.baseSeq === "number" && "command" in x && "delta" in x;
+}
+
+function isPresenceEntry(x: unknown): x is PresenceEntry {
+  return isObj(x) && typeof x.characterId === "string"
+    && (x.owner === null || typeof x.owner === "string") && typeof x.online === "boolean";
 }
 
 function isActor(x: unknown): x is Actor {
@@ -118,6 +127,11 @@ export function parseServerMsg(raw: unknown): ServerMsg | null {
       return typeof raw.reason === "string" ? { t: "denied", reason: raw.reason } : null;
     case "error":
       return typeof raw.message === "string" ? { t: "error", message: raw.message } : null;
+    case "presence":
+      return typeof raw.campaignId === "string" && Array.isArray(raw.seats) && raw.seats.every(isPresenceEntry)
+        && isObj(raw.gm) && typeof raw.gm.identity === "string" && typeof raw.gm.online === "boolean"
+        ? { t: "presence", campaignId: raw.campaignId, seats: raw.seats, gm: { identity: raw.gm.identity, online: raw.gm.online } }
+        : null;
     default:
       return null;
   }

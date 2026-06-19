@@ -82,6 +82,20 @@ describe("Table", () => {
     expect(b.msgs).toEqual([]);
   });
 
+  it("broadcasts a message to every current participant", () => {
+    const t = new Table();
+    const a = recorder();
+    const b = recorder();
+    t.join(a.sub, 0);
+    t.join(b.sub, 0);
+    a.msgs.length = 0;
+    b.msgs.length = 0;
+
+    t.broadcast({ t: "error", message: "x" });
+    expect(a.msgs).toEqual([{ t: "error", message: "x" }]);
+    expect(b.msgs).toEqual([{ t: "error", message: "x" }]);
+  });
+
   it("sends the latest snapshot, or seq 0 / null when absent; lower-seq puts do not overwrite", () => {
     const t = new Table();
     const a = recorder();
