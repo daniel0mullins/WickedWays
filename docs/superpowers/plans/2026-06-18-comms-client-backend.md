@@ -101,7 +101,7 @@ Replace the `scripts` block in `package.json` so internal calls use `pnpm run`:
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "checks": "pnpm run lint && pnpm -r run typecheck && pnpm run test",
+    "checks": "pnpm run lint && pnpm run typecheck && pnpm -r run typecheck && pnpm run test",
     "build": "tsc -p tsconfig.build.json",
     "docs:api": "typedoc",
     "docs:dev": "pnpm run docs:api && vitepress dev docs-site",
@@ -110,7 +110,7 @@ Replace the `scripts` block in `package.json` so internal calls use `pnpm run`:
   },
 ```
 
-**Aggregate-checks design (referenced by later tasks):** `eslint .` from the root lints every package's `.ts` (flat config ignores only `dist/`, `coverage/`, `node_modules/`, `docs-site/`). The root `vitest run` globs `**/*.test.ts`, so it runs every package's tests in one pass — packages therefore do **not** define their own `test` script. Typecheck is per-tsconfig, so each package added later defines its own `"typecheck": "tsc --noEmit"` script, and `pnpm -r run typecheck` runs the root engine typecheck plus each package's.
+**Aggregate-checks design (referenced by later tasks):** `eslint .` from the root lints every package's `.ts` (flat config ignores only `dist/`, `coverage/`, `node_modules/`, `docs-site/`). The root `vitest run` globs `**/*.test.ts`, so it runs every package's tests in one pass — packages therefore do **not** define their own `test` script. Typecheck is per-tsconfig, so each package added later defines its own `"typecheck": "tsc --noEmit"` script. **`pnpm -r run` excludes the root workspace project**, so `checks` must run the root engine typecheck explicitly (`pnpm run typecheck`) *and* the per-package typechecks (`pnpm -r run typecheck`) — both, or the engine's own `tsc --noEmit` is silently skipped.
 
 - [ ] **Step 4: Generate the pnpm lockfile from the existing npm lockfile**
 
@@ -1054,10 +1054,12 @@ git commit -m "feat(server): WebSocket adapter over Table registry, dev entrypoi
     "@types/node": "^22.10.0",
     "@types/ws": "^8.5.12",
     "ws": "^8.18.0",
-    "vite": "^6.0.0"
+    "vite": "^8.0.0"
   }
 }
 ```
+
+> **Note:** root pins `vite@^8` (vitest@4 requires vite ≥6; pnpm pulled vite@5 transitively via vitepress, so Task 1 pinned it). Keep the client's `vite` at the same major (`^8.0.0`) to avoid two Vite versions in the workspace.
 
 `packages/client/tsconfig.json`:
 
