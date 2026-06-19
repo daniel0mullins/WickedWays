@@ -68,6 +68,17 @@ Settled during brainstorming:
 - **Trusted-peers identity carries over from Spec 2.** The network layer does no
   seat validation in 3a; a client declares an opaque `clientId` on join and the
   server relays. Proving a connection may act for a seat is **3b**.
+- **One small Spec-2 change: the append/submit seam goes async.** Spec 2's
+  `SyncTransport.append` and `SyncCoordinator.submit` are synchronous, which only
+  works for an in-memory transport — a real WebSocket CAS verdict (`appendOk` vs
+  `appendConflict`) arrives over the network asynchronously. So
+  `SyncTransport.append` becomes `Promise<AppendResult>` and
+  `SyncCoordinator.submit` becomes `Promise<CommandResult>`. `InProcessTransport`
+  and the existing Spec-2 tests take trivial `await`s; the mirror-served sync reads
+  (`head`, `entriesSince`, `loadSnapshot`, `subscribe`, `putSnapshot`) stay
+  synchronous. The optimistic-local-CAS alternative was rejected: it needs a new
+  coordinator rollback API anyway and opens a silent-divergence window in the
+  foundation layer.
 
 ## Architecture — workspace layout
 
@@ -142,13 +153,15 @@ subscribers.
 
 ## The concrete `WebSocketTransport` (client)
 
-A class in `client/` implementing Spec 2's existing `SyncTransport` interface
-**unchanged**, so `SyncCoordinator` is wired to it with **zero engine changes**:
+A class in `client/` implementing Spec 2's `SyncTransport` interface, which keeps
+a **warm local mirror** of the log/head/snapshot (fed by the WS subscription) so
+every synchronous read is served locally. The one engine change is the async
+`append`/`submit` seam (above):
 
-- `append(entry)` → send `{t:"append"}`, await `appendOk`/`appendConflict`. A
-  conflict surfaces to the coordinator exactly as the in-process transport does
-  today (the coordinator already rolls back to `before`, re-syncs, and lets the
-  caller retry — Spec 2 behavior, untouched).
+- `append(entry): Promise<AppendResult>` → send `{t:"append"}`, await
+  `appendOk`/`appendConflict`. A conflict surfaces to the coordinator exactly as
+  the in-process transport does today (the coordinator already rolls back to
+  `before`, re-syncs, and lets the caller retry — Spec 2 behavior, now awaited).
 - `subscribe(fromSeq, handler)` → send `{t:"join", fromSeq}`; route every inbound
   `entry` to `handler` in `seq` order, with a buffer-and-order guard that drops
   duplicates and holds gaps.
