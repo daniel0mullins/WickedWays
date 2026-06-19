@@ -1,4 +1,5 @@
 import type { Identity, Actor } from "@wickedways/transport-shared";
+import type { MembershipState } from "./store.js";
 
 /**
  * One campaign's seat-ownership map: which identity owns each character seat, plus
@@ -63,5 +64,17 @@ export class Membership {
   /** GM override: hand the GM role to another identity. */
   transferGM(identity: Identity): void {
     this.#gmIdentity = identity;
+  }
+
+  /** Serializes the GM identity + seat map for durable storage. */
+  toState(): MembershipState {
+    return { gmIdentity: this.#gmIdentity, seats: this.seats() };
+  }
+
+  /** Rebuilds a Membership from persisted state. */
+  static fromState(state: MembershipState): Membership {
+    const m = new Membership(state.gmIdentity);
+    for (const [characterId, identity] of state.seats) m.assign(characterId, identity);
+    return m;
   }
 }
