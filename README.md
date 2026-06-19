@@ -17,8 +17,8 @@ rendered) plus an API reference generated from the source TSDoc. The site is
 built with VitePress + TypeDoc and lives in `docs-site/`. Work on it locally with:
 
 ```bash
-npm run docs:dev       # serve the site with hot reload
-npm run docs:build     # production build into docs-site/.vitepress/dist
+pnpm docs:dev       # serve the site with hot reload
+pnpm docs:build     # production build into docs-site/.vitepress/dist
 ```
 
 It deploys automatically on every push to `main` via `.github/workflows/docs.yml`.
@@ -558,17 +558,17 @@ replica.start();
 - **Linting:** ESLint flat config with type-aware `typescript-eslint`.
 - **Dependencies:** `uuid` for id generation; `type-fest` for utility types.
 
-### npm scripts
+### pnpm scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm test` | Run the test suite once (`vitest run`) |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run test:coverage` | Run tests with coverage over `src/**` |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run lint` / `npm run lint:fix` | Lint (and autofix) |
-| `npm run checks` | Lint + typecheck + test, in sequence |
-| `npm run build` | Compile to `dist/` via `tsconfig.build.json` |
+| `pnpm test` | Run the test suite once (`vitest run`) |
+| `pnpm test:watch` | Run tests in watch mode |
+| `pnpm test:coverage` | Run tests with coverage over `src/**` |
+| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm lint` / `pnpm lint:fix` | Lint (and autofix) |
+| `pnpm checks` | Lint + typecheck + test, in sequence |
+| `pnpm build` | Compile to `dist/` via `tsconfig.build.json` |
 
 ## Multiplayer client (comms sub-spec 3a)
 
