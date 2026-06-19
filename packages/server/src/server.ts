@@ -4,6 +4,7 @@ import { Authority } from "wickedways/lib/sync/authority";
 import { commandActorId, isJoinCommand, type Command } from "wickedways/lib/sync/types";
 import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
+import { SCHEMA_VERSION } from "wickedways/lib/serialization/types";
 import { Table, type Subscriber } from "./table.js";
 import { Membership } from "./membership.js";
 import type { CampaignStore } from "./store.js";
@@ -38,6 +39,10 @@ function actorOf(command: Command): Actor {
   return actorId === null ? { kind: "gm" } : { kind: "character", actorId };
 }
 
+function schemaMatches(snapshot: CampaignSnapshot): boolean {
+  return snapshot.schemaVersion === SCHEMA_VERSION;
+}
+
 /**
  * Starts an authoritative WebSocket room server. Each campaign is backed by an
  * {@link Authority} (built lazily from the host's `genesisFor`) that re-derives
@@ -58,6 +63,8 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
   };
 
   const tables = new Map<string, Table>();
+  // Inflight load promises — deduplicate concurrent ensureLoaded calls for the same campaign.
+  const loading = new Map<string, Promise<Table | null>>();
 
   // With a store, snapshot-on-every-commit so `currentSnapshot()` is always fresh for `save`.
   // Without a store, use the Authority default (20) so snapshot seq ≠ head seq,
@@ -67,31 +74,46 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
   const buildAuthority = (_id: string, seq: number, genesis: CampaignSnapshot): Authority =>
     new Authority(genesis, { registry: opts.registry, rng: opts.rng, snapshotEvery, startSeq: seq });
 
-  const tableFor = (id: string): Table | null => {
-    let t = tables.get(id);
-    if (t === undefined) {
-      const genesis = opts.genesisFor(id);
-      if (genesis === null) return null;
-      const authority = buildAuthority(id, 0, genesis); // Task 6 resumes from a persisted seq
-      memberships.set(id, new Membership(opts.gmIdentityFor(id)));
-      t = new Table(authority);
+  const ensureLoaded = (id: string): Promise<Table | null> => {
+    const cached = tables.get(id);
+    if (cached !== undefined) return Promise.resolve(cached);
+    const inflight = loading.get(id);
+    if (inflight !== undefined) return inflight;
+    const p = (async (): Promise<Table | null> => {
+      const rec = opts.store ? await opts.store.load(id) : null;
+      if (rec !== null && !schemaMatches(rec.snapshot)) {
+        console.error(`[persistence] campaign ${id}: snapshot schemaVersion ${rec.snapshot.schemaVersion} != current; refusing to resume (migration required)`);
+        loading.delete(id);
+        return null; // fail closed — do NOT build a genesis Table (that would overwrite the record)
+      }
+      const genesis = rec?.snapshot ?? opts.genesisFor(id);
+      if (genesis === null) { loading.delete(id); return null; }
+      const authority = buildAuthority(id, rec?.seq ?? 0, genesis);
+      // Restore persisted membership when resuming; otherwise use whatever membership was set
+      // by messages that arrived while we were awaiting the load (or seed a fresh one).
+      if (rec) memberships.set(id, Membership.fromState(rec.membership));
+      else if (!memberships.has(id)) memberships.set(id, new Membership(opts.gmIdentityFor(id)));
+      const t = new Table(authority);
       const store = opts.store;
       if (store !== undefined) {
         t.setDurability({
           persist: () =>
-            store.save(id, { seq: t!.head(), snapshot: t!.currentSnapshot(), membership: membershipFor(id).toState() }),
+            store.save(id, { seq: t.head(), snapshot: t.currentSnapshot(), membership: membershipFor(id).toState() }),
           reload: async () => {
-            const rec = await store.load(id);
-            const fresh = rec?.snapshot ?? opts.genesisFor(id);
-            if (fresh === null) return; // nothing to restore to
-            t!.replaceAuthority(buildAuthority(id, rec?.seq ?? 0, fresh));
-            memberships.set(id, rec ? Membership.fromState(rec.membership) : new Membership(opts.gmIdentityFor(id)));
+            const r = await store.load(id);
+            const fresh = r?.snapshot ?? opts.genesisFor(id);
+            if (fresh === null) return;
+            t.replaceAuthority(buildAuthority(id, r?.seq ?? 0, fresh));
+            memberships.set(id, r ? Membership.fromState(r.membership) : new Membership(opts.gmIdentityFor(id)));
           },
         });
       }
       tables.set(id, t);
-    }
-    return t;
+      loading.delete(id);
+      return t;
+    })();
+    loading.set(id, p);
+    return p;
   };
 
   const online = new Map<string, Map<Identity, number>>();
@@ -108,7 +130,7 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
     const seats: PresenceEntry[] = m.seats().map(([characterId, owner]) => ({ characterId, owner, online: isOnline(owner) }));
     return { t: "presence", campaignId, seats, gm: { identity: m.gmIdentity, online: isOnline(m.gmIdentity) } };
   };
-  const broadcastPresence = (campaignId: string): void => tableFor(campaignId)?.broadcast(presenceOf(campaignId));
+  const broadcastPresence = (campaignId: string): void => tables.get(campaignId)?.broadcast(presenceOf(campaignId));
 
   const verify = (token: string): Identity | null => {
     try {
@@ -146,9 +168,12 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           if (id === null) { send({ t: "denied", reason: "authentication failed" }); return; }
           if (identity !== null && id !== identity) { send({ t: "denied", reason: "different identity on one connection" }); break; }
           if (joined.has(msg.campaignId)) { send({ t: "denied", reason: "already joined this campaign" }); break; }
-          const t = tableFor(msg.campaignId);
-          if (t === null) { send({ t: "denied", reason: "unknown campaign" }); break; }
+          // Set identity before the async load so that messages arriving while we await
+          // (e.g. assignSeat bursts) see this connection as authenticated.
+          const prevIdentity = identity;
           identity = id;
+          const t = await ensureLoaded(msg.campaignId);
+          if (t === null) { identity = prevIdentity; send({ t: "denied", reason: "unknown campaign" }); break; }
           t.join(send, msg.fromSeq);
           joined.add(msg.campaignId);
           bump(msg.campaignId, id, 1);
@@ -157,8 +182,8 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
         }
         case "submit": {
           if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
-          const t = tableFor(msg.campaignId);
-          if (t === null) { send({ t: "denied", reason: "unknown campaign" }); break; }
+          const t = tables.get(msg.campaignId);
+          if (t === undefined) { send({ t: "denied", reason: "unknown campaign" }); break; }
           const m = membershipFor(msg.campaignId);
           const command = msg.command as Command;
           const actor = actorOf(command);
@@ -190,7 +215,7 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           break;
         }
         case "getSnapshot": {
-          const t = tableFor(msg.campaignId);
+          const t = await ensureLoaded(msg.campaignId);
           if (t === null) { send({ t: "snapshot", seq: 0, snapshot: null }); break; }
           t.sendSnapshot(send); // read-only; pre-auth allowed (unchanged 3b boundary)
           break;
