@@ -606,3 +606,33 @@ both converge on identical state over the wire.
 Seat-ownership / network auth & presence (3b), text chat (3c), and A/V over WebRTC
 (3d) all build on this backend. 3a is the transport-agnostic foundation: it does no
 seat validation (trusted peers) and keeps no durable state across a server restart.
+
+### Authentication, seat ownership & presence (sub-spec 3b)
+
+Connections authenticate and the server enforces who may act for whom:
+
+- **`createServer({ verifyToken, gmIdentityFor })`** — `verifyToken(token) -> Identity | null`
+  is host-supplied (the engine bakes in no crypto); `gmIdentityFor(campaignId)` seeds each
+  campaign's GM. A client presents its `token` on `join` (and on every reconnect).
+- **Seat ownership** — the server holds a per-campaign `Membership` (`characterId -> identity`
+  + `gmIdentity`). Every `append` carries an `actor` **envelope** (`character` | `gm` | `join`)
+  the server checks against membership; an append whose envelope names a seat the connection
+  does not own is `denied` (the submitting client's `submit` returns a terminal rejection and
+  rolls back). The server reads only this id metadata — never command semantics — so it stays
+  engine-agnostic. **`putSnapshot` is GM-gated** (only the GM writes the checkpoint late-joiners
+  trust, and never ahead of the committed head).
+- **Self-service join + GM override** — `joinCampaign` self-claims (binds the new character to
+  the joiner's identity, if unowned). The GM-only `assignSeat`/`unassignSeat`/`transferGM`
+  control messages handle reassignment, removal, and GM hand-off.
+- **Presence** — the server broadcasts a `presence` snapshot (seat owners + who is online + GM
+  online) on connect / disconnect / claim / control change. An identity is online while any of
+  its connections is live.
+
+**Boundary (read carefully — narrower than it sounds).** 3b enforces **authentication +
+envelope-ownership**: a connection cannot submit an append whose *declared* `actor` it doesn't
+own. It does **not** prevent a hostile authenticated *seat-holder* from acting as another seat —
+the `command`/`delta` are opaque to the server and replicas apply the delta verbatim, so a
+client owning any one seat can forge a delta as any seat. It also does not re-validate game
+legality (turn order etc. stay in the client-side resolver). **Full impersonation-resistance
+requires the deferred authoritative server** (server-side delta re-derivation). `getSnapshot` is
+readable pre-auth (reads are open; writes are gated). See the design doc's "Known limitations".

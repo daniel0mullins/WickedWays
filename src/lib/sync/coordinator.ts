@@ -131,11 +131,16 @@ export class SyncCoordinator {
     this.#lastApplied = seq;
     const res = await this.#transport.append({ seq, baseSeq, command, delta });
     if (!res.ok) {
+      this.#lastApplied = baseSeq;
+      this.#restore(before);
+      if ("denied" in res) {
+        // Authorization denial: the server rejected the commit. Roll local back to
+        // pre-call state; do NOT re-sync (nothing new committed) and do NOT retry.
+        return { ok: false, rejected: true, reason: res.reason };
+      }
       // Roll #lastApplied back to baseSeq so #syncTo replays EVERY missed entry
       // from baseSeq+1..res.head — including the conflicting foreign entry — onto
       // the rebuilt-from-`before` campaign.
-      this.#lastApplied = baseSeq;
-      this.#restore(before);
       this.#syncTo(res.head);
       return { ok: false, conflict: true, reason: `Stale base ${baseSeq}; head is ${res.head}. Retry.` };
     }

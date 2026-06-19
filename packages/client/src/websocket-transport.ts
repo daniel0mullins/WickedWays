@@ -1,7 +1,9 @@
 import type { SyncTransport, AppendResult } from "wickedways/lib/sync/transport";
 import type { LogEntry } from "wickedways/lib/sync/types";
+import { commandActorId, isJoinCommand } from "wickedways/lib/sync/types";
+import type { Command } from "wickedways/lib/sync/types";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
-import { parseServerMsg, type ClientMsg, type WireLogEntry } from "@wickedways/transport-shared";
+import { parseServerMsg, type Actor, type ClientMsg, type WireLogEntry, type ServerMsg } from "@wickedways/transport-shared";
 
 /** A message event carrying string data (browser `MessageEvent` and `ws` both satisfy this). */
 export interface WSMessageEvent {
@@ -26,8 +28,9 @@ const browserFactory: WebSocketFactory = (url) => new WebSocket(url);
 interface ConnectOpts {
   url: string;
   campaignId: string;
-  clientId: string;
+  token: string;
   factory?: WebSocketFactory;
+  onPresence?: (p: Extract<ServerMsg, { t: "presence" }>) => void;
 }
 
 /**
@@ -51,10 +54,12 @@ export class WebSocketTransport implements SyncTransport {
   #buffer = new Map<number, LogEntry>();
   #headWaiters: { target: number; resolve: () => void }[] = [];
 
+  #latestPresence: Extract<ServerMsg, { t: "presence" }> | null = null;
   #pendingAppend: { resolve: (r: AppendResult) => void; entry: LogEntry } | null = null;
   #snapshotWaiter: ((m: { seq: number; snapshot: unknown }) => void) | null = null;
   #joinedWaiter: ((m: { head: number }) => void) | null = null;
   #openWaiter: (() => void) | null = null;
+  #authErrorMsg: string | null = null;
 
   private constructor(opts: ConnectOpts) {
     this.#opts = opts;
@@ -87,6 +92,7 @@ export class WebSocketTransport implements SyncTransport {
   }
 
   async #handshake(): Promise<void> {
+    this.#authErrorMsg = null;
     await new Promise<void>((resolve) => (this.#openWaiter = resolve));
     const snap = await new Promise<{ seq: number; snapshot: unknown }>((resolve) => {
       this.#snapshotWaiter = resolve;
@@ -98,13 +104,26 @@ export class WebSocketTransport implements SyncTransport {
     this.#snapshot =
       snap.snapshot === null ? null : { seq: snap.seq, snapshot: snap.snapshot as CampaignSnapshot };
     const joined = await this.#join(snap.seq);
+    const authErrMsg = this.#authErrorMsg;
+    if (authErrMsg !== null) throw new Error(authErrMsg);
     await this.#awaitHead(joined.head);
   }
 
   async #reconnect(): Promise<void> {
+    this.#authErrorMsg = null;
     this.#ws = this.#open();
     await new Promise<void>((resolve) => (this.#openWaiter = resolve));
     const joined = await this.#join(this.#head);
+    const reconnectAuthErrMsg = this.#authErrorMsg;
+    if (reconnectAuthErrMsg !== null) {
+      // Mark closed so the socket's `close` event does not re-fire #reconnect
+      // and present the same revoked token in an infinite busy-loop.
+      this.#closed = true;
+      const p = this.#pendingAppend;
+      this.#pendingAppend = null;
+      p?.resolve({ ok: false, denied: true, reason: reconnectAuthErrMsg });
+      return;
+    }
     await this.#awaitHead(joined.head);
     // An in-flight append was lost with the socket: report a conflict so the
     // coordinator rolls back and retries against the refreshed head.
@@ -116,12 +135,7 @@ export class WebSocketTransport implements SyncTransport {
   #join(fromSeq: number): Promise<{ head: number }> {
     return new Promise<{ head: number }>((resolve) => {
       this.#joinedWaiter = resolve;
-      this.#send({
-        t: "join",
-        campaignId: this.#opts.campaignId,
-        clientId: this.#opts.clientId,
-        fromSeq,
-      });
+      this.#send({ t: "join", campaignId: this.#opts.campaignId, token: this.#opts.token, fromSeq });
     });
   }
 
@@ -166,10 +180,38 @@ export class WebSocketTransport implements SyncTransport {
         void this.#awaitHead(head).then(() => p?.resolve({ ok: false, conflict: true, head }));
         break;
       }
+      case "denied": {
+        // A denied APPEND is terminal — resolve the in-flight append and stop.
+        const p = this.#pendingAppend;
+        if (p !== null) {
+          this.#pendingAppend = null;
+          p.resolve({ ok: false, denied: true, reason: msg.reason });
+          break;
+        }
+        // Otherwise it's a denied HANDSHAKE (join/reconnect). Record the error, then
+        // UNBLOCK the pending waiter(s) by resolving them with a dummy value, so
+        // `#handshake`'s `await this.#join(...)` returns and can throw `#authError`.
+        this.#authErrorMsg = `auth denied: ${msg.reason}`;
+        const sw = this.#snapshotWaiter;
+        const jw = this.#joinedWaiter;
+        this.#snapshotWaiter = null;
+        this.#joinedWaiter = null;
+        if (sw !== null) sw({ seq: 0, snapshot: null });
+        if (jw !== null) jw({ head: 0 });
+        break;
+      }
       case "error":
         console.error("room server error:", msg.message);
         break;
+      case "presence":
+        this.#latestPresence = msg;
+        this.#opts.onPresence?.(msg);
+        break;
     }
+  }
+
+  get latestPresence(): Extract<ServerMsg, { t: "presence" }> | null {
+    return this.#latestPresence;
   }
 
   #applyEntry(entry: LogEntry): void {
@@ -230,6 +272,12 @@ export class WebSocketTransport implements SyncTransport {
     this.#send({ t: "putSnapshot", campaignId: this.#opts.campaignId, seq, snapshot });
   }
 
+  #actorFor(command: Command): Actor {
+    if (isJoinCommand(command)) return { kind: "join", characterId: command.character.id };
+    const actorId = commandActorId(command);
+    return actorId === null ? { kind: "gm" } : { kind: "character", actorId };
+  }
+
   append(entry: LogEntry): Promise<AppendResult> {
     return new Promise<AppendResult>((resolve) => {
       this.#pendingAppend = { resolve, entry };
@@ -237,6 +285,7 @@ export class WebSocketTransport implements SyncTransport {
         t: "append",
         campaignId: this.#opts.campaignId,
         entry: entry as unknown as WireLogEntry,
+        actor: this.#actorFor(entry.command),
       });
     });
   }
