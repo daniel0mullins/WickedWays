@@ -28,10 +28,13 @@ authenticated-identity + presence layer.
 ## Goal
 
 Authenticated connections, a server-held membership model binding identities to
-seats, server-side enforcement that a connection may only act for seats it owns,
-and a presence broadcast — all keeping the engine pure and the server
-engine-agnostic (it reads only `actorId`/`gm` metadata + membership, never command
-semantics).
+seats, server-side enforcement that a connection may only submit appends whose
+**declared (envelope) actor** it owns, and a presence broadcast — all keeping the
+engine pure and the server engine-agnostic (it reads only `actorId`/`gm` metadata +
+membership, never command semantics). Because the server does not parse the opaque
+command/delta, this stops impersonation by *label* but not a hostile seat-holder
+forging a delta as another seat — see **The security boundary** and **Known
+limitations**; full impersonation-resistance is the deferred authoritative server.
 
 ## Decisions
 
@@ -57,24 +60,43 @@ Settled during brainstorming:
   (`assignSeat`/`unassignSeat`/`transferGM`) are **admin override** — reassign a
   dropped player's seat, kick, hand off GM — not the primary path. Membership changes
   broadcast as presence.
-- **Single authoritative `actorId`.** The command's `actorId` is lifted to the
-  append envelope (it is identity *metadata*, an id string — not game semantics),
-  so there is one server-visible actor the server enforces and the resolver
-  derives. No envelope-vs-command desync is possible.
+- **Actor declared at the envelope.** The command's `actorId` is lifted to the
+  append envelope (identity *metadata*, an id string — not game semantics), so the
+  server has a server-visible actor to enforce against membership. The **honest**
+  client's transport derives this envelope from the command, so the two agree. The
+  server does **not** bind the envelope to the opaque `command`/`delta`, so a
+  **hostile** client can desync them — see the boundary below.
 
-## The security boundary 3b draws (and does not)
+## The security boundary 3b draws (and does not) — read this carefully
 
-- **Closes impersonation:** a connection cannot issue for a seat it does not own.
-- **Does NOT make the server re-validate game legality** (turn order, affliction
-  blocks, full inventory…) — that still runs in the client-side resolver. So a
-  malicious owner of seat A cannot *act as* B, but is trusted not to cheat *with
-  its own* seat (e.g. acting out of turn). Catching that requires moving the
-  resolver server-side — the deferred **full-authoritative-server** promotion.
+3b is **authentication + envelope-ownership**, not impersonation-proofing. An
+adversarial review (2026-06-19) confirmed the precise boundary:
 
-This is the natural 3b line: **authentication + ownership, not full game
-authority.** The server reads only `actor` (`characterId` | `gm`) metadata and the
-membership map; it never parses command semantics, preserving the engine-agnostic
-property and the promotion seam.
+- **Enforced:** every connection authenticates (`verifyToken`), and every `append`
+  must carry an **envelope `actor` naming a seat the connection owns** (or `gm`, or
+  an unowned `join` id). An append whose envelope names an unowned seat — or from an
+  unauthenticated connection — is `denied` before it can commit or broadcast.
+- **NOT enforced — cross-seat impersonation by a seat-holder.** The server treats
+  `command`/`delta` as opaque and replicas apply the **delta** verbatim. A hostile
+  client that owns *any* one seat (or is GM) can send a truthful-looking envelope
+  (its owned seat) wrapping a command/delta that mutates a *different* seat/entity
+  (including `leaveCampaign`/GM-character actions). The server cannot detect this
+  without parsing command semantics, which 3b refuses to do. So **"a connection
+  cannot act as a seat it does not own" does NOT hold against a hostile client** —
+  only against an honest one. Likewise the `join` bind trusts the envelope
+  `characterId`, which a hostile client can decouple from the created character
+  (seat-squat / membership-vs-state desync).
+- **NOT enforced — game legality** (turn order, affliction blocks…) — stays in the
+  client-side resolver.
+
+**Truly closing cross-seat impersonation requires the deferred
+full-authoritative-server** (the server re-derives the delta from the command,
+checking `commandActorId == envelope == owned seat`). Checking only
+`command.actorId` is insufficient because the delta itself is forgeable. The server
+reads only id metadata + the membership map, preserving the engine-agnostic property
+and that promotion seam.
+
+See **Known limitations** for the full deferred list.
 
 ## Architecture — components
 
@@ -134,14 +156,20 @@ type PresenceEntry = { characterId: string; owner: string | null; online: boolea
 
 ## Bootstrapping & lifecycle
 
-- **Room creation** seeds `Membership` with the designated `gmIdentity` (and any
-  pre-assigned seats). The host owns room creation and the verifier, so it knows the
-  GM.
+- **Room creation** seeds `Membership` with the designated `gmIdentity` (via
+  `gmIdentityFor`). *(Implementation note: only `gmIdentity` is seeded — a channel
+  for **pre-assigned seats** at room creation is **not** implemented; see Known
+  limitations.)* The host owns room creation and the verifier, so it knows the GM.
 - **Typical flow:** each player authenticates and `joinCampaign`s (a `join`-actor
   append that creates their character C and self-claims the seat — the server binds
   C → that identity) → the same player runs `selectArchetype` on C (a `character`-actor
   append, enforced by ownership) → GM `beginCampaign`. The GM uses the control
   messages only for admin override (reassign/kick/hand-off).
+- **Caveat — in-engine-seeded characters start ownerless.** A character created
+  *in-engine* (constructed directly, as `buildSeedCampaign` does — not via a
+  `join`-actor append) has **no** `Membership` seat, so it cannot act until the GM
+  `assignSeat`s it. The self-service self-claim only binds for characters created
+  through a `join`-actor append.
 - **GM layering:** `gmIdentity` is the *identity* with table authority (assign seats;
   issue `gm`/lifecycle/NPC + setup-on-behalf). It is **distinct** from the engine's
   in-game GM *character* (`transfer` etc.), which stays game-domain state. 3b does not
@@ -246,10 +274,41 @@ Per campaign the server maintains a derived view and broadcasts it on every chan
 - **Reconnect re-auth:** valid token reconnects and reconverges; a revoked token on
   reconnect → `denied`.
 
+## Known limitations (deep-review 2026-06-19 — deferred, not bugs to fix in 3b)
+
+3b's enforcement is intentionally narrow (envelope-ownership, server stays
+engine-agnostic). The adversarial review found the following; the **fixed** items
+landed in 3b, the rest are deferred (most to the authoritative-server promotion):
+
+- **FIXED in 3b — `putSnapshot` integrity.** The checkpoint late-joiners deserialize
+  is now **GM-gated** and rejected if `seq > head`, so a non-GM/seatless client can
+  no longer poison it. (`getSnapshot` remains pre-auth-readable — reading the
+  snapshot is allowed; only writing is gated.)
+- **FIXED in 3b — connection-identity binding.** A connection authenticates once; a
+  second `join` with a different token, or a duplicate `join` to the same campaign,
+  is now `denied` (previously corrupted presence's online accounting).
+- **DEFERRED (authoritative server) — cross-seat impersonation.** A hostile
+  seat-holder can forge a `delta` acting as another seat (the server can't bind the
+  opaque payload to the envelope). See **The security boundary**.
+- **DEFERRED (authoritative server) — `join` id binding.** The bound `characterId`
+  trusts the envelope and may be decoupled from the created character (seat-squat).
+- **DEFERRED — `transferGM` lockout.** A GM transferring GM to a never-connecting
+  identity permanently bricks the table; no recovery seam in 3b.
+- **DEFERRED — durable membership.** `Membership` is in-memory; a server restart
+  wipes all seats (every non-GM player is `denied` until the GM re-`assignSeat`s;
+  `gmIdentity` is reseeded from `gmIdentityFor`). Out-of-scope per persistence below;
+  the blast radius is noted here.
+- **DEFERRED — pre-assigned-seats channel** (promised at room creation, not
+  implemented); **no per-identity seat cap**; **denied reconnect is terminal** (a
+  transient denial kills the transport — reconstruct to recover); **unbounded
+  server maps** (no prune-on-empty); a hostile server could inject `entry` frames
+  during a denied handshake (no current honest trigger).
+
 ## Out of scope (later specs)
 
-- **Full game-authority server** (resolver server-side — the "cheating with your own
-  seat" hole). The seam is preserved; the server is not promoted here.
+- **Full game-authority server** (resolver server-side — closes cross-seat
+  impersonation and "cheating with your own seat"). The seam is preserved; the
+  server is not promoted here.
 - **Concrete token issuer / crypto** — the host supplies `verifyToken`.
 - **Durable cross-restart persistence** of membership/log.
 - **Rich presence** (typing / speaking / turn spotlight / cursors) — 3c / 3d / UI.
