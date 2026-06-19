@@ -41,6 +41,10 @@ export class Membership {
     }
   }
 
+  // `claim` and `assign` are intentionally distinct despite identical implementations:
+  // `claim` = self-service join (a player binds their own seat); `assign` = GM override
+  // (host reassigns any seat). Keep them separate so semantic callers stay explicit.
+
   /** Binds a newly-joined character to its claiming identity (self-service join). */
   claim(characterId: string, identity: Identity): void {
     this.#seats.set(characterId, identity);

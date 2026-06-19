@@ -116,6 +116,9 @@ export class WebSocketTransport implements SyncTransport {
     const joined = await this.#join(this.#head);
     const reconnectAuthErrMsg = this.#authErrorMsg;
     if (reconnectAuthErrMsg !== null) {
+      // Mark closed so the socket's `close` event does not re-fire #reconnect
+      // and present the same revoked token in an infinite busy-loop.
+      this.#closed = true;
       const p = this.#pendingAppend;
       this.#pendingAppend = null;
       p?.resolve({ ok: false, denied: true, reason: reconnectAuthErrMsg });

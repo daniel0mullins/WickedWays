@@ -50,7 +50,7 @@ function until(pred: () => boolean, timeoutMs = 2000): Promise<void> {
 }
 const stateJSON = (c: SyncCoordinator): string => JSON.stringify(serializeCampaign(c.campaign));
 
-describe("authenticated two-owner scenarios", () => {
+describe("authenticated convergence, anti-spoof, and reconnect re-auth", () => {
   // Two authenticated owners: A = "ada" (GM + owns Ada seat), B = "ben" (owns Ben seat).
   it("two authenticated owners converge; each only acts for its own seat", async () => {
     handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "ada" });
@@ -153,7 +153,8 @@ describe("authenticated two-owner scenarios", () => {
     const headBefore = tB.head();
     sockets[sockets.length - 1]!.close();
     await flush();
-    await coordA.submit({ kind: "nextPlayer" }); // commits on the server while B is denied
+    const rRevoked = await coordA.submit({ kind: "nextPlayer" }); // commits on the server while B is denied
+    if (!rRevoked.ok) throw new Error(`A's commit during B-revoked should succeed: ${rRevoked.reason}`);
     await flush();
     expect(tB.head()).toBe(headBefore); // B never re-joined, so it received no further entries
   });

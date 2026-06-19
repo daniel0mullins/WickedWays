@@ -628,4 +628,6 @@ Connections authenticate and the server enforces who may act for whom:
 
 **Boundary:** 3b closes impersonation (you cannot act for a seat you do not own). It does not
 re-validate game legality server-side (turn order etc. stay in the client-side resolver) — that
-is the deferred authoritative-server promotion.
+is the deferred authoritative-server promotion. Note that `getSnapshot` (the full campaign
+snapshot) is intentionally readable pre-authentication under 3b — 3b's boundary is on WRITES
+(impersonation); gating snapshot reads is a later concern.
