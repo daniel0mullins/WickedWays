@@ -606,3 +606,26 @@ both converge on identical state over the wire.
 Seat-ownership / network auth & presence (3b), text chat (3c), and A/V over WebRTC
 (3d) all build on this backend. 3a is the transport-agnostic foundation: it does no
 seat validation (trusted peers) and keeps no durable state across a server restart.
+
+### Authentication, seat ownership & presence (sub-spec 3b)
+
+Connections authenticate and the server enforces who may act for whom:
+
+- **`createServer({ verifyToken, gmIdentityFor })`** — `verifyToken(token) -> Identity | null`
+  is host-supplied (the engine bakes in no crypto); `gmIdentityFor(campaignId)` seeds each
+  campaign's GM. A client presents its `token` on `join` (and on every reconnect).
+- **Seat ownership** — the server holds a per-campaign `Membership` (`characterId -> identity`
+  + `gmIdentity`). Every `append` carries an `actor` envelope (`character` | `gm` | `join`) the
+  server checks against membership; an append for a seat the connection does not own is
+  `denied` (the submitting client's `submit` returns a terminal rejection and rolls back). The
+  server reads only this id metadata — never command semantics — so it stays engine-agnostic.
+- **Self-service join + GM override** — `joinCampaign` self-claims (binds the new character to
+  the joiner's identity, if unowned). The GM-only `assignSeat`/`unassignSeat`/`transferGM`
+  control messages handle reassignment, removal, and GM hand-off.
+- **Presence** — the server broadcasts a `presence` snapshot (seat owners + who is online + GM
+  online) on connect / disconnect / claim / control change. An identity is online while any of
+  its connections is live.
+
+**Boundary:** 3b closes impersonation (you cannot act for a seat you do not own). It does not
+re-validate game legality server-side (turn order etc. stay in the client-side resolver) — that
+is the deferred authoritative-server promotion.
