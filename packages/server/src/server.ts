@@ -36,10 +36,15 @@ function actorOf(command: Command): Actor {
 }
 
 /**
- * Starts a WebSocket server: a thin adapter over a `Map<campaignId, Table>` plus an
- * auth layer. Each connection authenticates on `join` (the host's `verifyToken`);
- * writes (`submit`) require an authenticated connection. The server derives the actor
- * from the command itself — no client-supplied actor envelope.
+ * Starts an authoritative WebSocket room server. Each campaign is backed by an
+ * {@link Authority} (built lazily from the host's `genesisFor`) that re-derives
+ * every delta from the submitted command. Clients send commands only; the server
+ * computes and broadcasts the authoritative delta. The only server-owned gate is
+ * seat ownership, checked against the actor the server reads from the command
+ * itself — no client-supplied actor envelope exists to forge or desync.
+ *
+ * Each connection authenticates on `join` (the host's `verifyToken`); writes
+ * (`submit`) require an authenticated connection.
  */
 export function createServer(opts: ServerOptions): Promise<ServerHandle> {
   const tables = new Map<string, Table>();

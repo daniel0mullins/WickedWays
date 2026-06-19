@@ -16,9 +16,9 @@ export type AuthResult = { ok: true } | { ok: false; reason: string };
  * The authority. {@link Resolver.authorize} runs the single-writer/GM gate;
  * {@link Resolver.apply} resolves arg ids and invokes the real engine (which
  * enforces the remaining rules via {@link ProceduralViolation}). Topology-
- * independent: the same code is the future authoritative server's authority, so
- * it holds all authority and never trusts the caller. Replicas never call
- * {@link Resolver.apply} — only the resolving authority does.
+ * independent: the same code backs the {@link Authority} unit that hosts
+ * resolution in both the in-process transport and the room server. Replicas
+ * never call {@link Resolver.apply} — only the resolving {@link Authority} does.
  */
 export class Resolver {
   /**
