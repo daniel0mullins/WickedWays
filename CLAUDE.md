@@ -13,21 +13,21 @@ adds the operational and convention notes not spelled out there.
 ## Commands
 
 ```bash
-npm run checks        # lint + typecheck + test, in sequence — run this before declaring work done
-npm test              # vitest run (whole suite, once)
-npm run typecheck     # tsc --noEmit
-npm run lint:fix      # eslint --fix
-npm run build         # compile to dist/ via tsconfig.build.json (excludes *.test.ts + test-utils)
-npm run docs:dev      # VitePress docs site with hot reload (docs-site/)
-npm run docs:build    # build the docs site (runs TypeDoc, then VitePress)
+pnpm checks           # lint + typecheck + test, in sequence — run this before declaring work done
+pnpm test             # vitest run (whole suite, once)
+pnpm typecheck        # tsc --noEmit
+pnpm lint:fix         # eslint --fix
+pnpm build            # compile to dist/ via tsconfig.build.json (excludes *.test.ts + test-utils)
+pnpm docs:dev         # VitePress docs site with hot reload (docs-site/)
+pnpm docs:build       # build the docs site (runs TypeDoc, then VitePress)
 ```
 
 Run a **single test file** or filter by name:
 
 ```bash
-npx vitest run src/lib/character/mob.test.ts          # one file
-npx vitest run -t "escape"                            # tests whose name matches "escape"
-npx vitest src/lib/character/mob.test.ts              # watch a single file
+pnpm vitest run src/lib/character/mob.test.ts          # one file
+pnpm vitest run -t "escape"                            # tests whose name matches "escape"
+pnpm vitest src/lib/character/mob.test.ts              # watch a single file
 ```
 
 Tests are co-located (`foo.ts` ↔ `foo.test.ts`); the cross-cutting suite is
@@ -43,7 +43,7 @@ no barrel export, so consumers import directly from `src/lib/...`.
 
 The `docs-site/` directory is the VitePress documentation site (prose guide +
 TypeDoc API reference) published to GitHub Pages; like `landing/`, it is separate
-from the engine and not built by `npm run build`.
+from the engine and not built by `pnpm build`.
 
 ## Conventions that affect edits
 

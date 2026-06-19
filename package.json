@@ -3,6 +3,10 @@
   "version": "0.0.1",
   "description": "Wicked Ways game engine",
   "main": "index.js",
+  "packageManager": "pnpm@9.15.6",
+  "exports": {
+    "./lib/*": "./src/lib/*.ts"
+  },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
@@ -10,11 +14,11 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "checks": "npm run lint && npm run typecheck && npm run test",
+    "checks": "pnpm run lint && pnpm -r run typecheck && pnpm run test",
     "build": "tsc -p tsconfig.build.json",
     "docs:api": "typedoc",
-    "docs:dev": "npm run docs:api && vitepress dev docs-site",
-    "docs:build": "npm run docs:api && vitepress build docs-site",
+    "docs:dev": "pnpm run docs:api && vitepress dev docs-site",
+    "docs:build": "pnpm run docs:api && vitepress build docs-site",
     "docs:preview": "vitepress preview docs-site"
   },
   "dependencies": {
@@ -31,6 +35,7 @@
     "typedoc-vitepress-theme": "^1.1.3",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.60.1",
+    "vite": "^8.0.0",
     "vitepress": "^1.6.4",
     "vitest": "^4.1.8"
   },
