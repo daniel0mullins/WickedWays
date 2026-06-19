@@ -24,24 +24,26 @@ export class Authority {
   readonly #registry: CampaignRegistry;
   readonly #rng: () => number;
   readonly #snapshotEvery: number;
+  readonly #startSeq: number;
   readonly #resolver = new Resolver();
   readonly #deltaComputer = new DeltaComputer();
 
   constructor(
     genesis: CampaignSnapshot,
-    opts: { registry: CampaignRegistry; rng?: () => number; snapshotEvery?: number },
+    opts: { registry: CampaignRegistry; rng?: () => number; snapshotEvery?: number; startSeq?: number },
   ) {
     this.#registry = opts.registry;
     this.#rng = opts.rng ?? Math.random;
     this.#snapshotEvery = opts.snapshotEvery ?? 20;
+    this.#startSeq = opts.startSeq ?? 0;
     this.#campaign = deserializeCampaign(genesis, { registry: this.#registry, rng: this.#rng });
-    this.#snapshot = { seq: 0, snapshot: genesis };
+    this.#snapshot = { seq: this.#startSeq, snapshot: genesis };
   }
 
   /** Highest committed seq (0 when empty). */
   head(): number {
     const last = this.#log[this.#log.length - 1];
-    return last === undefined ? 0 : last.seq;
+    return last === undefined ? this.#startSeq : last.seq;
   }
 
   /** The latest checkpoint (the genesis snapshot until the first `snapshotEvery` commit). */
