@@ -14,7 +14,7 @@ export interface SyncTransport {
   /** Highest accepted seq (0 when empty). */
   head(): number;
   /** Compare-and-swap append: succeeds iff `entry.baseSeq === head()`. */
-  append(entry: LogEntry): AppendResult;
+  append(entry: LogEntry): Promise<AppendResult>;
   /** Entries with `seq >= fromSeq`, in order. */
   entriesSince(fromSeq: number): LogEntry[];
   /** Replays from `fromSeq`, then streams new entries; returns an unsubscribe thunk. */
@@ -35,14 +35,14 @@ export class InProcessTransport implements SyncTransport {
     return this.log.length === 0 ? 0 : this.log[this.log.length - 1]!.seq;
   }
 
-  append(entry: LogEntry): AppendResult {
+  append(entry: LogEntry): Promise<AppendResult> {
     const head = this.head();
     if (entry.baseSeq !== head) {
-      return { ok: false, conflict: true, head };
+      return Promise.resolve({ ok: false, conflict: true, head });
     }
     this.log.push(entry);
     for (const handler of this.subscribers) handler(entry);
-    return { ok: true };
+    return Promise.resolve({ ok: true });
   }
 
   entriesSince(fromSeq: number): LogEntry[] {
