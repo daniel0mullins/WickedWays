@@ -1,3 +1,5 @@
+import type { Authority } from "wickedways/lib/sync/authority";
+import type { Command } from "wickedways/lib/sync/types";
 import type { WireLogEntry, ServerMsg } from "@wickedways/transport-shared";
 
 /** A connected participant: receives ordered server messages for one {@link Table}. */
@@ -5,30 +7,32 @@ export type Subscriber = (msg: ServerMsg) => void;
 
 /**
  * The server-side coordinator for one campaign's session — the virtual tabletop.
- * Owns the ordered CAS log, the latest snapshot, and the participant set, and
- * emits ordered messages through {@link Subscriber} callbacks (never raw sockets),
- * so it is fully unit-testable without `ws`. The server is the ordering authority:
- * an append commits iff its `baseSeq` equals the current head, the committed `seq`
- * is stamped as `head + 1`, and the entry is broadcast to every participant.
- * Entirely engine-agnostic — entries and snapshots are opaque. Named `Table`
- * (not `Room`) to avoid colliding with the engine's game-location `Room`.
+ * Wraps the engine {@link Authority} (the single source of truth) and the
+ * participant set, emitting ordered messages through {@link Subscriber} callbacks.
+ * The submitter receives `committed{seq,delta}`; every other participant receives
+ * `entry{seq,delta}`. Named `Table` (not `Room`) to avoid colliding with the
+ * engine's game-location `Room`.
  */
 export class Table {
-  #log: WireLogEntry[] = [];
-  #snapshot: { seq: number; snapshot: unknown } | null = null;
+  readonly #authority: Authority;
   #participants = new Set<Subscriber>();
+
+  constructor(authority: Authority) {
+    this.#authority = authority;
+  }
 
   /** Highest committed seq (0 when empty). */
   head(): number {
-    const last = this.#log[this.#log.length - 1];
-    return last === undefined ? 0 : last.seq;
+    return this.#authority.head();
   }
 
-  /** Registers a participant, acks with the current head, then backfills entries after `fromSeq`. */
+  /** Registers a participant, acks the current head, then backfills entries after `fromSeq`. */
   join(sub: Subscriber, fromSeq: number): void {
     this.#participants.add(sub);
     sub({ t: "joined", head: this.head() });
-    for (const e of this.#log) if (e.seq >= fromSeq + 1) sub({ t: "entry", entry: e });
+    for (const e of this.#authority.entriesSince(fromSeq + 1)) {
+      sub({ t: "entry", entry: e as unknown as WireLogEntry });
+    }
   }
 
   /** Removes a participant (e.g. on disconnect). */
@@ -37,40 +41,26 @@ export class Table {
   }
 
   /**
-   * Compare-and-swap append from `sender`. On success: acks `sender` with
-   * `appendOk{seq}` and broadcasts the committed `entry` to all participants
-   * (including `sender`). On a stale base: replies `appendConflict{head}` to
-   * `sender` only, changing nothing.
+   * Resolves a command through the authority. On commit: acks `sender` with
+   * `committed{seq,delta}` and broadcasts `entry{seq,delta}` to every OTHER
+   * participant. On denial: replies `denied{reason}` to `sender` only.
    */
-  append(entry: WireLogEntry, sender: Subscriber): { committed: true; seq: number } | { committed: false } {
-    const head = this.head();
-    if (entry.baseSeq !== head) {
-      sender({ t: "appendConflict", head });
+  submit(command: Command, sender: Subscriber): { committed: true; seq: number } | { committed: false } {
+    const res = this.#authority.submit(command);
+    if (!res.ok) {
+      sender({ t: "denied", reason: res.reason });
       return { committed: false };
     }
-    const seq = head + 1;
-    const committed: WireLogEntry = { ...entry, seq };
-    this.#log.push(committed);
-    sender({ t: "appendOk", seq });
-    for (const p of this.#participants) p({ t: "entry", entry: committed });
-    return { committed: true, seq };
+    const entry: WireLogEntry = { seq: res.seq, baseSeq: res.seq - 1, command, delta: res.delta };
+    sender({ t: "committed", seq: res.seq, delta: res.delta });
+    for (const p of this.#participants) if (p !== sender) p({ t: "entry", entry });
+    return { committed: true, seq: res.seq };
   }
 
-  /** Sends the latest checkpoint to `requester` (seq 0 / null when absent). */
+  /** Sends the authority's latest checkpoint to `requester`. */
   sendSnapshot(requester: Subscriber): void {
-    const snap = this.#snapshot;
-    requester(
-      snap === null
-        ? { t: "snapshot", seq: 0, snapshot: null }
-        : { t: "snapshot", seq: snap.seq, snapshot: snap.snapshot },
-    );
-  }
-
-  /** Stores a checkpoint at `seq` (last-writer-wins for `seq >=` the stored one). */
-  putSnapshot(seq: number, snapshot: unknown): void {
-    if (this.#snapshot === null || seq >= this.#snapshot.seq) {
-      this.#snapshot = { seq, snapshot };
-    }
+    const snap = this.#authority.loadSnapshot();
+    requester({ t: "snapshot", seq: snap.seq, snapshot: snap.snapshot });
   }
 
   /** Sends a server message to every current participant (used for presence). */

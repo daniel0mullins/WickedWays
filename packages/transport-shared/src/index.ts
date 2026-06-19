@@ -17,10 +17,10 @@ export interface WireLogEntry {
 export type Identity = string;
 
 /**
- * The actor an append acts as, declared at the envelope so the server can enforce
- * ownership without parsing the opaque command. `character` = an owned seat; `gm` =
- * GM/lifecycle/NPC; `join` = self-claim a NEW seat (the joinCampaign append; the
- * client surfaces the new character's id).
+ * The actor a command is authorized as. This is a server-internal type consumed by
+ * `Membership.mayAct`; the server derives it from the command via `actorOf` rather
+ * than reading it from the wire envelope. `character` = an owned seat; `gm` =
+ * GM/lifecycle/NPC; `join` = self-claim a NEW seat (the joinCampaign command).
  */
 export type Actor =
   | { kind: "character"; actorId: string }
@@ -30,9 +30,8 @@ export type Actor =
 /** Messages a client sends to the room server. */
 export type ClientMsg =
   | { t: "join"; campaignId: string; token: string; fromSeq: number }
-  | { t: "append"; campaignId: string; entry: WireLogEntry; actor: Actor }
+  | { t: "submit"; campaignId: string; command: unknown }
   | { t: "getSnapshot"; campaignId: string }
-  | { t: "putSnapshot"; campaignId: string; seq: number; snapshot: unknown }
   | { t: "assignSeat"; campaignId: string; characterId: string; identity: string }
   | { t: "unassignSeat"; campaignId: string; characterId: string }
   | { t: "transferGM"; campaignId: string; identity: string };
@@ -44,8 +43,7 @@ export interface PresenceEntry { characterId: string; owner: string | null; onli
 export type ServerMsg =
   | { t: "joined"; head: number }
   | { t: "entry"; entry: WireLogEntry }
-  | { t: "appendOk"; seq: number }
-  | { t: "appendConflict"; head: number }
+  | { t: "committed"; seq: number; delta: unknown }
   | { t: "snapshot"; seq: number; snapshot: unknown }
   | { t: "denied"; reason: string }
   | { t: "error"; message: string }
@@ -64,14 +62,6 @@ function isPresenceEntry(x: unknown): x is PresenceEntry {
     && (x.owner === null || typeof x.owner === "string") && typeof x.online === "boolean";
 }
 
-function isActor(x: unknown): x is Actor {
-  if (!isObj(x)) return false;
-  if (x.kind === "character") return typeof x.actorId === "string";
-  if (x.kind === "gm") return true;
-  if (x.kind === "join") return typeof x.characterId === "string";
-  return false;
-}
-
 /** Validates an inbound client message; returns it narrowed, or `null` if malformed. */
 export function parseClientMsg(raw: unknown): ClientMsg | null {
   if (!isObj(raw) || typeof raw.t !== "string") return null;
@@ -80,16 +70,12 @@ export function parseClientMsg(raw: unknown): ClientMsg | null {
       return typeof raw.campaignId === "string" && typeof raw.token === "string" && typeof raw.fromSeq === "number"
         ? { t: "join", campaignId: raw.campaignId, token: raw.token, fromSeq: raw.fromSeq }
         : null;
-    case "append":
-      return typeof raw.campaignId === "string" && isWireLogEntry(raw.entry) && isActor(raw.actor)
-        ? { t: "append", campaignId: raw.campaignId, entry: raw.entry, actor: raw.actor }
+    case "submit":
+      return typeof raw.campaignId === "string" && "command" in raw
+        ? { t: "submit", campaignId: raw.campaignId, command: raw.command }
         : null;
     case "getSnapshot":
       return typeof raw.campaignId === "string" ? { t: "getSnapshot", campaignId: raw.campaignId } : null;
-    case "putSnapshot":
-      return typeof raw.campaignId === "string" && typeof raw.seq === "number" && "snapshot" in raw
-        ? { t: "putSnapshot", campaignId: raw.campaignId, seq: raw.seq, snapshot: raw.snapshot }
-        : null;
     case "assignSeat":
       return typeof raw.campaignId === "string" && typeof raw.characterId === "string" && typeof raw.identity === "string"
         ? { t: "assignSeat", campaignId: raw.campaignId, characterId: raw.characterId, identity: raw.identity }
@@ -115,10 +101,8 @@ export function parseServerMsg(raw: unknown): ServerMsg | null {
       return typeof raw.head === "number" ? { t: "joined", head: raw.head } : null;
     case "entry":
       return isWireLogEntry(raw.entry) ? { t: "entry", entry: raw.entry } : null;
-    case "appendOk":
-      return typeof raw.seq === "number" ? { t: "appendOk", seq: raw.seq } : null;
-    case "appendConflict":
-      return typeof raw.head === "number" ? { t: "appendConflict", head: raw.head } : null;
+    case "committed":
+      return typeof raw.seq === "number" && "delta" in raw ? { t: "committed", seq: raw.seq, delta: raw.delta } : null;
     case "snapshot":
       return typeof raw.seq === "number" && "snapshot" in raw
         ? { t: "snapshot", seq: raw.seq, snapshot: raw.snapshot }

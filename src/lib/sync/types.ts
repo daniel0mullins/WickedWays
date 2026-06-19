@@ -71,11 +71,15 @@ export type Delta = {
 /** An ordered, broadcast entry: the command and the delta it produced. */
 export type LogEntry = { seq: number; baseSeq: number; command: Command; delta: Delta };
 
-/** The outcome of submitting a command. */
+/** The outcome of submitting a command: committed with its delta, or a terminal rejection. */
 export type CommandResult =
   | { ok: true; seq: number; delta: Delta }
-  | { ok: false; rejected: true; reason: string }
-  | { ok: false; conflict: true; reason: string };
+  | { ok: false; rejected: true; reason: string };
+
+/** A transport/authority verdict: committed with its delta, or a terminal denial. */
+export type SubmitResult =
+  | { ok: true; seq: number; delta: Delta }
+  | { ok: false; denied: true; reason: string };
 
 const TURN_ACTION_KINDS = new Set<Command["kind"]>([
   "move", "attack", "equip", "unequip", "craft", "repair", "pickUp", "drop",

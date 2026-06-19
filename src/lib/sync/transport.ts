@@ -1,71 +1,61 @@
-import type { LogEntry } from "./types";
+import { Authority } from "./authority";
+import type { Command, LogEntry, SubmitResult } from "./types";
 import type { CampaignSnapshot } from "../serialization/types";
 
-/** Result of {@link SyncTransport.append}: success, CAS conflict, or an authorization denial. */
-export type AppendResult =
-  | { ok: true }
-  | { ok: false; conflict: true; head: number }
-  | { ok: false; denied: true; reason: string };
+export type { SubmitResult } from "./types";
 
 /**
- * The ordered, broadcast store the sync core appends to and reads from. The
- * in-process implementation drives tests; a real backend (Firestore/WebSocket)
- * is a thin adapter wired up later — only this interface and the
- * {@link SyncCoordinator} need know the difference.
+ * The ordered, broadcast surface the {@link SyncCoordinator} submits commands to
+ * and reads entries from. The in-process implementation wraps an {@link Authority}
+ * directly; the WebSocket implementation forwards to the room server. Only this
+ * interface and the coordinator need know the difference.
  */
 export interface SyncTransport {
-  /** Highest accepted seq (0 when empty). */
+  /** Highest committed seq (0 when empty). */
   head(): number;
-  /** Compare-and-swap append: succeeds iff `entry.baseSeq === head()`. */
-  append(entry: LogEntry): Promise<AppendResult>;
+  /** Submit a command to the authority; resolves with the committed delta or a denial. */
+  submit(command: Command): Promise<SubmitResult>;
   /** Entries with `seq >= fromSeq`, in order. */
   entriesSince(fromSeq: number): LogEntry[];
   /** Replays from `fromSeq`, then streams new entries; returns an unsubscribe thunk. */
   subscribe(fromSeq: number, handler: (entry: LogEntry) => void): () => void;
-  /** The latest checkpoint, or null if none. */
+  /** The latest checkpoint, or null if none is known yet. */
   loadSnapshot(): { seq: number; snapshot: CampaignSnapshot } | null;
-  /** Stores a checkpoint at `seq`. */
-  putSnapshot(seq: number, snapshot: CampaignSnapshot): void;
 }
 
-/** In-memory {@link SyncTransport}: an ordered log + a single latest snapshot. */
+/** In-process {@link SyncTransport}: wraps an {@link Authority} and fans committed entries out to subscribers. */
 export class InProcessTransport implements SyncTransport {
-  private log: LogEntry[] = [];
-  private subscribers = new Set<(entry: LogEntry) => void>();
-  private snapshot: { seq: number; snapshot: CampaignSnapshot } | null = null;
+  readonly #authority: Authority;
+  #subscribers = new Set<(entry: LogEntry) => void>();
 
-  head(): number {
-    return this.log.length === 0 ? 0 : this.log[this.log.length - 1]!.seq;
+  constructor(authority: Authority) {
+    this.#authority = authority;
   }
 
-  append(entry: LogEntry): Promise<AppendResult> {
-    const head = this.head();
-    if (entry.baseSeq !== head) {
-      return Promise.resolve({ ok: false, conflict: true, head });
+  head(): number {
+    return this.#authority.head();
+  }
+
+  submit(command: Command): Promise<SubmitResult> {
+    const res = this.#authority.submit(command);
+    if (res.ok) {
+      const entry: LogEntry = { seq: res.seq, baseSeq: res.seq - 1, command, delta: res.delta };
+      for (const handler of this.#subscribers) handler(entry);
     }
-    this.log.push(entry);
-    for (const handler of this.subscribers) handler(entry);
-    return Promise.resolve({ ok: true });
+    return Promise.resolve(res);
   }
 
   entriesSince(fromSeq: number): LogEntry[] {
-    return this.log.filter((e) => e.seq >= fromSeq);
+    return this.#authority.entriesSince(fromSeq);
   }
 
   subscribe(fromSeq: number, handler: (entry: LogEntry) => void): () => void {
-    for (const e of this.entriesSince(fromSeq)) handler(e);
-    this.subscribers.add(handler);
-    return () => this.subscribers.delete(handler);
+    for (const e of this.#authority.entriesSince(fromSeq)) handler(e);
+    this.#subscribers.add(handler);
+    return () => this.#subscribers.delete(handler);
   }
 
-  loadSnapshot(): { seq: number; snapshot: CampaignSnapshot } | null {
-    return this.snapshot;
-  }
-
-  putSnapshot(seq: number, snapshot: CampaignSnapshot): void {
-    // Equal-seq re-put replaces (tie-break choice: last writer wins for same checkpoint).
-    if (this.snapshot === null || seq >= this.snapshot.seq) {
-      this.snapshot = { seq, snapshot };
-    }
+  loadSnapshot(): { seq: number; snapshot: CampaignSnapshot } {
+    return this.#authority.loadSnapshot();
   }
 }

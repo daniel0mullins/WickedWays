@@ -3,7 +3,7 @@ import type { Command } from "wickedways/lib/sync/types";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { Directions } from "wickedways/lib/room";
 import { WebSocketTransport } from "./websocket-transport.js";
-import { buildSeedCampaign, buildSeedRegistry } from "./seed.js";
+import { buildSeedRegistry } from "./seed.js";
 
 const params = new URLSearchParams(location.search);
 const campaignId = params.get("c") ?? "demo";
@@ -18,10 +18,7 @@ function byId(id: string): HTMLElement {
 
 async function main(): Promise<void> {
   const transport = await WebSocketTransport.connect({ url, campaignId, token: clientId });
-  const coordinator =
-    transport.loadSnapshot() === null
-      ? new SyncCoordinator({ ...buildSeedCampaign(), transport })
-      : SyncCoordinator.join({ registry: buildSeedRegistry(), transport });
+  const coordinator = SyncCoordinator.join({ registry: buildSeedRegistry(), transport });
   coordinator.start();
 
   const render = (): void => {

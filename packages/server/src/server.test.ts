@@ -1,6 +1,8 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { WebSocket } from "ws";
-import { parseServerMsg, type ServerMsg, type WireLogEntry } from "@wickedways/transport-shared";
+import { parseServerMsg, type ServerMsg } from "@wickedways/transport-shared";
+import { buildSeedCampaign, buildSeedRegistry } from "@wickedways/seed";
+import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { createServer, type ServerHandle } from "./server.js";
 
 let handle: ServerHandle | null = null;
@@ -37,102 +39,114 @@ function collect(ws: WebSocket, n: number): Promise<ServerMsg[]> {
   });
 }
 
-const entry = (seq: number, baseSeq: number): WireLogEntry => ({
-  seq, baseSeq, command: { kind: "noop" }, delta: { changed: [] },
-});
+/**
+ * Build the genesis snapshot ONCE so every test that acts as a specific seat uses
+ * the same character ids. buildSeedCampaign() mints fresh uuid character ids on every
+ * call; serializeCampaign preserves ids, so the server's Authority gets exactly those
+ * seats.
+ *
+ * The seed campaign has beginCampaign() called: Ada is the active character (can move
+ * to "Next"); after nextPlayer, Ben is active.
+ */
+function seedFixture() {
+  const seed = buildSeedCampaign();
+  const genesis = serializeCampaign(seed.campaign);
+  const adaId = seed.campaign.activeCharacter.id;
+  const benId = seed.campaign.party.find((p) => p.id !== adaId)!.id;
+  const nextRoomId = genesis.rooms.find((r) => r.name === "Next")!.id;
+  return { genesis, adaId, benId, nextRoomId };
+}
+
+/** Standard server opts for most tests, using a given genesis snapshot. */
+function serverOpts(genesis: ReturnType<typeof seedFixture>["genesis"]) {
+  return {
+    port: 0 as const,
+    verifyToken: (t: string) => t || null,
+    gmIdentityFor: () => "gm" as const,
+    registry: buildSeedRegistry(),
+    genesisFor: (id: string) => (id === "demo" ? genesis : null),
+  };
+}
 
 describe("createServer", () => {
   it("acks a join with the current head", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const a = await open(handle.port);
     const got = collect(a, 1);
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    a.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
     expect(await got).toEqual([{ t: "joined", head: 0 }]);
     a.close();
   });
 
-  it("commits an append, acks the sender, and broadcasts the entry to all subscribers", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+  it("commits a submit, acks the sender with committed, and broadcasts entry to others", async () => {
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const a = await open(handle.port);
     const b = await open(handle.port);
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
-    b.send(JSON.stringify({ t: "join", campaignId: "c1", token: "bob", fromSeq: 0 }));
+    a.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
+    b.send(JSON.stringify({ t: "join", campaignId: "demo", token: "bob", fromSeq: 0 }));
     // a gets: joined + presence(gm) + presence(gm+bob); b gets: joined + presence(gm+bob)
-    await collect(a, 3); // joined + 2 presences
-    await collect(b, 2); // joined + presence
+    await collect(a, 3);
+    await collect(b, 2);
 
     const bEntry = collect(b, 1);
-    const aReplies = collect(a, 2); // appendOk + own-entry broadcast
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
+    const aReplies = collect(a, 1); // committed
+    a.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
 
-    expect(await bEntry).toEqual([{ t: "entry", entry: { ...entry(1, 0) } }]);
     const replies = await aReplies;
-    expect(replies).toContainEqual({ t: "appendOk", seq: 1 });
-    expect(replies).toContainEqual({ t: "entry", entry: { ...entry(1, 0) } });
+    expect(replies[0]).toMatchObject({ t: "committed", seq: 1 });
+    expect(await bEntry).toEqual([expect.objectContaining({ t: "entry" })]);
     a.close();
     b.close();
   });
 
-  it("rejects a stale-base append as a conflict reporting head", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+  it("denies join for an unknown campaign", async () => {
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const a = await open(handle.port);
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
-    await collect(a, 2); // joined + presence
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
-    await collect(a, 2); // appendOk + entry
-    const conflict = collect(a, 1);
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 0), actor: { kind: "gm" } })); // stale base
-    expect(await conflict).toEqual([{ t: "appendConflict", head: 1 }]);
+    const got = collect(a, 1);
+    a.send(JSON.stringify({ t: "join", campaignId: "unknown-campaign", token: "gm", fromSeq: 0 }));
+    expect(await got).toEqual([{ t: "denied", reason: "unknown campaign" }]);
     a.close();
   });
 
   it("backfills entries since fromSeq on join", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const a = await open(handle.port);
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
-    // joined + presence; then 2x (appendOk + entry) = 6 total but presence(gm) is first
-    // Drain enough to ensure both appends committed before b joins
+    a.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
     await collect(a, 2); // joined + presence
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 1), actor: { kind: "gm" } }));
-    await collect(a, 4); // appendOk(1) + entry(1) + appendOk(2) + entry(2)
+    a.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
+    a.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
+    await collect(a, 2); // committed(1) + committed(2)
 
     const b = await open(handle.port);
-    const bMsgs = collect(b, 3); // joined + 2 backfilled entries (presence is 4th, not collected here)
-    b.send(JSON.stringify({ t: "join", campaignId: "c1", token: "bob", fromSeq: 0 }));
+    // b gets: joined(head=2) + entry(1) + entry(2) + presence
+    const bMsgs = collect(b, 3);
+    b.send(JSON.stringify({ t: "join", campaignId: "demo", token: "bob", fromSeq: 0 }));
     const msgs = await bMsgs;
     expect(msgs[0]).toEqual({ t: "joined", head: 2 });
-    expect(msgs.slice(1)).toEqual([
-      { t: "entry", entry: { ...entry(1, 0) } },
-      { t: "entry", entry: { ...entry(2, 1) } },
-    ]);
+    expect(msgs[1]).toMatchObject({ t: "entry" });
+    expect(msgs[2]).toMatchObject({ t: "entry" });
     a.close();
     b.close();
   });
 
-  it("round-trips a snapshot and replies null when absent", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+  it("getSnapshot returns a snapshot", async () => {
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const a = await open(handle.port);
-    const none = collect(a, 1);
-    a.send(JSON.stringify({ t: "getSnapshot", campaignId: "c1" }));
-    expect(await none).toEqual([{ t: "snapshot", seq: 0, snapshot: null }]);
-
-    // Must join as GM so putSnapshot is accepted (GM-gate), and seq must be <= head
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
-    await collect(a, 2); // joined + presence
-    // Append twice so head reaches 2, then putSnapshot at seq 2
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 1), actor: { kind: "gm" } }));
-    await collect(a, 4); // appendOk(1) + entry(1) + appendOk(2) + entry(2)
-    a.send(JSON.stringify({ t: "putSnapshot", campaignId: "c1", seq: 2, snapshot: { tag: "two" } }));
     const got = collect(a, 1);
-    a.send(JSON.stringify({ t: "getSnapshot", campaignId: "c1" }));
-    expect(await got).toEqual([{ t: "snapshot", seq: 2, snapshot: { tag: "two" } }]);
+    a.send(JSON.stringify({ t: "getSnapshot", campaignId: "demo" }));
+    const msgs = await got;
+    expect(msgs[0]).toMatchObject({ t: "snapshot", seq: 0 });
     a.close();
   });
 
   it("replies error on malformed input without crashing the room", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const a = await open(handle.port);
     const err = collect(a, 1);
     a.send("not json");
@@ -141,220 +155,185 @@ describe("createServer", () => {
   });
 
   it("denies a join with an empty token and does not join the room", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const a = await open(handle.port);
     const got = collect(a, 1);
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "", fromSeq: 0 }));
+    a.send(JSON.stringify({ t: "join", campaignId: "demo", token: "", fromSeq: 0 }));
     expect(await got).toEqual([{ t: "denied", reason: "authentication failed" }]);
     a.close();
   });
 
-  it("denies an append before any join (not authenticated)", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+  it("denies a submit before any join (not authenticated)", async () => {
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const a = await open(handle.port);
     const got = collect(a, 1);
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
+    a.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
     expect(await got).toEqual([{ t: "denied", reason: "not authenticated" }]);
     a.close();
   });
 
-  it("denies an append whose seat the connection does not own", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
-    const a = await open(handle.port);
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
-    await collect(a, 2); // joined + presence
-    const denied = collect(a, 1);
-    // "ada" does not own character "cBen"
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "character", actorId: "cBen" } }));
+  it("non-GM identity is denied when submitting a GM command (nextPlayer)", async () => {
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
+    const b = await open(handle.port);
+    b.send(JSON.stringify({ t: "join", campaignId: "demo", token: "ben", fromSeq: 0 }));
+    await collect(b, 2); // joined + presence
+    const denied = collect(b, 1);
+    // "ben" is not the GM, so submitting a GM command (nextPlayer) is denied via seat check
+    b.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
     expect(await denied).toEqual([{ t: "denied", reason: "not authorized for this seat" }]);
-    a.close();
+    b.close();
   });
 
-  it("self-service join binds the seat; a second join for it is denied (no hijack)", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
-    const a = await open(handle.port);
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
-    await collect(a, 2); // joined + presence
-    // ada self-claims character "cAda" via a join-actor append
-    // collect all 3 replies at once: appendOk + entry + presence(seat claim)
-    // ws may deliver all 3 in one TCP segment; chaining collect(2) then collect(1) would race
-    const ok = collect(a, 3); // appendOk + entry + presence from claim
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "join", characterId: "cAda" } }));
-    const okMsgs = await ok;
-    expect(okMsgs).toContainEqual({ t: "appendOk", seq: 1 });
-    // now ada owns cAda and can act as it
-    const act = collect(a, 2); // appendOk + entry (no presence for character actor)
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 1), actor: { kind: "character", actorId: "cAda" } }));
-    await act;
-    // ben cannot hijack cAda via join
+  it("character seat anti-impersonation: non-owner submitting with Ada's actorId is denied", async () => {
+    const { genesis, adaId } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const b = await open(handle.port);
-    b.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ben", fromSeq: 0 }));
-    await collect(b, 4); // joined + backfill entries 1 and 2 + presence
-    const hijack = collect(b, 1);
-    b.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 2), actor: { kind: "join", characterId: "cAda" } }));
-    expect(await hijack).toEqual([{ t: "denied", reason: "not authorized for this seat" }]);
-    a.close(); b.close();
+    b.send(JSON.stringify({ t: "join", campaignId: "demo", token: "ben", fromSeq: 0 }));
+    await collect(b, 2); // joined + presence
+    const denied = collect(b, 1);
+    // "ben" has no seat assignment; acting as Ada's character should be denied
+    b.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "move", actorId: adaId, roomId: "anywhere" } }));
+    expect(await denied).toEqual([{ t: "denied", reason: "not authorized for this seat" }]);
+    b.close();
   });
 
   it("gm actions require the GM identity; non-GM control messages are denied", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const g = await open(handle.port);
-    g.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
+    g.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
     await collect(g, 2); // joined + presence
-    const gmOk = collect(g, 2); // appendOk + entry
-    g.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
+    const gmOk = collect(g, 1); // committed
+    g.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
     await gmOk;
 
     const p = await open(handle.port);
-    p.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    p.send(JSON.stringify({ t: "join", campaignId: "demo", token: "ada", fromSeq: 0 }));
     await collect(p, 3); // joined + backfill entry + presence
     const denyGm = collect(p, 1);
-    p.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 1), actor: { kind: "gm" } }));
+    // "ada" is not the GM, so submitting a GM command (nextPlayer) is denied
+    p.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
     expect(await denyGm).toEqual([{ t: "denied", reason: "not authorized for this seat" }]);
     const denyCtl = collect(p, 1);
-    p.send(JSON.stringify({ t: "assignSeat", campaignId: "c1", characterId: "cX", identity: "ada" }));
+    p.send(JSON.stringify({ t: "assignSeat", campaignId: "demo", characterId: "cX", identity: "ada" }));
     expect(await denyCtl).toEqual([{ t: "denied", reason: "GM only" }]);
     g.close(); p.close();
   });
 
-  it("broadcasts presence on join, seat-claim, and disconnect", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+  it("broadcasts presence on join and disconnect", async () => {
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const g = await open(handle.port);
     const gMsgs = collect(g, 2); // joined + presence
-    g.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
+    g.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
     const got = await gMsgs;
-    expect(got).toContainEqual({ t: "presence", campaignId: "c1", seats: [], gm: { identity: "gm", online: true } });
-
-    // ada joins + self-claims cAda -> presence shows the seat owned + online
-    // Set up g's collector BEFORE a's join to avoid the cross-socket race
-    // g gets: presence(ada joined) + entry(1) + presence(cAda claimed) = 3 msgs total
-    const a = await open(handle.port);
-    const claimP = collect(g, 3); // must start listening before a sends join
-    const aMsgs = collect(a, 2); // joined + presence
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
-    await aMsgs;
-    // drain a's messages from join then send the claim append
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "join", characterId: "cAda" } }));
-    const after = await claimP;
-    expect(after).toContainEqual({ t: "presence", campaignId: "c1", seats: [{ characterId: "cAda", owner: "ada", online: true }], gm: { identity: "gm", online: true } });
-    g.close(); a.close();
+    expect(got).toContainEqual({ t: "presence", campaignId: "demo", seats: [], gm: { identity: "gm", online: true } });
+    g.close();
   });
 
   it("an identity stays online while any of its connections is live", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const g = await open(handle.port);
-    g.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
+    g.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
     await collect(g, 2); // joined + presence(gm only)
     const a1 = await open(handle.port);
-    // Set up g's collector before a1's join to avoid cross-socket race
-    const gA1Presence = collect(g, 1); // g gets presence(gm+ada) when a1 joins
-    a1.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    // Set up g's collector before a1's join
+    const gA1Presence = collect(g, 1);
+    a1.send(JSON.stringify({ t: "join", campaignId: "demo", token: "ada", fromSeq: 0 }));
     await collect(a1, 2); // joined + presence
     await gA1Presence;
     const a2 = await open(handle.port);
-    // Set up g's collector before a2's join to avoid cross-socket race
-    const gA2Presence = collect(g, 1); // g gets presence(gm+ada x2) when a2 joins
-    a2.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    // Set up g's collector before a2's join
+    const gA2Presence = collect(g, 1);
+    a2.send(JSON.stringify({ t: "join", campaignId: "demo", token: "ada", fromSeq: 0 }));
     await collect(a2, 2); // joined + presence
     await gA2Presence;
     // assign a seat to ada so presence has an entry to report online state for
     const gAssignPresence = collect(g, 1); // presence from assignSeat
-    g.send(JSON.stringify({ t: "assignSeat", campaignId: "c1", characterId: "cAda", identity: "ada" }));
+    g.send(JSON.stringify({ t: "assignSeat", campaignId: "demo", characterId: "cAda", identity: "ada" }));
     await gAssignPresence;
     const afterClose = collect(g, 1); // presence after a1 closes
     a1.close();
     const p = await afterClose;
-    expect(p).toEqual([{ t: "presence", campaignId: "c1", seats: [{ characterId: "cAda", owner: "ada", online: true }], gm: { identity: "gm", online: true } }]); // still online via a2
+    // ada still online via a2
+    expect(p).toEqual([{ t: "presence", campaignId: "demo", seats: [{ characterId: "cAda", owner: "ada", online: true }], gm: { identity: "gm", online: true } }]);
     g.close(); a2.close();
   });
 
-  it("putSnapshot GM-gate: non-GM snapshot is ignored; GM snapshot is stored", async () => {
-    // gmIdentityFor returns "gm" so token "gm" is the GM, token "ada" is not
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
-    const g = await open(handle.port);
-    const a = await open(handle.port);
-    // GM joins and appends once so head = 1
-    g.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
-    await collect(g, 2); // joined + presence
-    g.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
-    await collect(g, 2); // appendOk(1) + entry(1)
-
-    // Non-GM (ada) joins and attempts putSnapshot — must be silently ignored
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
-    await collect(a, 3); // joined + backfill entry(1) + presence
-    a.send(JSON.stringify({ t: "putSnapshot", campaignId: "c1", seq: 1, snapshot: { tag: "nonGM" } }));
-    const afterNonGm = collect(a, 1);
-    a.send(JSON.stringify({ t: "getSnapshot", campaignId: "c1" }));
-    // Snapshot should still be absent (non-GM putSnapshot was ignored)
-    expect(await afterNonGm).toEqual([{ t: "snapshot", seq: 0, snapshot: null }]);
-
-    // GM putSnapshot with seq <= head IS stored
-    g.send(JSON.stringify({ t: "putSnapshot", campaignId: "c1", seq: 1, snapshot: { tag: "gmSnap" } }));
-    const afterGm = collect(g, 1);
-    g.send(JSON.stringify({ t: "getSnapshot", campaignId: "c1" }));
-    expect(await afterGm).toEqual([{ t: "snapshot", seq: 1, snapshot: { tag: "gmSnap" } }]);
-    g.close(); a.close();
-  });
-
-  it("putSnapshot seq cap: GM putSnapshot with seq > head is ignored", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
-    const g = await open(handle.port);
-    g.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
-    await collect(g, 2); // joined + presence (head = 0)
-    // seq: 5 > head: 0 → must be ignored
-    g.send(JSON.stringify({ t: "putSnapshot", campaignId: "c1", seq: 5, snapshot: { tag: "future" } }));
-    const got = collect(g, 1);
-    g.send(JSON.stringify({ t: "getSnapshot", campaignId: "c1" }));
-    expect(await got).toEqual([{ t: "snapshot", seq: 0, snapshot: null }]);
-    g.close();
-  });
-
   it("second join on same connection is rejected: same campaign or different identity", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const a = await open(handle.port);
-    // First join succeeds
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    a.send(JSON.stringify({ t: "join", campaignId: "demo", token: "ada", fromSeq: 0 }));
     await collect(a, 2); // joined + presence
 
     // Second join to the SAME campaign on the same connection → denied
     const sameAgain = collect(a, 1);
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    a.send(JSON.stringify({ t: "join", campaignId: "demo", token: "ada", fromSeq: 0 }));
     expect(await sameAgain).toEqual([{ t: "denied", reason: "already joined this campaign" }]);
 
     // Join with a DIFFERENT token/identity on the same connection → denied
     const diffId = collect(a, 1);
-    a.send(JSON.stringify({ t: "join", campaignId: "c2", token: "bob", fromSeq: 0 }));
+    a.send(JSON.stringify({ t: "join", campaignId: "demo", token: "bob", fromSeq: 0 }));
     expect(await diffId).toEqual([{ t: "denied", reason: "different identity on one connection" }]);
-
-    // Joining a NEW campaign with the SAME identity is still allowed
-    const newCampaign = collect(a, 2); // joined + presence
-    a.send(JSON.stringify({ t: "join", campaignId: "c2", token: "ada", fromSeq: 0 }));
-    const msgs = await newCampaign;
-    expect(msgs[0]).toEqual({ t: "joined", head: 0 });
     a.close();
   });
 
   it("GM assignSeat lets the assigned identity act; unassign revokes", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const { genesis, adaId, nextRoomId } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
     const g = await open(handle.port);
-    g.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
+    g.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
     await collect(g, 2); // joined + presence
-    g.send(JSON.stringify({ t: "assignSeat", campaignId: "c1", characterId: "cAda", identity: "ada" }));
+    g.send(JSON.stringify({ t: "assignSeat", campaignId: "demo", characterId: adaId, identity: "ada" }));
     await collect(g, 1); // presence from assignSeat
 
     const a = await open(handle.port);
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    a.send(JSON.stringify({ t: "join", campaignId: "demo", token: "ada", fromSeq: 0 }));
     await collect(a, 2); // joined + presence
-    const ok = collect(a, 2); // appendOk + entry
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "character", actorId: "cAda" } }));
-    await ok; // ada can act as cAda
 
-    // unassignSeat broadcasts presence to all participants (g + a); then a's denied append follows
-    g.send(JSON.stringify({ t: "unassignSeat", campaignId: "c1", characterId: "cAda" }));
+    // Ada is the active character on genesis; she can move to "Next"
+    const ok = collect(a, 1); // committed
+    a.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "move", actorId: adaId, roomId: nextRoomId } }));
+    await ok; // ada can act as adaId
+
+    // unassignSeat broadcasts presence to all participants (g + a)
+    g.send(JSON.stringify({ t: "unassignSeat", campaignId: "demo", characterId: adaId }));
     await collect(a, 1); // presence from unassignSeat
+    // Now ada's seat is revoked — same command should be denied
     const denied = collect(a, 1);
-    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 1), actor: { kind: "character", actorId: "cAda" } }));
+    a.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "move", actorId: adaId, roomId: nextRoomId } }));
     expect(await denied).toEqual([{ t: "denied", reason: "not authorized for this seat" }]);
     g.close(); a.close();
+  });
+
+  it("GM transferGM hands the GM role to another identity", async () => {
+    const { genesis } = seedFixture();
+    handle = await createServer(serverOpts(genesis));
+    const g = await open(handle.port);
+    g.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
+    await collect(g, 2); // joined + presence
+
+    // Transfer GM to "new-gm"
+    g.send(JSON.stringify({ t: "transferGM", campaignId: "demo", identity: "new-gm" }));
+    await collect(g, 1); // presence broadcast
+
+    // Old GM can no longer submit GM commands
+    const oldDenied = collect(g, 1);
+    g.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
+    expect(await oldDenied).toEqual([{ t: "denied", reason: "not authorized for this seat" }]);
+
+    // New GM can submit GM commands
+    const ng = await open(handle.port);
+    ng.send(JSON.stringify({ t: "join", campaignId: "demo", token: "new-gm", fromSeq: 0 }));
+    await collect(ng, 2); // joined + presence
+    const newOk = collect(ng, 1);
+    ng.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
+    expect(await newOk).toMatchObject([{ t: "committed", seq: 1 }]);
+    g.close(); ng.close();
   });
 });

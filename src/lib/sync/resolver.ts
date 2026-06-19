@@ -16,9 +16,9 @@ export type AuthResult = { ok: true } | { ok: false; reason: string };
  * The authority. {@link Resolver.authorize} runs the single-writer/GM gate;
  * {@link Resolver.apply} resolves arg ids and invokes the real engine (which
  * enforces the remaining rules via {@link ProceduralViolation}). Topology-
- * independent: the same code is the future authoritative server's authority, so
- * it holds all authority and never trusts the caller. Replicas never call
- * {@link Resolver.apply} — only the resolving authority does.
+ * independent: the same code backs the {@link Authority} unit that hosts
+ * resolution in both the in-process transport and the room server. Replicas
+ * never call {@link Resolver.apply} — only the resolving {@link Authority} does.
  */
 export class Resolver {
   /**
@@ -162,6 +162,13 @@ export class Resolver {
       case "joinCampaign": {
         if (command.character.kind !== "player") {
           throw new ProceduralViolation("Only player characters can join a campaign.");
+        }
+        // Reject a join whose id already exists in the campaign — a duplicate id
+        // would let an attacker claim or shadow an existing party seat.
+        if (index.has(command.character.id)) {
+          throw new ProceduralViolation(
+            `Character id '${command.character.id}' already exists in this campaign.`,
+          );
         }
         // Construct the player from the snapshot's identity + stats and join it.
         // The new character propagates to replicas via the created-delta; richer

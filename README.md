@@ -492,47 +492,44 @@ const restored = deserializeCampaign(snap2, { registry });
 
 ## Multi-client sync
 
-The same snapshot format powers multiplayer over an ordered, compare-and-swap log
-([`src/lib/sync/`](src/lib/sync/)). Each client runs a `SyncCoordinator`, the seam that owns the
-local campaign and is the only unit that changes for a future authoritative-server topology.
+The snapshot format powers multiplayer over a command-log driven by an authoritative
+[`Authority`](src/lib/sync/authority.ts) ([`src/lib/sync/`](src/lib/sync/)). Each client runs a
+`SyncCoordinator` that owns a local replica and delegates all resolution to the authority.
 
-`coordinator.submit(command)` orchestrates: `Resolver.authorize` (lifecycle/turn/GM gate) → on pass,
-snapshot `before` and build an `EntityIndex` from the same walk → `Resolver.apply` mutates the local
-campaign (an illegal engine transition throws `ProceduralViolation`, which rebuilds `local` from
-`before` and returns `{ rejected: true }`) → `DeltaComputer.diff(before, after)` → CAS
-`transport.append({ seq, baseSeq, command, delta })`. On a stale base the append is rejected
-(`{ conflict: true }`); the coordinator rebuilds from `before`, re-syncs to the new head, and the
-caller retries. On success it returns `{ ok: true, seq, delta }`.
+`coordinator.submit(command)` is a thin pass-through: it calls `transport.submit(command)`, waits
+for the authority's response, then applies the returned delta to the local replica via `DeltaApplier`
+and returns `{ ok: true, seq, delta }`. The coordinator never resolves commands itself and never
+optimistically mutates — state changes only when an authoritative delta arrives, so there is no
+rollback and no CAS conflict. A denial returns `{ ok: false, rejected: true, reason }`.
 
-**Reject ≠ fizzle.** A rejection (`{ ok: false, rejected: true }`) means the command was illegal
-(wrong turn, bad lifecycle state, or an engine constraint thrown by `ProceduralViolation`). A fizzle
-is a legal action that simply had no mechanical effect (e.g. an attack that dealt 0 damage) — those
-are accepted, produce a delta, and propagate normally.
+**Reject ≠ fizzle.** A rejection (`{ ok: false, rejected: true }`) means the authority denied the
+command (wrong turn, bad lifecycle state, seat-ownership check, or an engine constraint thrown by
+`ProceduralViolation`). A fizzle is a legal action that simply had no mechanical effect (e.g. an
+attack that dealt 0 damage) — those commit, produce a delta, and propagate normally.
 
-Inbound, `start()` subscribes from `lastApplied + 1`; remote entries already incorporated (including
-the client's own just-appended seq — `submit` advances `lastApplied` *before* the CAS append, so the
-synchronous self-notification is genuinely skipped rather than relying on idempotency) are skipped,
-the next in-order delta is applied to the replica via
+Inbound, `start()` subscribes from `lastApplied + 1`; remote entries are applied to the replica via
 `DeltaApplier` (which patches state and **never draws rng or runs game logic**, so replicas converge
 deterministically with zero determinism burden), and gaps heal via `entriesSince`.
 `SyncCoordinator.join(...)` brings a late client up to date from the transport's latest checkpoint
 plus the deltas since.
 
-Because a rejection or conflict swaps in a freshly deserialized `Campaign`, consumers must always read
-state through `coordinator.campaign` and never cache the reference across a `submit`.
+Because a `join` may swap in a freshly deserialized `Campaign`, consumers must always read state
+through `coordinator.campaign` and never cache the reference across a `submit`.
 
-**`SyncTransport` seam.** The sync core depends only on the `SyncTransport` interface (append, head,
-subscribe, loadSnapshot, putSnapshot). `InProcessTransport` drives tests. A real backend
-(Firestore, WebSockets, etc.) and the authoritative-server topology are deferred — they are a thin
-adapter behind this interface.
+**`SyncTransport` seam.** The sync core depends only on the `SyncTransport` interface (`submit`,
+`head`, `subscribe`, `entriesSince`, `loadSnapshot`). `InProcessTransport` wraps an in-process
+`Authority` and drives the single-player and test paths. `WebSocketTransport` forwards to the room
+server, which hosts its own `Authority` per campaign — both topologies are the same shape.
 
 ```ts
-const transport = new InProcessTransport();
-const host = new SyncCoordinator({ campaign, registry, transport });
-host.start();
-const result = host.submit({ kind: "move", actorId: active.id, roomId: dest.id });
+const authority = new Authority(genesis, { registry });
+const transport = new InProcessTransport(authority);
 
-// elsewhere / another client:
+const coordinator = SyncCoordinator.join({ registry, transport });
+coordinator.start();
+const result = await coordinator.submit({ kind: "move", actorId: active.id, roomId: dest.id });
+
+// elsewhere / another client on the same transport:
 const replica = SyncCoordinator.join({ registry, transport });
 replica.start();
 ```
@@ -552,7 +549,7 @@ replica.start();
 
 - **Language:** TypeScript in `strict` mode with `NodeNext` module resolution and the extra
   `noUncheckedIndexedAccess` / `noImplicitOverride` guards.
-- **Tests:** [Vitest](https://vitest.dev) — 446 tests across 20 files, including an end-to-end
+- **Tests:** [Vitest](https://vitest.dev) — 688 tests across 53 files, including an end-to-end
   [`src/integration.test.ts`](src/integration.test.ts) that wires up a full campaign and runs
   the turn loop. Shared helpers live in [`src/test-utils.ts`](src/test-utils.ts).
 - **Linting:** ESLint flat config with type-aware `typescript-eslint`.
@@ -570,25 +567,30 @@ replica.start();
 | `pnpm checks` | Lint + typecheck + test, in sequence |
 | `pnpm build` | Compile to `dist/` via `tsconfig.build.json` |
 
-## Multiplayer client (comms sub-spec 3a)
+## Multiplayer (comms)
 
 The repo is a pnpm workspace. The pure engine lives at the root (`src/`); three
 packages under `packages/` add real-time multiplayer:
 
 - **`@wickedways/transport-shared`** — the engine-free WebSocket wire protocol
-  (message types + validators). `command`/`delta`/`snapshot` payloads are opaque.
-- **`@wickedways/server`** — a self-hosted WebSocket room server. Each campaign is
-  a `Table` (the server-side coordinator: an ordered compare-and-swap log + the
-  latest snapshot + connected participants + broadcast). The server orders and
-  relays; it never runs game logic.
+  (message types + validators).
+- **`@wickedways/server`** — a self-hosted WebSocket room server. The server **runs
+  the engine**: each campaign is backed by an `Authority` (built from the host's
+  `genesisFor`) that re-derives every delta from the submitted command. Clients
+  submit commands only; the server computes and broadcasts the authoritative delta.
 - **`@wickedways/client`** — a `WebSocketTransport` implementing the engine's
   `SyncTransport` over the server, plus a minimal dev harness.
 
-A client resolves commands locally via `SyncCoordinator` (from the engine's sync
-layer) and appends `{command, delta}` to its `Table` under compare-and-swap;
-replicas apply the broadcast deltas. This is the **client-resolves** topology —
-the server is a dumb relay, built so the authoritative-server promotion (moving
-the resolver into `Table`) is a later, contained change.
+The architecture is:
+
+```
+single-player:   App ─ SyncCoordinator ─ InProcessTransport ─ Authority(local)
+multiplayer:     App ─ SyncCoordinator ─ WebSocketTransport ─[ws]─ Server ─ Authority(per campaign)
+```
+
+Both topologies are the same shape: submit a command to an authority, apply the
+delta it returns. The coordinator is the same on both paths; only the transport
+differs.
 
 ### Running it
 
@@ -601,38 +603,35 @@ pnpm --filter @wickedways/client dev        # http://localhost:5173
 Open `http://localhost:5173/?c=demo` in two tabs. Act in one (e.g. **nextPlayer**);
 both converge on identical state over the wire.
 
-### Not yet included (later sub-specs)
-
-Seat-ownership / network auth & presence (3b), text chat (3c), and A/V over WebRTC
-(3d) all build on this backend. 3a is the transport-agnostic foundation: it does no
-seat validation (trusted peers) and keeps no durable state across a server restart.
-
-### Authentication, seat ownership & presence (sub-spec 3b)
+### Authentication, seat ownership & presence
 
 Connections authenticate and the server enforces who may act for whom:
 
-- **`createServer({ verifyToken, gmIdentityFor })`** — `verifyToken(token) -> Identity | null`
-  is host-supplied (the engine bakes in no crypto); `gmIdentityFor(campaignId)` seeds each
-  campaign's GM. A client presents its `token` on `join` (and on every reconnect).
-- **Seat ownership** — the server holds a per-campaign `Membership` (`characterId -> identity`
-  + `gmIdentity`). Every `append` carries an `actor` **envelope** (`character` | `gm` | `join`)
-  the server checks against membership; an append whose envelope names a seat the connection
-  does not own is `denied` (the submitting client's `submit` returns a terminal rejection and
-  rolls back). The server reads only this id metadata — never command semantics — so it stays
-  engine-agnostic. **`putSnapshot` is GM-gated** (only the GM writes the checkpoint late-joiners
-  trust, and never ahead of the committed head).
-- **Self-service join + GM override** — `joinCampaign` self-claims (binds the new character to
-  the joiner's identity, if unowned). The GM-only `assignSeat`/`unassignSeat`/`transferGM`
-  control messages handle reassignment, removal, and GM hand-off.
-- **Presence** — the server broadcasts a `presence` snapshot (seat owners + who is online + GM
-  online) on connect / disconnect / claim / control change. An identity is online while any of
-  its connections is live.
+- **`createServer({ verifyToken, gmIdentityFor, registry, genesisFor })`** —
+  `verifyToken(token) -> Identity | null` is host-supplied (the engine bakes in no
+  crypto); `gmIdentityFor(campaignId)` seeds each campaign's GM; `genesisFor(campaignId)`
+  supplies the initial campaign state from the host's trusted store (an unknown
+  campaign is denied). A client presents its `token` on `join` (and on every reconnect).
+- **Seat ownership** — the server holds a per-campaign `Membership` (`characterId ->
+  identity` + `gmIdentity`). On `submit` the server derives the actor directly from
+  the command (`commandActorId` / `isJoinCommand`) and checks `Membership.mayAct` —
+  there is no client-supplied actor envelope. A command whose derived actor does not
+  belong to the authenticated connection is `denied`.
+- **Self-service join + GM override** — `joinCampaign` self-claims (binds the new
+  character to the joiner's identity, if unowned). The GM-only
+  `assignSeat`/`unassignSeat`/`transferGM` control messages handle reassignment,
+  removal, and GM hand-off.
+- **Presence** — the server broadcasts a `presence` snapshot (seat owners + who is
+  online + GM online) on connect / disconnect / claim / control change. An identity
+  is online while any of its connections is live.
 
-**Boundary (read carefully — narrower than it sounds).** 3b enforces **authentication +
-envelope-ownership**: a connection cannot submit an append whose *declared* `actor` it doesn't
-own. It does **not** prevent a hostile authenticated *seat-holder* from acting as another seat —
-the `command`/`delta` are opaque to the server and replicas apply the delta verbatim, so a
-client owning any one seat can forge a delta as any seat. It also does not re-validate game
-legality (turn order etc. stay in the client-side resolver). **Full impersonation-resistance
-requires the deferred authoritative server** (server-side delta re-derivation). `getSnapshot` is
-readable pre-auth (reads are open; writes are gated). See the design doc's "Known limitations".
+**Security outcome.** Impersonation is structurally impossible: the client never
+supplies a delta to forge, and the actor is read from the command by the server —
+there is no envelope to desync from the command body. All replicas (including the
+submitter) apply the identical server-derived delta, so there is no divergence window.
+Genesis comes from the host's `genesisFor`, not from any client.
+
+**Explicitly deferred (follow-up spec).** Client-side prediction and the deterministic /
+serialized rng change that would enable it; durable membership / campaign persistence
+across server restarts (`genesisFor` is the seam a persistent store would plug into);
+per-identity seat caps, map pruning, and `transferGM` lockout recovery.

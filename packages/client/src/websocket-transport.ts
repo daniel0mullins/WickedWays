@@ -1,9 +1,7 @@
-import type { SyncTransport, AppendResult } from "wickedways/lib/sync/transport";
-import type { LogEntry } from "wickedways/lib/sync/types";
-import { commandActorId, isJoinCommand } from "wickedways/lib/sync/types";
-import type { Command } from "wickedways/lib/sync/types";
+import type { SyncTransport, SubmitResult } from "wickedways/lib/sync/transport";
+import type { LogEntry, Command } from "wickedways/lib/sync/types";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
-import { parseServerMsg, type Actor, type ClientMsg, type WireLogEntry, type ServerMsg } from "@wickedways/transport-shared";
+import { parseServerMsg, type ClientMsg, type ServerMsg } from "@wickedways/transport-shared";
 
 /** A message event carrying string data (browser `MessageEvent` and `ws` both satisfy this). */
 export interface WSMessageEvent {
@@ -36,8 +34,8 @@ interface ConnectOpts {
 /**
  * A concrete {@link SyncTransport} over a WebSocket room server. Keeps a warm
  * local mirror (log + head + snapshot) fed by the server subscription so every
- * synchronous read is served locally; only {@link WebSocketTransport.append}
- * awaits the server's compare-and-swap verdict. Construct via
+ * synchronous read is served locally; only {@link WebSocketTransport.submit}
+ * awaits the server's authoritative verdict. Construct via
  * {@link WebSocketTransport.connect}, which resolves once the mirror has caught up
  * to the server head.
  */
@@ -55,7 +53,7 @@ export class WebSocketTransport implements SyncTransport {
   #headWaiters: { target: number; resolve: () => void }[] = [];
 
   #latestPresence: Extract<ServerMsg, { t: "presence" }> | null = null;
-  #pendingAppend: { resolve: (r: AppendResult) => void; entry: LogEntry } | null = null;
+  #pendingSubmit: { resolve: (r: SubmitResult) => void; command: Command } | null = null;
   #snapshotWaiter: ((m: { seq: number; snapshot: unknown }) => void) | null = null;
   #joinedWaiter: ((m: { head: number }) => void) | null = null;
   #openWaiter: (() => void) | null = null;
@@ -119,17 +117,17 @@ export class WebSocketTransport implements SyncTransport {
       // Mark closed so the socket's `close` event does not re-fire #reconnect
       // and present the same revoked token in an infinite busy-loop.
       this.#closed = true;
-      const p = this.#pendingAppend;
-      this.#pendingAppend = null;
+      const p = this.#pendingSubmit;
+      this.#pendingSubmit = null;
       p?.resolve({ ok: false, denied: true, reason: reconnectAuthErrMsg });
       return;
     }
     await this.#awaitHead(joined.head);
-    // An in-flight append was lost with the socket: report a conflict so the
-    // coordinator rolls back and retries against the refreshed head.
-    const pending = this.#pendingAppend;
-    this.#pendingAppend = null;
-    pending?.resolve({ ok: false, conflict: true, head: this.#head });
+    // An in-flight submit was lost with the socket: resolve as a terminal denial
+    // so the app can resubmit; the replica reconverges from the join backfill.
+    const pending = this.#pendingSubmit;
+    this.#pendingSubmit = null;
+    pending?.resolve({ ok: false, denied: true, reason: "connection lost; resubmit" });
   }
 
   #join(fromSeq: number): Promise<{ head: number }> {
@@ -158,33 +156,21 @@ export class WebSocketTransport implements SyncTransport {
       case "entry":
         this.#applyEntry(msg.entry as unknown as LogEntry);
         break;
-      case "appendOk": {
-        const p = this.#pendingAppend;
-        this.#pendingAppend = null;
+      case "committed": {
+        const p = this.#pendingSubmit;
+        this.#pendingSubmit = null;
         if (p !== null) {
-          // Apply our own committed entry to the mirror NOW (stamped with the
-          // server seq) so `head()` reflects the commit the moment append
-          // resolves — the next submit reads a fresh base, not a stale one. The
-          // later broadcast of this same seq dedupes in #applyEntry.
-          this.#applyEntry({ ...p.entry, seq: msg.seq });
-          p.resolve({ ok: true });
+          const entry: LogEntry = { seq: msg.seq, baseSeq: msg.seq - 1, command: p.command, delta: msg.delta as LogEntry["delta"] };
+          this.#applyEntry(entry); // apply our own committed delta to the mirror (and subscribers)
+          p.resolve({ ok: true, seq: msg.seq, delta: entry.delta });
         }
         break;
       }
-      case "appendConflict": {
-        const p = this.#pendingAppend;
-        this.#pendingAppend = null;
-        const head = msg.head;
-        // Resolve only once the foreign entries are in the mirror, so the
-        // coordinator's #syncTo(head) finds them via entriesSince.
-        void this.#awaitHead(head).then(() => p?.resolve({ ok: false, conflict: true, head }));
-        break;
-      }
       case "denied": {
-        // A denied APPEND is terminal — resolve the in-flight append and stop.
-        const p = this.#pendingAppend;
+        // A denied SUBMIT is terminal — resolve the in-flight submit and stop.
+        const p = this.#pendingSubmit;
         if (p !== null) {
-          this.#pendingAppend = null;
+          this.#pendingSubmit = null;
           p.resolve({ ok: false, denied: true, reason: msg.reason });
           break;
         }
@@ -267,26 +253,10 @@ export class WebSocketTransport implements SyncTransport {
     return this.#snapshot;
   }
 
-  putSnapshot(seq: number, snapshot: CampaignSnapshot): void {
-    if (this.#snapshot === null || seq >= this.#snapshot.seq) this.#snapshot = { seq, snapshot };
-    this.#send({ t: "putSnapshot", campaignId: this.#opts.campaignId, seq, snapshot });
-  }
-
-  #actorFor(command: Command): Actor {
-    if (isJoinCommand(command)) return { kind: "join", characterId: command.character.id };
-    const actorId = commandActorId(command);
-    return actorId === null ? { kind: "gm" } : { kind: "character", actorId };
-  }
-
-  append(entry: LogEntry): Promise<AppendResult> {
-    return new Promise<AppendResult>((resolve) => {
-      this.#pendingAppend = { resolve, entry };
-      this.#send({
-        t: "append",
-        campaignId: this.#opts.campaignId,
-        entry: entry as unknown as WireLogEntry,
-        actor: this.#actorFor(entry.command),
-      });
+  submit(command: Command): Promise<SubmitResult> {
+    return new Promise<SubmitResult>((resolve) => {
+      this.#pendingSubmit = { resolve, command };
+      this.#send({ t: "submit", campaignId: this.#opts.campaignId, command });
     });
   }
 

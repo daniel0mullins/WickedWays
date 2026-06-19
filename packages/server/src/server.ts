@@ -1,5 +1,9 @@
 import { WebSocketServer, type WebSocket } from "ws";
-import { parseClientMsg, type ServerMsg, type Identity, type PresenceEntry } from "@wickedways/transport-shared";
+import { parseClientMsg, type ServerMsg, type Identity, type PresenceEntry, type Actor } from "@wickedways/transport-shared";
+import { Authority } from "wickedways/lib/sync/authority";
+import { commandActorId, isJoinCommand, type Command } from "wickedways/lib/sync/types";
+import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
+import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
 import { Table, type Subscriber } from "./table.js";
 import { Membership } from "./membership.js";
 
@@ -16,20 +20,43 @@ export interface ServerOptions {
   verifyToken: (token: string) => Identity | null;
   /** Host-supplied: the designated GM identity for a campaign (seeds its Membership). */
   gmIdentityFor: (campaignId: string) => Identity;
+  /** Host-built registry, identical to the clients' (the Authority hydrates with it). */
+  registry: CampaignRegistry;
+  /** Host-supplied genesis for a campaign, or null to reject it as unknown. */
+  genesisFor: (campaignId: string) => CampaignSnapshot | null;
+  /** Optional rng for every campaign's Authority (defaults to Math.random). */
+  rng?: () => number;
+}
+
+/** Derives the seat an append acts as, read straight from the command (no client-supplied envelope). */
+function actorOf(command: Command): Actor {
+  if (isJoinCommand(command)) return { kind: "join", characterId: command.character.id };
+  const actorId = commandActorId(command);
+  return actorId === null ? { kind: "gm" } : { kind: "character", actorId };
 }
 
 /**
- * Starts a WebSocket server: a thin adapter over a `Map<campaignId, Table>` plus an
- * auth layer. Each connection authenticates on `join` (the host's `verifyToken`);
- * writes (`append`/`putSnapshot`) require an authenticated connection. The server
- * never parses command/delta/snapshot semantics. (Seat-ownership enforcement and the
- * GM control messages are added in Task 4.)
+ * Starts an authoritative WebSocket room server. Each campaign is backed by an
+ * {@link Authority} (built lazily from the host's `genesisFor`) that re-derives
+ * every delta from the submitted command. Clients send commands only; the server
+ * computes and broadcasts the authoritative delta. The only server-owned gate is
+ * seat ownership, checked against the actor the server reads from the command
+ * itself — no client-supplied actor envelope exists to forge or desync.
+ *
+ * Each connection authenticates on `join` (the host's `verifyToken`); writes
+ * (`submit`) require an authenticated connection.
  */
 export function createServer(opts: ServerOptions): Promise<ServerHandle> {
   const tables = new Map<string, Table>();
-  const tableFor = (id: string): Table => {
+  const tableFor = (id: string): Table | null => {
     let t = tables.get(id);
-    if (t === undefined) { t = new Table(); tables.set(id, t); }
+    if (t === undefined) {
+      const genesis = opts.genesisFor(id);
+      if (genesis === null) return null;
+      const authority = new Authority(genesis, { registry: opts.registry, rng: opts.rng });
+      t = new Table(authority);
+      tables.set(id, t);
+    }
     return t;
   };
 
@@ -54,7 +81,7 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
     const seats: PresenceEntry[] = m.seats().map(([characterId, owner]) => ({ characterId, owner, online: isOnline(owner) }));
     return { t: "presence", campaignId, seats, gm: { identity: m.gmIdentity, online: isOnline(m.gmIdentity) } };
   };
-  const broadcastPresence = (campaignId: string): void => tableFor(campaignId).broadcast(presenceOf(campaignId));
+  const broadcastPresence = (campaignId: string): void => tableFor(campaignId)?.broadcast(presenceOf(campaignId));
 
   const verify = (token: string): Identity | null => {
     try {
@@ -91,20 +118,26 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           if (id === null) { send({ t: "denied", reason: "authentication failed" }); return; }
           if (identity !== null && id !== identity) { send({ t: "denied", reason: "different identity on one connection" }); break; }
           if (joined.has(msg.campaignId)) { send({ t: "denied", reason: "already joined this campaign" }); break; }
+          const t = tableFor(msg.campaignId);
+          if (t === null) { send({ t: "denied", reason: "unknown campaign" }); break; }
           identity = id;
-          tableFor(msg.campaignId).join(send, msg.fromSeq);
+          t.join(send, msg.fromSeq);
           joined.add(msg.campaignId);
           bump(msg.campaignId, id, 1);
           broadcastPresence(msg.campaignId);
           break;
         }
-        case "append": {
+        case "submit": {
           if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
+          const t = tableFor(msg.campaignId);
+          if (t === null) { send({ t: "denied", reason: "unknown campaign" }); break; }
           const m = membershipFor(msg.campaignId);
-          if (!m.mayAct(identity, msg.actor)) { send({ t: "denied", reason: "not authorized for this seat" }); break; }
-          const result = tableFor(msg.campaignId).append(msg.entry, send);
-          if (msg.actor.kind === "join" && result.committed) {
-            m.claim(msg.actor.characterId, identity); // self-service seat claim, on commit
+          const command = msg.command as Command;
+          const actor = actorOf(command);
+          if (!m.mayAct(identity, actor)) { send({ t: "denied", reason: "not authorized for this seat" }); break; }
+          const result = t.submit(command, send);
+          if (actor.kind === "join" && result.committed) {
+            m.claim(actor.characterId, identity); // self-service seat claim, on commit
             broadcastPresence(msg.campaignId);
           }
           break;
@@ -121,17 +154,10 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           broadcastPresence(msg.campaignId);
           break;
         }
-        case "getSnapshot":
-          tableFor(msg.campaignId).sendSnapshot(send); // read-only observation, pre-auth allowed
-          break;
-        case "putSnapshot": {
-          if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
+        case "getSnapshot": {
           const t = tableFor(msg.campaignId);
-          // Only the GM may write the checkpoint late-joiners trust, and never ahead of
-          // the committed log. A non-GM / stale putSnapshot is ignored (fire-and-forget).
-          if (identity === membershipFor(msg.campaignId).gmIdentity && msg.seq <= t.head()) {
-            t.putSnapshot(msg.seq, msg.snapshot);
-          }
+          if (t === null) { send({ t: "snapshot", seq: 0, snapshot: null }); break; }
+          t.sendSnapshot(send); // read-only; pre-auth allowed (unchanged 3b boundary)
           break;
         }
       }
