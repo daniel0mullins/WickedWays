@@ -6,8 +6,8 @@ import type { RecipeId } from "wickedways/lib/crafting";
 import { Directions } from "wickedways/lib/room";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { createServer, type ServerHandle } from "@wickedways/server";
+import { buildSeedCampaign, buildSeedRegistry } from "@wickedways/seed";
 import { WebSocketTransport, type WebSocketFactory } from "./websocket-transport.js";
-import { buildSeedCampaign, buildSeedRegistry } from "./seed.js";
 
 let handle: ServerHandle | null = null;
 const sockets: WebSocket[] = [];
@@ -25,6 +25,20 @@ afterEach(async () => {
   await handle?.close();
   handle = null;
 });
+
+/**
+ * Build the genesis snapshot ONCE so character ids are stable. buildSeedCampaign()
+ * mints fresh uuid character ids on every call; serializeCampaign preserves them.
+ * The server's Authority gets exactly these character ids, so derived adaId/benId
+ * correctly match what the clients see.
+ */
+function seedFixture() {
+  const seed = buildSeedCampaign();
+  const genesis = serializeCampaign(seed.campaign);
+  const adaId = seed.campaign.activeCharacter.id;
+  const benId = seed.campaign.party.find((p) => p.id !== adaId)!.id;
+  return { genesis, adaId, benId };
+}
 
 async function connect(clientId: string): Promise<WebSocketTransport> {
   const t = await WebSocketTransport.connect({
@@ -53,25 +67,34 @@ const stateJSON = (c: SyncCoordinator): string => JSON.stringify(serializeCampai
 
 describe("two-client convergence", () => {
   it("converges A and B after each command in a representative mix", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "ada" });
+    const { genesis } = seedFixture();
+    handle = await createServer({
+      port: 0,
+      verifyToken: (t) => t || null,
+      gmIdentityFor: () => "ada",
+      registry: buildSeedRegistry(),
+      genesisFor: (id) => (id === "demo" ? genesis : null),
+    });
 
+    // Both coordinators are pure replicas: genesis lives on the server.
     const tA = await connect("ada");
-    const coordA = new SyncCoordinator({ ...buildSeedCampaign(), transport: tA });
+    const coordA = SyncCoordinator.join({ registry: buildSeedRegistry(), transport: tA });
     coordA.start();
-    await flush(); // let the seed snapshot reach the server before B joins
 
     const tB = await connect("b");
     const coordB = SyncCoordinator.join({ registry: buildSeedRegistry(), transport: tB });
     coordB.start();
-    expect(stateJSON(coordA)).toBe(stateJSON(coordB)); // identical from the snapshot
+    expect(stateJSON(coordA)).toBe(stateJSON(coordB)); // identical from the genesis snapshot
 
-    // Pre-assign the seed character seats to "ada" so character-actor appends are authorized.
-    const ids = coordA.campaign.party.map((p) => p.id);
+    // A (GM = "ada") assigns ALL party seats to "ada" so every character-actor submit is authorized.
+    const allIds = coordA.campaign.party.map((p) => p.id);
     const gmWs = new WebSocket(`ws://127.0.0.1:${handle.port}`);
     await new Promise<void>((r) => gmWs.addEventListener("open", () => r()));
     gmWs.send(JSON.stringify({ t: "join", campaignId: "demo", token: "ada", fromSeq: 0 }));
-    for (const id of ids) gmWs.send(JSON.stringify({ t: "assignSeat", campaignId: "demo", characterId: id, identity: "ada" }));
-    await flush(); // let the server apply the assignments before the first append
+    for (const id of allIds) {
+      gmWs.send(JSON.stringify({ t: "assignSeat", campaignId: "demo", characterId: id, identity: "ada" }));
+    }
+    await flush();
     gmWs.close();
 
     const mix: { label: string; build: () => Command }[] = [
@@ -97,12 +120,18 @@ describe("two-client convergence", () => {
 
 describe("reconnect", () => {
   it("backfills and converges after B's socket drops", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "ada" });
+    const { genesis } = seedFixture();
+    handle = await createServer({
+      port: 0,
+      verifyToken: (t) => t || null,
+      gmIdentityFor: () => "ada",
+      registry: buildSeedRegistry(),
+      genesisFor: (id) => (id === "demo" ? genesis : null),
+    });
 
     const tA = await connect("ada");
-    const coordA = new SyncCoordinator({ ...buildSeedCampaign(), transport: tA });
+    const coordA = SyncCoordinator.join({ registry: buildSeedRegistry(), transport: tA });
     coordA.start();
-    await flush();
 
     const tB = await connect("b");
     const coordB = SyncCoordinator.join({ registry: buildSeedRegistry(), transport: tB });
