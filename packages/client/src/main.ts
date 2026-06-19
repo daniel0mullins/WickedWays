@@ -7,7 +7,13 @@ import { buildSeedRegistry } from "./seed.js";
 
 const params = new URLSearchParams(location.search);
 const campaignId = params.get("c") ?? "demo";
-const clientId = crypto.randomUUID();
+const IDENTITY_KEY = "wickedways:identity";
+const storedId = localStorage.getItem(IDENTITY_KEY);
+const clientId: string = storedId !== null ? storedId : (() => {
+  const id = crypto.randomUUID();
+  localStorage.setItem(IDENTITY_KEY, id);
+  return id;
+})();
 const url = `ws://${location.hostname}:8787`;
 
 function byId(id: string): HTMLElement {

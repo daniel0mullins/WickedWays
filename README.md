@@ -632,6 +632,46 @@ submitter) apply the identical server-derived delta, so there is no divergence w
 Genesis comes from the host's `genesisFor`, not from any client.
 
 **Explicitly deferred (follow-up spec).** Client-side prediction and the deterministic /
-serialized rng change that would enable it; durable membership / campaign persistence
-across server restarts (`genesisFor` is the seam a persistent store would plug into);
-per-identity seat caps, map pruning, and `transferGM` lockout recovery.
+serialized rng change that would enable it; per-identity seat caps, map pruning, and
+`transferGM` lockout recovery.
+
+### Durable persistence
+
+The server persists each campaign's full snapshot + seat ownership on every commit,
+**flush-before-ack** (the client is acked only after the record is durable), via a
+host-injected `CampaignStore` interface:
+
+```ts
+interface CampaignStore {
+  load(campaignId: string): Promise<CampaignRecord | null>;
+  save(campaignId: string, record: CampaignRecord): Promise<void>;
+}
+```
+
+`CampaignRecord` bundles the committed `seq`, the engine `CampaignSnapshot` (carries
+`schemaVersion`), and `MembershipState` (seat assignments). Because `save` is atomic
+(one SQLite transaction), snapshot and membership can never disagree across a crash.
+
+**Reference adapter — `SqliteStore`.** A `SqliteStore(path)` stores records in a
+single SQLite file via Node's built-in `node:sqlite`, WAL mode, one upsert per save.
+Requires **Node ≥ 22.5**. (`node:sqlite` is experimental and emits a warning;
+persistence tests suppress it via `NODE_OPTIONS=--no-warnings`.)
+
+**Resume on restart.** On startup, `store.load(id)` returns the last durable record;
+the server rebuilds the `Authority` at the persisted `seq` and restores the
+`Membership` from the saved seat assignments — the campaign continues exactly where it
+left off, seq is continuous, and reconnecting clients converge normally.
+
+**Persistence is opt-in.** Pass no `store` to `createServer` and the server behaves
+exactly as before — in-memory, ephemeral. The single-player in-process path is
+entirely unaffected.
+
+**Client identity.** `@wickedways/client` persists the browser's identity token in
+`localStorage` (key `wickedways:identity`) so a page reload reuses the same identity
+and retains its durable seat. Real deployments obtain the token from an auth flow;
+this is the dev-harness behavior.
+
+**Deferred.** Client state caching (warm-start / offline read); a WAL persistence
+adapter; multi-instance locking (a single server instance owns a campaign's record);
+schema migrations — v1 fails closed on a `schemaVersion` mismatch rather than
+attempting to migrate.
