@@ -32,7 +32,10 @@ export type ClientMsg =
   | { t: "join"; campaignId: string; token: string; fromSeq: number }
   | { t: "append"; campaignId: string; entry: WireLogEntry; actor: Actor }
   | { t: "getSnapshot"; campaignId: string }
-  | { t: "putSnapshot"; campaignId: string; seq: number; snapshot: unknown };
+  | { t: "putSnapshot"; campaignId: string; seq: number; snapshot: unknown }
+  | { t: "assignSeat"; campaignId: string; characterId: string; identity: string }
+  | { t: "unassignSeat"; campaignId: string; characterId: string }
+  | { t: "transferGM"; campaignId: string; identity: string };
 
 /** Messages the room server sends to a client. */
 export type ServerMsg =
@@ -77,6 +80,18 @@ export function parseClientMsg(raw: unknown): ClientMsg | null {
     case "putSnapshot":
       return typeof raw.campaignId === "string" && typeof raw.seq === "number" && "snapshot" in raw
         ? { t: "putSnapshot", campaignId: raw.campaignId, seq: raw.seq, snapshot: raw.snapshot }
+        : null;
+    case "assignSeat":
+      return typeof raw.campaignId === "string" && typeof raw.characterId === "string" && typeof raw.identity === "string"
+        ? { t: "assignSeat", campaignId: raw.campaignId, characterId: raw.characterId, identity: raw.identity }
+        : null;
+    case "unassignSeat":
+      return typeof raw.campaignId === "string" && typeof raw.characterId === "string"
+        ? { t: "unassignSeat", campaignId: raw.campaignId, characterId: raw.characterId }
+        : null;
+    case "transferGM":
+      return typeof raw.campaignId === "string" && typeof raw.identity === "string"
+        ? { t: "transferGM", campaignId: raw.campaignId, identity: raw.identity }
         : null;
     default:
       return null;

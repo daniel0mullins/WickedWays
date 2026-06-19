@@ -21,6 +21,13 @@ describe("parseClientMsg", () => {
     expect(parseClientMsg({ t: "append", campaignId: "c1", entry, actor: { kind: "character" } })).toBeNull(); // missing actorId
   });
 
+  it("accepts the GM control messages; rejects malformed ones", () => {
+    expect(parseClientMsg({ t: "assignSeat", campaignId: "c1", characterId: "ch", identity: "ada" })).not.toBeNull();
+    expect(parseClientMsg({ t: "unassignSeat", campaignId: "c1", characterId: "ch" })).not.toBeNull();
+    expect(parseClientMsg({ t: "transferGM", campaignId: "c1", identity: "ben" })).not.toBeNull();
+    expect(parseClientMsg({ t: "assignSeat", campaignId: "c1", characterId: "ch" })).toBeNull(); // missing identity
+  });
+
   it("rejects unknown discriminants and malformed shapes", () => {
     expect(parseClientMsg({ t: "nope" })).toBeNull();
     expect(parseClientMsg({ t: "join", campaignId: "c1" })).toBeNull(); // missing fields

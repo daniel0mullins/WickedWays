@@ -43,7 +43,7 @@ const entry = (seq: number, baseSeq: number): WireLogEntry => ({
 
 describe("createServer", () => {
   it("acks a join with the current head", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null });
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
     const a = await open(handle.port);
     const got = collect(a, 1);
     a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
@@ -52,10 +52,10 @@ describe("createServer", () => {
   });
 
   it("commits an append, acks the sender, and broadcasts the entry to all subscribers", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null });
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
     const a = await open(handle.port);
     const b = await open(handle.port);
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
     b.send(JSON.stringify({ t: "join", campaignId: "c1", token: "bob", fromSeq: 0 }));
     await collect(a, 1); // joined
     await collect(b, 1); // joined
@@ -73,9 +73,9 @@ describe("createServer", () => {
   });
 
   it("rejects a stale-base append as a conflict reporting head", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null });
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
     const a = await open(handle.port);
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
     await collect(a, 1);
     a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
     await collect(a, 2); // appendOk + entry
@@ -86,9 +86,9 @@ describe("createServer", () => {
   });
 
   it("backfills entries since fromSeq on join", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null });
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
     const a = await open(handle.port);
-    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
     await collect(a, 1);
     a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
     a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 1), actor: { kind: "gm" } }));
@@ -108,7 +108,7 @@ describe("createServer", () => {
   });
 
   it("round-trips a snapshot and replies null when absent", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null });
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
     const a = await open(handle.port);
     const none = collect(a, 1);
     a.send(JSON.stringify({ t: "getSnapshot", campaignId: "c1" }));
@@ -124,7 +124,7 @@ describe("createServer", () => {
   });
 
   it("replies error on malformed input without crashing the room", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null });
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
     const a = await open(handle.port);
     const err = collect(a, 1);
     a.send("not json");
@@ -133,7 +133,7 @@ describe("createServer", () => {
   });
 
   it("denies a join with an empty token and does not join the room", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null });
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
     const a = await open(handle.port);
     const got = collect(a, 1);
     a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "", fromSeq: 0 }));
@@ -142,11 +142,88 @@ describe("createServer", () => {
   });
 
   it("denies an append before any join (not authenticated)", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null });
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
     const a = await open(handle.port);
     const got = collect(a, 1);
     a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
     expect(await got).toEqual([{ t: "denied", reason: "not authenticated" }]);
     a.close();
+  });
+
+  it("denies an append whose seat the connection does not own", async () => {
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const a = await open(handle.port);
+    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    await collect(a, 1); // joined
+    const denied = collect(a, 1);
+    // "ada" does not own character "cBen"
+    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "character", actorId: "cBen" } }));
+    expect(await denied).toEqual([{ t: "denied", reason: "not authorized for this seat" }]);
+    a.close();
+  });
+
+  it("self-service join binds the seat; a second join for it is denied (no hijack)", async () => {
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const a = await open(handle.port);
+    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    await collect(a, 1);
+    // ada self-claims character "cAda" via a join-actor append
+    const ok = collect(a, 2); // appendOk + entry
+    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "join", characterId: "cAda" } }));
+    await ok;
+    // now ada owns cAda and can act as it
+    const act = collect(a, 2);
+    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 1), actor: { kind: "character", actorId: "cAda" } }));
+    await act;
+    // ben cannot hijack cAda via join
+    const b = await open(handle.port);
+    b.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ben", fromSeq: 0 }));
+    await collect(b, 3); // joined + backfill entries 1 and 2
+    const hijack = collect(b, 1);
+    b.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 2), actor: { kind: "join", characterId: "cAda" } }));
+    expect(await hijack).toEqual([{ t: "denied", reason: "not authorized for this seat" }]);
+    a.close(); b.close();
+  });
+
+  it("gm actions require the GM identity; non-GM control messages are denied", async () => {
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const g = await open(handle.port);
+    g.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
+    await collect(g, 1);
+    const gmOk = collect(g, 2); // appendOk + entry
+    g.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "gm" } }));
+    await gmOk;
+
+    const p = await open(handle.port);
+    p.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    await collect(p, 2); // joined + backfill
+    const denyGm = collect(p, 1);
+    p.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 1), actor: { kind: "gm" } }));
+    expect(await denyGm).toEqual([{ t: "denied", reason: "not authorized for this seat" }]);
+    const denyCtl = collect(p, 1);
+    p.send(JSON.stringify({ t: "assignSeat", campaignId: "c1", characterId: "cX", identity: "ada" }));
+    expect(await denyCtl).toEqual([{ t: "denied", reason: "GM only" }]);
+    g.close(); p.close();
+  });
+
+  it("GM assignSeat lets the assigned identity act; unassign revokes", async () => {
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm" });
+    const g = await open(handle.port);
+    g.send(JSON.stringify({ t: "join", campaignId: "c1", token: "gm", fromSeq: 0 }));
+    await collect(g, 1);
+    g.send(JSON.stringify({ t: "assignSeat", campaignId: "c1", characterId: "cAda", identity: "ada" }));
+
+    const a = await open(handle.port);
+    a.send(JSON.stringify({ t: "join", campaignId: "c1", token: "ada", fromSeq: 0 }));
+    await collect(a, 1);
+    const ok = collect(a, 2);
+    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(1, 0), actor: { kind: "character", actorId: "cAda" } }));
+    await ok; // ada can act as cAda
+
+    g.send(JSON.stringify({ t: "unassignSeat", campaignId: "c1", characterId: "cAda" }));
+    const denied = collect(a, 1);
+    a.send(JSON.stringify({ t: "append", campaignId: "c1", entry: entry(2, 1), actor: { kind: "character", actorId: "cAda" } }));
+    expect(await denied).toEqual([{ t: "denied", reason: "not authorized for this seat" }]);
+    g.close(); a.close();
   });
 });

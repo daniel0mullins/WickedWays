@@ -53,9 +53,9 @@ const stateJSON = (c: SyncCoordinator): string => JSON.stringify(serializeCampai
 
 describe("two-client convergence", () => {
   it("converges A and B after each command in a representative mix", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null });
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "ada" });
 
-    const tA = await connect("a");
+    const tA = await connect("ada");
     const coordA = new SyncCoordinator({ ...buildSeedCampaign(), transport: tA });
     coordA.start();
     await flush(); // let the seed snapshot reach the server before B joins
@@ -64,6 +64,15 @@ describe("two-client convergence", () => {
     const coordB = SyncCoordinator.join({ registry: buildSeedRegistry(), transport: tB });
     coordB.start();
     expect(stateJSON(coordA)).toBe(stateJSON(coordB)); // identical from the snapshot
+
+    // Pre-assign the seed character seats to "ada" so character-actor appends are authorized.
+    const ids = coordA.campaign.party.map((p) => p.id);
+    const gmWs = new WebSocket(`ws://127.0.0.1:${handle.port}`);
+    await new Promise<void>((r) => gmWs.addEventListener("open", () => r()));
+    gmWs.send(JSON.stringify({ t: "join", campaignId: "demo", token: "ada", fromSeq: 0 }));
+    for (const id of ids) gmWs.send(JSON.stringify({ t: "assignSeat", campaignId: "demo", characterId: id, identity: "ada" }));
+    await flush(); // let the server apply the assignments before the first append
+    gmWs.close();
 
     const mix: { label: string; build: () => Command }[] = [
       { label: "craft", build: () => ({ kind: "craft", actorId: coordA.campaign.activeCharacter.id, recipeId: "widget" as RecipeId }) },
@@ -88,9 +97,9 @@ describe("two-client convergence", () => {
 
 describe("reconnect", () => {
   it("backfills and converges after B's socket drops", async () => {
-    handle = await createServer({ port: 0, verifyToken: (t) => t || null });
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "ada" });
 
-    const tA = await connect("a");
+    const tA = await connect("ada");
     const coordA = new SyncCoordinator({ ...buildSeedCampaign(), transport: tA });
     coordA.start();
     await flush();

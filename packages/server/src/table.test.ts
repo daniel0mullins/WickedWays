@@ -29,7 +29,7 @@ describe("Table", () => {
     a.msgs.length = 0;
     b.msgs.length = 0;
 
-    t.append(entry(1, 0), a.sub);
+    expect(t.append(entry(1, 0), a.sub)).toEqual({ committed: true, seq: 1 });
 
     expect(a.msgs).toEqual([{ t: "appendOk", seq: 1 }, { t: "entry", entry: entry(1, 0) }]);
     expect(b.msgs).toEqual([{ t: "entry", entry: entry(1, 0) }]);
@@ -46,7 +46,7 @@ describe("Table", () => {
     a.msgs.length = 0;
     b.msgs.length = 0;
 
-    t.append(entry(2, 0), a.sub); // stale base
+    expect(t.append(entry(2, 0), a.sub)).toEqual({ committed: false }); // stale base
 
     expect(a.msgs).toEqual([{ t: "appendConflict", head: 1 }]);
     expect(b.msgs).toEqual([]); // no broadcast

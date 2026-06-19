@@ -42,17 +42,18 @@ export class Table {
    * (including `sender`). On a stale base: replies `appendConflict{head}` to
    * `sender` only, changing nothing.
    */
-  append(entry: WireLogEntry, sender: Subscriber): void {
+  append(entry: WireLogEntry, sender: Subscriber): { committed: true; seq: number } | { committed: false } {
     const head = this.head();
     if (entry.baseSeq !== head) {
       sender({ t: "appendConflict", head });
-      return;
+      return { committed: false };
     }
     const seq = head + 1;
     const committed: WireLogEntry = { ...entry, seq };
     this.#log.push(committed);
     sender({ t: "appendOk", seq });
     for (const p of this.#participants) p({ t: "entry", entry: committed });
+    return { committed: true, seq };
   }
 
   /** Sends the latest checkpoint to `requester` (seq 0 / null when absent). */

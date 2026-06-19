@@ -1,6 +1,7 @@
 import { WebSocketServer, type WebSocket } from "ws";
 import { parseClientMsg, type ServerMsg, type Identity } from "@wickedways/transport-shared";
 import { Table, type Subscriber } from "./table.js";
+import { Membership } from "./membership.js";
 
 /** A running room server. */
 export interface ServerHandle {
@@ -13,6 +14,8 @@ export interface ServerOptions {
   port?: number;
   /** Host-supplied verifier: returns the connection's identity, or null to deny. */
   verifyToken: (token: string) => Identity | null;
+  /** Host-supplied: the designated GM identity for a campaign (seeds its Membership). */
+  gmIdentityFor: (campaignId: string) => Identity;
 }
 
 /**
@@ -28,6 +31,13 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
     let t = tables.get(id);
     if (t === undefined) { t = new Table(); tables.set(id, t); }
     return t;
+  };
+
+  const memberships = new Map<string, Membership>();
+  const membershipFor = (id: string): Membership => {
+    let m = memberships.get(id);
+    if (m === undefined) { m = new Membership(opts.gmIdentityFor(id)); memberships.set(id, m); }
+    return m;
   };
 
   const verify = (token: string): Identity | null => {
@@ -71,14 +81,29 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           joined.add(msg.campaignId);
           break;
         }
-        case "append":
-          if (identity === null) {
-            send({ t: "denied", reason: "not authenticated" });
-            break;
+        case "append": {
+          if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
+          const m = membershipFor(msg.campaignId);
+          if (!m.mayAct(identity, msg.actor)) { send({ t: "denied", reason: "not authorized for this seat" }); break; }
+          const result = tableFor(msg.campaignId).append(msg.entry, send);
+          if (msg.actor.kind === "join" && result.committed) {
+            m.claim(msg.actor.characterId, identity); // self-service seat claim, on commit
+            // Task 5 broadcasts presence here.
           }
-          // Task 4 inserts the ownership check on msg.actor here.
-          tableFor(msg.campaignId).append(msg.entry, send);
           break;
+        }
+        case "assignSeat":
+        case "unassignSeat":
+        case "transferGM": {
+          if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
+          const m = membershipFor(msg.campaignId);
+          if (identity !== m.gmIdentity) { send({ t: "denied", reason: "GM only" }); break; }
+          if (msg.t === "assignSeat") m.assign(msg.characterId, msg.identity);
+          else if (msg.t === "unassignSeat") m.unassign(msg.characterId);
+          else m.transferGM(msg.identity);
+          // Task 5 broadcasts presence here.
+          break;
+        }
         case "getSnapshot":
           tableFor(msg.campaignId).sendSnapshot(send); // read-only observation, pre-auth allowed
           break;
