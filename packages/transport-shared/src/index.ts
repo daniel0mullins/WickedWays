@@ -17,10 +17,10 @@ export interface WireLogEntry {
 export type Identity = string;
 
 /**
- * The actor an append acts as, declared at the envelope so the server can enforce
- * ownership without parsing the opaque command. `character` = an owned seat; `gm` =
- * GM/lifecycle/NPC; `join` = self-claim a NEW seat (the joinCampaign append; the
- * client surfaces the new character's id).
+ * The actor a command is authorized as. This is a server-internal type consumed by
+ * `Membership.mayAct`; the server derives it from the command via `actorOf` rather
+ * than reading it from the wire envelope. `character` = an owned seat; `gm` =
+ * GM/lifecycle/NPC; `join` = self-claim a NEW seat (the joinCampaign command).
  */
 export type Actor =
   | { kind: "character"; actorId: string }

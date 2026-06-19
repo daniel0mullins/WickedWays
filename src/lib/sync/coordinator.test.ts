@@ -71,8 +71,13 @@ describe("SyncCoordinator", () => {
   });
 
   it("a coordinator never started syncs on submit via #syncTo fallback", async () => {
-    const { coordinator } = wire();
-    // Not started — no subscription. submit should still apply the committed entry.
+    // Build the coordinator WITHOUT calling start() so there is no inbound subscription.
+    // submit must still converge the replica via the #syncTo fallback path.
+    const { campaign, registry } = buildStartedCampaign();
+    const authority = new Authority(serializeCampaign(campaign), { registry, rng: () => 0.5 });
+    const transport = new InProcessTransport(authority);
+    const coordinator = SyncCoordinator.join({ registry, transport, rng: () => 0.5 });
+    // Deliberately NOT calling coordinator.start() — no subscription active.
     const before = coordinator.campaign.activeCharacter.id;
     const res = await coordinator.submit({ kind: "nextPlayer" });
     expect(res.ok).toBe(true);

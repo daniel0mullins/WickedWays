@@ -50,4 +50,33 @@ describe("Authority", () => {
     authority.submit({ kind: "nextPlayer" });
     expect(authority.loadSnapshot().seq).toBe(2); // checkpoint taken at seq 2
   });
+
+  it("rejects a joinCampaign whose character id already exists in the campaign", () => {
+    const { campaign, registry } = buildStartedCampaign();
+    const existingId = campaign.party[0]!.id;
+    const partyBefore = campaign.party.length;
+    const authority = new Authority(serializeCampaign(campaign), { registry, rng: () => 0.5 });
+    // Build a snapshot that reuses an existing character's id.
+    const dupSnapshot = {
+      kind: "player" as const,
+      id: existingId,
+      name: "Impersonator",
+      stats: { health: 10, sanity: 10, energy: 10 },
+      actionsPerRound: 1,
+      actionsThisRound: 0,
+      currentRoomId: null,
+      inventory: { slots: 10, itemIds: [], keyIds: [] },
+      equipment: {},
+      history: [],
+      archetypeImmunities: [],
+      afflictions: { active: {}, turnsActive: {}, shakenOff: [], immunity: {} },
+    };
+    const res = authority.submit({ kind: "joinCampaign", character: dupSnapshot });
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.reason).toMatch(/duplicate|already|exists/i);
+    // Party must be unchanged.
+    const snap = authority.loadSnapshot();
+    expect(snap.snapshot.characters.filter((c) => c.id === existingId)).toHaveLength(1);
+    expect(snap.snapshot.campaign.partyIds).toHaveLength(partyBefore);
+  });
 });

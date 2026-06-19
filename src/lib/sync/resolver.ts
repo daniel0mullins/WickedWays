@@ -163,6 +163,13 @@ export class Resolver {
         if (command.character.kind !== "player") {
           throw new ProceduralViolation("Only player characters can join a campaign.");
         }
+        // Reject a join whose id already exists in the campaign — a duplicate id
+        // would let an attacker claim or shadow an existing party seat.
+        if (index.has(command.character.id)) {
+          throw new ProceduralViolation(
+            `Character id '${command.character.id}' already exists in this campaign.`,
+          );
+        }
         // Construct the player from the snapshot's identity + stats and join it.
         // The new character propagates to replicas via the created-delta; richer
         // initial state (archetype, items, placement) follows in later commands.

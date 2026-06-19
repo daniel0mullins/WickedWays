@@ -104,14 +104,11 @@ function runContract(name: string, makeBackend: () => Backend): void {
       await until(() => a.head() === 1);
     });
 
-    it("denies an unauthorized submit (non-GM submitting a GM command)", async () => {
-      // Only relevant for WebSocketTransport where the server enforces seat auth.
-      // InProcessTransport delegates to the Authority which enforces engine rules.
+    it("an authorized GM submit commits successfully", async () => {
+      // Both backends: the configured identity (gm / ada-from-seed) is authorized.
       const a = await backend.connect();
-      // Submit nextPlayer twice — first should commit, second will also commit
-      // (both as "gm" in web socket backend, or in-process where GM = ada from seed).
       const res = await a.submit({ kind: "nextPlayer" });
-      expect(res.ok).toBe(true); // gm is authorized
+      expect(res.ok).toBe(true);
     });
 
     it("delivers submitted entries to a subscriber on the same backend", async () => {

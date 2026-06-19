@@ -488,28 +488,16 @@ describe("SyncCoordinator two-client convergence", () => {
     // keeps the transient index tidy, while removal from B's state is effected by
     // re-hydrating the character's changed snapshot (keyring no longer contains the
     // key). This test asserts the removed path is non-empty AND that B converges.
+
+    // Seed the campaign with a key already on the active character's keyring so the
+    // authority knows about it at startup. We achieve this by giving the active
+    // character the key directly, then re-serializing as the authority's genesis.
     const { campaign, registry } = buildStartedCampaign();
-    const authority = new Authority(serializeCampaign(campaign), { registry, rng: () => 0.5 });
-    const transport = new InProcessTransport(authority);
-    const A = SyncCoordinator.join({ registry, transport, rng: () => 0.5 });
-    const B = SyncCoordinator.join({ registry, transport, rng: () => { throw new Error("replica must not roll"); } });
-    A.start(); B.start();
+    const seedActive = campaign.activeCharacter as PlayerCharacter;
+    const seedKey = createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: true });
+    seedActive.receiveItem(seedKey);
 
-    // Give the active character a key directly (bypasses action budget).
-    // We access A's campaign to mutate it directly before submitting through authority.
-    // The key must be known to A's campaign replica for the consumeKey command to work.
-    // Use authority's campaign via the transport: submit a join with the key embedded is not
-    // how this works. Instead, we add the key directly to the active character on A's replica,
-    // then submit the consumeKey command via A.
-    const active = A.campaign.activeCharacter as PlayerCharacter;
-    const key = createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: true });
-    active.receiveItem(key);
-
-    // The authority doesn't know about the key yet — the command will be applied on
-    // the authority's own campaign state, which doesn't have the key.
-    // We need a different approach: snapshot the campaign WITH the key and rebuild the authority.
-    // Instead: serialize A's campaign (with the key), rebuild the authority, re-join.
-    const authority2 = new Authority(serializeCampaign(A.campaign), { registry, rng: () => 0.5 });
+    const authority2 = new Authority(serializeCampaign(campaign), { registry, rng: () => 0.5 });
     const transport2 = new InProcessTransport(authority2);
     const A2 = SyncCoordinator.join({ registry, transport: transport2, rng: () => 0.5 });
     const B2 = SyncCoordinator.join({ registry, transport: transport2, rng: () => { throw new Error("replica must not roll"); } });

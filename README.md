@@ -549,7 +549,7 @@ replica.start();
 
 - **Language:** TypeScript in `strict` mode with `NodeNext` module resolution and the extra
   `noUncheckedIndexedAccess` / `noImplicitOverride` guards.
-- **Tests:** [Vitest](https://vitest.dev) — 446 tests across 20 files, including an end-to-end
+- **Tests:** [Vitest](https://vitest.dev) — 688 tests across 53 files, including an end-to-end
   [`src/integration.test.ts`](src/integration.test.ts) that wires up a full campaign and runs
   the turn loop. Shared helpers live in [`src/test-utils.ts`](src/test-utils.ts).
 - **Linting:** ESLint flat config with type-aware `typescript-eslint`.

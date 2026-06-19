@@ -174,16 +174,15 @@ describe("createServer", () => {
     a.close();
   });
 
-  it("anti-impersonation: Ben submitting a command with Ada's actorId is denied (seat check)", async () => {
+  it("non-GM identity is denied when submitting a GM command (nextPlayer)", async () => {
     const { genesis } = seedFixture();
     handle = await createServer(serverOpts(genesis));
     const b = await open(handle.port);
     b.send(JSON.stringify({ t: "join", campaignId: "demo", token: "ben", fromSeq: 0 }));
     await collect(b, 2); // joined + presence
     const denied = collect(b, 1);
-    // "ben" does not own Ada's seat, so submitting with Ada's actorId should be denied
+    // "ben" is not the GM, so submitting a GM command (nextPlayer) is denied via seat check
     b.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
-    // nextPlayer is a GM command — "ben" is not the GM, so denied via seat check
     expect(await denied).toEqual([{ t: "denied", reason: "not authorized for this seat" }]);
     b.close();
   });
