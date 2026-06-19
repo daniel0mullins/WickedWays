@@ -46,11 +46,17 @@ Settled during brainstorming:
   `verifyToken(token) → identity | null`. The engine defines the protocol (a token
   on `join`; the server calls the verifier) but **not** the token format or crypto.
   No crypto is baked into the pure-TS engine; tests use a fake verifier.
-- **Server-held, GM-managed membership.** The server owns a per-campaign
-  `Membership` (`characterId → identity` seat owners + a `gmIdentity`) as
-  first-class **protocol state**, separate from the opaque campaign payload, so it
-  can enforce directly. Seats are assigned by a GM-authenticated identity via
-  dedicated control messages, broadcast as presence.
+- **Server-held membership; self-service join + GM override.** The server owns a
+  per-campaign `Membership` (`characterId → identity` seat owners + a `gmIdentity`)
+  as first-class **protocol state**, separate from the opaque campaign payload, so it
+  can enforce directly. The engine's `joinCampaign` is **self-service** (the joining
+  player supplies their own new character snapshot — there is no `addPlayer`
+  command), so seats are **self-claimed at join**: a `join`-actor append binds the
+  new `characterId` to the connection's identity (only if that `characterId` is not
+  already owned — preventing seat hijack). The GM-only control messages
+  (`assignSeat`/`unassignSeat`/`transferGM`) are **admin override** — reassign a
+  dropped player's seat, kick, hand off GM — not the primary path. Membership changes
+  broadcast as presence.
 - **Single authoritative `actorId`.** The command's `actorId` is lifted to the
   append envelope (it is identity *metadata*, an id string — not game semantics),
   so there is one server-visible actor the server enforces and the resolver
@@ -101,12 +107,18 @@ type ClientMsg =
   | { t: "append";      campaignId; entry: WireLogEntry; actor: Actor }  // actor added
   | { t: "getSnapshot"; campaignId }
   | { t: "putSnapshot"; campaignId; seq; snapshot }
-  // GM-only control messages
+  // GM-only control messages (admin override)
   | { t: "assignSeat";   campaignId; characterId: string; identity: string }
   | { t: "unassignSeat"; campaignId; characterId: string }
   | { t: "transferGM";   campaignId; identity: string };
 
-type Actor = { kind: "character"; actorId: string } | { kind: "gm" };
+// `character` = act as an owned seat; `gm` = GM/lifecycle/NPC; `join` = self-claim a
+// NEW seat (the joinCampaign append; the client surfaces the new character's id so
+// the server can bind it to the connection's identity).
+type Actor =
+  | { kind: "character"; actorId: string }
+  | { kind: "gm" }
+  | { kind: "join"; characterId: string };
 
 // server → client (additions)
 type ServerMsg =
@@ -125,10 +137,11 @@ type PresenceEntry = { characterId: string; owner: string | null; online: boolea
 - **Room creation** seeds `Membership` with the designated `gmIdentity` (and any
   pre-assigned seats). The host owns room creation and the verifier, so it knows the
   GM.
-- **Typical flow:** GM authenticates → `addPlayer` (game command; creates character
-  C) → `assignSeat(C, playerIdentity)` (control message) → that player authenticates,
-  now owns C, runs `selectArchetype`/`joinCampaign` (character-actor appends, enforced
-  by ownership) → GM `beginCampaign`.
+- **Typical flow:** each player authenticates and `joinCampaign`s (a `join`-actor
+  append that creates their character C and self-claims the seat — the server binds
+  C → that identity) → the same player runs `selectArchetype` on C (a `character`-actor
+  append, enforced by ownership) → GM `beginCampaign`. The GM uses the control
+  messages only for admin override (reassign/kick/hand-off).
 - **GM layering:** `gmIdentity` is the *identity* with table authority (assign seats;
   issue `gm`/lifecycle/NPC + setup-on-behalf). It is **distinct** from the engine's
   in-game GM *character* (`transfer` etc.), which stays game-domain state. 3b does not
@@ -136,13 +149,20 @@ type PresenceEntry = { characterId: string; owner: string | null; online: boolea
 
 ## Data flow
 
-**Append (authenticated owner):** client builds the `LogEntry` as in 3a, derives
-`actor` from the command via the engine's existing `commandActorId` classifier
-(`actorId → {kind:"character",actorId}`; `null → {kind:"gm"}`), and sends
-`{t:"append", entry, actor}` (the `token` was presented at `join`). The server:
-1. resolves the connection's identity (from `join`);
-2. `Membership.owns(identity, actor)` — if false → `denied`, no commit, no broadcast;
-3. else → `Table.append` (3a CAS + broadcast) unchanged.
+**Append:** client builds the `LogEntry` as in 3a and derives the `actor` envelope
+from the command: a `joinCampaign` command → `{kind:"join", characterId}` (the new
+character's id, read from the command's snapshot client-side); any other command
+with a non-null `commandActorId` → `{kind:"character", actorId}`; otherwise (GM /
+lifecycle / NPC) → `{kind:"gm"}`. It sends `{t:"append", entry, actor}` (the `token`
+was presented at `join`). The server, having resolved the connection's `identity`:
+- **`character`** → accept iff `Membership` says `identity` owns `actorId`; else `denied`.
+- **`gm`** → accept iff `identity === gmIdentity`; else `denied`.
+- **`join`** → accept for any authenticated identity **iff `characterId` is not
+  already owned** (prevents hijacking an existing seat); on a committed append, bind
+  `characterId → identity` in `Membership` and rebroadcast presence.
+
+On accept, delegate to `Table.append` (3a CAS + broadcast) unchanged. A `denied`
+append commits nothing and is not broadcast.
 
 **Control message (GM):** server checks `identity === gmIdentity` → applies to
 `Membership` → rebroadcasts `presence`. Non-GM → `denied`.
@@ -166,8 +186,10 @@ append **does** require a small, bounded engine change (stated up front — not 
   reused unchanged.
 - **`WebSocketTransport`:** constructed with the `token`; sends it on `join` and on
   every **reconnect** (re-authentication); derives each append's `actor` envelope from
-  the command via `commandActorId`; maps a server `denied` append to the new
-  `AppendResult` denied variant.
+  the command — `joinCampaign → {kind:"join", characterId}` (id read from the
+  command's `character` snapshot), else `commandActorId(command)` non-null →
+  `{kind:"character", actorId}`, else `{kind:"gm"}`; maps a server `denied` append to
+  the new `AppendResult` denied variant.
 - On a `denied` **join/reconnect** (e.g. token expired), it stops and surfaces the
   denial — it cannot silently re-join.
 
@@ -209,9 +231,12 @@ Per campaign the server maintains a derived view and broadcasts it on every chan
   (including the submitting client, whose local campaign is rolled back to `before`),
   and the submit returns a **terminal** rejection (no retry); `gm` action by
   `gmIdentity` accepted, by a non-GM → `denied`.
-- **Membership:** GM `assignSeat` lets a previously-seatless identity act;
-  `unassignSeat` revokes (subsequent append `denied`); non-GM `assignSeat`/`transferGM`
-  → `denied`.
+- **Self-claim join:** a `join`-actor append binds the new `characterId` to the
+  joiner's identity (it can then act for that seat); a `join` whose `characterId` is
+  already owned → `denied` (no hijack).
+- **Membership (admin override):** GM `assignSeat` reassigns a seat to another
+  identity; `unassignSeat` revokes (subsequent append `denied`); non-GM
+  `assignSeat`/`unassignSeat`/`transferGM` → `denied`.
 - **Presence:** connect / disconnect / assign broadcast the correct presence;
   multi-connection-per-identity online semantics (two connections, close one → still
   online).
