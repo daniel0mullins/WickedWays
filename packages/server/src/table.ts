@@ -21,17 +21,9 @@ export class Table {
   #participants = new Set<Subscriber>();
   #persist: () => Promise<void> = () => Promise.resolve();
   #reload: () => Promise<void> = () => Promise.resolve();
-  /**
-   * The highest seq that has been durably committed (persisted + acked).
-   * Only advanced after a successful `persist()`; stays at the old value on
-   * persist failure so `head()` always reflects the last safe-to-serve seq.
-   * In the ephemeral path (no-op persist), every commit advances this immediately.
-   */
-  #head: number;
 
   constructor(authority: Authority) {
     this.#authority = authority;
-    this.#head = authority.head();
   }
 
   /** Installs the durability hooks (no-ops until set; the ephemeral path never sets them). */
@@ -43,12 +35,11 @@ export class Table {
   /** Swaps in a rebuilt authority (used by `reload` after a persist failure). */
   replaceAuthority(authority: Authority): void {
     this.#authority = authority;
-    this.#head = authority.head();
   }
 
-  /** Highest committed seq (0 when empty). */
+  /** Highest committed seq (0 when empty). Delegates to the authority — single source of truth. */
   head(): number {
-    return this.#head;
+    return this.#authority.head();
   }
 
   /** The authority's current head snapshot (what `persist` writes). */
@@ -100,14 +91,9 @@ export class Table {
       return { committed: false };
     }
     onCommit?.();
-    // Optimistically advance #head now so the persist hook sees the new seq via `head()`.
-    const prevHead = this.#head;
-    this.#head = res.seq;
     try {
       await this.#persist();
     } catch {
-      // Revert #head before reload so it is correct if reload is a no-op.
-      this.#head = prevHead;
       await this.#reload(); // revert campaign + membership to the last durable record
       sender({ t: "denied", reason: "could not persist; retry" });
       return { committed: false };

@@ -365,10 +365,9 @@ describe("createServer", () => {
 
   it("resumes a campaign and its seats across a server restart", async () => {
     const { genesis, adaId } = seedFixture();
-    // Use a real temp file so two separate SqliteStore instances share the same DB.
-    const dbPath = path.join(os.tmpdir(), "ww-resume-test-1.db");
-    // Clean up any stale files from prior runs before starting.
-    for (const ext of ["", "-wal", "-shm"]) { try { fs.unlinkSync(dbPath + ext); } catch { /* ignore */ } }
+    // Use a unique temp directory per run so parallel test workers never collide.
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ww-resume-"));
+    const dbPath = path.join(tmpDir, "campaign.db");
     const store = new SqliteStore(dbPath);
     const opts = {
       port: 0 as const,
@@ -420,7 +419,38 @@ describe("createServer", () => {
     c2.close();
     await s2.close();
     store2.close();
-    try { fs.unlinkSync(dbPath); } catch { /* ignore */ }
+    // Recursively remove the unique temp directory.
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("store load rejection replies denied (not a hang) and does not permanently wedge the campaign", async () => {
+    const { genesis } = seedFixture();
+    // A store whose load always rejects — simulates a transient/permanent DB error.
+    let shouldReject = true;
+    const store: import("./store.js").CampaignStore = {
+      load: () => shouldReject ? Promise.reject(new Error("boom")) : Promise.resolve(null),
+      save: () => Promise.resolve(),
+    };
+    handle = await createServer({
+      port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm",
+      registry: buildSeedRegistry(), genesisFor: (id) => (id === "demo" ? genesis : null), store,
+    });
+
+    // First join: store.load rejects → should get denied, NOT hang.
+    const a = await open(handle.port);
+    const firstReply = collect(a, 1);
+    a.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
+    expect(await firstReply).toEqual([{ t: "denied", reason: "unknown campaign" }]);
+    a.close();
+
+    // Un-wedge: stop rejecting. A subsequent join must succeed (not return the cached rejection).
+    shouldReject = false;
+    const b = await open(handle.port);
+    const secondReply = collect(b, 2); // joined + presence
+    b.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
+    const msgs = await secondReply;
+    expect(msgs[0]).toEqual({ t: "joined", head: 0 });
+    b.close();
   });
 
   it("fails closed when a persisted snapshot's schemaVersion does not match", async () => {

@@ -80,37 +80,46 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
     const inflight = loading.get(id);
     if (inflight !== undefined) return inflight;
     const p = (async (): Promise<Table | null> => {
-      const rec = opts.store ? await opts.store.load(id) : null;
-      if (rec !== null && !schemaMatches(rec.snapshot)) {
-        console.error(`[persistence] campaign ${id}: snapshot schemaVersion ${rec.snapshot.schemaVersion} != current; refusing to resume (migration required)`);
+      try {
+        const rec = opts.store ? await opts.store.load(id) : null;
+        if (rec !== null && !schemaMatches(rec.snapshot)) {
+          console.error(`[persistence] campaign ${id}: snapshot schemaVersion ${rec.snapshot.schemaVersion} != current; refusing to resume (migration required)`);
+          return null; // fail closed — do NOT build a genesis Table (that would overwrite the record)
+        }
+        const genesis = rec?.snapshot ?? opts.genesisFor(id);
+        if (genesis === null) { return null; }
+        const authority = buildAuthority(id, rec?.seq ?? 0, genesis);
+        // Restore persisted membership when resuming; otherwise use whatever membership was set
+        // by messages that arrived while we were awaiting the load (or seed a fresh one).
+        if (rec) memberships.set(id, Membership.fromState(rec.membership));
+        else if (!memberships.has(id)) memberships.set(id, new Membership(opts.gmIdentityFor(id)));
+        const t = new Table(authority);
+        const store = opts.store;
+        if (store !== undefined) {
+          t.setDurability({
+            // NOTE: the thunk reads t.head()/t.currentSnapshot() at execution time. This is
+            // correct for a synchronous store (each submit serialises naturally). A genuinely-
+            // async CampaignStore would need per-campaign submit serialization to avoid one
+            // submit's persist thunk capturing a later seq/snapshot written by a concurrent submit.
+            persist: () =>
+              store.save(id, { seq: t.head(), snapshot: t.currentSnapshot(), membership: membershipFor(id).toState() }),
+            reload: async () => {
+              const r = await store.load(id);
+              const fresh = r?.snapshot ?? opts.genesisFor(id);
+              if (fresh === null) return;
+              t.replaceAuthority(buildAuthority(id, r?.seq ?? 0, fresh));
+              memberships.set(id, r ? Membership.fromState(r.membership) : new Membership(opts.gmIdentityFor(id)));
+            },
+          });
+        }
+        tables.set(id, t);
+        return t;
+      } finally {
+        // Always remove the inflight promise — whether the load succeeded, returned null,
+        // or rejected. A rejection must not stay cached; a later ensureLoaded call should
+        // re-attempt the load rather than returning the same rejected promise.
         loading.delete(id);
-        return null; // fail closed — do NOT build a genesis Table (that would overwrite the record)
       }
-      const genesis = rec?.snapshot ?? opts.genesisFor(id);
-      if (genesis === null) { loading.delete(id); return null; }
-      const authority = buildAuthority(id, rec?.seq ?? 0, genesis);
-      // Restore persisted membership when resuming; otherwise use whatever membership was set
-      // by messages that arrived while we were awaiting the load (or seed a fresh one).
-      if (rec) memberships.set(id, Membership.fromState(rec.membership));
-      else if (!memberships.has(id)) memberships.set(id, new Membership(opts.gmIdentityFor(id)));
-      const t = new Table(authority);
-      const store = opts.store;
-      if (store !== undefined) {
-        t.setDurability({
-          persist: () =>
-            store.save(id, { seq: t.head(), snapshot: t.currentSnapshot(), membership: membershipFor(id).toState() }),
-          reload: async () => {
-            const r = await store.load(id);
-            const fresh = r?.snapshot ?? opts.genesisFor(id);
-            if (fresh === null) return;
-            t.replaceAuthority(buildAuthority(id, r?.seq ?? 0, fresh));
-            memberships.set(id, r ? Membership.fromState(r.membership) : new Membership(opts.gmIdentityFor(id)));
-          },
-        });
-      }
-      tables.set(id, t);
-      loading.delete(id);
-      return t;
     })();
     loading.set(id, p);
     return p;
@@ -172,7 +181,15 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           // (e.g. assignSeat bursts) see this connection as authenticated.
           const prevIdentity = identity;
           identity = id;
-          const t = await ensureLoaded(msg.campaignId);
+          let t: Table | null;
+          try {
+            t = await ensureLoaded(msg.campaignId);
+          } catch {
+            // A store load failure is treated the same as "campaign not found".
+            identity = prevIdentity;
+            send({ t: "denied", reason: "unknown campaign" });
+            break;
+          }
           if (t === null) { identity = prevIdentity; send({ t: "denied", reason: "unknown campaign" }); break; }
           t.join(send, msg.fromSeq);
           joined.add(msg.campaignId);
@@ -215,7 +232,14 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           break;
         }
         case "getSnapshot": {
-          const t = await ensureLoaded(msg.campaignId);
+          let t: Table | null;
+          try {
+            t = await ensureLoaded(msg.campaignId);
+          } catch {
+            // A store load failure is treated the same as "campaign not found".
+            send({ t: "snapshot", seq: 0, snapshot: null });
+            break;
+          }
           if (t === null) { send({ t: "snapshot", seq: 0, snapshot: null }); break; }
           t.sendSnapshot(send); // read-only; pre-auth allowed (unchanged 3b boundary)
           break;

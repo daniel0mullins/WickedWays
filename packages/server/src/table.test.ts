@@ -39,13 +39,20 @@ describe("Table", () => {
     expect(order).toEqual(["persist", "ack"]); // persisted before the committed ack
   });
 
-  it("rolls back and denies when persist fails; head unchanged", async () => {
+  it("rolls back and denies when persist fails; submitter gets denied, no entry broadcast", async () => {
     const t = table();
+    const other = vi.fn();
+    t.join(other, 0);
+    other.mockClear(); // clear the joined ack
     t.setDurability({ persist: () => Promise.reject(new Error("disk full")), reload: () => Promise.resolve() });
     const sender = vi.fn();
     const res = await t.submit({ kind: "nextPlayer" }, sender);
+    // The submit must report uncommitted.
     expect(res).toEqual({ committed: false });
+    // The submitter must receive a denied (not committed).
     expect(sender).toHaveBeenCalledWith(expect.objectContaining({ t: "denied" }));
-    expect(t.head()).toBe(0); // no commit acked; reload (no-op here) leaves head at genesis
+    expect(sender).not.toHaveBeenCalledWith(expect.objectContaining({ t: "committed" }));
+    // No entry broadcast to other participants.
+    expect(other).not.toHaveBeenCalledWith(expect.objectContaining({ t: "entry" }));
   });
 });
