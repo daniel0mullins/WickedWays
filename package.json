@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "checks": "pnpm run lint && pnpm -r run typecheck && pnpm run test",
+    "checks": "pnpm run lint && pnpm run typecheck && pnpm -r run typecheck && pnpm run test",
     "build": "tsc -p tsconfig.build.json",
     "docs:api": "typedoc",
     "docs:dev": "pnpm run docs:api && vitepress dev docs-site",
