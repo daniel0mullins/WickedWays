@@ -77,6 +77,11 @@ export type CommandResult =
   | { ok: false; rejected: true; reason: string }
   | { ok: false; conflict: true; reason: string };
 
+/** A transport/authority verdict: committed with its delta, or a terminal denial. */
+export type SubmitResult =
+  | { ok: true; seq: number; delta: Delta }
+  | { ok: false; denied: true; reason: string };
+
 const TURN_ACTION_KINDS = new Set<Command["kind"]>([
   "move", "attack", "equip", "unequip", "craft", "repair", "pickUp", "drop",
   "takeFromLootBox", "putInLootBox", "transferKey", "consumeKey", "use",
