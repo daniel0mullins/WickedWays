@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@wickedways/transport-shared": "workspace:*",
+    "wickedways": "workspace:*",
+    "@wickedways/seed": "workspace:*",
     "ws": "^8.18.0"
   },
   "devDependencies": {

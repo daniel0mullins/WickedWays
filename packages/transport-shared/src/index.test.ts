@@ -9,16 +9,13 @@ describe("parseClientMsg", () => {
     expect(parseClientMsg({ t: "join", campaignId: "c1", token: 7, fromSeq: 0 })).toBeNull();
   });
 
-  it("accepts an append with an actor + opaque entry; rejects a missing/invalid actor", () => {
-    const entry = { seq: 1, baseSeq: 0, command: { kind: "x" }, delta: { changed: [] } };
-    expect(parseClientMsg({ t: "append", campaignId: "c1", entry, actor: { kind: "gm" } })).toEqual({
-      t: "append", campaignId: "c1", entry, actor: { kind: "gm" },
-    });
-    expect(parseClientMsg({ t: "append", campaignId: "c1", entry, actor: { kind: "character", actorId: "a" } })).not.toBeNull();
-    expect(parseClientMsg({ t: "append", campaignId: "c1", entry, actor: { kind: "join", characterId: "c" } })).not.toBeNull();
-    expect(parseClientMsg({ t: "append", campaignId: "c1", entry })).toBeNull(); // missing actor
-    expect(parseClientMsg({ t: "append", campaignId: "c1", entry, actor: { kind: "nope" } })).toBeNull();
-    expect(parseClientMsg({ t: "append", campaignId: "c1", entry, actor: { kind: "character" } })).toBeNull(); // missing actorId
+  it("round-trips a submit message", () => {
+    const msg = { t: "submit", campaignId: "c", command: { kind: "nextPlayer" } };
+    expect(parseClientMsg(msg)).toEqual(msg);
+  });
+
+  it("rejects a submit without a command", () => {
+    expect(parseClientMsg({ t: "submit", campaignId: "c" })).toBeNull();
   });
 
   it("accepts the GM control messages; rejects malformed ones", () => {
@@ -33,17 +30,23 @@ describe("parseClientMsg", () => {
     expect(parseClientMsg({ t: "join", campaignId: "c1" })).toBeNull(); // missing fields
     expect(parseClientMsg(null)).toBeNull();
     expect(parseClientMsg("join")).toBeNull();
-    expect(parseClientMsg({ t: "append", campaignId: "c1", entry: { seq: 1 }, actor: { kind: "gm" } })).toBeNull(); // bad entry
   });
 });
 
 describe("parseServerMsg", () => {
-  it("accepts joined / appendOk / appendConflict / snapshot(null) / error", () => {
+  it("accepts joined / snapshot(null) / error", () => {
     expect(parseServerMsg({ t: "joined", head: 3 })).toEqual({ t: "joined", head: 3 });
-    expect(parseServerMsg({ t: "appendOk", seq: 4 })).toEqual({ t: "appendOk", seq: 4 });
-    expect(parseServerMsg({ t: "appendConflict", head: 7 })).toEqual({ t: "appendConflict", head: 7 });
     expect(parseServerMsg({ t: "snapshot", seq: 0, snapshot: null })).toEqual({ t: "snapshot", seq: 0, snapshot: null });
     expect(parseServerMsg({ t: "error", message: "bad" })).toEqual({ t: "error", message: "bad" });
+  });
+
+  it("round-trips a committed message", () => {
+    const msg = { t: "committed", seq: 3, delta: { changed: [], created: [], removed: [] } };
+    expect(parseServerMsg(msg)).toEqual(msg);
+  });
+
+  it("rejects a committed without a delta", () => {
+    expect(parseServerMsg({ t: "committed", seq: 3 })).toBeNull();
   });
 
   it("accepts denied; rejects malformed denied", () => {

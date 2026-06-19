@@ -92,9 +92,15 @@ importers:
 
   packages/server:
     dependencies:
+      '@wickedways/seed':
+        specifier: workspace:*
+        version: link:../seed
       '@wickedways/transport-shared':
         specifier: workspace:*
         version: link:../transport-shared
+      wickedways:
+        specifier: workspace:*
+        version: link:../..
       ws:
         specifier: ^8.18.0
         version: 8.21.0
