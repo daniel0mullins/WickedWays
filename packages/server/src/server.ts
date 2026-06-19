@@ -6,6 +6,7 @@ import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
 import { Table, type Subscriber } from "./table.js";
 import { Membership } from "./membership.js";
+import type { CampaignStore } from "./store.js";
 
 /** A running room server. */
 export interface ServerHandle {
@@ -26,6 +27,8 @@ export interface ServerOptions {
   genesisFor: (campaignId: string) => CampaignSnapshot | null;
   /** Optional rng for every campaign's Authority (defaults to Math.random). */
   rng?: () => number;
+  /** Optional durable store; when omitted the server is ephemeral (today's behavior). */
+  store?: CampaignStore;
 }
 
 /** Derives the seat an append acts as, read straight from the command (no client-supplied envelope). */
@@ -47,24 +50,48 @@ function actorOf(command: Command): Actor {
  * (`submit`) require an authenticated connection.
  */
 export function createServer(opts: ServerOptions): Promise<ServerHandle> {
-  const tables = new Map<string, Table>();
-  const tableFor = (id: string): Table | null => {
-    let t = tables.get(id);
-    if (t === undefined) {
-      const genesis = opts.genesisFor(id);
-      if (genesis === null) return null;
-      const authority = new Authority(genesis, { registry: opts.registry, rng: opts.rng });
-      t = new Table(authority);
-      tables.set(id, t);
-    }
-    return t;
-  };
-
   const memberships = new Map<string, Membership>();
   const membershipFor = (id: string): Membership => {
     let m = memberships.get(id);
     if (m === undefined) { m = new Membership(opts.gmIdentityFor(id)); memberships.set(id, m); }
     return m;
+  };
+
+  const tables = new Map<string, Table>();
+
+  // With a store, snapshot-on-every-commit so `currentSnapshot()` is always fresh for `save`.
+  // Without a store, use the Authority default (20) so snapshot seq ≠ head seq,
+  // letting late-joining clients receive entries (not just a snapshot) from `join` backfill.
+  const snapshotEvery = opts.store !== undefined ? 1 : undefined;
+
+  const buildAuthority = (_id: string, seq: number, genesis: CampaignSnapshot): Authority =>
+    new Authority(genesis, { registry: opts.registry, rng: opts.rng, snapshotEvery, startSeq: seq });
+
+  const tableFor = (id: string): Table | null => {
+    let t = tables.get(id);
+    if (t === undefined) {
+      const genesis = opts.genesisFor(id);
+      if (genesis === null) return null;
+      const authority = buildAuthority(id, 0, genesis); // Task 6 resumes from a persisted seq
+      memberships.set(id, new Membership(opts.gmIdentityFor(id)));
+      t = new Table(authority);
+      const store = opts.store;
+      if (store !== undefined) {
+        t.setDurability({
+          persist: () =>
+            store.save(id, { seq: t!.head(), snapshot: t!.currentSnapshot(), membership: membershipFor(id).toState() }),
+          reload: async () => {
+            const rec = await store.load(id);
+            const fresh = rec?.snapshot ?? opts.genesisFor(id);
+            if (fresh === null) return; // nothing to restore to
+            t!.replaceAuthority(buildAuthority(id, rec?.seq ?? 0, fresh));
+            memberships.set(id, rec ? Membership.fromState(rec.membership) : new Membership(opts.gmIdentityFor(id)));
+          },
+        });
+      }
+      tables.set(id, t);
+    }
+    return t;
   };
 
   const online = new Map<string, Map<Identity, number>>();
@@ -98,7 +125,8 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
     const joined = new Set<string>();
     let identity: Identity | null = null;
 
-    ws.on("message", (data: { toString(): string }) => {
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    ws.on("message", async (data: { toString(): string }) => {
       let raw: unknown;
       try {
         raw = JSON.parse(data.toString());
@@ -135,11 +163,13 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           const command = msg.command as Command;
           const actor = actorOf(command);
           if (!m.mayAct(identity, actor)) { send({ t: "denied", reason: "not authorized for this seat" }); break; }
-          const result = t.submit(command, send);
-          if (actor.kind === "join" && result.committed) {
-            m.claim(actor.characterId, identity); // self-service seat claim, on commit
-            broadcastPresence(msg.campaignId);
-          }
+          const claimerId = identity;
+          // For a join, claim the seat as `onCommit` so it is written in the SAME
+          // atomic persist as the commit (closes the orphaned-character window).
+          const onCommit =
+            actor.kind === "join" ? () => m.claim(actor.characterId, claimerId) : undefined;
+          const result = await t.submit(command, send, onCommit);
+          if (actor.kind === "join" && result.committed) broadcastPresence(msg.campaignId);
           break;
         }
         case "assignSeat":
@@ -151,6 +181,11 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           if (msg.t === "assignSeat") m.assign(msg.characterId, msg.identity);
           else if (msg.t === "unassignSeat") m.unassign(msg.characterId);
           else m.transferGM(msg.identity);
+          const t = tables.get(msg.campaignId);
+          if (t !== undefined) {
+            try { await t.persist(); }
+            catch { await t.reload(); send({ t: "denied", reason: "could not persist; retry" }); break; }
+          }
           broadcastPresence(msg.campaignId);
           break;
         }

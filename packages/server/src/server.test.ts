@@ -4,6 +4,7 @@ import { parseServerMsg, type ServerMsg } from "@wickedways/transport-shared";
 import { buildSeedCampaign, buildSeedRegistry } from "@wickedways/seed";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { createServer, type ServerHandle } from "./server.js";
+import { SqliteStore } from "./sqlite-store.js";
 
 let handle: ServerHandle | null = null;
 afterEach(async () => {
@@ -335,5 +336,27 @@ describe("createServer", () => {
     ng.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
     expect(await newOk).toMatchObject([{ t: "committed", seq: 1 }]);
     g.close(); ng.close();
+  });
+
+  it("persists a campaign record on commit (flush-before-ack)", async () => {
+    const { genesis } = seedFixture(); // existing fixture; gm token "gm" owns no seat
+    const store = new SqliteStore(":memory:");
+    handle = await createServer({
+      port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm",
+      registry: buildSeedRegistry(), genesisFor: (id) => (id === "demo" ? genesis : null), store,
+    });
+    // GM connects and advances the campaign (nextPlayer is a GM command).
+    const g = await open(handle.port);
+    g.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
+    await collect(g, 2); // joined + presence
+    const committed = collect(g, 1);
+    g.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
+    await committed; // wait for the committed ack (persist happened before this)
+    g.close();
+
+    const rec = await store.load("demo");
+    expect(rec?.seq).toBe(1);
+    expect(rec?.membership.gmIdentity).toBe("gm");
+    store.close();
   });
 });
