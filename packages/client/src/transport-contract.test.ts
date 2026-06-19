@@ -39,11 +39,11 @@ function webSocketBackend(): Backend {
   const transports: WebSocketTransport[] = [];
   return {
     async connect() {
-      handle ??= await createServer({ port: 0 });
+      handle ??= await createServer({ port: 0, verifyToken: (t) => t || null });
       const t = await WebSocketTransport.connect({
         url: `ws://127.0.0.1:${handle.port}`,
         campaignId: "contract",
-        clientId: `c${transports.length}`,
+        token: `c${transports.length}`,
         factory: nodeFactory,
       });
       transports.push(t);

@@ -30,7 +30,7 @@ async function connect(clientId: string): Promise<WebSocketTransport> {
   const t = await WebSocketTransport.connect({
     url: `ws://127.0.0.1:${handle!.port}`,
     campaignId: "demo",
-    clientId,
+    token: clientId,
     factory,
   });
   transports.push(t);
@@ -53,7 +53,7 @@ const stateJSON = (c: SyncCoordinator): string => JSON.stringify(serializeCampai
 
 describe("two-client convergence", () => {
   it("converges A and B after each command in a representative mix", async () => {
-    handle = await createServer({ port: 0 });
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null });
 
     const tA = await connect("a");
     const coordA = new SyncCoordinator({ ...buildSeedCampaign(), transport: tA });
@@ -88,7 +88,7 @@ describe("two-client convergence", () => {
 
 describe("reconnect", () => {
   it("backfills and converges after B's socket drops", async () => {
-    handle = await createServer({ port: 0 });
+    handle = await createServer({ port: 0, verifyToken: (t) => t || null });
 
     const tA = await connect("a");
     const coordA = new SyncCoordinator({ ...buildSeedCampaign(), transport: tA });

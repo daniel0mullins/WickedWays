@@ -29,8 +29,8 @@ export type Actor =
 
 /** Messages a client sends to the room server. */
 export type ClientMsg =
-  | { t: "join"; campaignId: string; clientId: string; fromSeq: number }
-  | { t: "append"; campaignId: string; entry: WireLogEntry }
+  | { t: "join"; campaignId: string; token: string; fromSeq: number }
+  | { t: "append"; campaignId: string; entry: WireLogEntry; actor: Actor }
   | { t: "getSnapshot"; campaignId: string }
   | { t: "putSnapshot"; campaignId: string; seq: number; snapshot: unknown };
 
@@ -41,6 +41,7 @@ export type ServerMsg =
   | { t: "appendOk"; seq: number }
   | { t: "appendConflict"; head: number }
   | { t: "snapshot"; seq: number; snapshot: unknown }
+  | { t: "denied"; reason: string }
   | { t: "error"; message: string };
 
 function isObj(x: unknown): x is Record<string, unknown> {
@@ -51,17 +52,25 @@ function isWireLogEntry(x: unknown): x is WireLogEntry {
   return isObj(x) && typeof x.seq === "number" && typeof x.baseSeq === "number" && "command" in x && "delta" in x;
 }
 
+function isActor(x: unknown): x is Actor {
+  if (!isObj(x)) return false;
+  if (x.kind === "character") return typeof x.actorId === "string";
+  if (x.kind === "gm") return true;
+  if (x.kind === "join") return typeof x.characterId === "string";
+  return false;
+}
+
 /** Validates an inbound client message; returns it narrowed, or `null` if malformed. */
 export function parseClientMsg(raw: unknown): ClientMsg | null {
   if (!isObj(raw) || typeof raw.t !== "string") return null;
   switch (raw.t) {
     case "join":
-      return typeof raw.campaignId === "string" && typeof raw.clientId === "string" && typeof raw.fromSeq === "number"
-        ? { t: "join", campaignId: raw.campaignId, clientId: raw.clientId, fromSeq: raw.fromSeq }
+      return typeof raw.campaignId === "string" && typeof raw.token === "string" && typeof raw.fromSeq === "number"
+        ? { t: "join", campaignId: raw.campaignId, token: raw.token, fromSeq: raw.fromSeq }
         : null;
     case "append":
-      return typeof raw.campaignId === "string" && isWireLogEntry(raw.entry)
-        ? { t: "append", campaignId: raw.campaignId, entry: raw.entry }
+      return typeof raw.campaignId === "string" && isWireLogEntry(raw.entry) && isActor(raw.actor)
+        ? { t: "append", campaignId: raw.campaignId, entry: raw.entry, actor: raw.actor }
         : null;
     case "getSnapshot":
       return typeof raw.campaignId === "string" ? { t: "getSnapshot", campaignId: raw.campaignId } : null;
@@ -90,6 +99,8 @@ export function parseServerMsg(raw: unknown): ServerMsg | null {
       return typeof raw.seq === "number" && "snapshot" in raw
         ? { t: "snapshot", seq: raw.seq, snapshot: raw.snapshot }
         : null;
+    case "denied":
+      return typeof raw.reason === "string" ? { t: "denied", reason: raw.reason } : null;
     case "error":
       return typeof raw.message === "string" ? { t: "error", message: raw.message } : null;
     default:

@@ -17,7 +17,7 @@ function byId(id: string): HTMLElement {
 }
 
 async function main(): Promise<void> {
-  const transport = await WebSocketTransport.connect({ url, campaignId, clientId });
+  const transport = await WebSocketTransport.connect({ url, campaignId, token: clientId });
   const coordinator =
     transport.loadSnapshot() === null
       ? new SyncCoordinator({ ...buildSeedCampaign(), transport })
