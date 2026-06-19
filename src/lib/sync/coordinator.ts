@@ -105,7 +105,7 @@ export class SyncCoordinator {
    * Always read {@link SyncCoordinator.campaign} after a call — a rejection or
    * conflict may have swapped in a new `Campaign` instance.
    */
-  submit(command: Command): CommandResult {
+  async submit(command: Command): Promise<CommandResult> {
     const auth = this.#resolver.authorize(this.#local, command);
     if (!auth.ok) return { ok: false, rejected: true, reason: auth.reason };
 
@@ -129,7 +129,7 @@ export class SyncCoordinator {
     // `entry.seq <= #lastApplied` and genuinely skips our own entry — no reliance
     // on DeltaApplier idempotency. resolver.apply already advanced #local.
     this.#lastApplied = seq;
-    const res = this.#transport.append({ seq, baseSeq, command, delta });
+    const res = await this.#transport.append({ seq, baseSeq, command, delta });
     if (!res.ok) {
       // Roll #lastApplied back to baseSeq so #syncTo replays EVERY missed entry
       // from baseSeq+1..res.head — including the conflicting foreign entry — onto

@@ -1,0 +1,41 @@
+import { describe, it, expect } from "vitest";
+import { parseClientMsg, parseServerMsg } from "./index.js";
+
+describe("parseClientMsg", () => {
+  it("accepts a well-formed join", () => {
+    expect(parseClientMsg({ t: "join", campaignId: "c1", clientId: "a", fromSeq: 0 })).toEqual({
+      t: "join", campaignId: "c1", clientId: "a", fromSeq: 0,
+    });
+  });
+
+  it("accepts an append with an opaque entry", () => {
+    const entry = { seq: 1, baseSeq: 0, command: { kind: "x" }, delta: { changed: [] } };
+    expect(parseClientMsg({ t: "append", campaignId: "c1", entry })).toEqual({
+      t: "append", campaignId: "c1", entry,
+    });
+  });
+
+  it("rejects unknown discriminants and malformed shapes", () => {
+    expect(parseClientMsg({ t: "nope" })).toBeNull();
+    expect(parseClientMsg({ t: "join", campaignId: "c1" })).toBeNull(); // missing fields
+    expect(parseClientMsg(null)).toBeNull();
+    expect(parseClientMsg("join")).toBeNull();
+    expect(parseClientMsg({ t: "append", campaignId: "c1", entry: { seq: 1 } })).toBeNull(); // bad entry
+  });
+});
+
+describe("parseServerMsg", () => {
+  it("accepts joined / appendOk / appendConflict / snapshot(null) / error", () => {
+    expect(parseServerMsg({ t: "joined", head: 3 })).toEqual({ t: "joined", head: 3 });
+    expect(parseServerMsg({ t: "appendOk", seq: 4 })).toEqual({ t: "appendOk", seq: 4 });
+    expect(parseServerMsg({ t: "appendConflict", head: 7 })).toEqual({ t: "appendConflict", head: 7 });
+    expect(parseServerMsg({ t: "snapshot", seq: 0, snapshot: null })).toEqual({ t: "snapshot", seq: 0, snapshot: null });
+    expect(parseServerMsg({ t: "error", message: "bad" })).toEqual({ t: "error", message: "bad" });
+  });
+
+  it("rejects malformed server messages", () => {
+    expect(parseServerMsg({ t: "joined" })).toBeNull();
+    expect(parseServerMsg({ t: "snapshot", seq: 1 })).toBeNull(); // missing snapshot key
+    expect(parseServerMsg(42)).toBeNull();
+  });
+});

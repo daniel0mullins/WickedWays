@@ -17,8 +17,8 @@ rendered) plus an API reference generated from the source TSDoc. The site is
 built with VitePress + TypeDoc and lives in `docs-site/`. Work on it locally with:
 
 ```bash
-npm run docs:dev       # serve the site with hot reload
-npm run docs:build     # production build into docs-site/.vitepress/dist
+pnpm docs:dev       # serve the site with hot reload
+pnpm docs:build     # production build into docs-site/.vitepress/dist
 ```
 
 It deploys automatically on every push to `main` via `.github/workflows/docs.yml`.
@@ -558,14 +558,51 @@ replica.start();
 - **Linting:** ESLint flat config with type-aware `typescript-eslint`.
 - **Dependencies:** `uuid` for id generation; `type-fest` for utility types.
 
-### npm scripts
+### pnpm scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm test` | Run the test suite once (`vitest run`) |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run test:coverage` | Run tests with coverage over `src/**` |
-| `npm run typecheck` | `tsc --noEmit` |
-| `npm run lint` / `npm run lint:fix` | Lint (and autofix) |
-| `npm run checks` | Lint + typecheck + test, in sequence |
-| `npm run build` | Compile to `dist/` via `tsconfig.build.json` |
+| `pnpm test` | Run the test suite once (`vitest run`) |
+| `pnpm test:watch` | Run tests in watch mode |
+| `pnpm test:coverage` | Run tests with coverage over `src/**` |
+| `pnpm typecheck` | `tsc --noEmit` |
+| `pnpm lint` / `pnpm lint:fix` | Lint (and autofix) |
+| `pnpm checks` | Lint + typecheck + test, in sequence |
+| `pnpm build` | Compile to `dist/` via `tsconfig.build.json` |
+
+## Multiplayer client (comms sub-spec 3a)
+
+The repo is a pnpm workspace. The pure engine lives at the root (`src/`); three
+packages under `packages/` add real-time multiplayer:
+
+- **`@wickedways/transport-shared`** — the engine-free WebSocket wire protocol
+  (message types + validators). `command`/`delta`/`snapshot` payloads are opaque.
+- **`@wickedways/server`** — a self-hosted WebSocket room server. Each campaign is
+  a `Table` (the server-side coordinator: an ordered compare-and-swap log + the
+  latest snapshot + connected participants + broadcast). The server orders and
+  relays; it never runs game logic.
+- **`@wickedways/client`** — a `WebSocketTransport` implementing the engine's
+  `SyncTransport` over the server, plus a minimal dev harness.
+
+A client resolves commands locally via `SyncCoordinator` (from the engine's sync
+layer) and appends `{command, delta}` to its `Table` under compare-and-swap;
+replicas apply the broadcast deltas. This is the **client-resolves** topology —
+the server is a dumb relay, built so the authoritative-server promotion (moving
+the resolver into `Table`) is a later, contained change.
+
+### Running it
+
+```bash
+pnpm install
+pnpm --filter @wickedways/server start      # ws://127.0.0.1:8787
+pnpm --filter @wickedways/client dev        # http://localhost:5173
+```
+
+Open `http://localhost:5173/?c=demo` in two tabs. Act in one (e.g. **nextPlayer**);
+both converge on identical state over the wire.
+
+### Not yet included (later sub-specs)
+
+Seat-ownership / network auth & presence (3b), text chat (3c), and A/V over WebRTC
+(3d) all build on this backend. 3a is the transport-agnostic foundation: it does no
+seat validation (trusted peers) and keeps no durable state across a server restart.
