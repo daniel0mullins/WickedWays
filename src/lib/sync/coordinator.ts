@@ -1,64 +1,50 @@
 import { Campaign } from "../campaign";
 import { ProceduralViolation } from "../util";
-import { serializeCampaign, serializeCampaignWithIndex } from "../serialization/serializer";
 import { deserializeCampaign } from "../serialization/deserializer";
-import { EntityIndex } from "./entity-index";
-import { Resolver } from "./resolver";
-import { DeltaComputer } from "./delta-computer";
 import { DeltaApplier } from "./delta-applier";
 import type { SyncTransport } from "./transport";
 import type { CampaignRegistry } from "../serialization/registry";
-import type { CampaignSnapshot } from "../serialization/types";
 import type { Command, CommandResult, LogEntry } from "./types";
 
 /**
- * The client-resolves seam: resolves commands locally, appends `{command, delta}`
- * to the shared ordered transport under compare-and-swap, and applies inbound
- * remote deltas to the local replica. The only unit that changes for the future
- * authoritative-server topology.
+ * A replica of a campaign synchronized against an authoritative transport. Submits
+ * commands to the authority (in-process or the room server) and applies the
+ * authoritative deltas it broadcasts back. The coordinator never resolves commands
+ * itself and never optimistically mutates — state changes only when an authoritative
+ * delta arrives, so there is no rollback and no CAS conflict.
  *
- * **Swappable campaign reference.** This coordinator OWNS the local campaign and
- * may replace the underlying instance on a rejection or CAS conflict (it rebuilds
- * from the pre-mutation snapshot via {@link deserializeCampaign}). Consumers must
- * always read current state through {@link SyncCoordinator.campaign} and must
- * never cache the reference across a {@link SyncCoordinator.submit} call.
+ * **Swappable campaign reference.** The coordinator owns the local replica; read
+ * current state through {@link SyncCoordinator.campaign} and never cache the
+ * reference across a {@link SyncCoordinator.submit} call.
  */
 export class SyncCoordinator {
   #local: Campaign;
   readonly #registry: CampaignRegistry;
   readonly #transport: SyncTransport;
   readonly #rng: () => number;
-  readonly #snapshotEvery: number;
-  readonly #resolver = new Resolver();
-  readonly #deltaComputer = new DeltaComputer();
   readonly #applier = new DeltaApplier();
   #lastApplied: number;
   #unsubscribe: (() => void) | null = null;
 
-  constructor(opts: {
+  private constructor(opts: {
     campaign: Campaign;
     registry: CampaignRegistry;
     transport: SyncTransport;
-    rng?: () => number;
-    snapshotEvery?: number;
+    rng: () => number;
+    lastApplied: number;
   }) {
     this.#local = opts.campaign;
     this.#registry = opts.registry;
     this.#transport = opts.transport;
-    this.#rng = opts.rng ?? Math.random;
-    this.#snapshotEvery = opts.snapshotEvery ?? 20;
-    this.#lastApplied = this.#transport.head();
-    if (this.#transport.loadSnapshot() === null) {
-      this.#transport.putSnapshot(this.#lastApplied, serializeCampaign(this.#local));
-    }
+    this.#rng = opts.rng;
+    this.#lastApplied = opts.lastApplied;
   }
 
-  /** Joins an existing session from the transport's latest snapshot + deltas-since. */
+  /** Builds a replica from the transport's latest snapshot + deltas-since. */
   static join(opts: {
     registry: CampaignRegistry;
     transport: SyncTransport;
     rng?: () => number;
-    snapshotEvery?: number;
   }): SyncCoordinator {
     const snap = opts.transport.loadSnapshot();
     if (snap === null) {
@@ -66,92 +52,56 @@ export class SyncCoordinator {
     }
     const rng = opts.rng ?? Math.random;
     const campaign = deserializeCampaign(snap.snapshot, { registry: opts.registry, rng });
-    const coordinator = new SyncCoordinator({ ...opts, campaign });
-    coordinator.#lastApplied = snap.seq;
+    const coordinator = new SyncCoordinator({
+      campaign,
+      registry: opts.registry,
+      transport: opts.transport,
+      rng,
+      lastApplied: snap.seq,
+    });
     coordinator.#syncTo(opts.transport.head());
     return coordinator;
   }
 
-  /**
-   * The currently-owned local campaign. May be a NEW instance after a rejected or
-   * conflicting {@link SyncCoordinator.submit}; never cache it across a submit.
-   */
+  /** The currently-owned local replica. Never cache it across a {@link SyncCoordinator.submit}. */
   get campaign(): Campaign {
     return this.#local;
   }
 
-  /** Begins applying inbound remote entries. */
+  /** Begins applying inbound authoritative entries. */
   start(): void {
     this.#unsubscribe = this.#transport.subscribe(this.#lastApplied + 1, (entry) => this.#onRemote(entry));
   }
 
-  /** Stops applying inbound remote entries (inverse of {@link SyncCoordinator.start}). */
+  /** Stops applying inbound entries (inverse of {@link SyncCoordinator.start}). */
   stop(): void {
     this.#unsubscribe?.();
     this.#unsubscribe = null;
   }
 
   /**
-   * Submits a command against the local campaign and, on success, appends it to
-   * the transport under compare-and-swap.
+   * Submits a command to the authority. On success the authoritative delta has
+   * already been applied to the local replica (via the subscription) by the time
+   * this resolves.
    *
-   * - `{ ok: true, seq, delta }` — accepted; `delta` reflects all changes.
-   * - `{ ok: false, rejected: true, reason }` — illegal command (auth gate or engine
-   *   constraint); the local campaign is atomically restored to its pre-call state.
-   * - `{ ok: false, conflict: true, reason }` — CAS conflict (stale base); the
-   *   campaign is rebuilt from `before` and fast-forwarded to the current head.
-   *   The caller should retry.
-   *
-   * Always read {@link SyncCoordinator.campaign} after a call — a rejection or
-   * conflict may have swapped in a new `Campaign` instance.
+   * - `{ ok: true, seq, delta }` — committed.
+   * - `{ ok: false, rejected: true, reason }` — the authority denied the command
+   *   (auth gate, engine constraint, or a lost connection); the local replica is
+   *   untouched and reconverges from the authority's broadcast.
    */
   async submit(command: Command): Promise<CommandResult> {
-    const auth = this.#resolver.authorize(this.#local, command);
-    if (!auth.ok) return { ok: false, rejected: true, reason: auth.reason };
-
-    const { snapshot: before, index: rawIndex } = serializeCampaignWithIndex(this.#local);
-    try {
-      this.#resolver.apply(this.#local, command, new EntityIndex(rawIndex));
-    } catch (e) {
-      if (e instanceof ProceduralViolation) {
-        this.#restore(before);
-        return { ok: false, rejected: true, reason: e.message };
-      }
-      throw e;
+    const res = await this.#transport.submit(command);
+    if (!res.ok) return { ok: false, rejected: true, reason: res.reason };
+    if (this.#lastApplied < res.seq) {
+      // Defensive: if the subscription has not yet delivered our entry (e.g. the
+      // coordinator was never started), fast-forward now so callers see the commit.
+      this.#syncTo(this.#transport.head());
     }
-
-    const after = serializeCampaign(this.#local);
-    const delta = this.#deltaComputer.diff(before, after);
-    const baseSeq = this.#transport.head();
-    const seq = baseSeq + 1;
-    // Advance #lastApplied BEFORE append so the synchronous self-notification
-    // (InProcessTransport.append notifies subscribers inline) sees
-    // `entry.seq <= #lastApplied` and genuinely skips our own entry — no reliance
-    // on DeltaApplier idempotency. resolver.apply already advanced #local.
-    this.#lastApplied = seq;
-    const res = await this.#transport.append({ seq, baseSeq, command, delta });
-    if (!res.ok) {
-      this.#lastApplied = baseSeq;
-      this.#restore(before);
-      if ("denied" in res) {
-        // Authorization denial: the server rejected the commit. Roll local back to
-        // pre-call state; do NOT re-sync (nothing new committed) and do NOT retry.
-        return { ok: false, rejected: true, reason: res.reason };
-      }
-      // Roll #lastApplied back to baseSeq so #syncTo replays EVERY missed entry
-      // from baseSeq+1..res.head — including the conflicting foreign entry — onto
-      // the rebuilt-from-`before` campaign.
-      this.#syncTo(res.head);
-      return { ok: false, conflict: true, reason: `Stale base ${baseSeq}; head is ${res.head}. Retry.` };
-    }
-    if (seq % this.#snapshotEvery === 0) {
-      this.#transport.putSnapshot(seq, after);
-    }
-    return { ok: true, seq, delta };
+    return { ok: true, seq: res.seq, delta: res.delta };
   }
 
   #onRemote(entry: LogEntry): void {
-    if (entry.seq <= this.#lastApplied) return; // already incorporated (incl. our own)
+    if (entry.seq <= this.#lastApplied) return; // already incorporated
     if (entry.seq !== this.#lastApplied + 1) {
       this.#syncTo(this.#transport.head()); // heal a gap
       return;
@@ -167,9 +117,5 @@ export class SyncCoordinator {
       this.#applier.apply(this.#local, entry.delta, { registry: this.#registry, rng: this.#rng });
       this.#lastApplied = entry.seq;
     }
-  }
-
-  #restore(before: CampaignSnapshot): void {
-    this.#local = deserializeCampaign(before, { registry: this.#registry, rng: this.#rng });
   }
 }

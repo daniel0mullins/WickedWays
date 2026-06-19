@@ -20,6 +20,15 @@ import type { ArchetypeId } from "./lib/archetype";
 import { Status } from "./lib/status";
 import type { PresentationCue } from "./lib/presentation";
 
+// Sync imports
+import { Authority } from "./lib/sync/authority";
+import { InProcessTransport } from "./lib/sync/transport";
+import { SyncCoordinator } from "./lib/sync/coordinator";
+import { serializeCampaign } from "./lib/serialization/serializer";
+import { buildStartedCampaign, makeStats as makeStatsFixture } from "./lib/serialization/roundtrip.test-helpers";
+import { SERIALIZE } from "./lib/serialization/symbols";
+import { Directions } from "./lib/room";
+
 // A real weapon Item with inert actions/events, usable in inventories and boxes.
 function makeWeapon(modifier = 3): Item {
   return new Item(
@@ -67,6 +76,16 @@ function makeLight(name = "Candle"): Item {
     },
     { onPickUp: () => {} },
   );
+}
+
+/** Standard Authority-backed wiring for sync tests. */
+function wire() {
+  const { campaign, registry } = buildStartedCampaign();
+  const authority = new Authority(serializeCampaign(campaign), { registry, rng: () => 0.5 });
+  const transport = new InProcessTransport(authority);
+  const coordinator = SyncCoordinator.join({ registry, transport, rng: () => 0.5 });
+  coordinator.start();
+  return { registry, transport, coordinator };
 }
 
 describe("Campaign integration", () => {
@@ -458,5 +477,113 @@ describe("Codex integration", () => {
       expect(entry.firstSeen.characterId).toBe(hero.id);
     }
     expect(codex.size).toBe(6);
+  });
+});
+
+describe("SyncCoordinator two-client convergence", () => {
+  it("replica B converges to A after a removed-entity delta (consumeKey)", async () => {
+    // Exercises the `delta.removed` path end-to-end: consumeKey detaches the key
+    // from the character's keyring so it disappears from the serialized graph,
+    // which the DeltaComputer classifies as `removed`. The applier's removed loop
+    // keeps the transient index tidy, while removal from B's state is effected by
+    // re-hydrating the character's changed snapshot (keyring no longer contains the
+    // key). This test asserts the removed path is non-empty AND that B converges.
+    const { campaign, registry } = buildStartedCampaign();
+    const authority = new Authority(serializeCampaign(campaign), { registry, rng: () => 0.5 });
+    const transport = new InProcessTransport(authority);
+    const A = SyncCoordinator.join({ registry, transport, rng: () => 0.5 });
+    const B = SyncCoordinator.join({ registry, transport, rng: () => { throw new Error("replica must not roll"); } });
+    A.start(); B.start();
+
+    // Give the active character a key directly (bypasses action budget).
+    // We access A's campaign to mutate it directly before submitting through authority.
+    // The key must be known to A's campaign replica for the consumeKey command to work.
+    // Use authority's campaign via the transport: submit a join with the key embedded is not
+    // how this works. Instead, we add the key directly to the active character on A's replica,
+    // then submit the consumeKey command via A.
+    const active = A.campaign.activeCharacter as PlayerCharacter;
+    const key = createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: true });
+    active.receiveItem(key);
+
+    // The authority doesn't know about the key yet — the command will be applied on
+    // the authority's own campaign state, which doesn't have the key.
+    // We need a different approach: snapshot the campaign WITH the key and rebuild the authority.
+    // Instead: serialize A's campaign (with the key), rebuild the authority, re-join.
+    const authority2 = new Authority(serializeCampaign(A.campaign), { registry, rng: () => 0.5 });
+    const transport2 = new InProcessTransport(authority2);
+    const A2 = SyncCoordinator.join({ registry, transport: transport2, rng: () => 0.5 });
+    const B2 = SyncCoordinator.join({ registry, transport: transport2, rng: () => { throw new Error("replica must not roll"); } });
+    A2.start(); B2.start();
+
+    const active2 = A2.campaign.activeCharacter as PlayerCharacter;
+    // Find the key in A2's campaign keyring (it was serialized in; keys go on keyring, not items)
+    const key2 = [...active2.inventory.keys].find((i) => i.name === "Vault Key")!;
+    expect(key2).toBeDefined();
+
+    const res = await A2.submit({ kind: "consumeKey", actorId: active2.id, itemId: key2.id });
+    if (!res.ok) throw new Error("consumeKey was rejected: " + JSON.stringify(res));
+    // Verify the removed path was genuinely exercised (not a no-op).
+    expect(res.delta.removed).toContain(key2.id);
+    // Both clients must converge.
+    expect(serializeCampaign(B2.campaign)).toEqual(serializeCampaign(A2.campaign));
+  });
+
+  it("replica B converges to A after each command", async () => {
+    const { campaign, registry } = buildStartedCampaign();
+    const authority = new Authority(serializeCampaign(campaign), { registry, rng: () => 0.5 });
+    const transport = new InProcessTransport(authority);
+    const A = SyncCoordinator.join({ registry, transport, rng: () => 0.5 });
+    const B = SyncCoordinator.join({ registry, transport, rng: () => { throw new Error("replica must not roll"); } });
+    A.start(); B.start();
+
+    const active = A.campaign.activeCharacter;
+    const dest = active.currentRoom!.exits.get(Directions.North)!;
+    const res = await A.submit({ kind: "move", actorId: active.id, roomId: dest.id });
+    expect(res.ok).toBe(true);
+
+    expect(serializeCampaign(B.campaign)).toEqual(serializeCampaign(A.campaign));
+  });
+
+  it("a rejected command leaves the replica's campaign unchanged", async () => {
+    const { coordinator } = wire();
+    const before = serializeCampaign(coordinator.campaign);
+    const notActive = coordinator.campaign.party.find((p) => p.id !== coordinator.campaign.activeCharacter.id)!;
+    const res = await coordinator.submit({ kind: "move", actorId: notActive.id, roomId: "r" as never });
+    expect(res.ok).toBe(false);
+    expect(serializeCampaign(coordinator.campaign)).toEqual(before);
+  });
+});
+
+describe("SyncCoordinator join + late-join", () => {
+  it("a newly joined player propagates to a replica via the created-delta", async () => {
+    const { campaign, registry } = buildStartedCampaign();
+    const authority = new Authority(serializeCampaign(campaign), { registry, rng: () => 0.5 });
+    const transport = new InProcessTransport(authority);
+    const A = SyncCoordinator.join({ registry, transport, rng: () => 0.5 });
+    const B = SyncCoordinator.join({ registry, transport, rng: () => { throw new Error("replica must not roll"); } });
+    A.start(); B.start();
+
+    // Build a throwaway bare player off A's campaign, snapshot it, submit the join.
+    const newcomer = new PlayerCharacter(A.campaign, "Newcomer", makeStatsFixture());
+    const res = await A.submit({ kind: "joinCampaign", character: newcomer[SERIALIZE]() });
+    expect(res.ok).toBe(true);
+
+    expect(B.campaign.party.some((p) => p.id === newcomer.id)).toBe(true);
+    expect(serializeCampaign(B.campaign)).toEqual(serializeCampaign(A.campaign));
+  });
+
+  it("late-join reconstructs from a checkpoint and replays deltas-since", async () => {
+    const { campaign, registry } = buildStartedCampaign();
+    // snapshotEvery: 1 so a checkpoint is written after the first commit
+    const authority = new Authority(serializeCampaign(campaign), { registry, rng: () => 0.5, snapshotEvery: 1 });
+    const transport = new InProcessTransport(authority);
+    const A = SyncCoordinator.join({ registry, transport, rng: () => 0.5 });
+    A.start();
+    const active = A.campaign.activeCharacter;
+    const dest = active.currentRoom!.exits.get(Directions.North)!;
+    await A.submit({ kind: "move", actorId: active.id, roomId: dest.id });
+
+    const C = SyncCoordinator.join({ registry, transport, rng: () => { throw new Error("no roll"); } });
+    expect(serializeCampaign(C.campaign)).toEqual(serializeCampaign(A.campaign));
   });
 });
