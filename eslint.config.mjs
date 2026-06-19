@@ -24,7 +24,7 @@ export default tseslint.config(
           // vitest.config.ts lives outside src/ so it can't be included in the
           // main tsconfig (rootDir: ./src). Allow it to be type-checked against
           // a default project so ESLint doesn't reject it outright.
-          allowDefaultProject: ["vitest.config.ts"],
+          allowDefaultProject: ["vitest.config.ts", "packages/client/vite.config.ts"],
         },
         tsconfigRootDir: import.meta.dirname,
       },
