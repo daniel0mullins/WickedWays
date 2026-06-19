@@ -569,3 +569,40 @@ replica.start();
 | `npm run lint` / `npm run lint:fix` | Lint (and autofix) |
 | `npm run checks` | Lint + typecheck + test, in sequence |
 | `npm run build` | Compile to `dist/` via `tsconfig.build.json` |
+
+## Multiplayer client (comms sub-spec 3a)
+
+The repo is a pnpm workspace. The pure engine lives at the root (`src/`); three
+packages under `packages/` add real-time multiplayer:
+
+- **`@wickedways/transport-shared`** — the engine-free WebSocket wire protocol
+  (message types + validators). `command`/`delta`/`snapshot` payloads are opaque.
+- **`@wickedways/server`** — a self-hosted WebSocket room server. Each campaign is
+  a `Table` (the server-side coordinator: an ordered compare-and-swap log + the
+  latest snapshot + connected participants + broadcast). The server orders and
+  relays; it never runs game logic.
+- **`@wickedways/client`** — a `WebSocketTransport` implementing the engine's
+  `SyncTransport` over the server, plus a minimal dev harness.
+
+A client resolves commands locally via `SyncCoordinator` (from the engine's sync
+layer) and appends `{command, delta}` to its `Table` under compare-and-swap;
+replicas apply the broadcast deltas. This is the **client-resolves** topology —
+the server is a dumb relay, built so the authoritative-server promotion (moving
+the resolver into `Table`) is a later, contained change.
+
+### Running it
+
+```bash
+pnpm install
+pnpm --filter @wickedways/server start      # ws://127.0.0.1:8787
+pnpm --filter @wickedways/client dev        # http://localhost:5173
+```
+
+Open `http://localhost:5173/?c=demo` in two tabs. Act in one (e.g. **nextPlayer**);
+both converge on identical state over the wire.
+
+### Not yet included (later sub-specs)
+
+Seat-ownership / network auth & presence (3b), text chat (3c), and A/V over WebRTC
+(3d) all build on this backend. 3a is the transport-agnostic foundation: it does no
+seat validation (trusted peers) and keeps no durable state across a server restart.
