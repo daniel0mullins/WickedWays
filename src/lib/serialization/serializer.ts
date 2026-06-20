@@ -115,7 +115,16 @@ export function serializeCampaignWithIndex(
   return { snapshot, index };
 }
 
-/** Produces a complete, JSON-serializable snapshot of an in-play campaign. See {@link serializeCampaignWithIndex} for details. */
+/**
+ * Produces a complete, JSON-serializable snapshot of an in-play campaign.
+ * See {@link serializeCampaignWithIndex} for details.
+ *
+ * @remarks When re-serializing a *deserialized/hydrated player-less* campaign,
+ *   `rootRooms` **must** be supplied — the BFS is party-rooted, so an empty
+ *   party produces an empty snapshot. For player-less templates, prefer using
+ *   the original snapshot directly (e.g. via `structuredClone`) rather than
+ *   hydrating and re-serializing.
+ */
 export function serializeCampaign(campaign: ICampaign, opts?: { rootRooms?: Iterable<IRoom> }): CampaignSnapshot {
   return serializeCampaignWithIndex(campaign, opts).snapshot;
 }

@@ -4,6 +4,7 @@ import { authorTemplate } from "./template-builder";
 import { defineRegistry } from "./registry";
 import { Directions } from "../room";
 import { StatType } from "../character/stats";
+import { ProceduralViolation } from "../util";
 
 const stats = () => ({ [StatType.Health]: 10, [StatType.Sanity]: 10, [StatType.Energy]: 10 });
 function seedBuilder() {
@@ -32,5 +33,32 @@ describe("startSession", () => {
     expect(campaign.started).toBe(true);
     expect(campaign.party.length).toBe(2);
     expect(campaign.activeCharacter.name).toBe("Ada");
+  });
+
+  it("throws ProceduralViolation (not TypeError) when no .startRoom() was authored and opts.startRoom is absent", () => {
+    const reg = defineRegistry({ items: {} });
+    // Builder without .startRoom() — description.startRoom remains undefined.
+    const builder = authorTemplate("No-Start", reg)
+      .room("dungeon", { description: "a room" });
+    expect(() =>
+      startSession(builder, {
+        players: [{ name: "Ada", stats: stats(), archetype: "delver" }],
+        gm: 0,
+      }),
+    ).toThrow(ProceduralViolation);
+  });
+
+  it("throws ProceduralViolation when opts.startRoom names a room that does not exist", () => {
+    const reg = defineRegistry({ items: {} });
+    const builder = authorTemplate("Bad-Start", reg)
+      .room("dungeon", { description: "a room" })
+      .startRoom("dungeon");
+    expect(() =>
+      startSession(builder, {
+        players: [{ name: "Ada", stats: stats(), archetype: "delver" }],
+        gm: 0,
+        startRoom: "nonexistent-room",
+      }),
+    ).toThrow(ProceduralViolation);
   });
 });
