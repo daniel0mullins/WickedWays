@@ -30,6 +30,7 @@ export class CampaignRegistry {
   #recipes = new Map<string, CraftingRecipe>();
   #formations = new Map<string, FormationBehavior>();
   #items = new Map<string, () => Item>();
+  #conditions = new Map<string, (campaign: ICampaign) => boolean>();
 
   /**
    * Registers a {@link SceneBehavior} (preconditions + script) under `key`.
@@ -61,6 +62,13 @@ export class CampaignRegistry {
   registerItem(key: string, factory: () => Item): void {
     this.#items.set(key, factory);
   }
+  /**
+   * Registers a victory/defeat predicate under `key`.
+   * Must match the condition key referenced by a campaign template / snapshot.
+   */
+  registerCondition(key: string, predicate: (campaign: ICampaign) => boolean): void {
+    this.#conditions.set(key, predicate);
+  }
 
   scene(key: string): SceneBehavior {
     return this.#require(this.#scenes.get(key), "scene", key);
@@ -73,6 +81,9 @@ export class CampaignRegistry {
   }
   item(key: string): () => Item {
     return this.#require(this.#items.get(key), "item", key);
+  }
+  condition(key: string): (campaign: ICampaign) => boolean {
+    return this.#require(this.#conditions.get(key), "condition", key);
   }
 
   #require<T>(value: T | undefined, kind: string, key: string): T {

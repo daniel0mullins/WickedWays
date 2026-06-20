@@ -2,6 +2,7 @@ import type { Stats } from "../character/stats";
 import type { Status } from "../status";
 import type { Direction } from "../room";
 import type { MaterialMap } from "../inventory";
+import type { OutcomeNarration } from "../victory";
 
 /** Defines a player-character archetype to register with the campaign. */
 export interface ArchetypeDef {
@@ -83,4 +84,12 @@ export interface CampaignTemplateDescription {
   recipes: string[];
   /** Initial materials to deposit into the campaign's shared pool. */
   materials: { source: string; map: MaterialMap }[];
+  /** Win conditions: registry condition keys + optional authored prose. */
+  winConditions: { key: string; narration?: OutcomeNarration }[];
+  /** Loss conditions: registry condition keys + optional authored prose. */
+  loseConditions: { key: string; narration?: OutcomeNarration }[];
+  /** Fallback prose for the conditionless `timed-out` outcome. */
+  timeoutNarration?: OutcomeNarration;
+  /** Fallback prose for the conditionless `ended` (manual) outcome. */
+  endedNarration?: OutcomeNarration;
 }

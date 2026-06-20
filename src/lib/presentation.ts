@@ -1,4 +1,5 @@
 import type { ActionDetail } from "./character/history";
+import type { CampaignOutcome, OutcomeNarration } from "./victory";
 
 /** Host-interpreted reference to an asset (path, URL, or key). Opaque to the engine. */
 export type AssetRef = string;
@@ -27,7 +28,8 @@ export type ActionKind = ActionDetail["kind"];
 export type PresentationCue =
   | { kind: "action"; action: ActionKind; actor: EntityRef; sound?: AssetRef }
   | { kind: "encounter"; mob: EntityRef; room: EntityRef; sound?: AssetRef }
-  | { kind: "visibility"; room: EntityRef; lit: boolean };
+  | { kind: "visibility"; room: EntityRef; lit: boolean }
+  | { kind: "resolution"; outcome: CampaignOutcome; reason?: string; narration?: OutcomeNarration };
 
 /**
  * Engine-internal seam for publishing a cue to the campaign's subscribers.

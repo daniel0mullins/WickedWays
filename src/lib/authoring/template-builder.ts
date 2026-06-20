@@ -7,7 +7,8 @@ import type { Direction } from "../room";
 import type { Stats } from "../character/stats";
 import type { MaterialMap } from "../inventory";
 import type { ArchetypeDef, CampaignTemplateDescription } from "./description";
-import type { ItemKeyOf, RecipeKeyOf } from "./registry";
+import type { ItemKeyOf, RecipeKeyOf, ConditionKeyOf } from "./registry";
+import type { OutcomeNarration } from "../victory";
 
 /**
  * A chainable, ordering-agnostic builder that accumulates a
@@ -26,7 +27,7 @@ import type { ItemKeyOf, RecipeKeyOf } from "./registry";
  *   .build();
  * ```
  */
-export class TemplateBuilder<IK extends string, RK extends string> {
+export class TemplateBuilder<IK extends string, RK extends string, CK extends string = never> {
   /** @internal for orchestration (e.g. startSession) */
   readonly description: CampaignTemplateDescription;
   /** @internal for orchestration (e.g. startSession) */
@@ -46,6 +47,10 @@ export class TemplateBuilder<IK extends string, RK extends string> {
       caches: [],
       recipes: [],
       materials: [],
+      winConditions: [],
+      loseConditions: [],
+      timeoutNarration: undefined,
+      endedNarration: undefined,
     };
   }
 
@@ -133,6 +138,30 @@ export class TemplateBuilder<IK extends string, RK extends string> {
     return this;
   }
 
+  /** Add a win condition (registry key) with optional surface-agnostic prose. */
+  winWhen(key: CK, narration?: OutcomeNarration): this {
+    this.description.winConditions.push({ key, narration });
+    return this;
+  }
+
+  /** Add a loss condition (registry key) with optional surface-agnostic prose. */
+  loseWhen(key: CK, narration?: OutcomeNarration): this {
+    this.description.loseConditions.push({ key, narration });
+    return this;
+  }
+
+  /** Set the fallback prose shown when the campaign times out at maxRounds. */
+  onTimeout(narration: OutcomeNarration): this {
+    this.description.timeoutNarration = narration;
+    return this;
+  }
+
+  /** Set the fallback prose shown when the GM manually ends the campaign. */
+  onEnd(narration: OutcomeNarration): this {
+    this.description.endedNarration = narration;
+    return this;
+  }
+
   /**
    * Validates and constructs the live, player-less, not-begun {@link Campaign}.
    * Forward references in exits/room placements are resolved here.
@@ -170,6 +199,6 @@ export function authorTemplate<R extends CampaignRegistry>(
   title: string,
   registry: R,
   opts?: { rng?: () => number; maxRounds?: number; baseEncounterChance?: number },
-): TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>> {
-  return new TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>>(title, registry, opts);
+): TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>> {
+  return new TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>>(title, registry, opts);
 }
