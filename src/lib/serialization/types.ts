@@ -6,8 +6,9 @@ import type { MobOrigin } from "../character/mob";
 import type { Archetype } from "../archetype";
 import type { CodexEntry } from "../codex";
 import type { ActionKind, AssetRef } from "../presentation";
+import type { CampaignOutcome, OutcomeNarration } from "../victory";
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export interface AfflictionsSnapshot {
   active: Partial<Record<Status, boolean>>;
@@ -94,7 +95,16 @@ export interface CampaignCoreSnapshot {
   maxRounds: number;
   round: number;
   started: boolean;
-  finished: boolean;
+  outcome: CampaignOutcome;
+  outcomeReason?: string;
+  /** Win conditions as { registry key, authored prose } — the predicate is re-attached by key. */
+  winConditions: { key: string; narration?: OutcomeNarration }[];
+  /** Loss conditions as { registry key, authored prose }. */
+  loseConditions: { key: string; narration?: OutcomeNarration }[];
+  /** Fallback prose for the conditionless `timed-out` outcome. */
+  timeoutNarration?: OutcomeNarration;
+  /** Fallback prose for the conditionless `ended` (manual) outcome. */
+  endedNarration?: OutcomeNarration;
   activeCharacterIndex: number;
   partyIds: string[];
   actedThisRound: string[];

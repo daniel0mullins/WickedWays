@@ -11,7 +11,8 @@ import { Mob } from "./character/mob";
 import { Room } from "./room";
 import { type Formation } from "./encounter-table";
 import { createKey } from "./inventory";
-import { makeStats, type ExitsArg } from "../test-utils";
+import { makeStats, makeRng, type ExitsArg } from "../test-utils";
+import type { VictoryCondition } from "./victory";
 import { EMIT_CUE, NOTE_ENCOUNTERS } from "./presentation";
 import type { PresentationCue } from "./presentation";
 import { RECORD_ENCOUNTER } from "./codex";
@@ -632,6 +633,80 @@ describe("Campaign", () => {
       campaign.beginCampaign();
 
       expect(campaign.started).toBe(true);
+    });
+  });
+
+  describe("victory conditions", () => {
+    // Build a started 1-PC campaign whose single player has already acted, so a
+    // single nextPlayer() closes the round. Mirrors the existing started-campaign
+    // setup in this file (makePlayer stub, GM = that PC, begin).
+    function startedSoloCampaign(opts?: {
+      winConditions?: VictoryCondition[];
+      loseConditions?: VictoryCondition[];
+      timeoutNarration?: { text?: string };
+      endedNarration?: { text?: string };
+    }): Campaign {
+      const campaign = new Campaign("T", 5, [], { rng: makeRng(1), ...opts });
+      const pc = makePlayer();
+      campaign.party.push(pc);
+      campaign.gm = pc;
+      campaign.beginCampaign();
+      return campaign;
+    }
+
+    it("resolves won when a win condition fires at round end, with prose", () => {
+      const win: VictoryCondition = { key: "w", test: () => true, narration: { text: "You win." } };
+      const campaign = startedSoloCampaign({ winConditions: [win] });
+      campaign.nextPlayer(); // closes round 0 -> round 1, resolves
+      expect(campaign.outcome).toBe("won");
+      expect(campaign.outcomeReason).toBe("w");
+      expect(campaign.outcomeNarration).toEqual({ text: "You win." });
+      expect(campaign.finished).toBe(true);
+    });
+
+    it("evaluates loss before win", () => {
+      const campaign = startedSoloCampaign({
+        winConditions: [{ key: "w", test: () => true }],
+        loseConditions: [{ key: "l", test: () => true, narration: { text: "You die." } }],
+      });
+      campaign.nextPlayer();
+      expect(campaign.outcome).toBe("lost");
+      expect(campaign.outcomeNarration).toEqual({ text: "You die." });
+    });
+
+    it("resolves timed-out at maxRounds with the fallback prose", () => {
+      const campaign = new Campaign("T", 1, [], { rng: makeRng(1), timeoutNarration: { text: "Dawn breaks." } });
+      const pc = makePlayer();
+      campaign.party.push(pc);
+      campaign.gm = pc;
+      campaign.beginCampaign();
+      campaign.nextPlayer();
+      expect(campaign.outcome).toBe("timed-out");
+      expect(campaign.outcomeNarration).toEqual({ text: "Dawn breaks." });
+    });
+
+    it("emits exactly one resolution cue carrying the outcome and prose", () => {
+      const cues: PresentationCue[] = [];
+      const win: VictoryCondition = { key: "w", test: () => true, narration: { text: "Victory!" } };
+      const campaign = startedSoloCampaign({ winConditions: [win] });
+      campaign.onCue((c) => cues.push(c));
+      campaign.nextPlayer();
+      const resolutions = cues.filter((c) => c.kind === "resolution");
+      expect(resolutions).toHaveLength(1);
+      expect(resolutions[0]).toEqual({ kind: "resolution", outcome: "won", reason: "w", narration: { text: "Victory!" } });
+    });
+
+    it("ends manually with the ended outcome and prose", () => {
+      const campaign = startedSoloCampaign({ endedNarration: { text: "Session over." } });
+      campaign.endCampaign();
+      expect(campaign.outcome).toBe("ended");
+      expect(campaign.outcomeNarration).toEqual({ text: "Session over." });
+    });
+
+    it("blocks turn advances after resolution", () => {
+      const campaign = startedSoloCampaign({ winConditions: [{ key: "w", test: () => true }] });
+      campaign.nextPlayer();
+      expect(() => campaign.endRound()).toThrow(/already finished/);
     });
   });
 

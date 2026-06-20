@@ -6,7 +6,12 @@ import { CampaignRegistry } from "./registry";
 import { Item } from "../inventory";
 import type { IItem } from "../inventory";
 import { SlotKind } from "../equipment";
-import { buildSerializableCampaign } from "./roundtrip.test-helpers";
+import { buildSerializableCampaign, makeStats } from "./roundtrip.test-helpers";
+import { Campaign } from "../campaign";
+import { PlayerCharacter } from "../character/player-character";
+import { Room } from "../room";
+import type { ArchetypeId } from "../archetype";
+import type { ExitsArg } from "../../test-utils";
 
 function makeTorch(): Item {
   const noop = () => {};
@@ -38,7 +43,7 @@ describe("campaign round-trip", () => {
   it("serializes and restores a campaign that keeps playing", () => {
     const { campaign, pc, start } = buildCampaign();
     const snap = serializeCampaign(campaign);
-    expect(snap.schemaVersion).toBe(1);
+    expect(snap.schemaVersion).toBe(2);
 
     const restored = deserializeCampaign(snap, {
       registry: new CampaignRegistry(),
@@ -117,5 +122,36 @@ describe("campaign round-trip", () => {
     const lights = [...restoredRoom.lightSources.values()] as IItem[];
     expect(lights.map((l) => l.id)).toContain(torch.id);
     expect(restoredRoom.isLit).toBe(true);
+  });
+
+  it("round-trips a resolved outcome, re-attaching the predicate and restoring prose", () => {
+    // Build a started solo campaign with a win condition, drive it to a win.
+    const registry = new CampaignRegistry();
+    registry.registerCondition("w", () => true);
+
+    const campaign = new Campaign("Crypt", 10, [], {
+      rng: () => 0.5,
+      winConditions: [{ key: "w", test: () => true, narration: { text: "You win." } }],
+    });
+    campaign.registerArchetype({
+      id: "delver" as ArchetypeId,
+      name: "Delver",
+      statModifiers: { [StatType.Health]: 2 },
+    });
+    const start = new Room("Start", "the entrance", [], {} as ExitsArg);
+    const pc = new PlayerCharacter(campaign, "Ada", makeStats());
+    pc.joinCampaign();
+    campaign.gm = pc;
+    pc.selectArchetype("delver" as ArchetypeId);
+    pc.move(start);
+    campaign.beginCampaign();
+    campaign.nextPlayer(); // closes round -> resolves win
+    expect(campaign.outcome).toBe("won");
+
+    const snap = serializeCampaign(campaign);
+    const restored = deserializeCampaign(snap, { registry });
+    expect(restored.outcome).toBe("won");
+    expect(restored.outcomeReason).toBe("w");
+    expect(restored.outcomeNarration).toEqual({ text: "You win." });
   });
 });

@@ -23,6 +23,8 @@ import {
 import type { CampaignCoreSnapshot } from "./serialization/types";
 import type { HydrateContext } from "./serialization/context";
 import type { CampaignRegistry } from "./serialization/registry";
+import { resolveOutcome } from "./victory";
+import type { CampaignOutcome, OutcomeNarration, VictoryCondition } from "./victory";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -51,8 +53,14 @@ export interface ICampaign {
   get codex(): ICodex;
   /** Whether the campaign has begun (turn management active). */
   get started(): boolean;
-  /** Whether the campaign has ended (lost or completed). */
+  /** Whether the campaign has ended (won, lost, timed out, or manually ended). */
   get finished(): boolean;
+  /** The resolved outcome, or "ongoing" while still in play. */
+  get outcome(): CampaignOutcome;
+  /** Registry key of the win/loss condition that fired, if any. */
+  get outcomeReason(): string | undefined;
+  /** Authored prose for the resolved outcome (text + optional sound), if any. */
+  get outcomeNarration(): OutcomeNarration | undefined;
 
   /** Round count at which the campaign automatically ends. */
   readonly maxRounds: number;
@@ -133,7 +141,12 @@ export class Campaign implements ICampaign {
   #knownRecipes: Map<RecipeId, CraftingRecipe> = new Map();
   #archetypes: Map<ArchetypeId, Archetype> = new Map();
   #started = false;
-  #finished = false;
+  #outcome: CampaignOutcome = "ongoing";
+  #outcomeReason: string | undefined = undefined;
+  #winConditions: VictoryCondition[] = [];
+  #loseConditions: VictoryCondition[] = [];
+  #timeoutNarration: OutcomeNarration | undefined = undefined;
+  #endedNarration: OutcomeNarration | undefined = undefined;
   #activeCharacterIndex: number = 0;
   #actedThisRound: WeakMap<IPlayerCharacter, boolean>;
   #encounterTable: EncounterTable;
@@ -173,9 +186,40 @@ export class Campaign implements ICampaign {
     return this.#started;
   }
 
-  /** Whether the campaign has ended (lost or completed). */
+  /** The resolved outcome, or "ongoing" while the campaign is still in play. */
+  get outcome(): CampaignOutcome {
+    return this.#outcome;
+  }
+
+  /** Registry key of the win/loss condition that fired, if any. */
+  get outcomeReason(): string | undefined {
+    return this.#outcomeReason;
+  }
+
+  /**
+   * Authored prose for the resolved outcome, available to any play surface
+   * whether it listens to the resolution cue or polls. Derived, so a reloaded
+   * finished campaign reports the same ending.
+   */
+  get outcomeNarration(): OutcomeNarration | undefined {
+    switch (this.#outcome) {
+      case "timed-out":
+        return this.#timeoutNarration;
+      case "ended":
+        return this.#endedNarration;
+      case "won":
+      case "lost": {
+        const list = this.#outcome === "won" ? this.#winConditions : this.#loseConditions;
+        return list.find((c) => c.key === this.#outcomeReason)?.narration;
+      }
+      default:
+        return undefined; // ongoing
+    }
+  }
+
+  /** Whether the campaign has ended (won, lost, timed out, or manually ended). */
   get finished(): boolean {
-    return this.#finished;
+    return this.#outcome !== "ongoing";
   }
 
   /**
@@ -225,7 +269,7 @@ export class Campaign implements ICampaign {
     if (!this.#started) {
       throw new ProceduralViolation("Campaign has not begun");
     }
-    if (this.#finished) {
+    if (this.#outcome !== "ongoing") {
       throw new ProceduralViolation("Campaign has already finished");
     }
   }
@@ -244,6 +288,10 @@ export class Campaign implements ICampaign {
       rng?: () => number;
       baseEncounterChance?: number;
       actionSounds?: Partial<Record<ActionKind, AssetRef>>;
+      winConditions?: VictoryCondition[];
+      loseConditions?: VictoryCondition[];
+      timeoutNarration?: OutcomeNarration;
+      endedNarration?: OutcomeNarration;
     } = {},
   ) {
     this.id = generateId<CampaignId>();
@@ -264,6 +312,10 @@ export class Campaign implements ICampaign {
     this.#activeCharacterIndex = 0;
 
     this.#actionSounds = options.actionSounds ?? {};
+    this.#winConditions = [...(options.winConditions ?? [])];
+    this.#loseConditions = [...(options.loseConditions ?? [])];
+    this.#timeoutNarration = options.timeoutNarration;
+    this.#endedNarration = options.endedNarration;
 
     for (const recipe of knownRecipes) {
       this.discoverRecipe(recipe);
@@ -298,18 +350,32 @@ export class Campaign implements ICampaign {
     this.#started = true;
   }
 
+  // Centralized termination: set the outcome, record the firing key, and emit a
+  // single resolution cue carrying the resolved prose. The only writer of #outcome.
+  #finish(outcome: Exclude<CampaignOutcome, "ongoing">, condition?: VictoryCondition): void {
+    this.#outcome = outcome;
+    this.#outcomeReason = condition?.key;
+    this[EMIT_CUE]({
+      kind: "resolution",
+      outcome,
+      reason: condition?.key,
+      narration: this.outcomeNarration,
+    });
+  }
+
   /**
-   * Marks the campaign finished.
+   * Manually ends a running campaign with the `ended` outcome (a deliberate GM
+   * stop, distinct from a win/loss/timeout).
    * @throws {@link ProceduralViolation} if the campaign is not currently running.
    */
   endCampaign() {
     this.#assertRunning();
-    this.#finished = true;
+    this.#finish("ended");
   }
 
   /**
-   * Advances to the next round once every party member has acted, ending the
-   * campaign if {@link Campaign.maxRounds} is reached.
+   * Advances to the next round once every party member has acted, then resolves
+   * the campaign against its victory conditions and the maxRounds ceiling.
    *
    * @throws {@link ProceduralViolation} if not running, or if called before all
    *   characters have acted this round.
@@ -317,16 +383,22 @@ export class Campaign implements ICampaign {
   endRound() {
     this.#assertRunning();
     const allPartyActed = this.party.every((c) => this.#actedThisRound.get(c));
-    if (allPartyActed) {
-      this.#round = this.#round + 1;
-      if (this.#round >= this.maxRounds) {
-        this.endCampaign();
-      }
-      this.#resetActivity();
-    } else {
+    if (!allPartyActed) {
       throw new ProceduralViolation(
         "Attempted to end round before all characters have acted",
       );
+    }
+    this.#round = this.#round + 1;
+    this.#resetActivity();
+    const result = resolveOutcome({
+      round: this.#round,
+      maxRounds: this.maxRounds,
+      winConditions: this.#winConditions,
+      loseConditions: this.#loseConditions,
+      campaign: this,
+    });
+    if (result.status !== "ongoing") {
+      this.#finish(result.status, result.condition);
     }
   }
 
@@ -621,7 +693,12 @@ export class Campaign implements ICampaign {
       maxRounds: this.maxRounds,
       round: this.#round,
       started: this.#started,
-      finished: this.#finished,
+      outcome: this.#outcome,
+      outcomeReason: this.#outcomeReason,
+      winConditions: this.#winConditions.map((c) => ({ key: c.key, narration: c.narration })),
+      loseConditions: this.#loseConditions.map((c) => ({ key: c.key, narration: c.narration })),
+      timeoutNarration: this.#timeoutNarration,
+      endedNarration: this.#endedNarration,
       activeCharacterIndex: this.#activeCharacterIndex,
       partyIds: this.party.map((p) => p.id),
       actedThisRound: this.party
@@ -653,6 +730,18 @@ export class Campaign implements ICampaign {
       const recipe = registry.recipe(key);
       this.#knownRecipes.set(recipe.id, recipe);
     }
+    this.#winConditions = core.winConditions.map((c) => ({
+      key: c.key,
+      test: registry.condition(c.key),
+      narration: c.narration,
+    }));
+    this.#loseConditions = core.loseConditions.map((c) => ({
+      key: c.key,
+      test: registry.condition(c.key),
+      narration: c.narration,
+    }));
+    this.#timeoutNarration = core.timeoutNarration;
+    this.#endedNarration = core.endedNarration;
   }
 
   /**
@@ -664,7 +753,8 @@ export class Campaign implements ICampaign {
   [HYDRATE](core: CampaignCoreSnapshot, ctx: HydrateContext): void {
     this.#round = core.round;
     this.#started = core.started;
-    this.#finished = core.finished;
+    this.#outcome = core.outcome;
+    this.#outcomeReason = core.outcomeReason;
     this.#activeCharacterIndex = core.activeCharacterIndex;
     this.#materials = { ...core.materials };
     this.#claims.clear();
