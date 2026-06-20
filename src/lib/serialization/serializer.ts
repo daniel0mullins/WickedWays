@@ -29,10 +29,15 @@ import type {
  * playable world); a campaign holding orphaned rooms would need a room registry.
  *
  * @param campaign - The campaign to snapshot.
+ * @param opts.rootRooms - Optional additional rooms to seed the BFS queue with,
+ *   in addition to each party member's current room. Useful for player-less
+ *   templates where no party member occupies any room. When omitted, behavior is
+ *   identical to before (party-rooted BFS only).
  * @returns A self-contained {@link CampaignSnapshot} and an id→live-instance index.
  */
 export function serializeCampaignWithIndex(
   campaign: ICampaign,
+  opts: { rootRooms?: Iterable<IRoom> } = {},
 ): { snapshot: CampaignSnapshot; index: Map<string, unknown> } {
   const c = campaign as Campaign;
   const index = new Map<string, unknown>();
@@ -66,6 +71,7 @@ export function serializeCampaignWithIndex(
     }
   };
   for (const p of c.party) if (p.currentRoom) enqueueRoom(p.currentRoom);
+  for (const r of opts.rootRooms ?? []) enqueueRoom(r);
 
   while (roomQueue.length) {
     const r = roomQueue.shift()!;
@@ -109,7 +115,16 @@ export function serializeCampaignWithIndex(
   return { snapshot, index };
 }
 
-/** Produces a complete, JSON-serializable snapshot of an in-play campaign. See {@link serializeCampaignWithIndex} for details. */
-export function serializeCampaign(campaign: ICampaign): CampaignSnapshot {
-  return serializeCampaignWithIndex(campaign).snapshot;
+/**
+ * Produces a complete, JSON-serializable snapshot of an in-play campaign.
+ * See {@link serializeCampaignWithIndex} for details.
+ *
+ * @remarks When re-serializing a *deserialized/hydrated player-less* campaign,
+ *   `rootRooms` **must** be supplied — the BFS is party-rooted, so an empty
+ *   party produces an empty snapshot. For player-less templates, prefer using
+ *   the original snapshot directly (e.g. via `structuredClone`) rather than
+ *   hydrating and re-serializing.
+ */
+export function serializeCampaign(campaign: ICampaign, opts?: { rootRooms?: Iterable<IRoom> }): CampaignSnapshot {
+  return serializeCampaignWithIndex(campaign, opts).snapshot;
 }
