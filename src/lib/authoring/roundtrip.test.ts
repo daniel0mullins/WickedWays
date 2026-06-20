@@ -20,6 +20,7 @@ import { Directions } from "../room";
 import { StatType } from "../character/stats";
 import { Item } from "../inventory";
 import type { RecipeId } from "../crafting";
+import type { ICampaign } from "../campaign";
 
 // ---------------------------------------------------------------------------
 // Item / recipe factories — every behaviorKey must be registered in the
@@ -235,6 +236,32 @@ describe("template round-trip (toSnapshot → deserializeCampaign)", () => {
     ).toEqual(
       snap.rooms.map((r) => Object.keys(r.exits).sort()).sort(),
     );
+  });
+
+  it("round-trips an authored template's victory conditions and prose", () => {
+    const condRegistry = defineRegistry({
+      items: {},
+      conditions: { "reached-exit": (_c: ICampaign) => true },
+    });
+    const snap = authorTemplate("Escape", condRegistry)
+      .room("start", { description: "the cell" })
+      .startRoom("start")
+      .winWhen("reached-exit", { text: "Free at last." })
+      .toSnapshot();
+
+    const restored = deserializeCampaign(snap, { registry: condRegistry });
+    expect(restored.outcome).toBe("ongoing"); // template not yet played
+    // The predicate re-attached: serialize again and the key survives.
+    const { rooms: condRooms } = assemble(
+      authorTemplate("Escape", condRegistry)
+        .room("start", { description: "the cell" })
+        .startRoom("start")
+        .winWhen("reached-exit", { text: "Free at last." })
+        .description,
+      condRegistry,
+    );
+    const re = serializeCampaign(restored, { rootRooms: condRooms.values() });
+    expect(re.campaign.winConditions).toEqual([{ key: "reached-exit", narration: { text: "Free at last." } }]);
   });
 
   it("throws when a registry is missing a required behaviorKey (guards unhydratable snapshots)", () => {

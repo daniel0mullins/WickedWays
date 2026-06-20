@@ -83,12 +83,36 @@ export function assemble(
     }
   }
 
+  const requireConditionKey = (k: string, ctx: string) => {
+    try {
+      registry.condition(k);
+    } catch {
+      problems.push(`${ctx} references unregistered condition key '${k}'.`);
+    }
+  };
+  for (const c of desc.winConditions ?? []) requireConditionKey(c.key, "winWhen");
+  for (const c of desc.loseConditions ?? []) requireConditionKey(c.key, "loseWhen");
+
   if (problems.length > 0) throw new AuthoringError(problems);
 
   // ---- Pass 2: construct in order ----
+  const winConditions = (desc.winConditions ?? []).map((c) => ({
+    key: c.key,
+    test: registry.condition(c.key),
+    narration: c.narration,
+  }));
+  const loseConditions = (desc.loseConditions ?? []).map((c) => ({
+    key: c.key,
+    test: registry.condition(c.key),
+    narration: c.narration,
+  }));
   const campaign = new Campaign(desc.title, desc.opts.maxRounds ?? 100, [], {
     rng: desc.opts.rng,
     baseEncounterChance: desc.opts.baseEncounterChance,
+    winConditions,
+    loseConditions,
+    timeoutNarration: desc.timeoutNarration,
+    endedNarration: desc.endedNarration,
   });
 
   for (const a of desc.archetypes) {
