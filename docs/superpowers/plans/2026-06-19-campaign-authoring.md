@@ -417,9 +417,13 @@ The chainable, type-safe front-end that accumulates the description and delegate
 **Files:**
 - Create: `src/lib/authoring/template-builder.ts`
 - Create: `src/lib/authoring/template-builder.test.ts`
+- Modify: `src/lib/serialization/serializer.ts` (optional `rootRooms` — see Step 0)
+- Modify: `src/lib/serialization/serializer.test.ts` (a `rootRooms` test)
+
+> **Why the serializer change (discovered during Task 2):** `serializeCampaignWithIndex` roots its room-discovery BFS at **party members' rooms** (serializer.ts:68), so a **player-less** template serializes to an *empty* world (no rooms/items/mobs). Its own docstring notes "a campaign holding orphaned rooms would need a room registry." The fix is to let a caller supply explicit root rooms; the builder roots from the template's rooms in `.toSnapshot()`. Backward-compatible (no `rootRooms` ⇒ today's party-rooted behavior; `serializeCampaign(startedCampaign)` is unchanged).
 
 **Interfaces:**
-- Consumes: `assemble` (Task 2), `CampaignTemplateDescription` + the `*Def` types (Task 2), `TypedRegistry`/`ItemKeyOf`/`RecipeKeyOf` (Task 1), `serializeCampaign`.
+- Consumes: `assemble` (Task 2), `CampaignTemplateDescription` + the `*Def` types (Task 2), `TypedRegistry`/`ItemKeyOf`/`RecipeKeyOf` (Task 1), `serializeCampaign` (now with optional `rootRooms`).
 - Produces:
   ```ts
   export function authorTemplate<R extends CampaignRegistry>(
@@ -443,7 +447,26 @@ The chainable, type-safe front-end that accumulates the description and delegate
   }
   ```
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 0: Add optional `rootRooms` to the serializer (the player-less fix)**
+
+In `src/lib/serialization/serializer.ts`, give `serializeCampaignWithIndex` an optional second arg and seed the BFS queue with the supplied rooms in addition to party rooms:
+```ts
+export function serializeCampaignWithIndex(
+  campaign: ICampaign,
+  opts: { rootRooms?: Iterable<IRoom> } = {},
+): { snapshot: CampaignSnapshot; index: Map<string, unknown> } {
+  // ...unchanged setup...
+  for (const p of c.party) if (p.currentRoom) enqueueRoom(p.currentRoom);
+  for (const r of opts.rootRooms ?? []) enqueueRoom(r);   // <-- explicit roots (e.g. a player-less template)
+  // ...rest unchanged...
+}
+export function serializeCampaign(campaign: ICampaign, opts?: { rootRooms?: Iterable<IRoom> }): CampaignSnapshot {
+  return serializeCampaignWithIndex(campaign, opts).snapshot;
+}
+```
+Add a test to `src/lib/serialization/serializer.test.ts`: build a campaign with a room but NO party member in it (or no party), serialize WITHOUT `rootRooms` → that room is absent; serialize WITH `rootRooms: [thatRoom]` → the room (and its loot/caches/lights) is present. (This proves the new root path without weakening the existing party-rooted tests, which must stay green.)
+
+- [ ] **Step 1: Write the failing builder tests**
 
 ```ts
 import { describe, it, expect } from "vitest";
@@ -451,7 +474,7 @@ import { authorTemplate } from "./template-builder";
 import { defineRegistry } from "./registry";
 import { Directions } from "../room";
 import { StatType } from "../character/stats";
-// reuse makeCoin/registry from a shared local helper or inline as in assembler.test.ts
+// reuse makeCoin from a shared local helper or inline as in assembler.test.ts
 
 describe("authorTemplate", () => {
   it("builds an equivalent campaign regardless of author order (forward refs resolve)", () => {
@@ -465,6 +488,18 @@ describe("authorTemplate", () => {
       .build();
     expect(campaign.started).toBe(false);
     expect(campaign.party.length).toBe(0);
+  });
+
+  it("toSnapshot captures the player-less template world (rooted from template rooms)", () => {
+    const reg = defineRegistry({ items: { "coin-item": makeCoin } });
+    const snap = authorTemplate("Crypt", reg, { rng: () => 0.5 })
+      .room("start", { description: "the entrance" }).room("next", { description: "next" })
+      .startRoom("start").exit("start", Directions.North, "next")
+      .loot("chest", { room: "next", items: ["coin-item"] })
+      .toSnapshot();
+    expect(snap.rooms.length).toBe(2);          // NOT empty — the fix
+    expect(snap.loot.length).toBe(1);
+    expect(snap.items.length).toBe(1);
   });
 
   it("type-checks item/recipe keys against the registry", () => {
@@ -484,7 +519,7 @@ Expected: FAIL — module not found.
 
 - [ ] **Step 3: Implement `authorTemplate` + `TemplateBuilder`**
 
-The builder accumulates the `CampaignTemplateDescription`; each method pushes to the relevant array and returns `this`; `.build()` returns `assemble(this.description, this.registry).campaign`; `.toSnapshot()` returns `serializeCampaign(this.build())`. `authorTemplate` constructs the builder typed via `ItemKeyOf<R>`/`RecipeKeyOf<R>`. The method option types use `IK`/`RK` for the key fields (`lights`, `drops`, `items`, `recipe`). Keep `description`/`registry` accessible (e.g. `readonly`) for `startSession`. Provide the full class.
+The builder accumulates the `CampaignTemplateDescription`; each method pushes to the relevant array and returns `this`. `.build()` returns `assemble(this.description, this.registry).campaign`. **`.toSnapshot()` must root from the template's rooms** (a player-less campaign is empty otherwise): `const { campaign, rooms } = assemble(this.description, this.registry); return serializeCampaign(campaign, { rootRooms: rooms.values() });`. `authorTemplate` constructs the builder typed via `ItemKeyOf<R>`/`RecipeKeyOf<R>`. The method option types use `IK`/`RK` for the key fields (`lights`, `drops`, `items`, `recipe`). Keep `description`/`registry` accessible (e.g. `readonly`) for `startSession`. Provide the full class.
 
 - [ ] **Step 4: Run the tests — verify they pass**
 
@@ -496,14 +531,15 @@ Expected: PASS (incl. the `@ts-expect-error` honored).
 Run: `pnpm checks` → green.
 
 ```bash
-git add src/lib/authoring/template-builder.ts src/lib/authoring/template-builder.test.ts
+git add src/lib/authoring/template-builder.ts src/lib/authoring/template-builder.test.ts src/lib/serialization/serializer.ts src/lib/serialization/serializer.test.ts
 git commit -m "$(cat <<'EOF'
-feat(authoring): fluent authorTemplate builder over the assembler
+feat(authoring): fluent authorTemplate builder + serializer rootRooms
 
 Chainable, ordering-agnostic API generic over the TypedRegistry, so
-drops/items/lights/.recipe are compile-time-checked. Accumulates the description
-and delegates to assemble(); .build() -> live player-less Campaign, .toSnapshot()
--> genesis snapshot.
+drops/items/lights/.recipe are compile-time-checked. .build() -> live player-less
+Campaign; .toSnapshot() roots serialization from the template's rooms so a
+player-less template captures its full world (serializer gains an optional,
+backward-compatible rootRooms; party-rooted serialization unchanged).
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 EOF
