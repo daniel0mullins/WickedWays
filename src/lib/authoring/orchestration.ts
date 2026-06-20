@@ -1,0 +1,67 @@
+import { assemble } from "./assembler";
+import { PlayerCharacter } from "../character/player-character";
+import { generateId } from "../util";
+import type { CampaignId } from "../campaign";
+import type { Campaign } from "../campaign";
+import type { ArchetypeId } from "../archetype";
+import type { Stats } from "../character/stats";
+import type { CampaignSnapshot } from "../serialization/types";
+import type { TemplateBuilder } from "./template-builder";
+
+/**
+ * A player specification for {@link startSession}.
+ */
+export interface SessionPlayer {
+  /** Display name for this player character. */
+  name: string;
+  /** Base stats before archetype modifiers are applied. */
+  stats: Stats;
+  /** Archetype id string (cast to {@link ArchetypeId} at the boundary). */
+  archetype: string;
+}
+
+/**
+ * Clones a template snapshot and assigns a fresh campaign-core id, leaving all
+ * entity ids unchanged. Each call produces an isolated instance genesis.
+ *
+ * @param template - The source template snapshot (not mutated).
+ * @returns A new snapshot with a fresh campaign id and the same world.
+ */
+export function instantiate(template: CampaignSnapshot): CampaignSnapshot {
+  const clone = structuredClone(template);
+  clone.campaign.id = generateId<CampaignId>();
+  return clone;
+}
+
+/**
+ * Assembles the template, joins players, selects their archetypes, sets the GM,
+ * and begins the campaign — returning a fully started {@link Campaign}.
+ *
+ * @param builder - The template builder (provides `.description` and `.registry`).
+ * @param opts - Session options: the list of players, the GM index, and an optional start room name.
+ * @returns The started campaign.
+ */
+export function startSession(
+  builder: TemplateBuilder<string, string>,
+  opts: { players: SessionPlayer[]; gm: number; startRoom?: string },
+): Campaign {
+  const { players, gm, startRoom } = opts;
+  const { campaign, rooms } = assemble(builder.description, builder.registry);
+
+  const startRoomName = startRoom ?? builder.description.startRoom!;
+  const startRoomInstance = rooms.get(startRoomName)!;
+
+  const pcs: PlayerCharacter[] = [];
+  for (const p of players) {
+    const pc = new PlayerCharacter(campaign, p.name, p.stats);
+    pc.joinCampaign();
+    pc.selectArchetype(p.archetype as ArchetypeId);
+    pc.move(startRoomInstance);
+    pcs.push(pc);
+  }
+
+  campaign.gm = pcs[gm];
+  campaign.beginCampaign();
+
+  return campaign;
+}
