@@ -490,6 +490,154 @@ const restored = deserializeCampaign(snap2, { registry });
 // restored is a live Campaign, identical to campaign at the moment of save.
 ```
 
+## Campaign authoring
+
+The authoring layer lets you define a reusable campaign **template** — a complete
+world with rooms, exits, mobs, loot, material caches, archetypes, and starting
+recipes — and then turn it into a live, playable **instance** once players join. The
+two-stage split means the same template can seed any number of parallel runs, and the
+builder validates the whole description before constructing a single engine object.
+
+### Templates vs. instances
+
+A **template** is a player-less, not-yet-begun description of the game world. It is
+author-controlled and reusable: no players are joined, `beginCampaign` has not been
+called, and the state that exists (rooms, mobs, loot, caches, pre-seeded recipes and
+materials) is stable and can be snapshotted to a `CampaignSnapshot` via `.toSnapshot()`.
+
+An **instance** is a copy of that template world with a fresh campaign id (produced by
+`instantiate`), ready to receive players. A **session** is an instance that has been
+populated with players, had a GM assigned, and had `beginCampaign` called — i.e. it is
+live and ticking. `startSession` collapses the instance + join + begin steps into one
+call for the common case.
+
+### The typed registry
+
+[`defineRegistry`](src/lib/authoring/registry.ts) wraps the serialization
+`CampaignRegistry` and lifts its key literals into the type:
+
+```ts
+const reg = defineRegistry({
+  items: {
+    "rusty-sword": makeRustySword,   // () => Item
+    "torch":       makeTorch,
+  },
+  recipes: {
+    "sword-recipe": swordRecipe,     // CraftingRecipe
+  },
+  // scenes and formations use the same CampaignRegistry under the hood
+  scenes:     { "ambush": ambushBehavior },
+  formations: { "wolf-pack": wolfPackFormation },
+});
+```
+
+The return type is a `TypedRegistry<"rusty-sword" | "torch", "sword-recipe">`. Any
+builder constructed from `reg` will reject an unknown key — like `"nope"` for an item
+or `"unknown-recipe"` for a recipe — at compile time, not just at runtime. The
+underlying `CampaignRegistry` is unchanged and is consumed verbatim by the server /
+`Authority` / serialization path.
+
+**Behaviors stay code, archetypes are data.** Scene scripts, formation factories, and
+item factories are hand-written TypeScript registered under a stable `behaviorKey`. The
+`behaviorKey` is what the serialization layer uses at restore time, so renaming a key
+without migrating snapshots is a breaking change. Archetypes, by contrast, are plain
+data (`ArchetypeDef` — id, name, stat modifiers, inventory slots, immunities) and have
+no closure to register; they travel as data in the `CampaignTemplateDescription` and
+are re-registered from that data each time the template is assembled.
+
+### The fluent template builder
+
+[`authorTemplate(title, registry, opts?)`](src/lib/authoring/template-builder.ts)
+returns a chainable `TemplateBuilder` typed over the registry's key unions. Every
+method returns `this`, so calls can be chained in any order — **forward references are
+legal**: you can declare an exit before the rooms it references; `assemble` resolves
+everything at build time.
+
+```ts
+import { authorTemplate, defineRegistry } from "./src/lib/authoring";
+
+const reg = defineRegistry({
+  items: { "torch": makeTorch, "rusty-sword": makeRustySword },
+  recipes: { "sword-recipe": swordRecipe },
+});
+
+const builder = authorTemplate("The Crypt", reg, { maxRounds: 50, baseEncounterChance: 25 })
+  .archetype({ id: "delver", name: "Delver", statModifiers: { Health: 2 } })
+  .room("entrance", { description: "A damp stone corridor.", dark: true, lights: ["torch"] })
+  .room("vault",    { description: "A collapsed vault." })
+  .startRoom("entrance")
+  .exit("entrance", Directions.North, "vault")
+  .mob("Goblin", {
+    stats: { Health: 6, Sanity: 8, Energy: 8 },
+    room: "vault",
+    drops: ["rusty-sword"],
+  })
+  .loot("supply crate", { room: "entrance", items: ["torch"] })
+  .cache("iron vein",   { room: "vault",    materials: { iron: 4 } })
+  .recipe("sword-recipe")
+  .materials("starting-grant", { wood: 2 });
+```
+
+**`.build()`** validates the entire description (collecting *all* problems into one
+`AuthoringError`) and then constructs a live, player-less, not-yet-begun `Campaign`
+via the engine's normal constructors in the required order: campaign shell → archetypes
+→ caches → loot → mobs → rooms → room-mob placement → exits → recipes → materials.
+Any dangling room reference, unknown item key, or duplicate name surfaces here rather
+than silently misbehaving at runtime.
+
+**`.toSnapshot()`** does the same assembly and then serializes the player-less world
+into a `CampaignSnapshot` whose BFS is rooted from the template's rooms (not from
+party members, since there are none). The snapshot is JSON-serializable and suitable
+for storage or transmission.
+
+### Orchestration: `instantiate` and `startSession`
+
+[`instantiate(template)`](src/lib/authoring/orchestration.ts) clones a template
+snapshot and assigns a fresh `CampaignId`, leaving all entity ids (rooms, items, loot,
+caches, mobs) unchanged. Each call produces an isolated **instance genesis** — suitable
+as the `genesisFor` argument to `Authority` or the initial record for `CampaignStore`:
+
+```ts
+const template = builder.toSnapshot();             // one-time build
+const genesis  = instantiate(template);            // fresh campaign id each call
+const authority = new Authority(genesis, { registry: reg });
+```
+
+[`startSession(builder, { players, gm, startRoom? })`](src/lib/authoring/orchestration.ts)
+is the high-level entry point for the common case: it assembles the template, joins
+each player via the existing `joinCampaign` → `selectArchetype` → `move` sequence,
+assigns the GM, and calls `beginCampaign` — returning a fully started `Campaign`:
+
+```ts
+const campaign = startSession(builder, {
+  players: [
+    { name: "Ada", stats: baseStats(), archetype: "delver" },
+    { name: "Ben", stats: baseStats(), archetype: "delver" },
+  ],
+  gm: 0,           // index into players array
+});
+// campaign.started === true; campaign.party.length === 2
+```
+
+`startSession` takes the builder (not a pre-built `Campaign`) so it can resolve the
+`startRoom` name to the live `Room` instance produced by `assemble`, without exposing
+that mapping through the engine itself.
+
+### Deferred / not yet shipped
+
+The following are planned but not part of this release:
+
+- **YAML / JSON declarative format** (phase 2) — a text schema for `CampaignTemplateDescription`
+  that does not require TypeScript.
+- **Authoring UI** (phase 3) — a visual map/content editor.
+- **Live authoring commands** — GM commands to mutate the world during a running session.
+- **Procedural generation** — template composition and random map generation hooks.
+- **Template library / store** — versioned templates shareable across campaigns.
+- **Codex authoring** — the `Codex` is gameplay-generated (entries are recorded as players
+  encounter things); there is no public authoring API for pre-populating codex entries.
+- **`buildStartedCampaign` migration** — replacing the existing seed helpers with
+  `startSession`; deferred because it spans the full integration suite.
+
 ## Multi-client sync
 
 The snapshot format powers multiplayer over a command-log driven by an authoritative
@@ -549,7 +697,7 @@ replica.start();
 
 - **Language:** TypeScript in `strict` mode with `NodeNext` module resolution and the extra
   `noUncheckedIndexedAccess` / `noImplicitOverride` guards.
-- **Tests:** [Vitest](https://vitest.dev) — 688 tests across 53 files, including an end-to-end
+- **Tests:** [Vitest](https://vitest.dev) — 711 tests across 58 files, including an end-to-end
   [`src/integration.test.ts`](src/integration.test.ts) that wires up a full campaign and runs
   the turn loop. Shared helpers live in [`src/test-utils.ts`](src/test-utils.ts).
 - **Linting:** ESLint flat config with type-aware `typescript-eslint`.
