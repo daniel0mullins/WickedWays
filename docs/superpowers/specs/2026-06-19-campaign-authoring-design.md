@@ -45,21 +45,27 @@ concerns, and the comms layer already implements them as authoritative commands
 ## Decisions (locked during brainstorming)
 
 1. **Fluent builder over the real constructors.** The builder accumulates a named
-   description; `.build(registry)` constructs actual engine instances in the
-   required order, resolving references by name, and returns a **live, player-less,
-   not-begun `Campaign`** (valid by construction). Genesis = `serializeCampaign`.
-   It does *not* emit snapshot JSON directly.
+   description; `.build()` constructs actual engine instances in the required order
+   (the registry is supplied to `authorTemplate` up front), resolving references by
+   name, and returns a **live, player-less, not-begun `Campaign`** (valid by
+   construction). Genesis = `serializeCampaign`. It does *not* emit snapshot JSON
+   directly.
 2. **Templates, not instances.** The builder authors a template (world +
    archetypes + recipes + codex + metadata). `.player`/`.gm`/`.begin` are **not**
    builder methods.
 3. **Thin orchestration:** `instantiate(template) → CampaignSnapshot` (instance
    genesis, fresh campaign id) + a `startSession(template, {players, gm})` helper
    that scripts the existing join/begin engine APIs (for fixtures + the demo).
-4. **Behaviors stay code.** Item factories (`() => Item`), recipe `create()`
-   functions, scenes, and formations remain hand-written in a `CampaignRegistry`
-   passed to `.build(registry)`; the builder references them **by key** and the
-   assembler validates the keys exist. **Archetypes are pure data** and are
-   authored inline (`.archetype({id,name,statModifiers,…})`).
+4. **Behaviors stay code, and keys are type-safe.** Item factories (`() => Item`),
+   recipe `create()` functions, scenes, and formations remain hand-written, but the
+   registry is *defined* via **`defineRegistry({ items, recipes, … })`** (a const
+   map) so its key literals are inferred into the type. The registry is passed to
+   **`authorTemplate(title, registry, opts)`** up front, and the builder is generic
+   over its key types — so `drops`/`items`/`lights`/`.recipe` are **compile-time-checked
+   against the registered keys**. At runtime `defineRegistry` produces a normal
+   `CampaignRegistry`, so `createServer`/`Authority`/`deserialize` consume it
+   unchanged. **Archetypes are pure data** and are authored inline
+   (`.archetype({id,name,statModifiers,…})`).
 5. **Validate-all, then construct.** `.build` collects *every* validation problem
    and throws one `AuthoringError` listing them (good authoring DX), before
    constructing anything.
@@ -76,23 +82,25 @@ concerns, and the comms layer already implements them as authoritative commands
 ## Architecture
 
 ```
-authorTemplate(...)            fluent builder (TS, compile-time)
-   .room/.exit/.mob/.item/.loot/.cache/.archetype/.recipe/.codex/.startRoom
-   .build(registry)            → assembler: validate-all → construct in order → resolve names→instances
+const reg = defineRegistry({ items, recipes })  typed registry (key literals inferred)
+authorTemplate(title, reg, opts)              fluent builder (TS, compile-time, generic over reg)
+   .room/.exit/.mob/.loot/.cache/.archetype/.recipe/.codex/.startRoom   (item keys typed vs reg)
+   .build()                    → assembler: validate-all → construct in order → resolve names→instances
                                → live player-less, not-begun Campaign
    serializeCampaign(it)       → TEMPLATE snapshot (CampaignSnapshot)
 
 instantiate(template)          → INSTANCE genesis (fresh campaign id) → genesisFor / CampaignStore
-startSession(template, {...})  → (instantiate + join players + select archetypes + set gm + begin) → started Campaign
+startSession(campaign, {...})  → join players + select archetypes + set gm + begin → started Campaign
 
 play: joinCampaign / beginCampaign  ← EXISTING authoritative + persisted commands
 ```
 
 New engine module `src/lib/authoring/`:
-- `template-builder.ts` — the fluent `authorTemplate(...)` API + its accumulated description types.
+- `registry.ts` — `defineRegistry(...)` + the `TypedRegistry<ItemKey, RecipeKey>` type (key-literal inference over a runtime `CampaignRegistry`).
+- `template-builder.ts` — the fluent `authorTemplate(...)` API (generic over the `TypedRegistry`) + its accumulated description types.
 - `assembler.ts` — validate-all + ordered construction + name→instance resolution (`build`).
 - `errors.ts` — `AuthoringError` (aggregates validation problems).
-- `orchestration.ts` — `instantiate(template)` + `startSession(template, opts)`.
+- `orchestration.ts` — `instantiate(template)` + `startSession(campaign, opts)`.
 
 Exposed via the engine's `wickedways/lib/authoring/*` export so `packages/seed`
 and the server harness can consume it.
@@ -104,73 +112,98 @@ time (the assembler imposes the construction order). Example — the seed's worl
 a template:
 
 ```ts
-const template = authorTemplate("Crypt", { rng: () => 0.5, maxRounds: 10 })
+const registry = defineRegistry({
+  items:   { "coin-item": makeCoin, "gem-item": makeGem },   // key literals inferred
+  recipes: { "widget": widgetRecipe },
+});
+
+const template = authorTemplate("Crypt", registry, { rng: () => 0.5, maxRounds: 10 })
   .archetype({ id: "delver", name: "Delver", statModifiers: { [StatType.Health]: 2 } })
   .room("start", { description: "the entrance" })
   .room("next",  { description: "an adjoining chamber", dark: true })
   .startRoom("start")                                   // where joining players enter
-  .exit("start", Directions.North, "next")              // refs by name → resolved at build()
-  .mob("goblin", { stats: gobStats, room: "next", drops: ["coin"] })
-  .item("coin", { from: "coin-item" })                  // `from` = registry factory key
-  .item("gem",  { from: "gem-item" })                   // each item name = ONE instance
-  .loot("chest", { room: "next", items: ["gem"] })      // a loot box holding items (places "gem")
+  .exit("start", Directions.North, "next")              // ROOM refs by name → resolved at build()
+  .mob("goblin", { stats: gobStats, room: "next", drops: ["coin-item"] })  // drops: typed registry keys
+  .loot("chest", { room: "next", items: ["gem-item"] })                    // items: typed registry keys
   .cache("vein", { room: "next", materials: { metal: 2 } })
-  .recipe("widget")                                      // discover a registry recipe
+  .recipe("widget")                                      // typed registry recipe key
   .materials("seed", { metal: 2 })                       // claimMaterials (crafting economy)
   .codex({ /* lore entry */ })
-  .build(buildSeedRegistry());                           // → live player-less Campaign
+  .build();                                              // → live player-less Campaign (registry already provided)
 ```
 
-**Vocabulary** (each maps to real constructor params from the construction map):
-- `authorTemplate(title, { rng?, maxRounds?, baseEncounterChance?, actionSounds? })`
+Items have **no named handle** — each `drops`/`items`/`lights` entry is a registry
+item-factory key, compile-time-checked against the registry passed to
+`authorTemplate`, and the assembler creates a fresh `registry.item(key)()` instance
+per entry. Rooms/mobs/loot/caches/archetypes are still referenced by author-given
+name.
+
+**Vocabulary** (each maps to real constructor params from the construction map).
+`ItemKey`/`RecipeKey` below are the registry's inferred key-literal unions, so
+those args are compile-time-checked:
+- `authorTemplate(title, registry, { rng?, maxRounds?, baseEncounterChance?, actionSounds? })` — the registry is supplied up front; the returned builder is generic over its key types.
 - `.archetype({ id, name, statModifiers?, inventorySlots?, immunities? })` — pure data, `campaign.registerArchetype`.
-- `.room(name, { description, dark?, spawnModifier?, presentation?, lights? })` — `lights` are item names placed as the room's light sources.
+- `.room(name, { description, dark?, spawnModifier?, presentation?, lights?: ItemKey[] })` — `lights` are registry item keys placed as the room's light-source instances.
 - `.startRoom(name)` — designates the entry room for joining players (used by `startSession`).
 - `.exit(fromRoomName, direction, toRoomName)` — one-way; call twice for bidirectional.
-- `.mob(name, { stats, room?, inventorySlots?, actionsPerRound?, drops?, baseEscapeChance?, materialDrops?, lightAverse? })` — `drops` are item names.
-- `.item(name, { from })` — **defines** one item instance; `from` is a registry item-factory key (`registry.item(from)()`). An item is **placed** by being referenced from exactly one container — a `loot`'s `items`, a `mob`'s `drops`, or a `room`'s `lights`. Validation flags an item referenced by **no** container (unplaced) or **more than one** (double-placed) — each name is a single instance.
-- `.loot(name, { room, items, description?, presentation? })` — a loot box; `items` are item names (placing those items).
+- `.mob(name, { stats, room?, inventorySlots?, actionsPerRound?, drops?: ItemKey[], baseEscapeChance?, materialDrops?, lightAverse? })` — `drops` are registry item keys.
+- `.loot(name, { room, items: ItemKey[], description?, presentation? })` — a loot box; `items` are registry item keys (a fresh instance per entry).
 - `.cache(name, { room, materials, presentation? })` — a harvestable `MaterialCache`.
 - `.materials(source, MaterialMap)` — `campaign.claimMaterials` (directly-available crafting materials, distinct from placed caches).
-- `.recipe(key)` — discover a registry recipe (`knownRecipes`/`discoverRecipe`).
+- `.recipe(key: RecipeKey)` — discover a registry recipe (`knownRecipes`/`discoverRecipe`).
 - `.codex(entry)` — a codex entry.
-- `.build(registry): Campaign` — validate-all, construct, return the live player-less Campaign. `.toSnapshot(registry): CampaignSnapshot` is a convenience wrapper (`serializeCampaign(build(registry))`).
+- `.build(): Campaign` — validate-all, construct, return the live player-less Campaign (the registry was supplied to `authorTemplate`). `.toSnapshot(): CampaignSnapshot` is a convenience wrapper (`serializeCampaign(build())`).
 
-### The assembler (`.build(registry)`)
+### The assembler (`.build()`)
 
 **Pass 1 — validate (collect all, then throw `AuthoringError`):** unknown or
 duplicate entity names; an `exit`/`room`/`loot`/`cache`/`mob.room`/`startRoom`
-referencing an undefined room; a `loot.items`/`mob.drops`/`room.lights` entry
-referencing an undefined item name; an item referenced by **no** container
-(unplaced) or by **more than one** (double-placed); an item `from`-key or `recipe`
-key **missing from the supplied `registry`**; a mob/loot/cache placed in no room.
-If any problem exists, throw `AuthoringError` with the full list — no construction
-happens.
+referencing an undefined room; a mob/loot/cache placed in no room. Item-key and
+recipe-key validity is enforced at **compile time** by the typed registry, so a
+typo can't reach here; a light runtime guard (`registry.item(key)`/`registry.recipe(key)`
+resolves) is still kept as defense against an untyped/cast registry. If any problem
+exists, throw `AuthoringError` with the full list — no construction happens.
 
-**Pass 2 — construct in the engine's required order**, resolving names→instances
-through an internal `Map<name, instance>`:
+**Pass 2 — construct in the engine's required order**, resolving room/mob/loot/cache
+names→instances through an internal `Map<name, instance>` and creating item
+instances inline from registry keys:
 1. `new Campaign(title, maxRounds, [], { rng, baseEncounterChance, … })`.
 2. `campaign.registerArchetype(...)` for each archetype.
-3. Items — `registry.item(from)()` for each, indexed by name.
-4. Loot boxes — `new Loot(description, [resolved items])`, indexed by name.
-5. Material caches — `new MaterialCache(materials)`, indexed by name.
-6. Mobs — `new Mob(campaign, name, stats, slots, apr, [resolved drops], opts)`, indexed by name.
-7. Rooms — `new Room(name, description, [resolved loot], NO_EXITS, [resolved caches], spawnModifier, [], presentation, dark, [resolved light items])`, indexed by name.
-8. Place mobs — `room.placeMob(mob)` for each mob with a `room`.
-9. Wire exits — `fromRoom.addExit(direction, toRoom)`.
-10. Recipes — `campaign.discoverRecipe(registry.recipe(key))` for each known recipe.
-11. Materials — `campaign.claimMaterials(source, map)`.
-12. Codex entries applied.
+3. Material caches — `new MaterialCache(materials)`, indexed by name.
+4. Loot boxes — `new Loot(description, items.map(k => registry.item(k)()))`, indexed by name.
+5. Mobs — `new Mob(campaign, name, stats, slots, apr, drops.map(k => registry.item(k)()), opts)`, indexed by name.
+6. Rooms — `new Room(name, description, [resolved loot], NO_EXITS, [resolved caches], spawnModifier, [], presentation, dark, lights.map(k => registry.item(k)()))`, indexed by name.
+7. Place mobs — `room.placeMob(mob)` for each mob with a `room`.
+8. Wire exits — `fromRoom.addExit(direction, toRoom)`.
+9. Recipes — `campaign.discoverRecipe(registry.recipe(key))` for each known recipe.
+10. Materials — `campaign.claimMaterials(source, map)`.
+11. Codex entries applied.
 
-Return the live `Campaign` — **player-less, no GM, not begun**.
+Item instances are created inline (a fresh `registry.item(key)()` per `drops` /
+`items` / `lights` entry) — there is no item-name index. Return the live `Campaign`
+— **player-less, no GM, not begun**.
 
-### Registry boundary
+### Registry boundary + the typed registry
 
-Firm: **content is authored; behaviors are code.** The `CampaignRegistry` (item
-factories, recipes' `create()` functions, scenes, formations) stays hand-written
-and is passed to `.build(registry)`; the builder references behaviors by key and
-the assembler validates the keys resolve. Archetypes (pure data) are the one thing
-authored inline. The builder never authors behavior code.
+Firm: **content is authored; behaviors are code.** Item factories, recipes'
+`create()` functions, scenes, and formations stay hand-written. They are *defined*
+through **`defineRegistry({ items, recipes, scenes?, formations? })`** — a const map
+whose key literals TypeScript infers — which builds a normal runtime
+`CampaignRegistry` (so the server / `Authority` / serialization consume it
+unchanged) but whose **type** carries the key-literal unions as phantom info:
+
+```ts
+function defineRegistry<
+  I extends Record<string, () => Item>,
+  R extends Record<string, CraftingRecipe>,
+>(defs: { items: I; recipes?: R; /* scenes?, formations? */ }):
+  TypedRegistry<keyof I & string, keyof R & string>;   // a CampaignRegistry + phantom key types
+```
+
+`authorTemplate(title, registry, opts)` is generic over the `TypedRegistry`, so the
+builder constrains every item/recipe key argument to the registered keys
+(compile-time + autocomplete). Archetypes (pure data) are authored inline; the
+builder never authors behavior code.
 
 ### Orchestration
 
@@ -182,14 +215,17 @@ instance is an isolated campaign (its own `CampaignStore` record, its own
 many independent instances. The host wires it into `genesisFor`:
 `genesisFor: (campaignId) => templateFor(campaignId) && instantiate(templateFor(campaignId))`.
 
-**`startSession(template, { players, gm, rng? }): Campaign`** — a convenience that
-scripts the existing engine APIs for fixtures + the demo: `instantiate` (or
-`deserializeCampaign` of the template) → for each `players[i]`
+**`startSession(template: Campaign, { players, gm, startRoom? }): Campaign`** — a
+convenience that scripts the existing engine APIs for fixtures + the demo. It takes
+the **built player-less `Campaign`** (from `.build()`) — so no registry or
+deserialize is needed to add players — and for each `players[i]`
 (`{ name, stats, archetype }`): `new PlayerCharacter` → `joinCampaign()` →
-`selectArchetype(archetype)` → `move(startRoom)` → set `campaign.gm = players[gm]`
-→ `campaign.beginCampaign()`. Returns the started live `Campaign`. It uses the same
-engine methods the authoritative `joinCampaign`/`beginCampaign` commands call, so
-the started session is faithful to a real network play start.
+`selectArchetype(archetype)` → `move(startRoom ?? the template's `startRoom`)` → then
+set `campaign.gm = players[gm]` → `campaign.beginCampaign()`. Returns the started
+live `Campaign`. It uses the same engine methods the authoritative
+`joinCampaign`/`beginCampaign` commands call, so the started session is faithful to
+a real network play start. (The networked path instead uses `instantiate` →
+`genesisFor` → the authoritative join/begin commands.)
 
 ### Genesis / persistence / demo wiring
 
@@ -202,12 +238,13 @@ updated to derive `genesisFor("demo")` from a demo *template* via `instantiate`.
 
 ### Reuse
 
-- **`packages/seed`**: `buildSeedCampaign()` is rebuilt as
+- **`packages/seed`**: `buildSeedRegistry()` is rebuilt as a `defineRegistry({...})`
+  const map (so its keys are typed), and `buildSeedCampaign()` becomes
   `startSession(seedTemplate, { players: [{name:"Ada",…,archetype:"delver"}, {name:"Ben",…}], gm: 0 })`,
-  where `seedTemplate = authorTemplate("Crypt", …)…build(buildSeedRegistry())`.
-  This both DRYs the world construction and exercises the full
-  template→instance→session path. A `demoTemplate()` export (the player-less
-  template snapshot) is added for the server harness's `genesisFor`.
+  where `seedTemplate = authorTemplate("Crypt", seedRegistry, …)…build()`. This both
+  DRYs the world construction and exercises the full template→instance→session path.
+  A `demoTemplate()` export (the player-less template snapshot) is added for the
+  server harness's `genesisFor`.
 - **`src/lib/serialization/roundtrip.test-helpers.ts`**: `buildStartedCampaign`
   is migrated onto the builder + `startSession` **only if it preserves its output
   contract** (it is consumed by many engine tests); otherwise it is left as-is and
@@ -228,13 +265,16 @@ throw `ProceduralViolation` as usual.
   forward references resolve regardless of author order; `.build` returns a
   player-less (`party` empty of PCs), not-begun campaign with the expected rooms /
   exits / mobs / items / loot / caches / archetypes / recipes.
-- **Validation tests:** each error class (dangling room/item ref, duplicate name,
-  missing `from`/`recipe` registry key, an item unplaced *and* an item
-  double-placed, unplaced mob/loot/cache, unknown `startRoom`), and that *multiple*
-  problems are collected into one `AuthoringError`.
-- **Round-trip:** `authorTemplate(...).toSnapshot(registry)` →
-  `deserializeCampaign` → `serializeCampaign` equals the template snapshot
-  (the builder produces a faithfully serializable campaign).
+- **Validation tests:** each error class (dangling room ref from
+  exit/mob/loot/cache/startRoom, duplicate name, unplaced mob/loot/cache, and the
+  defensive runtime guard for a missing item/recipe key on an untyped/cast
+  registry), and that *multiple* problems are collected into one `AuthoringError`.
+- **Type-safety (compile-time):** a small `tsd`/`@ts-expect-error`-style check that
+  a misspelled `drops`/`items`/`lights`/`.recipe` key is a *type* error against the
+  `defineRegistry` keys (the headline win of the typed registry).
+- **Round-trip:** `authorTemplate(...).toSnapshot()` → `deserializeCampaign` →
+  `serializeCampaign` equals the template snapshot (the builder produces a
+  faithfully serializable campaign).
 - **Orchestration:** `instantiate` yields a fresh campaign id + an unchanged world;
   `startSession` yields a started campaign whose party = the given players with
   their archetypes, gm set, begun — and it converges with a real
@@ -256,8 +296,8 @@ throw `ProceduralViolation` as usual.
 
 ## Files (anticipated)
 
-- Create: `src/lib/authoring/{template-builder,assembler,errors,orchestration}.ts` (+ tests).
-- Modify: `packages/seed/src/index.ts` (`buildSeedCampaign` on the builder; add `demoTemplate`).
+- Create: `src/lib/authoring/{registry,template-builder,assembler,errors,orchestration}.ts` (+ tests).
+- Modify: `packages/seed/src/index.ts` (`buildSeedRegistry` as `defineRegistry`; `buildSeedCampaign` on the builder; add `demoTemplate`).
 - Modify: `packages/server/src/main.ts` (derive `genesisFor` from a demo template via `instantiate`).
 - Modify (if contract-preserving): `src/lib/serialization/roundtrip.test-helpers.ts` (`buildStartedCampaign`).
 - Update: `README.md` (campaign authoring: template builder + template→instance→session).
