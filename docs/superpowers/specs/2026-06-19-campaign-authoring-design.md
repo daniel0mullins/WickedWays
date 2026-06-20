@@ -33,7 +33,7 @@ conflates two very different things:
 
 - **Template** — the reusable *world* (a module/adventure): rooms, exits, mobs,
   world-placed items, loot, material caches, the archetypes players may pick,
-  known recipes, codex, and campaign metadata. Authored once, run many times.
+  known recipes, and campaign metadata. Authored once, run many times.
 - **Instance / session** — a specific playthrough: *players* who join (bringing
   their own character + chosen archetype), a designated GM, and a started,
   authoritative, persisted game.
@@ -51,7 +51,7 @@ concerns, and the comms layer already implements them as authoritative commands
    construction). Genesis = `serializeCampaign`. It does *not* emit snapshot JSON
    directly.
 2. **Templates, not instances.** The builder authors a template (world +
-   archetypes + recipes + codex + metadata). `.player`/`.gm`/`.begin` are **not**
+   archetypes + recipes + metadata). `.player`/`.gm`/`.begin` are **not**
    builder methods.
 3. **Thin orchestration:** `instantiate(template) → CampaignSnapshot` (instance
    genesis, fresh campaign id) + a `startSession(template, {players, gm})` helper
@@ -84,13 +84,13 @@ concerns, and the comms layer already implements them as authoritative commands
 ```
 const reg = defineRegistry({ items, recipes })  typed registry (key literals inferred)
 authorTemplate(title, reg, opts)              fluent builder (TS, compile-time, generic over reg)
-   .room/.exit/.mob/.loot/.cache/.archetype/.recipe/.codex/.startRoom   (item keys typed vs reg)
+   .room/.exit/.mob/.loot/.cache/.archetype/.recipe/.startRoom   (item keys typed vs reg)
    .build()                    → assembler: validate-all → construct in order → resolve names→instances
                                → live player-less, not-begun Campaign
    serializeCampaign(it)       → TEMPLATE snapshot (CampaignSnapshot)
 
 instantiate(template)          → INSTANCE genesis (fresh campaign id) → genesisFor / CampaignStore
-startSession(campaign, {...})  → join players + select archetypes + set gm + begin → started Campaign
+startSession(builder, {...})   → join players + select archetypes + set gm + begin → started Campaign
 
 play: joinCampaign / beginCampaign  ← EXISTING authoritative + persisted commands
 ```
@@ -100,7 +100,7 @@ New engine module `src/lib/authoring/`:
 - `template-builder.ts` — the fluent `authorTemplate(...)` API (generic over the `TypedRegistry`) + its accumulated description types.
 - `assembler.ts` — validate-all + ordered construction + name→instance resolution (`build`).
 - `errors.ts` — `AuthoringError` (aggregates validation problems).
-- `orchestration.ts` — `instantiate(template)` + `startSession(campaign, opts)`.
+- `orchestration.ts` — `instantiate(template)` + `startSession(builder, opts)`.
 
 Exposed via the engine's `wickedways/lib/authoring/*` export so `packages/seed`
 and the server harness can consume it.
@@ -128,7 +128,6 @@ const template = authorTemplate("Crypt", registry, { rng: () => 0.5, maxRounds: 
   .cache("vein", { room: "next", materials: { metal: 2 } })
   .recipe("widget")                                      // typed registry recipe key
   .materials("seed", { metal: 2 })                       // claimMaterials (crafting economy)
-  .codex({ /* lore entry */ })
   .build();                                              // → live player-less Campaign (registry already provided)
 ```
 
@@ -151,7 +150,6 @@ those args are compile-time-checked:
 - `.cache(name, { room, materials, presentation? })` — a harvestable `MaterialCache`.
 - `.materials(source, MaterialMap)` — `campaign.claimMaterials` (directly-available crafting materials, distinct from placed caches).
 - `.recipe(key: RecipeKey)` — discover a registry recipe (`knownRecipes`/`discoverRecipe`).
-- `.codex(entry)` — a codex entry.
 - `.build(): Campaign` — validate-all, construct, return the live player-less Campaign (the registry was supplied to `authorTemplate`). `.toSnapshot(): CampaignSnapshot` is a convenience wrapper (`serializeCampaign(build())`).
 
 ### The assembler (`.build()`)
@@ -215,14 +213,14 @@ instance is an isolated campaign (its own `CampaignStore` record, its own
 many independent instances. The host wires it into `genesisFor`:
 `genesisFor: (campaignId) => templateFor(campaignId) && instantiate(templateFor(campaignId))`.
 
-**`startSession(template: Campaign, { players, gm, startRoom? }): Campaign`** — a
-convenience that scripts the existing engine APIs for fixtures + the demo. It takes
-the **built player-less `Campaign`** (from `.build()`) — so no registry or
-deserialize is needed to add players — and for each `players[i]`
+**`startSession(builder, { players, gm, startRoom? }): Campaign`** — a convenience
+that scripts the existing engine APIs for fixtures + the demo. It takes the
+**template builder** (so it can resolve the `startRoom` *name* — names are internal
+to assembly), assembles a fresh player-less `Campaign`, and for each `players[i]`
 (`{ name, stats, archetype }`): `new PlayerCharacter` → `joinCampaign()` →
-`selectArchetype(archetype)` → `move(startRoom ?? the template's `startRoom`)` → then
-set `campaign.gm = players[gm]` → `campaign.beginCampaign()`. Returns the started
-live `Campaign`. It uses the same engine methods the authoritative
+`selectArchetype(archetype)` → `move(start room)` → then set
+`campaign.gm = players[gm]` → `campaign.beginCampaign()`. Returns the started live
+`Campaign`. It uses the same engine methods the authoritative
 `joinCampaign`/`beginCampaign` commands call, so the started session is faithful to
 a real network play start. (The networked path instead uses `instantiate` →
 `genesisFor` → the authoritative join/begin commands.)
@@ -293,6 +291,9 @@ throw `ProceduralViolation` as usual.
   hand-written).
 - **A template library / template store** (the host holds templates, as it holds
   `genesisFor` today).
+- **Codex authoring** — the codex is gameplay-generated (encounter records); there
+  is no public API to seed authored codex entries, so a template's codex starts
+  empty.
 
 ## Files (anticipated)
 
