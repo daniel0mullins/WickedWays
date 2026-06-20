@@ -47,6 +47,14 @@ conclusion of every round to resolve a campaign to an explicit outcome
    `ended` outcome — distinct from win/loss/timeout.
 5. **Resolution cue:** a new presentation cue is emitted when the campaign
    resolves, so UIs get a push signal instead of polling.
+6. **Outcome prose is authored content, not a UI concern.** Each win/loss
+   condition carries optional surface-agnostic narration (text + optional sound),
+   and the template can set fallback narration for the conditionless `timed-out`
+   and `ended` outcomes. Prose lives at the **template** layer (per-campaign
+   content), never the registry (reusable behavior) — the same predicate can carry
+   different prose in different campaigns. It travels with the campaign definition
+   so a text terminal and an AR headset render the *same* canonical ending; the
+   surface decides only *how*.
 
 ---
 
@@ -60,6 +68,7 @@ independently testable and keeps `campaign.ts` from growing.
 
 ```ts
 import type { ICampaign } from "./campaign.js"; // type-only; no runtime cycle
+import type { AssetRef } from "./presentation.js";
 
 /** How a campaign ended (or that it is still running). */
 export type CampaignOutcome =
@@ -69,17 +78,31 @@ export type CampaignOutcome =
   | "timed-out"
   | "ended";
 
-/** A named win/loss predicate. `key` is the registry key it was resolved from. */
+/**
+ * Surface-agnostic authored prose for an outcome. Plain data — it serializes
+ * natively (unlike a predicate) and any play surface renders it however it
+ * likes. `sound` reuses the engine's existing asset-reference convention.
+ */
+export interface OutcomeNarration {
+  readonly text?: string;
+  readonly sound?: AssetRef;
+}
+
+/**
+ * A named win/loss predicate plus its authored prose. `key` is the registry
+ * key the `test` was resolved from; `narration` is per-campaign content.
+ */
 export interface VictoryCondition {
   readonly key: string;
   readonly test: (campaign: ICampaign) => boolean;
+  readonly narration?: OutcomeNarration;
 }
 
 /** The resolved result of a round-end evaluation. */
 export interface OutcomeResult {
   readonly status: CampaignOutcome; // never "ended" — that is the manual path
-  /** Registry key of the condition that fired (for "won"/"lost"). */
-  readonly reason?: string;
+  /** The condition that fired (for "won"/"lost"); absent for "timed-out". */
+  readonly condition?: VictoryCondition;
 }
 
 /**
@@ -97,10 +120,10 @@ export function resolveOutcome(input: {
   const { round, maxRounds, winConditions, loseConditions, campaign } = input;
 
   for (const c of loseConditions) {
-    if (c.test(campaign)) return { status: "lost", reason: c.key };
+    if (c.test(campaign)) return { status: "lost", condition: c };
   }
   for (const c of winConditions) {
-    if (c.test(campaign)) return { status: "won", reason: c.key };
+    if (c.test(campaign)) return { status: "won", condition: c };
   }
   if (round >= maxRounds) return { status: "timed-out" };
   return { status: "ongoing" };
@@ -116,12 +139,14 @@ export function resolveOutcome(input: {
 #outcomeReason: string | undefined = undefined;
 #winConditions: VictoryCondition[] = [];
 #loseConditions: VictoryCondition[] = [];
+#timeoutNarration: OutcomeNarration | undefined = undefined;
+#endedNarration: OutcomeNarration | undefined = undefined;
 ```
 
 The old `#finished: boolean` is **removed**; its role is subsumed by `#outcome`.
 
-**Constructor options** gain two fields (injection point for direct + authored
-construction):
+**Constructor options** gain the conditions and the conditionless-outcome prose
+(injection point for direct + authored construction):
 
 ```ts
 options: {
@@ -130,6 +155,8 @@ options: {
   actionSounds?: Partial<Record<ActionKind, AssetRef>>;
   winConditions?: VictoryCondition[];
   loseConditions?: VictoryCondition[];
+  timeoutNarration?: OutcomeNarration;
+  endedNarration?: OutcomeNarration;
 }
 ```
 
@@ -139,27 +166,53 @@ stored as `this.#winConditions = [...(options.winConditions ?? [])]` (copied).
 
 ```ts
 get outcome(): CampaignOutcome { return this.#outcome; }
-get outcomeReason(): string | undefined { return this.#outcomeReason; }
+get outcomeReason(): string | undefined { return this.#outcomeReason; } // firing key
 get finished(): boolean { return this.#outcome !== "ongoing"; } // back-compat
+
+/**
+ * The authored prose for the resolved outcome, available to ANY play surface
+ * whether it listens to the resolution cue or polls. Derived, so a reloaded
+ * finished campaign reports the same prose: for won/lost it is the firing
+ * condition's narration (found by `#outcomeReason`); for timed-out/ended it is
+ * the template fallback.
+ */
+get outcomeNarration(): OutcomeNarration | undefined {
+  switch (this.#outcome) {
+    case "timed-out": return this.#timeoutNarration;
+    case "ended": return this.#endedNarration;
+    case "won": case "lost": {
+      const list = this.#outcome === "won" ? this.#winConditions : this.#loseConditions;
+      return list.find((c) => c.key === this.#outcomeReason)?.narration;
+    }
+    default: return undefined; // ongoing
+  }
+}
 ```
 
 **`#assertRunning()`** changes from checking `#finished` to checking
 `this.#outcome !== "ongoing"` (and `#started`). Behavior is identical.
 
-**Private `#finish(outcome, reason?)`** centralizes termination (sets
-`#outcome`/`#outcomeReason`, emits the resolution cue). Both the public
-`endCampaign()` and the round resolver funnel through it:
+**Private `#finish(outcome, condition?)`** centralizes termination (sets
+`#outcome`/`#outcomeReason`, emits the resolution cue carrying the resolved
+narration). Both the public `endCampaign()` and the round resolver funnel through
+it. The narration on the cue is derived through the `outcomeNarration` getter, so
+cue-driven and polling surfaces always agree:
 
 ```ts
-#finish(outcome: Exclude<CampaignOutcome, "ongoing">, reason?: string): void {
+#finish(outcome: Exclude<CampaignOutcome, "ongoing">, condition?: VictoryCondition): void {
   this.#outcome = outcome;
-  this.#outcomeReason = reason;
-  this[EMIT_CUE]({ kind: "resolution", outcome, reason });
+  this.#outcomeReason = condition?.key;
+  this[EMIT_CUE]({
+    kind: "resolution",
+    outcome,
+    reason: condition?.key,
+    narration: this.outcomeNarration,
+  });
 }
 
 endCampaign(): void {
   this.#assertRunning();
-  this.#finish("ended");
+  this.#finish("ended"); // narration resolves to #endedNarration
 }
 ```
 
@@ -202,7 +255,7 @@ endRound() {
     campaign: this,
   });
   if (result.status !== "ongoing") {
-    this.#finish(result.status, result.reason);
+    this.#finish(result.status, result.condition);
   }
 }
 ```
@@ -221,10 +274,17 @@ export type PresentationCue =
   | { kind: "action"; action: ActionKind; actor: EntityRef; sound?: AssetRef }
   | { kind: "encounter"; mob: EntityRef; room: EntityRef; sound?: AssetRef }
   | { kind: "visibility"; room: EntityRef; lit: boolean }
-  | { kind: "resolution"; outcome: CampaignOutcome; reason?: string };
+  | { kind: "resolution"; outcome: CampaignOutcome; reason?: string; narration?: OutcomeNarration };
 ```
 
-Emitted exactly once per campaign, from `#finish`.
+Emitted exactly once per campaign, from `#finish`. The `narration` is the authored
+`OutcomeNarration` (text + optional sound) for the resolved outcome — the surface
+renders it; the engine never formats it. `AssetRef` (the cue's existing sound
+convention) is reused, so `OutcomeNarration` introduces no new presentation type.
+
+`presentation.ts` imports `CampaignOutcome`/`OutcomeNarration` from `victory.ts`,
+and `victory.ts` imports `AssetRef` from `presentation.ts`. Both directions must be
+`import type` so the cycle is erased at runtime (these are all types, never values).
 
 ### Registry (`src/lib/serialization/registry.ts`)
 
@@ -268,22 +328,41 @@ site compiling unchanged.
 
 ### Template builder & description (`src/lib/authoring/template-builder.ts`)
 
-`TemplateBuilder<IK, RK, CK extends string = never>` gains:
+`TemplateBuilder<IK, RK, CK extends string = never>` gains the condition methods
+(key compile-checked against `CK`; prose optional) and the two conditionless-outcome
+fallbacks:
 
 ```ts
-winWhen(key: CK): this {
-  this.description.winConditions.push(key);
+winWhen(key: CK, narration?: OutcomeNarration): this {
+  this.description.winConditions.push({ key, narration });
   return this;
 }
-loseWhen(key: CK): this {
-  this.description.loseConditions.push(key);
+loseWhen(key: CK, narration?: OutcomeNarration): this {
+  this.description.loseConditions.push({ key, narration });
+  return this;
+}
+onTimeout(narration: OutcomeNarration): this {
+  this.description.timeoutNarration = narration;
+  return this;
+}
+onEnd(narration: OutcomeNarration): this {
+  this.description.endedNarration = narration;
   return this;
 }
 ```
 
-`CampaignTemplateDescription` gains `winConditions: string[]` and
-`loseConditions: string[]` (initialized `[]`). `authorTemplate`'s return type
-threads the registry's `ConditionKeyOf` through as `CK`.
+`CampaignTemplateDescription` gains:
+
+```ts
+winConditions: { key: string; narration?: OutcomeNarration }[]; // init []
+loseConditions: { key: string; narration?: OutcomeNarration }[]; // init []
+timeoutNarration?: OutcomeNarration;
+endedNarration?: OutcomeNarration;
+```
+
+`authorTemplate`'s return type threads the registry's `ConditionKeyOf` through as
+`CK`. Prose is plain authored content, so it is stored verbatim in the description —
+only the `key` is registry-validated.
 
 ### Assembler (`src/lib/authoring/assembler.ts`)
 
@@ -295,52 +374,75 @@ const requireConditionKey = (k: string, ctx: string) => {
   try { registry.condition(k); }
   catch { problems.push(`${ctx} references unregistered condition key '${k}'.`); }
 };
-for (const k of desc.winConditions) requireConditionKey(k, "winWhen");
-for (const k of desc.loseConditions) requireConditionKey(k, "loseWhen");
+for (const c of desc.winConditions) requireConditionKey(c.key, "winWhen");
+for (const c of desc.loseConditions) requireConditionKey(c.key, "loseWhen");
 ```
 
-**Pass 2 (construct):** resolve keys to `VictoryCondition` records and pass them
+**Pass 2 (construct):** resolve keys to `VictoryCondition` records (carrying the
+authored narration verbatim) and pass them, plus the conditionless-outcome prose,
 as constructor options:
 
 ```ts
-const winConditions = desc.winConditions.map((k) => ({ key: k, test: registry.condition(k) }));
-const loseConditions = desc.loseConditions.map((k) => ({ key: k, test: registry.condition(k) }));
+const winConditions = desc.winConditions.map((c) => ({
+  key: c.key, test: registry.condition(c.key), narration: c.narration,
+}));
+const loseConditions = desc.loseConditions.map((c) => ({
+  key: c.key, test: registry.condition(c.key), narration: c.narration,
+}));
 const campaign = new Campaign(desc.title, desc.opts.maxRounds ?? 100, [], {
   rng: desc.opts.rng,
   baseEncounterChance: desc.opts.baseEncounterChance,
   winConditions,
   loseConditions,
+  timeoutNarration: desc.timeoutNarration,
+  endedNarration: desc.endedNarration,
 });
 ```
 
 ### Serialization (`src/lib/serialization/types.ts`, `campaign.ts`)
 
-`CampaignCoreSnapshot`:
+`CampaignCoreSnapshot`. The predicate is behavior (re-attached by key); the
+narration is content (persisted verbatim). So each stored condition is
+`{ key: string; narration?: OutcomeNarration }` — its `test` is dropped and
+re-resolved on hydrate, its prose survives directly:
 
 - **Remove** `finished: boolean`.
 - **Add** `outcome: CampaignOutcome`.
-- **Add** `winConditionKeys: string[]` and `loseConditionKeys: string[]`.
 - **Add** `outcomeReason?: string`.
+- **Add** `winConditions: { key: string; narration?: OutcomeNarration }[]`.
+- **Add** `loseConditions: { key: string; narration?: OutcomeNarration }[]`.
+- **Add** `timeoutNarration?: OutcomeNarration` and `endedNarration?: OutcomeNarration`.
 
-`SCHEMA_VERSION` bumps **1 → 2**. The durable-persistence layer already
-fails-closed on schema mismatch, so pre-existing v1 snapshots are rejected rather
-than mis-hydrated (acceptable for the current pre-release stage).
+`OutcomeNarration` is plain JSON data (`text?: string`, `sound?: AssetRef`), so it
+needs no special serialization. `SCHEMA_VERSION` bumps **1 → 2**. The
+durable-persistence layer already fails-closed on schema mismatch, so pre-existing
+v1 snapshots are rejected rather than mis-hydrated (acceptable for the current
+pre-release stage).
 
 `[SERIALIZE]()` writes:
 
 ```ts
 outcome: this.#outcome,
 outcomeReason: this.#outcomeReason,
-winConditionKeys: this.#winConditions.map((c) => c.key),
-loseConditionKeys: this.#loseConditions.map((c) => c.key),
+winConditions: this.#winConditions.map((c) => ({ key: c.key, narration: c.narration })),
+loseConditions: this.#loseConditions.map((c) => ({ key: c.key, narration: c.narration })),
+timeoutNarration: this.#timeoutNarration,
+endedNarration: this.#endedNarration,
 ```
 
-`[HYDRATE_CATALOG](core, registry)` re-resolves predicates (before any character
-hydrates, consistent with how it already restores recipes):
+`[HYDRATE_CATALOG](core, registry)` re-resolves predicates by key while restoring
+the persisted prose (before any character hydrates, consistent with how it already
+restores recipes):
 
 ```ts
-this.#winConditions = core.winConditionKeys.map((k) => ({ key: k, test: registry.condition(k) }));
-this.#loseConditions = core.loseConditionKeys.map((k) => ({ key: k, test: registry.condition(k) }));
+this.#winConditions = core.winConditions.map((c) => ({
+  key: c.key, test: registry.condition(c.key), narration: c.narration,
+}));
+this.#loseConditions = core.loseConditions.map((c) => ({
+  key: c.key, test: registry.condition(c.key), narration: c.narration,
+}));
+this.#timeoutNarration = core.timeoutNarration;
+this.#endedNarration = core.endedNarration;
 ```
 
 `[HYDRATE](core, ctx)` restores `this.#outcome = core.outcome` and
@@ -351,22 +453,28 @@ this.#loseConditions = core.loseConditionKeys.map((k) => ({ key: k, test: regist
 ## Data flow
 
 ```
-author: authorTemplate(title, registry).winWhen("all-bosses-down").loseWhen("party-wiped")
-  -> description.winConditions / loseConditions hold the keys
+author: authorTemplate(title, registry)
+          .winWhen("all-bosses-down", { text: "The seal shatters..." })
+          .loseWhen("party-wiped", { text: "Darkness takes you." })
+          .onTimeout({ text: "Dawn breaks; the ritual completes without you." })
+  -> description holds { key, narration } records + timeout/ended prose
   -> .build() -> assemble():
-       pass 1: validate keys against registry.condition(key)
-       pass 2: resolve to VictoryCondition[], pass via constructor options
-  -> Campaign holds #winConditions / #loseConditions
+       pass 1: validate KEYS against registry.condition(key) (prose unchecked)
+       pass 2: resolve to VictoryCondition[] (test by key, narration verbatim),
+               pass conditions + timeout/ended prose via constructor options
+  -> Campaign holds #winConditions / #loseConditions / #timeout+#endedNarration
 
 play: ...nextPlayer() until last party member -> endRound()
   -> round++, resetActivity()
-  -> resolveOutcome(): loss list, then win list, then maxRounds
-  -> non-ongoing -> #finish(status, reason): set #outcome, emit "resolution" cue
+  -> resolveOutcome(): loss list, then win list, then maxRounds -> firing condition
+  -> non-ongoing -> #finish(status, condition): set #outcome/#outcomeReason,
+       emit "resolution" cue carrying the resolved OutcomeNarration
+  -> any surface reads campaign.outcomeNarration (poll) or the cue (push)
 
-persist: [SERIALIZE] writes outcome + condition KEYS (not predicates)
+persist: [SERIALIZE] writes outcome + condition { key, narration } (NOT predicates)
 reload:  deserializeCampaign(data, { registry, rng })
-  -> [HYDRATE_CATALOG] re-resolves keys -> predicates via registry.condition
-  -> [HYDRATE] restores #outcome
+  -> [HYDRATE_CATALOG] re-resolves keys -> predicates; restores prose verbatim
+  -> [HYDRATE] restores #outcome -> outcomeNarration reports the same ending
 ```
 
 ## Error handling
@@ -379,46 +487,54 @@ reload:  deserializeCampaign(data, { registry, rng })
   `ProceduralViolation` via `#assertRunning()`, unchanged.
 - A predicate that throws propagates out of `endRound()` — predicates are author
   code and expected to be total; we do not swallow their errors.
+- Narration is never validated (it is free authored content). A condition with a
+  valid key but no prose simply resolves with `outcomeNarration === undefined`, and
+  surfaces fall back to their own generic text.
 
 ## Testing
 
 - **`victory.test.ts`** (pure resolver): loss-before-win precedence; both-fire →
   `lost`; win on final round → `won` (not `timed-out`); empty lists + ceiling →
-  `timed-out`; empty lists, under ceiling → `ongoing`; `reason` carries the firing
-  key.
+  `timed-out`; empty lists, under ceiling → `ongoing`; the result's `condition`
+  carries the firing condition (and thus its narration).
 - **`campaign.test.ts`**: `endRound()` resolves `won`/`lost`/`timed-out`; `outcome`
   + `outcomeReason` getters; `finished` derived; `endCampaign()` → `ended`;
-  resolution cue emitted exactly once; `#assertRunning` blocks post-resolution
-  turns.
+  `outcomeNarration` returns the firing condition's prose for won/lost and the
+  fallback for timed-out/ended; the resolution cue is emitted exactly once and
+  carries that same narration; `#assertRunning` blocks post-resolution turns.
 - **Registry / authoring**: `defineRegistry({ conditions })` types `CK`;
-  `.winWhen` / `.loseWhen` compile-checked; assembler rejects unknown keys.
-- **Serialization round-trip**: a campaign with conditions → `serializeCampaign` →
-  `deserializeCampaign` re-attaches predicates and they still fire; the
-  `authoring/roundtrip.test.ts` gains a victory-condition case.
+  `.winWhen` / `.loseWhen` compile-checked; `.onTimeout` / `.onEnd` set fallbacks;
+  assembler rejects unknown keys (but accepts any prose).
+- **Serialization round-trip**: a campaign with conditions + prose →
+  `serializeCampaign` → `deserializeCampaign` re-attaches predicates (they still
+  fire) AND restores narration verbatim (`outcomeNarration` matches pre-reload);
+  the `authoring/roundtrip.test.ts` gains a victory-condition case.
 - **Integration** (`integration.test.ts`): a full template-authored campaign won
-  by reaching a target room.
+  by reaching a target room, asserting the authored win prose surfaces.
 
 ## Documentation
 
 - `README.md`: new "Victory conditions" mechanics section (outcome vocabulary,
-  round-end evaluation order, authoring via `.winWhen`/`.loseWhen`).
+  round-end evaluation order, authoring via `.winWhen`/`.loseWhen`/`.onTimeout`/
+  `.onEnd`, and the content-vs-presentation stance on outcome prose).
 - `docs-site/guide/data-model.md`: the live-campaign ER diagram gains the campaign
-  `outcome` field and a `VictoryCondition` relationship; the template diagram gains
-  win/loss condition-key references.
-- TSDoc on `CampaignOutcome`, `VictoryCondition`, `resolveOutcome`, the new getters,
-  `registerCondition`, `.winWhen`/`.loseWhen`.
+  `outcome` field and a `VictoryCondition` relationship (with `narration`); the
+  template diagram gains win/loss condition records and the prose fallbacks.
+- TSDoc on `CampaignOutcome`, `OutcomeNarration`, `VictoryCondition`,
+  `resolveOutcome`, the new getters (incl. `outcomeNarration`), `registerCondition`,
+  and `.winWhen`/`.loseWhen`/`.onTimeout`/`.onEnd`.
 
 ## File map
 
 | File | Change |
 | --- | --- |
-| `src/lib/victory.ts` | **new** — `CampaignOutcome`, `VictoryCondition`, `OutcomeResult`, `resolveOutcome` |
+| `src/lib/victory.ts` | **new** — `CampaignOutcome`, `OutcomeNarration`, `VictoryCondition`, `OutcomeResult`, `resolveOutcome` |
 | `src/lib/victory.test.ts` | **new** — pure resolver tests |
-| `src/lib/campaign.ts` | outcome state, constructor opts, getters, `#finish`, `endRound` hook, serialize/hydrate |
-| `src/lib/presentation.ts` | `resolution` cue variant |
-| `src/lib/serialization/types.ts` | `CampaignCoreSnapshot` fields, `SCHEMA_VERSION` 1→2 |
+| `src/lib/campaign.ts` | outcome + narration state, constructor opts, getters (incl. `outcomeNarration`), `#finish`, `endRound` hook, serialize/hydrate |
+| `src/lib/presentation.ts` | `resolution` cue variant (carries `OutcomeNarration`) |
+| `src/lib/serialization/types.ts` | `CampaignCoreSnapshot` fields (condition `{key,narration}` records + prose fallbacks), `SCHEMA_VERSION` 1→2 |
 | `src/lib/serialization/registry.ts` | `registerCondition` / `condition` |
 | `src/lib/authoring/registry.ts` | `CONDITION_KEYS`, `ConditionKeyOf`, `defineRegistry` conditions |
-| `src/lib/authoring/template-builder.ts` | `.winWhen` / `.loseWhen`, description fields, `CK` param |
-| `src/lib/authoring/assembler.ts` | validate + resolve condition keys |
+| `src/lib/authoring/template-builder.ts` | `.winWhen` / `.loseWhen` / `.onTimeout` / `.onEnd`, description fields, `CK` param |
+| `src/lib/authoring/assembler.ts` | validate + resolve condition keys, carry narration |
 | `README.md`, `docs-site/guide/data-model.md` | mechanics + diagram updates |
