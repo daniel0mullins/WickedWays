@@ -140,13 +140,13 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
 
   /** Add a win condition (registry key) with optional surface-agnostic prose. */
   winWhen(key: CK, narration?: OutcomeNarration): this {
-    this.description.winConditions!.push({ key, narration });
+    this.description.winConditions.push({ key, narration });
     return this;
   }
 
   /** Add a loss condition (registry key) with optional surface-agnostic prose. */
   loseWhen(key: CK, narration?: OutcomeNarration): this {
-    this.description.loseConditions!.push({ key, narration });
+    this.description.loseConditions.push({ key, narration });
     return this;
   }
 

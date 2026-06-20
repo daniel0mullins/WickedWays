@@ -22,7 +22,7 @@ function baseDesc(over: Partial<CampaignTemplateDescription> = {}): CampaignTemp
     title: "Crypt", opts: { rng: () => 0.5, maxRounds: 10 },
     archetypes: [], rooms: [{ name: "start", description: "the entrance" }, { name: "next", description: "next" }],
     startRoom: "start", exits: [{ from: "start", direction: Directions.North, to: "next" }],
-    mobs: [], loot: [], caches: [], recipes: [], materials: [], ...over,
+    mobs: [], loot: [], caches: [], recipes: [], materials: [], winConditions: [], loseConditions: [], ...over,
   };
 }
 
