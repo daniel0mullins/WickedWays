@@ -95,7 +95,7 @@ export interface ICampaign {
   registerArchetype: (archetype: Archetype) => void;
   /** Starts the campaign once a valid party and GM are in place. */
   beginCampaign: () => void;
-  /** Marks a running campaign finished. */
+  /** Manually ends a running campaign with the `ended` outcome (a deliberate GM stop). */
   endCampaign: () => void;
   /** Advances the round once every party member has acted. */
   endRound: () => void;
