@@ -3,6 +3,7 @@ import { defineRegistry, type ItemKeyOf, type RecipeKeyOf } from "./registry";
 import { Item } from "../inventory";
 import { StatType } from "../character/stats";
 import { SlotKind } from "../equipment";
+import type { ICampaign } from "../campaign";
 
 function makeWidget(): Item {
   const noop = () => {};
@@ -30,5 +31,15 @@ describe("defineRegistry", () => {
     // @ts-expect-error "c" is not a registered item key
     const bad: IK = "c";
     void ik; void rk; void bad;
+  });
+});
+
+describe("defineRegistry conditions", () => {
+  it("registers condition predicates on the underlying registry", () => {
+    const reg = defineRegistry({
+      items: {},
+      conditions: { "all-bosses-down": (_c: ICampaign) => true },
+    });
+    expect(reg.condition("all-bosses-down")(/* campaign */ {} as ICampaign)).toBe(true);
   });
 });
