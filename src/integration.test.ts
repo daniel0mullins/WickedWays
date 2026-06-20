@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { Campaign } from "./lib/campaign";
+import type { ICampaign } from "./lib/campaign";
 import { HELD_BY, Item, PLACE, createKey } from "./lib/inventory";
+import { authorTemplate } from "./lib/authoring/template-builder";
+import { defineRegistry } from "./lib/authoring/registry";
+import { startSession } from "./lib/authoring/orchestration";
 import { MaterialCache } from "./lib/material-cache";
 import type { CraftingRecipe, RecipeId } from "./lib/crafting";
 import { Loot } from "./lib/loot";
@@ -573,5 +577,44 @@ describe("SyncCoordinator join + late-join", () => {
 
     const C = SyncCoordinator.join({ registry, transport, rng: () => { throw new Error("no roll"); } });
     expect(serializeCampaign(C.campaign)).toEqual(serializeCampaign(A.campaign));
+  });
+});
+
+describe("Victory conditions", () => {
+  it("resolves 'won' with authored narration when a player enters the exit room", () => {
+    // Author a registry with a single win condition keyed to the party's room.
+    const reg = defineRegistry({
+      items: {},
+      conditions: {
+        "reached-exit": (c: ICampaign) => c.party[0]?.currentRoom?.name === "exit",
+      },
+    });
+
+    // Author the template: two rooms, a one-way exit, the win condition with prose.
+    const campaign = startSession(
+      authorTemplate("Escape Run", reg, { maxRounds: 10 })
+        .archetype({ id: "scout", name: "Scout" })
+        .room("start", { description: "The starting cell." })
+        .room("exit", { description: "A door to freedom." })
+        .startRoom("start")
+        .exit("start", Directions.North, "exit")
+        .winWhen("reached-exit", { text: "You escape into the night." }),
+      {
+        players: [{ name: "Hero", stats: { [StatType.Health]: 10, [StatType.Sanity]: 10, [StatType.Energy]: 10 }, archetype: "scout" }],
+        gm: 0,
+      },
+    );
+
+    // The player is in the start room after startSession.
+    const hero = campaign.activeCharacter;
+
+    // Move the player into the exit room and close the round.
+    hero.startTurn();
+    hero.move(hero.currentRoom!.exits.get(Directions.North)!);
+    campaign.nextPlayer(); // sole party member → endRound() fires → resolveOutcome() runs
+
+    expect(campaign.outcome).toBe("won");
+    expect(campaign.outcomeReason).toBe("reached-exit");
+    expect(campaign.outcomeNarration?.text).toBe("You escape into the night.");
   });
 });

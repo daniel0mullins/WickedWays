@@ -33,6 +33,8 @@ erDiagram
     CampaignTemplate ||--|| RoomDef : startRoom
     CampaignTemplate }o--o{ RecipeKey : recipes
     CampaignTemplate ||--|| TypedRegistry : "built with"
+    CampaignTemplate ||--o{ ConditionRef : winConditions
+    CampaignTemplate ||--o{ ConditionRef : loseConditions
 
     RoomDef ||--o{ ExitDef : "from / to"
     MobDef }o--|| RoomDef : "placed in"
@@ -45,11 +47,14 @@ erDiagram
 
     TypedRegistry ||--o{ ItemKey : "defines factory"
     TypedRegistry ||--o{ RecipeKey : "defines recipe"
+    TypedRegistry ||--o{ ConditionKey : "defines predicate"
 
     CampaignTemplate {
         string title
         int maxRounds
         string startRoom
+        OutcomeNarration timeoutNarration
+        OutcomeNarration endedNarration
     }
     ArchetypeDef {
         string id
@@ -85,12 +90,20 @@ erDiagram
     TypedRegistry {
         ItemKey items
         RecipeKey recipes
+        ConditionKey conditions
     }
     ItemKey {
         string key
     }
     RecipeKey {
         string key
+    }
+    ConditionKey {
+        string key
+    }
+    ConditionRef {
+        string key
+        OutcomeNarration narration
     }
 ```
 
@@ -113,6 +126,8 @@ erDiagram
     Campaign ||--o{ Archetype : archetypes
     Campaign }o--|| Character : gm
     Campaign }o--|| Character : active
+    Campaign ||--o{ VictoryCondition : "winConditions"
+    Campaign ||--o{ VictoryCondition : "loseConditions"
 
     Room }o--o{ Room : exits
     Room ||--o{ Character : occupants
@@ -132,6 +147,8 @@ erDiagram
         string title
         int round
         boolean started
+        CampaignOutcome outcome
+        string outcomeReason
     }
     Room {
         string id
@@ -160,6 +177,10 @@ erDiagram
     Archetype {
         string id
         string name
+    }
+    VictoryCondition {
+        string key
+        OutcomeNarration narration
     }
 ```
 

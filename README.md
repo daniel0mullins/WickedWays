@@ -623,6 +623,73 @@ const campaign = startSession(builder, {
 `startRoom` name to the live `Room` instance produced by `assemble`, without exposing
 that mapping through the engine itself.
 
+### Victory conditions
+
+A campaign tracks its resolution through the `outcome` property, which starts `"ongoing"` and
+transitions exactly once to one of four terminal states:
+
+| Outcome | When it fires |
+|---------|---------------|
+| `"won"` | A win condition's predicate returned `true` at round end |
+| `"lost"` | A loss condition's predicate returned `true` at round end |
+| `"timed-out"` | `round` reached `maxRounds` and no condition fired |
+| `"ended"` | The GM called `campaign.endCampaign()` manually |
+
+`campaign.finished` is a derived boolean (`outcome !== "ongoing"`) — no separate field to keep
+in sync on load.
+
+**Round-end evaluation.** At the close of every round — after the last party member calls
+`nextPlayer()` — the engine calls `resolveOutcome`. Loss conditions are tested before win
+conditions; if one fires, the campaign finishes immediately and wins are not checked. The
+`maxRounds` ceiling resolves to `"timed-out"` only if no win or loss condition fired in that
+same round.
+
+**Conditions are predicates re-attached by key.** A win or loss condition is a function
+`(campaign: ICampaign) => boolean` registered in the `CampaignRegistry` under a stable string
+key via `defineRegistry({ conditions: { "key": predicate } })`. The predicate is *not*
+serialized — only its key and authored narration are stored. On reload, `deserializeCampaign`
+looks the predicate up in the registry by key (the same mechanism as item factories and recipes),
+so a restored campaign evaluates conditions identically to the original. The key is exposed as
+`campaign.outcomeReason` after the campaign finishes.
+
+**Outcome prose.** Each condition can carry an `OutcomeNarration` (`{ text?, sound? }`) — plain,
+surface-agnostic authored content. The engine does not render text or play sounds; it stores the
+prose alongside the condition and surfaces it in two ways so every play surface can reach it:
+
+- **`resolution` cue** — emitted once at the moment of resolution, carrying `{ outcome, reason, narration }`.
+  Subscribe with `campaign.onCue(handler)`.
+- **`campaign.outcomeNarration`** — a derived getter that re-derives the same prose from the
+  stored conditions on every access, so a polled or reloaded campaign reports the same ending
+  without replaying any cue.
+
+The timeout and manual-end paths have their own prose slots: `.onTimeout(narration)` and
+`.onEnd(narration)` on the builder.
+
+**Authoring.** On the `TemplateBuilder` returned by `authorTemplate`:
+
+```ts
+const reg = defineRegistry({
+  items: { "coin": makeCoin },
+  conditions: {
+    "reached-exit":  (c) => c.party[0]?.currentRoom?.name === "exit",
+    "party-wiped":   (c) => c.party.every((p) => p.stats[StatType.Health] <= 0),
+  },
+});
+
+const builder = authorTemplate("Escape", reg)
+  .room("start", { description: "A locked cell." })
+  .room("exit",  { description: "Freedom." })
+  .startRoom("start")
+  .exit("start", Directions.North, "exit")
+  .winWhen("reached-exit", { text: "You escape into the night." })
+  .loseWhen("party-wiped", { text: "The darkness claims you all.", sound: "defeat.ogg" })
+  .onTimeout({ text: "Time runs out. The dungeon wins." });
+```
+
+`.winWhen(key, prose?)` and `.loseWhen(key, prose?)` each accept a condition key that must be
+registered in the registry (compile-time-checked by `TypedRegistry`). `.onTimeout(prose)` and
+`.onEnd(prose)` set the fallback prose for those two resolution paths.
+
 ### Deferred / not yet shipped
 
 The following are planned but not part of this release:
