@@ -24,7 +24,7 @@ export default tseslint.config(
           // vitest.config.ts lives outside src/ so it can't be included in the
           // main tsconfig (rootDir: ./src). Allow it to be type-checked against
           // a default project so ESLint doesn't reject it outright.
-          allowDefaultProject: ["vitest.config.ts", "packages/client/vite.config.ts"],
+          allowDefaultProject: ["vitest.config.ts", "vitest.setup.ts", "packages/client/vite.config.ts"],
         },
         tsconfigRootDir: import.meta.dirname,
       },
@@ -49,9 +49,11 @@ export default tseslint.config(
 
   // Tests (and the shared test helpers) lean on `as unknown as X` stubs and
   // mock objects by design, so the strict "unsafe any" checks are relaxed here
-  // to avoid noise.
+  // to avoid noise. vitest.setup.ts patches Node globals (process.emitWarning)
+  // which the default-project tsconfig doesn't resolve, so the same relaxation
+  // applies there.
   {
-    files: ["**/*.test.ts", "src/test-utils.ts"],
+    files: ["**/*.test.ts", "src/test-utils.ts", "vitest.setup.ts"],
     rules: {
       "@typescript-eslint/no-unsafe-assignment": "off",
       "@typescript-eslint/no-unsafe-member-access": "off",

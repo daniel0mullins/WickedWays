@@ -51,6 +51,17 @@ describe("Authority", () => {
     expect(authority.loadSnapshot().seq).toBe(2); // checkpoint taken at seq 2
   });
 
+  it("resumes at startSeq: head, first commit, and snapshot all reflect the resume point", () => {
+    const { campaign, registry } = buildStartedCampaign();
+    const authority = new Authority(serializeCampaign(campaign), { registry, rng: () => 0.5, startSeq: 7 });
+    expect(authority.head()).toBe(7);
+    expect(authority.loadSnapshot().seq).toBe(7);
+    const res = authority.submit({ kind: "nextPlayer" });
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.seq).toBe(8);
+    expect(authority.head()).toBe(8);
+  });
+
   it("rejects a joinCampaign whose character id already exists in the campaign", () => {
     const { campaign, registry } = buildStartedCampaign();
     const existingId = campaign.party[0]!.id;

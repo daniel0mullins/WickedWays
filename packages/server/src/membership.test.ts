@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Membership } from "./membership.js";
+import type { MembershipState } from "./store.js";
 
 describe("Membership", () => {
   it("starts with only the GM identity and no seats", () => {
@@ -47,5 +48,19 @@ describe("Membership", () => {
     m.claim("c1", "ada");
     m.claim("c2", "ben");
     expect(new Map(m.seats())).toEqual(new Map([["c1", "ada"], ["c2", "ben"]]));
+  });
+
+  it("round-trips through toState / fromState", () => {
+    const m = new Membership("gm-1");
+    m.claim("ada", "ident-ada");
+    m.assign("ben", "ident-ben");
+    const state: MembershipState = m.toState();
+    expect(state).toEqual({ gmIdentity: "gm-1", seats: [["ada", "ident-ada"], ["ben", "ident-ben"]] });
+
+    const restored = Membership.fromState(state);
+    expect(restored.gmIdentity).toBe("gm-1");
+    expect(restored.ownerOf("ada")).toBe("ident-ada");
+    expect(restored.ownerOf("ben")).toBe("ident-ben");
+    expect(restored.toState()).toEqual(state);
   });
 });

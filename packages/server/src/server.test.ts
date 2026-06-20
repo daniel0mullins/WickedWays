@@ -1,9 +1,13 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { WebSocket } from "ws";
+import * as os from "node:os";
+import * as path from "node:path";
+import * as fs from "node:fs";
 import { parseServerMsg, type ServerMsg } from "@wickedways/transport-shared";
 import { buildSeedCampaign, buildSeedRegistry } from "@wickedways/seed";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { createServer, type ServerHandle } from "./server.js";
+import { SqliteStore } from "./sqlite-store.js";
 
 let handle: ServerHandle | null = null;
 afterEach(async () => {
@@ -335,5 +339,145 @@ describe("createServer", () => {
     ng.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
     expect(await newOk).toMatchObject([{ t: "committed", seq: 1 }]);
     g.close(); ng.close();
+  });
+
+  it("persists a campaign record on commit (flush-before-ack)", async () => {
+    const { genesis } = seedFixture(); // existing fixture; gm token "gm" owns no seat
+    const store = new SqliteStore(":memory:");
+    handle = await createServer({
+      port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm",
+      registry: buildSeedRegistry(), genesisFor: (id) => (id === "demo" ? genesis : null), store,
+    });
+    // GM connects and advances the campaign (nextPlayer is a GM command).
+    const g = await open(handle.port);
+    g.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
+    await collect(g, 2); // joined + presence
+    const committed = collect(g, 1);
+    g.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
+    await committed; // wait for the committed ack (persist happened before this)
+    g.close();
+
+    const rec = await store.load("demo");
+    expect(rec?.seq).toBe(1);
+    expect(rec?.membership.gmIdentity).toBe("gm");
+    store.close();
+  });
+
+  it("resumes a campaign and its seats across a server restart", async () => {
+    const { genesis, adaId } = seedFixture();
+    // Use a unique temp directory per run so parallel test workers never collide.
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ww-resume-"));
+    const dbPath = path.join(tmpDir, "campaign.db");
+    const store = new SqliteStore(dbPath);
+    const opts = {
+      port: 0 as const,
+      verifyToken: (t: string) => t || null,
+      gmIdentityFor: () => "gm" as const,
+      registry: buildSeedRegistry(),
+      genesisFor: (id: string) => (id === "demo" ? genesis : null),
+      store,
+    };
+
+    // First server: GM joins, advances the campaign, assigns Ada's seat.
+    const s1 = await createServer(opts);
+    const g1 = await open(s1.port);
+    g1.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
+    await collect(g1, 2); // joined + presence
+    const committed = collect(g1, 1);
+    g1.send(JSON.stringify({ t: "submit", campaignId: "demo", command: { kind: "nextPlayer" } }));
+    await committed; // seq 1 committed and persisted
+    const assignPresence = collect(g1, 1);
+    g1.send(JSON.stringify({ t: "assignSeat", campaignId: "demo", characterId: adaId, identity: "ident-ada" }));
+    await assignPresence; // seat persisted
+    g1.close();
+    await s1.close();
+    store.close();
+
+    // Second server on the SAME store (same file): should resume at seq 1 with seat intact.
+    const store2 = new SqliteStore(dbPath);
+    const s2 = await createServer({ ...opts, store: store2 });
+
+    const c2 = await open(s2.port);
+    const snapshotMsg = collect(c2, 1);
+    c2.send(JSON.stringify({ t: "getSnapshot", campaignId: "demo" }));
+    const [snap] = await snapshotMsg;
+    expect(snap).toMatchObject({ t: "snapshot", seq: 1 }); // resumed, not seq 0
+
+    // Joining as "ident-ada" should show Ada's seat in presence.
+    const adaWs = await open(s2.port);
+    const adaMsgs = collect(adaWs, 2); // joined + presence
+    adaWs.send(JSON.stringify({ t: "join", campaignId: "demo", token: "ident-ada", fromSeq: 0 }));
+    const adaReceived = await adaMsgs;
+    const presence = adaReceived.find((m) => m.t === "presence");
+    expect(presence).toMatchObject({
+      t: "presence",
+      campaignId: "demo",
+      seats: expect.arrayContaining([{ characterId: adaId, owner: "ident-ada", online: true }]),
+    });
+
+    adaWs.close();
+    c2.close();
+    await s2.close();
+    store2.close();
+    // Recursively remove the unique temp directory.
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("store load rejection replies denied (not a hang) and does not permanently wedge the campaign", async () => {
+    const { genesis } = seedFixture();
+    // A store whose load always rejects — simulates a transient/permanent DB error.
+    let shouldReject = true;
+    const store: import("./store.js").CampaignStore = {
+      load: () => shouldReject ? Promise.reject(new Error("boom")) : Promise.resolve(null),
+      save: () => Promise.resolve(),
+    };
+    handle = await createServer({
+      port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm",
+      registry: buildSeedRegistry(), genesisFor: (id) => (id === "demo" ? genesis : null), store,
+    });
+
+    // First join: store.load rejects → should get denied, NOT hang.
+    const a = await open(handle.port);
+    const firstReply = collect(a, 1);
+    a.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
+    expect(await firstReply).toEqual([{ t: "denied", reason: "unknown campaign" }]);
+    a.close();
+
+    // Un-wedge: stop rejecting. A subsequent join must succeed (not return the cached rejection).
+    shouldReject = false;
+    const b = await open(handle.port);
+    const secondReply = collect(b, 2); // joined + presence
+    b.send(JSON.stringify({ t: "join", campaignId: "demo", token: "gm", fromSeq: 0 }));
+    const msgs = await secondReply;
+    expect(msgs[0]).toEqual({ t: "joined", head: 0 });
+    b.close();
+  });
+
+  it("fails closed when a persisted snapshot's schemaVersion does not match", async () => {
+    const { genesis } = seedFixture();
+    const store = new SqliteStore(":memory:");
+    await store.save("demo", {
+      seq: 5,
+      snapshot: { ...genesis, schemaVersion: genesis.schemaVersion + 1 },
+      membership: { gmIdentity: "gm", seats: [] },
+    });
+    const server = await createServer({
+      port: 0, verifyToken: (t) => t || null, gmIdentityFor: () => "gm",
+      registry: buildSeedRegistry(), genesisFor: (id) => (id === "demo" ? genesis : null), store,
+    });
+
+    // getSnapshot for "demo" should return null (campaign refused; not overwritten).
+    const ws = await open(server.port);
+    const snapMsg = collect(ws, 1);
+    ws.send(JSON.stringify({ t: "getSnapshot", campaignId: "demo" }));
+    const [snap] = await snapMsg;
+    expect(snap).toMatchObject({ t: "snapshot", seq: 0, snapshot: null });
+
+    // Record must be untouched (not clobbered by genesis).
+    expect((await store.load("demo"))?.seq).toBe(5);
+
+    ws.close();
+    await server.close();
+    store.close();
   });
 });

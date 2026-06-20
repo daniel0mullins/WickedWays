@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "engines": { "node": ">=22.5.0" },
   "main": "src/server.ts",
   "exports": { ".": "./src/server.ts" },
   "scripts": {
