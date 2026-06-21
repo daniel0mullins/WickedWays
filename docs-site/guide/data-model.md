@@ -36,6 +36,7 @@ erDiagram
     CampaignTemplate ||--o{ ConditionRef : winConditions
     CampaignTemplate ||--o{ ConditionRef : loseConditions
     CampaignTemplate ||--o| ChatPolicy : chat
+    CampaignTemplate ||--o| AvPolicy : av
 
     RoomDef ||--o{ ExitDef : "from / to"
     MobDef }o--|| RoomDef : "placed in"
@@ -57,6 +58,7 @@ erDiagram
         OutcomeNarration timeoutNarration
         OutcomeNarration endedNarration
         ChatPolicy chat
+        AvPolicy av
     }
     ChatPolicy {
         boolean enabled
@@ -66,6 +68,11 @@ erDiagram
         boolean readReceipts
         boolean typing
         int backfillWindow
+    }
+    AvPolicy {
+        boolean enabled
+        boolean video
+        int maxParticipants
     }
     ArchetypeDef {
         string id

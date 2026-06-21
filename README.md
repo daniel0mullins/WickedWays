@@ -999,3 +999,90 @@ the truncated identity UUID until `displayNameFor` is wired):
    receive `chatReads` with the updated high-water mark.
 6. **Typing indicator** — send `{"t":"typing","campaignId":"demo"}`; the other tab
    receives `typing` with the sender's identity (auto-expires client-side; no storage).
+
+### A/V chat
+
+Voice (and optional video) runs as a **campaign-wide "table call"** over the same
+WebSocket backend, using WebRTC for media transport.
+
+**Full-mesh P2P; server relays signaling only.** Every participant opens a direct,
+encrypted `RTCPeerConnection` to every other participant. The server is a **pure
+signaling relay + call-membership tracker** — it assigns each connection an opaque
+`peerId`, owns the per-campaign call-set, enforces `AvPolicy`, and routes SDP/ICE
+blobs between `peerId`s. It **never sees media**. This keeps media infrastructure
+out of the backend and matches the engine's self-hosted, dumb-relay ethos. The
+practical ceiling for full-mesh is **~4–6 participants** (each peer uploads its
+stream N−1 times), which fits a tabletop party.
+
+**Per-connection peer identity.** WebRTC endpoints are per-connection, not
+per-identity: two browser tabs authenticated as the same identity become two
+distinct peers. Signaling is addressed by the server-assigned opaque `peerId`
+(one per socket); the call roster maps `peerId → identity` for display names.
+
+**Audio baseline + opt-in video.** Voice is on when a participant joins (mutable
+via mute toggle). Video is opt-in per participant and off by default. Mute and
+camera on/off controls flip the local track's `enabled` flag and broadcast an
+`avState` update, which the server fans out via `callPeers` so every tile reflects
+the current state.
+
+**Authored `AvPolicy`.** A/V availability is configured on the campaign template —
+exactly like `ChatPolicy` for text chat — and carried in the snapshot (schema v4;
+`migrate()` injects `DEFAULT_AV_POLICY` for v3 snapshots). The engine never acts on
+it; the server reads it to gate the call, the client reads it to gate the UI.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `enabled` | `boolean` | Master switch — `false` disables A/V entirely for this campaign |
+| `video` | `boolean` | Whether cameras are allowed (vs an audio-only table) |
+| `maxParticipants` | `number` | Hard cap on simultaneous call members (protects the mesh) |
+
+`DEFAULT_AV_POLICY` is `{ enabled: true, video: true, maxParticipants: 6 }`.
+A single-player campaign should set `enabled: false`.
+
+**Enforcement honesty.** `enabled` and `maxParticipants` are **hard server gates**:
+the server owns call membership and denies `callJoin` if A/V is off or the call is
+full. `video` is **client-enforced and state-validated**: the client won't add a
+video track when `!policy.video`, and the server rejects an `avState` claiming
+`cameraOn` under `!policy.video`. Because media flows P2P and is opaque to the
+server, it cannot inspect actual tracks — a malicious trusted peer could still send
+video. This is the same trusted-peers boundary as the rest of the stack.
+
+**Host `iceServers` config.** Pass `iceServers: RTCIceServer[]` to `createServer`;
+it defaults to Google's public STUN (`stun:stun.l.google.com:19302`). The server
+delivers the list to each client on `callJoined` so a single host config point
+drives every client's `RTCPeerConnection`. TURN (the relay fallback) is
+config-pluggable: add a `{ urls: "turn:...", username, credential }` entry to
+`iceServers` and `CallClient` will use it. **Operating a TURN server is out of
+scope** — but note that a small minority behind symmetric NAT cannot establish a
+direct P2P path without one and will show a failed peer tile.
+
+**Wire protocol summary.** Client → server: `callJoin`, `callLeave`, `signal {to,
+data}`, `avState {muted, cameraOn}`. Server → client: `callJoined {selfPeerId,
+peers, iceServers}` (join ack + existing roster + ICE config), `callPeers {peers}`
+(membership / state updates), `signal {from, data}` (relayed inbound signaling),
+`denied {reason}` (A/V off, call full, or video disabled). Signaling `data` is
+opaque (`unknown`) — relayed verbatim by the server. All validators live in
+`@wickedways/transport-shared` (`parseClientMsg` / `parseServerMsg`).
+
+#### Manual smoke — A/V chat
+
+Boot the server and client as described in [Running it](#running-it), then open
+`http://localhost:5173/?c=demo` in **two separate browser tabs**. The campaign must
+have `avPolicy.enabled: true` (the demo genesis uses `DEFAULT_AV_POLICY`).
+
+1. **Join the call** — click **Join call** in Tab A; verify the call panel appears
+   with Tab A's display name listed. Do the same in Tab B; verify both tiles show in
+   each tab's call panel with the correct display names.
+2. **Audio** — speak in Tab A; verify Tab B hears audio. Speak in Tab B; verify Tab A
+   hears audio.
+3. **Mute** — click **Mute** in Tab A; verify Tab B's tile for Tab A shows the muted
+   badge, and Tab A's tile shows the unmuted badge for Tab B. Un-mute; badge clears.
+4. **Camera** — click **Camera on** in Tab A (if `policy.video: true`); verify Tab B
+   shows a `<video>` tile for Tab A. Toggle camera off; video tile disappears.
+5. **Camera badge** — in Tab B, observe that Tab A's tile reflects the `cameraOn`
+   state (badge present / absent) matching what Tab A toggled.
+6. **Leave** — click **Leave call** in Tab A; verify Tab B's call panel drops Tab A's
+   tile and the roster updates to one participant.
+
+**Symmetric-NAT note.** If two tabs on the same machine don't connect (rare but
+possible in some corp VPN setups), adding a TURN entry to `iceServers` resolves it.

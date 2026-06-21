@@ -17,6 +17,7 @@ export interface RtcPeerLike {
   ontrack: ((ev: { streams: unknown[] }) => void) | null;
 }
 
+/** Injected seams for `CallClient` — kept as an interface so tests substitute mocks. */
 export interface CallClientOpts {
   campaignId: string;
   /** prod: (cfg) => new RTCPeerConnection({ iceServers: cfg }) */
@@ -31,6 +32,16 @@ export interface CallClientOpts {
   onPeers: (peers: CallPeer[]) => void;
 }
 
+/**
+ * Browser-side WebRTC mesh coordinator. Manages one `RTCPeerConnection` per other
+ * call participant (full mesh), implements perfect-negotiation (polite/impolite role
+ * from lexicographic `peerId` comparison), and drives local media via injected seams
+ * so the class is unit-testable without a real browser.
+ *
+ * Wire up by calling `onCallJoined` when the server sends `callJoined`,
+ * `onPeersUpdate` on every `callPeers` update, and `onSignal` on every relayed
+ * `signal`. Call `leave` to tear down all connections and stop local tracks.
+ */
 export class CallClient {
   readonly #opts: CallClientOpts;
   #self: PeerId = "";
