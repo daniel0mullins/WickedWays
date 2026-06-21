@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { parseClientMsg, parseServerMsg } from "./index.js";
+import { parseClientMsg, parseServerMsg, applyReaction } from "./index.js";
+import type { ChatReaction } from "./index.js";
 
 describe("chat wire parsing (phase 1)", () => {
   it("parses chatSend (room) and chatSend (whisper)", () => {
@@ -40,5 +41,38 @@ describe("chat wire parsing (phase 1)", () => {
       .toEqual({ t: "chatDeleted", campaignId: "c", id: 1 });
     expect(parseServerMsg({ t: "chatReact", campaignId: "c", id: 1, emoji: "👍", identity: "idA", on: true }))
       .toEqual({ t: "chatReact", campaignId: "c", id: 1, emoji: "👍", identity: "idA", on: true });
+  });
+});
+
+describe("applyReaction", () => {
+  it("toggles a reaction on (adds identity to existing emoji entry)", () => {
+    const input: ChatReaction[] = [{ emoji: "👍", by: ["id1"] }];
+    const result = applyReaction(input, "👍", "id2", true);
+    expect(result).toContainEqual({ emoji: "👍", by: ["id1", "id2"] });
+  });
+
+  it("creates a new emoji entry when none exists", () => {
+    const result = applyReaction(undefined, "👍", "id1", true);
+    expect(result).toEqual([{ emoji: "👍", by: ["id1"] }]);
+  });
+
+  it("toggles a reaction off (removes identity from emoji entry)", () => {
+    const input: ChatReaction[] = [{ emoji: "👍", by: ["id1", "id2"] }];
+    const result = applyReaction(input, "👍", "id1", false);
+    expect(result).toContainEqual({ emoji: "👍", by: ["id2"] });
+  });
+
+  it("drops emoji entry when by becomes empty", () => {
+    const input: ChatReaction[] = [{ emoji: "👍", by: ["id1"] }];
+    const result = applyReaction(input, "👍", "id1", false);
+    expect(result.find((r) => r.emoji === "👍")).toBeUndefined();
+  });
+
+  it("does not mutate the input array or its entries", () => {
+    const input: ChatReaction[] = [{ emoji: "👍", by: ["id1"] }];
+    const originalBy = input[0]!.by;
+    applyReaction(input, "👍", "id2", true);
+    expect(input[0]!.by).toBe(originalBy);
+    expect(input[0]!.by).toEqual(["id1"]);
   });
 });

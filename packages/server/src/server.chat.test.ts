@@ -52,6 +52,17 @@ describe("server chat routing", () => {
     expect(await a.next((m) => m.t === "denied")).toMatchObject({ t: "denied" });
   });
 
+  it("broadcasts an edit to the room", async () => {
+    const result = await makeChatTestServer({ store: new InMemoryChatStore() });
+    handle = result.handle;
+    const a = await connectClient(handle, "tokenA", "campaign1");
+    const b = await connectClient(handle, "tokenB", "campaign1");
+    a.send({ t: "chatSend", campaignId: "campaign1", body: "typo" });
+    const sent = await b.next((m) => m.t === "chat") as { t: "chat"; msg: { id: number } };
+    a.send({ t: "chatEdit", campaignId: "campaign1", id: sent.msg.id, body: "fixed" });
+    expect(await b.next((m) => m.t === "chatEdited")).toMatchObject({ id: sent.msg.id, body: "fixed" });
+  });
+
   it("broadcasts an updated players roster showing a disconnected member offline", async () => {
     // Disconnect the GM (idA / tokenA) — the GM identity is always present in the roster
     // (persistent member), so it should appear as online: false after disconnect.

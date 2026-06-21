@@ -1,5 +1,5 @@
 import type { ChatPolicy } from "wickedways/lib/chat-policy";
-import type { ChatMsg, Identity } from "@wickedways/transport-shared";
+import { applyReaction, type ChatMsg, type Identity } from "@wickedways/transport-shared";
 import type { ChatStore, ReadMark } from "./chat-store.js";
 
 /** Maximum chat body length (server-enforced). */
@@ -92,15 +92,7 @@ export class Chat {
     if (!this.#policy.reactions) return denied("reactions are disabled");
     const msg = await this.#store.get(this.#campaignId, id);
     if (msg === null || msg.deleted) return denied("message not found");
-    const reactions = (msg.reactions ?? []).map((r) => ({ emoji: r.emoji, by: [...r.by] }));
-    const entry = reactions.find((r) => r.emoji === emoji);
-    if (on) {
-      if (entry === undefined) reactions.push({ emoji, by: [identity] });
-      else if (!entry.by.includes(identity)) entry.by.push(identity);
-    } else if (entry !== undefined) {
-      entry.by = entry.by.filter((i) => i !== identity);
-    }
-    const updated: ChatMsg = { ...msg, reactions: reactions.filter((r) => r.by.length > 0) };
+    const updated: ChatMsg = { ...msg, reactions: applyReaction(msg.reactions, emoji, identity, on) };
     await this.#store.update(this.#campaignId, updated);
     return updated;
   }

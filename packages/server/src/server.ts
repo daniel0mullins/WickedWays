@@ -203,6 +203,12 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
     if (msg.to !== msg.from) sendToIdentity(campaignId, msg.to, { t: "chat", msg });
   };
 
+  const deliverChatUpdate = (campaignId: string, audience: ChatMsg, serverMsg: ServerMsg): void => {
+    if (audience.to === undefined) { tables.get(campaignId)?.broadcast(serverMsg); return; }
+    sendToIdentity(campaignId, audience.from, serverMsg);
+    if (audience.to !== audience.from) sendToIdentity(campaignId, audience.to, serverMsg);
+  };
+
   const verify = (token: string): Identity | null => {
     try {
       return opts.verifyToken(token);
@@ -328,6 +334,33 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           if (chat === null || !chat.policy.enabled) { send({ t: "denied", reason: "chat disabled" }); break; }
           const { msgs, more } = await chat.history(identity, msg.before);
           send({ t: "chatHistory", campaignId: msg.campaignId, msgs, more });
+          break;
+        }
+        case "chatEdit": {
+          if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
+          const chat = await chatFor(msg.campaignId);
+          if (chat === null || !chat.policy.enabled) { send({ t: "denied", reason: "chat disabled" }); break; }
+          const res = await chat.edit(identity, msg.id, msg.body);
+          if ("ok" in res) { send({ t: "denied", reason: res.reason }); break; }
+          deliverChatUpdate(msg.campaignId, res, { t: "chatEdited", campaignId: msg.campaignId, id: res.id, body: res.body, editedTs: res.editedTs! });
+          break;
+        }
+        case "chatDelete": {
+          if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
+          const chat = await chatFor(msg.campaignId);
+          if (chat === null || !chat.policy.enabled) { send({ t: "denied", reason: "chat disabled" }); break; }
+          const res = await chat.remove(identity, msg.id);
+          if ("ok" in res) { send({ t: "denied", reason: res.reason }); break; }
+          deliverChatUpdate(msg.campaignId, res, { t: "chatDeleted", campaignId: msg.campaignId, id: res.id });
+          break;
+        }
+        case "chatReact": {
+          if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
+          const chat = await chatFor(msg.campaignId);
+          if (chat === null || !chat.policy.enabled) { send({ t: "denied", reason: "chat disabled" }); break; }
+          const res = await chat.react(identity, msg.id, msg.emoji, msg.on);
+          if ("ok" in res) { send({ t: "denied", reason: res.reason }); break; }
+          deliverChatUpdate(msg.campaignId, res, { t: "chatReact", campaignId: msg.campaignId, id: res.id, emoji: msg.emoji, identity, on: msg.on });
           break;
         }
       }

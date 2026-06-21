@@ -82,6 +82,28 @@ export type ServerMsg =
   | { t: "chatDeleted"; campaignId: string; id: number }
   | { t: "chatReact"; campaignId: string; id: number; emoji: string; identity: Identity; on: boolean };
 
+/**
+ * Pure helper: returns a NEW reactions array with `identity` toggled in `emoji`'s `by[]`.
+ * `on: true` adds `identity` if absent; `on: false` removes it. Drops emoji entries whose
+ * `by` becomes empty. Never mutates the input array or its entries.
+ */
+export function applyReaction(
+  reactions: ChatReaction[] | undefined,
+  emoji: string,
+  identity: Identity,
+  on: boolean,
+): ChatReaction[] {
+  const base = (reactions ?? []).map((r) => ({ emoji: r.emoji, by: [...r.by] }));
+  const entry = base.find((r) => r.emoji === emoji);
+  if (on) {
+    if (entry === undefined) base.push({ emoji, by: [identity] });
+    else if (!entry.by.includes(identity)) entry.by.push(identity);
+  } else if (entry !== undefined) {
+    entry.by = entry.by.filter((i) => i !== identity);
+  }
+  return base.filter((r) => r.by.length > 0);
+}
+
 function isObj(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null;
 }

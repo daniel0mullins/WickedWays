@@ -22,4 +22,15 @@ describe("ChatClient", () => {
     c.onServerMsg({ t: "chatHistory", campaignId: c.campaignId, msgs: [{ id: 1, from: "x", body: "old", ts: 1 }], more: false });
     expect(c.messages.map((m) => m.id)).toEqual([1, 2]);
   });
+
+  it("applies edit, delete, and reaction updates", () => {
+    const c = new ChatClient();
+    c.onServerMsg({ t: "chat", msg: { id: 1, from: "x", body: "hi", ts: 1 } });
+    c.onServerMsg({ t: "chatEdited", campaignId: c.campaignId, id: 1, body: "yo", editedTs: 2 });
+    expect(c.messages[0]?.body).toBe("yo");
+    c.onServerMsg({ t: "chatReact", campaignId: c.campaignId, id: 1, emoji: "👍", identity: "y", on: true });
+    expect(c.messages[0]?.reactions).toContainEqual({ emoji: "👍", by: ["y"] });
+    c.onServerMsg({ t: "chatDeleted", campaignId: c.campaignId, id: 1 });
+    expect(c.messages[0]?.deleted).toBe(true);
+  });
 });
