@@ -43,7 +43,7 @@ describe("campaign round-trip", () => {
   it("serializes and restores a campaign that keeps playing", () => {
     const { campaign, pc, start } = buildCampaign();
     const snap = serializeCampaign(campaign);
-    expect(snap.schemaVersion).toBe(2);
+    expect(snap.schemaVersion).toBe(3);
 
     const restored = deserializeCampaign(snap, {
       registry: new CampaignRegistry(),

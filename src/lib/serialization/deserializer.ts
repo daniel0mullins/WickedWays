@@ -8,6 +8,7 @@ import { constructBareRoom } from "../room";
 import { constructBareCharacter } from "../character/hydrate";
 import { HydrateContext } from "./context";
 import { HYDRATE, HYDRATE_CATALOG, HYDRATE_CODEX_ENTRIES } from "./symbols";
+import { DEFAULT_CHAT_POLICY } from "../chat-policy";
 import { SCHEMA_VERSION } from "./types";
 import type { CampaignSnapshot } from "./types";
 import type { CampaignRegistry } from "./registry";
@@ -72,6 +73,12 @@ export function deserializeCampaign(
 
 /** Upgrades older snapshots to the current schema; rejects unknown/newer versions. */
 export function migrate(data: CampaignSnapshot): CampaignSnapshot {
+  // v2 → v3: chat policy was introduced in schema 3. Pre-chat campaigns get the
+  // default (all features on); authors disable by re-authoring the template.
+  if (data.schemaVersion === 2) {
+    data.campaign.chatPolicy = { ...DEFAULT_CHAT_POLICY };
+    data.schemaVersion = 3;
+  }
   if (data.schemaVersion !== SCHEMA_VERSION) {
     throw new ProceduralViolation(
       `Unsupported snapshot schemaVersion ${data.schemaVersion}; expected ${SCHEMA_VERSION}.`,
