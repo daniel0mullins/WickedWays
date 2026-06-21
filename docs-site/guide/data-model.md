@@ -35,6 +35,7 @@ erDiagram
     CampaignTemplate ||--|| TypedRegistry : "built with"
     CampaignTemplate ||--o{ ConditionRef : winConditions
     CampaignTemplate ||--o{ ConditionRef : loseConditions
+    CampaignTemplate ||--o| ChatPolicy : chat
 
     RoomDef ||--o{ ExitDef : "from / to"
     MobDef }o--|| RoomDef : "placed in"
@@ -55,6 +56,16 @@ erDiagram
         string startRoom
         OutcomeNarration timeoutNarration
         OutcomeNarration endedNarration
+        ChatPolicy chat
+    }
+    ChatPolicy {
+        boolean enabled
+        boolean whisper
+        boolean edit
+        boolean reactions
+        boolean readReceipts
+        boolean typing
+        int backfillWindow
     }
     ArchetypeDef {
         string id

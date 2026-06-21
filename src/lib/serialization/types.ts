@@ -7,8 +7,9 @@ import type { Archetype } from "../archetype";
 import type { CodexEntry } from "../codex";
 import type { ActionKind, AssetRef } from "../presentation";
 import type { CampaignOutcome, OutcomeNarration } from "../victory";
+import type { ChatPolicy } from "../chat-policy";
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export interface AfflictionsSnapshot {
   active: Partial<Record<Status, boolean>>;
@@ -116,6 +117,8 @@ export interface CampaignCoreSnapshot {
   archetypes: Archetype[]; // pure data
   actionSounds: Partial<Record<ActionKind, AssetRef>>;
   encounterTable: EncounterTableSnapshot;
+  /** Per-campaign chat configuration (inert engine data; read by comms + UI). */
+  chatPolicy: ChatPolicy;
 }
 
 export interface CampaignSnapshot {

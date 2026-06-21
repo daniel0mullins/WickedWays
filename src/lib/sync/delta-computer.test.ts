@@ -3,6 +3,7 @@ import { DeltaComputer } from "./delta-computer";
 import { serializeCampaign } from "../serialization/serializer";
 import { buildSerializableCampaign } from "../serialization/roundtrip.test-helpers";
 import type { CampaignCoreSnapshot, CampaignSnapshot } from "../serialization/types";
+import { DEFAULT_CHAT_POLICY } from "../chat-policy";
 
 /** Minimal CampaignCoreSnapshot literal for hand-built snapshot tests. */
 function baseCore(): CampaignCoreSnapshot {
@@ -26,6 +27,7 @@ function baseCore(): CampaignCoreSnapshot {
     archetypes: [],
     actionSounds: {},
     encounterTable: { baseChance: 0, visited: [], formations: [] },
+    chatPolicy: { ...DEFAULT_CHAT_POLICY },
   };
 }
 

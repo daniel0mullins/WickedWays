@@ -25,6 +25,8 @@ import type { HydrateContext } from "./serialization/context";
 import type { CampaignRegistry } from "./serialization/registry";
 import { resolveOutcome } from "./victory";
 import type { CampaignOutcome, OutcomeNarration, VictoryCondition } from "./victory";
+import { DEFAULT_CHAT_POLICY } from "./chat-policy";
+import type { ChatPolicy } from "./chat-policy";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -51,6 +53,8 @@ export interface ICampaign {
   get archetypes(): ReadonlyMap<ArchetypeId, Archetype>;
   /** Read-only view of everything the party has encountered. */
   get codex(): ICodex;
+  /** This campaign's chat configuration (inert engine data; consumed by comms + UI). */
+  get chatPolicy(): ChatPolicy;
   /** Whether the campaign has begun (turn management active). */
   get started(): boolean;
   /** Whether the campaign has ended (won, lost, timed out, or manually ended). */
@@ -154,6 +158,7 @@ export class Campaign implements ICampaign {
   #encountered: Set<string> = new Set<string>();
   #actionSounds: Partial<Record<ActionKind, AssetRef>>;
   #codex = new Codex();
+  #chatPolicy: ChatPolicy;
 
   get round() {
     return this.#round;
@@ -180,6 +185,11 @@ export class Campaign implements ICampaign {
 
   get codex(): ICodex {
     return this.#codex;
+  }
+
+  /** This campaign's chat configuration (inert engine data; consumed by comms + UI). */
+  get chatPolicy(): ChatPolicy {
+    return this.#chatPolicy;
   }
 
   get started(): boolean {
@@ -292,6 +302,7 @@ export class Campaign implements ICampaign {
       loseConditions?: VictoryCondition[];
       timeoutNarration?: OutcomeNarration;
       endedNarration?: OutcomeNarration;
+      chatPolicy?: ChatPolicy;
     } = {},
   ) {
     this.id = generateId<CampaignId>();
@@ -316,6 +327,7 @@ export class Campaign implements ICampaign {
     this.#loseConditions = [...(options.loseConditions ?? [])];
     this.#timeoutNarration = options.timeoutNarration;
     this.#endedNarration = options.endedNarration;
+    this.#chatPolicy = options.chatPolicy ?? DEFAULT_CHAT_POLICY;
 
     for (const recipe of knownRecipes) {
       this.discoverRecipe(recipe);
@@ -712,6 +724,7 @@ export class Campaign implements ICampaign {
       archetypes: [...this.#archetypes.values()].map((a) => ({ ...a })),
       actionSounds: { ...this.#actionSounds },
       encounterTable: this.#encounterTable[SERIALIZE](),
+      chatPolicy: { ...this.#chatPolicy },
     };
   }
 
@@ -774,6 +787,7 @@ export class Campaign implements ICampaign {
       this.#actedThisRound.set(ctx.character(id) as IPlayerCharacter, true);
     }
     this.#encounterTable[HYDRATE](core.encounterTable, ctx.registry);
+    this.#chatPolicy = { ...core.chatPolicy };
   }
 
   /**

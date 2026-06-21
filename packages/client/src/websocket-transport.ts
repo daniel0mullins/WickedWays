@@ -29,6 +29,7 @@ interface ConnectOpts {
   token: string;
   factory?: WebSocketFactory;
   onPresence?: (p: Extract<ServerMsg, { t: "presence" }>) => void;
+  onChat?: (m: Extract<ServerMsg, { t: "chat" | "chatHistory" | "players" }>) => void;
 }
 
 /**
@@ -193,6 +194,11 @@ export class WebSocketTransport implements SyncTransport {
         this.#latestPresence = msg;
         this.#opts.onPresence?.(msg);
         break;
+      case "chat":
+      case "chatHistory":
+      case "players":
+        this.#opts.onChat?.(msg);
+        break;
     }
   }
 
@@ -264,6 +270,11 @@ export class WebSocketTransport implements SyncTransport {
     for (const e of this.#log) if (e.seq >= fromSeq) handler(e);
     this.#handlers.add(handler);
     return () => this.#handlers.delete(handler);
+  }
+
+  /** Sends a client message (e.g., chat). */
+  send(msg: ClientMsg): void {
+    this.#send(msg);
   }
 
   /** Closes the socket without reconnecting (teardown). */
