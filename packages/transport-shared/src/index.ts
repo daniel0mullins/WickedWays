@@ -39,7 +39,8 @@ export type ClientMsg =
   | { t: "chatHistory"; campaignId: string; before: number }
   | { t: "chatEdit"; campaignId: string; id: number; body: string }
   | { t: "chatDelete"; campaignId: string; id: number }
-  | { t: "chatReact"; campaignId: string; id: number; emoji: string; on: boolean };
+  | { t: "chatReact"; campaignId: string; id: number; emoji: string; on: boolean }
+  | { t: "chatRead"; campaignId: string; upTo: number };
 
 /** One seat's presence: its owner (or null if unclaimed) and whether that owner is online. */
 export interface PresenceEntry { characterId: string; owner: string | null; online: boolean }
@@ -80,7 +81,8 @@ export type ServerMsg =
   | { t: "players"; campaignId: string; players: PlayerEntry[] }
   | { t: "chatEdited"; campaignId: string; id: number; body: string; editedTs: number }
   | { t: "chatDeleted"; campaignId: string; id: number }
-  | { t: "chatReact"; campaignId: string; id: number; emoji: string; identity: Identity; on: boolean };
+  | { t: "chatReact"; campaignId: string; id: number; emoji: string; identity: Identity; on: boolean }
+  | { t: "chatReads"; campaignId: string; marks: { identity: Identity; upTo: number }[] };
 
 /**
  * Pure helper: returns a NEW reactions array with `identity` toggled in `emoji`'s `by[]`.
@@ -126,6 +128,10 @@ function isChatMsg(x: unknown): x is ChatMsg {
 function isPlayerEntry(x: unknown): x is PlayerEntry {
   return isObj(x) && typeof x.identity === "string"
     && typeof x.displayName === "string" && typeof x.online === "boolean";
+}
+
+function isReadMark(x: unknown): x is { identity: Identity; upTo: number } {
+  return isObj(x) && typeof x.identity === "string" && typeof x.upTo === "number";
 }
 
 /** Validates an inbound client message; returns it narrowed, or `null` if malformed. */
@@ -175,6 +181,10 @@ export function parseClientMsg(raw: unknown): ClientMsg | null {
       return typeof raw.campaignId === "string" && typeof raw.id === "number"
         && typeof raw.emoji === "string" && typeof raw.on === "boolean"
         ? { t: "chatReact", campaignId: raw.campaignId, id: raw.id, emoji: raw.emoji, on: raw.on }
+        : null;
+    case "chatRead":
+      return typeof raw.campaignId === "string" && typeof raw.upTo === "number"
+        ? { t: "chatRead", campaignId: raw.campaignId, upTo: raw.upTo }
         : null;
     default:
       return null;
@@ -228,6 +238,10 @@ export function parseServerMsg(raw: unknown): ServerMsg | null {
       return typeof raw.campaignId === "string" && typeof raw.id === "number"
         && typeof raw.emoji === "string" && typeof raw.identity === "string" && typeof raw.on === "boolean"
         ? { t: "chatReact", campaignId: raw.campaignId, id: raw.id, emoji: raw.emoji, identity: raw.identity, on: raw.on }
+        : null;
+    case "chatReads":
+      return typeof raw.campaignId === "string" && Array.isArray(raw.marks) && raw.marks.every(isReadMark)
+        ? { t: "chatReads", campaignId: raw.campaignId, marks: raw.marks }
         : null;
     default:
       return null;

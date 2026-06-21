@@ -63,6 +63,31 @@ describe("server chat routing", () => {
     expect(await b.next((m) => m.t === "chatEdited")).toMatchObject({ id: sent.msg.id, body: "fixed" });
   });
 
+  it("broadcasts read marks to the room", async () => {
+    ({ handle } = await makeChatTestServer({ store: new InMemoryChatStore() }));
+    const a = await connectClient(handle, "tokenA", "campaign1");
+    const b = await connectClient(handle, "tokenB", "campaign1");
+    a.send({ t: "chatSend", campaignId: "campaign1", body: "hi" });
+    await b.next((m) => m.t === "chat");
+    b.send({ t: "chatRead", campaignId: "campaign1", upTo: 1 });
+    expect(await a.next((m) => m.t === "chatReads")).toMatchObject({ marks: [{ identity: "idB", upTo: 1 }] });
+  });
+
+  it("broadcasts read marks to the room on join when readReceipts enabled", async () => {
+    const store = new InMemoryChatStore();
+    ({ handle } = await makeChatTestServer({ store }));
+    const a = await connectClient(handle, "tokenA", "campaign1");
+    a.send({ t: "chatSend", campaignId: "campaign1", body: "hello" });
+    await a.next((m) => m.t === "chat");
+    // a reads up to 1
+    a.send({ t: "chatRead", campaignId: "campaign1", upTo: 1 });
+    // drain the chatReads broadcast to a (it gets its own broadcast back)
+    await a.next((m) => m.t === "chatReads");
+    // b joins — should receive chatReads backfill with a's mark
+    const b = await connectClient(handle, "tokenB", "campaign1");
+    expect(await b.next((m) => m.t === "chatReads")).toMatchObject({ marks: [{ identity: "idA", upTo: 1 }] });
+  });
+
   it("broadcasts an updated players roster showing a disconnected member offline", async () => {
     // Disconnect the GM (idA / tokenA) — the GM identity is always present in the roster
     // (persistent member), so it should appear as online: false after disconnect.

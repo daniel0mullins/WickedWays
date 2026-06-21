@@ -88,6 +88,12 @@ export class Chat {
     return tomb;
   }
 
+  async read(identity: Identity, upTo: number): Promise<ReadMark[] | ChatDeny> {
+    if (!this.#policy.readReceipts) return denied("read receipts are disabled");
+    await this.#store.setRead(this.#campaignId, identity, upTo);
+    return this.#store.reads(this.#campaignId);
+  }
+
   async react(identity: Identity, id: number, emoji: string, on: boolean): Promise<ChatMsg | ChatDeny> {
     if (!this.#policy.reactions) return denied("reactions are disabled");
     const msg = await this.#store.get(this.#campaignId, id);

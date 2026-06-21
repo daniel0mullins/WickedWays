@@ -42,6 +42,20 @@ describe("Chat — send + backfill", () => {
   });
 });
 
+describe("Chat — read receipts", () => {
+  it("records and returns read marks", async () => {
+    const chat = await Chat.load("c", DEFAULT_CHAT_POLICY, new InMemoryChatStore(), clock());
+    await chat.send("id1", "hi", undefined);
+    const marks = await chat.read("id2", 1) as { identity: string; upTo: number }[];
+    expect(marks).toContainEqual({ identity: "id2", upTo: 1 });
+  });
+
+  it("denies read receipts when policy.readReceipts is false", async () => {
+    const chat = await Chat.load("c", { ...DEFAULT_CHAT_POLICY, readReceipts: false }, new InMemoryChatStore(), clock());
+    expect(await chat.read("id2", 1)).toMatchObject({ ok: false });
+  });
+});
+
 describe("Chat — edit / delete / react", () => {
   const setup = async () => {
     const chat = await Chat.load("c", DEFAULT_CHAT_POLICY, new InMemoryChatStore(), clock());

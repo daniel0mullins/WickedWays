@@ -9,6 +9,7 @@ export class ChatClient {
   readonly campaignId: string;
   #messages: ChatMsg[] = [];
   #players: PlayerEntry[] = [];
+  #reads: Map<Identity, number> = new Map();
 
   constructor(campaignId = "campaign1") {
     this.campaignId = campaignId;
@@ -16,6 +17,7 @@ export class ChatClient {
 
   get messages(): readonly ChatMsg[] { return this.#messages; }
   get players(): readonly PlayerEntry[] { return this.#players; }
+  get reads(): ReadonlyMap<Identity, number> { return this.#reads; }
 
   #insert(msg: ChatMsg): void {
     const i = this.#messages.findIndex((m) => m.id === msg.id);
@@ -36,6 +38,12 @@ export class ChatClient {
       case "chatEdited": this.#patch(msg.id, (m) => ({ ...m, body: msg.body, editedTs: msg.editedTs })); break;
       case "chatDeleted": this.#patch(msg.id, (m) => ({ ...m, deleted: true, body: "", reactions: undefined })); break;
       case "chatReact": this.#patch(msg.id, (m) => ({ ...m, reactions: applyReaction(m.reactions, msg.emoji, msg.identity, msg.on) })); break;
+      case "chatReads": {
+        const m = new Map<Identity, number>();
+        for (const mark of msg.marks) m.set(mark.identity, mark.upTo);
+        this.#reads = m;
+        break;
+      }
       default: break;
     }
   }

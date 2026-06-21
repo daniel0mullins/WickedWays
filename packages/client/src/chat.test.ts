@@ -23,6 +23,21 @@ describe("ChatClient", () => {
     expect(c.messages.map((m) => m.id)).toEqual([1, 2]);
   });
 
+  it("tracks read marks from chatReads server message", () => {
+    const c = new ChatClient();
+    c.onServerMsg({ t: "chatReads", campaignId: c.campaignId, marks: [{ identity: "idA", upTo: 3 }, { identity: "idB", upTo: 5 }] });
+    expect(c.reads.get("idA")).toBe(3);
+    expect(c.reads.get("idB")).toBe(5);
+  });
+
+  it("replaces read marks on a subsequent chatReads message", () => {
+    const c = new ChatClient();
+    c.onServerMsg({ t: "chatReads", campaignId: c.campaignId, marks: [{ identity: "idA", upTo: 3 }] });
+    c.onServerMsg({ t: "chatReads", campaignId: c.campaignId, marks: [{ identity: "idA", upTo: 7 }, { identity: "idB", upTo: 2 }] });
+    expect(c.reads.get("idA")).toBe(7);
+    expect(c.reads.get("idB")).toBe(2);
+  });
+
   it("applies edit, delete, and reaction updates", () => {
     const c = new ChatClient();
     c.onServerMsg({ t: "chat", msg: { id: 1, from: "x", body: "hi", ts: 1 } });

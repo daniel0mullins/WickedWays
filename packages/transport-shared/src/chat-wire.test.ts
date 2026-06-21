@@ -44,6 +44,34 @@ describe("chat wire parsing (phase 1)", () => {
   });
 });
 
+describe("chat wire parsing (phase 3 — read receipts)", () => {
+  it("parses chatRead client message", () => {
+    expect(parseClientMsg({ t: "chatRead", campaignId: "c", upTo: 5 }))
+      .toEqual({ t: "chatRead", campaignId: "c", upTo: 5 });
+  });
+
+  it("rejects chatRead without a number upTo", () => {
+    expect(parseClientMsg({ t: "chatRead", campaignId: "c" })).toBeNull();
+    expect(parseClientMsg({ t: "chatRead", campaignId: "c", upTo: "5" })).toBeNull();
+  });
+
+  it("parses chatReads server message with marks", () => {
+    const marks = [{ identity: "idA", upTo: 3 }, { identity: "idB", upTo: 5 }];
+    expect(parseServerMsg({ t: "chatReads", campaignId: "c", marks }))
+      .toEqual({ t: "chatReads", campaignId: "c", marks });
+  });
+
+  it("rejects chatReads when a mark is malformed", () => {
+    expect(parseServerMsg({ t: "chatReads", campaignId: "c", marks: [{ identity: 99, upTo: 1 }] })).toBeNull();
+    expect(parseServerMsg({ t: "chatReads", campaignId: "c", marks: [{ identity: "id", upTo: "bad" }] })).toBeNull();
+  });
+
+  it("parses chatReads with empty marks array", () => {
+    expect(parseServerMsg({ t: "chatReads", campaignId: "c", marks: [] }))
+      .toEqual({ t: "chatReads", campaignId: "c", marks: [] });
+  });
+});
+
 describe("applyReaction", () => {
   it("toggles a reaction on (adds identity to existing emoji entry)", () => {
     const input: ChatReaction[] = [{ emoji: "👍", by: ["id1"] }];

@@ -266,8 +266,11 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           indexSub(msg.campaignId, id, send, true);
           const chat = await chatFor(msg.campaignId);
           if (chat !== null && chat.policy.enabled) {
-            const { msgs } = await chat.backfill(id);
+            const { msgs, reads } = await chat.backfill(id);
             for (const cm of msgs) send({ t: "chat", msg: cm });
+            if (chat.policy.readReceipts && reads.length > 0) {
+              send({ t: "chatReads", campaignId: msg.campaignId, marks: reads });
+            }
           }
           broadcastRoster(msg.campaignId);
           break;
@@ -361,6 +364,15 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           const res = await chat.react(identity, msg.id, msg.emoji, msg.on);
           if ("ok" in res) { send({ t: "denied", reason: res.reason }); break; }
           deliverChatUpdate(msg.campaignId, res, { t: "chatReact", campaignId: msg.campaignId, id: res.id, emoji: msg.emoji, identity, on: msg.on });
+          break;
+        }
+        case "chatRead": {
+          if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
+          const chat = await chatFor(msg.campaignId);
+          if (chat === null || !chat.policy.enabled) { send({ t: "denied", reason: "chat disabled" }); break; }
+          const marks = await chat.read(identity, msg.upTo);
+          if ("ok" in marks) { send({ t: "denied", reason: marks.reason }); break; }
+          tables.get(msg.campaignId)?.broadcast({ t: "chatReads", campaignId: msg.campaignId, marks });
           break;
         }
       }
