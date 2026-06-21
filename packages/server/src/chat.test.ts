@@ -41,3 +41,45 @@ describe("Chat — send + backfill", () => {
     expect((await chat.backfill("id2")).msgs.map((x) => x.id)).toEqual([2, 3]);
   });
 });
+
+describe("Chat — edit / delete / react", () => {
+  const setup = async () => {
+    const chat = await Chat.load("c", DEFAULT_CHAT_POLICY, new InMemoryChatStore(), clock());
+    const msg = await chat.send("id1", "original", undefined) as { id: number };
+    return { chat, id: msg.id };
+  };
+
+  it("edits own message and stamps editedTs", async () => {
+    const { chat, id } = await setup();
+    const r = await chat.edit("id1", id, "edited") as { body: string; editedTs?: number };
+    expect(r.body).toBe("edited");
+    expect(r.editedTs).toBeGreaterThan(0);
+  });
+
+  it("refuses to edit another's message", async () => {
+    const { chat, id } = await setup();
+    expect(await chat.edit("id2", id, "hax")).toMatchObject({ ok: false });
+  });
+
+  it("tombstones on delete", async () => {
+    const { chat, id } = await setup();
+    const r = await chat.remove("id1", id) as { deleted?: boolean; body: string };
+    expect(r.deleted).toBe(true);
+    expect(r.body).toBe("");
+  });
+
+  it("toggles reactions", async () => {
+    const { chat, id } = await setup();
+    const on = await chat.react("id2", id, "👍", true) as { reactions?: { emoji: string; by: string[] }[] };
+    expect(on.reactions).toContainEqual({ emoji: "👍", by: ["id2"] });
+    const off = await chat.react("id2", id, "👍", false) as { reactions?: { emoji: string; by: string[] }[] };
+    expect(off.reactions?.find((r) => r.emoji === "👍")).toBeUndefined();
+  });
+
+  it("denies edit/react when policy disables them", async () => {
+    const chat = await Chat.load("c", { ...DEFAULT_CHAT_POLICY, edit: false, reactions: false }, new InMemoryChatStore(), clock());
+    const m = await chat.send("id1", "x", undefined) as { id: number };
+    expect(await chat.edit("id1", m.id, "y")).toMatchObject({ ok: false });
+    expect(await chat.react("id1", m.id, "👍", true)).toMatchObject({ ok: false });
+  });
+});
