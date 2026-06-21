@@ -1,4 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
+import type { PlayerEntry } from "@wickedways/transport-shared";
 import { InMemoryChatStore } from "./chat-store.js";
 import { makeChatTestServer, connectClient } from "./chat-test-helpers.js";
 import type { ServerHandle } from "./server.js";
@@ -49,5 +50,26 @@ describe("server chat routing", () => {
     const a = await connectClient(handle, "tokenA", "campaign1");
     a.send({ t: "chatSend", campaignId: "campaign1", body: "hi" });
     expect(await a.next((m) => m.t === "denied")).toMatchObject({ t: "denied" });
+  });
+
+  it("broadcasts an updated players roster showing a disconnected member offline", async () => {
+    // Disconnect the GM (idA / tokenA) — the GM identity is always present in the roster
+    // (persistent member), so it should appear as online: false after disconnect.
+    // Note: non-seated spectators like idB are intentionally *dropped* from the roster on
+    // disconnect (not shown as offline), so they cannot be used to test this behaviour.
+    const result = await makeChatTestServer({ store: new InMemoryChatStore() });
+    handle = result.handle;
+    const a = await connectClient(handle, "tokenA", "campaign1");
+    const b = await connectClient(handle, "tokenB", "campaign1");
+    // When b joins, the server broadcasts an updated players roster to a — drain it so
+    // the next players message a sees is the one triggered by a's disconnect.
+    await a.next((m) => m.t === "players");
+    // a (the GM) closes the connection — server should broadcast an updated roster to b.
+    a.close();
+    const roster = await b.next((m) => m.t === "players");
+    expect(roster).toMatchObject({ t: "players" });
+    const players = (roster as { t: "players"; players: PlayerEntry[] }).players;
+    const aEntry = players.find((p) => p.identity === "idA");
+    expect(aEntry).toMatchObject({ identity: "idA", online: false });
   });
 });

@@ -30,6 +30,8 @@ export interface ChatTestClient {
    * `false` if one does arrive (or is already buffered).
    */
   noneWithin(ms: number, pred: (m: ServerMsg) => boolean): Promise<boolean>;
+  /** Close the underlying WebSocket connection. */
+  close(): void;
 }
 
 export interface MakeChatTestServerResult {
@@ -162,5 +164,9 @@ export async function connectClient(
   await next((m) => m.t === "presence");
   await next((m) => m.t === "players");
 
-  return { send, next, noneWithin };
+  const close = (): void => {
+    ws.close();
+  };
+
+  return { send, next, noneWithin, close };
 }
