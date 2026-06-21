@@ -3,6 +3,7 @@ import type { Status } from "../status";
 import type { Direction } from "../room";
 import type { MaterialMap } from "../inventory";
 import type { OutcomeNarration } from "../victory";
+import type { ChatPolicy } from "../chat-policy";
 
 /** Defines a player-character archetype to register with the campaign. */
 export interface ArchetypeDef {
@@ -92,4 +93,6 @@ export interface CampaignTemplateDescription {
   timeoutNarration?: OutcomeNarration;
   /** Fallback prose for the conditionless `ended` (manual) outcome. */
   endedNarration?: OutcomeNarration;
+  /** Per-campaign chat configuration. Omitted ⇒ DEFAULT_CHAT_POLICY (all on). */
+  chat?: ChatPolicy;
 }

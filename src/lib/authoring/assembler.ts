@@ -93,6 +93,10 @@ export function assemble(
   for (const c of desc.winConditions) requireConditionKey(c.key, "winWhen");
   for (const c of desc.loseConditions) requireConditionKey(c.key, "loseWhen");
 
+  if (desc.chat !== undefined && desc.chat.backfillWindow < 1) {
+    problems.push(`chat.backfillWindow must be >= 1 (got ${desc.chat.backfillWindow}).`);
+  }
+
   if (problems.length > 0) throw new AuthoringError(problems);
 
   // ---- Pass 2: construct in order ----
@@ -113,6 +117,7 @@ export function assemble(
     loseConditions,
     timeoutNarration: desc.timeoutNarration,
     endedNarration: desc.endedNarration,
+    chatPolicy: desc.chat,
   });
 
   for (const a of desc.archetypes) {
