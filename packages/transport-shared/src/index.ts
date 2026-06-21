@@ -36,7 +36,10 @@ export type ClientMsg =
   | { t: "unassignSeat"; campaignId: string; characterId: string }
   | { t: "transferGM"; campaignId: string; identity: string }
   | { t: "chatSend"; campaignId: string; body: string; to?: Identity }
-  | { t: "chatHistory"; campaignId: string; before: number };
+  | { t: "chatHistory"; campaignId: string; before: number }
+  | { t: "chatEdit"; campaignId: string; id: number; body: string }
+  | { t: "chatDelete"; campaignId: string; id: number }
+  | { t: "chatReact"; campaignId: string; id: number; emoji: string; on: boolean };
 
 /** One seat's presence: its owner (or null if unclaimed) and whether that owner is online. */
 export interface PresenceEntry { characterId: string; owner: string | null; online: boolean }
@@ -74,7 +77,10 @@ export type ServerMsg =
   | { t: "presence"; campaignId: string; seats: PresenceEntry[]; gm: { identity: string; online: boolean } }
   | { t: "chat"; msg: ChatMsg }
   | { t: "chatHistory"; campaignId: string; msgs: ChatMsg[]; more: boolean }
-  | { t: "players"; campaignId: string; players: PlayerEntry[] };
+  | { t: "players"; campaignId: string; players: PlayerEntry[] }
+  | { t: "chatEdited"; campaignId: string; id: number; body: string; editedTs: number }
+  | { t: "chatDeleted"; campaignId: string; id: number }
+  | { t: "chatReact"; campaignId: string; id: number; emoji: string; identity: Identity; on: boolean };
 
 function isObj(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null;
@@ -135,6 +141,19 @@ export function parseClientMsg(raw: unknown): ClientMsg | null {
       return typeof raw.campaignId === "string" && typeof raw.before === "number"
         ? { t: "chatHistory", campaignId: raw.campaignId, before: raw.before }
         : null;
+    case "chatEdit":
+      return typeof raw.campaignId === "string" && typeof raw.id === "number" && typeof raw.body === "string"
+        ? { t: "chatEdit", campaignId: raw.campaignId, id: raw.id, body: raw.body }
+        : null;
+    case "chatDelete":
+      return typeof raw.campaignId === "string" && typeof raw.id === "number"
+        ? { t: "chatDelete", campaignId: raw.campaignId, id: raw.id }
+        : null;
+    case "chatReact":
+      return typeof raw.campaignId === "string" && typeof raw.id === "number"
+        && typeof raw.emoji === "string" && typeof raw.on === "boolean"
+        ? { t: "chatReact", campaignId: raw.campaignId, id: raw.id, emoji: raw.emoji, on: raw.on }
+        : null;
     default:
       return null;
   }
@@ -173,6 +192,20 @@ export function parseServerMsg(raw: unknown): ServerMsg | null {
     case "players":
       return typeof raw.campaignId === "string" && Array.isArray(raw.players) && raw.players.every(isPlayerEntry)
         ? { t: "players", campaignId: raw.campaignId, players: raw.players }
+        : null;
+    case "chatEdited":
+      return typeof raw.campaignId === "string" && typeof raw.id === "number"
+        && typeof raw.body === "string" && typeof raw.editedTs === "number"
+        ? { t: "chatEdited", campaignId: raw.campaignId, id: raw.id, body: raw.body, editedTs: raw.editedTs }
+        : null;
+    case "chatDeleted":
+      return typeof raw.campaignId === "string" && typeof raw.id === "number"
+        ? { t: "chatDeleted", campaignId: raw.campaignId, id: raw.id }
+        : null;
+    case "chatReact":
+      return typeof raw.campaignId === "string" && typeof raw.id === "number"
+        && typeof raw.emoji === "string" && typeof raw.identity === "string" && typeof raw.on === "boolean"
+        ? { t: "chatReact", campaignId: raw.campaignId, id: raw.id, emoji: raw.emoji, identity: raw.identity, on: raw.on }
         : null;
     default:
       return null;

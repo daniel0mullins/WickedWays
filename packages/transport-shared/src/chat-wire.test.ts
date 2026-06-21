@@ -23,4 +23,22 @@ describe("chat wire parsing (phase 1)", () => {
     expect(parseServerMsg({ t: "players", campaignId: "c", players }))
       .toEqual({ t: "players", campaignId: "c", players });
   });
+
+  it("parses chatEdit / chatDelete / chatReact (client)", () => {
+    expect(parseClientMsg({ t: "chatEdit", campaignId: "c", id: 1, body: "fix" }))
+      .toEqual({ t: "chatEdit", campaignId: "c", id: 1, body: "fix" });
+    expect(parseClientMsg({ t: "chatDelete", campaignId: "c", id: 1 }))
+      .toEqual({ t: "chatDelete", campaignId: "c", id: 1 });
+    expect(parseClientMsg({ t: "chatReact", campaignId: "c", id: 1, emoji: "👍", on: true }))
+      .toEqual({ t: "chatReact", campaignId: "c", id: 1, emoji: "👍", on: true });
+  });
+
+  it("parses chatEdited / chatDeleted / chatReact (server)", () => {
+    expect(parseServerMsg({ t: "chatEdited", campaignId: "c", id: 1, body: "fix", editedTs: 9 }))
+      .toEqual({ t: "chatEdited", campaignId: "c", id: 1, body: "fix", editedTs: 9 });
+    expect(parseServerMsg({ t: "chatDeleted", campaignId: "c", id: 1 }))
+      .toEqual({ t: "chatDeleted", campaignId: "c", id: 1 });
+    expect(parseServerMsg({ t: "chatReact", campaignId: "c", id: 1, emoji: "👍", identity: "idA", on: true }))
+      .toEqual({ t: "chatReact", campaignId: "c", id: 1, emoji: "👍", identity: "idA", on: true });
+  });
 });
