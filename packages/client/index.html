@@ -10,6 +10,13 @@
     <button id="nextPlayer">nextPlayer</button>
     <button id="moveNorth">move active North</button>
     <p id="status">connecting…</p>
+    <div id="chatPanel" style="border: 1px solid #ccc; padding: 10px; margin-top: 10px;">
+      <h3>Chat</h3>
+      <select id="chatWhisperTo" style="margin-right: 10px;"></select>
+      <div id="chatMessages" style="border: 1px solid #eee; height: 200px; overflow-y: auto; padding: 8px; margin-bottom: 8px; background: #f9f9f9;"></div>
+      <input id="chatInput" type="text" placeholder="Type message…" style="width: 80%; padding: 4px;" />
+      <button id="chatSend" style="margin-left: 4px; padding: 4px 12px;">Send</button>
+    </div>
     <pre id="state"></pre>
     <script type="module" src="/src/main.ts"></script>
   </body>

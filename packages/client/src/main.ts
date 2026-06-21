@@ -4,6 +4,7 @@ import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { Directions } from "wickedways/lib/room";
 import { WebSocketTransport } from "./websocket-transport.js";
 import { buildSeedRegistry } from "./seed.js";
+import { ChatClient } from "./chat.js";
 
 const params = new URLSearchParams(location.search);
 const campaignId = params.get("c") ?? "demo";
@@ -22,8 +23,70 @@ function byId(id: string): HTMLElement {
   return el;
 }
 
+function renderChatPanel(campaign: ReturnType<(typeof SyncCoordinator)["join"]>["campaign"], chatClient: ChatClient): void {
+  const policy = campaign.chatPolicy;
+  const panelEl = byId("chatPanel");
+  const messagesEl = byId("chatMessages");
+  const inputEl = document.getElementById("chatInput") as HTMLInputElement | null;
+  const sendBtn = document.getElementById("chatSend") as HTMLButtonElement | null;
+  const whisperSelectEl = document.getElementById("chatWhisperTo") as HTMLSelectElement | null;
+
+  if (!policy.enabled) {
+    panelEl.style.display = "none";
+    return;
+  }
+  panelEl.style.display = "block";
+
+  if (messagesEl && inputEl && sendBtn) {
+    messagesEl.innerHTML = "";
+    for (const msg of chatClient.messages) {
+      const msgDiv = document.createElement("div");
+      msgDiv.style.marginBottom = "8px";
+      const from = msg.from.slice(0, 8);
+      const whisperStr = msg.to ? ` (to ${msg.to.slice(0, 8)})` : "";
+      msgDiv.textContent = `[${from}]${whisperStr}: ${msg.body}`;
+      messagesEl.appendChild(msgDiv);
+    }
+
+    sendBtn.onclick = () => {
+      const body = inputEl.value.trim();
+      if (!body) return;
+      const to = whisperSelectEl && policy.whisper ? (whisperSelectEl.value || undefined) : undefined;
+      const sendMsg = chatClient.send(body, to);
+      transport.send(sendMsg);
+      inputEl.value = "";
+    };
+  }
+
+  if (whisperSelectEl) {
+    if (!policy.whisper) {
+      whisperSelectEl.style.display = "none";
+    } else {
+      whisperSelectEl.style.display = "block";
+      whisperSelectEl.innerHTML = '<option value="">Room</option>';
+      for (const player of chatClient.players) {
+        const opt = document.createElement("option");
+        opt.value = player.identity;
+        opt.textContent = player.displayName;
+        whisperSelectEl.appendChild(opt);
+      }
+    }
+  }
+}
+
+let transport: WebSocketTransport;
+
 async function main(): Promise<void> {
-  const transport = await WebSocketTransport.connect({ url, campaignId, token: clientId });
+  const chatClient = new ChatClient(campaignId);
+  transport = await WebSocketTransport.connect({
+    url,
+    campaignId,
+    token: clientId,
+    onChat: (msg) => {
+      chatClient.onServerMsg(msg);
+      render();
+    },
+  });
   const coordinator = SyncCoordinator.join({ registry: buildSeedRegistry(), transport });
   coordinator.start();
 
@@ -34,6 +97,7 @@ async function main(): Promise<void> {
       null,
       2,
     );
+    renderChatPanel(c, chatClient);
   };
 
   const run = async (label: string, build: () => Command): Promise<void> => {
