@@ -32,6 +32,19 @@ describe("Chat — send + backfill", () => {
     expect(await chat.send("id1", "   ", undefined)).toMatchObject({ ok: false });
   });
 
+  it("trims leading/trailing whitespace from sent body", async () => {
+    const chat = await Chat.load("c", DEFAULT_CHAT_POLICY, new InMemoryChatStore(), clock());
+    const r = await chat.send("id1", "  hello  ", undefined) as { body: string };
+    expect(r.body).toBe("hello");
+  });
+
+  it("denies send when trimmed body exceeds MAX_CHAT_BODY", async () => {
+    const chat = await Chat.load("c", DEFAULT_CHAT_POLICY, new InMemoryChatStore(), clock());
+    const { MAX_CHAT_BODY } = await import("./chat.js");
+    const long = "x".repeat(MAX_CHAT_BODY + 1);
+    expect(await chat.send("id1", long, undefined)).toMatchObject({ ok: false });
+  });
+
   it("backfills the visible window, newest within backfillWindow", async () => {
     const policy = { ...DEFAULT_CHAT_POLICY, backfillWindow: 2 };
     const chat = await Chat.load("c", policy, new InMemoryChatStore(), clock());
@@ -88,6 +101,30 @@ describe("Chat — edit / delete / react", () => {
     expect(on.reactions).toContainEqual({ emoji: "👍", by: ["id2"] });
     const off = await chat.react("id2", id, "👍", false) as { reactions?: { emoji: string; by: string[] }[] };
     expect(off.reactions?.find((r) => r.emoji === "👍")).toBeUndefined();
+  });
+
+  it("no-op react (on:false for absent emoji) does not error and returns the message unchanged", async () => {
+    const store = new InMemoryChatStore();
+    const chat = await Chat.load("c", DEFAULT_CHAT_POLICY, store, clock());
+    const msg = await chat.send("id1", "hi", undefined) as { id: number; reactions?: unknown[] };
+    // React off for an emoji that was never added — should be a no-op
+    const result = await chat.react("id2", msg.id, "👍", false);
+    expect(result).not.toMatchObject({ ok: false });
+    // reactions should still be absent / empty
+    const stored = await store.get("c", msg.id) as { reactions?: { by: string[] }[] };
+    expect(stored?.reactions?.find((r) => r.by.includes("id2"))).toBeUndefined();
+  });
+
+  it("no-op react (on:true already present) does not error and returns the message", async () => {
+    const store = new InMemoryChatStore();
+    const chat = await Chat.load("c", DEFAULT_CHAT_POLICY, store, clock());
+    const msg = await chat.send("id1", "hi", undefined) as { id: number };
+    await chat.react("id2", msg.id, "👍", true);
+    // Second on:true — no-op
+    const result = await chat.react("id2", msg.id, "👍", true);
+    expect(result).not.toMatchObject({ ok: false });
+    const stored = await store.get("c", msg.id) as { reactions?: { emoji: string; by: string[] }[] };
+    expect(stored?.reactions?.find((r) => r.emoji === "👍")?.by).toEqual(["id2"]);
   });
 
   it("denies edit/react when policy disables them", async () => {

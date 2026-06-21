@@ -47,8 +47,8 @@ export class Chat {
     if (to !== undefined && !this.#policy.whisper) return denied("whispers are disabled");
     const trimmed = body.trim();
     if (trimmed.length === 0) return denied("empty message");
-    if (body.length > MAX_CHAT_BODY) return denied("message too long");
-    const msg: ChatMsg = { id: ++this.#seq, from, to, body, ts: this.#now() };
+    if (trimmed.length > MAX_CHAT_BODY) return denied("message too long");
+    const msg: ChatMsg = { id: ++this.#seq, from, to, body: trimmed, ts: this.#now() };
     await this.#store.append(this.#campaignId, msg);
     return msg;
   }
@@ -73,8 +73,8 @@ export class Chat {
     if (msg.from !== from) return denied("not your message");
     const trimmed = body.trim();
     if (trimmed.length === 0) return denied("empty message");
-    if (body.length > MAX_CHAT_BODY) return denied("message too long");
-    const updated: ChatMsg = { ...msg, body, editedTs: this.#now() };
+    if (trimmed.length > MAX_CHAT_BODY) return denied("message too long");
+    const updated: ChatMsg = { ...msg, body: trimmed, editedTs: this.#now() };
     await this.#store.update(this.#campaignId, updated);
     return updated;
   }
@@ -102,7 +102,19 @@ export class Chat {
     if (!this.#policy.reactions) return denied("reactions are disabled");
     const msg = await this.#store.get(this.#campaignId, id);
     if (msg === null || msg.deleted) return denied("message not found");
-    const updated: ChatMsg = { ...msg, reactions: applyReaction(msg.reactions, emoji, identity, on) };
+    const reactions = applyReaction(msg.reactions, emoji, identity, on);
+    // No-op: skip the write when nothing changed (e.g. `on:false` for absent emoji or
+    // `on:true` for already-present identity). Still return the message so the caller
+    // can broadcast an idempotent update without special-casing the no-op path.
+    const existing = msg.reactions ?? [];
+    const changed =
+      reactions.length !== existing.length ||
+      reactions.some((r, i) => {
+        const e = existing[i];
+        return e === undefined || r.emoji !== e.emoji || r.by.length !== e.by.length || r.by.some((id, j) => id !== e.by[j]);
+      });
+    if (!changed) return msg;
+    const updated: ChatMsg = { ...msg, reactions };
     await this.#store.update(this.#campaignId, updated);
     return updated;
   }

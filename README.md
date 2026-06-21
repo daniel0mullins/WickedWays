@@ -925,8 +925,10 @@ affordances.
 
 `DEFAULT_CHAT_POLICY` (all features on, `backfillWindow: 200`) is used when a
 template omits the `chat` field. A single-player campaign should set `enabled: false`.
-The snapshot carries `chatPolicy`; legacy snapshots without it receive
-`DEFAULT_CHAT_POLICY` on migration.
+The snapshot carries `chatPolicy`; `migrate()` injects `DEFAULT_CHAT_POLICY` when
+deserializing a v2 snapshot in-process, while a server with a durable store fails
+closed on a previously-persisted v2 campaign (no auto-migration — consistent with the
+durable-persistence fail-closed stance).
 
 **Player roster + `displayNameFor`.** Pass `displayNameFor(identity): string` to
 `createServer` and the server resolves human display names (defaults to the identity
