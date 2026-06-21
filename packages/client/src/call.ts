@@ -90,6 +90,11 @@ export class CallClient {
   }
 
   async onSignal(from: PeerId, data: unknown): Promise<void> {
+    // NOTE: makingOffer/ignoreOffer collision-rollback (perfect-negotiation glare handling) is
+    // intentionally omitted. The deterministic single-offerer role (impolite = lesser peerId)
+    // avoids glare for the initial offer exchange. Mid-call renegotiation — e.g. adding a video
+    // track when the user toggles the camera on — can still glare and is out of scope for the
+    // audio-baseline. A future video-upgrade path should add proper glare handling here.
     const pc = this.#ensurePeer(from, this.#iceServers);
     const d = data as { sdp?: unknown; candidate?: unknown };
 

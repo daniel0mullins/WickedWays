@@ -82,15 +82,15 @@ async function main(): Promise<void> {
   // Call state — defined before connect() so callbacks can safely reference them
   let callActive = false;
   let muted = false;
-  let cameraOn = true;
+  let cameraOn = false;
   let callPeers: CallPeer[] = [];
 
   function renderCallPanel(avEnabled: boolean, avVideo: boolean, transport: WebSocketTransport): void {
     const panelEl = byId("callPanel");
     const tilesEl = byId("callTiles");
-    const joinLeaveBtn = document.getElementById("callJoinLeave") as HTMLButtonElement | null;
-    const muteBtn = document.getElementById("callMute") as HTMLButtonElement | null;
-    const cameraBtn = document.getElementById("callCamera") as HTMLButtonElement | null;
+    const joinLeaveBtn = byId("callJoinLeave");
+    const muteBtn = byId("callMute");
+    const cameraBtn = byId("callCamera");
 
     if (!avEnabled) {
       panelEl.style.display = "none";
@@ -98,40 +98,34 @@ async function main(): Promise<void> {
     }
     panelEl.style.display = "block";
 
-    if (joinLeaveBtn) {
-      joinLeaveBtn.textContent = callActive ? "Leave call" : "Join call";
-      joinLeaveBtn.onclick = () => {
-        if (callActive) {
-          transport.send({ t: "callLeave", campaignId });
-          callClient.leave();
-          callActive = false;
-          callPeers = [];
-        } else {
-          transport.send({ t: "callJoin", campaignId });
-        }
-        renderCallPanel(avEnabled, avVideo, transport);
-      };
-    }
+    joinLeaveBtn.textContent = callActive ? "Leave call" : "Join call";
+    joinLeaveBtn.onclick = () => {
+      if (callActive) {
+        transport.send({ t: "callLeave", campaignId });
+        callClient.leave();
+        callActive = false;
+        callPeers = [];
+      } else {
+        transport.send({ t: "callJoin", campaignId });
+      }
+      renderCallPanel(avEnabled, avVideo, transport);
+    };
 
-    if (muteBtn) {
-      muteBtn.style.display = callActive ? "inline-block" : "none";
+    muteBtn.style.display = callActive ? "inline-block" : "none";
+    muteBtn.textContent = muted ? "Unmute" : "Mute";
+    muteBtn.onclick = () => {
+      muted = !muted;
+      transport.send({ t: "avState", campaignId, muted, cameraOn });
       muteBtn.textContent = muted ? "Unmute" : "Mute";
-      muteBtn.onclick = () => {
-        muted = !muted;
-        transport.send({ t: "avState", campaignId, muted, cameraOn });
-        muteBtn.textContent = muted ? "Unmute" : "Mute";
-      };
-    }
+    };
 
-    if (cameraBtn) {
-      cameraBtn.style.display = (callActive && avVideo) ? "inline-block" : "none";
+    cameraBtn.style.display = (callActive && avVideo) ? "inline-block" : "none";
+    cameraBtn.textContent = cameraOn ? "Camera off" : "Camera on";
+    cameraBtn.onclick = () => {
+      cameraOn = !cameraOn;
+      transport.send({ t: "avState", campaignId, muted, cameraOn });
       cameraBtn.textContent = cameraOn ? "Camera off" : "Camera on";
-      cameraBtn.onclick = () => {
-        cameraOn = !cameraOn;
-        transport.send({ t: "avState", campaignId, muted, cameraOn });
-        cameraBtn.textContent = cameraOn ? "Camera off" : "Camera on";
-      };
-    }
+    };
 
     // Re-render tile grid
     tilesEl.innerHTML = "";
@@ -157,7 +151,10 @@ async function main(): Promise<void> {
   const callClient = new CallClient({
     campaignId,
     createPeer: (iceServers) => new RTCPeerConnection({ iceServers: iceServers as RTCIceServer[] }) as unknown as import("./call.js").RtcPeerLike,
-    getLocalStream: () => navigator.mediaDevices.getUserMedia({ audio: true, video: cameraOn }),
+    getLocalStream: () => navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: cameraOn && coordinatorRef?.campaign.avPolicy.video === true,
+    }),
     sendSignal: (to, data) => {
       // transport is assigned before any call message can arrive (callJoined fires
       // only after callJoin is sent, which the user triggers post-connect).
