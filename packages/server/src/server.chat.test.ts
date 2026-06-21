@@ -88,6 +88,24 @@ describe("server chat routing", () => {
     expect(await b.next((m) => m.t === "chatReads")).toMatchObject({ marks: [{ identity: "idA", upTo: 1 }] });
   });
 
+  it("relays typing to the room but not the sender", async () => {
+    ({ handle } = await makeChatTestServer({ store: new InMemoryChatStore() }));
+    const a = await connectClient(handle, "tokenA", "campaign1");
+    const b = await connectClient(handle, "tokenB", "campaign1");
+    a.send({ t: "typing", campaignId: "campaign1" });
+    expect(await b.next((m) => m.t === "typing")).toMatchObject({ from: "idA" });
+    expect(await a.noneWithin(150, (m) => m.t === "typing")).toBe(true);
+  });
+
+  it("ignores typing when policy.typing is false (no denial)", async () => {
+    ({ handle } = await makeChatTestServer({ store: new InMemoryChatStore(), policy: { typing: false } }));
+    const a = await connectClient(handle, "tokenA", "campaign1");
+    const b = await connectClient(handle, "tokenB", "campaign1");
+    a.send({ t: "typing", campaignId: "campaign1" });
+    expect(await b.noneWithin(150, (m) => m.t === "typing")).toBe(true);
+    expect(await a.noneWithin(10, (m) => m.t === "denied")).toBe(true);
+  });
+
   it("broadcasts an updated players roster showing a disconnected member offline", async () => {
     // Disconnect the GM (idA / tokenA) — the GM identity is always present in the roster
     // (persistent member), so it should appear as online: false after disconnect.

@@ -40,7 +40,8 @@ export type ClientMsg =
   | { t: "chatEdit"; campaignId: string; id: number; body: string }
   | { t: "chatDelete"; campaignId: string; id: number }
   | { t: "chatReact"; campaignId: string; id: number; emoji: string; on: boolean }
-  | { t: "chatRead"; campaignId: string; upTo: number };
+  | { t: "chatRead"; campaignId: string; upTo: number }
+  | { t: "typing"; campaignId: string; to?: Identity };
 
 /** One seat's presence: its owner (or null if unclaimed) and whether that owner is online. */
 export interface PresenceEntry { characterId: string; owner: string | null; online: boolean }
@@ -82,7 +83,8 @@ export type ServerMsg =
   | { t: "chatEdited"; campaignId: string; id: number; body: string; editedTs: number }
   | { t: "chatDeleted"; campaignId: string; id: number }
   | { t: "chatReact"; campaignId: string; id: number; emoji: string; identity: Identity; on: boolean }
-  | { t: "chatReads"; campaignId: string; marks: { identity: Identity; upTo: number }[] };
+  | { t: "chatReads"; campaignId: string; marks: { identity: Identity; upTo: number }[] }
+  | { t: "typing"; campaignId: string; from: Identity; to?: Identity };
 
 /**
  * Pure helper: returns a NEW reactions array with `identity` toggled in `emoji`'s `by[]`.
@@ -186,6 +188,10 @@ export function parseClientMsg(raw: unknown): ClientMsg | null {
       return typeof raw.campaignId === "string" && typeof raw.upTo === "number"
         ? { t: "chatRead", campaignId: raw.campaignId, upTo: raw.upTo }
         : null;
+    case "typing":
+      return typeof raw.campaignId === "string" && (raw.to === undefined || typeof raw.to === "string")
+        ? { t: "typing", campaignId: raw.campaignId, to: raw.to }
+        : null;
     default:
       return null;
   }
@@ -242,6 +248,11 @@ export function parseServerMsg(raw: unknown): ServerMsg | null {
     case "chatReads":
       return typeof raw.campaignId === "string" && Array.isArray(raw.marks) && raw.marks.every(isReadMark)
         ? { t: "chatReads", campaignId: raw.campaignId, marks: raw.marks }
+        : null;
+    case "typing":
+      return typeof raw.campaignId === "string" && typeof raw.from === "string"
+        && (raw.to === undefined || typeof raw.to === "string")
+        ? { t: "typing", campaignId: raw.campaignId, from: raw.from, to: raw.to }
         : null;
     default:
       return null;

@@ -375,6 +375,20 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           tables.get(msg.campaignId)?.broadcast({ t: "chatReads", campaignId: msg.campaignId, marks });
           break;
         }
+        case "typing": {
+          if (identity === null) break; // best-effort; no denial
+          const chat = await chatFor(msg.campaignId);
+          if (chat === null || !chat.policy.enabled || !chat.policy.typing) break;
+          const out: ServerMsg = { t: "typing", campaignId: msg.campaignId, from: identity, to: msg.to };
+          if (msg.to === undefined) {
+            // Room typing: deliver to everyone in the campaign EXCEPT the sender's own socket.
+            for (const subs of subsByIdentity.get(msg.campaignId)?.values() ?? [])
+              for (const s of subs) if (s !== send) s(out);
+          } else {
+            sendToIdentity(msg.campaignId, msg.to, out);
+          }
+          break;
+        }
       }
     });
 

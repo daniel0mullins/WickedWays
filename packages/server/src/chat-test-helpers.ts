@@ -6,7 +6,7 @@ import { WebSocket } from "ws";
 import { parseServerMsg, type ServerMsg } from "@wickedways/transport-shared";
 import { buildSeedCampaign, buildSeedRegistry } from "@wickedways/seed";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
-import { DEFAULT_CHAT_POLICY } from "wickedways/lib/chat-policy";
+import { DEFAULT_CHAT_POLICY, type ChatPolicy } from "wickedways/lib/chat-policy";
 import { createServer, type ServerHandle } from "./server.js";
 import { InMemoryChatStore, type ChatStore } from "./chat-store.js";
 
@@ -45,14 +45,15 @@ export interface MakeChatTestServerResult {
 export async function makeChatTestServer(opts: {
   store?: ChatStore;
   chatEnabled?: boolean;
+  policy?: Partial<ChatPolicy>;
 }): Promise<MakeChatTestServerResult> {
   const { campaign } = buildSeedCampaign();
   const genesis = serializeCampaign(campaign);
-  // Override chatPolicy based on chatEnabled flag.
-  const chatPolicy =
+  // Override chatPolicy based on chatEnabled flag and optional policy override.
+  const chatPolicy: ChatPolicy =
     opts.chatEnabled === false
-      ? { ...DEFAULT_CHAT_POLICY, enabled: false }
-      : { ...DEFAULT_CHAT_POLICY };
+      ? { ...DEFAULT_CHAT_POLICY, enabled: false, ...opts.policy }
+      : { ...DEFAULT_CHAT_POLICY, ...opts.policy };
   const genesisWithPolicy: typeof genesis = {
     ...genesis,
     campaign: { ...genesis.campaign, chatPolicy },

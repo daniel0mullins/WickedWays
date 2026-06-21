@@ -38,6 +38,20 @@ describe("ChatClient", () => {
     expect(c.reads.get("idB")).toBe(2);
   });
 
+  it("typingIdentities returns identities seen within the window", () => {
+    const c = new ChatClient();
+    const before = Date.now();
+    c.onServerMsg({ t: "typing", campaignId: c.campaignId, from: "idA" });
+    c.onServerMsg({ t: "typing", campaignId: c.campaignId, from: "idB" });
+    const after = Date.now();
+    // Both identities should appear when queried with a generous now
+    expect(c.typingIdentities(after + 1000)).toContain("idA");
+    expect(c.typingIdentities(after + 1000)).toContain("idB");
+    // When now is far in the future (well past the window), they should disappear
+    expect(c.typingIdentities(before + 10_000, 4000)).not.toContain("idA");
+    expect(c.typingIdentities(before + 10_000, 4000)).not.toContain("idB");
+  });
+
   it("applies edit, delete, and reaction updates", () => {
     const c = new ChatClient();
     c.onServerMsg({ t: "chat", msg: { id: 1, from: "x", body: "hi", ts: 1 } });

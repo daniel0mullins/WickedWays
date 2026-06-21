@@ -10,6 +10,7 @@ export class ChatClient {
   #messages: ChatMsg[] = [];
   #players: PlayerEntry[] = [];
   #reads: Map<Identity, number> = new Map();
+  #typing: Map<Identity, number> = new Map();
 
   constructor(campaignId = "campaign1") {
     this.campaignId = campaignId;
@@ -18,6 +19,19 @@ export class ChatClient {
   get messages(): readonly ChatMsg[] { return this.#messages; }
   get players(): readonly PlayerEntry[] { return this.#players; }
   get reads(): ReadonlyMap<Identity, number> { return this.#reads; }
+
+  /**
+   * Returns identities that sent a typing signal within the last `windowMs` milliseconds
+   * relative to `now`. Pure and testable — no timers. The DOM timer lives in `main.ts`.
+   */
+  typingIdentities(now: number, windowMs = 4000): Identity[] {
+    const cutoff = now - windowMs;
+    const result: Identity[] = [];
+    for (const [id, ts] of this.#typing) {
+      if (ts >= cutoff) result.push(id);
+    }
+    return result;
+  }
 
   #insert(msg: ChatMsg): void {
     const i = this.#messages.findIndex((m) => m.id === msg.id);
@@ -44,6 +58,7 @@ export class ChatClient {
         this.#reads = m;
         break;
       }
+      case "typing": this.#typing.set(msg.from, Date.now()); break;
       default: break;
     }
   }

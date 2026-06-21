@@ -72,6 +72,13 @@ describe("chat wire parsing (phase 3 — read receipts)", () => {
   });
 });
 
+describe("chat wire parsing (phase 4 — typing indicators)", () => {
+  it("parses typing both directions", () => {
+    expect(parseClientMsg({ t: "typing", campaignId: "c" })).toEqual({ t: "typing", campaignId: "c", to: undefined });
+    expect(parseServerMsg({ t: "typing", campaignId: "c", from: "idA" })).toEqual({ t: "typing", campaignId: "c", from: "idA", to: undefined });
+  });
+});
+
 describe("applyReaction", () => {
   it("toggles a reaction on (adds identity to existing emoji entry)", () => {
     const input: ChatReaction[] = [{ emoji: "👍", by: ["id1"] }];
