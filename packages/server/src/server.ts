@@ -1,5 +1,6 @@
 import { WebSocketServer, type WebSocket } from "ws";
 import { parseClientMsg, type ServerMsg, type Identity, type PresenceEntry, type Actor, type ChatMsg } from "@wickedways/transport-shared";
+import type { PeerId } from "@wickedways/transport-shared";
 import { Authority } from "wickedways/lib/sync/authority";
 import { commandActorId, isJoinCommand, type Command } from "wickedways/lib/sync/types";
 import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
@@ -10,6 +11,7 @@ import { Membership } from "./membership.js";
 import type { CampaignStore } from "./store.js";
 import { Chat } from "./chat.js";
 import { InMemoryChatStore, type ChatStore } from "./chat-store.js";
+import { Call } from "./call.js";
 
 /** A running room server. */
 export interface ServerHandle {
@@ -36,6 +38,8 @@ export interface ServerOptions {
   displayNameFor?: (identity: Identity) => string;
   /** Optional chat store; when omitted an in-memory store is used. */
   chatStore?: ChatStore;
+  /** ICE servers delivered to clients on callJoined (RTCIceServer[]). Defaults to a public STUN server. */
+  iceServers?: unknown[];
 }
 
 /** Derives the seat an append acts as, read straight from the command (no client-supplied envelope). */
@@ -164,6 +168,34 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
     for (const sub of subsByIdentity.get(campaignId)?.get(id) ?? []) sub(msg);
   };
 
+  const calls = new Map<string, Call>();
+  const peersByCampaign = new Map<string, Map<PeerId, Subscriber>>();
+  const iceServers: unknown[] = opts.iceServers ?? [{ urls: "stun:stun.l.google.com:19302" }];
+
+  const avFor = (campaignId: string): Call | null => {
+    const cached = calls.get(campaignId);
+    if (cached !== undefined) return cached;
+    const t = tables.get(campaignId);
+    if (t === undefined) return null;
+    const policy = t.currentSnapshot().campaign.avPolicy;
+    const call = new Call(policy, (id) => opts.displayNameFor?.(id) ?? id);
+    calls.set(campaignId, call);
+    return call;
+  };
+
+  const indexPeer = (campaignId: string, peerId: PeerId, sub: Subscriber, add: boolean): void => {
+    let m = peersByCampaign.get(campaignId);
+    if (m === undefined) { m = new Map(); peersByCampaign.set(campaignId, m); }
+    if (add) m.set(peerId, sub); else m.delete(peerId);
+  };
+
+  const callBroadcast = (campaignId: string, msg: ServerMsg): void => {
+    const call = calls.get(campaignId);
+    const peers = peersByCampaign.get(campaignId);
+    if (call === undefined || peers === undefined) return;
+    for (const cp of call.roster()) peers.get(cp.peerId)?.(msg);
+  };
+
   const chatFor = async (campaignId: string): Promise<Chat | null> => {
     const cached = chats.get(campaignId);
     if (cached !== undefined) return cached;
@@ -223,6 +255,7 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
     const send: Subscriber = (msg: ServerMsg) => ws.send(JSON.stringify(msg));
     const joined = new Set<string>();
     let identity: Identity | null = null;
+    const peerId: PeerId = globalThis.crypto?.randomUUID?.() ?? `peer-${Math.random().toString(36).slice(2)}`;
 
     // eslint-disable-next-line @typescript-eslint/no-misused-promises
     ws.on("message", async (data: { toString(): string }) => {
@@ -389,6 +422,40 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           }
           break;
         }
+        case "callJoin": {
+          if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
+          const call = avFor(msg.campaignId);
+          if (call === null) { send({ t: "denied", reason: "unknown campaign" }); break; }
+          const res = call.join(peerId, identity);
+          if ("ok" in res) { send({ t: "denied", reason: res.reason }); break; }
+          indexPeer(msg.campaignId, peerId, send, true);
+          send({ t: "callJoined", campaignId: msg.campaignId, selfPeerId: peerId, peers: res, iceServers });
+          callBroadcast(msg.campaignId, { t: "callPeers", campaignId: msg.campaignId, peers: res });
+          break;
+        }
+        case "callLeave": {
+          const call = calls.get(msg.campaignId);
+          if (call?.leave(peerId)) {
+            indexPeer(msg.campaignId, peerId, send, false);
+            callBroadcast(msg.campaignId, { t: "callPeers", campaignId: msg.campaignId, peers: call.roster() });
+          }
+          break;
+        }
+        case "signal": {
+          if (identity === null) break; // best-effort relay; no denial
+          const target = peersByCampaign.get(msg.campaignId)?.get(msg.to);
+          target?.({ t: "signal", campaignId: msg.campaignId, from: peerId, data: msg.data });
+          break;
+        }
+        case "avState": {
+          if (identity === null) break;
+          const call = calls.get(msg.campaignId);
+          if (call === undefined) break;
+          const res = call.setState(peerId, msg.muted, msg.cameraOn);
+          if ("ok" in res) { send({ t: "denied", reason: res.reason }); break; }
+          callBroadcast(msg.campaignId, { t: "callPeers", campaignId: msg.campaignId, peers: res });
+          break;
+        }
       }
     });
 
@@ -398,6 +465,12 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
         if (identity !== null) { bump(id, identity, -1); indexSub(id, identity, send, false); }
         broadcastPresence(id);
         broadcastRoster(id);
+      }
+      for (const [cid, call] of calls) {
+        if (call.leave(peerId)) {
+          indexPeer(cid, peerId, send, false);
+          callBroadcast(cid, { t: "callPeers", campaignId: cid, peers: call.roster() });
+        }
       }
     });
   });

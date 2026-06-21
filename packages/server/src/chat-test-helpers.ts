@@ -7,6 +7,7 @@ import { parseServerMsg, type ServerMsg } from "@wickedways/transport-shared";
 import { buildSeedCampaign, buildSeedRegistry } from "@wickedways/seed";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { DEFAULT_CHAT_POLICY, type ChatPolicy } from "wickedways/lib/chat-policy";
+import { DEFAULT_AV_POLICY } from "wickedways/lib/av-policy";
 import { createServer, type ServerHandle } from "./server.js";
 import { InMemoryChatStore, type ChatStore } from "./chat-store.js";
 
@@ -46,6 +47,7 @@ export async function makeChatTestServer(opts: {
   store?: ChatStore;
   chatEnabled?: boolean;
   policy?: Partial<ChatPolicy>;
+  avEnabled?: boolean;
 }): Promise<MakeChatTestServerResult> {
   const { campaign } = buildSeedCampaign();
   const genesis = serializeCampaign(campaign);
@@ -54,9 +56,13 @@ export async function makeChatTestServer(opts: {
     opts.chatEnabled === false
       ? { ...DEFAULT_CHAT_POLICY, enabled: false, ...opts.policy }
       : { ...DEFAULT_CHAT_POLICY, ...opts.policy };
+  // Override avPolicy only when avEnabled is explicitly false.
+  const avPolicy = opts.avEnabled === false
+    ? { ...DEFAULT_AV_POLICY, enabled: false }
+    : genesis.campaign.avPolicy;
   const genesisWithPolicy: typeof genesis = {
     ...genesis,
-    campaign: { ...genesis.campaign, chatPolicy },
+    campaign: { ...genesis.campaign, chatPolicy, avPolicy },
   };
 
   const handle = await createServer({
