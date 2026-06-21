@@ -34,10 +34,34 @@ export type ClientMsg =
   | { t: "getSnapshot"; campaignId: string }
   | { t: "assignSeat"; campaignId: string; characterId: string; identity: string }
   | { t: "unassignSeat"; campaignId: string; characterId: string }
-  | { t: "transferGM"; campaignId: string; identity: string };
+  | { t: "transferGM"; campaignId: string; identity: string }
+  | { t: "chatSend"; campaignId: string; body: string; to?: Identity }
+  | { t: "chatHistory"; campaignId: string; before: number };
 
 /** One seat's presence: its owner (or null if unclaimed) and whether that owner is online. */
 export interface PresenceEntry { characterId: string; owner: string | null; online: boolean }
+
+/** One emoji reaction on a message: the emoji and the identities who reacted with it. */
+export interface ChatReaction { emoji: string; by: Identity[] }
+
+/**
+ * A chat message as carried on the wire. `id` is the server-assigned per-campaign
+ * `chatSeq` (monotonic). `from` is the server-stamped, unforgeable sender identity.
+ * `to` present ⇒ a whisper visible only to `from` and `to`.
+ */
+export interface ChatMsg {
+  id: number;
+  from: Identity;
+  to?: Identity;
+  body: string;
+  ts: number;
+  editedTs?: number;
+  deleted?: boolean;
+  reactions?: ChatReaction[];
+}
+
+/** One player's roster entry: stable identity, host display name, and online state. */
+export interface PlayerEntry { identity: Identity; displayName: string; online: boolean }
 
 /** Messages the room server sends to a client. */
 export type ServerMsg =
@@ -47,7 +71,10 @@ export type ServerMsg =
   | { t: "snapshot"; seq: number; snapshot: unknown }
   | { t: "denied"; reason: string }
   | { t: "error"; message: string }
-  | { t: "presence"; campaignId: string; seats: PresenceEntry[]; gm: { identity: string; online: boolean } };
+  | { t: "presence"; campaignId: string; seats: PresenceEntry[]; gm: { identity: string; online: boolean } }
+  | { t: "chat"; msg: ChatMsg }
+  | { t: "chatHistory"; campaignId: string; msgs: ChatMsg[]; more: boolean }
+  | { t: "players"; campaignId: string; players: PlayerEntry[] };
 
 function isObj(x: unknown): x is Record<string, unknown> {
   return typeof x === "object" && x !== null;
@@ -60,6 +87,17 @@ function isWireLogEntry(x: unknown): x is WireLogEntry {
 function isPresenceEntry(x: unknown): x is PresenceEntry {
   return isObj(x) && typeof x.characterId === "string"
     && (x.owner === null || typeof x.owner === "string") && typeof x.online === "boolean";
+}
+
+function isChatMsg(x: unknown): x is ChatMsg {
+  return isObj(x) && typeof x.id === "number" && typeof x.from === "string"
+    && typeof x.body === "string" && typeof x.ts === "number"
+    && (x.to === undefined || typeof x.to === "string");
+}
+
+function isPlayerEntry(x: unknown): x is PlayerEntry {
+  return isObj(x) && typeof x.identity === "string"
+    && typeof x.displayName === "string" && typeof x.online === "boolean";
 }
 
 /** Validates an inbound client message; returns it narrowed, or `null` if malformed. */
@@ -88,6 +126,15 @@ export function parseClientMsg(raw: unknown): ClientMsg | null {
       return typeof raw.campaignId === "string" && typeof raw.identity === "string"
         ? { t: "transferGM", campaignId: raw.campaignId, identity: raw.identity }
         : null;
+    case "chatSend":
+      return typeof raw.campaignId === "string" && typeof raw.body === "string"
+        && (raw.to === undefined || typeof raw.to === "string")
+        ? { t: "chatSend", campaignId: raw.campaignId, body: raw.body, to: raw.to }
+        : null;
+    case "chatHistory":
+      return typeof raw.campaignId === "string" && typeof raw.before === "number"
+        ? { t: "chatHistory", campaignId: raw.campaignId, before: raw.before }
+        : null;
     default:
       return null;
   }
@@ -115,6 +162,17 @@ export function parseServerMsg(raw: unknown): ServerMsg | null {
       return typeof raw.campaignId === "string" && Array.isArray(raw.seats) && raw.seats.every(isPresenceEntry)
         && isObj(raw.gm) && typeof raw.gm.identity === "string" && typeof raw.gm.online === "boolean"
         ? { t: "presence", campaignId: raw.campaignId, seats: raw.seats, gm: { identity: raw.gm.identity, online: raw.gm.online } }
+        : null;
+    case "chat":
+      return isChatMsg(raw.msg) ? { t: "chat", msg: raw.msg } : null;
+    case "chatHistory":
+      return typeof raw.campaignId === "string" && Array.isArray(raw.msgs) && raw.msgs.every(isChatMsg)
+        && typeof raw.more === "boolean"
+        ? { t: "chatHistory", campaignId: raw.campaignId, msgs: raw.msgs, more: raw.more }
+        : null;
+    case "players":
+      return typeof raw.campaignId === "string" && Array.isArray(raw.players) && raw.players.every(isPlayerEntry)
+        ? { t: "players", campaignId: raw.campaignId, players: raw.players }
         : null;
     default:
       return null;
