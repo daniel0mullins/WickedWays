@@ -890,3 +890,110 @@ this is the dev-harness behavior.
 adapter; multi-instance locking (a single server instance owns a campaign's record);
 schema migrations — v1 fails closed on a `schemaVersion` mismatch rather than
 attempting to migrate.
+
+### Text chat
+
+Chat is a **player-to-player side-channel** — it runs over the same WebSocket room
+but is entirely separate from the game log and the engine's `Command`/delta types.
+There is no in-character vs out-of-character dimension; attribution always answers
+"which *player* (identity) said this." The GM is the player holding the GM identity —
+"message the GM" is a whisper to that identity.
+
+**Two scopes.** Every message is either **room-wide** (no `to` field, delivered to all
+subscribers) or a **whisper** (`to: Identity`, delivered and backfilled only to the
+two participants). The server enforces whisper visibility on both live delivery and
+every backfill/pagination response.
+
+**Attribution is unforgeable.** The server stamps each message's `from` from the
+authenticated connection — exactly as it derives the game actor from the command body
+rather than a client-supplied envelope. Clients never supply their own `from`.
+
+**Authored `ChatPolicy`.** Whether chat exists, and which features are enabled, is
+configured on the campaign template as a `ChatPolicy` value. The server enforces the
+policy authoritatively; the client reads `snapshot.campaign.chatPolicy` to gate UI
+affordances.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `enabled` | `boolean` | Master switch — `false` disables chat entirely (no roster, no history) |
+| `whisper` | `boolean` | Private identity-to-identity whispers |
+| `edit` | `boolean` | Edit or delete own messages |
+| `reactions` | `boolean` | Emoji reactions |
+| `readReceipts` | `boolean` | Per-identity read high-water marks |
+| `typing` | `boolean` | Transient typing indicators |
+| `backfillWindow` | `number` | Join backfill / pagination page size (not a retention cap) |
+
+`DEFAULT_CHAT_POLICY` (all features on, `backfillWindow: 200`) is used when a
+template omits the `chat` field. A single-player campaign should set `enabled: false`.
+The snapshot carries `chatPolicy`; legacy snapshots without it receive
+`DEFAULT_CHAT_POLICY` on migration.
+
+**Player roster + `displayNameFor`.** Pass `displayNameFor(identity): string` to
+`createServer` and the server resolves human display names (defaults to the identity
+string). On every join / leave and on initial connect, the server broadcasts a
+`players` message (`{ identity, displayName, online }[]`) — the player-centric
+sibling of the seat-centric `presence` roster. Messages carry only the unforgeable
+identity; the UI resolves names from this roster, which also powers the whisper-target
+picker.
+
+**Durable history with bounded backfill + pagination.** Every message is retained
+durably forever (text is cheap; unlike snapshots, chat cannot be compacted). On join
+the server replays the most recent `backfillWindow` messages the identity may see.
+Older history is fetched on demand via `chatHistory { before: chatSeq }`, which
+returns the next page with a `more` flag. Retention and working-set are decoupled —
+nothing is ever deleted.
+
+**Full feature set.**
+
+- **Edit / delete** — the owner may update a message body (`chatEdit`) or tombstone it
+  (`chatDelete`). A tombstone keeps the message id and ordering in place so reactions
+  and read marks referencing it stay coherent; only the body is cleared.
+- **Reactions** — per-message `emoji → Set<Identity>` toggles (`chatReact`).
+  Reactions on a whisper are visible only to its two participants.
+- **Read receipts** — each identity maintains a single per-room high-water `upTo`
+  chatSeq (`chatRead`), broadcast as `chatReads`. Note: because room and whisper
+  messages share one sequence space, a recipient can infer that hidden whispers exist
+  from gaps in visible ids — a negligible metadata leak, not content exposure.
+- **Typing indicators** — transient `typing` messages routed to the scope audience
+  (room → all; whisper → target only); never stored, auto-expiring client-side.
+
+**`ChatStore` seam.** The default is `InMemoryChatStore` (ephemeral). Pass a
+`SqliteChatStore(path)` to `createServer` (`chatStore` option) for durable chat
+history that survives restarts — reactions and read marks included. Typing is never
+stored.
+
+**Rate-limiting / anti-abuse are explicitly out of scope** (deferred per the Spec 3b
+out-of-scope; implement as a thin wrapper in front of `Chat.send`).
+
+**Wire protocol summary.** Client → server: `chatSend`, `chatEdit`, `chatDelete`,
+`chatReact`, `chatRead`, `chatHistory`, `typing`. Server → client: `chat` (live +
+backfill), `chatEdited`, `chatDeleted`, `chatReact`, `chatReads`, `chatHistory`
+(paginated response), `players`, `typing`. All validators live in
+`@wickedways/transport-shared` (`parseClientMsg` / `parseServerMsg`).
+
+#### Manual smoke — text chat
+
+Boot the server and client as described in [Running it](#running-it), then open
+`http://localhost:5173/?c=demo` in **two separate browser tabs** (they get distinct
+identity tokens from `localStorage`).
+
+Verify the following — each interaction is attributed by display name (defaulting to
+the truncated identity UUID until `displayNameFor` is wired):
+
+1. **Room message** — type a message in Tab A and press **Send** with the whisper
+   select on "Room". The message appears in both Tab A and Tab B with Tab A's identity
+   prefix. Reload Tab B; the message is replayed from backfill.
+2. **Whisper** — in Tab A, select Tab B's identity in the whisper picker and send a
+   private message. It appears in both Tab A and Tab B but does **not** appear in a
+   third tab opened simultaneously.
+3. **Edit / delete** — not yet surfaced in the minimal harness UI (send + receive
+   only); exercise via the WebSocket frame inspector or a `websocat` session:
+   `{"t":"chatEdit","campaignId":"demo","id":1,"body":"edited text"}` — both tabs
+   receive `chatEdited`; a `chatDelete` produces `chatDeleted` with the original id
+   retained.
+4. **Reaction** — send `{"t":"chatReact","campaignId":"demo","id":1,"emoji":"👍","on":true}`;
+   both tabs receive `chatReact` with the updated `by` array.
+5. **Read receipt** — send `{"t":"chatRead","campaignId":"demo","upTo":1}`; both tabs
+   receive `chatReads` with the updated high-water mark.
+6. **Typing indicator** — send `{"t":"typing","campaignId":"demo"}`; the other tab
+   receives `typing` with the sender's identity (auto-expires client-side; no storage).

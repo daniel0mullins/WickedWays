@@ -65,6 +65,7 @@ export class Chat {
     return this.#store.page(this.#campaignId, identity, before, this.#policy.backfillWindow);
   }
 
+  /** Edits the body of own message `id`. Requires `policy.edit`. Returns the updated message or a denial. */
   async edit(from: Identity, id: number, body: string): Promise<ChatMsg | ChatDeny> {
     if (!this.#policy.edit) return denied("editing is disabled");
     const msg = await this.#store.get(this.#campaignId, id);
@@ -78,6 +79,7 @@ export class Chat {
     return updated;
   }
 
+  /** Tombstones own message `id` (id/order retained, body cleared). Requires `policy.edit`. */
   async remove(from: Identity, id: number): Promise<ChatMsg | ChatDeny> {
     if (!this.#policy.edit) return denied("deleting is disabled");
     const msg = await this.#store.get(this.#campaignId, id);
@@ -88,12 +90,14 @@ export class Chat {
     return tomb;
   }
 
+  /** Records a high-water read mark for `identity`. Requires `policy.readReceipts`. Returns all room marks. */
   async read(identity: Identity, upTo: number): Promise<ReadMark[] | ChatDeny> {
     if (!this.#policy.readReceipts) return denied("read receipts are disabled");
     await this.#store.setRead(this.#campaignId, identity, upTo);
     return this.#store.reads(this.#campaignId);
   }
 
+  /** Toggles `identity`'s membership in `emoji`'s reaction set on message `id`. Requires `policy.reactions`. */
   async react(identity: Identity, id: number, emoji: string, on: boolean): Promise<ChatMsg | ChatDeny> {
     if (!this.#policy.reactions) return denied("reactions are disabled");
     const msg = await this.#store.get(this.#campaignId, id);

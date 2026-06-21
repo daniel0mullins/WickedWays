@@ -10,13 +10,21 @@ export interface ReadMark { identity: Identity; upTo: number }
  * undefined) or `identity` is its `from` or `to`.
  */
 export interface ChatStore {
+  /** Appends a new message (monotonically increasing `id`). */
   append(campaignId: string, msg: ChatMsg): Promise<void>;
+  /** Replaces an existing message in-place (edit / tombstone / reaction update). */
   update(campaignId: string, msg: ChatMsg): Promise<void>;
+  /** Returns the most recent `limit` messages visible to `identity` (ascending order). */
   recent(campaignId: string, identity: Identity, limit: number): Promise<ChatMsg[]>;
+  /** Returns up to `limit` messages older than `before`, visibility-filtered, with a `more` flag. */
   page(campaignId: string, identity: Identity, before: number, limit: number): Promise<{ msgs: ChatMsg[]; more: boolean }>;
+  /** Fetches a single message by id, or `null` if not found. */
   get(campaignId: string, id: number): Promise<ChatMsg | null>;
+  /** Returns the highest persisted message id, or `0` if the campaign has no messages. */
   maxId(campaignId: string): Promise<number>;
+  /** Advances `identity`'s read high-water mark to `max(current, upTo)`. */
   setRead(campaignId: string, identity: Identity, upTo: number): Promise<void>;
+  /** Returns all per-identity read marks for the campaign. */
   reads(campaignId: string): Promise<ReadMark[]>;
 }
 
