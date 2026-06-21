@@ -1,5 +1,5 @@
 import { WebSocketServer, type WebSocket } from "ws";
-import { parseClientMsg, type ServerMsg, type Identity, type PresenceEntry, type Actor } from "@wickedways/transport-shared";
+import { parseClientMsg, type ServerMsg, type Identity, type PresenceEntry, type Actor, type ChatMsg } from "@wickedways/transport-shared";
 import { Authority } from "wickedways/lib/sync/authority";
 import { commandActorId, isJoinCommand, type Command } from "wickedways/lib/sync/types";
 import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
@@ -8,6 +8,8 @@ import { SCHEMA_VERSION } from "wickedways/lib/serialization/types";
 import { Table, type Subscriber } from "./table.js";
 import { Membership } from "./membership.js";
 import type { CampaignStore } from "./store.js";
+import { Chat } from "./chat.js";
+import { InMemoryChatStore, type ChatStore } from "./chat-store.js";
 
 /** A running room server. */
 export interface ServerHandle {
@@ -30,6 +32,10 @@ export interface ServerOptions {
   rng?: () => number;
   /** Optional durable store; when omitted the server is ephemeral (today's behavior). */
   store?: CampaignStore;
+  /** Optional display-name resolver for the `players` roster broadcast. Defaults to the identity string. */
+  displayNameFor?: (identity: Identity) => string;
+  /** Optional chat store; when omitted an in-memory store is used. */
+  chatStore?: ChatStore;
 }
 
 /** Derives the seat an append acts as, read straight from the command (no client-supplied envelope). */
@@ -141,6 +147,62 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
   };
   const broadcastPresence = (campaignId: string): void => tables.get(campaignId)?.broadcast(presenceOf(campaignId));
 
+  const chatStore: ChatStore = opts.chatStore ?? new InMemoryChatStore();
+  const chats = new Map<string, Chat>();
+  const subsByIdentity = new Map<string, Map<Identity, Set<Subscriber>>>();
+
+  const indexSub = (campaignId: string, id: Identity, sub: Subscriber, add: boolean): void => {
+    let m = subsByIdentity.get(campaignId);
+    if (m === undefined) { m = new Map(); subsByIdentity.set(campaignId, m); }
+    let set = m.get(id);
+    if (set === undefined) { set = new Set(); m.set(id, set); }
+    if (add) set.add(sub);
+    else { set.delete(sub); if (set.size === 0) m.delete(id); }
+  };
+
+  const sendToIdentity = (campaignId: string, id: Identity, msg: ServerMsg): void => {
+    for (const sub of subsByIdentity.get(campaignId)?.get(id) ?? []) sub(msg);
+  };
+
+  const chatFor = async (campaignId: string): Promise<Chat | null> => {
+    const cached = chats.get(campaignId);
+    if (cached !== undefined) return cached;
+    const t = tables.get(campaignId);
+    if (t === undefined) return null;
+    const policy = t.currentSnapshot().campaign.chatPolicy;
+    const chat = await Chat.load(campaignId, policy, chatStore, Date.now);
+    chats.set(campaignId, chat);
+    return chat;
+  };
+
+  const rosterOf = (campaignId: string): ServerMsg => {
+    const m = membershipFor(campaignId);
+    const ids = new Set<Identity>([m.gmIdentity, ...m.seats().map(([, owner]) => owner)]);
+    for (const id of subsByIdentity.get(campaignId)?.keys() ?? []) ids.add(id);
+    const onlineMap = online.get(campaignId);
+    const name = (id: Identity): string => opts.displayNameFor?.(id) ?? id;
+    return {
+      t: "players",
+      campaignId,
+      players: [...ids].map((identity) => ({
+        identity,
+        displayName: name(identity),
+        online: (onlineMap?.get(identity) ?? 0) > 0,
+      })),
+    };
+  };
+  const broadcastRoster = (campaignId: string): void =>
+    tables.get(campaignId)?.broadcast(rosterOf(campaignId));
+
+  const deliverChat = (campaignId: string, msg: ChatMsg): void => {
+    if (msg.to === undefined) {
+      tables.get(campaignId)?.broadcast({ t: "chat", msg });
+      return;
+    }
+    sendToIdentity(campaignId, msg.from, { t: "chat", msg });
+    if (msg.to !== msg.from) sendToIdentity(campaignId, msg.to, { t: "chat", msg });
+  };
+
   const verify = (token: string): Identity | null => {
     try {
       return opts.verifyToken(token);
@@ -195,6 +257,13 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           joined.add(msg.campaignId);
           bump(msg.campaignId, id, 1);
           broadcastPresence(msg.campaignId);
+          indexSub(msg.campaignId, id, send, true);
+          const chat = await chatFor(msg.campaignId);
+          if (chat !== null && chat.policy.enabled) {
+            const { msgs } = await chat.backfill(id);
+            for (const cm of msgs) send({ t: "chat", msg: cm });
+          }
+          broadcastRoster(msg.campaignId);
           break;
         }
         case "submit": {
@@ -244,14 +313,32 @@ export function createServer(opts: ServerOptions): Promise<ServerHandle> {
           t.sendSnapshot(send); // read-only; pre-auth allowed (unchanged 3b boundary)
           break;
         }
+        case "chatSend": {
+          if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
+          const chat = await chatFor(msg.campaignId);
+          if (chat === null || !chat.policy.enabled) { send({ t: "denied", reason: "chat disabled" }); break; }
+          const res = await chat.send(identity, msg.body, msg.to);
+          if ("ok" in res) { send({ t: "denied", reason: res.reason }); break; }
+          deliverChat(msg.campaignId, res);
+          break;
+        }
+        case "chatHistory": {
+          if (identity === null) { send({ t: "denied", reason: "not authenticated" }); break; }
+          const chat = await chatFor(msg.campaignId);
+          if (chat === null || !chat.policy.enabled) { send({ t: "denied", reason: "chat disabled" }); break; }
+          const { msgs, more } = await chat.history(identity, msg.before);
+          send({ t: "chatHistory", campaignId: msg.campaignId, msgs, more });
+          break;
+        }
       }
     });
 
     ws.on("close", () => {
       for (const id of joined) {
         tables.get(id)?.leave(send);
-        if (identity !== null) bump(id, identity, -1);
+        if (identity !== null) { bump(id, identity, -1); indexSub(id, identity, send, false); }
         broadcastPresence(id);
+        broadcastRoster(id);
       }
     });
   });
