@@ -1,6 +1,10 @@
 import { describe, it, expect, afterEach } from "vitest";
+import * as os from "node:os";
+import * as path from "node:path";
+import * as fs from "node:fs";
 import type { PlayerEntry } from "@wickedways/transport-shared";
 import { InMemoryChatStore } from "./chat-store.js";
+import { SqliteChatStore } from "./sqlite-chat-store.js";
 import { makeChatTestServer, connectClient } from "./chat-test-helpers.js";
 import type { ServerHandle } from "./server.js";
 
@@ -125,5 +129,44 @@ describe("server chat routing", () => {
     const players = (roster as { t: "players"; players: PlayerEntry[] }).players;
     const aEntry = players.find((p) => p.identity === "idA");
     expect(aEntry).toMatchObject({ identity: "idA", online: false });
+  });
+
+  it("backfills chat history across a server restart (SqliteChatStore durability)", async () => {
+    // Use a unique temp dir so parallel test workers never collide.
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ww-chat-"));
+    const dbPath = path.join(tmpDir, "chat.db");
+
+    // First server: client sends a message.
+    {
+      const chatStore = new SqliteChatStore(dbPath);
+      const r1 = await makeChatTestServer({ store: chatStore });
+      handle = r1.handle;
+      const a1 = await connectClient(handle, "tokenA", "campaign1");
+      a1.send({ t: "chatSend", campaignId: "campaign1", body: "persisted message" });
+      // Wait until the room echoes the message back (confirms it was stored)
+      await a1.next((m) => m.t === "chat");
+      a1.close();
+      await handle.close();
+      handle = undefined;
+      chatStore.close();
+    }
+
+    // Second server on the SAME file: a new client joining should receive the backfill.
+    const chatStore2 = new SqliteChatStore(dbPath);
+    const r2 = await makeChatTestServer({ store: chatStore2 });
+    handle = r2.handle;
+
+    const late = await connectClient(handle, "tokenB", "campaign1");
+    // The backfill chat message should arrive after joining
+    const got = await late.next((m) => m.t === "chat");
+    expect(got).toMatchObject({ t: "chat", msg: { body: "persisted message" } });
+
+    late.close();
+    await handle.close();
+    handle = undefined;
+    chatStore2.close();
+
+    // Clean up temp directory.
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 });
