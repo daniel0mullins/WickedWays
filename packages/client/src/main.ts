@@ -23,7 +23,7 @@ function byId(id: string): HTMLElement {
   return el;
 }
 
-function renderChatPanel(campaign: ReturnType<(typeof SyncCoordinator)["join"]>["campaign"], chatClient: ChatClient): void {
+function renderChatPanel(campaign: ReturnType<(typeof SyncCoordinator)["join"]>["campaign"], chatClient: ChatClient, transport: WebSocketTransport): void {
   const policy = campaign.chatPolicy;
   const panelEl = byId("chatPanel");
   const messagesEl = byId("chatMessages");
@@ -74,11 +74,26 @@ function renderChatPanel(campaign: ReturnType<(typeof SyncCoordinator)["join"]>[
   }
 }
 
-let transport: WebSocketTransport;
-
 async function main(): Promise<void> {
   const chatClient = new ChatClient(campaignId);
-  transport = await WebSocketTransport.connect({
+
+  // Refs initialized after connect/join complete; render() guards against pre-init calls
+  let coordinatorRef: ReturnType<typeof SyncCoordinator.join> | null = null;
+  let transportRef: WebSocketTransport | null = null;
+
+  const render = (): void => {
+    // onChat may fire during handshake before refs are set; guard it
+    if (!coordinatorRef || !transportRef) return;
+    const c = coordinatorRef.campaign;
+    byId("state").textContent = JSON.stringify(
+      { head: transportRef.head(), round: c.round, active: c.activeCharacter?.name ?? null, campaign: serializeCampaign(c) },
+      null,
+      2,
+    );
+    renderChatPanel(c, chatClient, transportRef);
+  };
+
+  transportRef = await WebSocketTransport.connect({
     url,
     campaignId,
     token: clientId,
@@ -87,21 +102,11 @@ async function main(): Promise<void> {
       render();
     },
   });
-  const coordinator = SyncCoordinator.join({ registry: buildSeedRegistry(), transport });
-  coordinator.start();
-
-  const render = (): void => {
-    const c = coordinator.campaign;
-    byId("state").textContent = JSON.stringify(
-      { head: transport.head(), round: c.round, active: c.activeCharacter?.name ?? null, campaign: serializeCampaign(c) },
-      null,
-      2,
-    );
-    renderChatPanel(c, chatClient);
-  };
+  coordinatorRef = SyncCoordinator.join({ registry: buildSeedRegistry(), transport: transportRef });
+  coordinatorRef.start();
 
   const run = async (label: string, build: () => Command): Promise<void> => {
-    const res = await coordinator.submit(build());
+    const res = await coordinatorRef.submit(build());
     byId("status").textContent = res.ok ? `${label}: ok (seq ${res.seq})` : `${label}: ${res.reason}`;
     render();
   };
@@ -109,7 +114,7 @@ async function main(): Promise<void> {
   byId("nextPlayer").addEventListener("click", () => void run("nextPlayer", () => ({ kind: "nextPlayer" })));
   byId("moveNorth").addEventListener("click", () =>
     void run("moveNorth", () => {
-      const active = coordinator.campaign.activeCharacter;
+      const active = coordinatorRef.campaign.activeCharacter;
       if (active === undefined || active.currentRoom === null) throw new Error("no active room");
       const north = active.currentRoom.exits.get(Directions.North);
       if (north === undefined) throw new Error("no North exit");
