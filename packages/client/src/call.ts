@@ -89,7 +89,7 @@ export class CallClient {
       if (sdpObj.type === "offer") {
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        this.#opts.sendSignal(from, { sdp: pc.localDescription });
+        this.#opts.sendSignal(from, { sdp: answer });
       }
     }
 
@@ -140,7 +140,7 @@ export class CallClient {
 
     // Wire remote track handler
     pc.ontrack = (ev) => {
-      this.#opts.onRemoteStream(other, ev.streams[0]);
+      this.#opts.onRemoteStream(other, ev.streams[0] ?? null);
     };
 
     this.#peers.set(other, pc);
@@ -156,9 +156,7 @@ export class CallClient {
     const pc = this.#peers.get(other);
     if (!pc) return;
     const offer = await pc.createOffer();
-    // setLocalDescription in parallel — we send the offer immediately after creating it;
-    // localDescription is the offer object itself (same value).
-    void pc.setLocalDescription(offer);
-    this.#opts.sendSignal(other, { sdp: pc.localDescription });
+    await pc.setLocalDescription(offer);
+    this.#opts.sendSignal(other, { sdp: offer });
   }
 }

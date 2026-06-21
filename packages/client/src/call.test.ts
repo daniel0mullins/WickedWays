@@ -4,18 +4,22 @@ import { CallClient } from "./call.js";
 import type { CallPeer } from "@wickedways/transport-shared";
 
 function mockPeer() {
-  return {
-    setLocalDescription: vi.fn(() => Promise.resolve()),
+  const peer = {
+    setLocalDescription: vi.fn(async function (this: typeof peer, d: unknown) {
+      await Promise.resolve();
+      this.localDescription = d;
+    }),
     setRemoteDescription: vi.fn(() => Promise.resolve()),
     addIceCandidate: vi.fn(() => Promise.resolve()),
-    createOffer: vi.fn(() => Promise.resolve({ type: "offer" })),
-    createAnswer: vi.fn(() => Promise.resolve({ type: "answer" })),
+    createOffer: vi.fn(() => Promise.resolve({ type: "offer", sdp: "OFFER_SDP" })),
+    createAnswer: vi.fn(() => Promise.resolve({ type: "answer", sdp: "ANSWER_SDP" })),
     addTrack: vi.fn(),
     close: vi.fn(),
-    localDescription: { type: "offer" },
+    localDescription: null as unknown,
     onicecandidate: null as ((ev: { candidate: unknown }) => void) | null,
     ontrack: null as ((ev: { streams: unknown[] }) => void) | null,
   };
+  return peer;
 }
 
 const peer = (peerId: string, identity = peerId): CallPeer =>
@@ -48,9 +52,18 @@ describe("CallClient", () => {
     const { client, sent } = makeClient();
     await client.onCallJoined("p1", [peer("p1")], []); // self p1, alone
     client.onPeersUpdate([peer("p1"), peer("p2")]);     // p2 appears; p1 < p2 => p1 impolite => p1 offers
-    // allow the async negotiation microtask to flush
+    // flush: createOffer (1 tick) + setLocalDescription microtask (1 tick) + sendSignal
     await Promise.resolve();
-    expect(sent.some((s) => s.to === "p2")).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+    const offerSignal = sent.find((s) => s.to === "p2");
+    expect(offerSignal).toBeDefined();
+    // The sent sdp must be the real offer object — not null. This assertion fails against
+    // the old fire-and-forget code (which would read localDescription === null before
+    // setLocalDescription resolves) and passes only after the fix.
+    const data = offerSignal!.data as { sdp: unknown };
+    expect(data.sdp).not.toBeNull();
+    expect(data.sdp).toEqual({ type: "offer", sdp: "OFFER_SDP" });
   });
 
   it("routes an inbound signal to the matching peer connection", async () => {
