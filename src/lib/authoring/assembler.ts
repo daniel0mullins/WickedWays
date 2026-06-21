@@ -97,6 +97,10 @@ export function assemble(
     problems.push(`chat.backfillWindow must be >= 1 (got ${desc.chat.backfillWindow}).`);
   }
 
+  if (desc.av !== undefined && desc.av.maxParticipants < 1) {
+    problems.push(`av.maxParticipants must be >= 1 (got ${desc.av.maxParticipants}).`);
+  }
+
   if (problems.length > 0) throw new AuthoringError(problems);
 
   // ---- Pass 2: construct in order ----
@@ -118,6 +122,7 @@ export function assemble(
     timeoutNarration: desc.timeoutNarration,
     endedNarration: desc.endedNarration,
     chatPolicy: desc.chat,
+    avPolicy: desc.av,
   });
 
   for (const a of desc.archetypes) {
