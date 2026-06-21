@@ -4,6 +4,7 @@ import { serializeCampaign } from "../serialization/serializer";
 import { buildSerializableCampaign } from "../serialization/roundtrip.test-helpers";
 import type { CampaignCoreSnapshot, CampaignSnapshot } from "../serialization/types";
 import { DEFAULT_CHAT_POLICY } from "../chat-policy";
+import { DEFAULT_AV_POLICY } from "../av-policy";
 
 /** Minimal CampaignCoreSnapshot literal for hand-built snapshot tests. */
 function baseCore(): CampaignCoreSnapshot {
@@ -28,6 +29,7 @@ function baseCore(): CampaignCoreSnapshot {
     actionSounds: {},
     encounterTable: { baseChance: 0, visited: [], formations: [] },
     chatPolicy: { ...DEFAULT_CHAT_POLICY },
+    avPolicy: { ...DEFAULT_AV_POLICY },
   };
 }
 

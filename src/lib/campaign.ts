@@ -27,6 +27,8 @@ import { resolveOutcome } from "./victory";
 import type { CampaignOutcome, OutcomeNarration, VictoryCondition } from "./victory";
 import { DEFAULT_CHAT_POLICY } from "./chat-policy";
 import type { ChatPolicy } from "./chat-policy";
+import { DEFAULT_AV_POLICY } from "./av-policy";
+import type { AvPolicy } from "./av-policy";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -55,6 +57,8 @@ export interface ICampaign {
   get codex(): ICodex;
   /** This campaign's chat configuration (inert engine data; consumed by comms + UI). */
   get chatPolicy(): ChatPolicy;
+  /** This campaign's A/V configuration (inert engine data; consumed by comms + UI). */
+  get avPolicy(): AvPolicy;
   /** Whether the campaign has begun (turn management active). */
   get started(): boolean;
   /** Whether the campaign has ended (won, lost, timed out, or manually ended). */
@@ -159,6 +163,7 @@ export class Campaign implements ICampaign {
   #actionSounds: Partial<Record<ActionKind, AssetRef>>;
   #codex = new Codex();
   #chatPolicy: ChatPolicy;
+  #avPolicy: AvPolicy;
 
   get round() {
     return this.#round;
@@ -190,6 +195,11 @@ export class Campaign implements ICampaign {
   /** This campaign's chat configuration (inert engine data; consumed by comms + UI). */
   get chatPolicy(): ChatPolicy {
     return this.#chatPolicy;
+  }
+
+  /** This campaign's A/V configuration (inert engine data; consumed by comms + UI). */
+  get avPolicy(): AvPolicy {
+    return this.#avPolicy;
   }
 
   get started(): boolean {
@@ -303,6 +313,7 @@ export class Campaign implements ICampaign {
       timeoutNarration?: OutcomeNarration;
       endedNarration?: OutcomeNarration;
       chatPolicy?: ChatPolicy;
+      avPolicy?: AvPolicy;
     } = {},
   ) {
     this.id = generateId<CampaignId>();
@@ -328,6 +339,7 @@ export class Campaign implements ICampaign {
     this.#timeoutNarration = options.timeoutNarration;
     this.#endedNarration = options.endedNarration;
     this.#chatPolicy = options.chatPolicy ?? DEFAULT_CHAT_POLICY;
+    this.#avPolicy = options.avPolicy ?? DEFAULT_AV_POLICY;
 
     for (const recipe of knownRecipes) {
       this.discoverRecipe(recipe);
@@ -725,6 +737,7 @@ export class Campaign implements ICampaign {
       actionSounds: { ...this.#actionSounds },
       encounterTable: this.#encounterTable[SERIALIZE](),
       chatPolicy: { ...this.#chatPolicy },
+      avPolicy: { ...this.#avPolicy },
     };
   }
 
@@ -788,6 +801,7 @@ export class Campaign implements ICampaign {
     }
     this.#encounterTable[HYDRATE](core.encounterTable, ctx.registry);
     this.#chatPolicy = { ...core.chatPolicy };
+    this.#avPolicy = { ...core.avPolicy };
   }
 
   /**
