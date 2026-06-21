@@ -1,0 +1,43 @@
+import { describe, it, expect } from "vitest";
+import { Chat } from "./chat.js";
+import { InMemoryChatStore } from "./chat-store.js";
+import { DEFAULT_CHAT_POLICY } from "wickedways/lib/chat-policy";
+
+const clock = () => { let t = 0; return () => ++t; };
+
+describe("Chat — send + backfill", () => {
+  it("stamps a monotonic id, from, and ts on send", async () => {
+    const chat = await Chat.load("c", DEFAULT_CHAT_POLICY, new InMemoryChatStore(), clock());
+    const a = await chat.send("id1", "hello", undefined);
+    const b = await chat.send("id2", "hi", undefined);
+    expect(a).toMatchObject({ id: 1, from: "id1", body: "hello" });
+    expect(b).toMatchObject({ id: 2, from: "id2" });
+  });
+
+  it("resumes chatSeq above the store's max id", async () => {
+    const store = new InMemoryChatStore();
+    await store.append("c", { id: 7, from: "x", body: "old", ts: 0 });
+    const chat = await Chat.load("c", DEFAULT_CHAT_POLICY, store, clock());
+    expect((await chat.send("id1", "new", undefined) as { id: number }).id).toBe(8);
+  });
+
+  it("denies a whisper when policy.whisper is false", async () => {
+    const policy = { ...DEFAULT_CHAT_POLICY, whisper: false };
+    const chat = await Chat.load("c", policy, new InMemoryChatStore(), clock());
+    expect(await chat.send("id1", "psst", "id2")).toEqual({ ok: false, reason: expect.any(String) });
+  });
+
+  it("denies empty/blank bodies", async () => {
+    const chat = await Chat.load("c", DEFAULT_CHAT_POLICY, new InMemoryChatStore(), clock());
+    expect(await chat.send("id1", "   ", undefined)).toMatchObject({ ok: false });
+  });
+
+  it("backfills the visible window, newest within backfillWindow", async () => {
+    const policy = { ...DEFAULT_CHAT_POLICY, backfillWindow: 2 };
+    const chat = await Chat.load("c", policy, new InMemoryChatStore(), clock());
+    await chat.send("id1", "1", undefined);
+    await chat.send("id1", "2", undefined);
+    await chat.send("id1", "3", undefined);
+    expect((await chat.backfill("id2")).msgs.map((x) => x.id)).toEqual([2, 3]);
+  });
+});
