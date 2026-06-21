@@ -9,6 +9,7 @@ import { constructBareCharacter } from "../character/hydrate";
 import { HydrateContext } from "./context";
 import { HYDRATE, HYDRATE_CATALOG, HYDRATE_CODEX_ENTRIES } from "./symbols";
 import { DEFAULT_CHAT_POLICY } from "../chat-policy";
+import { DEFAULT_AV_POLICY } from "../av-policy";
 import { SCHEMA_VERSION } from "./types";
 import type { CampaignSnapshot } from "./types";
 import type { CampaignRegistry } from "./registry";
@@ -78,6 +79,11 @@ export function migrate(data: CampaignSnapshot): CampaignSnapshot {
   if (data.schemaVersion === 2) {
     data.campaign.chatPolicy = { ...DEFAULT_CHAT_POLICY };
     data.schemaVersion = 3;
+  }
+  // v3 → v4: A/V policy introduced in schema 4. Pre-A/V campaigns get the default.
+  if (data.schemaVersion === 3) {
+    data.campaign.avPolicy = { ...DEFAULT_AV_POLICY };
+    data.schemaVersion = 4;
   }
   if (data.schemaVersion !== SCHEMA_VERSION) {
     throw new ProceduralViolation(

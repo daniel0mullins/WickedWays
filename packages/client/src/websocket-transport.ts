@@ -30,6 +30,7 @@ interface ConnectOpts {
   factory?: WebSocketFactory;
   onPresence?: (p: Extract<ServerMsg, { t: "presence" }>) => void;
   onChat?: (m: Extract<ServerMsg, { t: "chat" | "chatHistory" | "players" }>) => void;
+  onCall?: (m: Extract<ServerMsg, { t: "callJoined" | "callPeers" | "signal" }>) => void;
 }
 
 /**
@@ -198,6 +199,11 @@ export class WebSocketTransport implements SyncTransport {
       case "chatHistory":
       case "players":
         this.#opts.onChat?.(msg);
+        break;
+      case "callJoined":
+      case "callPeers":
+      case "signal":
+        this.#opts.onCall?.(msg);
         break;
     }
   }

@@ -41,7 +41,11 @@ export type ClientMsg =
   | { t: "chatDelete"; campaignId: string; id: number }
   | { t: "chatReact"; campaignId: string; id: number; emoji: string; on: boolean }
   | { t: "chatRead"; campaignId: string; upTo: number }
-  | { t: "typing"; campaignId: string; to?: Identity };
+  | { t: "typing"; campaignId: string; to?: Identity }
+  | { t: "callJoin"; campaignId: string }
+  | { t: "callLeave"; campaignId: string }
+  | { t: "signal"; campaignId: string; to: PeerId; data: unknown }
+  | { t: "avState"; campaignId: string; muted: boolean; cameraOn: boolean };
 
 /** One seat's presence: its owner (or null if unclaimed) and whether that owner is online. */
 export interface PresenceEntry { characterId: string; owner: string | null; online: boolean }
@@ -68,6 +72,18 @@ export interface ChatMsg {
 /** One player's roster entry: stable identity, host display name, and online state. */
 export interface PlayerEntry { identity: Identity; displayName: string; online: boolean }
 
+/** A per-connection call endpoint id (one per socket; distinct from Identity). */
+export type PeerId = string;
+
+/** One participant in a campaign's A/V call: who they are + their mute/camera state. */
+export interface CallPeer {
+  peerId: PeerId;
+  identity: Identity;
+  displayName: string;
+  muted: boolean;
+  cameraOn: boolean;
+}
+
 /** Messages the room server sends to a client. */
 export type ServerMsg =
   | { t: "joined"; head: number }
@@ -84,7 +100,10 @@ export type ServerMsg =
   | { t: "chatDeleted"; campaignId: string; id: number }
   | { t: "chatReact"; campaignId: string; id: number; emoji: string; identity: Identity; on: boolean }
   | { t: "chatReads"; campaignId: string; marks: { identity: Identity; upTo: number }[] }
-  | { t: "typing"; campaignId: string; from: Identity; to?: Identity };
+  | { t: "typing"; campaignId: string; from: Identity; to?: Identity }
+  | { t: "callJoined"; campaignId: string; selfPeerId: PeerId; peers: CallPeer[]; iceServers: unknown[] }
+  | { t: "callPeers"; campaignId: string; peers: CallPeer[] }
+  | { t: "signal"; campaignId: string; from: PeerId; data: unknown };
 
 /**
  * Pure helper: returns a NEW reactions array with `identity` toggled in `emoji`'s `by[]`.
@@ -130,6 +149,11 @@ function isChatMsg(x: unknown): x is ChatMsg {
 function isPlayerEntry(x: unknown): x is PlayerEntry {
   return isObj(x) && typeof x.identity === "string"
     && typeof x.displayName === "string" && typeof x.online === "boolean";
+}
+
+function isCallPeer(x: unknown): x is CallPeer {
+  return isObj(x) && typeof x.peerId === "string" && typeof x.identity === "string"
+    && typeof x.displayName === "string" && typeof x.muted === "boolean" && typeof x.cameraOn === "boolean";
 }
 
 function isReadMark(x: unknown): x is { identity: Identity; upTo: number } {
@@ -192,6 +216,18 @@ export function parseClientMsg(raw: unknown): ClientMsg | null {
       return typeof raw.campaignId === "string" && (raw.to === undefined || typeof raw.to === "string")
         ? { t: "typing", campaignId: raw.campaignId, to: raw.to }
         : null;
+    case "callJoin":
+      return typeof raw.campaignId === "string" ? { t: "callJoin", campaignId: raw.campaignId } : null;
+    case "callLeave":
+      return typeof raw.campaignId === "string" ? { t: "callLeave", campaignId: raw.campaignId } : null;
+    case "signal":
+      return typeof raw.campaignId === "string" && typeof raw.to === "string" && "data" in raw
+        ? { t: "signal", campaignId: raw.campaignId, to: raw.to, data: raw.data }
+        : null;
+    case "avState":
+      return typeof raw.campaignId === "string" && typeof raw.muted === "boolean" && typeof raw.cameraOn === "boolean"
+        ? { t: "avState", campaignId: raw.campaignId, muted: raw.muted, cameraOn: raw.cameraOn }
+        : null;
     default:
       return null;
   }
@@ -253,6 +289,19 @@ export function parseServerMsg(raw: unknown): ServerMsg | null {
       return typeof raw.campaignId === "string" && typeof raw.from === "string"
         && (raw.to === undefined || typeof raw.to === "string")
         ? { t: "typing", campaignId: raw.campaignId, from: raw.from, to: raw.to }
+        : null;
+    case "callJoined":
+      return typeof raw.campaignId === "string" && typeof raw.selfPeerId === "string"
+        && Array.isArray(raw.peers) && raw.peers.every(isCallPeer) && Array.isArray(raw.iceServers)
+        ? { t: "callJoined", campaignId: raw.campaignId, selfPeerId: raw.selfPeerId, peers: raw.peers, iceServers: raw.iceServers }
+        : null;
+    case "callPeers":
+      return typeof raw.campaignId === "string" && Array.isArray(raw.peers) && raw.peers.every(isCallPeer)
+        ? { t: "callPeers", campaignId: raw.campaignId, peers: raw.peers }
+        : null;
+    case "signal":
+      return typeof raw.campaignId === "string" && typeof raw.from === "string" && "data" in raw
+        ? { t: "signal", campaignId: raw.campaignId, from: raw.from, data: raw.data }
         : null;
     default:
       return null;

@@ -4,6 +4,7 @@ import type { Direction } from "../room";
 import type { MaterialMap } from "../inventory";
 import type { OutcomeNarration } from "../victory";
 import type { ChatPolicy } from "../chat-policy";
+import type { AvPolicy } from "../av-policy";
 
 /** Defines a player-character archetype to register with the campaign. */
 export interface ArchetypeDef {
@@ -95,4 +96,6 @@ export interface CampaignTemplateDescription {
   endedNarration?: OutcomeNarration;
   /** Per-campaign chat configuration. Omitted ⇒ DEFAULT_CHAT_POLICY (all on). */
   chat?: ChatPolicy;
+  /** Per-campaign A/V configuration. Omitted ⇒ DEFAULT_AV_POLICY (on, video, cap 6). */
+  av?: AvPolicy;
 }

@@ -8,8 +8,9 @@ import type { CodexEntry } from "../codex";
 import type { ActionKind, AssetRef } from "../presentation";
 import type { CampaignOutcome, OutcomeNarration } from "../victory";
 import type { ChatPolicy } from "../chat-policy";
+import type { AvPolicy } from "../av-policy";
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export interface AfflictionsSnapshot {
   active: Partial<Record<Status, boolean>>;
@@ -119,6 +120,8 @@ export interface CampaignCoreSnapshot {
   encounterTable: EncounterTableSnapshot;
   /** Per-campaign chat configuration (inert engine data; read by comms + UI). */
   chatPolicy: ChatPolicy;
+  /** Per-campaign A/V configuration (inert engine data; read by comms + UI). */
+  avPolicy: AvPolicy;
 }
 
 export interface CampaignSnapshot {
