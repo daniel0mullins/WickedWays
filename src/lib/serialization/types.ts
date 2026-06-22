@@ -9,8 +9,9 @@ import type { ActionKind, AssetRef } from "../presentation";
 import type { CampaignOutcome, OutcomeNarration } from "../victory";
 import type { ChatPolicy } from "../chat-policy";
 import type { AvPolicy } from "../av-policy";
+import type { JsonValue } from "../mechanics/mechanic.js";
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export interface AfflictionsSnapshot {
   active: Partial<Record<Status, boolean>>;
@@ -122,6 +123,8 @@ export interface CampaignCoreSnapshot {
   chatPolicy: ChatPolicy;
   /** Per-campaign A/V configuration (inert engine data; read by comms + UI). */
   avPolicy: AvPolicy;
+  /** Opted-in mechanics: registry key + serialized state. Behavior re-attaches by key. */
+  mechanics: { key: string; state: JsonValue }[];
 }
 
 export interface CampaignSnapshot {

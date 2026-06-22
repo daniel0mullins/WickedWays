@@ -861,6 +861,7 @@ export class Campaign implements ICampaign {
       encounterTable: this.#encounterTable[SERIALIZE](),
       chatPolicy: { ...this.#chatPolicy },
       avPolicy: { ...this.#avPolicy },
+      mechanics: this.#mechanics.map((m) => ({ key: m.key, state: m.state })),
     };
   }
 
@@ -891,6 +892,11 @@ export class Campaign implements ICampaign {
     }));
     this.#timeoutNarration = core.timeoutNarration;
     this.#endedNarration = core.endedNarration;
+    this.#mechanics = core.mechanics.map((m) => ({
+      key: m.key,
+      mechanic: registry.mechanic(m.key), // throws ProceduralViolation if missing
+      state: m.state as JsonObject,
+    }));
   }
 
   /**

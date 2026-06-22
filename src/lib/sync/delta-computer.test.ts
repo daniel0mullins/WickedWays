@@ -30,6 +30,7 @@ function baseCore(): CampaignCoreSnapshot {
     encounterTable: { baseChance: 0, visited: [], formations: [] },
     chatPolicy: { ...DEFAULT_CHAT_POLICY },
     avPolicy: { ...DEFAULT_AV_POLICY },
+    mechanics: [],
   };
 }
 

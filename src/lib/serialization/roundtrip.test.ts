@@ -12,6 +12,41 @@ import { PlayerCharacter } from "../character/player-character";
 import { Room } from "../room";
 import type { ArchetypeId } from "../archetype";
 import type { ExitsArg } from "../../test-utils";
+import { authorTemplate } from "../authoring/template-builder";
+import { defineRegistry } from "../authoring/registry";
+import type { JsonObject, Mechanic } from "../mechanics/mechanic";
+
+/**
+ * Builds a minimal started campaign with the given mechanics enabled.
+ * Each entry is [mechanicKey, config]. The campaign has one party member
+ * who is also the GM, so a single `completeRound` call ends the round.
+ */
+function startMinimal(
+  reg: CampaignRegistry,
+  mechanics: [string, unknown][],
+): { campaign: Campaign } {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let builder: any = authorTemplate("Mini", reg as any)
+    .room("start", { description: "the start" })
+    .startRoom("start")
+    .archetype({ id: "hero", name: "Hero", statModifiers: {} });
+  for (const [key, config] of mechanics) {
+    builder = builder.useMechanic(key, config);  
+  }
+  const campaign = builder.build() as Campaign;
+  // Add a single player who is also the GM so we can begin.
+  const pc = new PlayerCharacter(campaign, "Solo", makeStats());
+  pc.joinCampaign();
+  campaign.gm = pc;
+  pc.selectArchetype("hero" as ArchetypeId);
+  campaign.beginCampaign();
+  return { campaign };
+}
+
+/** Advances a single-player campaign through one complete round. */
+function completeRound(campaign: Campaign): void {
+  campaign.nextPlayer(); // sole player acted → endRound fires
+}
 
 function makeTorch(): Item {
   const noop = () => {};
@@ -43,7 +78,7 @@ describe("campaign round-trip", () => {
   it("serializes and restores a campaign that keeps playing", () => {
     const { campaign, pc, start } = buildCampaign();
     const snap = serializeCampaign(campaign);
-    expect(snap.schemaVersion).toBe(4);
+    expect(snap.schemaVersion).toBe(5);
 
     const restored = deserializeCampaign(snap, {
       registry: new CampaignRegistry(),
@@ -153,5 +188,37 @@ describe("campaign round-trip", () => {
     expect(restored.outcome).toBe("won");
     expect(restored.outcomeReason).toBe("w");
     expect(restored.outcomeNarration).toEqual({ text: "You win." });
+  });
+});
+
+interface DoomState extends JsonObject { doom: number }
+
+const doomMechanic: Mechanic<DoomState> = {
+  initialState: () => ({ doom: 0 }),
+  onRoundEnd: (h) => { h.state.doom += 1; return []; },
+};
+
+describe("mechanic serialization round-trip", () => {
+  it("round-trips mechanic state by key and re-attaches behavior", () => {
+    const reg = defineRegistry({
+      items: {},
+      mechanics: { doom: doomMechanic },
+    });
+    const { campaign } = startMinimal(reg, [["doom", undefined]]);
+    completeRound(campaign);              // doom -> 1
+    const snap = serializeCampaign(campaign);
+    const back = deserializeCampaign(snap, { registry: reg });
+    // behavior fresh from registry; state intact: a second round makes doom 2
+    completeRound(back);
+    const snap2 = serializeCampaign(back);
+    expect(snap2.campaign.mechanics).toContainEqual({ key: "doom", state: { doom: 2 } });
+  });
+
+  it("rejects a snapshot whose mechanic key is not registered", () => {
+    const reg = defineRegistry({ items: {}, mechanics: { doom: { initialState: () => ({}) } } });
+    const { campaign } = startMinimal(reg, [["doom", undefined]]);
+    const snap = serializeCampaign(campaign);
+    const bare = defineRegistry({ items: {} });
+    expect(() => deserializeCampaign(snap, { registry: bare })).toThrow(/No mechanic registered/);
   });
 });

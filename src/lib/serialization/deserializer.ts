@@ -85,6 +85,12 @@ export function migrate(data: CampaignSnapshot): CampaignSnapshot {
     data.campaign.avPolicy = { ...DEFAULT_AV_POLICY };
     data.schemaVersion = 4;
   }
+  // v4 → v5: custom mechanics introduced in schema 5. Pre-mechanics campaigns
+  // have none and hydrate inert (preserving the opt-in invariant).
+  if (data.schemaVersion === 4) {
+    data.campaign.mechanics = [];
+    data.schemaVersion = 5;
+  }
   if (data.schemaVersion !== SCHEMA_VERSION) {
     throw new ProceduralViolation(
       `Unsupported snapshot schemaVersion ${data.schemaVersion}; expected ${SCHEMA_VERSION}.`,
