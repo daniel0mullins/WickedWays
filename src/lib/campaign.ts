@@ -136,6 +136,14 @@ export interface ICampaign {
     by: ICharacter | undefined,
     where: IRoom | null,
   ) => void;
+  /** Fires turn-phase hooks for all enabled mechanics. Engine-internal. */
+  [DISPATCH_TURN]: (phase: "start" | "end", actor: IPlayerCharacter) => void;
+  /** Fires `onAction` hooks for the given budgeted action. Engine-internal. */
+  [DISPATCH_ACTION]: (detail: ActionDetail, actor: IPlayerCharacter) => void;
+  /** Runs all `modifyDamage` transformers and returns the final damage amount. Engine-internal. */
+  [TRANSFORM_DAMAGE]: (dv: DamageView) => number;
+  /** Invokes a named custom action on a mechanic and applies its effects. Engine-internal. */
+  [INVOKE_MECHANIC_ACTION]: (mechanicKey: string, actionKey: string, actor: IPlayerCharacter) => void;
 }
 
 /**
@@ -671,7 +679,7 @@ export class Campaign implements ICampaign {
     const ctx = {
       ...this.#hookCtx(m),
       actor: this.#characterView(actor),
-      action: { kind: "mechanicAction", mechanic: mechanicKey, action: actionKey } as unknown as ActionDetail,
+      action: { kind: "mechanicAction" as const, mechanic: mechanicKey, action: actionKey },
     };
     const effects = action.run(ctx) ?? [];
     if (effects.length > MAX_EFFECTS_PER_EVENT) {

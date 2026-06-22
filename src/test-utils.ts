@@ -8,6 +8,7 @@ import { StatType, type Stats } from "./lib/character/stats";
 import { Room } from "./lib/room";
 import { EMIT_CUE, NOTE_ENCOUNTERS } from "./lib/presentation";
 import { RECORD_ENCOUNTER } from "./lib/codex";
+import { DISPATCH_TURN, DISPATCH_ACTION, TRANSFORM_DAMAGE, INVOKE_MECHANIC_ACTION } from "./lib/mechanics/symbols";
 
 // The Room constructor types `exits` as a full Record<Direction, IRoom>, but the
 // body only iterates whatever keys are present, so tests recover the parameter
@@ -33,6 +34,10 @@ export function makeCampaign(): ICampaign {
     [EMIT_CUE]: () => {},
     [NOTE_ENCOUNTERS]: () => {},
     [RECORD_ENCOUNTER]: () => {},
+    [DISPATCH_TURN]: () => {},
+    [DISPATCH_ACTION]: () => {},
+    [TRANSFORM_DAMAGE]: (dv: { amount: number }) => dv.amount,
+    [INVOKE_MECHANIC_ACTION]: () => {},
   } as unknown as ICampaign;
 }
 
