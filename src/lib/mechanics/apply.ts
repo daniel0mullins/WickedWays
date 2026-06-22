@@ -23,6 +23,7 @@ export function applyEffect(campaign: Campaign, e: Effect): void {
       break;
     case "adjustStat": {
       const stat = e.stat === "sanity" ? StatType.Sanity : StatType.Energy;
+      // delta sign is the mechanic's intent; intentionally not magnitude-clamped (unlike every other arm).
       campaign[FIND_CHARACTER](e.target)[ADJUST_STAT](stat, e.delta);
       break;
     }
