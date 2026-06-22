@@ -135,7 +135,6 @@ export interface CharacterView {
   readonly id: CharacterId;
   readonly name: string;
   readonly health: number;
-  readonly maxHealth: number;
   readonly sanity: number;
   readonly energy: number;
   readonly status: readonly Status[];
@@ -177,10 +176,16 @@ export interface ActionCtx<S> extends TurnCtx<S> {
   readonly action: ActionEvent;
 }
 
-/** The in-flight damage a transformer may adjust. */
+/**
+ * The in-flight damage a transformer may adjust. The engine has no element type;
+ * damage is keyed by `StatType` (Health/Sanity/Energy), so transformers
+ * discriminate on `stat` + `view` (e.g. "while the ward is equipped"). `source`
+ * is `undefined` in the `takeDamage` path (it receives no attacker).
+ */
 export interface DamageView {
   readonly amount: number;
   readonly target: CharacterId;
+  readonly stat: StatType;
   readonly source: CharacterId | undefined;
 }
 
@@ -250,30 +255,26 @@ chokepoint — nothing else realizes an effect.
 import { GRANT_IMMUNITY } from "../inventory.js";
 import { EMIT_CUE } from "../presentation.js";
 
-/** Realize one effect. Negative amounts are rejected (clamped to 0); positive ones
- *  are clamped to the target's legal bounds before touching state. */
+/** Realize one effect. All stat changes route through one `ADJUST_STAT(stat, delta)`
+ *  seam that floors the stat at 0 (no upper clamp in v1 — a balance/guardrail-C
+ *  concern); negative `damage`/`heal` amounts clamp to 0. Mechanic-dealt damage is
+ *  raw/unmitigated (mitigation is the transformer's job, not the applier's). */
 export function applyEffect(campaign: Campaign, e: Effect): void {
   switch (e.kind) {
-    case "damage": {
-      const c = campaign[FIND_CHARACTER](e.target);
-      c.takeDamage(clampToHealth(c, Math.max(0, e.amount))); // free action, existing seam
+    case "damage":
+      campaign[FIND_CHARACTER](e.target)[ADJUST_STAT](StatType.Health, -Math.max(0, e.amount));
       break;
-    }
-    case "heal": {
-      const c = campaign[FIND_CHARACTER](e.target);
-      c[HEAL](clampToMaxHealth(c, Math.max(0, e.amount)));
+    case "heal":
+      campaign[FIND_CHARACTER](e.target)[ADJUST_STAT](StatType.Health, Math.max(0, e.amount));
       break;
-    }
     case "adjustStat": {
-      const c = campaign[FIND_CHARACTER](e.target);
-      c[ADJUST_STAT](e.stat, clampStatDelta(c, e.stat, e.delta));
+      const stat = e.stat === "sanity" ? StatType.Sanity : StatType.Energy;
+      campaign[FIND_CHARACTER](e.target)[ADJUST_STAT](stat, e.delta);
       break;
     }
-    case "grantImmunity": {
-      const c = campaign[FIND_CHARACTER](e.target);
-      c[GRANT_IMMUNITY](Math.max(0, Math.trunc(e.turns)));
+    case "grantImmunity":
+      campaign[FIND_CHARACTER](e.target)[GRANT_IMMUNITY](ALL_STATUSES, Math.max(0, Math.trunc(e.turns)));
       break;
-    }
     case "cue":
       campaign[EMIT_CUE]({ kind: "mechanic", cue: e.cue });
       break;
@@ -281,10 +282,14 @@ export function applyEffect(campaign: Campaign, e: Effect): void {
 }
 ```
 
-`HEAL` / `ADJUST_STAT` / `FIND_CHARACTER` are new symbol seams (a small extension of
-the existing `inventory.ts` seam family) where the engine lacks a safe internal
-mutator today; `GRANT_IMMUNITY` and `EMIT_CUE` already exist. The applier is the only
-caller permitted to import them for mechanic purposes.
+`ADJUST_STAT` (raw stat delta, floored at 0, then `#reconcile`) and `FIND_CHARACTER`
+(party lookup, throws if absent) are new symbol seams — a small extension of the
+existing `inventory.ts` seam family — where the engine lacks a safe internal mutator
+today. `GRANT_IMMUNITY` and `EMIT_CUE` already exist (`grantImmunity` grants immunity
+to all `Status` values for the requested turns). The applier is the only caller
+permitted to import these seams for mechanic purposes. **Note:** the `damage` effect
+is *raw/unmitigated* — it does not run through `takeDamage`'s armor/mitigation math;
+that interception belongs to the `modifyDamage` transformer.
 
 ### Dispatch (`src/lib/mechanics/dispatch.ts`)
 
