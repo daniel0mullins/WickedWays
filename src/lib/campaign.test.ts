@@ -4,10 +4,11 @@ import { Campaign } from "./campaign";
 import type { IPlayerCharacter } from "./character/player-character";
 import type { Archetype, ArchetypeId } from "./archetype";
 import { ProceduralViolation } from "./util";
-import { DEPOSIT_MATERIALS } from "./inventory";
+import { DEPOSIT_MATERIALS, Item } from "./inventory";
 import type { CraftingRecipe, RecipeId } from "./crafting";
 import type { IItem } from "./inventory";
 import { Mob } from "./character/mob";
+import { EquipmentSlot, SlotKind } from "./equipment";
 import { Room } from "./room";
 import { type Formation } from "./encounter-table";
 import { createKey } from "./inventory";
@@ -18,7 +19,7 @@ import type { PresentationCue } from "./presentation";
 import { RECORD_ENCOUNTER } from "./codex";
 import type { ICharacter } from "./character/character";
 import type { IRoom } from "./room";
-import { FIND_CHARACTER, TRANSFORM_DAMAGE } from "./mechanics/symbols";
+import { DISPATCH_TURN, FIND_CHARACTER, TRANSFORM_DAMAGE } from "./mechanics/symbols";
 import type { LiveMechanic } from "./mechanics/mechanic";
 import { PlayerCharacter } from "./character/player-character";
 import { assignNeutralArchetype } from "../test-utils";
@@ -818,6 +819,66 @@ describe("Campaign", () => {
       expect(
         campaign[TRANSFORM_DAMAGE]({ amount: 7, target: _player.id, stat: StatType.Health, source: undefined }),
       ).toBe(7);
+    });
+
+    it("hasEquipped returns true when a matching item is equipped", () => {
+      const mechanic: LiveMechanic = {
+        key: "ward-check",
+        mechanic: {
+          initialState: () => ({}),
+          onTurnStart: (ctx) =>
+            ctx.actor.hasEquipped("ward")
+              ? [{ kind: "cue" as const, cue: { text: "warded" } }]
+              : [],
+        },
+        state: {},
+      };
+      const { campaign, player } = makeStartedCampaignWithMechanics([mechanic]);
+      const noop = () => {};
+      const ward = new Item(
+        {
+          type: "armor",
+          recipe: { metal: 1 },
+          modifier: 0,
+          stat: StatType.Health,
+          name: "Ward Amulet",
+          slot: SlotKind.Torso,
+          behaviorKey: "ward",
+        },
+        { equippable: true, equipped: false, destroyable: true, usable: false },
+        { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+        { onPickUp: noop },
+      );
+      player.receiveItem(ward);
+      player.equip(ward, EquipmentSlot.Torso);
+      const cues: PresentationCue[] = [];
+      campaign.onCue((c) => cues.push(c));
+
+      campaign[DISPATCH_TURN]("start", player);
+
+      expect(cues).toContainEqual({ kind: "mechanic", cue: { text: "warded" } });
+    });
+
+    it("hasEquipped returns false when no matching item is equipped", () => {
+      const mechanic: LiveMechanic = {
+        key: "ward-check",
+        mechanic: {
+          initialState: () => ({}),
+          onTurnStart: (ctx) =>
+            ctx.actor.hasEquipped("ward")
+              ? [{ kind: "cue" as const, cue: { text: "warded" } }]
+              : [],
+        },
+        state: {},
+      };
+      const { campaign, player } = makeStartedCampaignWithMechanics([mechanic]);
+      // no ward equipped
+      const cues: PresentationCue[] = [];
+      campaign.onCue((c) => cues.push(c));
+
+      campaign[DISPATCH_TURN]("start", player);
+
+      expect(cues).not.toContainEqual({ kind: "mechanic", cue: { text: "warded" } });
     });
   });
 });

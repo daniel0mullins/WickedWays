@@ -611,9 +611,14 @@ export class Campaign implements ICampaign {
       energy: c.effectiveStat(StatType.Energy),
       status: [...c.status],
       roomId: c.currentRoom?.id,
-      // Items do not expose a registry-origin key (SET_ORIGIN is mob-only);
-      // hasEquipped always returns false until Task 10 wires origin tracking.
-      hasEquipped: (_key: string) => false,
+      // behaviorKey is an item's registry key, set at construction for every
+      // registered (non-key) item. Match against it to test registry origin.
+      hasEquipped: (key: string) => {
+        for (const item of c.equipment.values()) {
+          if (item.behaviorKey === key) return true;
+        }
+        return false;
+      },
     };
   }
 
