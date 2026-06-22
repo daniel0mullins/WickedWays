@@ -205,11 +205,6 @@ export class Campaign implements ICampaign {
     return this.#avPolicy;
   }
 
-  /** Live mechanic instances in opt-in order. Task 7 adds dispatch/hook logic. */
-  get mechanics(): readonly LiveMechanic[] {
-    return this.#mechanics;
-  }
-
   get started(): boolean {
     return this.#started;
   }
