@@ -148,6 +148,12 @@ export interface ICharacter extends IItemHolder {
    */
   effectiveStat: (stat: StatType) => number;
 
+  /**
+   * Mechanics seam: apply a raw, unmitigated delta to a base stat, floored at 0.
+   * The ONLY mechanic-facing stat mutator; magnitudes are pre-clamped by the applier.
+   * Unforgeable (symbol-keyed).
+   */
+  [ADJUST_STAT]: (stat: StatType, delta: number) => void;
   /** Grants timed status immunity; engine-internal (item Use path only). */
   [GRANT_IMMUNITY]: (statuses: Status[], turns: number) => void;
   /** Consumes an item for the Use path, gating suppressed; engine-internal. */
