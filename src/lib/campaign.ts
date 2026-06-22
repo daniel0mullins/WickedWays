@@ -15,7 +15,7 @@ import { Codex, RECORD_ENCOUNTER } from "./codex";
 import type { CodexEncounterEvent, CodexEntry, ICodex } from "./codex";
 import { FIND_CHARACTER, DISPATCH_TURN, DISPATCH_ACTION, TRANSFORM_DAMAGE, INVOKE_MECHANIC_ACTION } from "./mechanics/symbols";
 import { roll } from "./dice";
-import type { CampaignView, CharacterView, HookCtx, JsonObject, DamageView } from "./mechanics/mechanic";
+import type { CampaignView, CharacterView, HookCtx, JsonObject, JsonValue, DamageView } from "./mechanics/mechanic";
 import { MAX_EFFECTS_PER_EVENT } from "./mechanics/mechanic";
 import { runReducers, runDamageTransformers } from "./mechanics/dispatch";
 import { applyEffect } from "./mechanics/apply";
@@ -866,7 +866,13 @@ export class Campaign implements ICampaign {
       encounterTable: this.#encounterTable[SERIALIZE](),
       chatPolicy: { ...this.#chatPolicy },
       avPolicy: { ...this.#avPolicy },
-      mechanics: this.#mechanics.map((m) => ({ key: m.key, state: m.state })),
+      mechanics: this.#mechanics.map((m) => {
+        try {
+          return { key: m.key, state: JSON.parse(JSON.stringify(m.state)) as JsonValue };
+        } catch {
+          throw new ProceduralViolation(`Mechanic '${m.key}' has non-serializable state.`);
+        }
+      }),
     };
   }
 

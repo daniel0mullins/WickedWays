@@ -331,6 +331,9 @@ categories:
   collected across all enabled mechanics and applied in a single pass after all
   reducers have run (collect-then-apply). Reducers may not observe each other's
   effects mid-event, so the order of application is deterministic.
+  `onRoundEnd` observes `h.view.round` at its **pre-increment** value (round N);
+  `resolveOutcome` runs afterward at N+1; `onRoundStart` for round 1 fires from
+  `beginCampaign` while the round counter is still 0.
 - **Transformers** — `modifyDamage(d: DamageView, h: HookCtx): TransformResult` —
   intercept an in-flight damage value before it reaches the character and return an
   adjusted amount. The transformer runs on every `takeDamage` call and may return
