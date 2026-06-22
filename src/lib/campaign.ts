@@ -13,7 +13,14 @@ import { Status } from "./status";
 import type { CharacterId, ICharacter } from "./character/character";
 import { Codex, RECORD_ENCOUNTER } from "./codex";
 import type { CodexEncounterEvent, CodexEntry, ICodex } from "./codex";
-import { FIND_CHARACTER } from "./mechanics/symbols";
+import { FIND_CHARACTER, DISPATCH_TURN, DISPATCH_ACTION, TRANSFORM_DAMAGE, INVOKE_MECHANIC_ACTION } from "./mechanics/symbols";
+import { roll } from "./dice";
+import type { CampaignView, CharacterView, HookCtx, JsonObject, DamageView } from "./mechanics/mechanic";
+import { MAX_EFFECTS_PER_EVENT } from "./mechanics/mechanic";
+import { runReducers, runDamageTransformers } from "./mechanics/dispatch";
+import { applyEffect } from "./mechanics/apply";
+import type { ActionDetail } from "./character/history";
+import { StatType } from "./character/stats";
 import {
   SERIALIZE,
   HYDRATE,
@@ -167,6 +174,7 @@ export class Campaign implements ICampaign {
   #chatPolicy: ChatPolicy;
   #avPolicy: AvPolicy;
   #mechanics: LiveMechanic[] = [];
+  #rng: () => number = Math.random;
 
   get round() {
     return this.#round;
@@ -328,8 +336,9 @@ export class Campaign implements ICampaign {
     this.#gm = undefined;
     this.maxRounds = maxRounds;
 
+    this.#rng = options.rng ?? Math.random;
     this.#encounterTable = new EncounterTable(
-      options.rng ?? Math.random,
+      this.#rng,
       options.baseEncounterChance ?? 20,
     );
 
@@ -378,6 +387,7 @@ export class Campaign implements ICampaign {
       );
     }
     this.#started = true;
+    this.#dispatchRound("onRoundStart");
   }
 
   // Centralized termination: set the outcome, record the firing key, and emit a
@@ -418,6 +428,7 @@ export class Campaign implements ICampaign {
         "Attempted to end round before all characters have acted",
       );
     }
+    this.#dispatchRound("onRoundEnd");
     this.#round = this.#round + 1;
     this.#resetActivity();
     const result = resolveOutcome({
@@ -429,7 +440,9 @@ export class Campaign implements ICampaign {
     });
     if (result.status !== "ongoing") {
       this.#finish(result.status, result.condition);
+      return;
     }
+    this.#dispatchRound("onRoundStart");
   }
 
   /**
@@ -579,6 +592,92 @@ export class Campaign implements ICampaign {
         // Intentionally swallowed: presentation is best-effort, never load-bearing.
       }
     }
+  }
+
+  #characterView(c: IPlayerCharacter): CharacterView {
+    return {
+      id: c.id,
+      name: c.name,
+      health: c.effectiveStat(StatType.Health),
+      sanity: c.effectiveStat(StatType.Sanity),
+      energy: c.effectiveStat(StatType.Energy),
+      status: [...c.status],
+      roomId: c.currentRoom?.id,
+      // Items do not expose a registry-origin key (SET_ORIGIN is mob-only);
+      // hasEquipped always returns false until Task 10 wires origin tracking.
+      hasEquipped: (_key: string) => false,
+    };
+  }
+
+  #campaignView(): CampaignView {
+    return {
+      round: this.#round,
+      maxRounds: this.maxRounds,
+      party: this.party.map((p) => this.#characterView(p)),
+      rooms: [],
+    };
+  }
+
+  #hookCtx(m: LiveMechanic): HookCtx<JsonObject> {
+    const view = this.#campaignView();
+    return { state: m.state, view, rng: this.#rng, roll: (n) => roll(n, this.#rng) };
+  }
+
+  #dispatchRound(hook: "onRoundStart" | "onRoundEnd"): void {
+    if (this.#mechanics.length === 0) return;
+    runReducers(
+      this.#mechanics,
+      (m) => m.mechanic[hook]?.(this.#hookCtx(m)),
+      (e) => applyEffect(this, e),
+    );
+  }
+
+  [DISPATCH_TURN](phase: "start" | "end", actor: IPlayerCharacter): void {
+    if (this.#mechanics.length === 0) return;
+    const hook = phase === "start" ? "onTurnStart" : "onTurnEnd";
+    const actorView = this.#characterView(actor);
+    runReducers(
+      this.#mechanics,
+      (m) => m.mechanic[hook]?.({ ...this.#hookCtx(m), actor: actorView }),
+      (e) => applyEffect(this, e),
+    );
+  }
+
+  [DISPATCH_ACTION](detail: ActionDetail, actor: IPlayerCharacter): void {
+    if (this.#mechanics.length === 0) return;
+    const actorView = this.#characterView(actor);
+    runReducers(
+      this.#mechanics,
+      (m) => m.mechanic.onAction?.({ ...this.#hookCtx(m), actor: actorView, action: detail }),
+      (e) => applyEffect(this, e),
+    );
+  }
+
+  [TRANSFORM_DAMAGE](dv: DamageView): number {
+    if (this.#mechanics.length === 0) return dv.amount;
+    return runDamageTransformers(
+      this.#mechanics,
+      dv,
+      (m) => this.#hookCtx(m),
+      (key, value) => this[EMIT_CUE]({ kind: "mechanic", cue: { text: `${key} fixed damage at ${value}.` } }),
+    );
+  }
+
+  [INVOKE_MECHANIC_ACTION](mechanicKey: string, actionKey: string, actor: IPlayerCharacter): void {
+    const m = this.#mechanics.find((x) => x.key === mechanicKey);
+    if (!m) throw new ProceduralViolation(`Mechanic '${mechanicKey}' is not enabled.`);
+    const action = m.mechanic.actions?.[actionKey];
+    if (!action) throw new ProceduralViolation(`Mechanic '${mechanicKey}' has no action '${actionKey}'.`);
+    const ctx = {
+      ...this.#hookCtx(m),
+      actor: this.#characterView(actor),
+      action: { kind: "mechanicAction", mechanic: mechanicKey, action: actionKey } as unknown as ActionDetail,
+    };
+    const effects = action.run(ctx) ?? [];
+    if (effects.length > MAX_EFFECTS_PER_EVENT) {
+      throw new ProceduralViolation(`Mechanic action '${mechanicKey}.${actionKey}' emitted too many effects.`);
+    }
+    for (const e of effects) applyEffect(this, e);
   }
 
   /**

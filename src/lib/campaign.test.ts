@@ -18,7 +18,11 @@ import type { PresentationCue } from "./presentation";
 import { RECORD_ENCOUNTER } from "./codex";
 import type { ICharacter } from "./character/character";
 import type { IRoom } from "./room";
-import { FIND_CHARACTER } from "./mechanics/symbols";
+import { FIND_CHARACTER, TRANSFORM_DAMAGE } from "./mechanics/symbols";
+import type { LiveMechanic } from "./mechanics/mechanic";
+import { PlayerCharacter } from "./character/player-character";
+import { assignNeutralArchetype } from "../test-utils";
+import { StatType } from "./character/stats";
 
 // `Campaign` only stores players and compares them by identity, so distinct
 // stub objects cast to `IPlayerCharacter` are enough (WeakMap needs objects).
@@ -757,6 +761,63 @@ describe("Campaign", () => {
       const player = party[0]!;
       expect(campaign[FIND_CHARACTER](player.id)).toBe(player);
       expect(() => campaign[FIND_CHARACTER]("nope" as never)).toThrow(/No party character/);
+    });
+  });
+
+  describe("custom mechanics dispatch", () => {
+    function makeStartedCampaignWithMechanics(mechanics: LiveMechanic[]) {
+      const campaign = new Campaign("Test", 100, [], { mechanics });
+      const player = new PlayerCharacter(campaign, "Hero", makeStats());
+      player.joinCampaign();
+      assignNeutralArchetype(campaign, player);
+      campaign.gm = player;
+      campaign.beginCampaign();
+      return { campaign, player };
+    }
+
+    it("fires onRoundEnd reducers before outcome resolution", () => {
+      const state = { n: 0 };
+      const mechanic: LiveMechanic = {
+        key: "doom",
+        mechanic: {
+          initialState: () => ({ n: 0 }),
+          onRoundEnd: (h) => {
+            (h.state as typeof state).n += 1;
+            return [{ kind: "cue" as const, cue: { text: `n=${(h.state as typeof state).n}` } }];
+          },
+        },
+        state,
+      };
+      const { campaign } = makeStartedCampaignWithMechanics([mechanic]);
+      const cues: PresentationCue[] = [];
+      campaign.onCue((c) => cues.push(c));
+
+      // Mark the only party member as acted and end the round
+      campaign.nextPlayer();
+
+      expect(cues).toContainEqual({ kind: "mechanic", cue: { text: "n=1" } });
+    });
+
+    it("TRANSFORM_DAMAGE applies a ward final short-circuit", () => {
+      const mechanic: LiveMechanic = {
+        key: "ward",
+        mechanic: {
+          initialState: () => ({}),
+          modifyDamage: () => ({ value: 0, final: true }),
+        },
+        state: {},
+      };
+      const { campaign, player } = makeStartedCampaignWithMechanics([mechanic]);
+      expect(
+        campaign[TRANSFORM_DAMAGE]({ amount: 10, target: player.id, stat: StatType.Health, source: undefined }),
+      ).toBe(0);
+    });
+
+    it("no-ops when #mechanics is empty (preserves existing behavior)", () => {
+      const { campaign, player: _player } = makeStartedCampaignWithMechanics([]);
+      expect(
+        campaign[TRANSFORM_DAMAGE]({ amount: 7, target: _player.id, stat: StatType.Health, source: undefined }),
+      ).toBe(7);
     });
   });
 });
