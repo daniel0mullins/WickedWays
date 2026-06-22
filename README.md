@@ -442,9 +442,11 @@ The following condensed example is distilled from the `describe("Custom mechanic
 integration test (`src/integration.test.ts`), which is the ground-truth reference.
 
 ```ts
-import type { JsonObject, Mechanic } from "wickedways/src/lib/mechanics/mechanic";
-import { defineRegistry } from "wickedways/src/lib/authoring/registry";
-import { authorTemplate } from "wickedways/src/lib/authoring/template-builder";
+// Imports are repo-relative: the engine has no barrel export — import directly from src/lib/…
+import type { JsonObject, Mechanic } from "./lib/mechanics/mechanic";
+import { defineRegistry } from "./lib/authoring/registry";
+import { authorTemplate } from "./lib/authoring/template-builder";
+import { startSession } from "./lib/authoring/orchestration";
 
 // 1. Typed state for the doom-clock mechanic
 interface DoomState extends JsonObject {
@@ -479,7 +481,7 @@ const fireWardMechanic: Mechanic<JsonObject, void> = {
 
 // 4. Register and opt in (order = precedence; fire-ward runs before doom)
 const reg = defineRegistry({
-  items:     { ward: () => makeWardItem() },
+  items:     { ward: () => makeWard() },
   mechanics: { "fire-ward": fireWardMechanic, doom: doomMechanic },
 });
 
