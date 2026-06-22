@@ -748,8 +748,8 @@ describe("Custom mechanics", () => {
     const hero = campaign.party[0]!;
 
     // === (b) Ward transformer: equip the ward and verify health damage is zeroed ===
-    // Sanity=0 means damageMultiplier = (10 - 0) * 0.2 = 2.0, so a raw 5 attack
-    // deals 10 to an unprotected player. With the ward, it should deal 0.
+    // Sanity=1 means damageMultiplier = (10 - 1) * 0.2 = 1.8, so a raw 5 attack
+    // deals 9 to an unprotected player. With the ward, it should deal 0.
     const ward = makeWard();
     hero.receiveItem(ward);
     hero.equip(ward, EquipmentSlot.Torso);
