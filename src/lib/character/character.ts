@@ -123,9 +123,12 @@ export interface ICharacter extends IItemHolder {
   takeDamage: (attackStrength: number, attackStat?: StatType) => void;
   /**
    * Invokes a named custom action on an enabled mechanic (budgeted, status-gated).
-   * v1 treats every custom action as cost 1 via the standard budget path; the
-   * `cost` field on `CustomAction` is accepted by the type and reserved for a
-   * future enhancement.
+   * Routes through `Campaign[INVOKE_MECHANIC_ACTION]`. v1 treats every custom action
+   * as cost 1 via the standard budget path; the `cost` field on {@link CustomAction}
+   * is accepted by the type and reserved for a future enhancement.
+   *
+   * @param mechanicKey - Registry key of the target mechanic.
+   * @param actionKey   - The action to invoke on that mechanic (must be in its `actions` map).
    */
   useMechanicAction: (mechanicKey: string, actionKey: string) => void;
   /** Restores a damaged, durability-bearing held item to full for a proportional material cost (free). */

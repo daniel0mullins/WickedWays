@@ -28,7 +28,13 @@ export type ItemKeyOf<R> = R extends { readonly [ITEM_KEYS]?: infer K extends st
 export type RecipeKeyOf<R> = R extends { readonly [RECIPE_KEYS]?: infer K extends string } ? K : string;
 /** The registered condition key union of a {@link TypedRegistry} (falls back to `string`). */
 export type ConditionKeyOf<R> = R extends { readonly [CONDITION_KEYS]?: infer K extends string } ? K : string;
-/** The registered mechanic key union of a {@link TypedRegistry} (falls back to `string`). */
+/**
+ * The registered mechanic key union of a {@link TypedRegistry} (falls back to `string`).
+ *
+ * Use this in generic constraints when you want compile-time checking of mechanic keys
+ * against a specific registry — e.g. `.useMechanic(key: MechanicKeyOf<R>)`.
+ * If `R` is not a `TypedRegistry` produced by `defineRegistry`, this resolves to `string`.
+ */
 export type MechanicKeyOf<R> = R extends { readonly [MECHANIC_KEYS]?: infer K extends string } ? K : string;
 
 /**

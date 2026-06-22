@@ -73,7 +73,13 @@ export class CampaignRegistry {
   }
   /**
    * Registers a {@link Mechanic} under `key`.
-   * Must match the mechanic key used when opting a campaign into this mechanic.
+   * Must match the mechanic key used when opting a campaign into this mechanic
+   * via `.useMechanic(key, config?)`.
+   *
+   * On deserialization, `registry.mechanic(key)` re-binds the behavior to the
+   * persisted `{ key, state }` entry. If the key is absent the deserializer throws
+   * a {@link ProceduralViolation} — register all mechanics before calling
+   * `deserializeCampaign`.
    */
   registerMechanic(key: string, mechanic: Mechanic<JsonObject, unknown, string>): void {
     this.#mechanics.set(key, mechanic);

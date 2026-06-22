@@ -152,7 +152,18 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
     return this;
   }
 
-  /** Opt this campaign into a custom mechanic by registry key. Order is preserved. */
+  /**
+   * Opt this campaign into a custom mechanic by registry key. Order is preserved
+   * and determines hook-execution precedence — mechanics registered earlier run first.
+   * An earlier `modifyDamage` that returns `{ value, final: true }` pre-empts all
+   * later transformers.
+   *
+   * The mechanic set is static: `.useMechanic` may only be called at authoring time,
+   * not after the campaign has started.
+   *
+   * @param key    - A key registered in the {@link TypedRegistry} via `defineRegistry`.
+   * @param config - Optional configuration forwarded verbatim to `Mechanic.initialState`.
+   */
   useMechanic<K extends MK>(key: K, config?: unknown): this {
     if (this.description.mechanics.some((m) => m.key === key)) {
       throw new AuthoringError([`Mechanic '${key}' is already enabled.`]);
