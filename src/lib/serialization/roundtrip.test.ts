@@ -31,7 +31,7 @@ function startMinimal(
     .startRoom("start")
     .archetype({ id: "hero", name: "Hero", statModifiers: {} });
   for (const [key, config] of mechanics) {
-    builder = builder.useMechanic(key, config);  
+    builder = builder.useMechanic(key, config);
   }
   const campaign = builder.build() as Campaign;
   // Add a single player who is also the GM so we can begin.
