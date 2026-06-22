@@ -7,7 +7,8 @@ import type { Direction } from "../room";
 import type { Stats } from "../character/stats";
 import type { MaterialMap } from "../inventory";
 import type { ArchetypeDef, CampaignTemplateDescription } from "./description";
-import type { ItemKeyOf, RecipeKeyOf, ConditionKeyOf } from "./registry";
+import type { ItemKeyOf, RecipeKeyOf, ConditionKeyOf, MechanicKeyOf } from "./registry";
+import { AuthoringError } from "./errors";
 import type { OutcomeNarration } from "../victory";
 
 /**
@@ -27,7 +28,7 @@ import type { OutcomeNarration } from "../victory";
  *   .build();
  * ```
  */
-export class TemplateBuilder<IK extends string, RK extends string, CK extends string = never> {
+export class TemplateBuilder<IK extends string, RK extends string, CK extends string = never, MK extends string = never> {
   /** @internal for orchestration (e.g. startSession) */
   readonly description: CampaignTemplateDescription;
   /** @internal for orchestration (e.g. startSession) */
@@ -49,6 +50,7 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
       materials: [],
       winConditions: [],
       loseConditions: [],
+      mechanics: [],
       timeoutNarration: undefined,
       endedNarration: undefined,
     };
@@ -150,6 +152,15 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
     return this;
   }
 
+  /** Opt this campaign into a custom mechanic by registry key. Order is preserved. */
+  useMechanic<K extends MK>(key: K, config?: unknown): this {
+    if (this.description.mechanics.some((m) => m.key === key)) {
+      throw new AuthoringError([`Mechanic '${key}' is already enabled.`]);
+    }
+    this.description.mechanics.push({ key, config });
+    return this;
+  }
+
   /** Set the fallback prose shown when the campaign times out at maxRounds. */
   onTimeout(narration: OutcomeNarration): this {
     this.description.timeoutNarration = narration;
@@ -199,6 +210,6 @@ export function authorTemplate<R extends CampaignRegistry>(
   title: string,
   registry: R,
   opts?: { rng?: () => number; maxRounds?: number; baseEncounterChance?: number },
-): TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>> {
-  return new TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>>(title, registry, opts);
+): TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>, MechanicKeyOf<R>> {
+  return new TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>, MechanicKeyOf<R>>(title, registry, opts);
 }

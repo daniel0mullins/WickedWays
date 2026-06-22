@@ -93,6 +93,19 @@ export function assemble(
   for (const c of desc.winConditions) requireConditionKey(c.key, "winWhen");
   for (const c of desc.loseConditions) requireConditionKey(c.key, "loseWhen");
 
+  const seenMech = new Set<string>();
+  for (const m of desc.mechanics) {
+    if (seenMech.has(m.key)) {
+      problems.push(`useMechanic key '${m.key}' is duplicated.`);
+    }
+    seenMech.add(m.key);
+    try {
+      registry.mechanic(m.key);
+    } catch {
+      problems.push(`useMechanic references unregistered mechanic key '${m.key}'.`);
+    }
+  }
+
   if (desc.chat !== undefined && desc.chat.backfillWindow < 1) {
     problems.push(`chat.backfillWindow must be >= 1 (got ${desc.chat.backfillWindow}).`);
   }
@@ -114,11 +127,16 @@ export function assemble(
     test: registry.condition(c.key),
     narration: c.narration,
   }));
+  const mechanics = desc.mechanics.map((m) => {
+    const mechanic = registry.mechanic(m.key);
+    return { key: m.key, mechanic, state: mechanic.initialState(m.config) };
+  });
   const campaign = new Campaign(desc.title, desc.opts.maxRounds ?? 100, [], {
     rng: desc.opts.rng,
     baseEncounterChance: desc.opts.baseEncounterChance,
     winConditions,
     loseConditions,
+    mechanics,
     timeoutNarration: desc.timeoutNarration,
     endedNarration: desc.endedNarration,
     chatPolicy: desc.chat,

@@ -30,6 +30,7 @@ import { DEFAULT_CHAT_POLICY } from "./chat-policy";
 import type { ChatPolicy } from "./chat-policy";
 import { DEFAULT_AV_POLICY } from "./av-policy";
 import type { AvPolicy } from "./av-policy";
+import type { LiveMechanic } from "./mechanics/mechanic";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -165,6 +166,7 @@ export class Campaign implements ICampaign {
   #codex = new Codex();
   #chatPolicy: ChatPolicy;
   #avPolicy: AvPolicy;
+  #mechanics: LiveMechanic[] = [];
 
   get round() {
     return this.#round;
@@ -201,6 +203,11 @@ export class Campaign implements ICampaign {
   /** This campaign's A/V configuration (inert engine data; consumed by comms + UI). */
   get avPolicy(): AvPolicy {
     return this.#avPolicy;
+  }
+
+  /** Live mechanic instances in opt-in order. Task 7 adds dispatch/hook logic. */
+  get mechanics(): readonly LiveMechanic[] {
+    return this.#mechanics;
   }
 
   get started(): boolean {
@@ -315,6 +322,8 @@ export class Campaign implements ICampaign {
       endedNarration?: OutcomeNarration;
       chatPolicy?: ChatPolicy;
       avPolicy?: AvPolicy;
+      /** Opted-in custom mechanics in authoring order. Task 7 adds dispatch/hook logic. */
+      mechanics?: LiveMechanic[];
     } = {},
   ) {
     this.id = generateId<CampaignId>();
@@ -341,6 +350,7 @@ export class Campaign implements ICampaign {
     this.#endedNarration = options.endedNarration;
     this.#chatPolicy = options.chatPolicy ?? DEFAULT_CHAT_POLICY;
     this.#avPolicy = options.avPolicy ?? DEFAULT_AV_POLICY;
+    this.#mechanics = [...(options.mechanics ?? [])];
 
     for (const recipe of knownRecipes) {
       this.discoverRecipe(recipe);

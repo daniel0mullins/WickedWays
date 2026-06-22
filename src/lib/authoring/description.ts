@@ -90,6 +90,9 @@ export interface CampaignTemplateDescription {
   winConditions: { key: string; narration?: OutcomeNarration }[];
   /** Loss conditions: registry condition keys + optional authored prose. */
   loseConditions: { key: string; narration?: OutcomeNarration }[];
+  /** Opted-in custom mechanics: registry keys + optional per-campaign config.
+   *  Order is preserved and is the reducer/transformer execution order. */
+  mechanics: { key: string; config?: unknown }[];
   /** Fallback prose for the conditionless `timed-out` outcome. */
   timeoutNarration?: OutcomeNarration;
   /** Fallback prose for the conditionless `ended` (manual) outcome. */
