@@ -22,6 +22,7 @@ import type { RecipeId } from "../crafting";
 import { SERIALIZE, HYDRATE } from "../serialization/symbols";
 import type { CharacterSnapshot } from "../serialization/types";
 import type { HydrateContext } from "../serialization/context";
+import { ADJUST_STAT } from "../mechanics/symbols";
 
 /** Unique identifier for a {@link Character}. */
 export type CharacterId = Brand<string, "CharacterId">;
@@ -316,6 +317,16 @@ export class Character implements ICharacter {
   /** Grants timed status immunity. Engine-internal: only the item Use path calls it. */
   [GRANT_IMMUNITY](statuses: Status[], turns: number) {
     this.#afflictions.grantImmunity(statuses, turns);
+  }
+
+  /**
+   * Mechanics seam: apply a raw, unmitigated delta to a base stat, floored at 0,
+   * then reconcile afflictions. The ONLY mechanic-facing stat mutator; magnitudes
+   * are pre-clamped by the applier. Unforgeable (symbol-keyed).
+   */
+  [ADJUST_STAT](stat: StatType, delta: number): void {
+    this.stats[stat] = Math.max(0, this.stats[stat] + delta);
+    this.#reconcile();
   }
 
   // Set while a gated action is mid-flight so a nested same-character gated call

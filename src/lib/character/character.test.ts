@@ -21,6 +21,7 @@ import { MaterialCache } from "../material-cache";
 import type { ExitsArg } from "../../test-utils";
 import { EMIT_CUE } from "../presentation";
 import type { PresentationCue } from "../presentation";
+import { ADJUST_STAT } from "../mechanics/symbols";
 
 // ---------------------------------------------------------------------------
 // Test doubles
@@ -2227,6 +2228,15 @@ describe("Character", () => {
       // suppressed, and since the net state is lit→lit, no cue is emitted.
       hero.placeLight(torch);
       expect(cues.some((c) => c.kind === "visibility")).toBe(false);
+    });
+  });
+
+  describe("ADJUST_STAT", () => {
+    it("floors a stat at 0 and reconciles", () => {
+      const c = new Character(makeCampaign(), "Hero", makeStats());
+      const before = c.effectiveStat(StatType.Sanity);
+      c[ADJUST_STAT](StatType.Sanity, -(before + 5));
+      expect(c.effectiveStat(StatType.Sanity)).toBe(0); // floored, never negative
     });
   });
 });

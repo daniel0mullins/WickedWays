@@ -10,9 +10,10 @@ import type { Archetype, ArchetypeId } from "./archetype";
 import { EMIT_CUE, NOTE_ENCOUNTERS } from "./presentation";
 import type { ActionKind, AssetRef, PresentationCue } from "./presentation";
 import { Status } from "./status";
-import type { ICharacter } from "./character/character";
+import type { CharacterId, ICharacter } from "./character/character";
 import { Codex, RECORD_ENCOUNTER } from "./codex";
 import type { CodexEncounterEvent, CodexEntry, ICodex } from "./codex";
+import { FIND_CHARACTER } from "./mechanics/symbols";
 import {
   SERIALIZE,
   HYDRATE,
@@ -573,6 +574,16 @@ export class Campaign implements ICampaign {
         // Intentionally swallowed: presentation is best-effort, never load-bearing.
       }
     }
+  }
+
+  /**
+   * Mechanics seam: resolve a party member by id. Throws {@link ProceduralViolation}
+   * if no party member with that id is found. Unforgeable (symbol-keyed).
+   */
+  [FIND_CHARACTER](id: CharacterId): IPlayerCharacter {
+    const c = this.party.find((p) => p.id === id);
+    if (!c) throw new ProceduralViolation(`No party character for id '${id}'.`);
+    return c;
   }
 
   /**

@@ -18,6 +18,7 @@ import type { PresentationCue } from "./presentation";
 import { RECORD_ENCOUNTER } from "./codex";
 import type { ICharacter } from "./character/character";
 import type { IRoom } from "./room";
+import { FIND_CHARACTER } from "./mechanics/symbols";
 
 // `Campaign` only stores players and compares them by identity, so distinct
 // stub objects cast to `IPlayerCharacter` are enough (WeakMap needs objects).
@@ -747,6 +748,15 @@ describe("Campaign", () => {
         campaign[EMIT_CUE]({ kind: "encounter", mob: { id: "m", name: "M" }, room: { id: "r", name: "R" } }),
       ).not.toThrow();
       expect(seen).toHaveLength(1);
+    });
+  });
+
+  describe("FIND_CHARACTER", () => {
+    it("resolves a party member by id and throws otherwise", () => {
+      const { campaign, party } = makeCampaign(1);
+      const player = party[0]!;
+      expect(campaign[FIND_CHARACTER](player.id)).toBe(player);
+      expect(() => campaign[FIND_CHARACTER]("nope" as never)).toThrow(/No party character/);
     });
   });
 });
