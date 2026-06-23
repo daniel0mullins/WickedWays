@@ -106,20 +106,29 @@ character or after `beginCampaign()`. If you want one, choose before you start.
 
 ## Step 3 — Build a couple of rooms
 
-Rooms are nodes in the dungeon graph, connected by directional exits. The
-constructor's `exits` argument is optional, so we create the rooms without any
-and link them afterwards with `addExit`. (If you'd rather generate a connected
-map from a pile of roomless rooms, `buildMap` wires them for you — and throws if
-a room can't be reached.)
+Rooms are nodes in the dungeon graph, connected by directional exits. Both the
+`exits` and `loot` arguments are optional, so the entrance is created bare and
+wired up afterwards. A room can be authored with loot containers up front (the
+vault gets a chest in its constructor) or have them added later with `addLoot`.
+(If you'd rather generate a connected map from a pile of roomless rooms,
+`buildMap` wires them for you — and throws if a room can't be reached.)
 
 ```ts
 import { Directions, Room } from "./lib/room";
+import { Loot } from "./lib/loot";
 
-const entrance = new Room({ name: "Entrance", description: "A damp stone entrance.", loot: [] });
-const vault = new Room({ name: "Vault", description: "A sealed vault.", loot: [] });
+// A chest the vault holds from the start (empty here; fill `contents` with items).
+const vaultChest = new Loot({ description: "A locked iron chest.", contents: [] });
+
+const entrance = new Room({ name: "Entrance", description: "A damp stone entrance." });
+const vault = new Room({ name: "Vault", description: "A sealed vault.", loot: [vaultChest] });
 
 entrance.addExit(Directions.North, vault);
 vault.addExit(Directions.South, entrance);
+
+// Loot can also be dropped into a room after it's built.
+const supplyCrate = new Loot({ description: "A dusty supply crate.", contents: [] });
+entrance.addLoot(supplyCrate);
 ```
 
 ## Step 4 — Start the campaign
