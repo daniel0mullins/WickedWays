@@ -192,11 +192,31 @@ while (!campaign.finished) {
 
 ## Step 6 — Observe the result
 
-The campaign ran itself to completion at `maxRounds`. Log the final state to
-confirm:
+The campaign ran itself to completion at `maxRounds`. Log its public top-level
+state to inspect the final result (entity-valued properties are rendered as
+names/keys to keep the output readable):
 
 ```ts
-console.log(`round: ${campaign.round}, finished: ${campaign.finished}`);
+console.log({
+  id: campaign.id,
+  title: campaign.title,
+  round: campaign.round,
+  maxRounds: campaign.maxRounds,
+  started: campaign.started,
+  finished: campaign.finished,
+  outcome: campaign.outcome,
+  outcomeReason: campaign.outcomeReason,
+  outcomeNarration: campaign.outcomeNarration,
+  party: campaign.party.map((pc) => pc.name),
+  gm: campaign.gm?.name,
+  activeCharacter: campaign.activeCharacter.name,
+  materials: campaign.materials,
+  knownRecipes: [...campaign.knownRecipes.keys()],
+  archetypes: [...campaign.archetypes.keys()],
+  codex: campaign.codex,
+  chatPolicy: campaign.chatPolicy,
+  avPolicy: campaign.avPolicy,
+});
 ```
 
 Compile the engine and run the file:
@@ -206,9 +226,11 @@ pnpm build
 node dist/getting-started-example.js
 ```
 
-You should see `round: 3, finished: true`. Try changing the seed, the
-`maxRounds`, or an archetype's `baseStats` and watch the run change
-deterministically.
+The log shows `round: 3`, `finished: true`, and `outcome: "timed-out"` (the
+campaign hit `maxRounds` with no win/lose condition met), the two party members,
+and the `neutral` archetype. Bump `maxRounds` to watch the round count climb; the
+seeded `rng` keeps any randomness (dungeon layout, encounter spawns) identical
+from one run to the next, so the example stays reproducible.
 
 ## Gotchas
 
