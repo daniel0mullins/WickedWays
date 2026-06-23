@@ -35,6 +35,17 @@ describe("startSession", () => {
     expect(campaign.activeCharacter.name).toBe("Ada");
   });
 
+  it("auto-selects the sole registered archetype for a player who omits one", () => {
+    // seedBuilder registers exactly one archetype ("delver"), so beginCampaign
+    // defaults the unspecified player to it.
+    const campaign = startSession(seedBuilder(), {
+      players: [{ name: "Ada", stats: stats() }],
+      gm: 0,
+    });
+    expect(campaign.started).toBe(true);
+    expect(campaign.activeCharacter.archetype?.id).toBe("delver");
+  });
+
   it("throws ProceduralViolation (not TypeError) when no .startRoom() was authored and opts.startRoom is absent", () => {
     const reg = defineRegistry({ items: {} });
     // Builder without .startRoom() — description.startRoom remains undefined.

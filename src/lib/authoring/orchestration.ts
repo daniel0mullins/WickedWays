@@ -16,8 +16,12 @@ export interface SessionPlayer {
   name: string;
   /** Base stats before archetype modifiers are applied. */
   stats: Stats;
-  /** Archetype id string (cast to {@link ArchetypeId} at the boundary). */
-  archetype: string;
+  /**
+   * Archetype id string (cast to {@link ArchetypeId} at the boundary). Optional:
+   * when omitted, `beginCampaign` auto-selects the sole registered archetype if
+   * exactly one exists.
+   */
+  archetype?: string;
 }
 
 /**
@@ -68,9 +72,13 @@ export function startSession(
 
   const pcs: PlayerCharacter[] = [];
   for (const p of players) {
-    const pc = new PlayerCharacter(campaign, p.name, p.stats);
+    const pc = new PlayerCharacter({ campaign, name: p.name, stats: p.stats });
     pc.joinCampaign();
-    pc.selectArchetype(p.archetype as ArchetypeId);
+    // When an archetype is omitted, beginCampaign auto-selects the sole
+    // registered archetype (if exactly one exists).
+    if (p.archetype !== undefined) {
+      pc.selectArchetype(p.archetype as ArchetypeId);
+    }
     pc.move(startRoomInstance);
     pcs.push(pc);
   }

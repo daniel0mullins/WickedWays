@@ -12,7 +12,7 @@ import { EquipmentSlot, SlotKind } from "./equipment";
 import { Room } from "./room";
 import { type Formation } from "./encounter-table";
 import { createKey } from "./inventory";
-import { makeStats, makeRng, type ExitsArg } from "../test-utils";
+import { makeStats, makeRng } from "../test-utils";
 import type { VictoryCondition } from "./victory";
 import { EMIT_CUE, NOTE_ENCOUNTERS } from "./presentation";
 import type { PresentationCue } from "./presentation";
@@ -45,7 +45,7 @@ function makeCampaign(
   maxRounds?: number,
   begin = true,
 ): { campaign: Campaign; party: IPlayerCharacter[]; gm: IPlayerCharacter } {
-  const campaign = new Campaign("The Haunting", maxRounds);
+  const campaign = new Campaign({ title: "The Haunting", maxRounds });
   const party = Array.from({ length: partySize }, makePlayer);
   for (const player of party) {
     campaign.party.push(player);
@@ -140,8 +140,8 @@ describe("Campaign", () => {
     it("records mobs encountered on room entry, attributed to the entering party member", () => {
       const { campaign, party } = makeCampaign(1, undefined, false);
       const character = party[0] as unknown as ICharacter;
-      const room = new Room("Lair", "a lair", [], {} as ExitsArg);
-      const mob = new Mob(campaign, "Goblin", makeStats(), 2, 2, []);
+      const room = new Room({ name: "Lair", description: "a lair", loot: [] });
+      const mob = new Mob({ campaign, name: "Goblin", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [] });
       room.enterRoom(mob);
 
       campaign[NOTE_ENCOUNTERS](character, room);
@@ -377,13 +377,13 @@ describe("Campaign", () => {
 
   describe("beginCampaign validation", () => {
     it("throws when the party is empty", () => {
-      const campaign = new Campaign("Empty");
+      const campaign = new Campaign({ title: "Empty" });
 
       expect(() => campaign.beginCampaign()).toThrow(ProceduralViolation);
     });
 
     it("throws when the gm is not a member of the party", () => {
-      const campaign = new Campaign("Mismatch");
+      const campaign = new Campaign({ title: "Mismatch" });
       campaign.party.push(makePlayer());
       campaign.gm = makePlayer(); // a gm who never joined the party
 
@@ -391,7 +391,7 @@ describe("Campaign", () => {
     });
 
     it("begins when the party is non-empty and contains the gm", () => {
-      const campaign = new Campaign("Valid");
+      const campaign = new Campaign({ title: "Valid" });
       const gm = makePlayer();
       campaign.party.push(gm);
       campaign.gm = gm;
@@ -399,8 +399,12 @@ describe("Campaign", () => {
       expect(() => campaign.beginCampaign()).not.toThrow();
     });
 
-    it("throws if a party member has not chosen an archetype", () => {
-      const campaign = new Campaign("C");
+    it("throws if a party member has not chosen an archetype (and several are registered)", () => {
+      const campaign = new Campaign({ title: "C" });
+      // With more than one archetype registered, no default can be inferred, so
+      // every member must have chosen one explicitly.
+      campaign.registerArchetype({ id: "brawler" as ArchetypeId, name: "Brawler" });
+      campaign.registerArchetype({ id: "delver" as ArchetypeId, name: "Delver" });
       const noArchetype = { id: "pc-bare" } as unknown as IPlayerCharacter;
       campaign.party.push(noArchetype);
       campaign.gm = noArchetype;
@@ -409,18 +413,30 @@ describe("Campaign", () => {
     });
 
     it("begins when every party member has an archetype", () => {
-      const campaign = new Campaign("C");
+      const campaign = new Campaign({ title: "C" });
       const withArchetype = { id: "pc-ok", archetype: {} } as unknown as IPlayerCharacter;
       campaign.party.push(withArchetype);
       campaign.gm = withArchetype;
 
       expect(() => campaign.beginCampaign()).not.toThrow();
     });
+
+    it("auto-selects the sole registered archetype for members who haven't chosen", () => {
+      const campaign = new Campaign({ title: "Solo" });
+      campaign.registerArchetype({ id: "delver" as ArchetypeId, name: "Delver" });
+      const pc = new PlayerCharacter({ campaign, name: "Ada", stats: makeStats() });
+      pc.joinCampaign();
+      campaign.gm = pc;
+
+      campaign.beginCampaign();
+
+      expect(pc.archetype?.id).toBe("delver");
+    });
   });
 
   describe("gm setter", () => {
     it("assigns the gm before the campaign begins", () => {
-      const campaign = new Campaign("Setup");
+      const campaign = new Campaign({ title: "Setup" });
       const gm = makePlayer();
       campaign.party.push(gm);
 
@@ -441,11 +457,11 @@ describe("Campaign", () => {
 
   describe("material pool", () => {
     it("starts empty", () => {
-      expect(new Campaign("Materials").materials).toEqual({});
+      expect(new Campaign({ title: "Materials" }).materials).toEqual({});
     });
 
     it("sums deposits by component", () => {
-      const campaign = new Campaign("Materials");
+      const campaign = new Campaign({ title: "Materials" });
 
       campaign[DEPOSIT_MATERIALS]({ metal: 2 });
       campaign[DEPOSIT_MATERIALS]({ metal: 3, glass: 1 });
@@ -454,7 +470,7 @@ describe("Campaign", () => {
     });
 
     it("exposes a copy that cannot mutate the pool", () => {
-      const campaign = new Campaign("Materials");
+      const campaign = new Campaign({ title: "Materials" });
       campaign[DEPOSIT_MATERIALS]({ metal: 2 });
 
       (campaign.materials as Record<string, number>).metal = 99;
@@ -463,7 +479,7 @@ describe("Campaign", () => {
     });
 
     it("throws when materials is assigned directly", () => {
-      const campaign = new Campaign("Materials");
+      const campaign = new Campaign({ title: "Materials" });
 
       expect(() => {
         (campaign as unknown as { materials: unknown }).materials = {};
@@ -473,7 +489,7 @@ describe("Campaign", () => {
 
   describe("canAfford / withdrawMaterials", () => {
     function stocked(): Campaign {
-      const campaign = new Campaign("Materials");
+      const campaign = new Campaign({ title: "Materials" });
       campaign[DEPOSIT_MATERIALS]({ metal: 5, glass: 2 });
       return campaign;
     }
@@ -507,7 +523,7 @@ describe("Campaign", () => {
 
   describe("claimMaterials", () => {
     it("deposits on the first claim of an id", () => {
-      const campaign = new Campaign("Materials");
+      const campaign = new Campaign({ title: "Materials" });
 
       campaign.claimMaterials("vault-stash", { metal: 3 });
 
@@ -515,7 +531,7 @@ describe("Campaign", () => {
     });
 
     it("ignores a repeated claim id", () => {
-      const campaign = new Campaign("Materials");
+      const campaign = new Campaign({ title: "Materials" });
 
       campaign.claimMaterials("vault-stash", { metal: 3 });
       // A different payload on the repeat proves the call is ignored entirely,
@@ -526,7 +542,7 @@ describe("Campaign", () => {
     });
 
     it("deposits again for a different id", () => {
-      const campaign = new Campaign("Materials");
+      const campaign = new Campaign({ title: "Materials" });
 
       campaign.claimMaterials("a", { metal: 3 });
       campaign.claimMaterials("b", { metal: 2 });
@@ -537,11 +553,11 @@ describe("Campaign", () => {
 
   describe("known recipes", () => {
     it("starts with no known recipes", () => {
-      expect(new Campaign("C").knownRecipes.size).toBe(0);
+      expect(new Campaign({ title: "C" }).knownRecipes.size).toBe(0);
     });
 
     it("discoverRecipe makes a recipe known", () => {
-      const campaign = new Campaign("C");
+      const campaign = new Campaign({ title: "C" });
 
       campaign.discoverRecipe(makeRecipe("iron-sword"));
 
@@ -549,7 +565,7 @@ describe("Campaign", () => {
     });
 
     it("keeps the first definition when an id is rediscovered", () => {
-      const campaign = new Campaign("C");
+      const campaign = new Campaign({ title: "C" });
       const first = makeRecipe("dup");
       const second: CraftingRecipe = {
         id: "dup" as RecipeId,
@@ -564,7 +580,7 @@ describe("Campaign", () => {
     });
 
     it("seeds known recipes from the constructor", () => {
-      const campaign = new Campaign("C", 100, [makeRecipe("seeded")]);
+      const campaign = new Campaign({ title: "C", maxRounds: 100, knownRecipes: [makeRecipe("seeded")] });
 
       expect(campaign.knows("seeded" as RecipeId)).toBe(true);
     });
@@ -574,13 +590,13 @@ describe("Campaign", () => {
     const formation: Formation = {
       id: "goblins",
       weight: 1,
-      build: (c) => [new Mob(c, "Goblin", makeStats(), 2, 2, [])],
+      build: (c) => [new Mob({ campaign: c, name: "Goblin", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [] })],
     };
 
     it("spawns a formation via maybeSpawn when the roll passes", () => {
-      const campaign = new Campaign("C", 100, [], { rng: () => 0, baseEncounterChance: 50 });
+      const campaign = new Campaign({ title: "C", maxRounds: 100, knownRecipes: [], rng: () => 0, baseEncounterChance: 50 });
       campaign.addFormation(formation);
-      const cave = new Room("Cave", "Cave", [], {} as ExitsArg, [], 1);
+      const cave = new Room({ name: "Cave", description: "Cave", loot: [] });
 
       const spawned = campaign.maybeSpawn(cave);
 
@@ -589,14 +605,14 @@ describe("Campaign", () => {
     });
 
     it("rejects a formation whose mobs drop keys", () => {
-      const campaign = new Campaign("C", 100, [], { rng: () => 0, baseEncounterChance: 50 });
+      const campaign = new Campaign({ title: "C", maxRounds: 100, knownRecipes: [], rng: () => 0, baseEncounterChance: 50 });
       const bad: Formation = {
         id: "thief",
         weight: 1,
         build: (c) => [
-          new Mob(c, "Thief", makeStats(), 2, 2, [
+          new Mob({ campaign: c, name: "Thief", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [
             createKey({ name: "K", keyCode: "k", consumeOnUse: false }),
-          ]),
+          ] }),
         ],
       };
       expect(() => campaign.addFormation(bad)).toThrow();
@@ -609,7 +625,7 @@ describe("Campaign", () => {
     }
 
     it("registers an archetype and exposes it via the read-only view", () => {
-      const campaign = new Campaign("C");
+      const campaign = new Campaign({ title: "C" });
       const brawler = makeArchetype("brawler");
 
       campaign.registerArchetype(brawler);
@@ -618,7 +634,7 @@ describe("Campaign", () => {
     });
 
     it("is idempotent by id (first definition wins)", () => {
-      const campaign = new Campaign("C");
+      const campaign = new Campaign({ title: "C" });
       const first = makeArchetype("brawler");
       const second: Archetype = { id: "brawler" as ArchetypeId, name: "Other" };
 
@@ -630,7 +646,7 @@ describe("Campaign", () => {
     });
 
     it("reports started=false before begin and true after", () => {
-      const campaign = new Campaign("C");
+      const campaign = new Campaign({ title: "C" });
       expect(campaign.started).toBe(false);
 
       const pc = { id: "pc-arch", archetype: {} } as unknown as IPlayerCharacter;
@@ -652,7 +668,7 @@ describe("Campaign", () => {
       timeoutNarration?: { text?: string };
       endedNarration?: { text?: string };
     }): Campaign {
-      const campaign = new Campaign("T", 5, [], { rng: makeRng(1), ...opts });
+      const campaign = new Campaign({ title: "T", maxRounds: 5, knownRecipes: [], rng: makeRng(1), ...opts });
       const pc = makePlayer();
       campaign.party.push(pc);
       campaign.gm = pc;
@@ -681,7 +697,7 @@ describe("Campaign", () => {
     });
 
     it("resolves timed-out at maxRounds with the fallback prose", () => {
-      const campaign = new Campaign("T", 1, [], { rng: makeRng(1), timeoutNarration: { text: "Dawn breaks." } });
+      const campaign = new Campaign({ title: "T", maxRounds: 1, knownRecipes: [], rng: makeRng(1), timeoutNarration: { text: "Dawn breaks." } });
       const pc = makePlayer();
       campaign.party.push(pc);
       campaign.gm = pc;
@@ -718,7 +734,7 @@ describe("Campaign", () => {
 
   describe("cue stream", () => {
     it("delivers an emitted cue to subscribers and stops after offCue", () => {
-      const campaign = new Campaign("C");
+      const campaign = new Campaign({ title: "C" });
       const seen: PresentationCue[] = [];
       const handler = (cue: PresentationCue) => seen.push(cue);
 
@@ -732,7 +748,7 @@ describe("Campaign", () => {
     });
 
     it("fills an action cue's missing sound from the campaign default map", () => {
-      const campaign = new Campaign("C", 100, [], { actionSounds: { move: "marching.ogg" } });
+      const campaign = new Campaign({ title: "C", maxRounds: 100, knownRecipes: [], actionSounds: { move: "marching.ogg" } });
       const seen: PresentationCue[] = [];
       campaign.onCue((cue) => seen.push(cue));
 
@@ -744,7 +760,7 @@ describe("Campaign", () => {
     });
 
     it("isolates a throwing subscriber so others still receive the cue", () => {
-      const campaign = new Campaign("C");
+      const campaign = new Campaign({ title: "C" });
       const seen: PresentationCue[] = [];
       campaign.onCue(() => { throw new Error("bad handler"); });
       campaign.onCue((cue) => seen.push(cue));
@@ -767,8 +783,8 @@ describe("Campaign", () => {
 
   describe("custom mechanics dispatch", () => {
     function makeStartedCampaignWithMechanics(mechanics: LiveMechanic[]) {
-      const campaign = new Campaign("Test", 100, [], { mechanics });
-      const player = new PlayerCharacter(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Test", maxRounds: 100, knownRecipes: [], mechanics });
+      const player = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
       player.joinCampaign();
       assignNeutralArchetype(campaign, player);
       campaign.gm = player;
@@ -835,8 +851,8 @@ describe("Campaign", () => {
       };
       const { campaign, player } = makeStartedCampaignWithMechanics([mechanic]);
       const noop = () => {};
-      const ward = new Item(
-        {
+      const ward = new Item({
+      descriptor: {
           type: "armor",
           recipe: { metal: 1 },
           modifier: 0,
@@ -845,10 +861,10 @@ describe("Campaign", () => {
           slot: SlotKind.Torso,
           behaviorKey: "ward",
         },
-        { equippable: true, equipped: false, destroyable: true, usable: false },
-        { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-        { onPickUp: noop },
-      );
+      properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+      actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+      events: { onPickUp: noop },
+    });
       player.receiveItem(ward);
       player.equip(ward, EquipmentSlot.Torso);
       const cues: PresentationCue[] = [];

@@ -116,8 +116,8 @@ describe("DeltaComputer", () => {
       },
       state: { n: 0 },
     };
-    const campaign = new Campaign("Test", 100, [], { mechanics: [mechanic] });
-    const player = new PlayerCharacter(campaign, "Hero", makeStats());
+    const campaign = new Campaign({ title: "Test", maxRounds: 100, knownRecipes: [], mechanics: [mechanic] });
+    const player = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
     player.joinCampaign();
     assignNeutralArchetype(campaign, player);
     campaign.gm = player;

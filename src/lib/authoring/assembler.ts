@@ -131,7 +131,10 @@ export function assemble(
     const mechanic = registry.mechanic(m.key);
     return { key: m.key, mechanic, state: mechanic.initialState(m.config) };
   });
-  const campaign = new Campaign(desc.title, desc.opts.maxRounds ?? 100, [], {
+  const campaign = new Campaign({
+    title: desc.title,
+    maxRounds: desc.opts.maxRounds ?? 100,
+    knownRecipes: [],
     rng: desc.opts.rng,
     baseEncounterChance: desc.opts.baseEncounterChance,
     winConditions,
@@ -155,31 +158,19 @@ export function assemble(
 
   const caches = new Map<string, MaterialCache>();
   for (const c of desc.caches) {
-    caches.set(c.name, new MaterialCache(c.materials));
+    caches.set(c.name, new MaterialCache({ contents: c.materials }));
   }
 
   const loot = new Map<string, Loot>();
   for (const l of desc.loot) {
-    loot.set(l.name, new Loot(l.description ?? l.name, l.items.map((k) => registry.item(k)())));
+    loot.set(l.name, new Loot({ description: l.description ?? l.name, contents: l.items.map((k) => registry.item(k)()) }));
   }
 
   const mobs = new Map<string, Mob>();
   for (const m of desc.mobs) {
     mobs.set(
       m.name,
-      new Mob(
-        campaign,
-        m.name,
-        m.stats,
-        m.inventorySlots ?? 2,
-        m.actionsPerRound ?? 2,
-        (m.drops ?? []).map((k) => registry.item(k)()),
-        {
-          baseEscapeChance: m.baseEscapeChance,
-          materialDrops: m.materialDrops,
-          lightAverse: m.lightAverse,
-        },
-      ),
+      new Mob({ campaign, name: m.name, stats: m.stats, inventorySlots: m.inventorySlots ?? 2, actionsPerRound: m.actionsPerRound ?? 2, drops: (m.drops ?? []).map((k) => registry.item(k)()), baseEscapeChance: m.baseEscapeChance, materialDrops: m.materialDrops, lightAverse: m.lightAverse }),
     );
   }
 
@@ -190,18 +181,16 @@ export function assemble(
     const lights = (r.lights ?? []).map((k) => registry.item(k)());
     rooms.set(
       r.name,
-      new Room(
-        r.name,
-        r.description,
-        roomLoot,
-        NO_EXITS,
-        roomCaches,
-        r.spawnModifier ?? 1,
-        [],
-        undefined,
-        r.dark ?? false,
-        lights,
-      ),
+      new Room({
+        name: r.name,
+        description: r.description,
+        loot: roomLoot,
+        exits: NO_EXITS,
+        materials: roomCaches,
+        spawnModifier: r.spawnModifier ?? 1,
+        dark: r.dark ?? false,
+        lightSources: lights,
+      }),
     );
   }
 

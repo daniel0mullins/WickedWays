@@ -33,8 +33,8 @@ const POTION_KEY = "potion-item";
 const RECIPE_KEY = "coin-recipe";
 
 const makeCoin = () =>
-  new Item(
-    {
+  new Item({
+    descriptor: {
       type: "consumable",
       recipe: { item: 1 },
       modifier: 0,
@@ -42,8 +42,8 @@ const makeCoin = () =>
       name: "Coin",
       behaviorKey: COIN_KEY,
     },
-    { equippable: false, equipped: false, destroyable: true, usable: false },
-    {
+    properties: { equippable: false, equipped: false, destroyable: true, usable: false },
+    actions: {
       pickUp: () => {},
       equip: () => {},
       unequip: () => {},
@@ -51,12 +51,12 @@ const makeCoin = () =>
       use: () => {},
       destroy: () => null,
     },
-    { onPickUp: () => {} },
-  );
+    events: { onPickUp: () => {} },
+  });
 
 const makeTorch = () =>
-  new Item(
-    {
+  new Item({
+    descriptor: {
       type: "consumable",
       recipe: { item: 1 },
       modifier: 0,
@@ -64,8 +64,8 @@ const makeTorch = () =>
       name: "Torch",
       behaviorKey: TORCH_KEY,
     },
-    { equippable: false, equipped: false, destroyable: true, usable: false },
-    {
+    properties: { equippable: false, equipped: false, destroyable: true, usable: false },
+    actions: {
       pickUp: () => {},
       equip: () => {},
       unequip: () => {},
@@ -73,12 +73,12 @@ const makeTorch = () =>
       use: () => {},
       destroy: () => null,
     },
-    { onPickUp: () => {} },
-  );
+    events: { onPickUp: () => {} },
+  });
 
 const makePotion = () =>
-  new Item(
-    {
+  new Item({
+    descriptor: {
       type: "consumable",
       recipe: { healing: 1 },
       modifier: 5,
@@ -86,8 +86,8 @@ const makePotion = () =>
       name: "Potion",
       behaviorKey: POTION_KEY,
     },
-    { equippable: false, equipped: false, destroyable: true, usable: true },
-    {
+    properties: { equippable: false, equipped: false, destroyable: true, usable: true },
+    actions: {
       pickUp: () => {},
       equip: () => {},
       unequip: () => {},
@@ -95,8 +95,8 @@ const makePotion = () =>
       use: () => {},
       destroy: () => null,
     },
-    { onPickUp: () => {} },
-  );
+    events: { onPickUp: () => {} },
+  });
 
 const coinRecipe = {
   id: RECIPE_KEY as RecipeId,

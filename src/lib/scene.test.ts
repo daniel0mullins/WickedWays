@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { IRoom } from "./room";
-import { Scene } from "./scene";
+import { Scene, type SceneConfig } from "./scene";
 import { Character } from "./character/character";
 import { createKey } from "./inventory";
 import { makeCampaign, makeStats } from "../test-utils";
@@ -12,9 +12,7 @@ function makeRoom(): IRoom {
   return {} as IRoom;
 }
 
-type SceneArgs = ConstructorParameters<typeof Scene>[0];
-
-function makeScene(overrides: Partial<SceneArgs> = {}) {
+function makeScene(overrides: Partial<SceneConfig> = {}) {
   const room = makeRoom();
   const script = vi.fn();
   const scene = new Scene({
@@ -138,7 +136,7 @@ describe("Scene", () => {
       const { scene, script } = makeScene({
         preconditions: [requiresKey("vault")],
       });
-      const bystander = new Character(makeCampaign(), "Bystander", makeStats());
+      const bystander = new Character({ campaign: makeCampaign(), name: "Bystander", stats: makeStats() });
 
       scene.playScene("enter", roomWithOccupants([bystander]));
 
@@ -149,7 +147,7 @@ describe("Scene", () => {
       const { scene, script } = makeScene({
         preconditions: [requiresKey("vault")],
       });
-      const hero = new Character(makeCampaign(), "Hero", makeStats());
+      const hero = new Character({ campaign: makeCampaign(), name: "Hero", stats: makeStats() });
       hero.addToInventory(createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: false }));
 
       const room = roomWithOccupants([hero]);

@@ -13,7 +13,8 @@ import { RECORD_ENCOUNTER } from "../codex";
 import type { ICharacter } from "./character";
 import { Combatant, ICombatant } from "./combatant";
 import { Stats, StatType } from "./stats";
-import type { CharacterOptions } from "./character";
+import type { AfflictionConfig } from "./afflictions";
+import type { Presentation } from "../presentation";
 import type { CharacterSnapshot } from "../serialization/types";
 import type { HydrateContext } from "../serialization/context";
 
@@ -28,6 +29,34 @@ export interface IMob extends ICombatant {
   [SET_ORIGIN]: (origin: MobOrigin) => void;
 }
 
+/** Constructor options for a {@link Mob}. */
+export interface MobOptions {
+  /** The campaign the mob belongs to. */
+  campaign: ICampaign;
+  /** Display name. */
+  name: string;
+  /** Initial {@link Stats}. */
+  stats: Stats;
+  /** Inventory capacity; raised to fit `drops`. Defaults to 2. */
+  inventorySlots?: number;
+  /** Budgeted actions per turn. Defaults to 2. */
+  actionsPerRound?: number;
+  /** Items the mob carries and releases on defeat. */
+  drops: IItem[];
+  /** Base flee chance (before Health). Defaults to 50. */
+  baseEscapeChance?: number;
+  /** Materials deposited into the party pool on defeat. */
+  materialDrops?: MaterialMap;
+  /** When true, the mob sees in the dark but takes amplified damage in lit rooms. */
+  lightAverse?: boolean;
+  /** Injected randomness for deterministic tests. */
+  rng?: () => number;
+  /** Overrides the default affliction thresholds/roll config. */
+  afflictionConfig?: AfflictionConfig;
+  /** Optional presentation metadata (image/sound) for the Play Surface. */
+  presentation?: Presentation;
+}
+
 /**
  * A hostile, non-player combatant. Carries `drops` (loaded into its inventory
  * and released on defeat) plus optional `materialDrops`, can {@link Mob.escape},
@@ -39,34 +68,24 @@ export class Mob extends Combatant implements IMob {
   #materialDrops: MaterialMap;
   #lightAverse: boolean;
 
-  /**
-   * @param campaign - The campaign the mob belongs to.
-   * @param name - Display name.
-   * @param stats - Initial {@link Stats}.
-   * @param inventorySlots - Inventory capacity; raised to fit `drops`. Defaults to 2.
-   * @param actionsPerRound - Budgeted actions per turn. Defaults to 2.
-   * @param drops - Items the mob carries and releases on defeat.
-   * @param options - rng, affliction config, base escape chance, and material drops.
-   */
-  constructor(
-    campaign: ICampaign,
-    name: string,
-    stats: Stats,
-    inventorySlots: number = 2,
-    actionsPerRound: number = 2,
-    drops: IItem[],
-    options: CharacterOptions & {
-      baseEscapeChance?: number;
-      materialDrops?: MaterialMap;
-      lightAverse?: boolean;
-    } = {},
-  ) {
+  /** See {@link MobOptions} for parameter details. */
+  constructor(opts: MobOptions) {
+    const { inventorySlots = 2, actionsPerRound = 2, drops } = opts;
     const _inventorySlots = Math.max(inventorySlots, drops.length);
-    super(campaign, name, stats, _inventorySlots, actionsPerRound, options);
+    super({
+      campaign: opts.campaign,
+      name: opts.name,
+      stats: opts.stats,
+      inventorySlots: _inventorySlots,
+      actionsPerRound,
+      rng: opts.rng,
+      afflictionConfig: opts.afflictionConfig,
+      presentation: opts.presentation,
+    });
 
-    this.#baseEscapeChance = options.baseEscapeChance ?? 50;
-    this.#materialDrops = options.materialDrops ?? {};
-    this.#lightAverse = options.lightAverse ?? false;
+    this.#baseEscapeChance = opts.baseEscapeChance ?? 50;
+    this.#materialDrops = opts.materialDrops ?? {};
+    this.#lightAverse = opts.lightAverse ?? false;
     // Load drops into the inventory so "what the mob carries" IS its loot.
     for (const drop of drops) {
       this.receiveItem(drop);
@@ -173,7 +192,7 @@ export class Mob extends Combatant implements IMob {
     for (const item of items) {
       this.relinquishItem(item);
     }
-    const box = new Loot(`${this.name}'s remains`, items);
+    const box = new Loot({ description: `${this.name}'s remains`, contents: items });
 
     for (const key of keys) {
       this.relinquishItem(key);

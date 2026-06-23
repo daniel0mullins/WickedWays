@@ -8,7 +8,7 @@ import type { CampaignSnapshot } from "./types";
 
 describe("avPolicy serialization", () => {
   it("defaults to DEFAULT_AV_POLICY and survives a snapshot", () => {
-    const c = new Campaign("T", 10);
+    const c = new Campaign({ title: "T", maxRounds: 10 });
     expect(c.avPolicy).toEqual(DEFAULT_AV_POLICY);
     const snap = serializeCampaign(c, { rootRooms: [] });
     expect(snap.schemaVersion).toBe(SCHEMA_VERSION);
@@ -17,7 +17,7 @@ describe("avPolicy serialization", () => {
 
   it("carries an explicit policy", () => {
     const policy = { ...DEFAULT_AV_POLICY, enabled: false, video: false };
-    const c = new Campaign("T", 10, [], { avPolicy: policy });
+    const c = new Campaign({ title: "T", maxRounds: 10, knownRecipes: [], avPolicy: policy });
     expect(serializeCampaign(c, { rootRooms: [] }).campaign.avPolicy).toEqual(policy);
   });
 

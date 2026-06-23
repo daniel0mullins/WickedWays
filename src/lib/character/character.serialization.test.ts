@@ -13,9 +13,9 @@ import { Afflictions } from "./afflictions";
 
 describe("Character serialization", () => {
   it("round-trips a player's stats, inventory, history, and afflictions", () => {
-    const campaign = new Campaign("C", 10);
+    const campaign = new Campaign({ title: "C", maxRounds: 10 });
     const ctx = new HydrateContext(new CampaignRegistry(), () => 0.5);
-    const pc = new PlayerCharacter(campaign, "Ada", { health: 8, sanity: 5, energy: 6 });
+    const pc = new PlayerCharacter({ campaign, name: "Ada", stats: { health: 8, sanity: 5, energy: 6 } });
     const key = createKey({ name: "K", keyCode: "x", consumeOnUse: false });
     pc.receiveItem(key);
 
@@ -42,13 +42,9 @@ describe("Character serialization", () => {
   });
 
   it("round-trips a mob's origin, escape chance, and drops", () => {
-    const campaign = new Campaign("C", 10);
+    const campaign = new Campaign({ title: "C", maxRounds: 10 });
     const ctx = new HydrateContext(new CampaignRegistry(), () => 0.5);
-    const mob = new Mob(campaign, "Ghoul", { health: 5, sanity: 5, energy: 5 }, 2, 2, [], {
-      baseEscapeChance: 25,
-      lightAverse: true,
-      materialDrops: { metal: 3 },
-    });
+    const mob = new Mob({ campaign, name: "Ghoul", stats: { health: 5, sanity: 5, energy: 5 }, inventorySlots: 2, actionsPerRound: 2, drops: [], baseEscapeChance: 25, materialDrops: { metal: 3 }, lightAverse: true });
 
     const snap = mob[SERIALIZE]();
     expect(snap).toMatchObject({ kind: "mob", baseEscapeChance: 25, lightAverse: true });

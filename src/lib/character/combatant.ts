@@ -1,8 +1,7 @@
-import { ICampaign } from "../campaign";
 import { SET_DURABILITY } from "../inventory";
 import { typedEntries } from "../util";
 import { Character, CharacterOptions, ICharacter } from "./character";
-import { Stats, StatType } from "./stats";
+import { StatType } from "./stats";
 
 /** A {@link ICharacter} that can attack other characters. */
 export interface ICombatant extends ICharacter {
@@ -15,16 +14,9 @@ export interface ICombatant extends ICharacter {
  * action (registered as a budgeted action) on top of {@link Character}.
  */
 export abstract class Combatant extends Character implements ICombatant {
-  /** See {@link Character} for parameter details; also registers `attack` as an action. */
-  constructor(
-    campaign: ICampaign,
-    name: string,
-    stats: Stats,
-    inventorySlots: number = 5,
-    actionsPerRound: number = 3,
-    options: CharacterOptions = {},
-  ) {
-    super(campaign, name, stats, inventorySlots, actionsPerRound, options);
+  /** See {@link CharacterOptions} for parameter details; also registers `attack` as an action. */
+  constructor(opts: CharacterOptions) {
+    super(opts);
     this.isActionMap.set(this.attack, true);
   }
 

@@ -8,8 +8,8 @@ import { makeStats, assignNeutralArchetype } from "../../test-utils.js";
 
 /** Build a started one-PC campaign containing a real PlayerCharacter. */
 function makeStartedCampaign() {
-  const campaign = new Campaign("Test");
-  const player = new PlayerCharacter(campaign, "Hero", makeStats());
+  const campaign = new Campaign({ title: "Test" });
+  const player = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
   player.joinCampaign();
   assignNeutralArchetype(campaign, player);
   campaign.gm = player;

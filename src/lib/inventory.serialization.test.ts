@@ -6,14 +6,14 @@ import { CampaignRegistry } from "./serialization/registry";
 import { HydrateContext } from "./serialization/context";
 
 function potionFactory() {
-  return new Item(
-    { type: ItemType.Consumable, recipe: { healing: 1 }, modifier: 2, stat: StatType.Health,
+  return new Item({
+    descriptor: { type: ItemType.Consumable, recipe: { healing: 1 }, modifier: 2, stat: StatType.Health,
       name: "Healing Potion", maxDurability: 3, durability: 3 },
-    { equippable: false, equipped: false, destroyable: true, usable: true },
-    { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {},
+    properties: { equippable: false, equipped: false, destroyable: true, usable: true },
+    actions: { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {},
       use: () => {}, destroy: () => null },
-    { onPickUp: () => {} },
-  );
+    events: { onPickUp: () => {} },
+  });
 }
 
 describe("Item serialization", () => {

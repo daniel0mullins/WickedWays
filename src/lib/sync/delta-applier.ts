@@ -49,7 +49,7 @@ export class DeltaApplier {
       hydrateMaterialCache(data, ctx);
     }
     for (const data of byType(delta.created, "loot") as LootSnapshot[]) {
-      const loot = new Loot(data.description, []);
+      const loot = new Loot({ description: data.description, contents: [] });
       loot.id = data.id as LootId;
       ctx.put(loot.id, loot); // contents wired in pass 2
     }

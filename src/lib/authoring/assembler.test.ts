@@ -9,12 +9,12 @@ import { Item } from "../inventory";
 import { serializeCampaign } from "../serialization/serializer";
 import type { CampaignTemplateDescription } from "./description";
 
-const makeCoin = () => new Item(
-  { type: "consumable", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Coin", behaviorKey: "coin-item" },
-  { equippable: false, equipped: false, destroyable: true, usable: false },
-  { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
-  { onPickUp: () => {} },
-);
+const makeCoin = () => new Item({
+  descriptor: { type: "consumable", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Coin", behaviorKey: "coin-item" },
+  properties: { equippable: false, equipped: false, destroyable: true, usable: false },
+  actions: { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
+  events: { onPickUp: () => {} },
+});
 const registry = defineRegistry({ items: { "coin-item": makeCoin } });
 const stats = () => ({ [StatType.Health]: 10, [StatType.Sanity]: 10, [StatType.Energy]: 10 });
 

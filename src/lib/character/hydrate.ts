@@ -29,15 +29,11 @@ export function constructBareCharacter(data: CharacterSnapshot, campaign: ICampa
   if (data.kind === "mob") {
     // NOTE: baseEscapeChance, materialDrops, and lightAverse are seeded HERE via
     // the Mob constructor options, not in hydrateExtra — the two must stay in sync.
-    const mob = new Mob(campaign, data.name, { ...data.stats }, 0, data.actionsPerRound, [], {
-      baseEscapeChance: data.baseEscapeChance,
-      materialDrops: data.materialDrops,
-      lightAverse: data.lightAverse,
-    });
+    const mob = new Mob({ campaign, name: data.name, stats: { ...data.stats }, inventorySlots: 0, actionsPerRound: data.actionsPerRound, drops: [], baseEscapeChance: data.baseEscapeChance, materialDrops: data.materialDrops, lightAverse: data.lightAverse });
     mob.id = data.id as CharacterId;
     return mob;
   }
-  const pc = new PlayerCharacter(campaign, data.name, { ...data.stats });
+  const pc = new PlayerCharacter({ campaign, name: data.name, stats: { ...data.stats } });
   pc.id = data.id as CharacterId;
   return pc;
 }

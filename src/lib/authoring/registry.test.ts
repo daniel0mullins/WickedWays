@@ -7,12 +7,12 @@ import type { ICampaign } from "../campaign";
 
 function makeWidget(): Item {
   const noop = () => {};
-  return new Item(
-    { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Widget", slot: SlotKind.Hand, behaviorKey: "widget-item" },
-    { equippable: true, equipped: false, destroyable: true, usable: false },
-    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-    { onPickUp: noop },
-  );
+  return new Item({
+    descriptor: { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Widget", slot: SlotKind.Hand, behaviorKey: "widget-item" },
+    properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+    actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    events: { onPickUp: noop },
+  });
 }
 const widgetRecipe = { id: "widget" as never, materials: { metal: 2 }, create: makeWidget };
 

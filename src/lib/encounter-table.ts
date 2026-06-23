@@ -23,6 +23,14 @@ export interface Formation {
   build: (campaign: ICampaign) => IMob[];
 }
 
+/** Constructor options for an {@link EncounterTable}. */
+export interface EncounterTableOptions {
+  /** Float source in `[0, 1)` driving spawn and selection rolls. */
+  rng: () => number;
+  /** Base encounter chance (0–100) before the room modifier. */
+  baseChance: number;
+}
+
 /**
  * Owns a campaign's roving {@link Formation}s and decides, on first entry to a
  * room, whether one spawns. All randomness routes through the injected `rng`.
@@ -33,13 +41,9 @@ export class EncounterTable {
   #rng: () => number;
   #baseChance: number;
 
-  /**
-   * @param rng - Float source in `[0, 1)` driving spawn and selection rolls.
-   * @param baseChance - Base encounter chance (0–100) before the room modifier.
-   */
-  constructor(rng: () => number, baseChance: number) {
-    this.#rng = rng;
-    this.#baseChance = baseChance;
+  constructor(opts: EncounterTableOptions) {
+    this.#rng = opts.rng;
+    this.#baseChance = opts.baseChance;
   }
 
   /**

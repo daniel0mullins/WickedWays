@@ -40,6 +40,14 @@ export interface IMaterialCache {
   [SERIALIZE](): MaterialCacheSnapshot;
 }
 
+/** Constructor options for a {@link MaterialCache}. */
+export interface MaterialCacheOptions {
+  /** The materials this cache yields when harvested. */
+  contents: MaterialMap;
+  /** Optional presentation metadata (image/sound). */
+  presentation?: Presentation;
+}
+
 /**
  * Default {@link IMaterialCache} implementation. Contents are copied on
  * construction so the caller's object cannot mutate the cache afterwards.
@@ -63,11 +71,11 @@ export class MaterialCache implements IMaterialCache {
     return this.#presentation;
   }
 
-  /** @param contents - The materials this cache yields when harvested. */
-  constructor(contents: MaterialMap, presentation?: Presentation) {
+  /** @param opts - The cache contents and optional presentation. */
+  constructor(opts: MaterialCacheOptions) {
     this.id = generateId<MaterialCacheId>();
-    this.#contents = { ...contents };
-    this.#presentation = presentation;
+    this.#contents = { ...opts.contents };
+    this.#presentation = opts.presentation;
   }
 
   [DEPLETE](): MaterialMap {
@@ -106,7 +114,7 @@ export class MaterialCache implements IMaterialCache {
  * @returns The reconstructed cache, registered in `ctx`.
  */
 export function hydrateMaterialCache(data: MaterialCacheSnapshot, ctx: HydrateContext): MaterialCache {
-  const cache = new MaterialCache({});
+  const cache = new MaterialCache({ contents: {} });
   cache.id = data.id as MaterialCacheId;
   cache[HYDRATE](data);
   ctx.put(cache.id, cache);

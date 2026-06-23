@@ -38,7 +38,7 @@ describe("Loot", () => {
   describe("constructor", () => {
     it("assigns an id and stores the description and contents", () => {
       const contents = [makeItem(), makeItem()];
-      const loot = new Loot("a dusty chest", contents);
+      const loot = new Loot({ description: "a dusty chest", contents: contents });
 
       expect(typeof loot.id).toBe("string");
       expect(loot.id.length).toBeGreaterThan(0);
@@ -47,14 +47,14 @@ describe("Loot", () => {
     });
 
     it("sizes capacity to two more than the initial contents", () => {
-      expect(new Loot("empty", []).capacity).toBe(2);
+      expect(new Loot({ description: "empty", contents: [] }).capacity).toBe(2);
       expect(
-        new Loot("packed", [makeItem(), makeItem(), makeItem()]).capacity,
+        new Loot({ description: "packed", contents: [makeItem(), makeItem(), makeItem()] }).capacity,
       ).toBe(5);
     });
 
     it("does not recompute capacity when contents change after construction", () => {
-      const loot = new Loot("empty", []);
+      const loot = new Loot({ description: "empty", contents: [] });
 
       loot.stowItem(makeItem());
 
@@ -65,7 +65,7 @@ describe("Loot", () => {
   describe("removeItems", () => {
     it("returns the matching item for a single id", () => {
       const target = makeItem();
-      const loot = new Loot("chest", [makeItem(), target, makeItem()]);
+      const loot = new Loot({ description: "chest", contents: [makeItem(), target, makeItem()] });
 
       expect(loot.removeItems(target.id)).toEqual([target]);
     });
@@ -73,7 +73,7 @@ describe("Loot", () => {
     it("returns the matching items for an array of ids", () => {
       const first = makeItem();
       const second = makeItem();
-      const loot = new Loot("chest", [first, makeItem(), second]);
+      const loot = new Loot({ description: "chest", contents: [first, makeItem(), second] });
 
       expect(loot.removeItems([first.id, second.id])).toEqual([first, second]);
     });
@@ -81,7 +81,7 @@ describe("Loot", () => {
     it("skips and warns for an id that is not present, returning only the found items", () => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const present = makeItem();
-      const loot = new Loot("chest", [present]);
+      const loot = new Loot({ description: "chest", contents: [present] });
       const missingId = generateId<ItemId>();
 
       expect(loot.removeItems([present.id, missingId])).toEqual([present]);
@@ -93,7 +93,7 @@ describe("Loot", () => {
 
     it("returns an empty array when no id matches", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
-      const loot = new Loot("chest", [makeItem()]);
+      const loot = new Loot({ description: "chest", contents: [makeItem()] });
 
       expect(loot.removeItems(generateId<ItemId>())).toEqual([]);
     });
@@ -101,7 +101,7 @@ describe("Loot", () => {
     it("removes the matched items from contents", () => {
       const target = makeItem();
       const other = makeItem();
-      const loot = new Loot("chest", [target, other]);
+      const loot = new Loot({ description: "chest", contents: [target, other] });
 
       loot.removeItems(target.id);
 
@@ -111,7 +111,7 @@ describe("Loot", () => {
     it("leaves contents untouched when nothing matches", () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
       const present = makeItem();
-      const loot = new Loot("chest", [present]);
+      const loot = new Loot({ description: "chest", contents: [present] });
 
       loot.removeItems(generateId<ItemId>());
 
@@ -121,7 +121,7 @@ describe("Loot", () => {
 
   describe("stowItem", () => {
     it("adds an item while there is space", () => {
-      const loot = new Loot("empty", []);
+      const loot = new Loot({ description: "empty", contents: [] });
       const item = makeItem();
 
       loot.stowItem(item);
@@ -131,7 +131,7 @@ describe("Loot", () => {
 
     it("throws ContainerFullException once the container is full", () => {
       // Empty contents => capacity === 2, so the third stow overflows.
-      const loot = new Loot("empty", []);
+      const loot = new Loot({ description: "empty", contents: [] });
       loot.stowItem(makeItem());
       loot.stowItem(makeItem());
 
@@ -139,7 +139,7 @@ describe("Loot", () => {
     });
 
     it("includes the container id in the overflow error message", () => {
-      const loot = new Loot("packed", [makeItem(), makeItem()]);
+      const loot = new Loot({ description: "packed", contents: [makeItem(), makeItem()] });
       // capacity === 4, contents already at 2, so two more fit and the next throws.
       loot.stowItem(makeItem());
       loot.stowItem(makeItem());
@@ -150,18 +150,18 @@ describe("Loot", () => {
 
   describe("IItemHolder conformance", () => {
     it("identifies itself as a loot holder", () => {
-      expect(new Loot("chest", []).holderKind).toBe("loot");
+      expect(new Loot({ description: "chest", contents: [] }).holderKind).toBe("loot");
     });
 
     it("claims its initial contents as their holder", () => {
       const item = makeItem();
-      const loot = new Loot("chest", [item]);
+      const loot = new Loot({ description: "chest", contents: [item] });
 
       expect(heldBy(item)).toBe(loot);
     });
 
     it("receiveItem stows the item and claims it", () => {
-      const loot = new Loot("chest", []);
+      const loot = new Loot({ description: "chest", contents: [] });
       const item = makeItem();
 
       loot.receiveItem(item);
@@ -172,7 +172,7 @@ describe("Loot", () => {
 
     it("relinquishItem removes the item from contents", () => {
       const item = makeItem();
-      const loot = new Loot("chest", [item]);
+      const loot = new Loot({ description: "chest", contents: [item] });
 
       loot.relinquishItem(item);
 
@@ -181,7 +181,7 @@ describe("Loot", () => {
 
     it("relinquishItem leaves contents untouched when the item is absent", () => {
       const present = makeItem();
-      const loot = new Loot("chest", [present]);
+      const loot = new Loot({ description: "chest", contents: [present] });
 
       loot.relinquishItem(makeItem());
 
@@ -189,7 +189,7 @@ describe("Loot", () => {
     });
 
     it("reports no room once at capacity", () => {
-      const loot = new Loot("chest", []); // capacity 2
+      const loot = new Loot({ description: "chest", contents: [] }); // capacity 2
       expect(loot.hasRoomForItem()).toBe(true);
       loot.stowItem(makeItem());
       loot.stowItem(makeItem());
@@ -199,14 +199,14 @@ describe("Loot", () => {
 
   describe("keys", () => {
     it("refuses to stow a key", () => {
-      const box = new Loot("chest", []);
+      const box = new Loot({ description: "chest", contents: [] });
       const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
 
       expect(() => box.stowItem(key)).toThrow(ProceduralViolation);
     });
 
     it("refuses to receive a key directly", () => {
-      const box = new Loot("chest", []);
+      const box = new Loot({ description: "chest", contents: [] });
       const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
 
       expect(() => box.receiveItem(key)).toThrow(ProceduralViolation);
@@ -215,21 +215,21 @@ describe("Loot", () => {
     it("refuses to be constructed holding a key", () => {
       const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
 
-      expect(() => new Loot("chest", [key])).toThrow(ProceduralViolation);
+      expect(() => new Loot({ description: "chest", contents: [key] })).toThrow(ProceduralViolation);
     });
   });
 
   describe("presentation", () => {
     it("exposes supplied presentation and is undefined when omitted", () => {
       const pres: Presentation = { sound: "coins.ogg" };
-      expect(new Loot("chest", [], pres).presentation).toBe(pres);
-      expect(new Loot("plain", []).presentation).toBeUndefined();
+      expect(new Loot({ description: "chest", contents: [], presentation: pres }).presentation).toBe(pres);
+      expect(new Loot({ description: "plain", contents: [] }).presentation).toBeUndefined();
     });
   });
 
   describe("STASH_DROP", () => {
     it("forces a key into the box and claims it, bypassing the key guard", () => {
-      const loot = new Loot("remains", []);
+      const loot = new Loot({ description: "remains", contents: [] });
       const key = createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: false });
 
       loot[STASH_DROP](key);
@@ -239,7 +239,7 @@ describe("Loot", () => {
     });
 
     it("stashes past the normal capacity", () => {
-      const loot = new Loot("remains", [makeItem(), makeItem()]); // capacity 4
+      const loot = new Loot({ description: "remains", contents: [makeItem(), makeItem()] }); // capacity 4
       // Fill to capacity, then force one more in.
       loot.stowItem(makeItem());
       loot.stowItem(makeItem());
@@ -252,7 +252,7 @@ describe("Loot", () => {
 });
 
 it("Loot[HYDRATE] resets contents and capacity in place", () => {
-  const loot = new Loot("chest", []);
+  const loot = new Loot({ description: "chest", contents: [] });
   const ctx = new HydrateContext(new CampaignRegistry(), Math.random);
   const itemA = makeItem("item-a" as ItemId);
   ctx.put(itemA.id, itemA);

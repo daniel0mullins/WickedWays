@@ -1,23 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { Character } from "./character";
-import { NonPlayerCharacter } from "./non-player-character";
+import { NonPlayerCharacter, type IDialogue } from "./non-player-character";
 
 import { makeCampaign, makeStats } from "../../test-utils";
 
-// `IDialogue` is not exported, so we lean on the constructor's parameter type
-// to structurally check these literals.
 function makeNpc(
-  dialogueBlocks: ConstructorParameters<typeof NonPlayerCharacter>[4] = [],
+  dialogueBlocks: IDialogue[] = [],
   initialDialogue = "Hello, traveller.",
 ) {
-  return new NonPlayerCharacter(
-    makeCampaign(),
-    "Innkeeper",
-    makeStats(),
-    initialDialogue,
-    dialogueBlocks,
-  );
+  return new NonPlayerCharacter({ campaign: makeCampaign(), name: "Innkeeper", stats: makeStats(), initialDialogue, dialogueBlocks });
 }
 
 describe("NonPlayerCharacter", () => {
@@ -27,7 +19,7 @@ describe("NonPlayerCharacter", () => {
     });
 
     it("stores the initial dialogue and dialogue blocks", () => {
-      const blocks: ConstructorParameters<typeof NonPlayerCharacter>[4] = [
+      const blocks: IDialogue[] = [
         { type: "exact", trigger: "hi", response: ["Hi there."] },
       ];
       const npc = makeNpc(blocks, "Welcome!");

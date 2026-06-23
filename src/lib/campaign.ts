@@ -147,6 +147,38 @@ export interface ICampaign {
 }
 
 /**
+ * Construction options for a {@link Campaign}.
+ */
+export interface CampaignOptions {
+  /** Display title of the campaign. */
+  title: string;
+  /** Round count at which the campaign auto-ends. Defaults to 100. */
+  maxRounds?: number;
+  /** Recipes the party knows from the start. Defaults to none. */
+  knownRecipes?: CraftingRecipe[];
+  /** Injected random source for deterministic play; defaults to `Math.random`. */
+  rng?: () => number;
+  /** Base per-room encounter chance (percent) for the encounter table; defaults to 20. */
+  baseEncounterChance?: number;
+  /** Default sounds keyed by action kind, filled into action cues lacking a sound. */
+  actionSounds?: Partial<Record<ActionKind, AssetRef>>;
+  /** Conditions that, when met, resolve the campaign as won. */
+  winConditions?: VictoryCondition[];
+  /** Conditions that, when met, resolve the campaign as lost. */
+  loseConditions?: VictoryCondition[];
+  /** Authored prose for a timed-out ending. */
+  timeoutNarration?: OutcomeNarration;
+  /** Authored prose for a manually-ended campaign. */
+  endedNarration?: OutcomeNarration;
+  /** Chat configuration (inert engine data; consumed by comms + UI). */
+  chatPolicy?: ChatPolicy;
+  /** A/V configuration (inert engine data; consumed by comms + UI). */
+  avPolicy?: AvPolicy;
+  /** Opted-in custom mechanics in authoring order. */
+  mechanics?: LiveMechanic[];
+}
+
+/**
  * Default {@link ICampaign} implementation.
  *
  * Tracks lifecycle (started/finished), the active turn position, and which
@@ -314,29 +346,23 @@ export class Campaign implements ICampaign {
   }
 
   /**
-   * @param title - Display title of the campaign.
-   * @param maxRounds - Round count at which the campaign auto-ends. Defaults to 100.
-   * @param knownRecipes - Recipes the party knows from the start.
-   * @param options - Optional encounter table configuration.
+   * Options for constructing a {@link Campaign}.
    */
-  constructor(
-    title: string,
-    maxRounds: number = 100,
-    knownRecipes: CraftingRecipe[] = [],
-    options: {
-      rng?: () => number;
-      baseEncounterChance?: number;
-      actionSounds?: Partial<Record<ActionKind, AssetRef>>;
-      winConditions?: VictoryCondition[];
-      loseConditions?: VictoryCondition[];
-      timeoutNarration?: OutcomeNarration;
-      endedNarration?: OutcomeNarration;
-      chatPolicy?: ChatPolicy;
-      avPolicy?: AvPolicy;
-      /** Opted-in custom mechanics in authoring order. Task 7 adds dispatch/hook logic. */
-      mechanics?: LiveMechanic[];
-    } = {},
-  ) {
+  constructor({
+    title,
+    maxRounds = 100,
+    knownRecipes = [],
+    rng,
+    baseEncounterChance,
+    actionSounds,
+    winConditions,
+    loseConditions,
+    timeoutNarration,
+    endedNarration,
+    chatPolicy,
+    avPolicy,
+    mechanics,
+  }: CampaignOptions) {
     this.id = generateId<CampaignId>();
     this.title = title;
     this.party = [];
@@ -344,25 +370,25 @@ export class Campaign implements ICampaign {
     this.#gm = undefined;
     this.maxRounds = maxRounds;
 
-    this.#rng = options.rng ?? Math.random;
-    this.#encounterTable = new EncounterTable(
-      this.#rng,
-      options.baseEncounterChance ?? 20,
-    );
+    this.#rng = rng ?? Math.random;
+    this.#encounterTable = new EncounterTable({
+      rng: this.#rng,
+      baseChance: baseEncounterChance ?? 20,
+    });
 
     this.#actedThisRound = new WeakMap<IPlayerCharacter, boolean>();
     this.#resetActivity();
 
     this.#activeCharacterIndex = 0;
 
-    this.#actionSounds = options.actionSounds ?? {};
-    this.#winConditions = [...(options.winConditions ?? [])];
-    this.#loseConditions = [...(options.loseConditions ?? [])];
-    this.#timeoutNarration = options.timeoutNarration;
-    this.#endedNarration = options.endedNarration;
-    this.#chatPolicy = options.chatPolicy ?? DEFAULT_CHAT_POLICY;
-    this.#avPolicy = options.avPolicy ?? DEFAULT_AV_POLICY;
-    this.#mechanics = [...(options.mechanics ?? [])];
+    this.#actionSounds = actionSounds ?? {};
+    this.#winConditions = [...(winConditions ?? [])];
+    this.#loseConditions = [...(loseConditions ?? [])];
+    this.#timeoutNarration = timeoutNarration;
+    this.#endedNarration = endedNarration;
+    this.#chatPolicy = chatPolicy ?? DEFAULT_CHAT_POLICY;
+    this.#avPolicy = avPolicy ?? DEFAULT_AV_POLICY;
+    this.#mechanics = [...(mechanics ?? [])];
 
     for (const recipe of knownRecipes) {
       this.discoverRecipe(recipe);
@@ -373,9 +399,16 @@ export class Campaign implements ICampaign {
    * Starts the campaign, after which the GM can no longer be set directly and
    * turn management becomes available.
    *
+   * Archetype handling depends on the catalog: with **none** registered,
+   * archetypes are optional and members keep their base stats and slots; with
+   * **exactly one** registered, it is auto-selected as the default for any member
+   * who hasn't chosen; with **several** registered, every member must have chosen
+   * one explicitly.
+   *
    * @throws {@link ProceduralViolation} if already started, if the party is
-   *   empty, if the GM is not a member of the party, or if any party member has
-   *   not chosen an archetype.
+   *   empty, if the GM is not a member of the party, or if archetypes are
+   *   registered and a party member has not selected one (and the catalog holds
+   *   more than one, so no default can be inferred).
    */
   beginCampaign() {
     if (this.#started) {
@@ -389,10 +422,24 @@ export class Campaign implements ICampaign {
         "Cannot begin a campaign whose GM is not a member of the party",
       );
     }
-    if (this.party.some((member) => member.archetype === undefined)) {
-      throw new ProceduralViolation(
-        "Cannot begin a campaign whose party members have not all chosen an archetype",
-      );
+    const registered = [...this.#archetypes.values()];
+    if (registered.length > 0) {
+      // A single registered archetype is the default: auto-select it for any
+      // member who hasn't chosen, so authors needn't wire selection by hand.
+      if (registered.length === 1) {
+        const sole = registered[0]!;
+        for (const member of this.party) {
+          if (member.archetype === undefined) {
+            member.selectArchetype(sole.id);
+          }
+        }
+      }
+      // With archetypes on offer, every member must end up with one.
+      if (this.party.some((member) => member.archetype === undefined)) {
+        throw new ProceduralViolation(
+          "Cannot begin a campaign whose party members have not all chosen an archetype",
+        );
+      }
     }
     this.#started = true;
     this.#dispatchRound("onRoundStart");

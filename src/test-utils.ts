@@ -5,15 +5,15 @@ import type { ICharacter } from "./lib/character/character";
 import type { Archetype, ArchetypeId } from "./lib/archetype";
 import type { IPlayerCharacter } from "./lib/character/player-character";
 import { StatType, type Stats } from "./lib/character/stats";
-import { Room } from "./lib/room";
+import type { RoomExits } from "./lib/room";
 import { EMIT_CUE, NOTE_ENCOUNTERS } from "./lib/presentation";
 import { RECORD_ENCOUNTER } from "./lib/codex";
 import { DISPATCH_TURN, DISPATCH_ACTION, TRANSFORM_DAMAGE, INVOKE_MECHANIC_ACTION } from "./lib/mechanics/symbols";
 
-// The Room constructor types `exits` as a full Record<Direction, IRoom>, but the
-// body only iterates whatever keys are present, so tests recover the parameter
-// type and cast partial (or empty) maps into it.
-export type ExitsArg = ConstructorParameters<typeof Room>[3];
+// The Room constructor types `exits` as a full RoomExits map, but the body only
+// iterates whatever keys are present, so tests cast partial (or empty) maps into
+// it. Re-exported under the historic name the test suite uses.
+export type ExitsArg = RoomExits;
 
 // A full stat block with every stat at 10, overridable per stat.
 export function makeStats(overrides: Partial<Stats> = {}): Stats {

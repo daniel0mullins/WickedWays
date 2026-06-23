@@ -8,7 +8,7 @@ import { HydrateContext } from "./serialization/context";
 describe("MaterialCache serialization", () => {
   it("round-trips an intact cache, preserving id and contents", () => {
     const ctx = new HydrateContext(new CampaignRegistry(), () => 0.5);
-    const cache = new MaterialCache({ metal: 3, healing: 1 });
+    const cache = new MaterialCache({ contents: { metal: 3, healing: 1 } });
 
     const snap = cache[SERIALIZE]();
     expect(snap.contents).toEqual({ metal: 3, healing: 1 });
@@ -22,7 +22,7 @@ describe("MaterialCache serialization", () => {
 
   it("round-trips a depleted cache", () => {
     const ctx = new HydrateContext(new CampaignRegistry(), () => 0.5);
-    const cache = new MaterialCache({ metal: 5 });
+    const cache = new MaterialCache({ contents: { metal: 5 } });
     cache[DEPLETE]();
 
     const snap = cache[SERIALIZE]();

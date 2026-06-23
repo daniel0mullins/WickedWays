@@ -11,7 +11,6 @@ import { Campaign } from "../campaign";
 import { PlayerCharacter } from "../character/player-character";
 import { Room } from "../room";
 import type { ArchetypeId } from "../archetype";
-import type { ExitsArg } from "../../test-utils";
 import { authorTemplate } from "../authoring/template-builder";
 import { defineRegistry } from "../authoring/registry";
 import type { JsonObject, Mechanic } from "../mechanics/mechanic";
@@ -35,7 +34,7 @@ function startMinimal(
   }
   const campaign = builder.build() as Campaign;
   // Add a single player who is also the GM so we can begin.
-  const pc = new PlayerCharacter(campaign, "Solo", makeStats());
+  const pc = new PlayerCharacter({ campaign, name: "Solo", stats: makeStats() });
   pc.joinCampaign();
   campaign.gm = pc;
   pc.selectArchetype("hero" as ArchetypeId);
@@ -50,8 +49,8 @@ function completeRound(campaign: Campaign): void {
 
 function makeTorch(): Item {
   const noop = () => {};
-  return new Item(
-    {
+  return new Item({
+      descriptor: {
       type: "weapon",
       recipe: { item: 1 },
       modifier: 0,
@@ -61,10 +60,10 @@ function makeTorch(): Item {
       emitsLight: true,
       behaviorKey: "torch",
     },
-    { equippable: true, equipped: false, destroyable: true, usable: false },
-    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-    { onPickUp: noop },
-  );
+      properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+      actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+      events: { onPickUp: noop },
+    });
 }
 
 function buildCampaign() {
@@ -164,7 +163,10 @@ describe("campaign round-trip", () => {
     const registry = new CampaignRegistry();
     registry.registerCondition("w", () => true);
 
-    const campaign = new Campaign("Crypt", 10, [], {
+    const campaign = new Campaign({
+      title: "Crypt",
+      maxRounds: 10,
+      knownRecipes: [],
       rng: () => 0.5,
       winConditions: [{ key: "w", test: () => true, narration: { text: "You win." } }],
     });
@@ -173,8 +175,8 @@ describe("campaign round-trip", () => {
       name: "Delver",
       statModifiers: { [StatType.Health]: 2 },
     });
-    const start = new Room("Start", "the entrance", [], {} as ExitsArg);
-    const pc = new PlayerCharacter(campaign, "Ada", makeStats());
+    const start = new Room({ name: "Start", description: "the entrance", loot: [] });
+    const pc = new PlayerCharacter({ campaign, name: "Ada", stats: makeStats() });
     pc.joinCampaign();
     campaign.gm = pc;
     pc.selectArchetype("delver" as ArchetypeId);

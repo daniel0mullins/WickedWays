@@ -15,6 +15,24 @@ type ScriptFn<TState> = (r: IRoom, state: TState) => void;
 /** Whether a scene triggers as a character enters or exits the room. */
 type TriggerPhase = "enter" | "exit";
 
+/**
+ * Configuration passed to the {@link Scene} constructor: when the scene fires,
+ * the gates that must pass, the effect to run, and optional initial state and
+ * serialization key.
+ */
+export interface SceneConfig<TState = Record<string, never>> {
+  /** Phase that triggers the scene. Defaults to `"enter"`. */
+  phase?: TriggerPhase;
+  /** Gates that must all pass for the script to run; receive the room and read-only state. */
+  preconditions: PreconditionFn<TState>[];
+  /** Effect to run against the room when the scene fires; may mutate the persisted state. */
+  script: ScriptFn<TState>;
+  /** Initial persisted state. Defaults to an empty object. */
+  initialState?: TState;
+  /** Registry key for serialization; required to call `[SERIALIZE]()`. */
+  behaviorKey?: string;
+}
+
 /** Unique identifier for a {@link Scene}. */
 export type SceneId = Brand<string, "sceneId">;
 
@@ -75,13 +93,7 @@ export class Scene<TState = Record<string, never>> implements IScene {
     script,
     initialState,
     behaviorKey,
-  }: {
-    phase?: TriggerPhase;
-    preconditions: PreconditionFn<TState>[];
-    script: ScriptFn<TState>;
-    initialState?: TState;
-    behaviorKey?: string;
-  }) {
+  }: SceneConfig<TState>) {
     this.id = generateId<SceneId>();
     this.preconditions = preconditions;
     this.#script = script;

@@ -12,7 +12,6 @@ import type { Stats } from "./stats";
 import type { Presentation } from "../presentation";
 
 import {
-  type ExitsArg,
   makeCampaign,
   makeDefender,
   makeStats,
@@ -20,17 +19,17 @@ import {
 
 function makeDrop(name: string): Item {
   const noop = () => {};
-  return new Item(
-    { type: "consumable", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name },
-    { equippable: false, equipped: false, destroyable: true, usable: false },
-    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-    { onPickUp: noop },
-  );
+  return new Item({
+    descriptor: { type: "consumable", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name },
+    properties: { equippable: false, equipped: false, destroyable: true, usable: false },
+    actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    events: { onPickUp: noop },
+  });
 }
 
 // A real campaign so DEPOSIT_MATERIALS and the material pool work.
 function realCampaign(): Campaign {
-  return new Campaign("Test");
+  return new Campaign({ title: "Test" });
 }
 
 function makeMob(
@@ -44,15 +43,7 @@ function makeMob(
     lightAverse?: boolean;
   } = {},
 ) {
-  return new Mob(
-    opts.campaign ?? makeCampaign(),
-    "Goblin",
-    makeStats(opts.stats),
-    2,
-    opts.actionsPerRound ?? 2,
-    opts.drops ?? [],
-    { rng: opts.rng, materialDrops: opts.materialDrops, lightAverse: opts.lightAverse },
-  );
+  return new Mob({ campaign: opts.campaign ?? makeCampaign(), name: "Goblin", stats: makeStats(opts.stats), inventorySlots: 2, actionsPerRound: opts.actionsPerRound ?? 2, drops: opts.drops ?? [], materialDrops: opts.materialDrops, lightAverse: opts.lightAverse, rng: opts.rng });
 }
 
 describe("Mob", () => {
@@ -92,8 +83,8 @@ describe("Mob", () => {
     // rolls a 1 (<= 60) so escape always succeeds, and rng()=>0 selects exit 0.
     it("flees through an exit on a successful roll", () => {
       const mob = makeMob({ rng: () => 0 });
-      const den = new Room("Den", "Den", [], {} as ExitsArg);
-      const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
+      const den = new Room({ name: "Den", description: "Den", loot: [] });
+      const cave = new Room({ name: "Cave", description: "Cave", loot: [] });
       den.addExit("north", cave);
       mob.move(den);
 
@@ -106,8 +97,8 @@ describe("Mob", () => {
 
     it("records escape as an action", () => {
       const mob = makeMob({ actionsPerRound: 1, rng: () => 0 });
-      const den = new Room("Den", "Den", [], {} as ExitsArg);
-      const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
+      const den = new Room({ name: "Den", description: "Den", loot: [] });
+      const cave = new Room({ name: "Cave", description: "Cave", loot: [] });
       den.addExit("north", cave);
       mob.move(den);
       mob.startTurn(); // reset the (no-op) action count from move()
@@ -130,8 +121,8 @@ describe("Mob", () => {
 
     it("records a successful escape in history", () => {
       const mob = makeMob({ rng: () => 0 });
-      const den = new Room("Den", "Den", [], {} as ExitsArg);
-      const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
+      const den = new Room({ name: "Den", description: "Den", loot: [] });
+      const cave = new Room({ name: "Cave", description: "Cave", loot: [] });
       den.addExit("north", cave);
       mob.move(den);
 
@@ -144,7 +135,7 @@ describe("Mob", () => {
 
     it("does not move when the current room has no exits", () => {
       const mob = makeMob({ rng: () => 0 });
-      const sealed = new Room("Sealed", "Sealed", [], {} as ExitsArg);
+      const sealed = new Room({ name: "Sealed", description: "Sealed", loot: [] });
       mob.move(sealed);
 
       mob.escape();
@@ -158,8 +149,8 @@ describe("Mob", () => {
     it("stays put and records a failed escape on a failed roll", () => {
       // threshold = 50 + Health(5) = 55; rng()=>0.99 rolls 100 (> 55) => fail.
       const mob = makeMob({ stats: { [StatType.Health]: 5 }, rng: () => 0.99 });
-      const den = new Room("Den", "Den", [], {} as ExitsArg);
-      const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
+      const den = new Room({ name: "Den", description: "Den", loot: [] });
+      const cave = new Room({ name: "Cave", description: "Cave", loot: [] });
       den.addExit("north", cave);
       mob.move(den);
 
@@ -171,17 +162,9 @@ describe("Mob", () => {
 
     it("uses a custom baseEscapeChance in the threshold", () => {
       // baseEscapeChance(10) + Health(10) = 20; rng()=>0.5 rolls 51 (> 20) => fail.
-      const mob = new Mob(
-        makeCampaign(),
-        "Goblin",
-        makeStats(),
-        2,
-        2,
-        [],
-        { rng: () => 0.5, baseEscapeChance: 10 },
-      );
-      const den = new Room("Den", "Den", [], {} as ExitsArg);
-      const cave = new Room("Cave", "Cave", [], {} as ExitsArg);
+      const mob = new Mob({ campaign: makeCampaign(), name: "Goblin", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [], baseEscapeChance: 10, rng: () => 0.5 });
+      const den = new Room({ name: "Den", description: "Den", loot: [] });
+      const cave = new Room({ name: "Cave", description: "Cave", loot: [] });
       den.addExit("north", cave);
       mob.move(den);
 
@@ -194,7 +177,7 @@ describe("Mob", () => {
 
   describe("drop-on-defeat", () => {
     function room() {
-      return new Room("Lair", "Lair", [], {} as ExitsArg);
+      return new Room({ name: "Lair", description: "Lair", loot: [] });
     }
 
     it("spawns a loot box of its items in the room on KO", () => {
@@ -320,10 +303,8 @@ describe("Mob", () => {
     it("exposes the supplied presentation and is undefined when omitted", () => {
       const campaign = makeCampaign();
       const pres: Presentation = { image: "hob.png", sound: "growl.ogg" };
-      const withPres = new Mob(campaign, "Hobgoblin", makeStats(), 2, 2, [], {
-        presentation: pres,
-      });
-      const without = new Mob(campaign, "Rat", makeStats(), 2, 2, []);
+      const withPres = new Mob({ campaign, name: "Hobgoblin", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [], presentation: pres });
+      const without = new Mob({ campaign, name: "Rat", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [] });
 
       expect(withPres.presentation).toBe(pres);
       expect(without.presentation).toBeUndefined();
@@ -346,7 +327,7 @@ describe("Mob", () => {
 
     it("takes LIGHT_VULNERABILITY-amplified damage while its room is lit", () => {
       // non-dark room => always lit; neutral mitigation, no armor => 10 * 1.5 = 15.
-      const litRoom = new Room("Hall", "lit hall", [], {} as ExitsArg);
+      const litRoom = new Room({ name: "Hall", description: "lit hall", loot: [] });
       const mob = makeMob({
         lightAverse: true,
         stats: { [StatType.Sanity]: 5, [StatType.Health]: 30 },
@@ -361,7 +342,7 @@ describe("Mob", () => {
 
     it("takes normal damage while its room is dark/unlit", () => {
       // trailing `true` is the Room ctor's `dark` flag => unlit with no light source.
-      const darkRoom = new Room("Cave", "dark cave", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const darkRoom = new Room({ name: "Cave", description: "dark cave", loot: [], dark: true });
       const mob = makeMob({
         lightAverse: true,
         stats: { [StatType.Sanity]: 5, [StatType.Health]: 30 },
@@ -375,7 +356,7 @@ describe("Mob", () => {
     });
 
     it("a non-light-averse defender is unaffected by room lit state", () => {
-      const litRoom = new Room("Hall", "lit hall", [], {} as ExitsArg);
+      const litRoom = new Room({ name: "Hall", description: "lit hall", loot: [] });
       const mob = makeMob({
         stats: { [StatType.Sanity]: 5, [StatType.Health]: 30 },
       }); // not light-averse

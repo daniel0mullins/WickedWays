@@ -7,7 +7,8 @@ import { NOTE_ENCOUNTERS } from "../presentation";
 import { RECORD_ENCOUNTER } from "../codex";
 import { Combatant, ICombatant } from "./combatant";
 import { StatType, type Stats } from "./stats";
-import type { CharacterOptions } from "./character";
+import type { AfflictionConfig } from "./afflictions";
+import type { Presentation } from "../presentation";
 import type { Archetype, ArchetypeId } from "../archetype";
 import type { CharacterSnapshot } from "../serialization/types";
 import type { HydrateContext } from "../serialization/context";
@@ -34,6 +35,24 @@ export interface IPlayerCharacter extends ICombatant {
   selectArchetype: (id: ArchetypeId) => void;
 }
 
+/** Constructor options for a {@link PlayerCharacter}. */
+export interface PlayerCharacterOptions {
+  /** The campaign the character belongs to. */
+  campaign: ICampaign;
+  /** Display name. */
+  name: string;
+  /** Initial {@link Stats}. */
+  stats: Stats;
+  /** Inventory capacity. Defaults to 5. */
+  inventorySlots?: number;
+  /** Injected randomness for deterministic tests. */
+  rng?: () => number;
+  /** Overrides the default affliction thresholds/roll config. */
+  afflictionConfig?: AfflictionConfig;
+  /** Optional presentation metadata (image/sound) for the Play Surface. */
+  presentation?: Presentation;
+}
+
 /**
  * A player-controlled combatant. Unlike other characters, `move` counts toward
  * its per-turn action budget, and it can open and exchange items with loot boxes
@@ -47,14 +66,17 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
   }
 
   /** See {@link Character} for parameters; also registers `move` as a budgeted action. */
-  constructor(
-    campaign: ICampaign,
-    name: string,
-    stats: Stats,
-    inventorySlots: number = 5,
-    options: CharacterOptions = {},
-  ) {
-    super(campaign, name, stats, inventorySlots, 3, options);
+  constructor(opts: PlayerCharacterOptions) {
+    super({
+      campaign: opts.campaign,
+      name: opts.name,
+      stats: opts.stats,
+      inventorySlots: opts.inventorySlots ?? 5,
+      actionsPerRound: 3,
+      rng: opts.rng,
+      afflictionConfig: opts.afflictionConfig,
+      presentation: opts.presentation,
+    });
 
     // `this.move` is the override (PlayerCharacter.prototype.move); super.move's
     // recordAction(this.move, …) resolves to that same override, so the budget ticks.

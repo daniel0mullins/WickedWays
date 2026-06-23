@@ -8,7 +8,7 @@ import type { CampaignSnapshot } from "./types";
 
 describe("chatPolicy serialization", () => {
   it("defaults to DEFAULT_CHAT_POLICY and survives a snapshot", () => {
-    const c = new Campaign("T", 10);
+    const c = new Campaign({ title: "T", maxRounds: 10 });
     expect(c.chatPolicy).toEqual(DEFAULT_CHAT_POLICY);
     const snap = serializeCampaign(c, { rootRooms: [] });
     expect(snap.schemaVersion).toBe(SCHEMA_VERSION);
@@ -17,7 +17,7 @@ describe("chatPolicy serialization", () => {
 
   it("carries an explicit policy", () => {
     const policy = { ...DEFAULT_CHAT_POLICY, enabled: false, whisper: false };
-    const c = new Campaign("T", 10, [], { chatPolicy: policy });
+    const c = new Campaign({ title: "T", maxRounds: 10, knownRecipes: [], chatPolicy: policy });
     expect(serializeCampaign(c, { rootRooms: [] }).campaign.chatPolicy).toEqual(policy);
   });
 

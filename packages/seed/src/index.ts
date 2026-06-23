@@ -20,8 +20,8 @@ function makeStats() {
 
 function makeWidgetItem(): Item {
   const noop = () => {};
-  return new Item(
-    {
+  return new Item({
+    descriptor: {
       type: "weapon",
       recipe: { item: 1 },
       modifier: 0,
@@ -30,10 +30,10 @@ function makeWidgetItem(): Item {
       slot: SlotKind.Hand,
       behaviorKey: WIDGET_BEHAVIOR_KEY,
     },
-    { equippable: true, equipped: false, destroyable: true, usable: false },
-    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-    { onPickUp: noop },
-  );
+    properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+    actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    events: { onPickUp: noop },
+  });
 }
 
 function makeWidgetRecipe() {

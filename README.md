@@ -72,7 +72,7 @@ Character
 
 ### Character archetypes
 
-Player characters choose an [`Archetype`](src/lib/archetype.ts) during setup. Archetypes are
+Player characters may choose an [`Archetype`](src/lib/archetype.ts) during setup. Archetypes are
 authored, declarative descriptors registered on the campaign via `Campaign.registerArchetype`
 (idempotent by id, like recipes), and a character adopts one with
 `PlayerCharacter.selectArchetype(id)`. Selecting an archetype modifies the character's baseline
@@ -80,9 +80,12 @@ exactly once: `statModifiers` are added to the base stats, `inventorySlots` adju
 capacity (floored at 0), and `immunities` become a standing passive trait — a new source unioned
 with equipped-gear immunities (Panic/Fear/Confused only; KO is never immunizable).
 
-Selection is **once-only** and **setup-only** (it throws after the campaign begins), and
-`Campaign.beginCampaign()` throws unless **every** party member has chosen an archetype — the same
-shape as the existing GM-membership requirement.
+Selection is **once-only** and **setup-only** (it throws after the campaign begins). Whether an
+archetype is required at `Campaign.beginCampaign()` depends on the campaign's catalog: with **none**
+registered, archetypes are optional and a character with none keeps its base stats and slots; with
+**exactly one** registered, it is auto-selected as the default for any member who hasn't chosen;
+with **several** registered, every member must have chosen one explicitly or `beginCampaign()`
+throws.
 
 ### Rooms, the map, and scenes
 
@@ -91,13 +94,17 @@ shape as the existing GM-membership requirement.
   campaign's base encounter chance. `Room.placeMob` seats a mob as a room-attached resident
   (origin `"room"`), enabling key-item drops on defeat. Entering or exiting a room fires any
   [`Scene`](src/lib/scene.ts) registered for that phase.
+- A room's `exits` are **optional at construction** (the argument defaults to none); a room
+  authored without exits is wired up later by `buildMap`.
 - [`buildMap(rooms, options)`](src/utils/build-map.ts) wires a list of rooms into a connected
   dungeon via a randomized **spanning tree** (every room reachable, `n - 1` edges). Exits are
   bidirectional (north↔south, etc.), a room is never connected to itself, and no room exceeds
   8 exits. `extraConnections` adds loops/shortcuts (an absolute count, or a fraction of `n - 1`
   when between 0 and 1), `requiredConnections` pins specific room pairs as direct neighbors
   before the tree is laid down (best-effort: an impossible pair is skipped), and an injectable
-  `rng` makes generation deterministic.
+  `rng` makes generation deterministic. Connecting is best-effort, but reachability is enforced:
+  if a room cannot be wired into the map (its component is fully saturated), `buildMap` throws a
+  `ProceduralViolation` rather than leaving it stranded.
 - A `Scene` runs its `script(room, state)` only when the trigger phase (`"enter"` / `"exit"`)
   matches **and** all of its `preconditions` pass — preconditions short-circuit on the first
   failure. Each scene owns a private, typed **state bag** (seeded by `initialState`, empty by
