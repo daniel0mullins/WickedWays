@@ -4,7 +4,6 @@ import { generateId, ProceduralViolation } from "../util";
 import type { CampaignId } from "../campaign";
 import type { Campaign } from "../campaign";
 import type { ArchetypeId } from "../archetype";
-import type { Stats } from "../character/stats";
 import type { CampaignSnapshot } from "../serialization/types";
 import type { TemplateBuilder } from "./template-builder";
 
@@ -14,12 +13,11 @@ import type { TemplateBuilder } from "./template-builder";
 export interface SessionPlayer {
   /** Display name for this player character. */
   name: string;
-  /** Base stats before archetype modifiers are applied. */
-  stats: Stats;
   /**
    * Archetype id string (cast to {@link ArchetypeId} at the boundary). Optional:
    * when omitted, `beginCampaign` auto-selects the sole registered archetype if
-   * exactly one exists.
+   * exactly one exists. A player character starts at the baseline stats; its
+   * archetype is the only thing that adjusts them.
    */
   archetype?: string;
 }
@@ -72,7 +70,7 @@ export function startSession(
 
   const pcs: PlayerCharacter[] = [];
   for (const p of players) {
-    const pc = new PlayerCharacter({ campaign, name: p.name, stats: p.stats });
+    const pc = new PlayerCharacter({ campaign, name: p.name });
     pc.joinCampaign();
     // When an archetype is omitted, beginCampaign auto-selects the sole
     // registered archetype (if exactly one exists).

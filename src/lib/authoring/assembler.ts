@@ -150,7 +150,7 @@ export function assemble(
     campaign.registerArchetype({
       id: a.id as never,
       name: a.name,
-      statModifiers: a.statModifiers,
+      baseStats: a.baseStats,
       inventorySlots: a.inventorySlots,
       immunities: a.immunities,
     });

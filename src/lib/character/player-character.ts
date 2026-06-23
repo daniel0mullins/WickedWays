@@ -35,14 +35,24 @@ export interface IPlayerCharacter extends ICombatant {
   selectArchetype: (id: ArchetypeId) => void;
 }
 
+/**
+ * The baseline stats every player character starts with. The constructor takes
+ * no stats: a player character always begins at this baseline, and the only way
+ * to start with different values is to {@link PlayerCharacter.selectArchetype}
+ * an archetype whose `baseStats` override them.
+ */
+const DEFAULT_PLAYER_STATS: Readonly<Stats> = Object.freeze({
+  [StatType.Health]: 10,
+  [StatType.Sanity]: 10,
+  [StatType.Energy]: 10,
+});
+
 /** Constructor options for a {@link PlayerCharacter}. */
 export interface PlayerCharacterOptions {
   /** The campaign the character belongs to. */
   campaign: ICampaign;
   /** Display name. */
   name: string;
-  /** Initial {@link Stats}. */
-  stats: Stats;
   /** Inventory capacity. Defaults to 5. */
   inventorySlots?: number;
   /** Injected randomness for deterministic tests. */
@@ -70,7 +80,7 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     super({
       campaign: opts.campaign,
       name: opts.name,
-      stats: opts.stats,
+      stats: { ...DEFAULT_PLAYER_STATS },
       inventorySlots: opts.inventorySlots ?? 5,
       actionsPerRound: 3,
       rng: opts.rng,
@@ -105,7 +115,7 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
 
   /**
    * Selects an archetype from the campaign catalog, applying its effects exactly
-   * once: stat deltas are added to the base stats, the slot delta adjusts
+   * once: the named stats override the base stats, the slot delta adjusts
    * inventory capacity (floored at 0), and the immunities become a standing
    * passive trait. A setup-only, once-only operation.
    *
@@ -129,12 +139,12 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
       throw new ProceduralViolation("Unknown archetype.");
     }
 
-    if (archetype.statModifiers) {
-      for (const [stat, delta] of typedEntries(archetype.statModifiers) as Array<
+    if (archetype.baseStats) {
+      for (const [stat, value] of typedEntries(archetype.baseStats) as Array<
         [StatType, number | undefined]
       >) {
-        if (delta === undefined) continue;
-        this.stats[stat] = this.stats[stat] + delta;
+        if (value === undefined) continue;
+        this.stats[stat] = value;
       }
     }
     if (archetype.inventorySlots !== undefined) {

@@ -424,7 +424,7 @@ describe("Campaign", () => {
     it("auto-selects the sole registered archetype for members who haven't chosen", () => {
       const campaign = new Campaign({ title: "Solo" });
       campaign.registerArchetype({ id: "delver" as ArchetypeId, name: "Delver" });
-      const pc = new PlayerCharacter({ campaign, name: "Ada", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Ada" });
       pc.joinCampaign();
       campaign.gm = pc;
 
@@ -784,7 +784,7 @@ describe("Campaign", () => {
   describe("custom mechanics dispatch", () => {
     function makeStartedCampaignWithMechanics(mechanics: LiveMechanic[]) {
       const campaign = new Campaign({ title: "Test", maxRounds: 100, knownRecipes: [], mechanics });
-      const player = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const player = new PlayerCharacter({ campaign, name: "Hero" });
       player.joinCampaign();
       assignNeutralArchetype(campaign, player);
       campaign.gm = player;

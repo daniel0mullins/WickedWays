@@ -10,12 +10,15 @@ import { CampaignRegistry } from "../serialization/registry";
 import { HydrateContext } from "../serialization/context";
 import { Status } from "../status";
 import { Afflictions } from "./afflictions";
+import { StatType } from "./stats";
+import { setStartingStats } from "../../test-utils";
 
 describe("Character serialization", () => {
   it("round-trips a player's stats, inventory, history, and afflictions", () => {
     const campaign = new Campaign({ title: "C", maxRounds: 10 });
     const ctx = new HydrateContext(new CampaignRegistry(), () => 0.5);
-    const pc = new PlayerCharacter({ campaign, name: "Ada", stats: { health: 8, sanity: 5, energy: 6 } });
+    const pc = new PlayerCharacter({ campaign, name: "Ada" });
+    setStartingStats(campaign, pc, { [StatType.Health]: 8, [StatType.Sanity]: 5, [StatType.Energy]: 6 });
     const key = createKey({ name: "K", keyCode: "x", consumeOnUse: false });
     pc.receiveItem(key);
 

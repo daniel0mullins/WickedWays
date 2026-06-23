@@ -6,7 +6,7 @@ import { CampaignRegistry } from "./registry";
 import { Item } from "../inventory";
 import type { IItem } from "../inventory";
 import { SlotKind } from "../equipment";
-import { buildSerializableCampaign, makeStats } from "./roundtrip.test-helpers";
+import { buildSerializableCampaign } from "./roundtrip.test-helpers";
 import { Campaign } from "../campaign";
 import { PlayerCharacter } from "../character/player-character";
 import { Room } from "../room";
@@ -28,13 +28,13 @@ function startMinimal(
   let builder: any = authorTemplate("Mini", reg as any)
     .room("start", { description: "the start" })
     .startRoom("start")
-    .archetype({ id: "hero", name: "Hero", statModifiers: {} });
+    .archetype({ id: "hero", name: "Hero", baseStats: {} });
   for (const [key, config] of mechanics) {
     builder = builder.useMechanic(key, config);
   }
   const campaign = builder.build() as Campaign;
   // Add a single player who is also the GM so we can begin.
-  const pc = new PlayerCharacter({ campaign, name: "Solo", stats: makeStats() });
+  const pc = new PlayerCharacter({ campaign, name: "Solo" });
   pc.joinCampaign();
   campaign.gm = pc;
   pc.selectArchetype("hero" as ArchetypeId);
@@ -173,10 +173,10 @@ describe("campaign round-trip", () => {
     campaign.registerArchetype({
       id: "delver" as ArchetypeId,
       name: "Delver",
-      statModifiers: { [StatType.Health]: 2 },
+      baseStats: { [StatType.Health]: 2 },
     });
     const start = new Room({ name: "Start", description: "the entrance", loot: [] });
-    const pc = new PlayerCharacter({ campaign, name: "Ada", stats: makeStats() });
+    const pc = new PlayerCharacter({ campaign, name: "Ada" });
     pc.joinCampaign();
     campaign.gm = pc;
     pc.selectArchetype("delver" as ArchetypeId);

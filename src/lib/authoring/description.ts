@@ -10,7 +10,7 @@ import type { AvPolicy } from "../av-policy";
 export interface ArchetypeDef {
   id: string;
   name: string;
-  statModifiers?: Partial<Stats>;
+  baseStats?: Partial<Stats>;
   inventorySlots?: number;
   immunities?: Status[];
 }

@@ -31,10 +31,10 @@ export function buildSerializableCampaign(): { campaign: Campaign; registry: Cam
   campaign.registerArchetype({
     id: "delver" as ArchetypeId,
     name: "Delver",
-    statModifiers: { [StatType.Health]: 2 },
+    baseStats: { [StatType.Health]: 2 },
   });
   const start = new Room({ name: "Start", description: "the entrance", loot: [] });
-  const pc = new PlayerCharacter({ campaign, name: "Ada", stats: makeStats() });
+  const pc = new PlayerCharacter({ campaign, name: "Ada" });
   pc.joinCampaign();
   campaign.gm = pc;
   pc.selectArchetype("delver" as ArchetypeId);
@@ -90,18 +90,18 @@ export function buildStartedCampaign(
   campaign.registerArchetype({
     id: "delver" as ArchetypeId,
     name: "Delver",
-    statModifiers: { [StatType.Health]: 2 },
+    baseStats: { [StatType.Health]: 2 },
   });
   const start = new Room({ name: "Start", description: "the entrance", loot: [] });
   const next = new Room({ name: "Next", description: "an adjoining chamber", loot: [] });
   start.addExit(Directions.North, next);
 
-  const pc = new PlayerCharacter({ campaign, name: "Ada", stats: makeStats() });
+  const pc = new PlayerCharacter({ campaign, name: "Ada" });
   pc.joinCampaign();
   pc.selectArchetype("delver" as ArchetypeId);
   pc.move(start);
 
-  const ben = new PlayerCharacter({ campaign, name: "Ben", stats: makeStats() });
+  const ben = new PlayerCharacter({ campaign, name: "Ben" });
   ben.joinCampaign();
   ben.selectArchetype("delver" as ArchetypeId);
   ben.move(start);

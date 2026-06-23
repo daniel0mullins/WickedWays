@@ -14,10 +14,6 @@ import { startSession } from "wickedways/lib/authoring/orchestration";
 const WIDGET_RECIPE_ID = "widget" as RecipeId;
 const WIDGET_BEHAVIOR_KEY = "widget-item";
 
-function makeStats() {
-  return { [StatType.Health]: 10, [StatType.Sanity]: 10, [StatType.Energy]: 10 };
-}
-
 function makeWidgetItem(): Item {
   const noop = () => {};
   return new Item({
@@ -54,7 +50,7 @@ export function buildSeedRegistry(): CampaignRegistry {
  */
 export function seedTemplate(): TemplateBuilder<string, string> {
   return authorTemplate("Crypt", buildSeedRegistry(), { rng: () => 0.5, maxRounds: 10 })
-    .archetype({ id: "delver", name: "Delver", statModifiers: { [StatType.Health]: 2 } })
+    .archetype({ id: "delver", name: "Delver", baseStats: { [StatType.Health]: 2 } })
     .room("Start", { description: "the entrance" })
     .room("Next", { description: "an adjoining chamber" })
     .startRoom("Start")
@@ -72,8 +68,8 @@ export function buildSeedCampaign(): { campaign: Campaign; registry: CampaignReg
   const registry = buildSeedRegistry();
   const campaign = startSession(seedTemplate(), {
     players: [
-      { name: "Ada", stats: makeStats(), archetype: "delver" },
-      { name: "Ben", stats: makeStats(), archetype: "delver" },
+      { name: "Ada", archetype: "delver" },
+      { name: "Ben", archetype: "delver" },
     ],
     gm: 0,
   });

@@ -79,7 +79,7 @@ erDiagram
     ArchetypeDef {
         string id
         string name
-        StatMods statModifiers
+        StatMods baseStats
         int inventorySlots
     }
     RoomDef {

@@ -76,8 +76,9 @@ Player characters may choose an [`Archetype`](src/lib/archetype.ts) during setup
 authored, declarative descriptors registered on the campaign via `Campaign.registerArchetype`
 (idempotent by id, like recipes), and a character adopts one with
 `PlayerCharacter.selectArchetype(id)`. Selecting an archetype modifies the character's baseline
-exactly once: `statModifiers` are added to the base stats, `inventorySlots` adjusts inventory
-capacity (floored at 0), and `immunities` become a standing passive trait — a new source unioned
+exactly once: `baseStats` set the stats they name (a missing stat keeps its baseline of 10),
+`inventorySlots` adjusts inventory capacity (floored at 0), and
+`immunities` become a standing passive trait — a new source unioned
 with equipped-gear immunities (Panic/Fear/Confused only; KO is never immunizable).
 
 Selection is **once-only** and **setup-only** (it throws after the campaign begins). Whether an
@@ -501,7 +502,7 @@ const campaign = startSession(
     .startRoom("start")
     .useMechanic("fire-ward")              // opt in; runs first
     .useMechanic("doom", { doomAt: 3 }),   // opt in; runs second
-  { players: [{ name: "Hero", stats: { … }, archetype: "scout" }], gm: 0 },
+  { players: [{ name: "Hero", archetype: "scout" }], gm: 0 },
 );
 ```
 
@@ -758,7 +759,7 @@ const reg = defineRegistry({
 });
 
 const builder = authorTemplate("The Crypt", reg, { maxRounds: 50, baseEncounterChance: 25 })
-  .archetype({ id: "delver", name: "Delver", statModifiers: { Health: 2 } })
+  .archetype({ id: "delver", name: "Delver", baseStats: { Health: 12 } })
   .room("entrance", { description: "A damp stone corridor.", dark: true, lights: ["torch"] })
   .room("vault",    { description: "A collapsed vault." })
   .startRoom("entrance")
@@ -807,8 +808,8 @@ assigns the GM, and calls `beginCampaign` — returning a fully started `Campaig
 ```ts
 const campaign = startSession(builder, {
   players: [
-    { name: "Ada", stats: baseStats(), archetype: "delver" },
-    { name: "Ben", stats: baseStats(), archetype: "delver" },
+    { name: "Ada", archetype: "delver" },
+    { name: "Ben", archetype: "delver" },
   ],
   gm: 0,           // index into players array
 });

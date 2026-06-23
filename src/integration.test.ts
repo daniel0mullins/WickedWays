@@ -30,7 +30,7 @@ import { InProcessTransport } from "./lib/sync/transport";
 import { SyncCoordinator } from "./lib/sync/coordinator";
 import { serializeCampaign } from "./lib/serialization/serializer";
 import { deserializeCampaign } from "./lib/serialization/deserializer";
-import { buildStartedCampaign, makeStats as makeStatsFixture } from "./lib/serialization/roundtrip.test-helpers";
+import { buildStartedCampaign } from "./lib/serialization/roundtrip.test-helpers";
 import { SERIALIZE } from "./lib/serialization/symbols";
 import { Directions } from "./lib/room";
 import { EquipmentSlot } from "./lib/equipment";
@@ -101,8 +101,8 @@ describe("Campaign integration", () => {
     const campaign = new Campaign({ title: "Wicked Ways", maxRounds });
 
     // Two player characters bound to the real campaign — no stubs, no casts.
-    const hero = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
-    const seer = new PlayerCharacter({ campaign, name: "Seer", stats: makeStats() });
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
+    const seer = new PlayerCharacter({ campaign, name: "Seer" });
     hero.joinCampaign();
     seer.joinCampaign();
     campaign.gm = hero;
@@ -168,7 +168,7 @@ describe("Campaign integration", () => {
 
   it("resolves combat between a player character and a co-located npc", () => {
     const campaign = new Campaign({ title: "Wicked Ways" });
-    const hero = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
     hero.joinCampaign();
     campaign.gm = hero;
 
@@ -194,7 +194,7 @@ describe("Campaign integration", () => {
 
   it("lets a player character take loot from a co-located box", () => {
     const campaign = new Campaign({ title: "Wicked Ways" });
-    const hero = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
     hero.joinCampaign();
     campaign.gm = hero;
 
@@ -217,7 +217,7 @@ describe("Campaign integration", () => {
 
   it("fires a registered scene when a player character enters the room", () => {
     const campaign = new Campaign({ title: "Wicked Ways" });
-    const hero = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
     hero.joinCampaign();
     campaign.gm = hero;
 
@@ -244,21 +244,22 @@ describe("Campaign integration", () => {
 
   it("applies a selected archetype's stat, slot, and immunity effects through setup", () => {
     const campaign = new Campaign({ title: "Wicked Ways" });
-    const hero = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats({ [StatType.Energy]: 0 }), inventorySlots: 5 });
+    const hero = new PlayerCharacter({ campaign, name: "Hero", inventorySlots: 5 });
+    hero.stats[StatType.Energy] = 0;
     hero.joinCampaign();
     campaign.gm = hero;
 
     campaign.registerArchetype({
       id: "stoic-packer" as ArchetypeId,
       name: "Stoic Packer",
-      statModifiers: { [StatType.Health]: 2 },
+      baseStats: { [StatType.Health]: 12 },
       inventorySlots: 3,
       immunities: [Status.Confused],
     });
     hero.selectArchetype("stoic-packer" as ArchetypeId);
     campaign.beginCampaign();
 
-    // Stat delta layered on the base.
+    // Stat value overrides the base.
     expect(hero.stats[StatType.Health]).toBe(12);
     // Slot delta applied to capacity.
     expect(hero.inventory.slots).toBe(8);
@@ -271,7 +272,7 @@ describe("Campaign integration", () => {
 
   it("emits action and encounter cues with resolved sounds across a turn", () => {
     const campaign = new Campaign({ title: "Wicked Ways", maxRounds: 100, knownRecipes: [], actionSounds: { move: "marching.ogg" } });
-    const hero = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
     hero.joinCampaign();
     campaign.gm = hero;
 
@@ -311,7 +312,8 @@ describe("darkness mechanic", () => {
   function darknessSetup() {
     const campaign = new Campaign({ title: "Wicked Ways" });
     // Sanity 5 so the mob's 1-point unarmed Health attack lands (x1 mitigation).
-    const hero = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats({ [StatType.Sanity]: 5 }) });
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
+    hero.stats[StatType.Sanity] = 5;
     hero.joinCampaign();
     campaign.gm = hero;
 
@@ -404,7 +406,7 @@ describe("darkness mechanic", () => {
 describe("Codex integration", () => {
   it("populates every kind from a scripted party run with correct first-seen stamps", () => {
     const campaign = new Campaign({ title: "Codex Run" });
-    const hero = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
     hero.joinCampaign();
 
     // Room + mob (mob recorded on entry via NOTE_ENCOUNTERS).
@@ -522,7 +524,7 @@ describe("SyncCoordinator join + late-join", () => {
     A.start(); B.start();
 
     // Build a throwaway bare player off A's campaign, snapshot it, submit the join.
-    const newcomer = new PlayerCharacter({ campaign: A.campaign, name: "Newcomer", stats: makeStatsFixture() });
+    const newcomer = new PlayerCharacter({ campaign: A.campaign, name: "Newcomer" });
     const res = await A.submit({ kind: "joinCampaign", character: newcomer[SERIALIZE]() });
     expect(res.ok).toBe(true);
 
@@ -566,7 +568,7 @@ describe("Victory conditions", () => {
         .exit("start", Directions.North, "exit")
         .winWhen("reached-exit", { text: "You escape into the night." }),
       {
-        players: [{ name: "Hero", stats: { [StatType.Health]: 10, [StatType.Sanity]: 10, [StatType.Energy]: 10 }, archetype: "scout" }],
+        players: [{ name: "Hero", archetype: "scout" }],
         gm: 0,
       },
     );
@@ -669,7 +671,9 @@ function buildMechanicCampaign(seed: number) {
   });
   const campaign = startSession(
     authorTemplate("Crypt", reg, { maxRounds: 10, rng: makeRng(seed) })
-      .archetype({ id: "scout", name: "Scout" })
+      // sanity=1 keeps damageMultiplier non-zero (9*0.2=1.8) while staying above
+      // the panic threshold (sanity>0); the archetype overrides the baseline.
+      .archetype({ id: "scout", name: "Scout", baseStats: { [StatType.Sanity]: 1 } })
       .room("start", { description: "A cold crypt." })
       .startRoom("start")
       .useMechanic("fire-ward")
@@ -678,13 +682,6 @@ function buildMechanicCampaign(seed: number) {
       players: [
         {
           name: "Hero",
-          stats: {
-            [StatType.Health]: 10,
-            // sanity=1 keeps damageMultiplier non-zero (9*0.2=1.8) while
-            // staying above the panic threshold (sanity>0).
-            [StatType.Sanity]: 1,
-            [StatType.Energy]: 10,
-          },
           archetype: "scout",
         },
       ],

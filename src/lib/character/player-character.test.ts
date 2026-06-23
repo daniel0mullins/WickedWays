@@ -16,7 +16,7 @@ import type { Stats } from "./stats";
 import { Status } from "../status";
 import type { Archetype, ArchetypeId } from "../archetype";
 
-import { assignNeutralArchetype, makeCampaign, makeDefender, makeStats } from "../../test-utils";
+import { assignNeutralArchetype, makeCampaign, makeDefender, makeStats, setStartingStats } from "../../test-utils";
 import { Mob } from "./mob";
 import { Room } from "../room";
 
@@ -114,7 +114,10 @@ function makeHandWeapon(opts: {
 }
 
 function makePc(opts: { inventorySlots?: number; stats?: Partial<Stats>; rng?: () => number } = {}) {
-  return new PlayerCharacter({ campaign: makeCampaign(), name: "Hero", stats: makeStats(opts.stats), inventorySlots: opts.inventorySlots, rng: opts.rng });
+  const campaign = makeCampaign();
+  const pc = new PlayerCharacter({ campaign, name: "Hero", inventorySlots: opts.inventorySlots, rng: opts.rng });
+  if (opts.stats) setStartingStats(campaign, pc, opts.stats);
+  return pc;
 }
 
 // Item stub that supports the holder plumbing (CLAIM + HELD_BY) and pickUp,
@@ -153,7 +156,7 @@ function makePcInRoomWith(
   box: Loot,
   opts: { inventorySlots?: number; actionsPerRound?: number } = {},
 ) {
-  const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero", stats: makeStats(), inventorySlots: opts.inventorySlots });
+  const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero", inventorySlots: opts.inventorySlots });
   if (opts.actionsPerRound !== undefined) {
     pc.actionsPerRound = opts.actionsPerRound;
   }
@@ -189,12 +192,20 @@ describe("PlayerCharacter", () => {
     it("passes inventory slots through to Character", () => {
       expect(makePc({ inventorySlots: 8 }).inventory.slots).toBe(8);
     });
+
+    it("defaults every stat to 10 (no stats argument; archetype is the only seam)", () => {
+      const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero" });
+
+      expect(pc.stats[StatType.Health]).toBe(10);
+      expect(pc.stats[StatType.Sanity]).toBe(10);
+      expect(pc.stats[StatType.Energy]).toBe(10);
+    });
   });
 
   describe("codex (rooms)", () => {
     it("records the room a party member moves into", () => {
       const campaign = new Campaign({ title: "Codex" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       pc.joinCampaign();
       const room = new Room({ name: "Vault", description: "a vault", loot: [] });
 
@@ -210,7 +221,7 @@ describe("PlayerCharacter", () => {
   describe("joinCampaign", () => {
     it("adds itself to the campaign party", () => {
       const campaign = new Campaign({ title: "Quest" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
 
       pc.joinCampaign();
 
@@ -219,7 +230,7 @@ describe("PlayerCharacter", () => {
 
     it("does not add itself twice", () => {
       const campaign = new Campaign({ title: "Quest" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
 
       pc.joinCampaign();
       pc.joinCampaign();
@@ -229,7 +240,7 @@ describe("PlayerCharacter", () => {
 
     it("can join before the campaign has begun", () => {
       const campaign = new Campaign({ title: "Quest" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
 
       expect(() => pc.joinCampaign()).not.toThrow();
     });
@@ -415,7 +426,7 @@ describe("PlayerCharacter", () => {
   describe("equipment seam", () => {
     it("caps attack at hand count — a third weapon displaces one", () => {
       const campaign = new Campaign({ title: "Seam" });
-      const hero = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const hero = new PlayerCharacter({ campaign, name: "Hero" });
       const a = makeHandWeapon({ modifier: 2, name: "A" });
       const b = makeHandWeapon({ modifier: 2, name: "B" });
       const c = makeHandWeapon({ modifier: 2, name: "C" });
@@ -439,7 +450,7 @@ describe("PlayerCharacter", () => {
 
     it("a two-handed weapon yields a single-weapon attack", () => {
       const campaign = new Campaign({ title: "Seam" });
-      const hero = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const hero = new PlayerCharacter({ campaign, name: "Hero" });
       const greatsword = makeHandWeapon({ modifier: 5, twoHanded: true, name: "2H" });
       hero.inventory.items.push(greatsword);
       hero.equip(greatsword);
@@ -456,7 +467,7 @@ describe("PlayerCharacter", () => {
   describe("durability seam", () => {
     it("a weapon breaks in combat, is repaired, and fights again while armor wears", () => {
       const campaign = new Campaign({ title: "Seam" });
-      const hero = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const hero = new PlayerCharacter({ campaign, name: "Hero" });
       const weapon = makeDurableWeapon({ modifier: 3, stat: StatType.Health, maxDurability: 1 });
       hero.inventory.items.push(weapon);
 
@@ -520,7 +531,7 @@ describe("PlayerCharacter", () => {
 
     it("throws when the box is not in the player's room", () => {
       const box = new Loot({ description: "chest", contents: [makeLootItem("a")] });
-      const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero" });
 
       expect(() => pc.openLootBox(box)).toThrow(ProceduralViolation);
     });
@@ -585,7 +596,7 @@ describe("PlayerCharacter", () => {
 
     it("throws when the box is not co-located", () => {
       const box = new Loot({ description: "chest", contents: [makeLootItem("a")] });
-      const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero" });
 
       expect(() => pc.takeFromLootBox(box, box.contents[0]!)).toThrow(
         ProceduralViolation,
@@ -608,7 +619,7 @@ describe("PlayerCharacter", () => {
     // A real authored-dark Room holding `box`, with the PC co-located via [PLACE].
     function darkRoomWith(box: Loot) {
       const room = new Room({ name: "Cellar", description: "dark cellar", loot: [box], dark: true });
-      const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero" });
       pc[PLACE](room);
       return { room, pc };
     }
@@ -715,7 +726,7 @@ describe("PlayerCharacter", () => {
 
     it("throws when the box is not co-located", () => {
       const box = new Loot({ description: "chest", contents: [] });
-      const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero" });
 
       expect(() => pc.putInLootBox(box, makeLootItem("a"))).toThrow(
         ProceduralViolation,
@@ -762,7 +773,7 @@ describe("PlayerCharacter", () => {
       const campaign = new Campaign({ title: "Loot" });
       const item = makeLootItem("coin");
       const box = new Loot({ description: "chest", contents: [item], presentation: { sound: "coins.ogg" } });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       const room = new Room({ name: "Vault", description: "Vault", loot: [box] });
       pc.move(room);
       pc.startTurn();
@@ -781,7 +792,7 @@ describe("PlayerCharacter", () => {
       const campaign = new Campaign({ title: "Loot" });
       const item = makeLootItem("coin");
       const box = new Loot({ description: "chest", contents: [], presentation: { sound: "coins.ogg" } });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       const room = new Room({ name: "Vault", description: "Vault", loot: [box] });
       pc.move(room);
       pc.startTurn();
@@ -816,7 +827,9 @@ describe("PlayerCharacter", () => {
       const target = makeLootItem("a");
       const box = new Loot({ description: "chest", contents: [target] });
       // Build a panicked player already standing in the room.
-      const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero", stats: makeStats({ [StatType.Sanity]: 0 }), inventorySlots: 5, rng: () => 0.999 });
+      const campaign = makeCampaign();
+      const pc = new PlayerCharacter({ campaign, name: "Hero", inventorySlots: 5, rng: () => 0.999 });
+      setStartingStats(campaign, pc, { [StatType.Sanity]: 0 });
       pc.move(makeRoomWith(box));
       pc.startTurn();
       pc.takeDamage(0, StatType.Sanity); // reconcile → Panic
@@ -828,7 +841,9 @@ describe("PlayerCharacter", () => {
       const box = new Loot({ description: "chest", contents: [] });
       // Start with normal stats so addToInventory is not blocked,
       // then deplete sanity to trigger Panic before the putInLootBox call.
-      const pc = new PlayerCharacter({ campaign: makeCampaign(), name: "Hero", stats: makeStats({ [StatType.Sanity]: 5 }), inventorySlots: 5, rng: () => 0.999 });
+      const campaign = makeCampaign();
+      const pc = new PlayerCharacter({ campaign, name: "Hero", inventorySlots: 5, rng: () => 0.999 });
+      setStartingStats(campaign, pc, { [StatType.Sanity]: 5 });
       const item = makeLootItem("a");
       pc.addToInventory(item);           // pick up while still normal
       pc.move(makeRoomWith(box));
@@ -847,8 +862,9 @@ describe("PlayerCharacter", () => {
 
     it("layers stat deltas onto the base stats", () => {
       const campaign = new Campaign({ title: "Quest" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats({ [StatType.Health]: 6 }) });
-      const brawler = makeArchetype({ statModifiers: { [StatType.Health]: 3 } });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
+      // The archetype overrides the default baseline for the stats it names.
+      const brawler = makeArchetype({ baseStats: { [StatType.Health]: 9 } });
       campaign.registerArchetype(brawler);
 
       pc.selectArchetype(brawler.id);
@@ -859,7 +875,7 @@ describe("PlayerCharacter", () => {
 
     it("adds the inventory-slot delta to capacity", () => {
       const campaign = new Campaign({ title: "Quest" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats(), inventorySlots: 5 });
+      const pc = new PlayerCharacter({ campaign, name: "Hero", inventorySlots: 5 });
       const packer = makeArchetype({ inventorySlots: 2 });
       campaign.registerArchetype(packer);
 
@@ -870,7 +886,7 @@ describe("PlayerCharacter", () => {
 
     it("floors resulting inventory capacity at 0", () => {
       const campaign = new Campaign({ title: "Quest" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats(), inventorySlots: 1 });
+      const pc = new PlayerCharacter({ campaign, name: "Hero", inventorySlots: 1 });
       const burdened = makeArchetype({ inventorySlots: -5 });
       campaign.registerArchetype(burdened);
 
@@ -881,14 +897,14 @@ describe("PlayerCharacter", () => {
 
     it("throws on an unknown archetype id", () => {
       const campaign = new Campaign({ title: "Quest" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
 
       expect(() => pc.selectArchetype("ghost" as ArchetypeId)).toThrow(ProceduralViolation);
     });
 
     it("throws when an archetype is already selected", () => {
       const campaign = new Campaign({ title: "Quest" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       const brawler = makeArchetype();
       campaign.registerArchetype(brawler);
       pc.selectArchetype(brawler.id);
@@ -898,7 +914,7 @@ describe("PlayerCharacter", () => {
 
     it("throws when the campaign has already begun", () => {
       const campaign = new Campaign({ title: "Quest" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       const brawler = makeArchetype();
       campaign.registerArchetype(brawler);
       pc.joinCampaign();
@@ -913,9 +929,10 @@ describe("PlayerCharacter", () => {
 
     it("grants standing immunity to a status the stats would otherwise trigger", () => {
       const campaign = new Campaign({ title: "Quest" });
-      // Energy 0 would normally latch Confused on reconcile.
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats({ [StatType.Energy]: 0 }) });
-      const stoic = makeArchetype({ immunities: [Status.Confused] });
+      // Energy 0 (the archetype overrides the default baseline) would normally
+      // latch Confused on reconcile.
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
+      const stoic = makeArchetype({ baseStats: { [StatType.Energy]: 0 }, immunities: [Status.Confused] });
       campaign.registerArchetype(stoic);
       pc.selectArchetype(stoic.id);
 
@@ -928,7 +945,7 @@ describe("PlayerCharacter", () => {
   describe("move triggers encounters", () => {
     it("spawns a formation when entering a new room", () => {
       const campaign = new Campaign({ title: "C", maxRounds: 100, knownRecipes: [], rng: () => 0, baseEncounterChance: 50 });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       pc.joinCampaign();
       campaign.gm = pc;
       assignNeutralArchetype(campaign, pc);
@@ -949,7 +966,8 @@ describe("PlayerCharacter", () => {
     it("does not spawn when the move fizzles (Confused)", () => {
       const campaign = new Campaign({ title: "C", maxRounds: 100, knownRecipes: [], rng: () => 0, baseEncounterChance: 100 });
       // Energy 0 => Confused; the player's own rng => 0 makes the move gate fizzle.
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats({ [StatType.Energy]: 0 }), inventorySlots: 5, rng: () => 0 });
+      const pc = new PlayerCharacter({ campaign, name: "Hero", inventorySlots: 5, rng: () => 0 });
+      pc.stats[StatType.Energy] = 0;
       pc.joinCampaign();
       campaign.gm = pc;
       assignNeutralArchetype(campaign, pc);
@@ -970,7 +988,8 @@ describe("PlayerCharacter", () => {
 
     it("does not spawn when the move itself is blocked", () => {
       const campaign = new Campaign({ title: "C", maxRounds: 100, knownRecipes: [], rng: () => 0, baseEncounterChance: 100 });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats({ [StatType.Health]: 0 }) });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
+      pc.stats[StatType.Health] = 0;
       pc.joinCampaign();
       campaign.gm = pc;
       assignNeutralArchetype(campaign, pc);
@@ -991,7 +1010,7 @@ describe("PlayerCharacter", () => {
   describe("encounter cues", () => {
     it("fires once on first encounter per (character, mob) and not on re-entry", () => {
       const campaign = new Campaign({ title: "Enc" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       pc.joinCampaign();
       const hob = new Mob({ campaign, name: "Hobgoblin", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [], presentation: { sound: "growl.ogg" } });
       const lair = new Room({ name: "Lair", description: "Lair", loot: [] });
@@ -1013,8 +1032,8 @@ describe("PlayerCharacter", () => {
 
     it("fires separately for a second character meeting the same mob", () => {
       const campaign = new Campaign({ title: "Enc" });
-      const hero = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
-      const ally = new PlayerCharacter({ campaign, name: "Ally", stats: makeStats() });
+      const hero = new PlayerCharacter({ campaign, name: "Hero" });
+      const ally = new PlayerCharacter({ campaign, name: "Ally" });
       hero.joinCampaign();
       ally.joinCampaign();
       const hob = new Mob({ campaign, name: "Hobgoblin", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [], presentation: { sound: "growl.ogg" } });
@@ -1034,7 +1053,7 @@ describe("PlayerCharacter", () => {
 
     it("does not fire for a KO'd mob", () => {
       const campaign = new Campaign({ title: "Enc" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       pc.joinCampaign();
       const downed = new Mob({ campaign, name: "Husk", stats: makeStats({ [StatType.Health]: 0 }), inventorySlots: 2, actionsPerRound: 2, drops: [] });
       const room = new Room({ name: "Crypt", description: "Crypt", loot: [] });

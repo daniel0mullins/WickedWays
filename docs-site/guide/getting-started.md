@@ -59,24 +59,17 @@ const campaign = new Campaign({ title: "Wicked Ways", maxRounds: 3, rng: makeRng
 
 ## Step 2 — Create the party
 
-A `PlayerCharacter` takes the campaign it belongs to, a display name, and a full
-stat block — the three interlocking stats every character tracks. Call
-`joinCampaign()` to add each one to the party (it's idempotent), then nominate
-one as the Game Master via `campaign.gm`.
+A `PlayerCharacter` takes the campaign it belongs to and a display name. Every
+player character starts at the same baseline stat block (Health, Sanity, and
+Energy all at 10); the only way to start with different values is to select an
+archetype (Step 3). Call `joinCampaign()` to add each one to the party (it's
+idempotent), then nominate one as the Game Master via `campaign.gm`.
 
 ```ts
 import { PlayerCharacter } from "./lib/character/player-character";
-import { StatType, type Stats } from "./lib/character/stats";
 
-// A full stat block: each of the three stats starts at 10.
-const stats = (): Stats => ({
-  [StatType.Health]: 10,
-  [StatType.Sanity]: 10,
-  [StatType.Energy]: 10,
-});
-
-const hero = new PlayerCharacter({ campaign, name: "Hero", stats: stats() });
-const seer = new PlayerCharacter({ campaign, name: "Seer", stats: stats() });
+const hero = new PlayerCharacter({ campaign, name: "Hero" });
+const seer = new PlayerCharacter({ campaign, name: "Seer" });
 
 hero.joinCampaign();
 seer.joinCampaign();
@@ -88,8 +81,8 @@ campaign.gm = hero; // the GM must be a party member, and set before the campaig
 
 Archetypes are **optional** — skip this whole step and the campaign still starts,
 with every character on its base stats. An archetype is an authored role that
-layers stat deltas, inventory slots, and status immunities onto a character's
-baseline.
+overrides stats, adjusts inventory slots, and grants status immunities on a
+character's baseline.
 
 Once you *do* register archetypes, the engine expects the party to use them:
 register **one** and it's auto-selected as everyone's default; register
@@ -187,7 +180,8 @@ node dist/getting-started-example.js
 ```
 
 You should see `round: 3, finished: true`. Try changing the seed, the
-`maxRounds`, or the starting stats and watch the run change deterministically.
+`maxRounds`, or an archetype's `baseStats` and watch the run change
+deterministically.
 
 ## Gotchas
 

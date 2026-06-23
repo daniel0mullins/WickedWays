@@ -26,11 +26,17 @@ export function makeStats(overrides: Partial<Stats> = {}): Stats {
 }
 
 // Character only stores the campaign and exposes it via a getter, so a bare
-// stub is enough for tests that never drive campaign behaviour.
+// stub is enough for tests that never drive campaign behaviour. It carries a
+// minimal archetype catalog so `selectArchetype` (the only seam for non-default
+// starting stats) works against the stub — see `setStartingStats`.
 export function makeCampaign(): ICampaign {
+  const archetypes = new Map<ArchetypeId, Archetype>();
   return {
     maybeSpawn: () => [],
     addFormation: () => {},
+    started: false,
+    archetypes,
+    registerArchetype: (a: Archetype) => archetypes.set(a.id, a),
     [EMIT_CUE]: () => {},
     [NOTE_ENCOUNTERS]: () => {},
     [RECORD_ENCOUNTER]: () => {},
@@ -39,6 +45,25 @@ export function makeCampaign(): ICampaign {
     [TRANSFORM_DAMAGE]: (dv: { amount: number }) => dv.amount,
     [INVOKE_MECHANIC_ACTION]: () => {},
   } as unknown as ICampaign;
+}
+
+// Player characters take no stats argument — an archetype is the only seam for
+// non-default starting stats. This registers a one-off archetype whose
+// baseStats override the baseline (10) for the requested stats and selects
+// it, giving a test a PC with specific starting stats via the public API.
+export function setStartingStats(
+  campaign: ICampaign,
+  pc: IPlayerCharacter,
+  target: Partial<Stats>,
+): void {
+  const baseStats: Partial<Stats> = {};
+  for (const stat of [StatType.Health, StatType.Sanity, StatType.Energy] as const) {
+    const want = target[stat];
+    if (want !== undefined) baseStats[stat] = want;
+  }
+  const id = `stats:${pc.id}` as ArchetypeId;
+  campaign.registerArchetype({ id, name: id, baseStats });
+  pc.selectArchetype(id);
 }
 
 // A defender that only needs to record the damage calls made against it.

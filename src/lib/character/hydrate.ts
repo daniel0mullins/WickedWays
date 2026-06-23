@@ -17,9 +17,11 @@ import { Mob } from "./mob";
 
 /**
  * Constructs the right subclass from a snapshot with placeholder collections.
- * The real inventory, equipment, history, and afflictions are restored in the
- * subsequent `[HYDRATE]` call; only `id`, `name`, `stats`, and mob-specific
- * options are seeded here so the instance is fully constructed before wiring.
+ * The real inventory, equipment, history, afflictions, and stats are restored in
+ * the subsequent `[HYDRATE]` call; only `id`, `name`, and mob-specific options
+ * are seeded here so the instance is fully constructed before wiring. (A player
+ * character takes no stats — it starts at the baseline and `[HYDRATE]` overwrites
+ * it; a mob still seeds stats since its values are authored, not archetype-based.)
  *
  * @param data - The character snapshot.
  * @param campaign - The campaign this character belongs to.
@@ -33,7 +35,7 @@ export function constructBareCharacter(data: CharacterSnapshot, campaign: ICampa
     mob.id = data.id as CharacterId;
     return mob;
   }
-  const pc = new PlayerCharacter({ campaign, name: data.name, stats: { ...data.stats } });
+  const pc = new PlayerCharacter({ campaign, name: data.name });
   pc.id = data.id as CharacterId;
   return pc;
 }

@@ -972,7 +972,7 @@ describe("Character", () => {
 
     it("records a picked-up item, attributed to the party member", () => {
       const campaign = new Campaign({ title: "Codex" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       pc.joinCampaign();
 
       pc.addToInventory(makeSword());
@@ -986,7 +986,7 @@ describe("Character", () => {
 
     it("records a picked-up key under the key kind, not the item kind", () => {
       const campaign = new Campaign({ title: "Codex" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       pc.joinCampaign();
       const key = createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: true });
 
@@ -999,7 +999,7 @@ describe("Character", () => {
 
     it("records a recipe taught by a picked-up item, attributed to the picker", () => {
       const campaign = new Campaign({ title: "Codex" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       pc.joinCampaign();
       const recipe = { id: "potion", materials: { healing: 1 }, create: () => makeSword() } as unknown as Parameters<typeof campaign.discoverRecipe>[0];
       const scroll = new Item({
@@ -1029,7 +1029,7 @@ describe("Character", () => {
 
     it("records harvested material kinds in the codex, attributed to a party member", () => {
       const campaign = new Campaign({ title: "Materials" });
-      const pc = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       pc.joinCampaign();
       const cache = new MaterialCache({ contents: { metal: 3, glass: 1 } });
       const room = new Room({ name: "Vault", description: "a vault", loot: [], materials: [cache] });
@@ -2238,7 +2238,7 @@ describe("Character", () => {
         state: {},
       };
       const campaign = new Campaign({ title: "Test", maxRounds: 100, knownRecipes: [], mechanics: [mechanic] });
-      const player = new PlayerCharacter({ campaign, name: "Hero", stats: makeStats() });
+      const player = new PlayerCharacter({ campaign, name: "Hero" });
       player.joinCampaign();
       assignNeutralArchetype(campaign, player);
       campaign.gm = player;

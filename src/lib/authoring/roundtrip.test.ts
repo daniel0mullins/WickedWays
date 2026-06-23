@@ -146,7 +146,7 @@ function buildSnapshot() {
     // Material cache (exercises MaterialCache hydration).
     .cache("stone pile", { room: "vault", materials: { item: 5 } })
     // Archetype (exercises catalog hydration).
-    .archetype({ id: "warrior", name: "Warrior", statModifiers: { [StatType.Health]: 3 } })
+    .archetype({ id: "warrior", name: "Warrior", baseStats: { [StatType.Health]: 3 } })
     // Recipe unlock (exercises recipe catalog hydration).
     .recipe(RECIPE_KEY)
     // Initial materials (exercises campaign material pool hydration).
@@ -213,7 +213,7 @@ describe("template round-trip (toSnapshot → deserializeCampaign)", () => {
       })
       .loot("treasure chest", { room: "entrance", items: [POTION_KEY, COIN_KEY] })
       .cache("stone pile", { room: "vault", materials: { item: 5 } })
-      .archetype({ id: "warrior", name: "Warrior", statModifiers: { [StatType.Health]: 3 } })
+      .archetype({ id: "warrior", name: "Warrior", baseStats: { [StatType.Health]: 3 } })
       .recipe(RECIPE_KEY)
       .materials("starter-cache", { item: 2 });
 
