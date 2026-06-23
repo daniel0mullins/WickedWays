@@ -61,8 +61,7 @@ const campaign = new Campaign({ title: "Wicked Ways", maxRounds: 3, rng: makeRng
 
 A `PlayerCharacter` takes the campaign it belongs to and a display name. Every
 player character starts at the same baseline stat block (Health, Sanity, and
-Energy all at 10); the only way to start with different values is to select an
-archetype (Step 3). Call `joinCampaign()` to add each one to the party (it's
+Energy all at 10). Call `joinCampaign()` to add each one to the party (it's
 idempotent), then nominate one as the Game Master via `campaign.gm`.
 
 ```ts
@@ -77,19 +76,15 @@ seer.joinCampaign();
 campaign.gm = hero; // the GM must be a party member, and set before the campaign starts
 ```
 
-## Step 3 — Register and select an archetype
-
-Archetypes are **optional** — skip this whole step and the campaign still starts,
-with every character on its base stats. An archetype is an authored role that
-overrides stats, adjusts inventory slots, and grants status immunities on a
-character's baseline.
-
-Once you *do* register archetypes, the engine expects the party to use them:
-register **one** and it's auto-selected as everyone's default; register
-**several** and each character must choose explicitly before the campaign can
-begin. Here we register a single no-op "Neutral" archetype and select it for both
-characters — with one archetype the `selectArchetype` calls are optional (the
-engine would default to it), but selecting keeps the flow explicit.
+The only way to start a character with different stats is to give it an
+**archetype** — an authored role that sets stats, adjusts inventory slots, and
+grants status immunities. Archetypes are **optional**: skip the rest of this step
+and everyone stays on the baseline. Once you *do* register archetypes the engine
+expects the party to use them — register **one** and it's auto-selected as
+everyone's default; register **several** and each character must choose explicitly
+before the campaign can begin. Here we register a single no-op "Neutral" archetype
+and select it for both characters (with one archetype the `selectArchetype` calls
+are optional, but selecting keeps the flow explicit).
 
 ```ts
 import type { Archetype, ArchetypeId } from "./lib/archetype";
@@ -109,7 +104,7 @@ seer.selectArchetype(neutral.id);
 character or after `beginCampaign()`. If you want one, choose before you start.
 :::
 
-## Step 4 — Build a couple of rooms
+## Step 3 — Build a couple of rooms
 
 Rooms are nodes in the dungeon graph, connected by directional exits. The
 constructor's `exits` argument is optional, so we create the rooms without any
@@ -127,7 +122,7 @@ entrance.addExit(Directions.North, vault);
 vault.addExit(Directions.South, entrance);
 ```
 
-## Step 5 — Start the campaign
+## Step 4 — Start the campaign
 
 With a non-empty party and a GM drawn from it, `beginCampaign()` opens the turn
 loop. It throws a `ProceduralViolation` if the party is empty or the GM isn't a
@@ -141,7 +136,7 @@ hero.move(entrance);
 seer.move(entrance);
 ```
 
-## Step 6 — Drive the turn loop
+## Step 5 — Drive the turn loop
 
 Each turn, the campaign exposes whose turn it is via `activeCharacter`. Call
 `startTurn()` to reset that character's per-round action budget, take an action
@@ -163,7 +158,7 @@ while (!campaign.finished) {
 }
 ```
 
-## Step 7 — Observe the result
+## Step 6 — Observe the result
 
 The campaign ran itself to completion at `maxRounds`. Log the final state to
 confirm:
