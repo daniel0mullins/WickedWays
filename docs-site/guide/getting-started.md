@@ -116,9 +116,26 @@ vault gets a chest in its constructor) or have them added later with `addLoot`.
 ```ts
 import { Directions, Room } from "./lib/room";
 import { Loot } from "./lib/loot";
+import { Item, ItemType, type ItemDescriptor } from "./lib/inventory";
+import { StatType } from "./lib/character/stats";
 
-// A chest the vault holds from the start (empty here; fill `contents` with items).
-const vaultChest = new Loot({ description: "A locked iron chest.", contents: [] });
+// A compact factory for a basic item. A real item also wires up its action
+// behaviour (equip, use, …) and event hooks; those are no-ops here.
+function makeItem(name: string, type: ItemDescriptor["type"], modifier: number): Item {
+  const noop = () => {};
+  return new Item({
+    descriptor: { type, recipe: { metal: 1 }, modifier, stat: StatType.Health, name },
+    properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+    actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    events: { onPickUp: noop },
+  });
+}
+
+// A chest the vault holds from the start.
+const vaultChest = new Loot({
+  description: "A locked iron chest.",
+  contents: [makeItem("Iron Sword", ItemType.Weapon, 3)],
+});
 
 const entrance = new Room({ name: "Entrance", description: "A damp stone entrance." });
 const vault = new Room({ name: "Vault", description: "A sealed vault.", loot: [vaultChest] });
@@ -127,9 +144,15 @@ entrance.addExit(Directions.North, vault);
 vault.addExit(Directions.South, entrance);
 
 // Loot can also be dropped into a room after it's built.
-const supplyCrate = new Loot({ description: "A dusty supply crate.", contents: [] });
+const supplyCrate = new Loot({
+  description: "A dusty supply crate.",
+  contents: [makeItem("Healing Salve", ItemType.Consumable, 5)],
+});
 entrance.addLoot(supplyCrate);
 ```
+
+(Keys are the exception — they go on the keyring, not in loot, so `Loot` rejects
+them; build keys with `createKey` and add them to a character instead.)
 
 ## Step 4 — Start the campaign
 
