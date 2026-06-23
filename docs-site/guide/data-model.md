@@ -37,6 +37,7 @@ erDiagram
     CampaignTemplate ||--o{ ConditionRef : loseConditions
     CampaignTemplate ||--o| ChatPolicy : chat
     CampaignTemplate ||--o| AvPolicy : av
+    CampaignTemplate ||--o{ MechanicRef : useMechanic
 
     RoomDef ||--o{ ExitDef : "from / to"
     MobDef }o--|| RoomDef : "placed in"
@@ -50,6 +51,7 @@ erDiagram
     TypedRegistry ||--o{ ItemKey : "defines factory"
     TypedRegistry ||--o{ RecipeKey : "defines recipe"
     TypedRegistry ||--o{ ConditionKey : "defines predicate"
+    TypedRegistry ||--o{ MechanicKey : "defines mechanic"
 
     CampaignTemplate {
         string title
@@ -109,6 +111,7 @@ erDiagram
         ItemKey items
         RecipeKey recipes
         ConditionKey conditions
+        MechanicKey mechanics
     }
     ItemKey {
         string key
@@ -118,6 +121,13 @@ erDiagram
     }
     ConditionKey {
         string key
+    }
+    MechanicKey {
+        string key
+    }
+    MechanicRef {
+        string key
+        Json config
     }
     ConditionRef {
         string key
@@ -146,6 +156,7 @@ erDiagram
     Campaign }o--|| Character : active
     Campaign ||--o{ VictoryCondition : "winConditions"
     Campaign ||--o{ VictoryCondition : "loseConditions"
+    Campaign ||--o{ Mechanic : mechanics
 
     Room }o--o{ Room : exits
     Room ||--o{ Character : occupants
@@ -200,7 +211,15 @@ erDiagram
         string key
         OutcomeNarration narration
     }
+    Mechanic {
+        string key
+        JsonObject state
+    }
 ```
+
+> `Item.behaviorKey` is the registry key used when the item factory was registered.
+> `CharacterView.hasEquipped(key)` in mechanic hooks returns `true` when an equipped
+> item's `behaviorKey` matches `key`.
 
 ## From template to instance
 

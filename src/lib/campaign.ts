@@ -10,9 +10,17 @@ import type { Archetype, ArchetypeId } from "./archetype";
 import { EMIT_CUE, NOTE_ENCOUNTERS } from "./presentation";
 import type { ActionKind, AssetRef, PresentationCue } from "./presentation";
 import { Status } from "./status";
-import type { ICharacter } from "./character/character";
+import type { CharacterId, ICharacter } from "./character/character";
 import { Codex, RECORD_ENCOUNTER } from "./codex";
 import type { CodexEncounterEvent, CodexEntry, ICodex } from "./codex";
+import { FIND_CHARACTER, DISPATCH_TURN, DISPATCH_ACTION, TRANSFORM_DAMAGE, INVOKE_MECHANIC_ACTION } from "./mechanics/symbols";
+import { roll } from "./dice";
+import type { CampaignView, CharacterView, HookCtx, JsonObject, JsonValue, DamageView } from "./mechanics/mechanic";
+import { MAX_EFFECTS_PER_EVENT } from "./mechanics/mechanic";
+import { runReducers, runDamageTransformers } from "./mechanics/dispatch";
+import { applyEffect } from "./mechanics/apply";
+import type { ActionDetail } from "./character/history";
+import { StatType } from "./character/stats";
 import {
   SERIALIZE,
   HYDRATE,
@@ -29,6 +37,7 @@ import { DEFAULT_CHAT_POLICY } from "./chat-policy";
 import type { ChatPolicy } from "./chat-policy";
 import { DEFAULT_AV_POLICY } from "./av-policy";
 import type { AvPolicy } from "./av-policy";
+import type { LiveMechanic } from "./mechanics/mechanic";
 
 /** Unique identifier for a {@link Campaign}. */
 export type CampaignId = Brand<string, "CampaignId">;
@@ -127,6 +136,14 @@ export interface ICampaign {
     by: ICharacter | undefined,
     where: IRoom | null,
   ) => void;
+  /** Fires turn-phase hooks for all enabled mechanics. Engine-internal. */
+  [DISPATCH_TURN]: (phase: "start" | "end", actor: IPlayerCharacter) => void;
+  /** Fires `onAction` hooks for the given budgeted action. Engine-internal. */
+  [DISPATCH_ACTION]: (detail: ActionDetail, actor: IPlayerCharacter) => void;
+  /** Runs all `modifyDamage` transformers and returns the final damage amount. Engine-internal. */
+  [TRANSFORM_DAMAGE]: (dv: DamageView) => number;
+  /** Invokes a named custom action on a mechanic and applies its effects. Engine-internal. */
+  [INVOKE_MECHANIC_ACTION]: (mechanicKey: string, actionKey: string, actor: IPlayerCharacter) => void;
 }
 
 /**
@@ -164,6 +181,8 @@ export class Campaign implements ICampaign {
   #codex = new Codex();
   #chatPolicy: ChatPolicy;
   #avPolicy: AvPolicy;
+  #mechanics: LiveMechanic[] = [];
+  #rng: () => number = Math.random;
 
   get round() {
     return this.#round;
@@ -314,6 +333,8 @@ export class Campaign implements ICampaign {
       endedNarration?: OutcomeNarration;
       chatPolicy?: ChatPolicy;
       avPolicy?: AvPolicy;
+      /** Opted-in custom mechanics in authoring order. Task 7 adds dispatch/hook logic. */
+      mechanics?: LiveMechanic[];
     } = {},
   ) {
     this.id = generateId<CampaignId>();
@@ -323,8 +344,9 @@ export class Campaign implements ICampaign {
     this.#gm = undefined;
     this.maxRounds = maxRounds;
 
+    this.#rng = options.rng ?? Math.random;
     this.#encounterTable = new EncounterTable(
-      options.rng ?? Math.random,
+      this.#rng,
       options.baseEncounterChance ?? 20,
     );
 
@@ -340,6 +362,7 @@ export class Campaign implements ICampaign {
     this.#endedNarration = options.endedNarration;
     this.#chatPolicy = options.chatPolicy ?? DEFAULT_CHAT_POLICY;
     this.#avPolicy = options.avPolicy ?? DEFAULT_AV_POLICY;
+    this.#mechanics = [...(options.mechanics ?? [])];
 
     for (const recipe of knownRecipes) {
       this.discoverRecipe(recipe);
@@ -372,6 +395,7 @@ export class Campaign implements ICampaign {
       );
     }
     this.#started = true;
+    this.#dispatchRound("onRoundStart");
   }
 
   // Centralized termination: set the outcome, record the firing key, and emit a
@@ -412,6 +436,7 @@ export class Campaign implements ICampaign {
         "Attempted to end round before all characters have acted",
       );
     }
+    this.#dispatchRound("onRoundEnd");
     this.#round = this.#round + 1;
     this.#resetActivity();
     const result = resolveOutcome({
@@ -423,7 +448,9 @@ export class Campaign implements ICampaign {
     });
     if (result.status !== "ongoing") {
       this.#finish(result.status, result.condition);
+      return;
     }
+    this.#dispatchRound("onRoundStart");
   }
 
   /**
@@ -573,6 +600,107 @@ export class Campaign implements ICampaign {
         // Intentionally swallowed: presentation is best-effort, never load-bearing.
       }
     }
+  }
+
+  #characterView(c: IPlayerCharacter): CharacterView {
+    return {
+      id: c.id,
+      name: c.name,
+      health: c.effectiveStat(StatType.Health),
+      sanity: c.effectiveStat(StatType.Sanity),
+      energy: c.effectiveStat(StatType.Energy),
+      status: [...c.status],
+      roomId: c.currentRoom?.id,
+      // behaviorKey is an item's registry key, set at construction for every
+      // registered (non-key) item. Match against it to test registry origin.
+      hasEquipped: (key: string) => {
+        for (const item of c.equipment.values()) {
+          if (item.behaviorKey === key) return true;
+        }
+        return false;
+      },
+    };
+  }
+
+  #campaignView(): CampaignView {
+    return {
+      round: this.#round,
+      maxRounds: this.maxRounds,
+      party: this.party.map((p) => this.#characterView(p)),
+      rooms: [],
+    };
+  }
+
+  #hookCtx(m: LiveMechanic): HookCtx<JsonObject> {
+    const view = this.#campaignView();
+    return { state: m.state, view, rng: this.#rng, roll: (n) => roll(n, this.#rng) };
+  }
+
+  #dispatchRound(hook: "onRoundStart" | "onRoundEnd"): void {
+    if (this.#mechanics.length === 0) return;
+    runReducers(
+      this.#mechanics,
+      (m) => m.mechanic[hook]?.(this.#hookCtx(m)),
+      (e) => applyEffect(this, e),
+    );
+  }
+
+  [DISPATCH_TURN](phase: "start" | "end", actor: IPlayerCharacter): void {
+    if (this.#mechanics.length === 0) return;
+    const hook = phase === "start" ? "onTurnStart" : "onTurnEnd";
+    const actorView = this.#characterView(actor);
+    runReducers(
+      this.#mechanics,
+      (m) => m.mechanic[hook]?.({ ...this.#hookCtx(m), actor: actorView }),
+      (e) => applyEffect(this, e),
+    );
+  }
+
+  [DISPATCH_ACTION](detail: ActionDetail, actor: IPlayerCharacter): void {
+    if (this.#mechanics.length === 0) return;
+    const actorView = this.#characterView(actor);
+    runReducers(
+      this.#mechanics,
+      (m) => m.mechanic.onAction?.({ ...this.#hookCtx(m), actor: actorView, action: detail }),
+      (e) => applyEffect(this, e),
+    );
+  }
+
+  [TRANSFORM_DAMAGE](dv: DamageView): number {
+    if (this.#mechanics.length === 0) return dv.amount;
+    return runDamageTransformers(
+      this.#mechanics,
+      dv,
+      (m) => this.#hookCtx(m),
+      (key, value) => this[EMIT_CUE]({ kind: "mechanic", cue: { text: `${key} fixed damage at ${value}.` } }),
+    );
+  }
+
+  [INVOKE_MECHANIC_ACTION](mechanicKey: string, actionKey: string, actor: IPlayerCharacter): void {
+    const m = this.#mechanics.find((x) => x.key === mechanicKey);
+    if (!m) throw new ProceduralViolation(`Mechanic '${mechanicKey}' is not enabled.`);
+    const action = m.mechanic.actions?.[actionKey];
+    if (!action) throw new ProceduralViolation(`Mechanic '${mechanicKey}' has no action '${actionKey}'.`);
+    const ctx = {
+      ...this.#hookCtx(m),
+      actor: this.#characterView(actor),
+      action: { kind: "mechanicAction" as const, mechanic: mechanicKey, action: actionKey },
+    };
+    const effects = action.run(ctx) ?? [];
+    if (effects.length > MAX_EFFECTS_PER_EVENT) {
+      throw new ProceduralViolation(`Mechanic action '${mechanicKey}.${actionKey}' emitted too many effects.`);
+    }
+    for (const e of effects) applyEffect(this, e);
+  }
+
+  /**
+   * Mechanics seam: resolve a party member by id. Throws {@link ProceduralViolation}
+   * if no party member with that id is found. Unforgeable (symbol-keyed).
+   */
+  [FIND_CHARACTER](id: CharacterId): IPlayerCharacter {
+    const c = this.party.find((p) => p.id === id);
+    if (!c) throw new ProceduralViolation(`No party character for id '${id}'.`);
+    return c;
   }
 
   /**
@@ -738,6 +866,13 @@ export class Campaign implements ICampaign {
       encounterTable: this.#encounterTable[SERIALIZE](),
       chatPolicy: { ...this.#chatPolicy },
       avPolicy: { ...this.#avPolicy },
+      mechanics: this.#mechanics.map((m) => {
+        try {
+          return { key: m.key, state: JSON.parse(JSON.stringify(m.state)) as JsonValue };
+        } catch {
+          throw new ProceduralViolation(`Mechanic '${m.key}' has non-serializable state.`);
+        }
+      }),
     };
   }
 
@@ -768,6 +903,11 @@ export class Campaign implements ICampaign {
     }));
     this.#timeoutNarration = core.timeoutNarration;
     this.#endedNarration = core.endedNarration;
+    this.#mechanics = core.mechanics.map((m) => ({
+      key: m.key,
+      mechanic: registry.mechanic(m.key), // throws ProceduralViolation if missing
+      state: m.state as JsonObject,
+    }));
   }
 
   /**

@@ -4,6 +4,7 @@ import type { CraftingRecipe } from "../crafting";
 import type { ICampaign } from "../campaign";
 import type { IMob } from "../character/mob";
 import type { IRoom } from "../room";
+import type { Mechanic, JsonObject } from "../mechanics/mechanic.js";
 
 export interface SceneBehavior {
   preconditions: ((room: IRoom, state: never) => boolean)[];
@@ -31,6 +32,7 @@ export class CampaignRegistry {
   #formations = new Map<string, FormationBehavior>();
   #items = new Map<string, () => Item>();
   #conditions = new Map<string, (campaign: ICampaign) => boolean>();
+  #mechanics = new Map<string, Mechanic<JsonObject, unknown, string>>();
 
   /**
    * Registers a {@link SceneBehavior} (preconditions + script) under `key`.
@@ -69,6 +71,19 @@ export class CampaignRegistry {
   registerCondition(key: string, predicate: (campaign: ICampaign) => boolean): void {
     this.#conditions.set(key, predicate);
   }
+  /**
+   * Registers a {@link Mechanic} under `key`.
+   * Must match the mechanic key used when opting a campaign into this mechanic
+   * via `.useMechanic(key, config?)`.
+   *
+   * On deserialization, `registry.mechanic(key)` re-binds the behavior to the
+   * persisted `{ key, state }` entry. If the key is absent the deserializer throws
+   * a {@link ProceduralViolation} — register all mechanics before calling
+   * `deserializeCampaign`.
+   */
+  registerMechanic(key: string, mechanic: Mechanic<JsonObject, unknown, string>): void {
+    this.#mechanics.set(key, mechanic);
+  }
 
   scene(key: string): SceneBehavior {
     return this.#require(this.#scenes.get(key), "scene", key);
@@ -84,6 +99,9 @@ export class CampaignRegistry {
   }
   condition(key: string): (campaign: ICampaign) => boolean {
     return this.#require(this.#conditions.get(key), "condition", key);
+  }
+  mechanic(key: string): Mechanic<JsonObject, unknown, string> {
+    return this.#require(this.#mechanics.get(key), "mechanic", key);
   }
 
   #require<T>(value: T | undefined, kind: string, key: string): T {

@@ -234,6 +234,8 @@ export interface IItem {
   readonly keyCode?: string;
   /** For keys only: whether spending the key (consumeKey) is expected on use. */
   readonly consumeOnUse?: boolean;
+  /** Registry key that maps this item to its factory; required for serialization of non-key items. */
+  readonly behaviorKey?: string;
   /** Max durability for equipment that wears; absent for items without durability. */
   readonly maxDurability?: number;
   /** Current durability in `[0, maxDurability]`; absent when the item has no durability. */

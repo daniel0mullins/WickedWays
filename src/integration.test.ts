@@ -29,9 +29,12 @@ import { Authority } from "./lib/sync/authority";
 import { InProcessTransport } from "./lib/sync/transport";
 import { SyncCoordinator } from "./lib/sync/coordinator";
 import { serializeCampaign } from "./lib/serialization/serializer";
+import { deserializeCampaign } from "./lib/serialization/deserializer";
 import { buildStartedCampaign, makeStats as makeStatsFixture } from "./lib/serialization/roundtrip.test-helpers";
 import { SERIALIZE } from "./lib/serialization/symbols";
 import { Directions } from "./lib/room";
+import { EquipmentSlot } from "./lib/equipment";
+import type { JsonObject, Mechanic } from "./lib/mechanics/mechanic";
 
 // A real weapon Item with inert actions/events, usable in inventories and boxes.
 function makeWeapon(modifier = 3): Item {
@@ -616,5 +619,195 @@ describe("Victory conditions", () => {
     expect(campaign.outcome).toBe("won");
     expect(campaign.outcomeReason).toBe("reached-exit");
     expect(campaign.outcomeNarration?.text).toBe("You escape into the night.");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Custom mechanics — end-to-end integration + determinism
+// ---------------------------------------------------------------------------
+
+/**
+ * Typed state for the doom-clock mechanic.
+ */
+interface DoomState extends JsonObject {
+  doom: number;
+  doomAt: number;
+}
+
+/**
+ * Doom-clock: increments `doom` each round and emits a cue when the
+ * threshold is reached. Also rolls the rng so the determinism test is
+ * non-vacuous.
+ */
+const doomMechanic: Mechanic<DoomState, { doomAt: number }> = {
+  initialState: (cfg) => ({ doom: 0, doomAt: cfg.doomAt }),
+  onRoundEnd(h) {
+    h.state.doom += 1;
+    // Roll the rng — result determines flavour text, making same-seed runs
+    // produce the same cue stream and different-seed runs differ.
+    const roll = h.roll(6);
+    const effects = [];
+    if (h.state.doom >= h.state.doomAt) {
+      effects.push({
+        kind: "cue" as const,
+        cue: { text: `Doom strikes! (roll: ${roll})` },
+      });
+    }
+    return effects;
+  },
+};
+
+/**
+ * Fire-ward: if the damage target has the "ward" item equipped, halts
+ * the transformer chain and reduces health damage to zero.
+ */
+const fireWardMechanic: Mechanic<JsonObject, void> = {
+  initialState: () => ({}),
+  modifyDamage(d, h) {
+    const target = h.view.party.find((p) => p.id === d.target);
+    if (target?.hasEquipped("ward")) {
+      return { value: 0, final: true };
+    }
+    return d.amount;
+  },
+};
+
+/** Constructs a fire-ward Item with `behaviorKey: "ward"` so it is equippable
+ *  and survives serialize/hydrate via the registry. */
+function makeWard(): Item {
+  return new Item(
+    {
+      name: "Ward",
+      type: "armor",
+      recipe: { metal: 1 },
+      modifier: 0,
+      stat: StatType.Health,
+      slot: SlotKind.Torso,
+      behaviorKey: "ward",
+    },
+    { equippable: true, equipped: false, destroyable: false, usable: false },
+    {
+      pickUp: () => {},
+      equip: () => {},
+      unequip: () => {},
+      transfer: () => {},
+      use: () => {},
+      destroy: () => null,
+    },
+    { onPickUp: () => {} },
+  );
+}
+
+/** Builds a started campaign using the given seed. */
+function buildMechanicCampaign(seed: number) {
+  const reg = defineRegistry({
+    items: { ward: () => makeWard() },
+    mechanics: { "fire-ward": fireWardMechanic, doom: doomMechanic },
+  });
+  const campaign = startSession(
+    authorTemplate("Crypt", reg, { maxRounds: 10, rng: makeRng(seed) })
+      .archetype({ id: "scout", name: "Scout" })
+      .room("start", { description: "A cold crypt." })
+      .startRoom("start")
+      .useMechanic("fire-ward")
+      .useMechanic("doom", { doomAt: 3 }),
+    {
+      players: [
+        {
+          name: "Hero",
+          stats: {
+            [StatType.Health]: 10,
+            // sanity=1 keeps damageMultiplier non-zero (9*0.2=1.8) while
+            // staying above the panic threshold (sanity>0).
+            [StatType.Sanity]: 1,
+            [StatType.Energy]: 10,
+          },
+          archetype: "scout",
+        },
+      ],
+      gm: 0,
+    },
+  );
+  return { campaign, reg };
+}
+
+/** Runs the campaign for all rounds, collecting cues. */
+function runFullScenario(campaign: ReturnType<typeof buildMechanicCampaign>["campaign"]): PresentationCue[] {
+  const cues: PresentationCue[] = [];
+  campaign.onCue((c) => cues.push(c));
+  // Advance through 3 rounds (enough to trigger doom at doomAt=3).
+  for (let i = 0; i < 3; i++) {
+    campaign.nextPlayer(); // sole player → endRound
+  }
+  return cues;
+}
+
+describe("Custom mechanics", () => {
+  it("doom-clock increments state, emits threshold cue, ward zeroes damage, serialize→hydrate preserves doom", () => {
+    const { campaign, reg } = buildMechanicCampaign(42);
+    const hero = campaign.party[0]!;
+
+    // === (b) Ward transformer: equip the ward and verify health damage is zeroed ===
+    // Sanity=1 means damageMultiplier = (10 - 1) * 0.2 = 1.8, so a raw 5 attack
+    // deals 9 to an unprotected player. With the ward, it should deal 0.
+    const ward = makeWard();
+    hero.receiveItem(ward);
+    hero.equip(ward, EquipmentSlot.Torso);
+    expect(hero.equipment.get(EquipmentSlot.Torso)?.behaviorKey).toBe("ward");
+
+    const healthBefore = hero.stats[StatType.Health];
+    hero.takeDamage(5, StatType.Health);
+    expect(hero.stats[StatType.Health]).toBe(healthBefore); // ward zeroed it
+
+    // Control: unequip, then take the same hit — health should now drop.
+    hero.unequip(ward);
+    const healthAfterWardOff = hero.stats[StatType.Health];
+    hero.takeDamage(5, StatType.Health);
+    expect(hero.stats[StatType.Health]).toBeLessThan(healthAfterWardOff);
+
+    // === (a) Doom-clock: advance two rounds → doom=2 (below threshold, no cue yet) ===
+    const cuedTexts: string[] = [];
+    campaign.onCue((c) => {
+      if (c.kind === "mechanic" && c.cue.text) cuedTexts.push(c.cue.text);
+    });
+
+    campaign.nextPlayer(); // round 1 ends → doom = 1
+    campaign.nextPlayer(); // round 2 ends → doom = 2
+    expect(cuedTexts.filter((t) => t.startsWith("Doom strikes!"))).toHaveLength(0);
+
+    // === (c) Serialize → hydrate: doom=2 preserved; mechanic still fires ===
+    const snap = serializeCampaign(campaign);
+    expect(snap.campaign.mechanics).toContainEqual(
+      expect.objectContaining({ key: "doom", state: { doom: 2, doomAt: 3 } }),
+    );
+
+    const restored = deserializeCampaign(snap, { registry: reg, rng: makeRng(42) });
+    const restoredCues: string[] = [];
+    restored.onCue((c) => {
+      if (c.kind === "mechanic" && c.cue.text) restoredCues.push(c.cue.text);
+    });
+
+    // Re-equip the ward on the restored hero for the next round check.
+    // (ward was unequipped and health dropped, but state/mechanics persist.)
+    restored.nextPlayer(); // round 3 ends → doom = 3 → threshold hit → cue fires
+    expect(restoredCues.some((t) => t.startsWith("Doom strikes!"))).toBe(true);
+  });
+
+  it("same-seed runs produce identical cue logs (rng determinism)", () => {
+    const { campaign: c1 } = buildMechanicCampaign(99);
+    const { campaign: c2 } = buildMechanicCampaign(99);
+    const { campaign: c3 } = buildMechanicCampaign(7); // different seed
+
+    const log1 = runFullScenario(c1);
+    const log2 = runFullScenario(c2);
+    const log3 = runFullScenario(c3);
+
+    // (d) Same seed → identical cue streams.
+    expect(log1).toEqual(log2);
+    // Different seed → different cue stream (guards against a constant helper).
+    // The doom roll text differs because h.roll(6) draws from the seeded rng.
+    const mechanicCues1 = log1.filter((c) => c.kind === "mechanic");
+    const mechanicCues3 = log3.filter((c) => c.kind === "mechanic");
+    expect(mechanicCues1).not.toEqual(mechanicCues3);
   });
 });

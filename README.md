@@ -315,6 +315,195 @@ unarmed Health damage. Because weapons occupy hand slots (see Equipment below), 
 fields at most two one-handed weapons — or one two-handed — so the summed modifier is
 naturally bounded.
 
+### Custom mechanics
+
+The custom-mechanics system lets a campaign author layer typed, namespaced game
+rules on top of the core engine — a doom counter, a fire-ward, a sanity spiral —
+without touching engine internals.
+
+#### Hook taxonomy
+
+Every mechanic implements the `Mechanic<S, Cfg, A>` interface. Hooks fall into two
+categories:
+
+- **Reducers** — `onRoundStart`, `onRoundEnd`, `onTurnStart`, `onTurnEnd`,
+  `onAction` — react to lifecycle events and return an `Effect[]`. Effects are
+  collected across all enabled mechanics and applied in a single pass after all
+  reducers have run (collect-then-apply). Reducers may not observe each other's
+  effects mid-event, so the order of application is deterministic.
+  `onRoundEnd` observes `h.view.round` at its **pre-increment** value (round N);
+  `resolveOutcome` runs afterward at N+1; `onRoundStart` for round 1 fires from
+  `beginCampaign` while the round counter is still 0.
+- **Transformers** — `modifyDamage(d: DamageView, h: HookCtx): TransformResult` —
+  intercept an in-flight damage value before it reaches the character and return an
+  adjusted amount. The transformer runs on every `takeDamage` call and may return
+  either a plain `number` (pass-through to the next transformer) or
+  `{ value, final: true }` to lock the amount, halt the chain, and emit a
+  diagnostic cue.
+
+A transformer's `final` short-circuit is the only reducer/transformer
+short-circuit in v1; reducer pre-emption is deferred.
+
+#### The `Effect` vocabulary (guardrail A)
+
+Mechanics communicate intent through a **closed union** of five effect kinds — they
+cannot reach raw setters:
+
+| Kind | What it does |
+|---|---|
+| `{ kind: "damage"; target; amount }` | `Health −amount` (floored at 0) |
+| `{ kind: "heal"; target; amount }` | `Health +amount` (floored at 0) |
+| `{ kind: "adjustStat"; target; stat: "sanity"\|"energy"; delta }` | Sanity or Energy ±delta via `ADJUST_STAT` |
+| `{ kind: "grantImmunity"; target; turns }` | Grant all-status immunity for `turns` rounds (floored at 0) |
+| `{ kind: "cue"; cue }` | Emit a `{ kind: "mechanic", cue }` presentation cue |
+
+All magnitude arguments are floored at 0 before being applied; `adjustStat` passes
+the delta sign through unchanged (the stat accumulator floors separately).
+
+#### Hook contexts
+
+Every hook receives a `HookCtx<S>`:
+
+- `state` — the mechanic's own `JsonObject` state; **mutate in place**
+- `view` — a read-only `CampaignView` (round, maxRounds, party as `CharacterView[]`,
+  rooms); no engine handles, no clock, no IO (guardrail B)
+- `rng()` — the campaign's injected RNG function
+- `roll(n)` — integer in `[1, n]` drawn from `rng`
+
+`TurnCtx` adds `actor: CharacterView`. `ActionCtx` adds `action: ActionDetail`.
+`CharacterView.hasEquipped(key)` returns `true` when an equipped item was
+registered under the given registry key (matched via the item's `behaviorKey`).
+
+#### Guardrails
+
+Four guardrails protect engine integrity, in priority order:
+
+- **A — Integrity:** the closed `Effect` union and clamping appliers route every
+  state change through unforgeable symbol seams; mechanics can't reach raw setters.
+- **B — Determinism:** hooks receive a read-only view projection with no engine
+  handles, clock, or IO; all randomness flows through the injected `rng`.
+- **D — Termination:** collect-then-apply (reducers can't observe each other's
+  effects mid-event), a hard `MAX_EFFECTS_PER_EVENT = 64` cap per mechanic per
+  event that throws `ProceduralViolation`, and non-re-entrancy (applying effects
+  does not re-enter dispatch).
+- **C — Balance:** advisory only; no runtime enforcement.
+
+#### Opt-in and precedence
+
+Mechanics are inert unless a campaign opts in via `.useMechanic(key, config?)` on
+the `TemplateBuilder`. The opt-in list is static config fixed at authoring time —
+it cannot change mid-play. **Opt-in order is precedence**: earlier mechanics' hooks
+run first, so an earlier transformer's `{ value, final: true }` pre-empts all
+later ones.
+
+#### Custom actions
+
+A mechanic may expose named actions via `actions: Record<A, CustomAction<S>>`.
+Each `CustomAction` has a `run(h: ActionCtx<S>)` method and an optional `cost`
+(default 1, reserved for future budget-multiplier support — in v1 every action
+costs 1). A player character invokes them via
+`character.useMechanicAction(mechanicKey, actionKey)`, which is a **budgeted**
+action (counts against the per-round action budget by method identity) routed
+through `Campaign[INVOKE_MECHANIC_ACTION]`.
+
+#### Serialization (schema v5)
+
+Only `{ key, state }` persists per mechanic — behavior is not serialized.
+On hydrate, `registry.mechanic(key)` re-binds the behavior; if the key is absent
+the deserializer throws `ProceduralViolation`. State is a `JsonObject`, namespaced
+by key. A v4→v5 migration injects `mechanics: []` into old snapshots, so existing
+saves round-trip cleanly.
+
+#### v1 exclusions
+
+> - **No reducer short-circuiting (deferred).** Reactive hooks are batched and
+>   non-pre-emptive in v1; one reducer cannot cancel another's effects. Only
+>   *transformers* may short-circuit (see Decisions). A concrete reducer pre-emption
+>   case can revisit this later.
+> - **No "break-glass" effects in v1.** The `Effect` vocabulary excludes granting/
+>   destroying items, forging ownership, ending the campaign (victory conditions own
+>   win/lose), spawning mobs (mob authoring owns that), and adding new `Status`
+>   values (the `Status` enum stays fixed; mechanics influence afflictions only
+>   indirectly via the existing stat-derivation).
+> - **No second transformer beyond combat in v1.** The taxonomy leaves room for
+>   `modifyMitigation` / `modifyLootRoll` / `modifyEncounterChance`, but only
+>   `modifyDamage` ships now.
+> - **No unified single-damage-pipeline refactor.** Routing *all* damage (normal
+>   attacks included) through one effect-mediated chokepoint is a real engine
+>   improvement but a separable follow-up spec; this design stays compatible with it.
+> - **No mob-death / encounter-spawn hooks.** Those stay in mob authoring. (If they
+>   are not fully expressible there today, that is a separate gap, out of scope here.)
+> - **No hard determinism sandbox.** Purity is a *contract* (like conditions/scenes),
+>   enforced by giving hooks everything they need on `h`, documentation, and the
+>   existing ambient-randomness lint rule — not a runtime jail.
+> - **No mid-play opt-in mutation.** The mechanic set is static config fixed at
+>   authoring, like `rng` and the condition lists.
+
+#### Authoring example
+
+The following condensed example is distilled from the `describe("Custom mechanics", …)`
+integration test (`src/integration.test.ts`), which is the ground-truth reference.
+
+```ts
+// Imports are repo-relative: the engine has no barrel export — import directly from src/lib/…
+import type { JsonObject, Mechanic } from "./lib/mechanics/mechanic";
+import { defineRegistry } from "./lib/authoring/registry";
+import { authorTemplate } from "./lib/authoring/template-builder";
+import { startSession } from "./lib/authoring/orchestration";
+
+// 1. Typed state for the doom-clock mechanic
+interface DoomState extends JsonObject {
+  doom: number;
+  doomAt: number;
+}
+
+// 2. Doom-clock: increments `doom` each round; emits a cue at the threshold
+const doomMechanic: Mechanic<DoomState, { doomAt: number }> = {
+  initialState: (cfg) => ({ doom: 0, doomAt: cfg.doomAt }),
+  onRoundEnd(h) {
+    h.state.doom += 1;
+    const roll = h.roll(6);          // uses injected rng → deterministic
+    if (h.state.doom >= h.state.doomAt) {
+      return [{ kind: "cue", cue: { text: `Doom strikes! (roll: ${roll})` } }];
+    }
+  },
+};
+
+// 3. Fire-ward: if the damage target has the "ward" item equipped, zero the hit
+//    and halt the transformer chain (no later mechanic sees the damage)
+const fireWardMechanic: Mechanic<JsonObject, void> = {
+  initialState: () => ({}),
+  modifyDamage(d, h) {
+    const target = h.view.party.find((p) => p.id === d.target);
+    if (target?.hasEquipped("ward")) {       // "ward" is the item's behaviorKey
+      return { value: 0, final: true };      // lock + halt
+    }
+    return d.amount;                         // pass through unchanged
+  },
+};
+
+// 4. Register and opt in (order = precedence; fire-ward runs before doom)
+const reg = defineRegistry({
+  items:     { ward: () => makeWard() },
+  mechanics: { "fire-ward": fireWardMechanic, doom: doomMechanic },
+});
+
+const campaign = startSession(
+  authorTemplate("Crypt", reg, { maxRounds: 10 })
+    .room("start", { description: "A cold crypt." })
+    .startRoom("start")
+    .useMechanic("fire-ward")              // opt in; runs first
+    .useMechanic("doom", { doomAt: 3 }),   // opt in; runs second
+  { players: [{ name: "Hero", stats: { … }, archetype: "scout" }], gm: 0 },
+);
+```
+
+After round 3 (`doomAt: 3`) the doom-clock emits its cue. When the Hero has the ward
+equipped and takes damage, `modifyDamage` returns `{ value: 0, final: true }` — the
+hit is zeroed and no further transformer runs. After a serialize/hydrate cycle the
+doom counter is preserved (`snap.campaign.mechanics` contains `{ key: "doom", state:
+{ doom: 2, doomAt: 3 } }`) and the mechanic continues firing from the restored state.
+
 ### Mob encounters & loot
 
 #### Mob origin

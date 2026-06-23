@@ -13,7 +13,7 @@ import type { ActionHistoryEntry } from "./history";
 import { StatType, type Stats } from "./stats";
 
 import type { CraftingRecipe, RecipeId } from "../crafting";
-import { makeCampaign, makeStats } from "../../test-utils";
+import { makeCampaign, makeStats, assignNeutralArchetype } from "../../test-utils";
 import { Campaign } from "../campaign";
 import { PlayerCharacter } from "./player-character";
 import { Room } from "../room";
@@ -21,6 +21,8 @@ import { MaterialCache } from "../material-cache";
 import type { ExitsArg } from "../../test-utils";
 import { EMIT_CUE } from "../presentation";
 import type { PresentationCue } from "../presentation";
+import { ADJUST_STAT } from "../mechanics/symbols";
+import type { LiveMechanic } from "../mechanics/mechanic";
 
 // ---------------------------------------------------------------------------
 // Test doubles
@@ -2227,6 +2229,44 @@ describe("Character", () => {
       // suppressed, and since the net state is lit→lit, no cue is emitted.
       hero.placeLight(torch);
       expect(cues.some((c) => c.kind === "visibility")).toBe(false);
+    });
+  });
+
+  describe("ADJUST_STAT", () => {
+    it("floors a stat at 0 and reconciles", () => {
+      const c = new Character(makeCampaign(), "Hero", makeStats());
+      const before = c.effectiveStat(StatType.Sanity);
+      c[ADJUST_STAT](StatType.Sanity, -(before + 5));
+      expect(c.effectiveStat(StatType.Sanity)).toBe(0); // floored, never negative
+    });
+  });
+
+  describe("useMechanicAction", () => {
+    it("runs the verb, applies effects, and ticks the action budget", () => {
+      // The mechanic shout returns a no-op heal so the applier exercises the path
+      // without needing a real target id at definition time. The actor id is
+      // injected via the hook ctx at run time.
+      const mechanic: LiveMechanic = {
+        key: "rally",
+        mechanic: {
+          initialState: () => ({}),
+          actions: {
+            shout: {
+              run: (h) => [{ kind: "heal" as const, target: h.actor.id, amount: 0 }],
+            },
+          },
+        },
+        state: {},
+      };
+      const campaign = new Campaign("Test", 100, [], { mechanics: [mechanic] });
+      const player = new PlayerCharacter(campaign, "Hero", makeStats());
+      player.joinCampaign();
+      assignNeutralArchetype(campaign, player);
+      campaign.gm = player;
+      campaign.beginCampaign();
+      const before = (player as unknown as { actionsThisRound: number }).actionsThisRound;
+      player.useMechanicAction("rally", "shout");
+      expect((player as unknown as { actionsThisRound: number }).actionsThisRound).toBe(before + 1);
     });
   });
 });

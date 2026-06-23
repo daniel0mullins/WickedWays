@@ -30,3 +30,13 @@ describe("CampaignRegistry conditions", () => {
     expect(() => reg.condition("missing")).toThrow(/No condition registered for key 'missing'\./);
   });
 });
+
+describe("CampaignRegistry mechanics", () => {
+  it("registers and resolves a mechanic by key; throws on miss", () => {
+    const reg = new CampaignRegistry();
+    const m = { initialState: () => ({}) };
+    reg.registerMechanic("doom", m);
+    expect(reg.mechanic("doom")).toBe(m);
+    expect(() => reg.mechanic("nope")).toThrow(/No mechanic registered/);
+  });
+});

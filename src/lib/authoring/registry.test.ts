@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { defineRegistry, type ItemKeyOf, type RecipeKeyOf } from "./registry";
+import { defineRegistry, type ItemKeyOf, type RecipeKeyOf, type MechanicKeyOf } from "./registry";
 import { Item } from "../inventory";
 import { StatType } from "../character/stats";
 import { SlotKind } from "../equipment";
@@ -41,5 +41,17 @@ describe("defineRegistry conditions", () => {
       conditions: { "all-bosses-down": (_c: ICampaign) => true },
     });
     expect(reg.condition("all-bosses-down")(/* campaign */ {} as ICampaign)).toBe(true);
+  });
+});
+
+describe("defineRegistry mechanics", () => {
+  it("threads mechanic keys into the phantom type", () => {
+    const reg = defineRegistry({
+      items: {},
+      mechanics: { "doom-clock": { initialState: () => ({ doom: 0 }) } },
+    });
+    // type-level: MechanicKeyOf<typeof reg> is "doom-clock"
+    const k: MechanicKeyOf<typeof reg> = "doom-clock";
+    expect(reg.mechanic(k)).toBeDefined();
   });
 });

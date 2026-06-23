@@ -22,6 +22,8 @@ import type { RecipeId } from "../crafting";
 import { SERIALIZE, HYDRATE } from "../serialization/symbols";
 import type { CharacterSnapshot } from "../serialization/types";
 import type { HydrateContext } from "../serialization/context";
+import { ADJUST_STAT, DISPATCH_TURN, DISPATCH_ACTION, TRANSFORM_DAMAGE, INVOKE_MECHANIC_ACTION } from "../mechanics/symbols";
+import type { IPlayerCharacter } from "./player-character";
 
 /** Unique identifier for a {@link Character}. */
 export type CharacterId = Brand<string, "CharacterId">;
@@ -119,6 +121,16 @@ export interface ICharacter extends IItemHolder {
   startTurn: () => void;
   /** Applies damage to a stat after mitigation, updating status conditions. */
   takeDamage: (attackStrength: number, attackStat?: StatType) => void;
+  /**
+   * Invokes a named custom action on an enabled mechanic (budgeted, status-gated).
+   * Routes through `Campaign[INVOKE_MECHANIC_ACTION]`. v1 treats every custom action
+   * as cost 1 via the standard budget path; the `cost` field on {@link CustomAction}
+   * is accepted by the type and reserved for a future enhancement.
+   *
+   * @param mechanicKey - Registry key of the target mechanic.
+   * @param actionKey   - The action to invoke on that mechanic (must be in its `actions` map).
+   */
+  useMechanicAction: (mechanicKey: string, actionKey: string) => void;
   /** Restores a damaged, durability-bearing held item to full for a proportional material cost (free). */
   repair: (item: IItem) => void;
   /** The character's currently filled equipment slots (named slot → item). */
@@ -147,6 +159,12 @@ export interface ICharacter extends IItemHolder {
    */
   effectiveStat: (stat: StatType) => number;
 
+  /**
+   * Mechanics seam: apply a raw, unmitigated delta to a base stat, floored at 0.
+   * The ONLY mechanic-facing stat mutator; magnitudes are pre-clamped by the applier.
+   * Unforgeable (symbol-keyed).
+   */
+  [ADJUST_STAT]: (stat: StatType, delta: number) => void;
   /** Grants timed status immunity; engine-internal (item Use path only). */
   [GRANT_IMMUNITY]: (statuses: Status[], turns: number) => void;
   /** Consumes an item for the Use path, gating suppressed; engine-internal. */
@@ -318,6 +336,16 @@ export class Character implements ICharacter {
     this.#afflictions.grantImmunity(statuses, turns);
   }
 
+  /**
+   * Mechanics seam: apply a raw, unmitigated delta to a base stat, floored at 0,
+   * then reconcile afflictions. The ONLY mechanic-facing stat mutator; magnitudes
+   * are pre-clamped by the applier. Unforgeable (symbol-keyed).
+   */
+  [ADJUST_STAT](stat: StatType, delta: number): void {
+    this.stats[stat] = Math.max(0, this.stats[stat] + delta);
+    this.#reconcile();
+  }
+
   // Set while a gated action is mid-flight so a nested same-character gated call
   // (escape -> move, loot -> add/remove, use -> remove) doesn't re-gate/re-roll.
   #suppressGate = false;
@@ -470,6 +498,7 @@ export class Character implements ICharacter {
 
     this.isActionMap.set(this.addToInventory, true);
     this.isActionMap.set(this.removeFromInventory, true);
+    this.isActionMap.set(this.useMechanicAction, true);
   }
 
   /**
@@ -496,8 +525,10 @@ export class Character implements ICharacter {
       sound: this.#cueSoundOverride ?? this.#presentation?.sound,
     });
 
-    if (this.isActionMap.get(callingFn)) {
+    const budgeted = this.isActionMap.get(callingFn) === true;
+    if (budgeted) {
       this.actionsThisRound = this.actionsThisRound + 1;
+      this.campaign[DISPATCH_ACTION](detail, this as unknown as IPlayerCharacter);
     }
     if (this.actionsThisRound === this.actionsPerRound) {
       this.endTurn();
@@ -895,7 +926,13 @@ export class Character implements ICharacter {
       this.lightAverse && this.#currentRoom?.isLit ? LIGHT_VULNERABILITY : 1;
     const finalAttackStrength = mitigatedStrength * damageMultiplier * lightMultiplier;
 
-    this.stats[attackStat] = this.stats[attackStat] - finalAttackStrength;
+    const dealt = this.campaign[TRANSFORM_DAMAGE]({
+      amount: finalAttackStrength,
+      target: this.id,
+      stat: attackStat,
+      source: undefined,
+    });
+    this.stats[attackStat] = this.stats[attackStat] - dealt;
 
     // Each contributing armor piece wears for the blow it helped absorb.
     armor.forEach((piece) => {
@@ -908,7 +945,7 @@ export class Character implements ICharacter {
     this.#reconcile();
     this.recordAction(this.takeDamage, {
       kind: "takeDamage",
-      amount: finalAttackStrength,
+      amount: dealt,
       stat: attackStat,
     });
   }
@@ -978,6 +1015,7 @@ export class Character implements ICharacter {
   endTurn() {
     this.events.onTurnEnd();
     this.#reconcile();
+    this.campaign[DISPATCH_TURN]("end", this as unknown as IPlayerCharacter);
   }
 
   /**
@@ -991,6 +1029,22 @@ export class Character implements ICharacter {
       this.#floorAndSnapshot(),
       this.#passiveImmunities(),
     );
+    this.campaign[DISPATCH_TURN]("start", this as unknown as IPlayerCharacter);
+  }
+
+  /**
+   * Invokes a named custom action on an enabled mechanic (budgeted, status-gated).
+   * v1 treats every custom action as cost 1 via the standard budget path; the
+   * `cost` field on `CustomAction` is accepted by the type and reserved for a
+   * future enhancement.
+   *
+   * @param mechanicKey - Registry key of the target mechanic.
+   * @param actionKey - The action to invoke on that mechanic.
+   */
+  useMechanicAction(mechanicKey: string, actionKey: string): void {
+    if (!this.attemptAction(this.useMechanicAction, false)) return;
+    this.campaign[INVOKE_MECHANIC_ACTION](mechanicKey, actionKey, this as unknown as IPlayerCharacter);
+    this.recordAction(this.useMechanicAction, { kind: "mechanicAction", mechanic: mechanicKey, action: actionKey });
   }
 
   // ---------------------------------------------------------------------------

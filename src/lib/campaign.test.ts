@@ -4,10 +4,11 @@ import { Campaign } from "./campaign";
 import type { IPlayerCharacter } from "./character/player-character";
 import type { Archetype, ArchetypeId } from "./archetype";
 import { ProceduralViolation } from "./util";
-import { DEPOSIT_MATERIALS } from "./inventory";
+import { DEPOSIT_MATERIALS, Item } from "./inventory";
 import type { CraftingRecipe, RecipeId } from "./crafting";
 import type { IItem } from "./inventory";
 import { Mob } from "./character/mob";
+import { EquipmentSlot, SlotKind } from "./equipment";
 import { Room } from "./room";
 import { type Formation } from "./encounter-table";
 import { createKey } from "./inventory";
@@ -18,6 +19,11 @@ import type { PresentationCue } from "./presentation";
 import { RECORD_ENCOUNTER } from "./codex";
 import type { ICharacter } from "./character/character";
 import type { IRoom } from "./room";
+import { DISPATCH_TURN, FIND_CHARACTER, TRANSFORM_DAMAGE } from "./mechanics/symbols";
+import type { LiveMechanic } from "./mechanics/mechanic";
+import { PlayerCharacter } from "./character/player-character";
+import { assignNeutralArchetype } from "../test-utils";
+import { StatType } from "./character/stats";
 
 // `Campaign` only stores players and compares them by identity, so distinct
 // stub objects cast to `IPlayerCharacter` are enough (WeakMap needs objects).
@@ -747,6 +753,132 @@ describe("Campaign", () => {
         campaign[EMIT_CUE]({ kind: "encounter", mob: { id: "m", name: "M" }, room: { id: "r", name: "R" } }),
       ).not.toThrow();
       expect(seen).toHaveLength(1);
+    });
+  });
+
+  describe("FIND_CHARACTER", () => {
+    it("resolves a party member by id and throws otherwise", () => {
+      const { campaign, party } = makeCampaign(1);
+      const player = party[0]!;
+      expect(campaign[FIND_CHARACTER](player.id)).toBe(player);
+      expect(() => campaign[FIND_CHARACTER]("nope" as never)).toThrow(/No party character/);
+    });
+  });
+
+  describe("custom mechanics dispatch", () => {
+    function makeStartedCampaignWithMechanics(mechanics: LiveMechanic[]) {
+      const campaign = new Campaign("Test", 100, [], { mechanics });
+      const player = new PlayerCharacter(campaign, "Hero", makeStats());
+      player.joinCampaign();
+      assignNeutralArchetype(campaign, player);
+      campaign.gm = player;
+      campaign.beginCampaign();
+      return { campaign, player };
+    }
+
+    it("fires onRoundEnd reducers before outcome resolution", () => {
+      const state = { n: 0 };
+      const mechanic: LiveMechanic = {
+        key: "doom",
+        mechanic: {
+          initialState: () => ({ n: 0 }),
+          onRoundEnd: (h) => {
+            (h.state as typeof state).n += 1;
+            return [{ kind: "cue" as const, cue: { text: `n=${(h.state as typeof state).n}` } }];
+          },
+        },
+        state,
+      };
+      const { campaign } = makeStartedCampaignWithMechanics([mechanic]);
+      const cues: PresentationCue[] = [];
+      campaign.onCue((c) => cues.push(c));
+
+      // Mark the only party member as acted and end the round
+      campaign.nextPlayer();
+
+      expect(cues).toContainEqual({ kind: "mechanic", cue: { text: "n=1" } });
+    });
+
+    it("TRANSFORM_DAMAGE applies a ward final short-circuit", () => {
+      const mechanic: LiveMechanic = {
+        key: "ward",
+        mechanic: {
+          initialState: () => ({}),
+          modifyDamage: () => ({ value: 0, final: true }),
+        },
+        state: {},
+      };
+      const { campaign, player } = makeStartedCampaignWithMechanics([mechanic]);
+      expect(
+        campaign[TRANSFORM_DAMAGE]({ amount: 10, target: player.id, stat: StatType.Health, source: undefined }),
+      ).toBe(0);
+    });
+
+    it("no-ops when #mechanics is empty (preserves existing behavior)", () => {
+      const { campaign, player: _player } = makeStartedCampaignWithMechanics([]);
+      expect(
+        campaign[TRANSFORM_DAMAGE]({ amount: 7, target: _player.id, stat: StatType.Health, source: undefined }),
+      ).toBe(7);
+    });
+
+    it("hasEquipped returns true when a matching item is equipped", () => {
+      const mechanic: LiveMechanic = {
+        key: "ward-check",
+        mechanic: {
+          initialState: () => ({}),
+          onTurnStart: (ctx) =>
+            ctx.actor.hasEquipped("ward")
+              ? [{ kind: "cue" as const, cue: { text: "warded" } }]
+              : [],
+        },
+        state: {},
+      };
+      const { campaign, player } = makeStartedCampaignWithMechanics([mechanic]);
+      const noop = () => {};
+      const ward = new Item(
+        {
+          type: "armor",
+          recipe: { metal: 1 },
+          modifier: 0,
+          stat: StatType.Health,
+          name: "Ward Amulet",
+          slot: SlotKind.Torso,
+          behaviorKey: "ward",
+        },
+        { equippable: true, equipped: false, destroyable: true, usable: false },
+        { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+        { onPickUp: noop },
+      );
+      player.receiveItem(ward);
+      player.equip(ward, EquipmentSlot.Torso);
+      const cues: PresentationCue[] = [];
+      campaign.onCue((c) => cues.push(c));
+
+      campaign[DISPATCH_TURN]("start", player);
+
+      expect(cues).toContainEqual({ kind: "mechanic", cue: { text: "warded" } });
+    });
+
+    it("hasEquipped returns false when no matching item is equipped", () => {
+      const mechanic: LiveMechanic = {
+        key: "ward-check",
+        mechanic: {
+          initialState: () => ({}),
+          onTurnStart: (ctx) =>
+            ctx.actor.hasEquipped("ward")
+              ? [{ kind: "cue" as const, cue: { text: "warded" } }]
+              : [],
+        },
+        state: {},
+      };
+      const { campaign, player } = makeStartedCampaignWithMechanics([mechanic]);
+      // no ward equipped
+      const cues: PresentationCue[] = [];
+      campaign.onCue((c) => cues.push(c));
+
+      campaign[DISPATCH_TURN]("start", player);
+
+      expect(cues).not.toContainEqual({ kind: "mechanic", cue: { text: "warded" } });
     });
   });
 });

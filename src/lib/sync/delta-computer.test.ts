@@ -5,6 +5,10 @@ import { buildSerializableCampaign } from "../serialization/roundtrip.test-helpe
 import type { CampaignCoreSnapshot, CampaignSnapshot } from "../serialization/types";
 import { DEFAULT_CHAT_POLICY } from "../chat-policy";
 import { DEFAULT_AV_POLICY } from "../av-policy";
+import { Campaign } from "../campaign";
+import { PlayerCharacter } from "../character/player-character";
+import { makeStats, assignNeutralArchetype } from "../../test-utils";
+import type { LiveMechanic } from "../mechanics/mechanic";
 
 /** Minimal CampaignCoreSnapshot literal for hand-built snapshot tests. */
 function baseCore(): CampaignCoreSnapshot {
@@ -30,6 +34,7 @@ function baseCore(): CampaignCoreSnapshot {
     encounterTable: { baseChance: 0, visited: [], formations: [] },
     chatPolicy: { ...DEFAULT_CHAT_POLICY },
     avPolicy: { ...DEFAULT_AV_POLICY },
+    mechanics: [],
   };
 }
 
@@ -96,5 +101,49 @@ describe("DeltaComputer", () => {
     const after = { ...before, codex: [codexEntry] };
     const delta = new DeltaComputer().diff(before, after);
     expect(delta.campaignCore).toEqual({ core: campaign, codex: [codexEntry] });
+  });
+
+  it("mechanic-only state changes produce a campaignCore delta (snapshot decoupled from live state)", () => {
+    // Build a started campaign with a doom mechanic (mirrors makeStartedCampaignWithMechanics
+    // in campaign.test.ts, inline here to avoid cross-file coupling).
+    const mechanic: LiveMechanic = {
+      key: "doom",
+      mechanic: {
+        initialState: () => ({ n: 0 }),
+        onRoundEnd: (h) => {
+          (h.state as { n: number }).n += 1;
+        },
+      },
+      state: { n: 0 },
+    };
+    const campaign = new Campaign("Test", 100, [], { mechanics: [mechanic] });
+    const player = new PlayerCharacter(campaign, "Hero", makeStats());
+    player.joinCampaign();
+    assignNeutralArchetype(campaign, player);
+    campaign.gm = player;
+    campaign.beginCampaign();
+
+    // Take a snapshot BEFORE driving a round that mutates mechanic state.
+    const before = serializeCampaign(campaign);
+
+    // Drive a real round: mark the only party member as acted and end the round.
+    // onRoundEnd increments doom.n from 0 to 1.
+    campaign.nextPlayer();
+
+    // Take the AFTER snapshot.
+    const after = serializeCampaign(campaign);
+
+    // The BEFORE snapshot must be decoupled — doom.n must still be 0.
+    const beforeMechanic = before.campaign.mechanics.find((m) => m.key === "doom");
+    expect(beforeMechanic?.state).toEqual({ n: 0 });
+
+    // The AFTER snapshot reflects the mutation.
+    const afterMechanic = after.campaign.mechanics.find((m) => m.key === "doom");
+    expect(afterMechanic?.state).toEqual({ n: 1 });
+
+    // DeltaComputer must detect a campaignCore change (not an empty delta).
+    const delta = new DeltaComputer().diff(before, after);
+    expect(delta.campaignCore).toBeDefined();
+    expect(delta.campaignCore?.core.mechanics).toContainEqual({ key: "doom", state: { n: 1 } });
   });
 });

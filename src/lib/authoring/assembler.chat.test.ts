@@ -10,7 +10,7 @@ const registry = defineRegistry({ items: {} });
 const base: CampaignTemplateDescription = {
   title: "T", opts: {}, archetypes: [], rooms: [{ name: "R", description: "d" }],
   startRoom: "R", exits: [], mobs: [], loot: [], caches: [], recipes: [],
-  materials: [], winConditions: [], loseConditions: [],
+  materials: [], winConditions: [], loseConditions: [], mechanics: [],
 };
 
 describe("assemble() chat policy", () => {

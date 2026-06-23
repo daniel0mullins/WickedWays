@@ -15,7 +15,8 @@ export type ActionHistoryEntry =
   | { kind: "drop"; round: number; items: { id: ItemId; name: string }[] }
   | { kind: "escape"; round: number; success: boolean }
   | { kind: "takeDamage"; round: number; amount: number; stat: StatType }
-  | { kind: "fumble"; round: number; action: string };
+  | { kind: "fumble"; round: number; action: string }
+  | { kind: "mechanicAction"; round: number; mechanic: string; action: string };
 
 // The entry minus `round`; `round` is stamped by Character.recordAction.
 type DistributiveOmit<T, K extends keyof T> = T extends unknown
@@ -52,5 +53,7 @@ export function describeAction(entry: ActionHistoryEntry): string {
       return `took ${entry.amount} ${entry.stat} damage`;
     case "fumble":
       return `fumbled ${entry.action}`;
+    case "mechanicAction":
+      return `used ${entry.mechanic}.${entry.action}`;
   }
 }
