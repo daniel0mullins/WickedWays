@@ -95,8 +95,9 @@ throws.
   campaign's base encounter chance. `Room.placeMob` seats a mob as a room-attached resident
   (origin `"room"`), enabling key-item drops on defeat. Entering or exiting a room fires any
   [`Scene`](src/lib/scene.ts) registered for that phase.
-- A room's `exits` are **optional at construction** (the argument defaults to none); a room
-  authored without exits is wired up later by `buildMap`.
+- A room's `loot` and `exits` are **optional at construction** (both default to none). Loot
+  containers can be added or removed afterwards with `Room.addLoot` / `Room.removeLoot`, and a
+  room authored without exits is wired up later by `buildMap`.
 - [`buildMap(rooms, options)`](src/utils/build-map.ts) wires a list of rooms into a connected
   dungeon via a randomized **spanning tree** (every room reachable, `n - 1` edges). Exits are
   bidirectional (north↔south, etc.), a room is never connected to itself, and no room exceeds

@@ -91,6 +91,12 @@ describe("Room", () => {
       expect(room.loot.get(second.id)).toBe(second);
     });
 
+    it("defaults to no loot when the option is omitted", () => {
+      const room = new Room({ name: "A Dim Room", description: "a dim room" });
+
+      expect(room.loot.size).toBe(0);
+    });
+
     it("keys the exits map by direction", () => {
       const north = makeRoom();
       const room = makeRoom([], { north });
@@ -115,6 +121,44 @@ describe("Room", () => {
 
     it("defaults to no material caches", () => {
       expect(makeRoom().materials.size).toBe(0);
+    });
+  });
+
+  describe("addLoot / removeLoot", () => {
+    it("adds a loot container keyed by its id", () => {
+      const room = makeRoom();
+      const chest = makeLoot();
+
+      room.addLoot(chest);
+
+      expect(room.loot.get(chest.id)).toBe(chest);
+    });
+
+    it("replaces a container already present under the same id", () => {
+      const room = makeRoom();
+      const chest = makeLoot();
+      room.addLoot(chest);
+      const replacement = makeLoot(chest.id);
+
+      room.addLoot(replacement);
+
+      expect(room.loot.size).toBe(1);
+      expect(room.loot.get(chest.id)).toBe(replacement);
+    });
+
+    it("removes the container with the given id", () => {
+      const chest = makeLoot();
+      const room = makeRoom([chest]);
+
+      room.removeLoot(chest.id);
+
+      expect(room.loot.has(chest.id)).toBe(false);
+    });
+
+    it("is a no-op when removing an id that is not present", () => {
+      const room = makeRoom();
+
+      expect(() => room.removeLoot("missing" as LootId)).not.toThrow();
     });
   });
 

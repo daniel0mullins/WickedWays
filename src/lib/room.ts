@@ -69,6 +69,10 @@ export interface IRoom {
   registerScene: (scene: IScene) => void;
   /** Removes the exit in `direction`, if any. */
   removeExit: (direction: Direction) => void;
+  /** Adds a loot container to the room (keyed by its id; replaces any with the same id). */
+  addLoot: (loot: ILoot) => void;
+  /** Removes the loot container with `id` from the room, if present. */
+  removeLoot: (id: LootId) => void;
   /** Seats `mob` as a room-attached resident (origin `"room"`). */
   placeMob: (mob: IMob) => void;
   /** Optional presentation metadata (image/sound), or `undefined` if none. */
@@ -94,8 +98,8 @@ export interface RoomOptions {
   name: string;
   /** Flavour text shown to players. */
   description: string;
-  /** Loot containers initially present in the room. */
-  loot: ILoot[];
+  /** Loot containers initially present in the room. Defaults to none. */
+  loot?: ILoot[];
   /**
    * Initial exits keyed by direction. Optional; defaults to none, leaving the
    * room to be connected later (e.g. by `buildMap`).
@@ -199,7 +203,7 @@ export class Room implements IRoom {
     const {
       name,
       description,
-      loot,
+      loot = [],
       exits = {},
       materials = [],
       spawnModifier = 1,
@@ -281,6 +285,19 @@ export class Room implements IRoom {
   /** Removes the exit in `direction`, if one exists. */
   removeExit(direction: Direction) {
     this.exits.delete(direction);
+  }
+
+  /**
+   * Adds a loot container to the room, keyed by its id. A container already
+   * present under the same id is replaced.
+   */
+  addLoot(loot: ILoot) {
+    this.loot.set(loot.id, loot);
+  }
+
+  /** Removes the loot container with `id` from the room, if present. */
+  removeLoot(id: LootId) {
+    this.loot.delete(id);
   }
 
   /**
