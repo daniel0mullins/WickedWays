@@ -75,7 +75,7 @@ export const ItemAction = {
  * constructed. The `Item` wraps these and fires the matching {@link ItemEvents}
  * hook after each runs.
  */
-type ItemActions = {
+export type ItemActions = {
   [ItemAction.PickUp]: ItemActionEvent;
   [ItemAction.Equip]: ItemActionEvent;
   [ItemAction.Unequip]: ItemActionEvent;
@@ -88,7 +88,7 @@ type ItemActions = {
  * Optional observer hooks fired after the corresponding {@link ItemActions}
  * behaviour runs. Only `onPickUp` is required.
  */
-type ItemEvents = {
+export type ItemEvents = {
   onPickUp: ItemActionEvent;
   onEquip?: ItemActionEvent;
   onUnequip?: ItemActionEvent;
@@ -98,7 +98,7 @@ type ItemEvents = {
 };
 
 /** Mutable flags describing what may currently be done with an item. */
-type ItemProperties = {
+export type ItemProperties = {
   equippable: boolean;
   equipped: boolean;
   destroyable: boolean;
@@ -273,6 +273,43 @@ export interface IItem {
 }
 
 /**
+ * The immutable identity of an item, supplied to the {@link Item} constructor:
+ * what kind of thing it is, what crafted it, and its optional behavioural traits
+ * (durability, equip slot, light, immunities, serialization key, …).
+ */
+export interface ItemDescriptor {
+  type: ItemType;
+  recipe: Recipe;
+  modifier: number;
+  stat: StatType;
+  name: string;
+  keyCode?: string;
+  consumeOnUse?: boolean;
+  teaches?: CraftingRecipe;
+  immunities?: Status[];
+  grantsImmunity?: { statuses: Status[]; turns: number };
+  maxDurability?: number;
+  durability?: number;
+  slot?: SlotKind;
+  twoHanded?: boolean;
+  emitsLight?: boolean;
+  presentation?: Presentation;
+  behaviorKey?: string;
+}
+
+/** Constructor options for an {@link Item}. */
+export interface ItemOptions {
+  /** Immutable descriptor (identity, type, durability, slot, etc.). */
+  descriptor: ItemDescriptor;
+  /** Initial mutable flags (equippable, equipped, …). */
+  properties: ItemProperties;
+  /** Core behaviour for each interaction; wrapped on construction. */
+  actions: ItemActions;
+  /** Observer hooks fired after the matching action runs. */
+  events: ItemEvents;
+}
+
+/**
  * Default {@link IItem} implementation.
  *
  * The constructor wraps the caller-supplied {@link ItemActions} so that each
@@ -403,29 +440,31 @@ export class Item implements IItem {
   }
 
   /**
-   * @param descriptor - The item's intrinsic data.
-   * @param descriptor.type - Item category (weapon, armor, …).
-   * @param descriptor.recipe - Component makeup used for crafting/destruction.
-   * @param descriptor.modifier - Strength applied when the item affects `stat`.
-   * @param descriptor.stat - The {@link StatType} this item acts on.
-   * @param descriptor.name - Display name.
-   * @param descriptor.keyCode - Shared lock/gate code (keys only).
-   * @param descriptor.consumeOnUse - Whether using the key spends it (keys only).
-   * @param descriptor.teaches - Recipe this item imparts to the party when picked up.
-   * @param descriptor.maxDurability - Max durability for equipment that wears (optional).
-   * @param descriptor.durability - Starting durability; defaults to `maxDurability`.
-   * @param descriptor.slot - The {@link SlotKind} this item equips into (optional).
-   * @param descriptor.twoHanded - Weapons only: occupies both hands when equipped.
-   * @param descriptor.emitsLight - Light sources only: lights its room when active.
-   * @param descriptor.behaviorKey - Registry key used by the `CampaignRegistry` to
+   * @param opts - See {@link ItemOptions}.
+   * @param opts.descriptor - The item's intrinsic data.
+   * @param opts.descriptor.type - Item category (weapon, armor, …).
+   * @param opts.descriptor.recipe - Component makeup used for crafting/destruction.
+   * @param opts.descriptor.modifier - Strength applied when the item affects `stat`.
+   * @param opts.descriptor.stat - The {@link StatType} this item acts on.
+   * @param opts.descriptor.name - Display name.
+   * @param opts.descriptor.keyCode - Shared lock/gate code (keys only).
+   * @param opts.descriptor.consumeOnUse - Whether using the key spends it (keys only).
+   * @param opts.descriptor.teaches - Recipe this item imparts to the party when picked up.
+   * @param opts.descriptor.maxDurability - Max durability for equipment that wears (optional).
+   * @param opts.descriptor.durability - Starting durability; defaults to `maxDurability`.
+   * @param opts.descriptor.slot - The {@link SlotKind} this item equips into (optional).
+   * @param opts.descriptor.twoHanded - Weapons only: occupies both hands when equipped.
+   * @param opts.descriptor.emitsLight - Light sources only: lights its room when active.
+   * @param opts.descriptor.behaviorKey - Registry key used by the `CampaignRegistry` to
    *   restore this item's factory at deserialize time. Required for non-key items
    *   that must survive serialization; omit only for key items (`keyCode` set).
-   * @param properties - Initial mutable flags (equippable, equipped, …).
-   * @param actions - Core behaviour for each interaction; wrapped on construction.
-   * @param events - Observer hooks fired after the matching action runs.
+   * @param opts.properties - Initial mutable flags (equippable, equipped, …).
+   * @param opts.actions - Core behaviour for each interaction; wrapped on construction.
+   * @param opts.events - Observer hooks fired after the matching action runs.
    */
-  constructor(
-    {
+  constructor(opts: ItemOptions) {
+    const { descriptor, properties, actions, events } = opts;
+    const {
       type,
       recipe,
       modifier,
@@ -443,29 +482,7 @@ export class Item implements IItem {
       emitsLight,
       presentation,
       behaviorKey,
-    }: {
-      type: ItemType;
-      recipe: Recipe;
-      modifier: number;
-      stat: StatType;
-      name: string;
-      keyCode?: string;
-      consumeOnUse?: boolean;
-      teaches?: CraftingRecipe;
-      immunities?: Status[];
-      grantsImmunity?: { statuses: Status[]; turns: number };
-      maxDurability?: number;
-      durability?: number;
-      slot?: SlotKind;
-      twoHanded?: boolean;
-      emitsLight?: boolean;
-      presentation?: Presentation;
-      behaviorKey?: string;
-    },
-    properties: ItemProperties,
-    actions: ItemActions,
-    events: ItemEvents,
-  ) {
+    } = descriptor;
     this.id = uuid() as ItemId;
     this.name = name;
     this.type = type;
@@ -604,8 +621,8 @@ export function createKey({
   keyCode: string;
   consumeOnUse: boolean;
 }): Item {
-  return new Item(
-    {
+  return new Item({
+    descriptor: {
       type: ItemType.Key,
       // recipe/modifier/stat are required by the Item constructor but unused for keys.
       recipe: { item: 1 },
@@ -615,8 +632,8 @@ export function createKey({
       keyCode,
       consumeOnUse,
     },
-    { equippable: false, equipped: false, destroyable: false, usable: false },
-    {
+    properties: { equippable: false, equipped: false, destroyable: false, usable: false },
+    actions: {
       pickUp: () => {},
       equip: () => {},
       unequip: () => {},
@@ -624,8 +641,8 @@ export function createKey({
       use: () => {},
       destroy: () => null,
     },
-    { onPickUp: () => {} },
-  );
+    events: { onPickUp: () => {} },
+  });
 }
 
 /**

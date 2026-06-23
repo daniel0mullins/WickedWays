@@ -30,6 +30,15 @@ export const Directions = {
 export type Direction = (typeof Directions)[keyof typeof Directions];
 
 /**
+ * The exits a {@link Room} is constructed with: a partial map from direction to
+ * the adjacent room in that direction. Any subset of the eight compass
+ * directions is valid, including none — the constructor's `exits` argument is
+ * optional and defaults to empty, leaving the room to be wired later (e.g. via
+ * {@link Room.addExit} or `buildMap`).
+ */
+export type RoomExits = Partial<Record<Direction, IRoom>>;
+
+/**
  * A location in the game world. Rooms hold loot, track their occupants, connect
  * to other rooms via directional exits, and run {@link Scene}s as characters
  * enter or leave.
@@ -60,6 +69,10 @@ export interface IRoom {
   registerScene: (scene: IScene) => void;
   /** Removes the exit in `direction`, if any. */
   removeExit: (direction: Direction) => void;
+  /** Adds a loot container to the room (keyed by its id; replaces any with the same id). */
+  addLoot: (loot: ILoot) => void;
+  /** Removes the loot container with `id` from the room, if present. */
+  removeLoot: (id: LootId) => void;
   /** Seats `mob` as a room-attached resident (origin `"room"`). */
   placeMob: (mob: IMob) => void;
   /** Optional presentation metadata (image/sound), or `undefined` if none. */
@@ -74,6 +87,45 @@ export interface IRoom {
   [REMOVE_LIGHT_SOURCE](id: ItemId): void;
   /** Returns a plain-data snapshot of this room's state. See {@link SERIALIZE}. */
   [SERIALIZE](): RoomSnapshot;
+}
+
+/**
+ * Constructor options for {@link Room}. Follows the established `XOptions`
+ * pattern used for MaterialCache/Loot/Item/Character.
+ */
+export interface RoomOptions {
+  /** Display name of the room. */
+  name: string;
+  /** Flavour text shown to players. */
+  description: string;
+  /** Loot containers initially present in the room. Defaults to none. */
+  loot?: ILoot[];
+  /**
+   * Initial exits keyed by direction. Optional; defaults to none, leaving the
+   * room to be connected later (e.g. by `buildMap`).
+   */
+  exits?: RoomExits;
+  /** Material caches initially present in the room. Defaults to none. */
+  materials?: IMaterialCache[];
+  /**
+   * Multiplier on the campaign's base encounter chance (default 1; 0 = never
+   * spawns).
+   */
+  spawnModifier?: number;
+  /**
+   * Resident mobs seated immediately via {@link Room.placeMob} (origin
+   * `"room"`). Defaults to none.
+   */
+  mobs?: IMob[];
+  /** Optional presentation metadata (image/sound). */
+  presentation?: Presentation;
+  /**
+   * Author-time darkness flag (default `false`); a dark room conceals its
+   * contents until lit.
+   */
+  dark?: boolean;
+  /** Light sources initially present in the room (keyed by item id). Defaults to none. */
+  lightSources?: IItem[];
 }
 
 /**
@@ -144,29 +196,22 @@ export class Room implements IRoom {
   }
 
   /**
-   * @param name - Display name of the room.
-   * @param description - Flavour text shown to players.
-   * @param loot - Loot containers initially present in the room.
-   * @param exits - Initial exits keyed by direction.
-   * @param materials - Material caches initially present in the room.
-   * @param spawnModifier - Multiplier on the campaign's base encounter chance (default 1; 0 = never spawns).
-   * @param mobs - Resident mobs seated immediately via {@link Room.placeMob} (origin `"room"`).
-   * @param presentation - Optional presentation metadata (image/sound).
-   * @param dark - Author-time darkness flag (default `false`); a dark room conceals its contents until lit.
-   * @param lightSources - Light sources initially present in the room (keyed by item id).
+   * Options for constructing a {@link Room}. Mirrors the established
+   * `XOptions` pattern used elsewhere (MaterialCache/Loot/Item/Character).
    */
-  constructor(
-    name: string,
-    description: string,
-    loot: ILoot[],
-    exits: Record<Direction, IRoom>,
-    materials: IMaterialCache[] = [],
-    spawnModifier: number = 1,
-    mobs: IMob[] = [],
-    presentation?: Presentation,
-    dark: boolean = false,
-    lightSources: IItem[] = [],
-  ) {
+  constructor(opts: RoomOptions) {
+    const {
+      name,
+      description,
+      loot = [],
+      exits = {},
+      materials = [],
+      spawnModifier = 1,
+      mobs = [],
+      presentation,
+      dark = false,
+      lightSources = [],
+    } = opts;
     this.id = generateId<RoomId>();
     this.name = name;
     this.description = description;
@@ -185,6 +230,7 @@ export class Room implements IRoom {
 
     this.exits = new Map<Direction, IRoom>();
     for (const [direction, room] of Object.entries(exits)) {
+      if (room === undefined) continue;
       this.exits.set(direction as Direction, room);
     }
 
@@ -239,6 +285,19 @@ export class Room implements IRoom {
   /** Removes the exit in `direction`, if one exists. */
   removeExit(direction: Direction) {
     this.exits.delete(direction);
+  }
+
+  /**
+   * Adds a loot container to the room, keyed by its id. A container already
+   * present under the same id is replaced.
+   */
+  addLoot(loot: ILoot) {
+    this.loot.set(loot.id, loot);
+  }
+
+  /** Removes the loot container with `id` from the room, if present. */
+  removeLoot(id: LootId) {
+    this.loot.delete(id);
   }
 
   /**
@@ -310,7 +369,13 @@ export class Room implements IRoom {
  * `HydrateContext` before running pass 2 ({@link Room[HYDRATE]}).
  */
 export function constructBareRoom(data: RoomSnapshot): Room {
-  const room = new Room(data.name, data.description, [], {} as Record<Direction, IRoom>, [], data.spawnModifier, [], undefined, data.dark);
+  const room = new Room({
+    name: data.name,
+    description: data.description,
+    loot: [],
+    spawnModifier: data.spawnModifier,
+    dark: data.dark,
+  });
   room.id = data.id as RoomId;
   return room;
 }

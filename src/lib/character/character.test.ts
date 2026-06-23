@@ -18,7 +18,6 @@ import { Campaign } from "../campaign";
 import { PlayerCharacter } from "./player-character";
 import { Room } from "../room";
 import { MaterialCache } from "../material-cache";
-import type { ExitsArg } from "../../test-utils";
 import { EMIT_CUE } from "../presentation";
 import type { PresentationCue } from "../presentation";
 import { ADJUST_STAT } from "../mechanics/symbols";
@@ -78,7 +77,7 @@ function makeRoom(): IRoom {
   } as unknown as IRoom;
 }
 
-type ItemDescriptor = ConstructorParameters<typeof Item>[0];
+type ItemDescriptor = ConstructorParameters<typeof Item>[0]["descriptor"];
 function makeDurable(opts: {
   type?: ItemDescriptor["type"];
   stat?: StatType;
@@ -89,8 +88,8 @@ function makeDurable(opts: {
   equipped?: boolean;
 } = {}): Item {
   const noop = () => {};
-  return new Item(
-    {
+  return new Item({
+      descriptor: {
       type: opts.type ?? "weapon",
       recipe: opts.recipe ?? { metal: 1 },
       modifier: opts.modifier ?? 2,
@@ -99,10 +98,10 @@ function makeDurable(opts: {
       maxDurability: opts.maxDurability,
       durability: opts.durability,
     },
-    { equippable: true, equipped: opts.equipped ?? true, destroyable: true, usable: false },
-    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-    { onPickUp: noop },
-  );
+      properties: { equippable: true, equipped: opts.equipped ?? true, destroyable: true, usable: false },
+      actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+      events: { onPickUp: noop },
+    });
 }
 
 function makeGear(opts: {
@@ -120,8 +119,8 @@ function makeGear(opts: {
   maxDurability?: number;
 }): Item {
   const noop = () => {};
-  return new Item(
-    {
+  return new Item({
+      descriptor: {
       type: opts.type ?? "armor",
       recipe: { metal: 1 },
       modifier: opts.modifier ?? 1,
@@ -134,10 +133,10 @@ function makeGear(opts: {
       emitsLight: opts.emitsLight,
       maxDurability: opts.maxDurability,
     },
-    { equippable: opts.equippable ?? true, equipped: false, destroyable: true, usable: opts.usable ?? false },
-    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-    { onPickUp: noop },
-  );
+      properties: { equippable: opts.equippable ?? true, equipped: false, destroyable: true, usable: opts.usable ?? false },
+      actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+      events: { onPickUp: noop },
+    });
 }
 
 function makeCharacter(opts: {
@@ -146,14 +145,7 @@ function makeCharacter(opts: {
   actionsPerRound?: number;
   rng?: () => number;
 } = {}) {
-  return new Character(
-    makeCampaign(),
-    "Hero",
-    makeStats(opts.stats),
-    opts.inventorySlots,
-    opts.actionsPerRound,
-    { rng: opts.rng },
-  );
+  return new Character({ campaign: makeCampaign(), name: "Hero", stats: makeStats(opts.stats), inventorySlots: opts.inventorySlots, actionsPerRound: opts.actionsPerRound, rng: opts.rng });
 }
 
 // Builds a Hero on a real Campaign and wires the passed array up as a cue sink
@@ -162,8 +154,8 @@ function makeCharacter(opts: {
 // no-op makeCampaign stub) because its `[EMIT_CUE]` actually dispatches to
 // `onCue` handlers — mirroring the existing "action cues" tests.
 function makeCharacterWithCueSink(cues: PresentationCue[]): Character {
-  const campaign = new Campaign("Cues");
-  const hero = new Character(campaign, "Hero", makeStats());
+  const campaign = new Campaign({ title: "Cues" });
+  const hero = new Character({ campaign, name: "Hero", stats: makeStats() });
   campaign.onCue((cue) => cues.push(cue));
   return hero;
 }
@@ -176,7 +168,7 @@ describe("Character", () => {
   describe("constructor", () => {
     it("assigns a generated id and the provided name and stats", () => {
       const stats = makeStats({ [StatType.Health]: 7 });
-      const character = new Character(makeCampaign(), "Mira", stats);
+      const character = new Character({ campaign: makeCampaign(), name: "Mira", stats });
 
       expect(typeof character.id).toBe("string");
       expect(character.id.length).toBeGreaterThan(0);
@@ -186,7 +178,7 @@ describe("Character", () => {
 
     it("exposes the campaign passed to the constructor", () => {
       const campaign = makeCampaign();
-      const character = new Character(campaign, "Hero", makeStats());
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
 
       expect(character.campaign).toBe(campaign);
     });
@@ -252,7 +244,7 @@ describe("Character", () => {
     // Build a real authored-dark Room and co-locate the hero in it via the
     // engine-internal [PLACE] seam, which sets currentRoom + occupancy.
     function darkRoomWithHero() {
-      const room = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const room = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
       const hero = makeCharacter();
       hero[PLACE](room);
       return { room, hero };
@@ -970,17 +962,17 @@ describe("Character", () => {
 
   describe("addToInventory codex (items & keys)", () => {
     function makeSword(): Item {
-      return new Item(
-        { name: "Sword", type: "weapon", recipe: { metal: 1 }, modifier: 3, stat: StatType.Health, slot: SlotKind.Hand },
-        { equippable: true, equipped: false, destroyable: false, usable: false },
-        { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
-        { onPickUp: () => {} },
-      );
+      return new Item({
+      descriptor: { name: "Sword", type: "weapon", recipe: { metal: 1 }, modifier: 3, stat: StatType.Health, slot: SlotKind.Hand },
+      properties: { equippable: true, equipped: false, destroyable: false, usable: false },
+      actions: { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
+      events: { onPickUp: () => {} },
+    });
     }
 
     it("records a picked-up item, attributed to the party member", () => {
-      const campaign = new Campaign("Codex");
-      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Codex" });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       pc.joinCampaign();
 
       pc.addToInventory(makeSword());
@@ -993,8 +985,8 @@ describe("Character", () => {
     });
 
     it("records a picked-up key under the key kind, not the item kind", () => {
-      const campaign = new Campaign("Codex");
-      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Codex" });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       pc.joinCampaign();
       const key = createKey({ name: "Vault Key", keyCode: "vault", consumeOnUse: true });
 
@@ -1006,16 +998,16 @@ describe("Character", () => {
     });
 
     it("records a recipe taught by a picked-up item, attributed to the picker", () => {
-      const campaign = new Campaign("Codex");
-      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Codex" });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       pc.joinCampaign();
       const recipe = { id: "potion", materials: { healing: 1 }, create: () => makeSword() } as unknown as Parameters<typeof campaign.discoverRecipe>[0];
-      const scroll = new Item(
-        { name: "Scroll", type: "consumable", recipe: { metal: 1 }, modifier: 0, stat: StatType.Health, teaches: recipe },
-        { equippable: false, equipped: false, destroyable: false, usable: false },
-        { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
-        { onPickUp: () => {} },
-      );
+      const scroll = new Item({
+      descriptor: { name: "Scroll", type: "consumable", recipe: { metal: 1 }, modifier: 0, stat: StatType.Health, teaches: recipe },
+      properties: { equippable: false, equipped: false, destroyable: false, usable: false },
+      actions: { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
+      events: { onPickUp: () => {} },
+    });
 
       pc.addToInventory(scroll);
 
@@ -1027,20 +1019,20 @@ describe("Character", () => {
 
   describe("harvest", () => {
     function setup() {
-      const campaign = new Campaign("Materials");
-      const character = new Character(campaign, "Hero", makeStats());
-      const cache = new MaterialCache({ metal: 3, glass: 1 });
-      const room = new Room("Vault", "a vault", [], {} as ExitsArg, [cache]);
+      const campaign = new Campaign({ title: "Materials" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
+      const cache = new MaterialCache({ contents: { metal: 3, glass: 1 } });
+      const room = new Room({ name: "Vault", description: "a vault", loot: [], materials: [cache] });
       character.move(room);
       return { campaign, character, cache };
     }
 
     it("records harvested material kinds in the codex, attributed to a party member", () => {
-      const campaign = new Campaign("Materials");
-      const pc = new PlayerCharacter(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Materials" });
+      const pc = new PlayerCharacter({ campaign, name: "Hero" });
       pc.joinCampaign();
-      const cache = new MaterialCache({ metal: 3, glass: 1 });
-      const room = new Room("Vault", "a vault", [], {} as ExitsArg, [cache]);
+      const cache = new MaterialCache({ contents: { metal: 3, glass: 1 } });
+      const room = new Room({ name: "Vault", description: "a vault", loot: [], materials: [cache] });
       pc.move(room);
 
       pc.harvest(cache);
@@ -1069,14 +1061,14 @@ describe("Character", () => {
 
     it("throws when the cache is not in the current room", () => {
       const { character } = setup();
-      const stray = new MaterialCache({ metal: 9 });
+      const stray = new MaterialCache({ contents: { metal: 9 } });
 
       expect(() => character.harvest(stray)).toThrow(ProceduralViolation);
     });
 
     it("throws when the character is in no room", () => {
-      const character = new Character(new Campaign("Materials"), "Hero", makeStats());
-      const cache = new MaterialCache({ metal: 1 });
+      const character = new Character({ campaign: new Campaign({ title: "Materials" }), name: "Hero", stats: makeStats() });
+      const cache = new MaterialCache({ contents: { metal: 1 } });
 
       // move() was never called, so currentRoom is null.
       expect(() => character.harvest(cache)).toThrow(ProceduralViolation);
@@ -1092,11 +1084,11 @@ describe("Character", () => {
     });
 
     it("throws in an unlit room when the harvester cannot see in the dark", () => {
-      const campaign = new Campaign("Materials");
-      const character = new Character(campaign, "Hero", makeStats());
-      const cache = new MaterialCache({ metal: 3 });
+      const campaign = new Campaign({ title: "Materials" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
+      const cache = new MaterialCache({ contents: { metal: 3 } });
       // Authored-dark room holding the cache; co-locate via the [PLACE] seam.
-      const room = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [cache], 1, [], undefined, true);
+      const room = new Room({ name: "Cellar", description: "dark cellar", loot: [], materials: [cache], dark: true });
       character[PLACE](room);
 
       expect(room.isLit).toBe(false);
@@ -1105,10 +1097,10 @@ describe("Character", () => {
     });
 
     it("does not throw once the dark room is lit", () => {
-      const campaign = new Campaign("Materials");
-      const character = new Character(campaign, "Hero", makeStats());
-      const cache = new MaterialCache({ metal: 3 });
-      const room = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [cache], 1, [], undefined, true);
+      const campaign = new Campaign({ title: "Materials" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
+      const cache = new MaterialCache({ contents: { metal: 3 } });
+      const room = new Room({ name: "Cellar", description: "dark cellar", loot: [], materials: [cache], dark: true });
       character[PLACE](room);
       const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
       character.addToInventory(torch);
@@ -1122,8 +1114,8 @@ describe("Character", () => {
 
   describe("repair", () => {
     it("restores a damaged held item to full for a proportional, debited cost", () => {
-      const campaign = new Campaign("Repair");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Repair" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const weapon = makeDurable({ recipe: { metal: 4 }, maxDurability: 10, durability: 3 });
       character.inventory.items.push(weapon);
       campaign.claimMaterials("seed", { metal: 5 });
@@ -1136,8 +1128,8 @@ describe("Character", () => {
     });
 
     it("charges the full recipe to fully restore a broken item", () => {
-      const campaign = new Campaign("Repair");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Repair" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const weapon = makeDurable({ recipe: { metal: 4 }, maxDurability: 10, durability: 0 });
       character.inventory.items.push(weapon);
       campaign.claimMaterials("seed", { metal: 4 });
@@ -1150,8 +1142,8 @@ describe("Character", () => {
     });
 
     it("throws and spends nothing for an item the character is not holding", () => {
-      const campaign = new Campaign("Repair");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Repair" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const weapon = makeDurable({ recipe: { metal: 4 }, maxDurability: 10, durability: 3 });
       campaign.claimMaterials("seed", { metal: 5 });
 
@@ -1160,8 +1152,8 @@ describe("Character", () => {
     });
 
     it("throws for an item that has no durability", () => {
-      const campaign = new Campaign("Repair");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Repair" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const plain = makeDurable({ recipe: { metal: 1 } }); // no maxDurability
       character.inventory.items.push(plain);
 
@@ -1169,8 +1161,8 @@ describe("Character", () => {
     });
 
     it("throws for an item that is not damaged", () => {
-      const campaign = new Campaign("Repair");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Repair" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const weapon = makeDurable({ recipe: { metal: 4 }, maxDurability: 10 }); // full
       character.inventory.items.push(weapon);
 
@@ -1178,8 +1170,8 @@ describe("Character", () => {
     });
 
     it("throws and spends nothing when the pool cannot afford the cost", () => {
-      const campaign = new Campaign("Repair");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Repair" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const weapon = makeDurable({ recipe: { metal: 4 }, maxDurability: 10, durability: 0 });
       character.inventory.items.push(weapon);
       campaign.claimMaterials("seed", { metal: 1 }); // need 4
@@ -1190,8 +1182,8 @@ describe("Character", () => {
     });
 
     it("does not consume an action (records no history)", () => {
-      const campaign = new Campaign("Repair");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Repair" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const weapon = makeDurable({ recipe: { metal: 4 }, maxDurability: 10, durability: 3 });
       character.inventory.items.push(weapon);
       campaign.claimMaterials("seed", { metal: 5 });
@@ -1203,8 +1195,8 @@ describe("Character", () => {
     });
 
     it("debits each recipe component proportionally", () => {
-      const campaign = new Campaign("Repair");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Repair" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const weapon = makeDurable({
         recipe: { metal: 4, electronics: 2 },
         maxDurability: 10,
@@ -1221,8 +1213,8 @@ describe("Character", () => {
     });
 
     it("throws when asked to repair a key", () => {
-      const campaign = new Campaign("Repair");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Repair" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const key = createKey({ name: "Brass Key", keyCode: "brass", consumeOnUse: false });
       character.addToInventory(key);
 
@@ -1237,8 +1229,8 @@ describe("Character", () => {
         materials: { metal: 1 },
         create: () => ({ name: "Torch" }) as unknown as IItem,
       };
-      const campaign = new Campaign("Crafting");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Crafting" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
 
       character.addToInventory(makeTeachingItem(recipe));
 
@@ -1246,8 +1238,8 @@ describe("Character", () => {
     });
 
     it("discovers nothing for an item that teaches no recipe", () => {
-      const campaign = new Campaign("Crafting");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Crafting" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
 
       character.addToInventory(makeItem());
 
@@ -1257,8 +1249,8 @@ describe("Character", () => {
 
   describe("craft (item track)", () => {
     it("withdraws materials and places the crafted item in inventory", () => {
-      const campaign = new Campaign("Crafting");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Crafting" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const output = makeItem();
       const recipeId = "widget" as RecipeId;
       const recipe: CraftingRecipe = {
@@ -1277,8 +1269,8 @@ describe("Character", () => {
     });
 
     it("throws ProceduralViolation on an undiscovered recipe", () => {
-      const campaign = new Campaign("Crafting");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Crafting" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
 
       expect(() => character.craft("unknown-recipe" as RecipeId)).toThrow(
         new ProceduralViolation("Cannot craft an undiscovered recipe"),
@@ -1286,8 +1278,8 @@ describe("Character", () => {
     });
 
     it("throws and spends nothing when materials are insufficient", () => {
-      const campaign = new Campaign("Crafting");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Crafting" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const recipeId = "expensive-widget" as RecipeId;
       const recipe: CraftingRecipe = {
         id: recipeId,
@@ -1304,9 +1296,9 @@ describe("Character", () => {
     });
 
     it("throws and spends nothing when there is no inventory slot", () => {
-      const campaign = new Campaign("Crafting");
+      const campaign = new Campaign({ title: "Crafting" });
       // 0 inventory slots
-      const character = new Character(campaign, "Hero", makeStats(), 0);
+      const character = new Character({ campaign, name: "Hero", stats: makeStats(), inventorySlots: 0 });
       const recipeId = "widget" as RecipeId;
       const recipe: CraftingRecipe = {
         id: recipeId,
@@ -1322,8 +1314,8 @@ describe("Character", () => {
     });
 
     it("does not consume an action (records no history)", () => {
-      const campaign = new Campaign("Crafting");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Crafting" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const recipeId = "widget" as RecipeId;
       const recipe: CraftingRecipe = {
         id: recipeId,
@@ -1342,8 +1334,8 @@ describe("Character", () => {
 
   describe("craft (key track)", () => {
     it("consumes required keys and places the crafted key in the keyring", () => {
-      const campaign = new Campaign("Crafting");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Crafting" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const bronze1 = createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false });
       const bronze2 = createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false });
       character.addToInventory(bronze1);
@@ -1369,8 +1361,8 @@ describe("Character", () => {
     });
 
     it("throws and consumes nothing when a required key is missing", () => {
-      const campaign = new Campaign("Crafting");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Crafting" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       const bronze1 = createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false });
       character.addToInventory(bronze1);
 
@@ -1390,8 +1382,8 @@ describe("Character", () => {
     });
 
     it("combines duplicate key codes into a single total cost", () => {
-      const campaign = new Campaign("Crafting");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Crafting" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       character.addToInventory(
         createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false }),
       );
@@ -1417,8 +1409,8 @@ describe("Character", () => {
     });
 
     it("does not consume an action (records no history)", () => {
-      const campaign = new Campaign("Crafting");
-      const character = new Character(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Crafting" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
       character.addToInventory(
         createKey({ name: "Bronze Key", keyCode: "bronze", consumeOnUse: false }),
       );
@@ -1440,9 +1432,9 @@ describe("Character", () => {
 
   describe("party-wide crafting (seam)", () => {
     it("lets one member craft a recipe a different member discovered", () => {
-      const campaign = new Campaign("Crafting");
-      const finder = new Character(campaign, "Finder", makeStats());
-      const crafter = new Character(campaign, "Crafter", makeStats());
+      const campaign = new Campaign({ title: "Crafting" });
+      const finder = new Character({ campaign, name: "Finder", stats: makeStats() });
+      const crafter = new Character({ campaign, name: "Crafter", stats: makeStats() });
 
       const output = makeItem();
       const recipeId = "shared-widget" as RecipeId;
@@ -1501,11 +1493,7 @@ describe("Character", () => {
     });
 
     it("stamps each entry with the current campaign round", () => {
-      const character = new Character(
-        { round: 7, [EMIT_CUE]: () => {} } as unknown as ICampaign,
-        "Hero",
-        makeStats(),
-      );
+      const character = new Character({ campaign: { round: 7, [EMIT_CUE]: () => {} } as unknown as ICampaign, name: "Hero", stats: makeStats() });
       character.move(makeRoom());
       expect(character.history[0]?.round).toBe(7);
     });
@@ -1664,7 +1652,7 @@ describe("Character", () => {
 
   describe("equip", () => {
     function heroWith(...items: Item[]) {
-      const character = new Character(new Campaign("Equip"), "Hero", makeStats());
+      const character = new Character({ campaign: new Campaign({ title: "Equip" }), name: "Hero", stats: makeStats() });
       for (const item of items) character.inventory.items.push(item);
       return character;
     }
@@ -1815,7 +1803,7 @@ describe("Character", () => {
     });
 
     it("equipping via the item's own action still validates the slot (no bypass)", () => {
-      const hero = new Character(new Campaign("Equip"), "Hero", makeStats());
+      const hero = new Character({ campaign: new Campaign({ title: "Equip" }), name: "Hero", stats: makeStats() });
       const helm = makeGear({ type: "armor", slot: "head", name: "Helm" });
       hero.addToInventory(helm); // claims the item to the hero (sets its holder)
 
@@ -1881,15 +1869,8 @@ describe("Character", () => {
     });
 
     it("Confused fizzle on craft returns null, records a fumble, spends no materials", () => {
-      const campaign = new Campaign("Crafting");
-      const character = new Character(
-        campaign,
-        "Hero",
-        makeStats({ [StatType.Energy]: 0 }),
-        undefined,
-        undefined,
-        { rng: () => 0 },
-      );
+      const campaign = new Campaign({ title: "Crafting" });
+      const character = new Character({ campaign, name: "Hero", stats: makeStats({ [StatType.Energy]: 0 }), inventorySlots: undefined, actionsPerRound: undefined, rng: () => 0 });
       const recipeId = "widget" as RecipeId;
       const cost = { metal: 2 };
       const recipe: CraftingRecipe = {
@@ -1989,7 +1970,7 @@ describe("Character", () => {
     }
 
     function makeSpy(health: number) {
-      return new HookSpy(makeCampaign(), "Spy", makeStats({ [StatType.Health]: health }));
+      return new HookSpy({ campaign: makeCampaign(), name: "Spy", stats: makeStats({ [StatType.Health]: health }) });
     }
 
     it("fires once when KO newly latches", () => {
@@ -2046,10 +2027,8 @@ describe("Character", () => {
 
   describe("action cues", () => {
     it("emits an action cue when an action is recorded, resolving the actor's sound", () => {
-      const campaign = new Campaign("Cues");
-      const character = new Character(campaign, "Mira", makeStats(), 5, 3, {
-        presentation: { sound: "mira.ogg" },
-      });
+      const campaign = new Campaign({ title: "Cues" });
+      const character = new Character({ campaign, name: "Mira", stats: makeStats(), inventorySlots: 5, actionsPerRound: 3, presentation: { sound: "mira.ogg" } });
       const seen: PresentationCue[] = [];
       campaign.onCue((cue) => seen.push(cue));
 
@@ -2062,10 +2041,10 @@ describe("Character", () => {
     });
 
     it("falls back to the campaign default sound when the actor has none", () => {
-      const campaign = new Campaign("Cues", 100, [], { actionSounds: { move: "marching.ogg" } });
+      const campaign = new Campaign({ title: "Cues", maxRounds: 100, knownRecipes: [], actionSounds: { move: "marching.ogg" } });
       // No presentation on the character, so the cue carries no actor sound and
       // [EMIT_CUE] fills the campaign default for the action kind.
-      const character = new Character(campaign, "Mira", makeStats(), 5, 3);
+      const character = new Character({ campaign, name: "Mira", stats: makeStats(), inventorySlots: 5, actionsPerRound: 3 });
       const seen: PresentationCue[] = [];
       campaign.onCue((cue) => seen.push(cue));
 
@@ -2081,7 +2060,7 @@ describe("Character", () => {
     it("entering an unlit (dark) room emits { kind: 'visibility', lit: false }", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
-      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const darkRoom = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
       // The party-navigation path (move) is the cue-emitting path, not the [PLACE] seam.
       hero.move(darkRoom);
       expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: false }));
@@ -2090,7 +2069,7 @@ describe("Character", () => {
     it("entering a lit room emits no visibility cue", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
-      const litRoom = new Room("Hall", "lit hall", [], {} as ExitsArg); // not dark => isLit true
+      const litRoom = new Room({ name: "Hall", description: "lit hall", loot: [] }); // not dark => isLit true
       hero.move(litRoom);
       expect(cues.some((c) => c.kind === "visibility")).toBe(false);
     });
@@ -2098,7 +2077,7 @@ describe("Character", () => {
     it("[PLACE] (mob seating) into a dark room emits NO visibility cue", () => {
       const cues: PresentationCue[] = [];
       const actor = makeCharacterWithCueSink(cues);
-      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const darkRoom = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
       // The ungated placement seam (used to seat resident/spawned mobs) is party-silent.
       actor[PLACE](darkRoom);
       expect(cues.filter((c) => c.kind === "visibility").length).toBe(0);
@@ -2107,9 +2086,9 @@ describe("Character", () => {
     it("entering (via move) a dark room pre-seated with a resident mob emits EXACTLY ONE lit:false cue", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
-      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const darkRoom = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
       // Seat a resident mob via placeMob -> mob[PLACE](room); this must NOT emit a cue.
-      const mob = new Mob(hero.campaign, "Ghoul", makeStats(), 2, 2, []);
+      const mob = new Mob({ campaign: hero.campaign, name: "Ghoul", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [] });
       darkRoom.placeMob(mob);
       expect(cues.filter((c) => c.kind === "visibility").length).toBe(0);
       // The player then navigates in — exactly one (the player's) enter cue.
@@ -2120,7 +2099,7 @@ describe("Character", () => {
     it("entering an unlit (dark) room via move() emits { kind: 'visibility', lit: false }", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
-      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const darkRoom = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
       // The real gameplay navigation path — not the [PLACE] seam — must emit the cue.
       hero.move(darkRoom);
       expect(cues).toContainEqual(expect.objectContaining({ kind: "visibility", lit: false }));
@@ -2129,7 +2108,7 @@ describe("Character", () => {
     it("entering a lit room via move() emits no visibility cue", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
-      const litRoom = new Room("Hall", "lit hall", [], {} as ExitsArg); // not dark => isLit true
+      const litRoom = new Room({ name: "Hall", description: "lit hall", loot: [] }); // not dark => isLit true
       hero.move(litRoom);
       expect(cues.some((c) => c.kind === "visibility")).toBe(false);
     });
@@ -2137,7 +2116,7 @@ describe("Character", () => {
     it("placing a light in a dark room emits { kind: 'visibility', lit: true }", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
-      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const darkRoom = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
       hero[PLACE](darkRoom);
       const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
       hero.addToInventory(torch);
@@ -2149,7 +2128,7 @@ describe("Character", () => {
     it("taking the only light from a dark room emits { lit: false }", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
-      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const darkRoom = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
       hero[PLACE](darkRoom);
       const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
       hero.addToInventory(torch);
@@ -2162,7 +2141,7 @@ describe("Character", () => {
     it("equipping a hand light in a dark room flips it lit", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
-      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const darkRoom = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
       hero[PLACE](darkRoom);
       const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
       hero.addToInventory(torch);
@@ -2174,7 +2153,7 @@ describe("Character", () => {
     it("unequipping the only hand light in a dark room flips it dark", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
-      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const darkRoom = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
       hero[PLACE](darkRoom);
       const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
       hero.addToInventory(torch);
@@ -2187,7 +2166,7 @@ describe("Character", () => {
     it("auto-swapping one hand light for another in a dark room emits no cue (net lit unchanged)", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
-      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const darkRoom = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
       hero[PLACE](darkRoom);
       const first = makeGear({ name: "Torch A", slot: SlotKind.Hand, emitsLight: true });
       const second = makeGear({ name: "Torch B", slot: SlotKind.Hand, emitsLight: true });
@@ -2204,7 +2183,7 @@ describe("Character", () => {
     it("re-equipping an already-equipped hand light to another slot in a dark room emits no cue", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
-      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const darkRoom = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
       hero[PLACE](darkRoom);
       const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
       hero.addToInventory(torch);
@@ -2219,7 +2198,7 @@ describe("Character", () => {
     it("placing a hand-equipped light in a dark room emits no cue (lit before via carry, lit after via placement)", () => {
       const cues: PresentationCue[] = [];
       const hero = makeCharacterWithCueSink(cues);
-      const darkRoom = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+      const darkRoom = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
       hero[PLACE](darkRoom);
       const torch = makeGear({ name: "Torch", slot: SlotKind.Hand, emitsLight: true });
       hero.addToInventory(torch);
@@ -2234,7 +2213,7 @@ describe("Character", () => {
 
   describe("ADJUST_STAT", () => {
     it("floors a stat at 0 and reconciles", () => {
-      const c = new Character(makeCampaign(), "Hero", makeStats());
+      const c = new Character({ campaign: makeCampaign(), name: "Hero", stats: makeStats() });
       const before = c.effectiveStat(StatType.Sanity);
       c[ADJUST_STAT](StatType.Sanity, -(before + 5));
       expect(c.effectiveStat(StatType.Sanity)).toBe(0); // floored, never negative
@@ -2258,8 +2237,8 @@ describe("Character", () => {
         },
         state: {},
       };
-      const campaign = new Campaign("Test", 100, [], { mechanics: [mechanic] });
-      const player = new PlayerCharacter(campaign, "Hero", makeStats());
+      const campaign = new Campaign({ title: "Test", maxRounds: 100, knownRecipes: [], mechanics: [mechanic] });
+      const player = new PlayerCharacter({ campaign, name: "Hero" });
       player.joinCampaign();
       assignNeutralArchetype(campaign, player);
       campaign.gm = player;

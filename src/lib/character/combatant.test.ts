@@ -8,30 +8,30 @@ import { ProceduralViolation } from "../util";
 import { Mob } from "./mob";
 import { StatType } from "./stats";
 
-import { type ExitsArg, makeCampaign, makeDefender, makeStats } from "../../test-utils";
+import { makeCampaign, makeDefender, makeStats } from "../../test-utils";
 
 // A concrete Combatant for exercising the inherited `attack` gate. Combatant is
 // abstract, so we drive it through its real Mob subclass.
 function makeAttacker(campaign: Campaign = makeCampaign() as Campaign): Mob {
-  return new Mob(campaign, "Goblin", makeStats(), 2, 2, []);
+  return new Mob({ campaign, name: "Goblin", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [] });
 }
 
 // Only the item's `id` and `emitsLight` flag matter; the rest satisfies Item.
 function makeLight(): Item {
   const noop = () => {};
-  return new Item(
-    { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Candle", slot: SlotKind.Hand, emitsLight: true },
-    { equippable: true, equipped: false, destroyable: true, usable: false },
-    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-    { onPickUp: noop },
-  );
+  return new Item({
+    descriptor: { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Candle", slot: SlotKind.Hand, emitsLight: true },
+    properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+    actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    events: { onPickUp: noop },
+  });
 }
 
 describe("Combatant.attack darkness gate", () => {
   // Build a real authored-dark Room and co-locate the attacker via the
   // engine-internal [PLACE] seam (sets currentRoom + occupancy).
   function darkRoomWithAttacker() {
-    const room = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
+    const room = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
     const attacker = makeAttacker();
     attacker[PLACE](room);
     return { room, attacker };
@@ -66,8 +66,8 @@ describe("Combatant.attack darkness gate", () => {
         return true;
       }
     }
-    const room = new Room("Cellar", "dark cellar", [], {} as ExitsArg, [], 1, [], undefined, true);
-    const seer = new BlindSeer(makeCampaign(), "Lurker", makeStats(), 2, 2, []);
+    const room = new Room({ name: "Cellar", description: "dark cellar", loot: [], dark: true });
+    const seer = new BlindSeer({ campaign: makeCampaign(), name: "Lurker", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [] });
     seer[PLACE](room);
     expect(room.isLit).toBe(false);
     expect(() => seer.attack(makeDefender())).not.toThrow();

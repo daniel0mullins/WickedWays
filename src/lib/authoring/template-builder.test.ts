@@ -5,12 +5,12 @@ import { Directions } from "../room";
 import { StatType } from "../character/stats";
 import { Item } from "../inventory";
 
-const makeCoin = () => new Item(
-  { type: "consumable", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Coin", behaviorKey: "coin-item" },
-  { equippable: false, equipped: false, destroyable: true, usable: false },
-  { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
-  { onPickUp: () => {} },
-);
+const makeCoin = () => new Item({
+  descriptor: { type: "consumable", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Coin", behaviorKey: "coin-item" },
+  properties: { equippable: false, equipped: false, destroyable: true, usable: false },
+  actions: { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
+  events: { onPickUp: () => {} },
+});
 
 describe("authorTemplate", () => {
   it("builds an equivalent campaign regardless of author order (forward refs resolve)", () => {

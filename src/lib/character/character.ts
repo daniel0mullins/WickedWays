@@ -45,6 +45,16 @@ export type ActionFn = (...args: never[]) => unknown;
 
 /** Constructor options shared by every character. */
 export interface CharacterOptions {
+  /** The campaign the character belongs to. */
+  campaign: ICampaign;
+  /** Display name. */
+  name: string;
+  /** Initial {@link Stats}. */
+  stats: Stats;
+  /** Inventory capacity. Defaults to 5. */
+  inventorySlots?: number;
+  /** Budgeted actions per turn. Defaults to 3. */
+  actionsPerRound?: number;
   /** Injected randomness for deterministic tests. */
   rng?: () => number;
   /** Overrides the default affliction thresholds/roll config. */
@@ -464,37 +474,24 @@ export class Character implements ICharacter {
     }
   }
 
-  /**
-   * @param campaign - The campaign the character belongs to.
-   * @param name - Display name.
-   * @param stats - Initial {@link Stats}.
-   * @param inventorySlots - Inventory capacity. Defaults to 5.
-   * @param actionsPerRound - Budgeted actions per turn. Defaults to 3.
-   * @param options - Optional character options (rng, afflictionConfig, presentation).
-   */
-  constructor(
-    campaign: ICampaign,
-    name: string,
-    stats: Stats,
-    inventorySlots: number = 5,
-    actionsPerRound: number = 3,
-    options: CharacterOptions = {},
-  ) {
+  /** See {@link CharacterOptions} for parameter details. */
+  constructor(opts: CharacterOptions) {
+    const { inventorySlots = 5, actionsPerRound = 3 } = opts;
     this.id = generateId<CharacterId>();
-    this.name = name;
-    this.stats = stats;
+    this.name = opts.name;
+    this.stats = opts.stats;
     this.events = new CharacterEvents(this);
     this.actionsPerRound = actionsPerRound;
     this.actionsThisRound = 0;
 
     this.#inventory = { slots: inventorySlots, items: [], keys: [] };
-    this.#campaign = campaign;
-    this.rng = options.rng ?? Math.random;
+    this.#campaign = opts.campaign;
+    this.rng = opts.rng ?? Math.random;
     this.#afflictions = new Afflictions(
       this.rng,
-      options.afflictionConfig ?? DEFAULT_AFFLICTION_CONFIG,
+      opts.afflictionConfig ?? DEFAULT_AFFLICTION_CONFIG,
     );
-    this.#presentation = options.presentation;
+    this.#presentation = opts.presentation;
 
     this.isActionMap.set(this.addToInventory, true);
     this.isActionMap.set(this.removeFromInventory, true);

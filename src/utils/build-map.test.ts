@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { Room } from "../lib/room";
+import { Directions, Room } from "../lib/room";
 import type { IRoom } from "../lib/room";
+import { ProceduralViolation } from "../lib/util";
 import { buildMap } from "./build-map";
 
 import { type ExitsArg, makeRng } from "../test-utils";
@@ -9,8 +10,21 @@ import { type ExitsArg, makeRng } from "../test-utils";
 function makeRooms(count: number): IRoom[] {
   return Array.from(
     { length: count },
-    () => new Room("a room", "a room", [], {} as ExitsArg),
+    () => new Room({ name: "a room", description: "a room", loot: [] }),
   );
+}
+
+// Wires every room to all the others, one neighbor per compass direction, so
+// each ends up with all eight exits occupied (no free direction left).
+function saturate(rooms: IRoom[]): void {
+  const directions = Object.values(Directions);
+  for (const room of rooms) {
+    const others = rooms.filter((r) => r !== room);
+    directions.forEach((dir, i) => {
+      const dest = others[i];
+      if (dest) room.addExit(dir, dest);
+    });
+  }
 }
 
 const OPPOSITE: Record<string, string> = {
@@ -72,6 +86,29 @@ describe("buildMap", () => {
     expect(result).toBe(rooms);
     const [room] = rooms;
     expect(room!.exits.size).toBe(0);
+  });
+
+  describe("connectivity", () => {
+    it("connects a room created without an exits argument", () => {
+      const a = new Room({ name: "A", description: "a", loot: [] });
+      const b = new Room({ name: "B", description: "b", loot: [] });
+
+      buildMap([a, b], { rng: makeRng(1) });
+
+      expect(reachableCount(a)).toBe(2);
+    });
+
+    it("throws a ProceduralViolation when a room cannot be connected", () => {
+      // A fully saturated component leaves no free direction for the lone
+      // straggler to attach to, so it can never be reached.
+      const saturated = makeRooms(9);
+      saturate(saturated);
+      const straggler = new Room({ name: "Straggler", description: "alone", loot: [] }); // exits arg omitted
+
+      expect(() =>
+        buildMap([...saturated, straggler], { rng: makeRng(1) }),
+      ).toThrow(ProceduralViolation);
+    });
   });
 
   describe("spanning tree", () => {

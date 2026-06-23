@@ -7,7 +7,8 @@ import { NOTE_ENCOUNTERS } from "../presentation";
 import { RECORD_ENCOUNTER } from "../codex";
 import { Combatant, ICombatant } from "./combatant";
 import { StatType, type Stats } from "./stats";
-import type { CharacterOptions } from "./character";
+import type { AfflictionConfig } from "./afflictions";
+import type { Presentation } from "../presentation";
 import type { Archetype, ArchetypeId } from "../archetype";
 import type { CharacterSnapshot } from "../serialization/types";
 import type { HydrateContext } from "../serialization/context";
@@ -35,6 +36,34 @@ export interface IPlayerCharacter extends ICombatant {
 }
 
 /**
+ * The baseline stats every player character starts with. The constructor takes
+ * no stats: a player character always begins at this baseline, and the only way
+ * to start with different values is to {@link PlayerCharacter.selectArchetype}
+ * an archetype whose `baseStats` override them.
+ */
+const DEFAULT_PLAYER_STATS: Readonly<Stats> = Object.freeze({
+  [StatType.Health]: 10,
+  [StatType.Sanity]: 10,
+  [StatType.Energy]: 10,
+});
+
+/** Constructor options for a {@link PlayerCharacter}. */
+export interface PlayerCharacterOptions {
+  /** The campaign the character belongs to. */
+  campaign: ICampaign;
+  /** Display name. */
+  name: string;
+  /** Inventory capacity. Defaults to 5. */
+  inventorySlots?: number;
+  /** Injected randomness for deterministic tests. */
+  rng?: () => number;
+  /** Overrides the default affliction thresholds/roll config. */
+  afflictionConfig?: AfflictionConfig;
+  /** Optional presentation metadata (image/sound) for the Play Surface. */
+  presentation?: Presentation;
+}
+
+/**
  * A player-controlled combatant. Unlike other characters, `move` counts toward
  * its per-turn action budget, and it can open and exchange items with loot boxes
  * in the room it currently occupies.
@@ -47,14 +76,17 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
   }
 
   /** See {@link Character} for parameters; also registers `move` as a budgeted action. */
-  constructor(
-    campaign: ICampaign,
-    name: string,
-    stats: Stats,
-    inventorySlots: number = 5,
-    options: CharacterOptions = {},
-  ) {
-    super(campaign, name, stats, inventorySlots, 3, options);
+  constructor(opts: PlayerCharacterOptions) {
+    super({
+      campaign: opts.campaign,
+      name: opts.name,
+      stats: { ...DEFAULT_PLAYER_STATS },
+      inventorySlots: opts.inventorySlots ?? 5,
+      actionsPerRound: 3,
+      rng: opts.rng,
+      afflictionConfig: opts.afflictionConfig,
+      presentation: opts.presentation,
+    });
 
     // `this.move` is the override (PlayerCharacter.prototype.move); super.move's
     // recordAction(this.move, …) resolves to that same override, so the budget ticks.
@@ -83,7 +115,7 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
 
   /**
    * Selects an archetype from the campaign catalog, applying its effects exactly
-   * once: stat deltas are added to the base stats, the slot delta adjusts
+   * once: the named stats override the base stats, the slot delta adjusts
    * inventory capacity (floored at 0), and the immunities become a standing
    * passive trait. A setup-only, once-only operation.
    *
@@ -107,12 +139,12 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
       throw new ProceduralViolation("Unknown archetype.");
     }
 
-    if (archetype.statModifiers) {
-      for (const [stat, delta] of typedEntries(archetype.statModifiers) as Array<
+    if (archetype.baseStats) {
+      for (const [stat, value] of typedEntries(archetype.baseStats) as Array<
         [StatType, number | undefined]
       >) {
-        if (delta === undefined) continue;
-        this.stats[stat] = this.stats[stat] + delta;
+        if (value === undefined) continue;
+        this.stats[stat] = value;
       }
     }
     if (archetype.inventorySlots !== undefined) {

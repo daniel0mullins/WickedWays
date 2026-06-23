@@ -19,7 +19,7 @@ import { PlayerCharacter } from "./lib/character/player-character";
 import { StatType } from "./lib/character/stats";
 import { SlotKind } from "./lib/equipment";
 import { buildMap } from "./utils/build-map";
-import { assignNeutralArchetype, type ExitsArg, makeRng, makeStats } from "./test-utils";
+import { assignNeutralArchetype, makeRng, makeStats } from "./test-utils";
 import type { ArchetypeId } from "./lib/archetype";
 import { Status } from "./lib/status";
 import type { PresentationCue } from "./lib/presentation";
@@ -30,7 +30,7 @@ import { InProcessTransport } from "./lib/sync/transport";
 import { SyncCoordinator } from "./lib/sync/coordinator";
 import { serializeCampaign } from "./lib/serialization/serializer";
 import { deserializeCampaign } from "./lib/serialization/deserializer";
-import { buildStartedCampaign, makeStats as makeStatsFixture } from "./lib/serialization/roundtrip.test-helpers";
+import { buildStartedCampaign } from "./lib/serialization/roundtrip.test-helpers";
 import { SERIALIZE } from "./lib/serialization/symbols";
 import { Directions } from "./lib/room";
 import { EquipmentSlot } from "./lib/equipment";
@@ -38,16 +38,16 @@ import type { JsonObject, Mechanic } from "./lib/mechanics/mechanic";
 
 // A real weapon Item with inert actions/events, usable in inventories and boxes.
 function makeWeapon(modifier = 3): Item {
-  return new Item(
-    {
+  return new Item({
+      descriptor: {
       name: "Test Weapon",
       type: "weapon",
       recipe: { metal: 1 },
       modifier,
       stat: StatType.Health,
     },
-    { equippable: true, equipped: false, destroyable: false, usable: false },
-    {
+      properties: { equippable: true, equipped: false, destroyable: false, usable: false },
+      actions: {
       pickUp: () => {},
       equip: () => {},
       unequip: () => {},
@@ -55,15 +55,15 @@ function makeWeapon(modifier = 3): Item {
       use: () => {},
       destroy: () => null,
     },
-    { onPickUp: () => {} },
-  );
+      events: { onPickUp: () => {} },
+    });
 }
 
 // A real hand-held light source: an emitsLight Item that can be carried,
 // equipped, or placed in a room.
 function makeLight(name = "Candle"): Item {
-  return new Item(
-    {
+  return new Item({
+      descriptor: {
       name,
       type: "weapon",
       recipe: { metal: 1 },
@@ -72,8 +72,8 @@ function makeLight(name = "Candle"): Item {
       slot: SlotKind.Hand,
       emitsLight: true,
     },
-    { equippable: true, equipped: false, destroyable: false, usable: false },
-    {
+      properties: { equippable: true, equipped: false, destroyable: false, usable: false },
+      actions: {
       pickUp: () => {},
       equip: () => {},
       unequip: () => {},
@@ -81,8 +81,8 @@ function makeLight(name = "Candle"): Item {
       use: () => {},
       destroy: () => null,
     },
-    { onPickUp: () => {} },
-  );
+      events: { onPickUp: () => {} },
+    });
 }
 
 /** Standard Authority-backed wiring for sync tests. */
@@ -98,35 +98,29 @@ function wire() {
 describe("Campaign integration", () => {
   it("wires every object type and runs turns until maxRounds", () => {
     const maxRounds = 3;
-    const campaign = new Campaign("Wicked Ways", maxRounds);
+    const campaign = new Campaign({ title: "Wicked Ways", maxRounds });
 
     // Two player characters bound to the real campaign — no stubs, no casts.
-    const hero = new PlayerCharacter(campaign, "Hero", makeStats());
-    const seer = new PlayerCharacter(campaign, "Seer", makeStats());
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
+    const seer = new PlayerCharacter({ campaign, name: "Seer" });
     hero.joinCampaign();
     seer.joinCampaign();
     campaign.gm = hero;
 
     // Rooms connected into a deterministic spanning tree.
     const rooms = [
-      new Room("Entrance", "Entrance", [], {} as ExitsArg),
-      new Room("Corridor", "Corridor", [], {} as ExitsArg),
-      new Room("Vault", "Vault", [], {} as ExitsArg),
+      new Room({ name: "Entrance", description: "Entrance", loot: [] }),
+      new Room({ name: "Corridor", description: "Corridor", loot: [] }),
+      new Room({ name: "Vault", description: "Vault", loot: [] }),
     ];
     buildMap(rooms, { rng: makeRng(42), extraConnections: 1 });
 
     // Loot wired into a room.
-    const chest = new Loot("oak chest", [makeWeapon()]);
+    const chest = new Loot({ description: "oak chest", contents: [makeWeapon()] });
     rooms[2]!.loot.set(chest.id, chest);
 
     // An NPC placed in a room.
-    const npc = new NonPlayerCharacter(
-      campaign,
-      "Caretaker",
-      makeStats(),
-      "Welcome, travellers.",
-      [{ type: "exact", trigger: "help", response: ["Mind the vault."] }],
-    );
+    const npc = new NonPlayerCharacter({ campaign, name: "Caretaker", stats: makeStats(), initialDialogue: "Welcome, travellers.", dialogueBlocks: [{ type: "exact", trigger: "help", response: ["Mind the vault."] }] });
     npc.move(rooms[0]!);
 
     // A harmless scene that counts occupants when entered. Registered on the
@@ -173,22 +167,16 @@ describe("Campaign integration", () => {
   });
 
   it("resolves combat between a player character and a co-located npc", () => {
-    const campaign = new Campaign("Wicked Ways");
-    const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+    const campaign = new Campaign({ title: "Wicked Ways" });
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
     hero.joinCampaign();
     campaign.gm = hero;
 
     // sanity 5 mitigates a 1-point unarmed health attack to exactly 1 damage,
     // and keeps the npc "normal" (fear is only below sanity 5).
-    const ghoul = new NonPlayerCharacter(
-      campaign,
-      "Ghoul",
-      makeStats({ [StatType.Sanity]: 5 }),
-      "Hgrrr",
-      [],
-    );
+    const ghoul = new NonPlayerCharacter({ campaign, name: "Ghoul", stats: makeStats({ [StatType.Sanity]: 5 }), initialDialogue: "Hgrrr", dialogueBlocks: [] });
 
-    const crypt = new Room("Crypt", "Crypt", [], {} as ExitsArg);
+    const crypt = new Room({ name: "Crypt", description: "Crypt", loot: [] });
     assignNeutralArchetype(campaign, hero);
     campaign.beginCampaign();
     hero.move(crypt);
@@ -205,14 +193,14 @@ describe("Campaign integration", () => {
   });
 
   it("lets a player character take loot from a co-located box", () => {
-    const campaign = new Campaign("Wicked Ways");
-    const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+    const campaign = new Campaign({ title: "Wicked Ways" });
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
     hero.joinCampaign();
     campaign.gm = hero;
 
     const sword = makeWeapon();
-    const chest = new Loot("treasure chest", [sword]);
-    const vault = new Room("Vault", "Vault", [chest], {} as ExitsArg);
+    const chest = new Loot({ description: "treasure chest", contents: [sword] });
+    const vault = new Room({ name: "Vault", description: "Vault", loot: [chest] });
 
     assignNeutralArchetype(campaign, hero);
     campaign.beginCampaign();
@@ -228,8 +216,8 @@ describe("Campaign integration", () => {
   });
 
   it("fires a registered scene when a player character enters the room", () => {
-    const campaign = new Campaign("Wicked Ways");
-    const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+    const campaign = new Campaign({ title: "Wicked Ways" });
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
     hero.joinCampaign();
     campaign.gm = hero;
 
@@ -241,7 +229,7 @@ describe("Campaign integration", () => {
         firedWithOccupants = room.occupants.length;
       },
     });
-    const hall = new Room("Trapped Hall", "Trapped Hall", [], {} as ExitsArg);
+    const hall = new Room({ name: "Trapped Hall", description: "Trapped Hall", loot: [] });
     hall.registerScene(trap);
 
     assignNeutralArchetype(campaign, hero);
@@ -255,22 +243,23 @@ describe("Campaign integration", () => {
   });
 
   it("applies a selected archetype's stat, slot, and immunity effects through setup", () => {
-    const campaign = new Campaign("Wicked Ways");
-    const hero = new PlayerCharacter(campaign, "Hero", makeStats({ [StatType.Energy]: 0 }), 5);
+    const campaign = new Campaign({ title: "Wicked Ways" });
+    const hero = new PlayerCharacter({ campaign, name: "Hero", inventorySlots: 5 });
+    hero.stats[StatType.Energy] = 0;
     hero.joinCampaign();
     campaign.gm = hero;
 
     campaign.registerArchetype({
       id: "stoic-packer" as ArchetypeId,
       name: "Stoic Packer",
-      statModifiers: { [StatType.Health]: 2 },
+      baseStats: { [StatType.Health]: 12 },
       inventorySlots: 3,
       immunities: [Status.Confused],
     });
     hero.selectArchetype("stoic-packer" as ArchetypeId);
     campaign.beginCampaign();
 
-    // Stat delta layered on the base.
+    // Stat value overrides the base.
     expect(hero.stats[StatType.Health]).toBe(12);
     // Slot delta applied to capacity.
     expect(hero.inventory.slots).toBe(8);
@@ -282,15 +271,15 @@ describe("Campaign integration", () => {
   });
 
   it("emits action and encounter cues with resolved sounds across a turn", () => {
-    const campaign = new Campaign("Wicked Ways", 100, [], { actionSounds: { move: "marching.ogg" } });
-    const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+    const campaign = new Campaign({ title: "Wicked Ways", maxRounds: 100, knownRecipes: [], actionSounds: { move: "marching.ogg" } });
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
     hero.joinCampaign();
     campaign.gm = hero;
 
     const coin = makeWeapon(); // any item; used as loot
-    const chest = new Loot("chest", [coin], { sound: "coins.ogg" });
-    const hob = new Mob(campaign, "Hobgoblin", makeStats(), 2, 2, [], { presentation: { sound: "growl.ogg" } });
-    const lair = new Room("Lair", "A lair", [chest], {} as ExitsArg);
+    const chest = new Loot({ description: "chest", contents: [coin], presentation: { sound: "coins.ogg" } });
+    const hob = new Mob({ campaign, name: "Hobgoblin", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [], presentation: { sound: "growl.ogg" } });
+    const lair = new Room({ name: "Lair", description: "A lair", loot: [chest] });
     lair.placeMob(hob);
 
     // Archetype requirement from the prior feature: give the PC a neutral one.
@@ -321,39 +310,28 @@ describe("Campaign integration", () => {
 // is raised to 30 so the amplified hit lands without the floor-at-0 clamp.
 describe("darkness mechanic", () => {
   function darknessSetup() {
-    const campaign = new Campaign("Wicked Ways");
+    const campaign = new Campaign({ title: "Wicked Ways" });
     // Sanity 5 so the mob's 1-point unarmed Health attack lands (x1 mitigation).
-    const hero = new PlayerCharacter(campaign, "Hero", makeStats({ [StatType.Sanity]: 5 }));
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
+    hero.stats[StatType.Sanity] = 5;
     hero.joinCampaign();
     campaign.gm = hero;
 
     // The resident, light-averse mob: high Health to survive, Sanity 5 for
     // neutral (x1) mitigation of an incoming Health attack.
-    const lurker = new Mob(
-      campaign,
-      "Lurker",
-      makeStats({ [StatType.Sanity]: 5, [StatType.Health]: 30 }),
-      2,
-      2,
-      [],
-      { lightAverse: true },
-    );
+    const lurker = new Mob({ campaign, name: "Lurker", stats: makeStats({ [StatType.Sanity]: 5, [StatType.Health]: 30 }), inventorySlots: 2, actionsPerRound: 2, drops: [], lightAverse: true });
 
     const sword = makeWeapon();
-    const chest = new Loot("buried cache", [sword]);
+    const chest = new Loot({ description: "buried cache", contents: [sword] });
 
     // Author-time DARK room (trailing `dark = true`) holding the mob and the box.
-    const crypt = new Room(
-      "Black Crypt",
-      "A lightless crypt",
-      [chest],
-      {} as ExitsArg,
-      [],
-      1,
-      [lurker],
-      undefined,
-      true,
-    );
+    const crypt = new Room({
+      name: "Black Crypt",
+      description: "A lightless crypt",
+      loot: [chest],
+      mobs: [lurker],
+      dark: true,
+    });
 
     assignNeutralArchetype(campaign, hero);
     campaign.beginCampaign();
@@ -408,26 +386,13 @@ describe("darkness mechanic", () => {
     // 6) The damage is LIGHT_VULNERABILITY-amplified. Baseline: the same raw
     //    1-point unarmed Health attack against an identical light-averse mob in
     //    a dark room (computed directly, since the hero can't attack in the dark).
-    const darkRoom = new Room(
-      "Shadow Hollow",
-      "A lightless hollow",
-      [],
-      {} as ExitsArg,
-      [],
-      1,
-      [],
-      undefined,
-      true,
-    );
-    const baseline = new Mob(
-      lurker.campaign,
-      "Lurker",
-      makeStats({ [StatType.Sanity]: 5, [StatType.Health]: 30 }),
-      2,
-      2,
-      [],
-      { lightAverse: true },
-    );
+    const darkRoom = new Room({
+      name: "Shadow Hollow",
+      description: "A lightless hollow",
+      loot: [],
+      dark: true,
+    });
+    const baseline = new Mob({ campaign: lurker.campaign, name: "Lurker", stats: makeStats({ [StatType.Sanity]: 5, [StatType.Health]: 30 }), inventorySlots: 2, actionsPerRound: 2, drops: [], lightAverse: true });
     baseline[PLACE](darkRoom);
     const baselineBefore = baseline.stats[StatType.Health];
     baseline.takeDamage(1, StatType.Health); // raw strength the unarmed attack deals
@@ -440,14 +405,14 @@ describe("darkness mechanic", () => {
 
 describe("Codex integration", () => {
   it("populates every kind from a scripted party run with correct first-seen stamps", () => {
-    const campaign = new Campaign("Codex Run");
-    const hero = new PlayerCharacter(campaign, "Hero", makeStats());
+    const campaign = new Campaign({ title: "Codex Run" });
+    const hero = new PlayerCharacter({ campaign, name: "Hero" });
     hero.joinCampaign();
 
     // Room + mob (mob recorded on entry via NOTE_ENCOUNTERS).
-    const cache = new MaterialCache({ metal: 2 });
-    const lair = new Room("Lair", "a damp lair", [], {} as ExitsArg, [cache]);
-    const goblin = new Mob(campaign, "Goblin", makeStats(), 2, 2, []);
+    const cache = new MaterialCache({ contents: { metal: 2 } });
+    const lair = new Room({ name: "Lair", description: "a damp lair", loot: [], materials: [cache] });
+    const goblin = new Mob({ campaign, name: "Goblin", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [] });
     lair.enterRoom(goblin);
     hero.move(lair);
 
@@ -457,12 +422,12 @@ describe("Codex integration", () => {
       materials: { metal: 2 },
       create: () => makeWeapon(),
     };
-    const blade = new Item(
-      { name: "Blade", type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, slot: SlotKind.Hand, teaches },
-      { equippable: true, equipped: false, destroyable: false, usable: false },
-      { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
-      { onPickUp: () => {} },
-    );
+    const blade = new Item({
+      descriptor: { name: "Blade", type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, slot: SlotKind.Hand, teaches },
+      properties: { equippable: true, equipped: false, destroyable: false, usable: false },
+      actions: { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
+      events: { onPickUp: () => {} },
+    });
     hero.addToInventory(blade);
 
     // Key pickup.
@@ -559,7 +524,7 @@ describe("SyncCoordinator join + late-join", () => {
     A.start(); B.start();
 
     // Build a throwaway bare player off A's campaign, snapshot it, submit the join.
-    const newcomer = new PlayerCharacter(A.campaign, "Newcomer", makeStatsFixture());
+    const newcomer = new PlayerCharacter({ campaign: A.campaign, name: "Newcomer" });
     const res = await A.submit({ kind: "joinCampaign", character: newcomer[SERIALIZE]() });
     expect(res.ok).toBe(true);
 
@@ -603,7 +568,7 @@ describe("Victory conditions", () => {
         .exit("start", Directions.North, "exit")
         .winWhen("reached-exit", { text: "You escape into the night." }),
       {
-        players: [{ name: "Hero", stats: { [StatType.Health]: 10, [StatType.Sanity]: 10, [StatType.Energy]: 10 }, archetype: "scout" }],
+        players: [{ name: "Hero", archetype: "scout" }],
         gm: 0,
       },
     );
@@ -675,8 +640,8 @@ const fireWardMechanic: Mechanic<JsonObject, void> = {
 /** Constructs a fire-ward Item with `behaviorKey: "ward"` so it is equippable
  *  and survives serialize/hydrate via the registry. */
 function makeWard(): Item {
-  return new Item(
-    {
+  return new Item({
+      descriptor: {
       name: "Ward",
       type: "armor",
       recipe: { metal: 1 },
@@ -685,8 +650,8 @@ function makeWard(): Item {
       slot: SlotKind.Torso,
       behaviorKey: "ward",
     },
-    { equippable: true, equipped: false, destroyable: false, usable: false },
-    {
+      properties: { equippable: true, equipped: false, destroyable: false, usable: false },
+      actions: {
       pickUp: () => {},
       equip: () => {},
       unequip: () => {},
@@ -694,8 +659,8 @@ function makeWard(): Item {
       use: () => {},
       destroy: () => null,
     },
-    { onPickUp: () => {} },
-  );
+      events: { onPickUp: () => {} },
+    });
 }
 
 /** Builds a started campaign using the given seed. */
@@ -706,7 +671,9 @@ function buildMechanicCampaign(seed: number) {
   });
   const campaign = startSession(
     authorTemplate("Crypt", reg, { maxRounds: 10, rng: makeRng(seed) })
-      .archetype({ id: "scout", name: "Scout" })
+      // sanity=1 keeps damageMultiplier non-zero (9*0.2=1.8) while staying above
+      // the panic threshold (sanity>0); the archetype overrides the baseline.
+      .archetype({ id: "scout", name: "Scout", baseStats: { [StatType.Sanity]: 1 } })
       .room("start", { description: "A cold crypt." })
       .startRoom("start")
       .useMechanic("fire-ward")
@@ -715,13 +682,6 @@ function buildMechanicCampaign(seed: number) {
       players: [
         {
           name: "Hero",
-          stats: {
-            [StatType.Health]: 10,
-            // sanity=1 keeps damageMultiplier non-zero (9*0.2=1.8) while
-            // staying above the panic threshold (sanity>0).
-            [StatType.Sanity]: 1,
-            [StatType.Energy]: 10,
-          },
           archetype: "scout",
         },
       ],

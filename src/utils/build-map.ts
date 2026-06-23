@@ -1,4 +1,5 @@
 import { Directions, IRoom } from "../lib/room";
+import { ProceduralViolation } from "../lib/util";
 
 type Direction = (typeof Directions)[keyof typeof Directions];
 
@@ -48,9 +49,14 @@ export interface BuildMapOptions {
  * skipped. The same `rooms` array is returned (mutated); a single room or empty
  * array is returned untouched.
  *
+ * Connecting the rooms is best-effort, but reachability is not: if any room
+ * cannot be wired into the map (its component is fully saturated), the whole map
+ * is invalid and this throws rather than leaving a stranded room.
+ *
  * @param rooms - The rooms to wire together; their `exits` are mutated.
  * @param options - Randomness source and extra-edge configuration.
  * @returns The same `rooms` array, now connected.
+ * @throws {@link ProceduralViolation} if a room cannot be connected to the map.
  */
 export function buildMap(
   rooms: IRoom[],
@@ -112,9 +118,10 @@ export function buildMap(
       continue;
     }
     const candidates = connected.filter((r) => freeDirections(r).length > 0);
-    // Only empty if every room already in the main component is saturated,
-    // which requires pathologically dense requiredConnections. Best-effort:
-    // skip rather than throw (the straggler stays unreachable).
+    // Empty only if every room in the main component is saturated (all eight
+    // directions used), which requires a pathologically dense map. We can't
+    // attach this room here; the post-loop connectivity check turns any room
+    // left unreachable into a ProceduralViolation.
     if (candidates.length === 0) {
       continue;
     }
@@ -127,6 +134,18 @@ export function buildMap(
         }
       }
     }
+  }
+
+  // Every room must be reachable from the anchor. A room the best-effort tree
+  // could not attach (its whole component saturated, or itself saturated with no
+  // free opposite direction) would be unreachable — an authoring error, not a
+  // silent dead end.
+  const stranded = rooms.filter((room) => find(room) !== find(anchor));
+  if (stranded.length > 0) {
+    throw new ProceduralViolation(
+      `buildMap could not connect ${stranded.length} room(s) to the map: ` +
+        stranded.map((room) => room.name).join(", "),
+    );
   }
 
   const extra = resolveExtraConnections(extraConnections, rooms.length);

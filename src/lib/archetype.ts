@@ -11,8 +11,8 @@ export type ArchetypeId = Brand<string, "ArchetypeId">;
 
 /**
  * An authored character role registered on a {@link import("./campaign").ICampaign}.
- * Selecting it modifies a player character's baseline exactly once: stat deltas
- * layer onto the provided base stats, the slot delta adjusts inventory capacity,
+ * Selecting it modifies a player character's baseline exactly once: the named
+ * stats override the base stats, the slot delta adjusts inventory capacity,
  * and the immunities become a standing passive trait. Plain declarative data —
  * no class or factory, in the style of the item/recipe/formation descriptors.
  */
@@ -21,8 +21,11 @@ export interface Archetype {
   id: ArchetypeId;
   /** Display name. */
   name: string;
-  /** Deltas added once to base stats at selection. A missing stat contributes +0. */
-  statModifiers?: Partial<Stats>;
+  /**
+   * Absolute stat values applied once at selection, overriding the baseline for
+   * each named stat. A missing stat keeps its baseline value (10).
+   */
+  baseStats?: Partial<Stats>;
   /** Delta added once to inventory slot capacity (resulting capacity floored at 0). */
   inventorySlots?: number;
   /**

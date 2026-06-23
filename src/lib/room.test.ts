@@ -32,33 +32,28 @@ function makeScene(): IScene & { playScene: ReturnType<typeof vi.fn> } {
 }
 
 function makeRoom(loot: ILoot[] = [], exits: Partial<ExitsArg> = {}): Room {
-  return new Room("A Dim Room", "a dim room", loot, exits as ExitsArg);
+  return new Room({ name: "A Dim Room", description: "a dim room", loot, exits });
 }
 
 // Only the item's `id` and `emitsLight` flag matter to these tests; the rest of
 // the fields just satisfy the `Item` constructor.
 function makeLight(): Item {
   const noop = () => {};
-  return new Item(
-    { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Candle", slot: SlotKind.Hand, emitsLight: true },
-    { equippable: true, equipped: false, destroyable: true, usable: false },
-    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-    { onPickUp: noop },
-  );
+  return new Item({
+    descriptor: { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Candle", slot: SlotKind.Hand, emitsLight: true },
+    properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+    actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    events: { onPickUp: noop },
+  });
 }
 
 function makeDarkRoom(): Room {
-  return new Room(
-    "Cellar",
-    "a pitch-black cellar",
-    [],
-    {} as ExitsArg,
-    [],          // materials
-    1,           // spawnModifier
-    [],          // mobs
-    undefined,   // presentation
-    true,        // dark
-  );
+  return new Room({
+    name: "Cellar",
+    description: "a pitch-black cellar",
+    loot: [],
+    dark: true,
+  });
 }
 
 describe("Room", () => {
@@ -96,6 +91,12 @@ describe("Room", () => {
       expect(room.loot.get(second.id)).toBe(second);
     });
 
+    it("defaults to no loot when the option is omitted", () => {
+      const room = new Room({ name: "A Dim Room", description: "a dim room" });
+
+      expect(room.loot.size).toBe(0);
+    });
+
     it("keys the exits map by direction", () => {
       const north = makeRoom();
       const room = makeRoom([], { north });
@@ -104,12 +105,14 @@ describe("Room", () => {
     });
 
     it("keys the materials map by each cache's id", () => {
-      const first = new MaterialCache({ metal: 1 });
-      const second = new MaterialCache({ glass: 2 });
-      const room = new Room("A Dim Room", "a dim room", [], {} as ExitsArg, [
-        first,
-        second,
-      ]);
+      const first = new MaterialCache({ contents: { metal: 1 } });
+      const second = new MaterialCache({ contents: { glass: 2 } });
+      const room = new Room({
+        name: "A Dim Room",
+        description: "a dim room",
+        loot: [],
+        materials: [first, second],
+      });
 
       expect(room.materials.size).toBe(2);
       expect(room.materials.get(first.id)).toBe(first);
@@ -121,11 +124,49 @@ describe("Room", () => {
     });
   });
 
+  describe("addLoot / removeLoot", () => {
+    it("adds a loot container keyed by its id", () => {
+      const room = makeRoom();
+      const chest = makeLoot();
+
+      room.addLoot(chest);
+
+      expect(room.loot.get(chest.id)).toBe(chest);
+    });
+
+    it("replaces a container already present under the same id", () => {
+      const room = makeRoom();
+      const chest = makeLoot();
+      room.addLoot(chest);
+      const replacement = makeLoot(chest.id);
+
+      room.addLoot(replacement);
+
+      expect(room.loot.size).toBe(1);
+      expect(room.loot.get(chest.id)).toBe(replacement);
+    });
+
+    it("removes the container with the given id", () => {
+      const chest = makeLoot();
+      const room = makeRoom([chest]);
+
+      room.removeLoot(chest.id);
+
+      expect(room.loot.has(chest.id)).toBe(false);
+    });
+
+    it("is a no-op when removing an id that is not present", () => {
+      const room = makeRoom();
+
+      expect(() => room.removeLoot("missing" as LootId)).not.toThrow();
+    });
+  });
+
   describe("presentation", () => {
     it("exposes supplied presentation and is undefined when omitted", () => {
       const pres: Presentation = { image: "hall.png" };
-      const withPres = new Room("Hall", "A hall", [], {} as ExitsArg, [], 1, [], pres);
-      const without = new Room("Cell", "A cell", [], {} as ExitsArg);
+      const withPres = new Room({ name: "Hall", description: "A hall", loot: [], presentation: pres });
+      const without = new Room({ name: "Cell", description: "A cell", loot: [] });
       expect(withPres.presentation).toBe(pres);
       expect(without.presentation).toBeUndefined();
     });
@@ -294,11 +335,11 @@ describe("Room", () => {
 
   describe("placeMob", () => {
     function makeMob() {
-      return new Mob(makeCampaign(), "Goblin", makeStats(), 2, 2, []);
+      return new Mob({ campaign: makeCampaign(), name: "Goblin", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [] });
     }
 
     it("seats the mob as an occupant in its current room with room origin", () => {
-      const room = new Room("Lair", "Lair", [], {} as ExitsArg);
+      const room = new Room({ name: "Lair", description: "Lair", loot: [] });
       const mob = makeMob();
 
       room.placeMob(mob);
@@ -309,14 +350,14 @@ describe("Room", () => {
 
     it("seats resident mobs passed to the constructor", () => {
       const mob = makeMob();
-      const room = new Room("Lair", "Lair", [], {} as ExitsArg, [], 1, [mob]);
+      const room = new Room({ name: "Lair", description: "Lair", loot: [], mobs: [mob] });
 
       expect(room.occupants).toContain(mob);
       expect(mob.currentRoom).toBe(room);
     });
 
     it("defaults spawnModifier to 1", () => {
-      const room = new Room("Hall", "Hall", [], {} as ExitsArg);
+      const room = new Room({ name: "Hall", description: "Hall", loot: [] });
       expect(room.spawnModifier).toBe(1);
     });
   });
@@ -324,7 +365,7 @@ describe("Room", () => {
   describe("lightSources", () => {
     it("can be authored with light sources present", () => {
       const candle = makeLight();
-      const room = new Room("Hall", "a hall", [], {} as ExitsArg, [], 1, [], undefined, true, [candle]);
+      const room = new Room({ name: "Hall", description: "a hall", loot: [], dark: true, lightSources: [candle] });
       expect(room.lightSources.get(candle.id)).toBe(candle);
     });
 
@@ -349,14 +390,14 @@ describe("Room", () => {
   describe("isLit", () => {
     // Helper: a Character holding an equipped, non-broken hand light.
     function makeLitHero(): Character {
-      const hero = new Character(makeCampaign(), "Torchbearer", makeStats());
+      const hero = new Character({ campaign: makeCampaign(), name: "Torchbearer", stats: makeStats() });
       const noop = () => {};
-      const torch = new Item(
-        { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Torch", slot: SlotKind.Hand, emitsLight: true },
-        { equippable: true, equipped: false, destroyable: true, usable: false },
-        { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-        { onPickUp: noop },
-      );
+      const torch = new Item({
+        descriptor: { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Torch", slot: SlotKind.Hand, emitsLight: true },
+        properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+        actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+        events: { onPickUp: noop },
+      });
       hero.addToInventory(torch);
       hero.equip(torch, EquipmentSlot.LeftHand);
       return hero;
@@ -365,12 +406,12 @@ describe("Room", () => {
     // Helper: a placed light that is broken (does not count toward isLit).
     function makeBrokenLight(): Item {
       const noop = () => {};
-      const light = new Item(
-        { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Dead Lamp", slot: SlotKind.Hand, emitsLight: true, maxDurability: 1 },
-        { equippable: true, equipped: false, destroyable: true, usable: false },
-        { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-        { onPickUp: noop },
-      );
+      const light = new Item({
+        descriptor: { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Dead Lamp", slot: SlotKind.Hand, emitsLight: true, maxDurability: 1 },
+        properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+        actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+        events: { onPickUp: noop },
+      });
       light[SET_DURABILITY](0);
       return light;
     }

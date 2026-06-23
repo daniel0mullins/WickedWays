@@ -9,11 +9,10 @@ import { hydrateItem } from "./inventory";
 import { CampaignRegistry } from "./serialization/registry";
 import { HydrateContext } from "./serialization/context";
 import { SlotKind } from "./equipment";
-import type { ExitsArg } from "../test-utils";
 
 function potionFactory() {
-  return new Item(
-    {
+  return new Item({
+    descriptor: {
       type: ItemType.Consumable,
       recipe: { healing: 1 },
       modifier: 0,
@@ -21,16 +20,16 @@ function potionFactory() {
       name: "Healing Potion",
       behaviorKey: "healing-potion",
     },
-    { equippable: false, equipped: false, destroyable: true, usable: true },
-    { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
-    { onPickUp: () => {} },
-  );
+    properties: { equippable: false, equipped: false, destroyable: true, usable: true },
+    actions: { pickUp: () => {}, equip: () => {}, unequip: () => {}, transfer: () => {}, use: () => {}, destroy: () => null },
+    events: { onPickUp: () => {} },
+  });
 }
 
 function torchFactory() {
   const noop = () => {};
-  return new Item(
-    {
+  return new Item({
+    descriptor: {
       type: ItemType.Weapon,
       recipe: { item: 1 },
       modifier: 0,
@@ -40,10 +39,10 @@ function torchFactory() {
       emitsLight: true,
       behaviorKey: "torch",
     },
-    { equippable: true, equipped: false, destroyable: true, usable: false },
-    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-    { onPickUp: noop },
-  );
+    properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+    actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    events: { onPickUp: noop },
+  });
 }
 
 describe("Room serialization", () => {
@@ -53,9 +52,9 @@ describe("Room serialization", () => {
     const ctx = new HydrateContext(reg, () => 0.5);
 
     const potion = potionFactory();
-    const chest = new Loot("Chest", [potion]);
-    const north = new Room("North", "n", [], {} as ExitsArg);
-    const start = new Room("Start", "s", [chest], { north } as unknown as ExitsArg, [], 1, [], undefined, true);
+    const chest = new Loot({ description: "Chest", contents: [potion] });
+    const north = new Room({ name: "North", description: "n", loot: [] });
+    const start = new Room({ name: "Start", description: "s", loot: [chest], exits: { north }, dark: true });
 
     const startSnap = start[SERIALIZE]();
     expect(startSnap).toMatchObject({ dark: true, lootIds: [chest.id], exits: { north: north.id } });
@@ -83,7 +82,7 @@ describe("Room serialization", () => {
 
     const torch = torchFactory();
     // Place the torch in a dark room via ADD_LIGHT_SOURCE (the same seam Room[HYDRATE] uses).
-    const dark = new Room("Dark Chamber", "pitch black", [], {} as ExitsArg, [], 1, [], undefined, true);
+    const dark = new Room({ name: "Dark Chamber", description: "pitch black", loot: [], dark: true });
     dark[ADD_LIGHT_SOURCE](torch);
     expect(dark.isLit).toBe(true); // sanity: torch lights the dark room
 

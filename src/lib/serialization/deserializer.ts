@@ -42,7 +42,7 @@ export function deserializeCampaign(
 
   // Campaign shell first: characters need the back-reference, and the catalog
   // must be restored before any character hydrates.
-  const campaign = new Campaign(core.title, core.maxRounds, [], { rng });
+  const campaign = new Campaign({ title: core.title, maxRounds: core.maxRounds, knownRecipes: [], rng });
   campaign.id = core.id as CampaignId;
   ctx.put(campaign.id, campaign);
   campaign[HYDRATE_CATALOG](core, opts.registry);

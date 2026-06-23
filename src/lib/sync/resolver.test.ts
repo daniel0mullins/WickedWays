@@ -4,7 +4,7 @@ import { EntityIndex } from "./entity-index";
 import { ProceduralViolation } from "../util";
 import { PlayerCharacter } from "../character/player-character";
 import { SERIALIZE } from "../serialization/symbols";
-import { buildStartedCampaign, makeStats } from "../serialization/roundtrip.test-helpers";
+import { buildStartedCampaign } from "../serialization/roundtrip.test-helpers";
 
 describe("Resolver.authorize", () => {
   it("accepts a turn-action from the active character", () => {
@@ -63,7 +63,7 @@ describe("Resolver.apply", () => {
   it("joins a brand-new player carried by the command into the party", () => {
     const { campaign } = buildStartedCampaign();
     // Build a bare player off the live campaign, snapshot it, discard the instance.
-    const newcomer = new PlayerCharacter(campaign, "Newcomer", makeStats());
+    const newcomer = new PlayerCharacter({ campaign, name: "Newcomer" });
     const characterSnapshot = newcomer[SERIALIZE]();
     const partyBefore = campaign.party.length;
 

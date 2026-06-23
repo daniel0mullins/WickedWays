@@ -7,7 +7,7 @@ import { DEFAULT_CHAT_POLICY } from "../chat-policy";
 import { DEFAULT_AV_POLICY } from "../av-policy";
 import { Campaign } from "../campaign";
 import { PlayerCharacter } from "../character/player-character";
-import { makeStats, assignNeutralArchetype } from "../../test-utils";
+import { assignNeutralArchetype } from "../../test-utils";
 import type { LiveMechanic } from "../mechanics/mechanic";
 
 /** Minimal CampaignCoreSnapshot literal for hand-built snapshot tests. */
@@ -116,8 +116,8 @@ describe("DeltaComputer", () => {
       },
       state: { n: 0 },
     };
-    const campaign = new Campaign("Test", 100, [], { mechanics: [mechanic] });
-    const player = new PlayerCharacter(campaign, "Hero", makeStats());
+    const campaign = new Campaign({ title: "Test", maxRounds: 100, knownRecipes: [], mechanics: [mechanic] });
+    const player = new PlayerCharacter({ campaign, name: "Hero" });
     player.joinCampaign();
     assignNeutralArchetype(campaign, player);
     campaign.gm = player;

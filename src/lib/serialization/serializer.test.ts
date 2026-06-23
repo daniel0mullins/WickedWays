@@ -3,7 +3,6 @@ import { serializeCampaign, serializeCampaignWithIndex } from "./serializer";
 import { buildSerializableCampaign } from "./roundtrip.test-helpers";
 import { Campaign } from "../campaign";
 import { Room } from "../room";
-import type { ExitsArg } from "../../test-utils";
 
 describe("serializeCampaignWithIndex", () => {
   it("returns a snapshot identical to serializeCampaign plus an index of every entity", () => {
@@ -18,8 +17,8 @@ describe("serializeCampaignWithIndex", () => {
   });
 
   it("rootRooms: a room with no party member is absent without rootRooms, present with rootRooms", () => {
-    const campaign = new Campaign("Test", 10, [], { rng: () => 0.5 });
-    const orphan = new Room("Orphan", "a lonely chamber", [], {} as ExitsArg);
+    const campaign = new Campaign({ title: "Test", maxRounds: 10, knownRecipes: [], rng: () => 0.5 });
+    const orphan = new Room({ name: "Orphan", description: "a lonely chamber", loot: [] });
 
     // Without rootRooms: no party, no rooms reachable → empty rooms array
     const snapWithout = serializeCampaign(campaign);

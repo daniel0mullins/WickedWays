@@ -1,5 +1,7 @@
 import { ICampaign } from "../campaign";
-import { Character, CharacterOptions, ICharacter } from "./character";
+import { Character, ICharacter } from "./character";
+import type { AfflictionConfig } from "./afflictions";
+import type { Presentation } from "../presentation";
 import { Stats } from "./stats";
 
 /** Fields shared by every dialogue block: its responses and an optional gate. */
@@ -12,7 +14,7 @@ type DialogueBase = {
  * A unit of NPC dialogue. A `"fuzzy"` block triggers when its trigger tokens are
  * all present in the prompt; an `"exact"` block triggers on a full string match.
  */
-type IDialogue =
+export type IDialogue =
   | (DialogueBase & { type: "fuzzy"; trigger: Set<string> })
   | (DialogueBase & { type: "exact"; trigger: string });
 
@@ -33,6 +35,26 @@ export interface INonPlayerCharacter extends ICharacter {
   readonly dialogueBlocks: IDialogue[];
   /** Line returned when {@link INonPlayerCharacter.dialogue} is called with no prompt. */
   initialDialogue: string;
+}
+
+/** Constructor options for a {@link NonPlayerCharacter}. */
+export interface NonPlayerCharacterOptions {
+  /** The campaign the NPC belongs to. */
+  campaign: ICampaign;
+  /** Display name. */
+  name: string;
+  /** Initial {@link Stats}. */
+  stats: Stats;
+  /** Line returned when talked to without a prompt. */
+  initialDialogue: string;
+  /** Blocks whose triggers drive prompted responses. */
+  dialogueBlocks: IDialogue[];
+  /** Injected randomness for deterministic tests. */
+  rng?: () => number;
+  /** Overrides the default affliction thresholds/roll config. */
+  afflictionConfig?: AfflictionConfig;
+  /** Optional presentation metadata (image/sound) for the Play Surface. */
+  presentation?: Presentation;
 }
 
 /**
@@ -103,26 +125,21 @@ export class NonPlayerCharacter
     return responses;
   }
 
-  /**
-   * @param campaign - The campaign the NPC belongs to.
-   * @param name - Display name.
-   * @param stats - Initial {@link Stats}.
-   * @param initialDialogue - Line returned when talked to without a prompt.
-   * @param dialogueBlocks - Blocks whose triggers drive prompted responses.
-   * @param options - Optional character options (rng, afflictionConfig, presentation).
-   */
-  constructor(
-    campaign: ICampaign,
-    name: string,
-    stats: Stats,
-    initialDialogue: string,
-    dialogueBlocks: IDialogue[],
-    options: CharacterOptions = {},
-  ) {
-    super(campaign, name, stats, 5, 3, options);
-    this.initialDialogue = initialDialogue;
-    this.#dialogueBlocks = dialogueBlocks;
-    this.#matchers = dialogueBlocks.map((block) =>
+  /** See {@link NonPlayerCharacterOptions} for parameter details. */
+  constructor(opts: NonPlayerCharacterOptions) {
+    super({
+      campaign: opts.campaign,
+      name: opts.name,
+      stats: opts.stats,
+      inventorySlots: 5,
+      actionsPerRound: 3,
+      rng: opts.rng,
+      afflictionConfig: opts.afflictionConfig,
+      presentation: opts.presentation,
+    });
+    this.initialDialogue = opts.initialDialogue;
+    this.#dialogueBlocks = opts.dialogueBlocks;
+    this.#matchers = opts.dialogueBlocks.map((block) =>
       this.#normalizeMatcher(block),
     );
   }

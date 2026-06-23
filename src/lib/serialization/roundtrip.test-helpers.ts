@@ -11,7 +11,6 @@ import { Item } from "../inventory";
 import { SlotKind } from "../equipment";
 import type { ArchetypeId } from "../archetype";
 import type { RecipeId } from "../crafting";
-import type { ExitsArg } from "../../test-utils";
 import { CampaignRegistry } from "./registry";
 
 export function makeStats() {
@@ -28,14 +27,14 @@ export function makeStats() {
  * registrations — suitable for default round-trips).
  */
 export function buildSerializableCampaign(): { campaign: Campaign; registry: CampaignRegistry } {
-  const campaign = new Campaign("Crypt", 10, [], { rng: () => 0.5 });
+  const campaign = new Campaign({ title: "Crypt", maxRounds: 10, knownRecipes: [], rng: () => 0.5 });
   campaign.registerArchetype({
     id: "delver" as ArchetypeId,
     name: "Delver",
-    statModifiers: { [StatType.Health]: 2 },
+    baseStats: { [StatType.Health]: 2 },
   });
-  const start = new Room("Start", "the entrance", [], {} as ExitsArg);
-  const pc = new PlayerCharacter(campaign, "Ada", makeStats());
+  const start = new Room({ name: "Start", description: "the entrance", loot: [] });
+  const pc = new PlayerCharacter({ campaign, name: "Ada" });
   pc.joinCampaign();
   campaign.gm = pc;
   pc.selectArchetype("delver" as ArchetypeId);
@@ -53,8 +52,8 @@ export const WIDGET_BEHAVIOR_KEY = "widget-item";
 /** Builds a fresh, serializable item carrying the widget behaviorKey. */
 function makeWidgetItem(): Item {
   const noop = () => {};
-  return new Item(
-    {
+  return new Item({
+      descriptor: {
       type: "weapon",
       recipe: { item: 1 },
       modifier: 0,
@@ -63,10 +62,10 @@ function makeWidgetItem(): Item {
       slot: SlotKind.Hand,
       behaviorKey: WIDGET_BEHAVIOR_KEY,
     },
-    { equippable: true, equipped: false, destroyable: true, usable: false },
-    { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-    { onPickUp: noop },
-  );
+      properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+      actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+      events: { onPickUp: noop },
+    });
 }
 
 /**
@@ -87,22 +86,22 @@ export function buildStartedCampaign(
   opts: { withGm?: boolean } = {},
 ): { campaign: Campaign; registry: CampaignRegistry } {
   const { withGm = true } = opts;
-  const campaign = new Campaign("Crypt", 10, [], { rng: () => 0.5 });
+  const campaign = new Campaign({ title: "Crypt", maxRounds: 10, knownRecipes: [], rng: () => 0.5 });
   campaign.registerArchetype({
     id: "delver" as ArchetypeId,
     name: "Delver",
-    statModifiers: { [StatType.Health]: 2 },
+    baseStats: { [StatType.Health]: 2 },
   });
-  const start = new Room("Start", "the entrance", [], {} as ExitsArg);
-  const next = new Room("Next", "an adjoining chamber", [], {} as ExitsArg);
+  const start = new Room({ name: "Start", description: "the entrance", loot: [] });
+  const next = new Room({ name: "Next", description: "an adjoining chamber", loot: [] });
   start.addExit(Directions.North, next);
 
-  const pc = new PlayerCharacter(campaign, "Ada", makeStats());
+  const pc = new PlayerCharacter({ campaign, name: "Ada" });
   pc.joinCampaign();
   pc.selectArchetype("delver" as ArchetypeId);
   pc.move(start);
 
-  const ben = new PlayerCharacter(campaign, "Ben", makeStats());
+  const ben = new PlayerCharacter({ campaign, name: "Ben" });
   ben.joinCampaign();
   ben.selectArchetype("delver" as ArchetypeId);
   ben.move(start);

@@ -7,32 +7,32 @@ import { Room } from "./room";
 import { Status } from "./status";
 import { createKey } from "./inventory";
 import { ProceduralViolation } from "./util";
-import { makeStats, type ExitsArg } from "../test-utils";
+import { makeStats } from "../test-utils";
 
 function goblinFormation(id: string, weight: number): Formation {
   return {
     id,
     weight,
-    build: (campaign) => [new Mob(campaign, `Goblin-${id}`, makeStats(), 2, 2, [])],
+    build: (campaign) => [new Mob({ campaign, name: `Goblin-${id}`, stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [] })],
   };
 }
 
 function room(modifier = 1): Room {
-  return new Room("Cave", "Cave", [], {} as ExitsArg, [], modifier);
+  return new Room({ name: "Cave", description: "Cave", loot: [], spawnModifier: modifier });
 }
 
 describe("EncounterTable", () => {
   describe("addFormation", () => {
     it("rejects a formation whose mobs carry key-item drops", () => {
-      const table = new EncounterTable(() => 0, 100);
-      const campaign = new Campaign("C");
+      const table = new EncounterTable({ rng: () => 0, baseChance: 100 });
+      const campaign = new Campaign({ title: "C" });
       const formation: Formation = {
         id: "thief",
         weight: 1,
         build: (c) => [
-          new Mob(c, "Thief", makeStats(), 2, 2, [
+          new Mob({ campaign: c, name: "Thief", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [
             createKey({ name: "Loot Key", keyCode: "loot", consumeOnUse: false }),
-          ]),
+          ] }),
         ],
       };
 
@@ -40,14 +40,14 @@ describe("EncounterTable", () => {
     });
 
     it("accepts a formation with no key drops", () => {
-      const table = new EncounterTable(() => 0, 100);
-      const campaign = new Campaign("C");
+      const table = new EncounterTable({ rng: () => 0, baseChance: 100 });
+      const campaign = new Campaign({ title: "C" });
       expect(() => table.addFormation(goblinFormation("a", 1), campaign)).not.toThrow();
     });
 
     it("rejects a formation with non-positive weight", () => {
-      const table = new EncounterTable(() => 0, 100);
-      const campaign = new Campaign("C");
+      const table = new EncounterTable({ rng: () => 0, baseChance: 100 });
+      const campaign = new Campaign({ title: "C" });
       expect(() => table.addFormation(goblinFormation("a", 0), campaign)).toThrow(
         ProceduralViolation,
       );
@@ -56,8 +56,8 @@ describe("EncounterTable", () => {
 
   describe("maybeSpawn", () => {
     it("spawns into the room when the roll passes on first visit", () => {
-      const table = new EncounterTable(() => 0, 50); // roll 1 <= 50*1
-      const campaign = new Campaign("C");
+      const table = new EncounterTable({ rng: () => 0, baseChance: 50 }); // roll 1 <= 50*1
+      const campaign = new Campaign({ title: "C" });
       table.addFormation(goblinFormation("a", 1), campaign);
       const cave = room(1);
 
@@ -69,8 +69,8 @@ describe("EncounterTable", () => {
     });
 
     it("does not spawn on a revisit", () => {
-      const table = new EncounterTable(() => 0, 50);
-      const campaign = new Campaign("C");
+      const table = new EncounterTable({ rng: () => 0, baseChance: 50 });
+      const campaign = new Campaign({ title: "C" });
       table.addFormation(goblinFormation("a", 1), campaign);
       const cave = room();
 
@@ -81,34 +81,34 @@ describe("EncounterTable", () => {
     });
 
     it("does not spawn when the roll fails", () => {
-      const table = new EncounterTable(() => 0.99, 50); // roll 100 > 50
-      const campaign = new Campaign("C");
+      const table = new EncounterTable({ rng: () => 0.99, baseChance: 50 }); // roll 100 > 50
+      const campaign = new Campaign({ title: "C" });
       table.addFormation(goblinFormation("a", 1), campaign);
 
       expect(table.maybeSpawn(room(), campaign)).toHaveLength(0);
     });
 
     it("never spawns in a safe room (spawnModifier 0)", () => {
-      const table = new EncounterTable(() => 0, 100);
-      const campaign = new Campaign("C");
+      const table = new EncounterTable({ rng: () => 0, baseChance: 100 });
+      const campaign = new Campaign({ title: "C" });
       table.addFormation(goblinFormation("a", 1), campaign);
 
       expect(table.maybeSpawn(room(0), campaign)).toHaveLength(0);
     });
 
     it("suppresses spawning when an active mob is already present", () => {
-      const table = new EncounterTable(() => 0, 100);
-      const campaign = new Campaign("C");
+      const table = new EncounterTable({ rng: () => 0, baseChance: 100 });
+      const campaign = new Campaign({ title: "C" });
       table.addFormation(goblinFormation("a", 1), campaign);
       const cave = room();
-      cave.placeMob(new Mob(campaign, "Resident", makeStats(), 2, 2, []));
+      cave.placeMob(new Mob({ campaign, name: "Resident", stats: makeStats(), inventorySlots: 2, actionsPerRound: 2, drops: [] }));
 
       expect(table.maybeSpawn(cave, campaign)).toHaveLength(0);
     });
 
     it("places spawned mobs alive in the room", () => {
-      const table = new EncounterTable(() => 0, 100);
-      const campaign = new Campaign("C");
+      const table = new EncounterTable({ rng: () => 0, baseChance: 100 });
+      const campaign = new Campaign({ title: "C" });
       table.addFormation(goblinFormation("a", 1), campaign);
       const cave = room();
 

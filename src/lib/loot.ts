@@ -42,6 +42,19 @@ export interface ILoot extends IItemHolder {
   [SERIALIZE](): LootSnapshot;
 }
 
+/** Constructor options for a {@link Loot} container. */
+export interface LootOptions {
+  /** Flavour text describing the container. */
+  description: string;
+  /**
+   * Initial items; capacity is set to their count plus 2 and each is claimed by
+   * this container.
+   */
+  contents: IItem[];
+  /** Optional presentation metadata (image/sound). */
+  presentation?: Presentation;
+}
+
 /**
  * Default {@link ILoot} implementation. Capacity is sized to its initial
  * contents plus a small headroom, and every starting item is claimed by the box
@@ -64,12 +77,11 @@ export class Loot implements ILoot {
   }
 
   /**
-   * @param description - Flavour text describing the container.
-   * @param contents - Initial items; capacity is set to their count plus 2 and
-   *   each is claimed by this container.
+   * @param opts - See {@link LootOptions}.
    * @throws {@link ProceduralViolation} if any initial item is a key.
    */
-  constructor(description: string, contents: IItem[], presentation?: Presentation) {
+  constructor(opts: LootOptions) {
+    const { description, contents, presentation } = opts;
     if (contents.some((item) => item.type === "key")) {
       throw new ProceduralViolation("Keys cannot be stored in a loot container.");
     }
@@ -189,7 +201,7 @@ export class Loot implements ILoot {
  * @returns The reconstructed loot box, registered in `ctx`.
  */
 export function hydrateLoot(data: LootSnapshot, ctx: HydrateContext): Loot {
-  const loot = new Loot(data.description, []);
+  const loot = new Loot({ description: data.description, contents: [] });
   loot.id = data.id as LootId;
   loot[HYDRATE](data, ctx);
   ctx.put(loot.id, loot);

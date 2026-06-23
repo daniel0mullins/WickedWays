@@ -3,15 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { ICharacter } from "./character/character";
 import { StatType } from "./character/stats";
 import { SlotKind } from "./equipment";
-import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, Item, SET_DURABILITY, UNEQUIP, createKey, type IItem, type IItemHolder } from "./inventory";
+import { CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, Item, SET_DURABILITY, UNEQUIP, createKey, type IItem, type IItemHolder, type ItemProperties } from "./inventory";
 import { ProceduralViolation } from "./util";
 import type { CraftingRecipe, RecipeId } from "./crafting";
 import type { Presentation } from "./presentation";
 import { HYDRATE } from "./serialization/symbols";
-
-// `ItemProperties` is not exported, so we recover the shape the constructor
-// expects straight from its parameter list.
-type ItemPropsArg = ConstructorParameters<typeof Item>[1];
 
 // `HELD_BY` lives in the global symbol registry, so the test can read the
 // private holder through the same key the class exposes it under.
@@ -67,28 +63,28 @@ function makeEvents() {
   };
 }
 
-function makeItem(propsOverride: Partial<ItemPropsArg> = {}) {
+function makeItem(propsOverride: Partial<ItemProperties> = {}) {
   const actions = makeActions();
   const events = makeEvents();
-  const properties: ItemPropsArg = {
+  const properties: ItemProperties = {
     equippable: true,
     equipped: false,
     destroyable: true,
     usable: true,
     ...propsOverride,
   };
-  const item = new Item(
-    { type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, name: "Rusty Sword" },
-    properties,
-    actions,
-    events,
-  );
+  const item = new Item({
+    descriptor: { type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, name: "Rusty Sword" },
+    properties: properties,
+    actions: actions,
+    events: events,
+  });
   return { item, actions, events, properties };
 }
 
 function makeDurable(maxDurability?: number, durability?: number) {
-  return new Item(
-    {
+  return new Item({
+    descriptor: {
       type: "weapon",
       recipe: { metal: 1 },
       modifier: 2,
@@ -97,10 +93,10 @@ function makeDurable(maxDurability?: number, durability?: number) {
       maxDurability,
       durability,
     },
-    { equippable: true, equipped: false, destroyable: true, usable: true },
-    makeActions(),
-    makeEvents(),
-  );
+    properties: { equippable: true, equipped: false, destroyable: true, usable: true },
+    actions: makeActions(),
+    events: makeEvents(),
+  });
 }
 
 describe("durability", () => {
@@ -186,18 +182,18 @@ describe("Item", () => {
   describe("presentation", () => {
     it("exposes supplied presentation and is undefined when omitted", () => {
       const pres: Presentation = { image: "sword.png" };
-      const withPres = new Item(
-        { type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, name: "Rusty Sword", presentation: pres },
-        { equippable: true, equipped: false, destroyable: true, usable: true },
-        makeActions(),
-        makeEvents(),
-      );
-      const without = new Item(
-        { type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, name: "Plain Sword" },
-        { equippable: true, equipped: false, destroyable: true, usable: true },
-        makeActions(),
-        makeEvents(),
-      );
+      const withPres = new Item({
+        descriptor: { type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, name: "Rusty Sword", presentation: pres },
+        properties: { equippable: true, equipped: false, destroyable: true, usable: true },
+        actions: makeActions(),
+        events: makeEvents(),
+      });
+      const without = new Item({
+        descriptor: { type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, name: "Plain Sword" },
+        properties: { equippable: true, equipped: false, destroyable: true, usable: true },
+        actions: makeActions(),
+        events: makeEvents(),
+      });
       expect(withPres.presentation).toBe(pres);
       expect(without.presentation).toBeUndefined();
     });
@@ -205,8 +201,8 @@ describe("Item", () => {
 
   it("exposes emitsLight when set, and leaves it undefined otherwise", () => {
     const noop = () => {};
-    const torch = new Item(
-      {
+    const torch = new Item({
+      descriptor: {
         type: "weapon",
         recipe: { item: 1 },
         modifier: 0,
@@ -215,16 +211,16 @@ describe("Item", () => {
         slot: SlotKind.Hand,
         emitsLight: true,
       },
-      { equippable: true, equipped: false, destroyable: true, usable: false },
-      { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-      { onPickUp: noop },
-    );
-    const rock = new Item(
-      { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Rock" },
-      { equippable: false, equipped: false, destroyable: true, usable: false },
-      { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
-      { onPickUp: noop },
-    );
+      properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+      actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+      events: { onPickUp: noop },
+    });
+    const rock = new Item({
+      descriptor: { type: "weapon", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Rock" },
+      properties: { equippable: false, equipped: false, destroyable: true, usable: false },
+      actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+      events: { onPickUp: noop },
+    });
 
     expect(torch.emitsLight).toBe(true);
     expect(rock.emitsLight).toBeUndefined();
@@ -472,18 +468,18 @@ describe("Item", () => {
     it("works when only the required onPickUp event is supplied", () => {
       const actions = makeActions();
       const onPickUp = vi.fn();
-      const item = new Item(
-        {
+      const item = new Item({
+        descriptor: {
           name: "Test Item",
           type: "consumable",
           recipe: { food: 1 },
           modifier: 0,
           stat: StatType.Health,
         },
-        { equippable: true, equipped: false, destroyable: false, usable: true },
-        actions,
-        { onPickUp },
-      );
+        properties: { equippable: true, equipped: false, destroyable: false, usable: true },
+        actions: actions,
+        events: { onPickUp },
+      });
       const holder = makeHolder();
 
       item.actions.pickUp(holder);
@@ -523,8 +519,8 @@ describe("createKey", () => {
 
 describe("equipment slots", () => {
   it("exposes an authored slot kind and twoHanded flag", () => {
-    const item = new Item(
-      {
+    const item = new Item({
+      descriptor: {
         type: "weapon",
         recipe: { metal: 1 },
         modifier: 3,
@@ -533,36 +529,36 @@ describe("equipment slots", () => {
         slot: "hand",
         twoHanded: true,
       },
-      { equippable: true, equipped: false, destroyable: true, usable: false },
-      makeActions(),
-      makeEvents(),
-    );
+      properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+      actions: makeActions(),
+      events: makeEvents(),
+    });
 
     expect(item.slot).toBe("hand");
     expect(item.twoHanded).toBe(true);
   });
 
   it("leaves slot and twoHanded undefined when not authored", () => {
-    const item = new Item(
-      {
+    const item = new Item({
+      descriptor: {
         type: "consumable",
         recipe: { healing: 1 },
         modifier: 0,
         stat: StatType.Health,
         name: "Potion",
       },
-      { equippable: false, equipped: false, destroyable: true, usable: true },
-      makeActions(),
-      makeEvents(),
-    );
+      properties: { equippable: false, equipped: false, destroyable: true, usable: true },
+      actions: makeActions(),
+      events: makeEvents(),
+    });
 
     expect(item.slot).toBeUndefined();
     expect(item.twoHanded).toBeUndefined();
   });
 
   it("accepts the accessory item type", () => {
-    const ring = new Item(
-      {
+    const ring = new Item({
+      descriptor: {
         type: "accessory",
         recipe: { metal: 1 },
         modifier: 2,
@@ -570,10 +566,10 @@ describe("equipment slots", () => {
         name: "Ring of Calm",
         slot: "finger",
       },
-      { equippable: true, equipped: false, destroyable: true, usable: false },
-      makeActions(),
-      makeEvents(),
-    );
+      properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+      actions: makeActions(),
+      events: makeEvents(),
+    });
 
     expect(ring.type).toBe("accessory");
     expect(ring.slot).toBe("finger");
@@ -588,8 +584,8 @@ describe("teaches", () => {
   };
 
   it("exposes the recipe an item teaches", () => {
-    const item = new Item(
-      {
+    const item = new Item({
+      descriptor: {
         type: "weapon",
         recipe: { metal: 1 },
         modifier: 1,
@@ -597,10 +593,10 @@ describe("teaches", () => {
         name: "Blueprint",
         teaches: recipe,
       },
-      { equippable: false, equipped: false, destroyable: true, usable: false },
-      makeActions(),
-      makeEvents(),
-    );
+      properties: { equippable: false, equipped: false, destroyable: true, usable: false },
+      actions: makeActions(),
+      events: makeEvents(),
+    });
 
     expect(item.teaches).toBe(recipe);
   });

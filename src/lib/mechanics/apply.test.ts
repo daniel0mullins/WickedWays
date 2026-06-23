@@ -4,12 +4,12 @@ import { Campaign } from "../campaign.js";
 import { PlayerCharacter } from "../character/player-character.js";
 import { StatType } from "../character/stats.js";
 import { Status } from "../status.js";
-import { makeStats, assignNeutralArchetype } from "../../test-utils.js";
+import { assignNeutralArchetype } from "../../test-utils.js";
 
 /** Build a started one-PC campaign containing a real PlayerCharacter. */
 function makeStartedCampaign() {
-  const campaign = new Campaign("Test");
-  const player = new PlayerCharacter(campaign, "Hero", makeStats());
+  const campaign = new Campaign({ title: "Test" });
+  const player = new PlayerCharacter({ campaign, name: "Hero" });
   player.joinCampaign();
   assignNeutralArchetype(campaign, player);
   campaign.gm = player;

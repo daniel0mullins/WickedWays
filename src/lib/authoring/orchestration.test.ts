@@ -6,11 +6,10 @@ import { Directions } from "../room";
 import { StatType } from "../character/stats";
 import { ProceduralViolation } from "../util";
 
-const stats = () => ({ [StatType.Health]: 10, [StatType.Sanity]: 10, [StatType.Energy]: 10 });
 function seedBuilder() {
   const reg = defineRegistry({ items: {} });
   return authorTemplate("Crypt", reg, { rng: () => 0.5, maxRounds: 10 })
-    .archetype({ id: "delver", name: "Delver", statModifiers: { [StatType.Health]: 2 } })
+    .archetype({ id: "delver", name: "Delver", baseStats: { [StatType.Health]: 2 } })
     .room("start", { description: "the entrance" }).room("next", { description: "next" })
     .startRoom("start").exit("start", Directions.North, "next");
 }
@@ -27,12 +26,23 @@ describe("instantiate", () => {
 describe("startSession", () => {
   it("joins players, selects archetypes, sets gm, begins", () => {
     const campaign = startSession(seedBuilder(), {
-      players: [{ name: "Ada", stats: stats(), archetype: "delver" }, { name: "Ben", stats: stats(), archetype: "delver" }],
+      players: [{ name: "Ada", archetype: "delver" }, { name: "Ben", archetype: "delver" }],
       gm: 0,
     });
     expect(campaign.started).toBe(true);
     expect(campaign.party.length).toBe(2);
     expect(campaign.activeCharacter.name).toBe("Ada");
+  });
+
+  it("auto-selects the sole registered archetype for a player who omits one", () => {
+    // seedBuilder registers exactly one archetype ("delver"), so beginCampaign
+    // defaults the unspecified player to it.
+    const campaign = startSession(seedBuilder(), {
+      players: [{ name: "Ada" }],
+      gm: 0,
+    });
+    expect(campaign.started).toBe(true);
+    expect(campaign.activeCharacter.archetype?.id).toBe("delver");
   });
 
   it("throws ProceduralViolation (not TypeError) when no .startRoom() was authored and opts.startRoom is absent", () => {
@@ -42,7 +52,7 @@ describe("startSession", () => {
       .room("dungeon", { description: "a room" });
     expect(() =>
       startSession(builder, {
-        players: [{ name: "Ada", stats: stats(), archetype: "delver" }],
+        players: [{ name: "Ada", archetype: "delver" }],
         gm: 0,
       }),
     ).toThrow(ProceduralViolation);
@@ -55,7 +65,7 @@ describe("startSession", () => {
       .startRoom("dungeon");
     expect(() =>
       startSession(builder, {
-        players: [{ name: "Ada", stats: stats(), archetype: "delver" }],
+        players: [{ name: "Ada", archetype: "delver" }],
         gm: 0,
         startRoom: "nonexistent-room",
       }),

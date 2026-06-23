@@ -14,6 +14,18 @@ export default withMermaid(defineConfig({
   // files (src/lib/...) that are not site pages. Skip dead-link checking
   // rather than rewrite every source link.
   ignoreDeadLinks: true,
+  // Pre-bundle Mermaid (from vitepress-plugin-mermaid) so its CJS dependency
+  // dayjs gets bundled with proper default-export interop; otherwise the dev
+  // server throws "does not provide an export named 'default'" in the browser.
+  // `pnpm docs:build` is unaffected; this only fixes `docs:dev`.
+  vite: {
+    optimizeDeps: {
+      include: ["mermaid"],
+    },
+    ssr: {
+      noExternal: ["mermaid"],
+    },
+  },
   themeConfig: {
     nav: [
       { text: "Guide", link: "/guide/introduction" },
@@ -25,6 +37,7 @@ export default withMermaid(defineConfig({
           text: "Guide",
           items: [
             { text: "Introduction", link: "/guide/introduction" },
+            { text: "Getting started", link: "/guide/getting-started" },
             { text: "Architecture", link: "/guide/architecture" },
             { text: "Data model", link: "/guide/data-model" },
           ],
