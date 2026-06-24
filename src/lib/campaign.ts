@@ -666,6 +666,12 @@ export class Campaign implements ICampaign {
         }
         return false;
       },
+      hasItem: (key: string) => {
+        for (const item of c.inventory.items) {
+          if (item.behaviorKey === key) return true;
+        }
+        return false;
+      },
     };
   }
 
