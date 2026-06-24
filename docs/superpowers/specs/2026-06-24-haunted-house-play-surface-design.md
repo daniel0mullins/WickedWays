@@ -13,8 +13,24 @@ Two deliverables, one new package:
    adventures — a scrolling transcript and a typed command parser, with gentle
    modern affordances (clickable compass/nouns, history, save/restore).
 
-The engine (`src/`) is **not modified**. Everything new lives in a new workspace
-package, `@wickedways/play`, that imports the engine and drives it in-browser.
+The engine (`src/`) is touched by **one small, additive, backward-compatible
+change**: a `hasItem(itemKey): boolean` method on the mechanic system's
+`CharacterView` (mirroring the existing `hasEquipped`). Everything else is new and
+lives in a new workspace package, `@wickedways/play`, that imports the engine and
+drives it in-browser.
+
+### Why the one engine change
+
+Authored text reaches a browser UI only through **mechanic Cue effects** — a
+`Mechanic` returns `{ kind: EffectKind.Cue, cue: { text } }`, which `apply.ts`
+emits as a `{ kind: "mechanic", cue }` `PresentationCue` for `onCue` subscribers.
+(Scene scripts in the engine's guide use `console.log`, which only a CLI captures.)
+But a mechanic's `CharacterView` currently exposes only `hasEquipped(itemKey)`,
+`roomId`, and stats — not inventory contents. Gating journal lore on *holding the
+journal* therefore requires `hasItem`. The payoff: the "which lore fragments
+have been seen" state lives in **mechanic state, which is serialized in the
+snapshot**, so save/restore and any future UI get lore delivery for free, with no
+client-side reimplementation.
 
 ## Non-Goals (YAGNI)
 
@@ -36,8 +52,8 @@ the text-specific modules.
 │              Pure engine usage. UI-neutral.                            │
 │                                                                        │
 │  ┌─────────── core/  ── UI-NEUTRAL, shared by every surface ───────┐   │
-│  │  session    Calls startSession() to get a live Campaign and      │   │
-│  │             drives it directly. Executes Intents, exposes the     │   │
+│  │  session    Calls assemble() + seats the player to get a live    │   │
+│  │             Campaign + room map. Executes Intents, exposes the    │   │
 │  │             cue stream, save/restore/undo, finished/outcome.      │   │
 │  │  viewmodel  Derives a plain, render-agnostic snapshot from the    │   │
 │  │             live campaign: current room, exits, visible occupants │   │
@@ -65,12 +81,13 @@ the text-specific modules.
 
 The existing `@wickedways/client` uses `Authority` + `SyncCoordinator` because
 multiple networked clients must converge on one authority. A single local player
-has no such need: `startSession(builder, opts)` returns a **live `Campaign`** that
-the session drives directly via character methods (`move`, `attack`, `takeFromLootBox`,
-…) and observes via `campaign.onCue(...)`. The parser still emits a serializable
-`Intent` so it stays cleanly testable and UI-neutral; the session is the only code
-that knows how to turn an `Intent` into engine calls. Should multiplayer ever be
-wanted, only `core/session` changes — parser/narrator/ui are untouched.
+has no such need: the session assembles a **live `Campaign`** (via `assemble` + the
+same seating `startSession` performs) and drives it directly via character methods
+(`move`, `attack`, `takeFromLootBox`, …), observing via `campaign.onCue(...)`. The
+parser still emits a serializable `Intent` so it stays cleanly testable and
+UI-neutral; the session is the only code that knows how to turn an `Intent` into
+engine calls. Should multiplayer ever be wanted, only `core/session` changes —
+parser/narrator/ui are untouched.
 
 ### Data flow per command
 
@@ -137,13 +154,18 @@ the slow-burn threat.
 
 **The spine (mystery, not maze):**
 
-- **The journal** — found early (a loot box in the Foyer/Hall); its entries are
-  gated prose (NPC-style dialogue and/or room-entry scenes) that unlock as rooms are
-  discovered, slowly revealing what the vanished occupant did. Holding the journal
-  is part of the win condition.
-- **The lantern** — found in the `Kitchen`; an `emitsLight` item. Carried, it lights
-  dark rooms and suppresses Dread. You'll want it before descending into the dark
-  Cellar — tying light → sanity → exploration together.
+- **The journal** — a regular readable item (`behaviorKey: "journal"`) found early
+  in a loot box. Holding it unlocks lore: a **Storyteller mechanic** watches `move`
+  actions and, when you enter a significant room holding the journal, emits that
+  room's lore fragment once as a Cue (gated by `hasItem("journal")`). Its "seen"
+  state lives in serialized mechanic state. Holding the journal is part of the win
+  condition (`inventory.items` carries `behaviorKey === "journal"`).
+- **The lantern** — found in the `Kitchen`; an **equippable** Hand-slot item with
+  `emitsLight`. Equipping it both lights dark rooms (engine `room.isLit`) and
+  suppresses Dread (the Dread mechanic checks `hasEquipped(lanternKey)`) — one action
+  tying light → sanity → exploration together. You'll want it before descending into
+  the dark Cellar. (Hand slots are paired, so the lantern and a one-handed weapon can
+  be equipped together for the Cellar fight.)
 - **Two keys** (authored with `createKey`, matched by `keyCode`):
   - `brass key` — found in a loot box in the `Parlor`; reveals the door to the
     `Study`, which holds a pivotal journal clue.
@@ -160,50 +182,63 @@ the slow-burn threat.
 The engine **never blocks movement** (`Character.move` is ungated; mechanics fire
 after the fact and cannot veto). A "locked door" is therefore **not** an enforced
 lock — it is **an exit that does not exist yet**. Runtime exit mutation *is*
-supported (`room.addExit(dir, to)` / `room.removeExit(dir)` are public), and scene
-scripts may call them.
+supported (`room.addExit(dir, to)` / `room.removeExit(dir)` are public).
 
-So each locked door is authored as a **key-gated `enter` scene on the antechamber
-room** (the room you stand in to use the door):
+Reveals **cannot** be done from a scene: a scene behavior only ever receives its own
+room, and the locked target room is disconnected, so a scene has no way to reference
+it for `addExit`. The room references live only in the `Map<string, IRoom>` that
+`assemble(description, registry)` returns — which `startSession` consumes and hides.
 
-- The locked exit is **not** declared at authoring time.
-- A scene on the antechamber (phase `enter`) has a precondition that checks the
-  entering character's `inventory.keys` for the matching `keyCode`. When you enter
-  that room **holding the key**, the precondition passes and the script runs
-  `antechamber.addExit(dir, target)` (plus the reverse exit on `target`), narrated as
-  the door unlocking. A persisted `state` flag makes the reveal idempotent across
-  re-entries; a `consumeOnUse` key is spent via `consumeKey` in the script.
+So locked doors are handled in **`core/session`**, which obtains that map directly:
 
-Concretely: the **Landing** is the antechamber for both upper-floor locked doors.
-Entering it with the `brass key` reveals the `Study`; entering it with the `iron key`
-reveals the `Attic`. Picking the brass key up in the Parlor and walking back up the
-stairs re-fires the Landing's `enter` scene, which now passes its precondition and
-opens the way — the natural Infocom rhythm, with no engine primitive faked.
+- The session calls `assemble(builder.description, builder.registry)` (instead of
+  `startSession`) to get `{ campaign, rooms }`, then replicates `startSession`'s
+  seating (construct each `PlayerCharacter`, `joinCampaign`, `selectArchetype`, move
+  to the start room, set the GM, `beginCampaign`). It retains the `rooms` map.
+- The campaign content exports a **locked-door table** — plain data, e.g.
+  `{ id, from, dir, to, keyCode, consume }[]`. The session is generic: it applies
+  whatever table it is handed, so `core/` stays campaign-agnostic.
+- An `unlock` Intent (a real, time-advancing action) names a locked door present in
+  the current room. The session checks the active character's `inventory.keys` for
+  the matching `keyCode`; on a match it calls `from.addExit(dir, rooms.get(to))` plus
+  the reverse exit, spends a `consume` key via `consumeKey`, and the reveal is
+  narrated. With no key it fails in-voice ("The study door won't budge — you don't
+  have the right key.").
 
-There is consequently **no `unlock`-an-exit Intent** (the engine has no such
-primitive). `unlock`/`open` survive only as in-voice **convenience verbs** in the
-parser (below): when a locked door is present they report its state ("The study door
-is locked — you don't have the right key." / "The way is already open."), but the
-actual reveal is the authored scene's job.
-- **The Dread mechanic** — a custom `Mechanic` that drains 1 Sanity per turn while
-  the actor is in an unlit/haunted room, returning an `adjustStat` effect on
-  `onTurnStart`; suppressed when the room is lit. Registered under `mechanics` and
-  enabled with `.useMechanic`.
+Because the reveal mutates `room.exits`, it is captured by `serializeCampaign`, so
+**save/restore restores unlocked doors automatically** — no client-side unlock state
+to persist separately.
+
+Concretely: the **Landing** holds both upper-floor locked doors — `unlock study
+door` (brass key) reveals the `Study`; `unlock attic door` (iron key) reveals the
+`Attic`. `open <door>` is a synonym for `unlock` when its target is a door;
+`open <chest>` remains the loot-box action.
+- **The Dread mechanic** — a custom `Mechanic` that drains 1 Sanity per turn,
+  returning an `adjustStat` effect on `onTurnStart`, **unless** the actor has the
+  lantern equipped (`hasEquipped(lanternKey)`). Registered under `mechanics` and
+  enabled with `.useMechanic`. (Mechanics cannot inspect rooms — `CampaignView.rooms`
+  is empty — so the gate is the equipped lantern, not room light directly; equipping
+  the lantern is what both lights the room and stops the bleed.)
 - **Win** — reach the **Attic** while holding the **journal** (you've learned the
   truth and gone to face it). **Lose** — Sanity hits zero (the house takes your
   mind) or the party is KO'd. **Timeout** at round 150.
 
 **Mechanics exercised:** rooms/exits, dark/light + lantern, loot containers, two
-keys, one real combat (with durability on a found weapon), the Dread custom
-mechanic, a Sanity-based lose condition, NPC/journal dialogue, room-entry scenes for
-atmosphere, and win/lose/timeout outcomes.
+keys + locked-door reveals, one real combat (with durability on a found weapon), the
+Dread custom mechanic, the Storyteller lore mechanic, a Sanity-based lose condition,
+and win/lose/timeout outcomes. (No engine `scene`s — scene scripts can't push text to
+a browser and can't reference disconnected rooms, so atmosphere comes from room
+descriptions + mechanic cues, and door reveals from the session.)
 
 **Single archetype** for the player (e.g. an "Heir"/"Visitor"), with baseline-ish
 stats and perhaps one thematic immunity.
 
-The campaign is authored as a module exporting a registry + a `TemplateBuilder` (and
-a convenience `startHauntedHouse()` that calls `startSession`), mirroring the pattern
-in `@wickedways/seed` and the Get Wicked guide.
+The campaign is authored as a module (mirroring `@wickedways/seed` and the Get Wicked
+guide) exporting: the **registry** (`buildHauntedHouseRegistry()`), the
+**`TemplateBuilder`** (`hauntedHouseTemplate()`), the **locked-door table**, the
+**lore-fragment table** (consumed by the Storyteller mechanic), and an **alias table**
+(item/entity synonyms for the parser). The session consumes the builder + door table;
+it does not use `startSession` (which would hide the room map).
 
 ## Component: `core/`
 
@@ -222,6 +257,7 @@ type Intent =
   | { kind: "equip"; targetId: string }
   | { kind: "unequip"; targetId: string }
   | { kind: "use"; targetId: string }
+  | { kind: "unlock"; doorId: string }                 // reveal a locked door
   | { kind: "talk"; npcId: string; prompt?: string }   // dialogue / read journal
   | { kind: "wait" }
   | { kind: "harvest"; targetId: string }
@@ -233,12 +269,24 @@ Targets are entity ids resolved by the parser from `viewmodel.scope`. Keeping id
 
 ### `session`
 
-- `start(opts)` — calls `startSession(hauntedHouseBuilder, { players:[…], gm:0 })`,
-  subscribes a forwarding handler to `campaign.onCue`, returns a `GameSession`.
-- `execute(intent)` — snapshots for undo, dispatches the Intent to the matching
-  engine call on `campaign.activeCharacter` (or campaign), advances time
-  (`nextPlayer()`) for time-advancing intents, returns the cues collected during
-  execution and any thrown `ProceduralViolation` mapped to an in-voice failure.
+- `start(opts)` — calls `assemble(builder.description, builder.registry)` to get
+  `{ campaign, rooms }`, replicates `startSession`'s seating (construct each
+  `PlayerCharacter`, `joinCampaign`, optional `selectArchetype`, move to the start
+  room, set GM, `beginCampaign`), subscribes a forwarding handler to
+  `campaign.onCue`, retains the `rooms` map and the campaign's **locked-door table**,
+  and returns a `GameSession`. (It uses `assemble` rather than `startSession` because
+  only `assemble` exposes the room map needed to reveal disconnected locked rooms.)
+- `execute(intent)` — snapshots for undo; for a **time-advancing** intent it calls
+  `activeCharacter.startTurn()` (which ticks `onTurnStart` mechanics like Dread),
+  dispatches the intent to the matching engine call, then `campaign.nextPlayer()`
+  (single-player → `endRound` → round++, win/lose/timeout check); **free** intents
+  (open, equip, unequip, craft, light) execute directly with no `startTurn`/
+  `nextPlayer`. An `unlock` intent looks the door up in the table, checks
+  `inventory.keys` for the `keyCode`, and on a match `addExit`s both directions via
+  the `rooms` map and `consumeKey`s. Returns the cues collected during execution; a
+  thrown `ProceduralViolation` is caught and mapped to an in-voice failure.
+- **Time-advancing intents:** move, take, drop, use, harvest, attack, unlock, wait.
+  **Free intents:** open, equip, unequip, craft, repair, light, extinguish.
 - `cues` — subscription for the narrator.
 - `save(slot)` / `restore(slot)` / `undo()` — delegate to the SaveStore +
   `serializeCampaign`/deserialize; `undo` restores the pre-last-turn snapshot
@@ -252,6 +300,10 @@ A pure function `view(campaign): ViewModel` producing render-agnostic data:
 - `room`: id, name, description (full vs. terse depending on visited-before),
   `isLit`.
 - `exits`: list of `{ dir, toName }` for available directions (drives the compass).
+- `lockedDoors`: locked-door entries whose `from` is the current room and whose
+  exit `dir` is not yet present — each `{ id, name, dir }` so the parser can resolve
+  "study door" and the compass can hint a locked way. (Derived from the door table +
+  current `room.exits`.)
 - `occupants`: NPCs/mobs present, each `{ id, name, aliases, kind }`.
 - `loot`: containers present and (once opened) their contents as scope entities.
 - `inventory`: carried items `{ id, name, aliases, equipped }`.
@@ -296,16 +348,15 @@ A hand-written tokenizer + verb table (not a heavyweight grammar):
 **Verb table** — two kinds of verbs:
 
 - *World verbs* → an `Intent`: `go`/`n`/`s`/`e`/`w`/`u`/`d` (and `north`…),
-  `take`/`get`, `drop`, `open` (a loot box → the free `open` Intent),
+  `take`/`get`, `drop`, `open` (a loot box → the `open` Intent),
+  `unlock` (a door → the `unlock` Intent; `open <door>` is a synonym),
   `attack`/`kill`/`hit`, `equip`/`wear`/`wield`, `unequip`/`remove`, `use`,
   `talk`/`ask`/`read` (dialogue / journal), `light`/`extinguish` (lantern),
-  `harvest`, `craft`, `wait`/`z`.
+  `harvest`, `craft`, `wait`/`z`. (`open` resolves by target type: a loot box →
+  `open`; a locked door → `unlock`.)
 - *Meta verbs* → handled locally, **no time, no Intent**: `look`/`l`,
   `inventory`/`i`, `examine`/`x` (reads a description from the viewmodel),
   `exits`, `help`/`?`, plus `save`, `restore`, `undo` (routed to the session).
-- *Door affordance*: `unlock`, and `open` when its target is a door rather than a
-  loot box, give in-voice lock-state feedback only — the actual reveal is the
-  authored key-gated scene (see "Locked doors"), so no Intent is produced.
 
 **Resolution outcomes:** an Intent; a local query answer; a disambiguation
 request when a noun matches >1 scope entity ("Which do you mean — the brass key or
@@ -323,10 +374,14 @@ Subscribes to the session cue stream and reads the viewmodel. Responsibilities:
   sentence listing visible exits, occupants, and loot. First visit gives the full
   description; re-entry gives the terse form (classic Infocom behavior).
 - **Event prose** from cues: combat (`action`/`encounter` cues → templated lines
-  with actor/target names and deltas), movement, taking/dropping, light/visibility
-  changes, Dread ticks (`mechanic` cues → atmospheric one-liners), NPC/journal text
-  passed through verbatim, scene scripts' text, and the win/lose/timeout
-  `resolution` cue as the closing paragraph.
+  with actor/target names), movement, taking/dropping, light/visibility changes,
+  Dread ticks and **journal lore fragments** (both `mechanic` cues — text passed
+  through verbatim), and the win/lose/timeout `resolution` cue as the closing
+  paragraph.
+- **Revealed exits**: a successful `unlock` reveals an exit via the session's
+  `addExit`, which surfaces as a **viewmodel exit diff** — after each command the
+  narrator compares the room's exits before/after and announces any newly-opened way
+  ("With a grinding click, the way to the Study opens.").
 - A small **prose-templates** module keyed by cue kind keeps the voice consistent
   and is the single file to tune for tone.
 
@@ -376,7 +431,8 @@ The UI shell stays thin; it is verified by playing, not unit tests.
 3. Sanity → 0 and the round-150 timeout both end the game with their authored prose.
 4. Save, restore, and one-level undo work via the `SaveStore` interface.
 5. Clickable compass/nouns fill the command line; Enter confirms.
-6. The engine package (`src/`) is unchanged. All new code is in `@wickedways/play`.
+6. The only engine (`src/`) change is the additive `CharacterView.hasItem` method
+   (plus its test); all other new code is in `@wickedways/play`.
 7. `pnpm checks` (lint + typecheck + test) passes, including the new package's tests.
 
 ## Future graphical UI
