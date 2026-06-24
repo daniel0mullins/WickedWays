@@ -21,10 +21,14 @@ node dist/get-wicked.js
 
 ## 1. Imports and a tiny item factory
 
-Authored items are `() => Item` factories registered by key. Real items wire up
-action behaviour and events; this helper keeps them terse with no-ops, enough to
-place, equip, wear, and destroy them. (Set each item's `behaviorKey` to its
-registry key so the world can serialize.)
+Authored items are `() => Item` factories registered by key. A full `Item` takes
+four parts — a `descriptor` (what the item *is*), its mutable `properties`, its
+`actions` (behaviour), and `events` (hooks). This helper fills in only the
+repetitive boilerplate (no-op behaviour + standard flags), so each item still
+spells out its own descriptor — including its `recipe` (the item's **material
+makeup**: what it yields when destroyed and what crafting consumes) and its
+`behaviorKey` (so the world can serialize). Real items wire up actual `actions`
+and `events`.
 
 ```ts
 import { defineRegistry } from "./lib/authoring/registry";
@@ -42,13 +46,9 @@ import type { Mechanic, JsonObject } from "./lib/mechanics/mechanic";
 
 const noop = () => {};
 
-function makeItem(
-  behaviorKey: string,
-  d: Partial<ItemDescriptor> & { name: string; type: ItemDescriptor["type"] },
-  props: Partial<{ equippable: boolean; usable: boolean }> = {},
-): Item {
+function makeItem(descriptor: ItemDescriptor, props: { equippable?: boolean; usable?: boolean } = {}): Item {
   return new Item({
-    descriptor: { recipe: { metal: 1 }, modifier: 1, stat: StatType.Health, behaviorKey, ...d },
+    descriptor,
     properties: { equippable: props.equippable ?? false, equipped: false, destroyable: true, usable: props.usable ?? false },
     actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
     events: { onPickUp: noop },
@@ -81,16 +81,16 @@ pass against it.
 ```ts
 const registry = defineRegistry({
   items: {
-    sword: () => makeItem("sword", { name: "Iron Sword", type: ItemType.Weapon, modifier: 6, slot: SlotKind.Hand, maxDurability: 10 }, { equippable: true }),
-    torch: () => makeItem("torch", { name: "Torch", type: ItemType.Weapon, slot: SlotKind.Hand, emitsLight: true }, { equippable: true }),
-    salve: () => makeItem("salve", { name: "Healing Salve", type: ItemType.Consumable, modifier: 5 }, { usable: true }),
+    sword: () => makeItem({ behaviorKey: "sword", name: "Iron Sword", type: ItemType.Weapon, recipe: { metal: 2 }, modifier: 6, stat: StatType.Health, slot: SlotKind.Hand, maxDurability: 10 }, { equippable: true }),
+    torch: () => makeItem({ behaviorKey: "torch", name: "Torch", type: ItemType.Weapon, recipe: { item: 1 }, modifier: 0, stat: StatType.Health, slot: SlotKind.Hand, emitsLight: true }, { equippable: true }),
+    salve: () => makeItem({ behaviorKey: "salve", name: "Healing Salve", type: ItemType.Consumable, recipe: { healing: 1 }, modifier: 5, stat: StatType.Health }, { usable: true }),
     "rusty-key": () => createKey({ name: "Rusty Key", keyCode: "vault", consumeOnUse: true }),
   },
   recipes: {
     "forge-blade": {
       id: "forge-blade" as RecipeId,
       materials: { metal: 2 },
-      create: () => makeItem("sword", { name: "Forged Blade", type: ItemType.Weapon, modifier: 5, slot: SlotKind.Hand, maxDurability: 5 }, { equippable: true }),
+      create: () => makeItem({ behaviorKey: "sword", name: "Forged Blade", type: ItemType.Weapon, recipe: { metal: 2 }, modifier: 5, stat: StatType.Health, slot: SlotKind.Hand, maxDurability: 5 }, { equippable: true }),
     },
   },
   scenes: {
