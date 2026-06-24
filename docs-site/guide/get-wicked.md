@@ -86,13 +86,26 @@ pipeline. "Dread" drains one Sanity from the acting character at the start of
 each turn by returning an `adjustStat` effect. (Mechanics can also `modifyDamage`,
 react `onAction`, emit cues, and expose custom actions.)
 
-Both discriminants have named constants: `kind` is an `EffectKind` member, and
-`stat` is a `StatType` member (`adjustStat` accepts `Sanity` or `Energy`).
+Each hook receives a **context object** describing the event. For `onTurnStart`
+it's a [`TurnCtx`](/api/mechanics/mechanic/interfaces/TurnCtx) (named `ctx` below)
+carrying:
+
+- `ctx.actor` — a read-only view of the character whose turn is starting (use
+  `ctx.actor.id` to target an effect at it);
+- `ctx.state` — this mechanic's own persisted state (the value from
+  `initialState`), a live reference you may mutate in place across turns;
+- `ctx.view` — a read-only view of the campaign;
+- `ctx.rng` / `ctx.roll(n)` — the campaign's seeded randomness, so a mechanic's
+  rolls stay reproducible.
+
+A hook returns the `Effect[]` it wants applied (or nothing). Both effect
+discriminants have named constants: `kind` is an `EffectKind` member, and `stat`
+is a `StatType` member (`adjustStat` accepts `Sanity` or `Energy`).
 
 ```ts
 const dread: Mechanic<JsonObject> = {
   initialState: () => ({}),
-  onTurnStart: (h) => [{ kind: EffectKind.AdjustStat, target: h.actor.id, stat: StatType.Sanity, delta: -1 }],
+  onTurnStart: (ctx) => [{ kind: EffectKind.AdjustStat, target: ctx.actor.id, stat: StatType.Sanity, delta: -1 }],
 };
 ```
 
