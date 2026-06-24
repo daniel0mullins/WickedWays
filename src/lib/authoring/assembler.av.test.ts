@@ -9,7 +9,7 @@ const registry = defineRegistry({ items: {} });
 
 const base: CampaignTemplateDescription = {
   title: "T", opts: {}, archetypes: [], rooms: [{ name: "R", description: "d" }],
-  startRoom: "R", exits: [], mobs: [], loot: [], caches: [], recipes: [],
+  startRoom: "R", exits: [], mobs: [], loot: [], caches: [], npcs: [], formations: [], scenes: [], recipes: [],
   materials: [], winConditions: [], loseConditions: [], mechanics: [],
 };
 

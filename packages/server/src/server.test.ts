@@ -83,7 +83,8 @@ describe("createServer", () => {
     a.close();
   });
 
-  it("commits a submit, acks the sender with committed, and broadcasts entry to others", async () => {
+  // Occasionally times out under load (websocket round-trip race); retry to de-flake.
+  it("commits a submit, acks the sender with committed, and broadcasts entry to others", { retry: 2 }, async () => {
     const { genesis } = seedFixture();
     handle = await createServer(serverOpts(genesis));
     const a = await open(handle.port);

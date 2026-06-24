@@ -2,6 +2,7 @@ import { ProceduralViolation } from "../util";
 import { ItemAction } from "../inventory";
 import { commandActorId, isTurnAction, isSetupCommand, isGmCommand, isJoinCommand } from "./types";
 import { constructBareCharacter } from "../character/hydrate";
+import { CampaignRegistry } from "../serialization/registry";
 import type { Command } from "./types";
 import type { EntityIndex } from "./entity-index";
 import type { ICampaign } from "../campaign";
@@ -173,7 +174,8 @@ export class Resolver {
         // Construct the player from the snapshot's identity + stats and join it.
         // The new character propagates to replicas via the created-delta; richer
         // initial state (archetype, items, placement) follows in later commands.
-        const ch = constructBareCharacter(command.character, campaign) as PlayerCharacter;
+        // Sync only ever creates players; the registry (NPC dialogue rebind) is unused here.
+        const ch = constructBareCharacter(command.character, campaign, new CampaignRegistry()) as PlayerCharacter;
         ch.joinCampaign();
         return;
       }

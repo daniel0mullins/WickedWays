@@ -49,15 +49,15 @@ type Recipe = RequireAtLeastOne<{
 export type MaterialMap = Partial<Record<ItemComponentType, number>>;
 
 /** Item action callback acting on a single character (optionally with components). */
-type ItemActionEvent = <C extends ICharacter>(
-  c: C,
+type ItemActionEvent = <Actor extends ICharacter>(
+  c: Actor,
   components?: ItemComponentType[] | null,
 ) => void;
 
 /** Item action callback acting between two characters (e.g. a transfer). */
-type ItemActionSharedEvent = <C extends ICharacter, CC extends ICharacter>(
-  c: C,
-  cc: CC,
+type ItemActionSharedEvent = <Actor extends ICharacter, Recipient extends ICharacter>(
+  c: Actor,
+  cc: Recipient,
 ) => void;
 
 /** The interactions an item can be the subject of. */

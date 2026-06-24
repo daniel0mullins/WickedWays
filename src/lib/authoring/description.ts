@@ -64,6 +64,41 @@ export interface CacheDef {
 }
 
 /**
+ * Defines a non-player character placed in the world. Its dialogue (and the
+ * precondition closures within it) comes from a registered `NpcBehavior`, keyed
+ * so the NPC survives serialization — its dialogue re-binds from the registry on
+ * hydrate, exactly like a scene's script.
+ */
+export interface NpcDef {
+  name: string;
+  stats: Stats;
+  /** Room to seat the NPC in (optional; unplaced if omitted). */
+  room?: string;
+  /** Registry NPC-behavior key supplying this NPC's dialogue. */
+  behavior: string;
+}
+
+/** Opts a roving encounter formation (by registry behavior key) into the campaign. */
+export interface FormationDef {
+  /** Registry formation-behavior key (a mob-spawning factory). */
+  key: string;
+  /** Selection weight among roving formations. Defaults to 1. */
+  weight?: number;
+}
+
+/** Attaches a registered scene behavior to a room, fired on enter/exit. */
+export interface SceneDef {
+  /** Room the scene is attached to. */
+  room: string;
+  /** Registry scene-behavior key (preconditions + script). */
+  key: string;
+  /** Phase that triggers the scene. Defaults to `"enter"`. */
+  phase?: "enter" | "exit";
+  /** Initial persisted state for the scene. Defaults to `{}`. */
+  initialState?: Record<string, unknown>;
+}
+
+/**
  * A complete, author-written template for a campaign. Pass to {@link assemble}
  * to validate and construct a live, player-less, not-begun {@link Campaign}.
  */
@@ -82,6 +117,12 @@ export interface CampaignTemplateDescription {
   mobs: MobDef[];
   loot: LootDef[];
   caches: CacheDef[];
+  /** Non-player characters placed in the world. */
+  npcs: NpcDef[];
+  /** Roving encounter formations opted in by registry behavior key. */
+  formations: FormationDef[];
+  /** Scenes attached to rooms by registry behavior key. */
+  scenes: SceneDef[];
   /** Registry recipe keys to unlock for the party from the start. */
   recipes: string[];
   /** Initial materials to deposit into the campaign's shared pool. */

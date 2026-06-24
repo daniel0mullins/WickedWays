@@ -1,4 +1,4 @@
-import { CampaignRegistry, type SceneBehavior, type FormationBehavior } from "../serialization/registry";
+import { CampaignRegistry, type SceneBehavior, type FormationBehavior, type NpcBehavior } from "../serialization/registry";
 import type { Item } from "../inventory";
 import type { CraftingRecipe } from "../crafting";
 import type { ICampaign } from "../campaign";
@@ -8,46 +8,61 @@ declare const ITEM_KEYS: unique symbol;
 declare const RECIPE_KEYS: unique symbol;
 declare const CONDITION_KEYS: unique symbol;
 declare const MECHANIC_KEYS: unique symbol;
+declare const SCENE_KEYS: unique symbol;
+declare const FORMATION_KEYS: unique symbol;
+declare const NPC_KEYS: unique symbol;
 
-/** A {@link CampaignRegistry} whose item/recipe/condition/mechanic key literals are carried in the type (phantom — no runtime field). */
+/** A {@link CampaignRegistry} whose item/recipe/condition/mechanic/scene/formation/npc key literals are carried in the type (phantom — no runtime field). */
 export type TypedRegistry<
-  IK extends string,
-  RK extends string,
-  CK extends string = never,
-  MK extends string = never,
+  ItemKey extends string,
+  RecipeKey extends string,
+  ConditionKey extends string = never,
+  MechanicKey extends string = never,
+  SceneKey extends string = never,
+  FormationKey extends string = never,
+  NpcKey extends string = never,
 > = CampaignRegistry & {
-  readonly [ITEM_KEYS]?: IK;
-  readonly [RECIPE_KEYS]?: RK;
-  readonly [CONDITION_KEYS]?: CK;
-  readonly [MECHANIC_KEYS]?: MK;
+  readonly [ITEM_KEYS]?: ItemKey;
+  readonly [RECIPE_KEYS]?: RecipeKey;
+  readonly [CONDITION_KEYS]?: ConditionKey;
+  readonly [MECHANIC_KEYS]?: MechanicKey;
+  readonly [SCENE_KEYS]?: SceneKey;
+  readonly [FORMATION_KEYS]?: FormationKey;
+  readonly [NPC_KEYS]?: NpcKey;
 };
 
 /** The registered item-factory key union of a {@link TypedRegistry} (falls back to `string`). */
-export type ItemKeyOf<R> = R extends { readonly [ITEM_KEYS]?: infer K extends string } ? K : string;
+export type ItemKeyOf<Registry> = Registry extends { readonly [ITEM_KEYS]?: infer K extends string } ? K : string;
 /** The registered recipe key union of a {@link TypedRegistry} (falls back to `string`). */
-export type RecipeKeyOf<R> = R extends { readonly [RECIPE_KEYS]?: infer K extends string } ? K : string;
+export type RecipeKeyOf<Registry> = Registry extends { readonly [RECIPE_KEYS]?: infer K extends string } ? K : string;
 /** The registered condition key union of a {@link TypedRegistry} (falls back to `string`). */
-export type ConditionKeyOf<R> = R extends { readonly [CONDITION_KEYS]?: infer K extends string } ? K : string;
+export type ConditionKeyOf<Registry> = Registry extends { readonly [CONDITION_KEYS]?: infer K extends string } ? K : string;
 /**
  * The registered mechanic key union of a {@link TypedRegistry} (falls back to `string`).
  *
  * Use this in generic constraints when you want compile-time checking of mechanic keys
- * against a specific registry — e.g. `.useMechanic(key: MechanicKeyOf<R>)`.
- * If `R` is not a `TypedRegistry` produced by `defineRegistry`, this resolves to `string`.
+ * against a specific registry — e.g. `.useMechanic(key: MechanicKeyOf<Registry>)`.
+ * If `Registry` is not a `TypedRegistry` produced by `defineRegistry`, this resolves to `string`.
  */
-export type MechanicKeyOf<R> = R extends { readonly [MECHANIC_KEYS]?: infer K extends string } ? K : string;
+export type MechanicKeyOf<Registry> = Registry extends { readonly [MECHANIC_KEYS]?: infer K extends string } ? K : string;
+/** The registered scene-behavior key union of a {@link TypedRegistry} (falls back to `string`). */
+export type SceneKeyOf<Registry> = Registry extends { readonly [SCENE_KEYS]?: infer K extends string } ? K : string;
+/** The registered formation-behavior key union of a {@link TypedRegistry} (falls back to `string`). */
+export type FormationKeyOf<Registry> = Registry extends { readonly [FORMATION_KEYS]?: infer K extends string } ? K : string;
+/** The registered NPC-behavior key union of a {@link TypedRegistry} (falls back to `string`). */
+export type NpcKeyOf<Registry> = Registry extends { readonly [NPC_KEYS]?: infer K extends string } ? K : string;
 
 /**
- * The Cfg type of the mechanic registered under key K in registry R.
+ * The config type of the mechanic registered under `Key` in `Registry`.
  *
- * Note: because `defineRegistry` encodes mechanic keys as `keyof M & string` but
- * does not thread the per-key `Cfg` type through the phantom — only the key union
- * is captured — this resolves to `unknown`. It is a safe default: `.useMechanic`
+ * Note: because `defineRegistry` encodes mechanic keys as `keyof Mechanics & string`
+ * but does not thread the per-key config type through the phantom — only the key
+ * union is captured — this resolves to `unknown`. It is a safe default: `.useMechanic`
  * (Task 6) will validate configs at `initialState` rather than at the call site.
  */
-export type ConfigOf<R, K extends string> =
-  R extends { mechanicConfigs?: infer M }
-    ? K extends keyof M ? M[K] : unknown
+export type ConfigOf<Registry, Key extends string> =
+  Registry extends { mechanicConfigs?: infer Configs }
+    ? Key extends keyof Configs ? Configs[Key] : unknown
     : unknown;
 
 /**
@@ -58,18 +73,22 @@ export type ConfigOf<R, K extends string> =
  * every key argument.
  */
 export function defineRegistry<
-  I extends Record<string, () => Item>,
-  R extends Record<string, CraftingRecipe> = Record<string, never>,
-  C extends Record<string, (campaign: ICampaign) => boolean> = Record<string, never>,
-  M extends Record<string, Mechanic<JsonObject, unknown, string>> = Record<string, never>,
+  Items extends Record<string, () => Item>,
+  Recipes extends Record<string, CraftingRecipe> = Record<string, never>,
+  Conditions extends Record<string, (campaign: ICampaign) => boolean> = Record<string, never>,
+  Mechanics extends Record<string, Mechanic<JsonObject, unknown, string>> = Record<string, never>,
+  Scenes extends Record<string, SceneBehavior> = Record<string, never>,
+  Formations extends Record<string, FormationBehavior> = Record<string, never>,
+  Npcs extends Record<string, NpcBehavior> = Record<string, never>,
 >(defs: {
-  items: I;
-  recipes?: R;
-  scenes?: Record<string, SceneBehavior>;
-  formations?: Record<string, FormationBehavior>;
-  conditions?: C;
-  mechanics?: M;
-}): TypedRegistry<keyof I & string, keyof R & string, keyof C & string, keyof M & string> {
+  items: Items;
+  recipes?: Recipes;
+  scenes?: Scenes;
+  formations?: Formations;
+  npcs?: Npcs;
+  conditions?: Conditions;
+  mechanics?: Mechanics;
+}): TypedRegistry<keyof Items & string, keyof Recipes & string, keyof Conditions & string, keyof Mechanics & string, keyof Scenes & string, keyof Formations & string, keyof Npcs & string> {
   const reg = new CampaignRegistry();
   for (const [key, factory] of Object.entries(defs.items)) reg.registerItem(key, factory);
   for (const [key, recipe] of Object.entries(defs.recipes ?? {})) reg.registerRecipe(key, recipe);
@@ -77,5 +96,6 @@ export function defineRegistry<
   for (const [key, formation] of Object.entries(defs.formations ?? {})) reg.registerFormation(key, formation);
   for (const [key, predicate] of Object.entries(defs.conditions ?? {})) reg.registerCondition(key, predicate);
   for (const [key, mechanic] of Object.entries(defs.mechanics ?? {})) reg.registerMechanic(key, mechanic);
-  return reg as TypedRegistry<keyof I & string, keyof R & string, keyof C & string, keyof M & string>;
+  for (const [key, npc] of Object.entries(defs.npcs ?? {})) reg.registerNpc(key, npc);
+  return reg as TypedRegistry<keyof Items & string, keyof Recipes & string, keyof Conditions & string, keyof Mechanics & string, keyof Scenes & string, keyof Formations & string, keyof Npcs & string>;
 }

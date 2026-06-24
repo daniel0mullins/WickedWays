@@ -7,7 +7,7 @@ import type { Direction } from "../room";
 import type { Stats } from "../character/stats";
 import type { MaterialMap } from "../inventory";
 import type { ArchetypeDef, CampaignTemplateDescription } from "./description";
-import type { ItemKeyOf, RecipeKeyOf, ConditionKeyOf, MechanicKeyOf } from "./registry";
+import type { ItemKeyOf, RecipeKeyOf, ConditionKeyOf, MechanicKeyOf, SceneKeyOf, FormationKeyOf, NpcKeyOf } from "./registry";
 import { AuthoringError } from "./errors";
 import type { OutcomeNarration } from "../victory";
 
@@ -15,8 +15,8 @@ import type { OutcomeNarration } from "../victory";
  * A chainable, ordering-agnostic builder that accumulates a
  * {@link CampaignTemplateDescription} and delegates to {@link assemble}.
  *
- * Generic over `IK` (item key union) and `RK` (recipe key union) from the
- * registry, so `drops`/`items`/`lights`/`.recipe` are compile-time-checked
+ * Generic over `ItemKey` (item key union) and `RecipeKey` (recipe key union)
+ * from the registry, so `drops`/`items`/`lights`/`.recipe` are compile-time-checked
  * against the registered keys.
  *
  * @example
@@ -28,7 +28,7 @@ import type { OutcomeNarration } from "../victory";
  *   .build();
  * ```
  */
-export class TemplateBuilder<IK extends string, RK extends string, CK extends string = never, MK extends string = never> {
+export class TemplateBuilder<ItemKey extends string, RecipeKey extends string, ConditionKey extends string = never, MechanicKey extends string = never, SceneKey extends string = never, FormationKey extends string = never, NpcKey extends string = never> {
   /** @internal for orchestration (e.g. startSession) */
   readonly description: CampaignTemplateDescription;
   /** @internal for orchestration (e.g. startSession) */
@@ -46,6 +46,9 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
       mobs: [],
       loot: [],
       caches: [],
+      npcs: [],
+      formations: [],
+      scenes: [],
       recipes: [],
       materials: [],
       winConditions: [],
@@ -63,7 +66,7 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
   }
 
   /** Define a room in the game world. */
-  room(name: string, opts: { description: string; dark?: boolean; spawnModifier?: number; lights?: IK[] }): this {
+  room(name: string, opts: { description: string; dark?: boolean; spawnModifier?: number; lights?: ItemKey[] }): this {
     this.description.rooms.push({
       name,
       description: opts.description,
@@ -92,7 +95,7 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
     room?: string;
     inventorySlots?: number;
     actionsPerRound?: number;
-    drops?: IK[];
+    drops?: ItemKey[];
     baseEscapeChance?: number;
     materialDrops?: MaterialMap;
     lightAverse?: boolean;
@@ -111,8 +114,34 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
     return this;
   }
 
+  /**
+   * Place a non-player character in the world. Its dialogue comes from a
+   * registered NPC behavior (keyed), so the NPC survives serialization. Players
+   * talk to it by finding it among a room's occupants and calling
+   * `npc.dialogue(prompt)`.
+   */
+  npc(name: string, opts: { stats: Stats; room?: string; behavior: NpcKey }): this {
+    this.description.npcs.push({
+      name,
+      stats: opts.stats,
+      room: opts.room,
+      behavior: opts.behavior,
+    });
+    return this;
+  }
+
+  /**
+   * Opt a roving encounter formation into the campaign by registry key. Roving
+   * formations spawn (weighted) when a player first enters a room, layered on top
+   * of the per-room `spawnModifier` / `baseEncounterChance` checks.
+   */
+  formation(key: FormationKey, opts: { weight?: number } = {}): this {
+    this.description.formations.push({ key, weight: opts.weight });
+    return this;
+  }
+
   /** Define a loot container placed in a room. */
-  loot(name: string, opts: { room: string; items: IK[]; description?: string }): this {
+  loot(name: string, opts: { room: string; items: ItemKey[]; description?: string }): this {
     this.description.loot.push({
       name,
       room: opts.room,
@@ -128,6 +157,17 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
     return this;
   }
 
+  /**
+   * Attach a registered scene behavior to a room. The scene fires when a
+   * character enters (or exits, per `phase`) the room, gated by the behavior's
+   * preconditions. `key` references a behavior registered via `defineRegistry`'s
+   * `scenes` map.
+   */
+  scene(room: string, key: SceneKey, opts: { phase?: "enter" | "exit"; initialState?: Record<string, unknown> } = {}): this {
+    this.description.scenes.push({ room, key, phase: opts.phase, initialState: opts.initialState });
+    return this;
+  }
+
   /** Deposit initial materials into the campaign's shared pool. */
   materials(source: string, map: MaterialMap): this {
     this.description.materials.push({ source, map });
@@ -135,19 +175,19 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
   }
 
   /** Unlock a recipe for the party from the start. */
-  recipe(key: RK): this {
+  recipe(key: RecipeKey): this {
     this.description.recipes.push(key);
     return this;
   }
 
   /** Add a win condition (registry key) with optional surface-agnostic prose. */
-  winWhen(key: CK, narration?: OutcomeNarration): this {
+  winWhen(key: ConditionKey, narration?: OutcomeNarration): this {
     this.description.winConditions.push({ key, narration });
     return this;
   }
 
   /** Add a loss condition (registry key) with optional surface-agnostic prose. */
-  loseWhen(key: CK, narration?: OutcomeNarration): this {
+  loseWhen(key: ConditionKey, narration?: OutcomeNarration): this {
     this.description.loseConditions.push({ key, narration });
     return this;
   }
@@ -164,7 +204,7 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
    * @param key    - A key registered in the {@link TypedRegistry} via `defineRegistry`.
    * @param config - Optional configuration forwarded verbatim to `Mechanic.initialState`.
    */
-  useMechanic<K extends MK>(key: K, config?: unknown): this {
+  useMechanic<Key extends MechanicKey>(key: Key, config?: unknown): this {
     if (this.description.mechanics.some((m) => m.key === key)) {
       throw new AuthoringError([`Mechanic '${key}' is already enabled.`]);
     }
@@ -217,10 +257,10 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
  *   the item/recipe key literals in its type.
  * @param opts - Optional campaign-level settings (rng, maxRounds, baseEncounterChance).
  */
-export function authorTemplate<R extends CampaignRegistry>(
+export function authorTemplate<Registry extends CampaignRegistry>(
   title: string,
-  registry: R,
+  registry: Registry,
   opts?: { rng?: () => number; maxRounds?: number; baseEncounterChance?: number },
-): TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>, MechanicKeyOf<R>> {
-  return new TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>, MechanicKeyOf<R>>(title, registry, opts);
+): TemplateBuilder<ItemKeyOf<Registry>, RecipeKeyOf<Registry>, ConditionKeyOf<Registry>, MechanicKeyOf<Registry>, SceneKeyOf<Registry>, FormationKeyOf<Registry>, NpcKeyOf<Registry>> {
+  return new TemplateBuilder<ItemKeyOf<Registry>, RecipeKeyOf<Registry>, ConditionKeyOf<Registry>, MechanicKeyOf<Registry>, SceneKeyOf<Registry>, FormationKeyOf<Registry>, NpcKeyOf<Registry>>(title, registry, opts);
 }

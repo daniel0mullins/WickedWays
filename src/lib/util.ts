@@ -8,16 +8,16 @@ export type BaseId = Brand<string, "Id">;
 /**
  * Generates a fresh UUID v4 cast to the requested branded id type.
  *
- * @typeParam T - The branded id type to produce (e.g. `CharacterId`).
- * @returns A new unique id of type `T`.
+ * @typeParam Id - The branded id type to produce (e.g. `CharacterId`).
+ * @returns A new unique id of type `Id`.
  *
  * @example
  * ```ts
  * const id = generateId<CharacterId>();
  * ```
  */
-export function generateId<T extends Brand<string, string>>() {
-  return uuid() as T;
+export function generateId<Id extends Brand<string, string>>() {
+  return uuid() as Id;
 }
 
 /** Tuple list of an object's own entries, preserving each key/value type. */

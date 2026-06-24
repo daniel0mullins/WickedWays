@@ -1,8 +1,11 @@
 import { Campaign } from "../campaign";
 import { Room } from "../room";
+import { Scene } from "../scene";
 import { Mob } from "../character/mob";
+import { NonPlayerCharacter } from "../character/non-player-character";
 import { Loot } from "../loot";
 import { MaterialCache } from "../material-cache";
+import { PLACE } from "../inventory";
 import { AuthoringError } from "./errors";
 import type { CampaignRegistry } from "../serialization/registry";
 import type { Direction } from "../room";
@@ -41,6 +44,7 @@ export function assemble(
   dupCheck("mob", desc.mobs.map((m) => m.name));
   dupCheck("loot", desc.loot.map((l) => l.name));
   dupCheck("cache", desc.caches.map((c) => c.name));
+  dupCheck("npc", desc.npcs.map((n) => n.name));
 
   const requireRoom = (name: string | undefined, ctx: string) => {
     if (name !== undefined && !roomNames.has(name)) {
@@ -56,6 +60,8 @@ export function assemble(
   for (const m of desc.mobs) requireRoom(m.room, `mob '${m.name}'`);
   for (const l of desc.loot) requireRoom(l.room, `loot '${l.name}'`);
   for (const c of desc.caches) requireRoom(c.room, `cache '${c.name}'`);
+  for (const n of desc.npcs) requireRoom(n.room, `npc '${n.name}'`);
+  for (const s of desc.scenes) requireRoom(s.room, `scene '${s.key}'`);
 
   // Defensive runtime key guard (compile-time-checked at the builder level):
   const requireItemKey = (k: string, ctx: string) => {
@@ -92,6 +98,30 @@ export function assemble(
   };
   for (const c of desc.winConditions) requireConditionKey(c.key, "winWhen");
   for (const c of desc.loseConditions) requireConditionKey(c.key, "loseWhen");
+
+  for (const s of desc.scenes) {
+    try {
+      registry.scene(s.key);
+    } catch {
+      problems.push(`scene references unregistered scene key '${s.key}'.`);
+    }
+  }
+
+  for (const f of desc.formations) {
+    try {
+      registry.formation(f.key);
+    } catch {
+      problems.push(`formation references unregistered formation key '${f.key}'.`);
+    }
+  }
+
+  for (const n of desc.npcs) {
+    try {
+      registry.npc(n.behavior);
+    } catch {
+      problems.push(`npc '${n.name}' references unregistered npc key '${n.behavior}'.`);
+    }
+  }
 
   const seenMech = new Set<string>();
   for (const m of desc.mechanics) {
@@ -201,9 +231,45 @@ export function assemble(
     }
   }
 
+  // Seat NPCs in their rooms (via PLACE — like mobs, no enter-scene side effects).
+  // Dialogue comes from the registered behavior; the key is kept for serialization.
+  for (const n of desc.npcs) {
+    const behavior = registry.npc(n.behavior);
+    const npc = new NonPlayerCharacter({
+      campaign,
+      name: n.name,
+      stats: n.stats,
+      initialDialogue: behavior.initialDialogue,
+      dialogueBlocks: behavior.dialogue,
+      behaviorKey: n.behavior,
+    });
+    if (n.room !== undefined) {
+      npc[PLACE](rooms.get(n.room)!);
+    }
+  }
+
+  // Opt in roving encounter formations.
+  for (const f of desc.formations) {
+    campaign.addFormation({ id: f.key, weight: f.weight ?? 1, build: registry.formation(f.key).build });
+  }
+
   // Wire exits
   for (const e of desc.exits) {
     rooms.get(e.from)!.addExit(e.direction, rooms.get(e.to)!);
+  }
+
+  // Attach scenes (mirrors hydrateScene: behavior + key, default phase "enter").
+  for (const s of desc.scenes) {
+    const behavior = registry.scene(s.key);
+    rooms.get(s.room)!.registerScene(
+      new Scene<never>({
+        phase: s.phase ?? "enter",
+        preconditions: behavior.preconditions,
+        script: behavior.script,
+        initialState: (s.initialState ?? {}) as never,
+        behaviorKey: s.key,
+      }),
+    );
   }
 
   // Register recipes

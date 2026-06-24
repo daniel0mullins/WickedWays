@@ -27,7 +27,7 @@ describe("Character serialization", () => {
 
     const keySnap = key[SERIALIZE]();
     const hydratedKey = hydrateItem(keySnap, ctx);
-    const restored = constructBareCharacter(snap, campaign);
+    const restored = constructBareCharacter(snap, campaign, ctx.registry);
     ctx.put(restored.id, restored);
     restored[HYDRATE](snap, ctx);
     expect(restored.id).toBe(pc.id);
@@ -52,7 +52,7 @@ describe("Character serialization", () => {
     const snap = mob[SERIALIZE]();
     expect(snap).toMatchObject({ kind: "mob", baseEscapeChance: 25, lightAverse: true });
 
-    const restored = constructBareCharacter(snap, campaign) as Mob;
+    const restored = constructBareCharacter(snap, campaign, ctx.registry) as Mob;
     ctx.put(restored.id, restored);
     restored[HYDRATE](snap, ctx);
     expect(restored.id).toBe(mob.id);

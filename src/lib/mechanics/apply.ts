@@ -1,5 +1,5 @@
 import type { Campaign } from "../campaign.js";
-import type { Effect } from "./mechanic.js";
+import { EffectKind, type Effect } from "./mechanic.js";
 import { StatType } from "../character/stats.js";
 import { Status } from "../status.js";
 import { ADJUST_STAT, FIND_CHARACTER } from "./symbols.js";
@@ -15,22 +15,22 @@ const ALL_STATUSES: Status[] = Object.values(Status);
  */
 export function applyEffect(campaign: Campaign, e: Effect): void {
   switch (e.kind) {
-    case "damage":
+    case EffectKind.Damage:
       campaign[FIND_CHARACTER](e.target)[ADJUST_STAT](StatType.Health, -Math.max(0, e.amount));
       break;
-    case "heal":
+    case EffectKind.Heal:
       campaign[FIND_CHARACTER](e.target)[ADJUST_STAT](StatType.Health, Math.max(0, e.amount));
       break;
-    case "adjustStat": {
-      const stat = e.stat === "sanity" ? StatType.Sanity : StatType.Energy;
+    case EffectKind.AdjustStat: {
+      const stat = e.stat === StatType.Sanity ? StatType.Sanity : StatType.Energy;
       // delta sign is the mechanic's intent; intentionally not magnitude-clamped (unlike every other arm).
       campaign[FIND_CHARACTER](e.target)[ADJUST_STAT](stat, e.delta);
       break;
     }
-    case "grantImmunity":
+    case EffectKind.GrantImmunity:
       campaign[FIND_CHARACTER](e.target)[GRANT_IMMUNITY](ALL_STATUSES, Math.max(0, Math.trunc(e.turns)));
       break;
-    case "cue":
+    case EffectKind.Cue:
       campaign[EMIT_CUE]({ kind: "mechanic", cue: e.cue });
       break;
   }

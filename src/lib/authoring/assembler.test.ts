@@ -3,10 +3,15 @@ import { assemble } from "./assembler";
 import { AuthoringError } from "./errors";
 import { defineRegistry } from "./registry";
 import { authorTemplate } from "./template-builder";
+import { startSession } from "./orchestration";
+import type { INonPlayerCharacter } from "../character/non-player-character";
+import { Mob, type IMob } from "../character/mob";
+import type { ICampaign } from "../campaign";
 import { Directions } from "../room";
 import { StatType } from "../character/stats";
 import { Item } from "../inventory";
 import { serializeCampaign } from "../serialization/serializer";
+import { deserializeCampaign } from "../serialization/deserializer";
 import type { CampaignTemplateDescription } from "./description";
 
 const makeCoin = () => new Item({
@@ -23,7 +28,7 @@ function baseDesc(over: Partial<CampaignTemplateDescription> = {}): CampaignTemp
     title: "Crypt", opts: { rng: () => 0.5, maxRounds: 10 },
     archetypes: [], rooms: [{ name: "start", description: "the entrance" }, { name: "next", description: "next" }],
     startRoom: "start", exits: [{ from: "start", direction: Directions.North, to: "next" }],
-    mobs: [], loot: [], caches: [], recipes: [], materials: [], winConditions: [], loseConditions: [], mechanics: [], ...over,
+    mobs: [], loot: [], caches: [], npcs: [], formations: [], scenes: [], recipes: [], materials: [], winConditions: [], loseConditions: [], mechanics: [], ...over,
   };
 }
 
@@ -90,5 +95,135 @@ describe("assemble", () => {
     } catch (e) { err = e as AuthoringError; }
     expect(err).toBeInstanceOf(AuthoringError);
     expect(err!.problems.length).toBeGreaterThanOrEqual(3); // all collected, not fail-fast
+  });
+});
+
+describe("scene authoring (.scene)", () => {
+  it("attaches a registered scene to its room and fires it on enter", () => {
+    let fired = 0;
+    const reg = defineRegistry({
+      items: {},
+      scenes: { greet: { preconditions: [], script: () => { fired += 1; } } },
+    });
+    const builder = authorTemplate("T", reg)
+      .room("hall", { description: "a hall" })
+      .startRoom("hall")
+      .scene("hall", "greet");
+
+    // startSession seats the player in the start room, firing its "enter" scene.
+    startSession(builder, { players: [{ name: "Ada" }], gm: 0 });
+
+    expect(fired).toBe(1);
+  });
+
+  it("rejects a scene referencing an unregistered behavior key at assemble time", () => {
+    const reg = defineRegistry({ items: {} });
+    const builder = authorTemplate("T", reg)
+      .room("hall", { description: "a hall" })
+      .startRoom("hall")
+      .scene("hall", "missing");
+
+    expect(() => builder.build()).toThrow(AuthoringError);
+  });
+});
+
+describe("npc authoring (.npc)", () => {
+  it("seats an NPC from a registered behavior with working dialogue", () => {
+    const reg = defineRegistry({
+      items: {},
+      npcs: {
+        innkeeper: {
+          initialDialogue: "Welcome, traveller.",
+          dialogue: [{ type: "exact", trigger: "ale", response: ["That'll be two coins."] }],
+        },
+      },
+    });
+    const builder = authorTemplate("T", reg)
+      .room("inn", { description: "an inn" })
+      .npc("Innkeeper", { stats: stats(), room: "inn", behavior: "innkeeper" });
+
+    const { rooms } = assemble(builder.description, builder.registry);
+    const innkeeper = rooms.get("inn")!.occupants.find((o) => o.name === "Innkeeper") as
+      | INonPlayerCharacter
+      | undefined;
+
+    expect(innkeeper).toBeDefined();
+    expect(innkeeper!.dialogue()).toEqual(["Welcome, traveller."]);
+    expect(innkeeper!.dialogue("ale")).toEqual(["That'll be two coins."]);
+  });
+
+  it("round-trips through serialization, re-binding dialogue preconditions from the registry", () => {
+    const reg = defineRegistry({
+      items: {},
+      npcs: {
+        sage: {
+          initialDialogue: "Hmm.",
+          // A precondition is a function — it can only survive serialization by
+          // re-binding from the registry on hydrate.
+          dialogue: [{ type: "exact", trigger: "secret", response: ["For the worthy."], precondition: () => true }],
+        },
+      },
+    });
+    const builder = authorTemplate("T", reg)
+      .room("hall", { description: "a hall" })
+      .startRoom("hall")
+      .npc("Sage", { stats: stats(), room: "hall", behavior: "sage" });
+
+    const snapshot = builder.toSnapshot();
+    const npcSnap = snapshot.characters.find((c) => c.name === "Sage");
+    expect(npcSnap?.kind).toBe("npc");
+    expect(npcSnap?.npcBehaviorKey).toBe("sage");
+
+    // Deserializing rebuilds the NPC and re-binds its (function-valued) precondition.
+    expect(() => deserializeCampaign(snapshot, { registry: reg })).not.toThrow();
+  });
+
+  it("rejects an NPC referencing an unregistered behavior key", () => {
+    const reg = defineRegistry({ items: {} });
+    const builder = authorTemplate("T", reg)
+      .room("inn", { description: "an inn" })
+      .npc("Ghost", { stats: stats(), room: "inn", behavior: "missing" });
+
+    expect(() => builder.build()).toThrow(AuthoringError);
+  });
+
+  it("rejects an NPC referencing an undefined room", () => {
+    const reg = defineRegistry({ items: {}, npcs: { ghost: { initialDialogue: "Boo.", dialogue: [] } } });
+    const builder = authorTemplate("T", reg)
+      .room("inn", { description: "an inn" })
+      .npc("Ghost", { stats: stats(), room: "nowhere", behavior: "ghost" });
+
+    expect(() => builder.build()).toThrow(AuthoringError);
+  });
+});
+
+describe("formation authoring (.formation)", () => {
+  it("opts a registered roving formation into the campaign", () => {
+    const reg = defineRegistry({
+      items: {},
+      formations: {
+        rats: {
+          build: (campaign: ICampaign): IMob[] => [
+            new Mob({ campaign, name: "Rat", stats: stats(), drops: [] }),
+          ],
+        },
+      },
+    });
+    const builder = authorTemplate("T", reg)
+      .room("sewer", { description: "a sewer", spawnModifier: 1 })
+      .startRoom("sewer")
+      .formation("rats", { weight: 2 });
+
+    expect(() => builder.build()).not.toThrow();
+  });
+
+  it("rejects a formation referencing an unregistered behavior key", () => {
+    const reg = defineRegistry({ items: {} });
+    const builder = authorTemplate("T", reg)
+      .room("sewer", { description: "a sewer" })
+      .startRoom("sewer")
+      .formation("missing");
+
+    expect(() => builder.build()).toThrow(AuthoringError);
   });
 });

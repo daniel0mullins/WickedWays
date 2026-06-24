@@ -38,6 +38,7 @@ export default withMermaid(defineConfig({
           items: [
             { text: "Introduction", link: "/guide/introduction" },
             { text: "Getting started", link: "/guide/getting-started" },
+            { text: "Get Wicked", link: "/guide/get-wicked" },
             { text: "Architecture", link: "/guide/architecture" },
             { text: "Data model", link: "/guide/data-model" },
           ],

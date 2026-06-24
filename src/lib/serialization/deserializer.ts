@@ -58,7 +58,7 @@ export function deserializeCampaign(
     return { room, data: r };
   });
   const chars = data.characters.map((d) => {
-    const ch = constructBareCharacter(d, campaign);
+    const ch = constructBareCharacter(d, campaign, opts.registry);
     ctx.put(ch.id, ch);
     return { ch, data: d };
   });

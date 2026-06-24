@@ -1077,7 +1077,7 @@ export class Character implements ICharacter {
   }
 
   /** Subclass discriminant. */
-  protected serializeKind(): "player" | "mob" { return "player"; }
+  protected serializeKind(): "player" | "mob" | "npc" { return "player"; }
   /** Subclass hook to add its own fields to the snapshot. Base: none. */
   protected serializeExtra(_snap: CharacterSnapshot): void {}
 

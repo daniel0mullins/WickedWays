@@ -52,9 +52,9 @@ export interface RoomView {
  * All randomness must go through `rng` / `roll` so same-seed runs produce
  * identical results (guardrail B: determinism).
  */
-export interface HookCtx<S extends JsonObject> {
+export interface HookCtx<State extends JsonObject> {
   /** This mechanic's own state — a live reference; mutate in place. */
-  state: S;
+  state: State;
   readonly view: CampaignView;
   readonly rng: () => number;
   /** Integer in [1, n], drawn from the campaign rng. */
@@ -64,14 +64,14 @@ export interface HookCtx<S extends JsonObject> {
  * Hook context for turn-phase hooks (`onTurnStart`, `onTurnEnd`).
  * Extends {@link HookCtx} with the character whose turn is starting/ending.
  */
-export interface TurnCtx<S extends JsonObject> extends HookCtx<S> {
+export interface TurnCtx<State extends JsonObject> extends HookCtx<State> {
   readonly actor: CharacterView;
 }
 /**
  * Hook context for the action hook (`onAction`).
  * Extends {@link TurnCtx} with the detail of the action that just occurred.
  */
-export interface ActionCtx<S extends JsonObject> extends TurnCtx<S> {
+export interface ActionCtx<State extends JsonObject> extends TurnCtx<State> {
   readonly action: ActionDetail;
 }
 
@@ -102,12 +102,23 @@ export interface MechanicCue {
  * - `grantImmunity` — grants all-status immunity for `turns` rounds (floored, truncated).
  * - `cue` — emits a `{ kind: "mechanic", cue }` {@link PresentationCue}.
  */
+/** The discriminants of the {@link Effect} union. */
+export const EffectKind = {
+  Damage: "damage",
+  Heal: "heal",
+  AdjustStat: "adjustStat",
+  GrantImmunity: "grantImmunity",
+  Cue: "cue",
+} as const;
+/** One of the {@link EffectKind} values. */
+export type EffectKind = (typeof EffectKind)[keyof typeof EffectKind];
+
 export type Effect =
-  | { kind: "damage"; target: CharacterId; amount: number }
-  | { kind: "heal"; target: CharacterId; amount: number }
-  | { kind: "adjustStat"; target: CharacterId; stat: "sanity" | "energy"; delta: number }
-  | { kind: "grantImmunity"; target: CharacterId; turns: number }
-  | { kind: "cue"; cue: MechanicCue };
+  | { kind: typeof EffectKind.Damage; target: CharacterId; amount: number }
+  | { kind: typeof EffectKind.Heal; target: CharacterId; amount: number }
+  | { kind: typeof EffectKind.AdjustStat; target: CharacterId; stat: "sanity" | "energy"; delta: number }
+  | { kind: typeof EffectKind.GrantImmunity; target: CharacterId; turns: number }
+  | { kind: typeof EffectKind.Cue; cue: MechanicCue };
 
 /**
  * A named action exposed by a mechanic and invoked via
@@ -120,24 +131,24 @@ export type Effect =
  *
  * `run` receives an {@link ActionCtx} and may return `Effect[]` or `void`.
  */
-export interface CustomAction<S extends JsonObject> {
+export interface CustomAction<State extends JsonObject> {
   /** Action-budget cost; defaults to 1. (Reserved — v1 always uses cost 1.) */
   readonly cost?: number;
-  run(h: ActionCtx<S>): Effect[] | void;
+  run(h: ActionCtx<State>): Effect[] | void;
 }
 
 /**
  * A custom game mechanic that a campaign can opt into via `.useMechanic(key, config?)`.
  *
- * @typeParam S   - The mechanic's own persistent state, a {@link JsonObject} (serialized as-is).
- * @typeParam Cfg - Configuration supplied at opt-in time; passed verbatim to `initialState`.
- *                  Resolves to `unknown` at the call site in v1 (type-safe config is deferred).
- * @typeParam A   - The string union of custom action keys this mechanic exposes.
+ * @typeParam State     - The mechanic's own persistent state, a {@link JsonObject} (serialized as-is).
+ * @typeParam Config    - Configuration supplied at opt-in time; passed verbatim to `initialState`.
+ *                        Resolves to `unknown` at the call site in v1 (type-safe config is deferred).
+ * @typeParam ActionKey - The string union of custom action keys this mechanic exposes.
  *
  * **Purity contract** (guardrail B): hooks must be pure given their {@link HookCtx} inputs.
  * No global state, no ambient clock, no IO. All randomness via `h.rng` / `h.roll`.
  *
- * **State contract**: `S` must be a plain `JsonObject` so the engine can serialize it without
+ * **State contract**: `State` must be a plain `JsonObject` so the engine can serialize it without
  * a custom replacer. Only `{ key, state }` is persisted; behavior re-binds from the registry
  * on hydrate.
  *
@@ -146,18 +157,18 @@ export interface CustomAction<S extends JsonObject> {
  * mechanic's `modifyDamage` will run.
  */
 export interface Mechanic<
-  S extends JsonObject,
-  Cfg = void,
-  A extends string = never,
+  State extends JsonObject,
+  Config = void,
+  ActionKey extends string = never,
 > {
-  initialState(config: Cfg): S;
-  onRoundStart?(h: HookCtx<S>): Effect[] | void;
-  onRoundEnd?(h: HookCtx<S>): Effect[] | void;
-  onTurnStart?(h: TurnCtx<S>): Effect[] | void;
-  onTurnEnd?(h: TurnCtx<S>): Effect[] | void;
-  onAction?(h: ActionCtx<S>): Effect[] | void;
-  modifyDamage?(d: DamageView, h: HookCtx<S>): TransformResult;
-  actions?: Record<A, CustomAction<S>>;
+  initialState(config: Config): State;
+  onRoundStart?(h: HookCtx<State>): Effect[] | void;
+  onRoundEnd?(h: HookCtx<State>): Effect[] | void;
+  onTurnStart?(h: TurnCtx<State>): Effect[] | void;
+  onTurnEnd?(h: TurnCtx<State>): Effect[] | void;
+  onAction?(h: ActionCtx<State>): Effect[] | void;
+  modifyDamage?(d: DamageView, h: HookCtx<State>): TransformResult;
+  actions?: Record<ActionKey, CustomAction<State>>;
 }
 
 /** A registered mechanic paired with its live (mutable) state, in opt-in order. */

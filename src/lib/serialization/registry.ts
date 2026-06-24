@@ -4,6 +4,7 @@ import type { CraftingRecipe } from "../crafting";
 import type { ICampaign } from "../campaign";
 import type { IMob } from "../character/mob";
 import type { IRoom } from "../room";
+import type { IDialogue } from "../character/non-player-character";
 import type { Mechanic, JsonObject } from "../mechanics/mechanic.js";
 
 export interface SceneBehavior {
@@ -12,6 +13,11 @@ export interface SceneBehavior {
 }
 export interface FormationBehavior {
   build: (campaign: ICampaign) => IMob[];
+}
+/** An NPC's dialogue behavior: its default line and the (function-carrying) dialogue blocks. */
+export interface NpcBehavior {
+  initialDialogue: string;
+  dialogue: IDialogue[];
 }
 
 /**
@@ -33,6 +39,7 @@ export class CampaignRegistry {
   #items = new Map<string, () => Item>();
   #conditions = new Map<string, (campaign: ICampaign) => boolean>();
   #mechanics = new Map<string, Mechanic<JsonObject, unknown, string>>();
+  #npcs = new Map<string, NpcBehavior>();
 
   /**
    * Registers a {@link SceneBehavior} (preconditions + script) under `key`.
@@ -84,6 +91,14 @@ export class CampaignRegistry {
   registerMechanic(key: string, mechanic: Mechanic<JsonObject, unknown, string>): void {
     this.#mechanics.set(key, mechanic);
   }
+  /**
+   * Registers an {@link NpcBehavior} (dialogue + preconditions) under `key`.
+   * Must match the `behaviorKey` carried by every {@link NonPlayerCharacter} that
+   * needs to survive serialization — its dialogue closures re-bind from here.
+   */
+  registerNpc(key: string, behavior: NpcBehavior): void {
+    this.#npcs.set(key, behavior);
+  }
 
   scene(key: string): SceneBehavior {
     return this.#require(this.#scenes.get(key), "scene", key);
@@ -102,6 +117,9 @@ export class CampaignRegistry {
   }
   mechanic(key: string): Mechanic<JsonObject, unknown, string> {
     return this.#require(this.#mechanics.get(key), "mechanic", key);
+  }
+  npc(key: string): NpcBehavior {
+    return this.#require(this.#npcs.get(key), "npc", key);
   }
 
   #require<T>(value: T | undefined, kind: string, key: string): T {

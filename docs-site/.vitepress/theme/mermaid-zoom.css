@@ -1,0 +1,74 @@
+/* Pan/zoom frame for Mermaid diagrams (see mermaid-zoom.ts). The `.mermaid` div
+   persists across mermaid's theme-toggle re-renders, so the frame styling lives
+   on a class added once to that div. */
+.vp-doc div.mermaid.mermaid-zoom-frame {
+  position: relative;
+  height: min(72vh, 600px);
+  margin: 24px 0;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  background: var(--vp-c-bg-soft);
+  overflow: hidden;
+  cursor: grab;
+}
+
+.vp-doc div.mermaid.mermaid-zoom-frame:active {
+  cursor: grabbing;
+}
+
+.vp-doc div.mermaid.mermaid-zoom-frame svg {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+}
+
+.mermaid-zoom-controls {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+}
+
+.mermaid-zoom-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-1);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.mermaid-zoom-controls button:hover {
+  border-color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-1);
+}
+
+.mermaid-zoom-hint {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 2;
+  padding: 2px 8px;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 6px;
+  background: var(--vp-c-bg);
+  color: var(--vp-c-text-2);
+  font-size: 12px;
+  line-height: 1.6;
+  opacity: 0.85;
+  pointer-events: none;
+  user-select: none;
+}
