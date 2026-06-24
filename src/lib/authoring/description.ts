@@ -1,6 +1,5 @@
 import type { Stats } from "../character/stats";
 import type { Status } from "../status";
-import type { IDialogue } from "../character/non-player-character";
 import type { Direction } from "../room";
 import type { MaterialMap } from "../inventory";
 import type { OutcomeNarration } from "../victory";
@@ -65,20 +64,18 @@ export interface CacheDef {
 }
 
 /**
- * Defines a non-player character placed in the world. NPCs are a live-play
- * authoring feature: dialogue preconditions are functions, so an NPC is not
- * serializable — a template containing NPCs should be run with `startSession`,
- * not round-tripped through `toSnapshot`.
+ * Defines a non-player character placed in the world. Its dialogue (and the
+ * precondition closures within it) comes from a registered `NpcBehavior`, keyed
+ * so the NPC survives serialization — its dialogue re-binds from the registry on
+ * hydrate, exactly like a scene's script.
  */
 export interface NpcDef {
   name: string;
   stats: Stats;
   /** Room to seat the NPC in (optional; unplaced if omitted). */
   room?: string;
-  /** Line returned when talked to with no prompt. */
-  initialDialogue: string;
-  /** Dialogue blocks driving prompted responses (exact/fuzzy, with optional preconditions). */
-  dialogue?: IDialogue[];
+  /** Registry NPC-behavior key supplying this NPC's dialogue. */
+  behavior: string;
 }
 
 /** Opts a roving encounter formation (by registry behavior key) into the campaign. */

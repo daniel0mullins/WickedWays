@@ -99,6 +99,13 @@ const registry = defineRegistry({
   formations: {
     rats: { build: (campaign: ICampaign): IMob[] => [new Mob({ campaign, name: "Sewer Rat", stats: { [StatType.Health]: 4, [StatType.Sanity]: 4, [StatType.Energy]: 4 }, drops: [] })] },
   },
+  npcs: {
+    hermit: {
+      initialDialogue: "Turn back, delver.",
+      // The precondition functions live here, keyed — so they re-bind on hydrate.
+      dialogue: [{ type: "exact", trigger: "vault", response: ["The vault lies north, past the crypt."] }],
+    },
+  },
   conditions: {
     "reached-vault": (c: ICampaign) => c.party.some((p) => p.currentRoom?.name === "Vault"),
     "party-wiped": (c: ICampaign) => c.party.length > 0 && c.party.every((p) => p.status.includes(Status.KO)),
@@ -134,7 +141,7 @@ const builder = authorTemplate("Get Wicked", registry, { maxRounds: 6, baseEncou
   .cache("ore", { room: "Crypt", materials: { metal: 3 } })
   .materials("starting-stock", { metal: 1 })
   .mob("Gravewight", { stats: { [StatType.Health]: 5, [StatType.Sanity]: 5, [StatType.Energy]: 5 }, room: "Crypt", drops: ["rusty-key"] })
-  .npc("Hermit", { stats: stats(), room: "Entrance", initialDialogue: "Turn back, delver.", dialogue: [{ type: "exact", trigger: "vault", response: ["The vault lies north, past the crypt."] }] })
+  .npc("Hermit", { stats: stats(), room: "Entrance", behavior: "hermit" })
   .scene("Crypt", "whisper")
   .formation("rats", { weight: 1 })
   .recipe("forge-blade")
@@ -145,11 +152,12 @@ const builder = authorTemplate("Get Wicked", registry, { maxRounds: 6, baseEncou
 ```
 
 ::: tip Scenes, NPCs, and formations are authored too
-`.scene`, `.npc`, and `.formation` attach a registered scene behavior to a room,
-seat a dialogue NPC, and opt a roving encounter into the campaign — so the whole
-world is described in one place. (NPCs are a live-play feature: dialogue
-preconditions are functions, so a template with NPCs is meant for `startSession`,
-not `toSnapshot`.)
+`.scene`, `.npc`, and `.formation` attach a registered behavior to the world —
+a room's scene script, an NPC's dialogue, and a roving encounter — so everything
+lives in one place. Each refers to its behavior **by registry key**, which is
+also how they survive serialization: the function-valued parts (a scene's script,
+an NPC's dialogue preconditions) can't be serialized, so they re-bind from the
+registry on hydrate. That keeps authored worlds fully round-trippable.
 :::
 
 ## 5. Play it — every mechanic in motion

@@ -115,6 +115,14 @@ export function assemble(
     }
   }
 
+  for (const n of desc.npcs) {
+    try {
+      registry.npc(n.behavior);
+    } catch {
+      problems.push(`npc '${n.name}' references unregistered npc key '${n.behavior}'.`);
+    }
+  }
+
   const seenMech = new Set<string>();
   for (const m of desc.mechanics) {
     if (seenMech.has(m.key)) {
@@ -224,13 +232,16 @@ export function assemble(
   }
 
   // Seat NPCs in their rooms (via PLACE — like mobs, no enter-scene side effects).
+  // Dialogue comes from the registered behavior; the key is kept for serialization.
   for (const n of desc.npcs) {
+    const behavior = registry.npc(n.behavior);
     const npc = new NonPlayerCharacter({
       campaign,
       name: n.name,
       stats: n.stats,
-      initialDialogue: n.initialDialogue,
-      dialogueBlocks: n.dialogue ?? [],
+      initialDialogue: behavior.initialDialogue,
+      dialogueBlocks: behavior.dialogue,
+      behaviorKey: n.behavior,
     });
     if (n.room !== undefined) {
       npc[PLACE](rooms.get(n.room)!);

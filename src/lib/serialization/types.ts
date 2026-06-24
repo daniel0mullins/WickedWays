@@ -67,7 +67,7 @@ export interface RoomSnapshot {
 }
 
 export interface CharacterSnapshot {
-  kind: "player" | "mob";
+  kind: "player" | "mob" | "npc";
   id: string;
   name: string;
   stats: Stats;
@@ -84,6 +84,7 @@ export interface CharacterSnapshot {
   baseEscapeChance?: number;
   materialDrops?: MaterialMap;
   lightAverse?: boolean;
+  npcBehaviorKey?: string; // npc-only: registry key its dialogue re-binds from
 }
 
 export interface EncounterTableSnapshot {

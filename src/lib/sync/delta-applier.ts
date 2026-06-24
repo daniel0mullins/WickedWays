@@ -58,7 +58,7 @@ export class DeltaApplier {
       ctx.put(room.id, room);
     }
     for (const data of byType(delta.created, "character") as CharacterSnapshot[]) {
-      const ch = constructBareCharacter(data, replica);
+      const ch = constructBareCharacter(data, replica, ctx.registry);
       ctx.put(ch.id, ch);
     }
 

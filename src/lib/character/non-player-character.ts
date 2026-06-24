@@ -3,6 +3,8 @@ import { Character, ICharacter } from "./character";
 import type { AfflictionConfig } from "./afflictions";
 import type { Presentation } from "../presentation";
 import { Stats } from "./stats";
+import { ProceduralViolation } from "../util";
+import type { CharacterSnapshot } from "../serialization/types";
 
 /** Fields shared by every dialogue block: its responses and an optional gate. */
 type DialogueBase = {
@@ -55,6 +57,12 @@ export interface NonPlayerCharacterOptions {
   afflictionConfig?: AfflictionConfig;
   /** Optional presentation metadata (image/sound) for the Play Surface. */
   presentation?: Presentation;
+  /**
+   * Registry key whose {@link NpcBehavior} this NPC's dialogue re-binds from on
+   * deserialization. Required for the NPC to survive serialization (its dialogue
+   * preconditions are functions). Authored NPCs always carry one.
+   */
+  behaviorKey?: string;
 }
 
 /**
@@ -70,6 +78,7 @@ export class NonPlayerCharacter
 {
   initialDialogue: string;
   #dialogueBlocks: IDialogue[];
+  #behaviorKey?: string;
 
   // Triggers are normalized once at construction so matching a prompt does not
   // re-lowercase every trigger on each call. `matches` is closed over the
@@ -78,6 +87,19 @@ export class NonPlayerCharacter
 
   get dialogueBlocks() {
     return this.#dialogueBlocks;
+  }
+
+  protected override serializeKind(): "npc" {
+    return "npc";
+  }
+
+  protected override serializeExtra(snap: CharacterSnapshot): void {
+    if (this.#behaviorKey === undefined) {
+      throw new ProceduralViolation(
+        `NPC ${this.id} cannot be serialized: no behaviorKey (its dialogue cannot re-bind).`,
+      );
+    }
+    snap.npcBehaviorKey = this.#behaviorKey;
   }
 
   #normalizeMatcher(block: IDialogue): DialogueMatcher {
@@ -139,6 +161,7 @@ export class NonPlayerCharacter
     });
     this.initialDialogue = opts.initialDialogue;
     this.#dialogueBlocks = opts.dialogueBlocks;
+    this.#behaviorKey = opts.behaviorKey;
     this.#matchers = opts.dialogueBlocks.map((block) =>
       this.#normalizeMatcher(block),
     );

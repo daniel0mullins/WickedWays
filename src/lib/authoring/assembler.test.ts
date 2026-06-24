@@ -11,6 +11,7 @@ import { Directions } from "../room";
 import { StatType } from "../character/stats";
 import { Item } from "../inventory";
 import { serializeCampaign } from "../serialization/serializer";
+import { deserializeCampaign } from "../serialization/deserializer";
 import type { CampaignTemplateDescription } from "./description";
 
 const makeCoin = () => new Item({
@@ -127,16 +128,19 @@ describe("scene authoring (.scene)", () => {
 });
 
 describe("npc authoring (.npc)", () => {
-  it("seats an NPC in its room with working dialogue", () => {
-    const reg = defineRegistry({ items: {} });
+  it("seats an NPC from a registered behavior with working dialogue", () => {
+    const reg = defineRegistry({
+      items: {},
+      npcs: {
+        innkeeper: {
+          initialDialogue: "Welcome, traveller.",
+          dialogue: [{ type: "exact", trigger: "ale", response: ["That'll be two coins."] }],
+        },
+      },
+    });
     const builder = authorTemplate("T", reg)
       .room("inn", { description: "an inn" })
-      .npc("Innkeeper", {
-        stats: stats(),
-        room: "inn",
-        initialDialogue: "Welcome, traveller.",
-        dialogue: [{ type: "exact", trigger: "ale", response: ["That'll be two coins."] }],
-      });
+      .npc("Innkeeper", { stats: stats(), room: "inn", behavior: "innkeeper" });
 
     const { rooms } = assemble(builder.description, builder.registry);
     const innkeeper = rooms.get("inn")!.occupants.find((o) => o.name === "Innkeeper") as
@@ -148,11 +152,46 @@ describe("npc authoring (.npc)", () => {
     expect(innkeeper!.dialogue("ale")).toEqual(["That'll be two coins."]);
   });
 
-  it("rejects an NPC referencing an undefined room", () => {
+  it("round-trips through serialization, re-binding dialogue preconditions from the registry", () => {
+    const reg = defineRegistry({
+      items: {},
+      npcs: {
+        sage: {
+          initialDialogue: "Hmm.",
+          // A precondition is a function — it can only survive serialization by
+          // re-binding from the registry on hydrate.
+          dialogue: [{ type: "exact", trigger: "secret", response: ["For the worthy."], precondition: () => true }],
+        },
+      },
+    });
+    const builder = authorTemplate("T", reg)
+      .room("hall", { description: "a hall" })
+      .startRoom("hall")
+      .npc("Sage", { stats: stats(), room: "hall", behavior: "sage" });
+
+    const snapshot = builder.toSnapshot();
+    const npcSnap = snapshot.characters.find((c) => c.name === "Sage");
+    expect(npcSnap?.kind).toBe("npc");
+    expect(npcSnap?.npcBehaviorKey).toBe("sage");
+
+    // Deserializing rebuilds the NPC and re-binds its (function-valued) precondition.
+    expect(() => deserializeCampaign(snapshot, { registry: reg })).not.toThrow();
+  });
+
+  it("rejects an NPC referencing an unregistered behavior key", () => {
     const reg = defineRegistry({ items: {} });
     const builder = authorTemplate("T", reg)
       .room("inn", { description: "an inn" })
-      .npc("Ghost", { stats: stats(), room: "nowhere", initialDialogue: "Boo." });
+      .npc("Ghost", { stats: stats(), room: "inn", behavior: "missing" });
+
+    expect(() => builder.build()).toThrow(AuthoringError);
+  });
+
+  it("rejects an NPC referencing an undefined room", () => {
+    const reg = defineRegistry({ items: {}, npcs: { ghost: { initialDialogue: "Boo.", dialogue: [] } } });
+    const builder = authorTemplate("T", reg)
+      .room("inn", { description: "an inn" })
+      .npc("Ghost", { stats: stats(), room: "nowhere", behavior: "ghost" });
 
     expect(() => builder.build()).toThrow(AuthoringError);
   });

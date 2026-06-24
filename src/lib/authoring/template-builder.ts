@@ -7,10 +7,9 @@ import type { Direction } from "../room";
 import type { Stats } from "../character/stats";
 import type { MaterialMap } from "../inventory";
 import type { ArchetypeDef, CampaignTemplateDescription } from "./description";
-import type { ItemKeyOf, RecipeKeyOf, ConditionKeyOf, MechanicKeyOf, SceneKeyOf, FormationKeyOf } from "./registry";
+import type { ItemKeyOf, RecipeKeyOf, ConditionKeyOf, MechanicKeyOf, SceneKeyOf, FormationKeyOf, NpcKeyOf } from "./registry";
 import { AuthoringError } from "./errors";
 import type { OutcomeNarration } from "../victory";
-import type { IDialogue } from "../character/non-player-character";
 
 /**
  * A chainable, ordering-agnostic builder that accumulates a
@@ -29,7 +28,7 @@ import type { IDialogue } from "../character/non-player-character";
  *   .build();
  * ```
  */
-export class TemplateBuilder<IK extends string, RK extends string, CK extends string = never, MK extends string = never, SK extends string = never, FK extends string = never> {
+export class TemplateBuilder<IK extends string, RK extends string, CK extends string = never, MK extends string = never, SK extends string = never, FK extends string = never, NK extends string = never> {
   /** @internal for orchestration (e.g. startSession) */
   readonly description: CampaignTemplateDescription;
   /** @internal for orchestration (e.g. startSession) */
@@ -116,19 +115,17 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
   }
 
   /**
-   * Place a non-player character in the world. Players talk to it by finding it
-   * among a room's occupants and calling `npc.dialogue(prompt)`.
-   *
-   * NPCs are a live-play feature (dialogue preconditions are functions, so they
-   * don't serialize) — author them for `build`/`startSession`, not `toSnapshot`.
+   * Place a non-player character in the world. Its dialogue comes from a
+   * registered NPC behavior (keyed), so the NPC survives serialization. Players
+   * talk to it by finding it among a room's occupants and calling
+   * `npc.dialogue(prompt)`.
    */
-  npc(name: string, opts: { stats: Stats; room?: string; initialDialogue: string; dialogue?: IDialogue[] }): this {
+  npc(name: string, opts: { stats: Stats; room?: string; behavior: NK }): this {
     this.description.npcs.push({
       name,
       stats: opts.stats,
       room: opts.room,
-      initialDialogue: opts.initialDialogue,
-      dialogue: opts.dialogue,
+      behavior: opts.behavior,
     });
     return this;
   }
@@ -264,6 +261,6 @@ export function authorTemplate<R extends CampaignRegistry>(
   title: string,
   registry: R,
   opts?: { rng?: () => number; maxRounds?: number; baseEncounterChance?: number },
-): TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>, MechanicKeyOf<R>, SceneKeyOf<R>, FormationKeyOf<R>> {
-  return new TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>, MechanicKeyOf<R>, SceneKeyOf<R>, FormationKeyOf<R>>(title, registry, opts);
+): TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>, MechanicKeyOf<R>, SceneKeyOf<R>, FormationKeyOf<R>, NpcKeyOf<R>> {
+  return new TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>, MechanicKeyOf<R>, SceneKeyOf<R>, FormationKeyOf<R>, NpcKeyOf<R>>(title, registry, opts);
 }
