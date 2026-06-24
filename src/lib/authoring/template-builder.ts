@@ -7,9 +7,10 @@ import type { Direction } from "../room";
 import type { Stats } from "../character/stats";
 import type { MaterialMap } from "../inventory";
 import type { ArchetypeDef, CampaignTemplateDescription } from "./description";
-import type { ItemKeyOf, RecipeKeyOf, ConditionKeyOf, MechanicKeyOf } from "./registry";
+import type { ItemKeyOf, RecipeKeyOf, ConditionKeyOf, MechanicKeyOf, SceneKeyOf, FormationKeyOf } from "./registry";
 import { AuthoringError } from "./errors";
 import type { OutcomeNarration } from "../victory";
+import type { IDialogue } from "../character/non-player-character";
 
 /**
  * A chainable, ordering-agnostic builder that accumulates a
@@ -28,7 +29,7 @@ import type { OutcomeNarration } from "../victory";
  *   .build();
  * ```
  */
-export class TemplateBuilder<IK extends string, RK extends string, CK extends string = never, MK extends string = never> {
+export class TemplateBuilder<IK extends string, RK extends string, CK extends string = never, MK extends string = never, SK extends string = never, FK extends string = never> {
   /** @internal for orchestration (e.g. startSession) */
   readonly description: CampaignTemplateDescription;
   /** @internal for orchestration (e.g. startSession) */
@@ -46,6 +47,9 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
       mobs: [],
       loot: [],
       caches: [],
+      npcs: [],
+      formations: [],
+      scenes: [],
       recipes: [],
       materials: [],
       winConditions: [],
@@ -111,6 +115,34 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
     return this;
   }
 
+  /**
+   * Place a non-player character in the world. Players talk to it by finding it
+   * among a room's occupants and calling `npc.dialogue(prompt)`.
+   *
+   * NPCs are a live-play feature (dialogue preconditions are functions, so they
+   * don't serialize) — author them for `build`/`startSession`, not `toSnapshot`.
+   */
+  npc(name: string, opts: { stats: Stats; room?: string; initialDialogue: string; dialogue?: IDialogue[] }): this {
+    this.description.npcs.push({
+      name,
+      stats: opts.stats,
+      room: opts.room,
+      initialDialogue: opts.initialDialogue,
+      dialogue: opts.dialogue,
+    });
+    return this;
+  }
+
+  /**
+   * Opt a roving encounter formation into the campaign by registry key. Roving
+   * formations spawn (weighted) when a player first enters a room, layered on top
+   * of the per-room `spawnModifier` / `baseEncounterChance` checks.
+   */
+  formation(key: FK, opts: { weight?: number } = {}): this {
+    this.description.formations.push({ key, weight: opts.weight });
+    return this;
+  }
+
   /** Define a loot container placed in a room. */
   loot(name: string, opts: { room: string; items: IK[]; description?: string }): this {
     this.description.loot.push({
@@ -125,6 +157,17 @@ export class TemplateBuilder<IK extends string, RK extends string, CK extends st
   /** Define a material cache placed in a room. */
   cache(name: string, opts: { room: string; materials: MaterialMap }): this {
     this.description.caches.push({ name, room: opts.room, materials: opts.materials });
+    return this;
+  }
+
+  /**
+   * Attach a registered scene behavior to a room. The scene fires when a
+   * character enters (or exits, per `phase`) the room, gated by the behavior's
+   * preconditions. `key` references a behavior registered via `defineRegistry`'s
+   * `scenes` map.
+   */
+  scene(room: string, key: SK, opts: { phase?: "enter" | "exit"; initialState?: Record<string, unknown> } = {}): this {
+    this.description.scenes.push({ room, key, phase: opts.phase, initialState: opts.initialState });
     return this;
   }
 
@@ -221,6 +264,6 @@ export function authorTemplate<R extends CampaignRegistry>(
   title: string,
   registry: R,
   opts?: { rng?: () => number; maxRounds?: number; baseEncounterChance?: number },
-): TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>, MechanicKeyOf<R>> {
-  return new TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>, MechanicKeyOf<R>>(title, registry, opts);
+): TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>, MechanicKeyOf<R>, SceneKeyOf<R>, FormationKeyOf<R>> {
+  return new TemplateBuilder<ItemKeyOf<R>, RecipeKeyOf<R>, ConditionKeyOf<R>, MechanicKeyOf<R>, SceneKeyOf<R>, FormationKeyOf<R>>(title, registry, opts);
 }
