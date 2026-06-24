@@ -42,7 +42,7 @@ import { Mob, type IMob } from "./lib/character/mob";
 import type { ICampaign } from "./lib/campaign";
 import type { RecipeId } from "./lib/crafting";
 import type { INonPlayerCharacter } from "./lib/character/non-player-character";
-import type { Mechanic, JsonObject } from "./lib/mechanics/mechanic";
+import { EffectKind, type Mechanic, type JsonObject } from "./lib/mechanics/mechanic";
 
 const noop = () => {};
 
@@ -86,14 +86,13 @@ pipeline. "Dread" drains one Sanity from the acting character at the start of
 each turn by returning an `adjustStat` effect. (Mechanics can also `modifyDamage`,
 react `onAction`, emit cues, and expose custom actions.)
 
-`stat` takes a `StatType` member (`adjustStat` accepts `Sanity` or `Energy`).
-`kind` is the effect's discriminant — there's no enum for it; it's a
-string-literal union the compiler checks directly.
+Both discriminants have named constants: `kind` is an `EffectKind` member, and
+`stat` is a `StatType` member (`adjustStat` accepts `Sanity` or `Energy`).
 
 ```ts
 const dread: Mechanic<JsonObject> = {
   initialState: () => ({}),
-  onTurnStart: (h) => [{ kind: "adjustStat", target: h.actor.id, stat: StatType.Sanity, delta: -1 }],
+  onTurnStart: (h) => [{ kind: EffectKind.AdjustStat, target: h.actor.id, stat: StatType.Sanity, delta: -1 }],
 };
 ```
 

@@ -102,12 +102,23 @@ export interface MechanicCue {
  * - `grantImmunity` — grants all-status immunity for `turns` rounds (floored, truncated).
  * - `cue` — emits a `{ kind: "mechanic", cue }` {@link PresentationCue}.
  */
+/** The discriminants of the {@link Effect} union. */
+export const EffectKind = {
+  Damage: "damage",
+  Heal: "heal",
+  AdjustStat: "adjustStat",
+  GrantImmunity: "grantImmunity",
+  Cue: "cue",
+} as const;
+/** One of the {@link EffectKind} values. */
+export type EffectKind = (typeof EffectKind)[keyof typeof EffectKind];
+
 export type Effect =
-  | { kind: "damage"; target: CharacterId; amount: number }
-  | { kind: "heal"; target: CharacterId; amount: number }
-  | { kind: "adjustStat"; target: CharacterId; stat: "sanity" | "energy"; delta: number }
-  | { kind: "grantImmunity"; target: CharacterId; turns: number }
-  | { kind: "cue"; cue: MechanicCue };
+  | { kind: typeof EffectKind.Damage; target: CharacterId; amount: number }
+  | { kind: typeof EffectKind.Heal; target: CharacterId; amount: number }
+  | { kind: typeof EffectKind.AdjustStat; target: CharacterId; stat: "sanity" | "energy"; delta: number }
+  | { kind: typeof EffectKind.GrantImmunity; target: CharacterId; turns: number }
+  | { kind: typeof EffectKind.Cue; cue: MechanicCue };
 
 /**
  * A named action exposed by a mechanic and invoked via
