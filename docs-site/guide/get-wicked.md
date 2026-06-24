@@ -56,7 +56,30 @@ function makeItem(descriptor: ItemDescriptor, props: { equippable?: boolean; usa
 }
 ```
 
-## 2. A custom mechanic
+## 2. Name your strings once
+
+The registry and the template cross-reference each other constantly by string:
+the registry defines an item under the key `"sword"`, and the template's `.loot`
+and `.mob` refer back to `"sword"`. A typo in either place is a bug. The
+convention this guide follows is to keep each family of identifiers in an
+`as const` map and reference its members everywhere — one source of truth, and a
+mistyped member (`Wicked_Rooms.Crpyt`) is a compile error. Because the maps are
+`as const`, their literal values still drive the registry's typed-key checking,
+so the builder keeps validating keys for you.
+
+```ts
+const Wicked_Rooms = { Entrance: "Entrance", Crypt: "Crypt", Vault: "Vault" } as const;
+const Wicked_Items = { Sword: "sword", Torch: "torch", Salve: "salve", Key: "rusty-key" } as const;
+const Wicked_Recipes = { ForgeBlade: "forge-blade" } as const;
+const Wicked_Scenes = { Whisper: "whisper" } as const;
+const Wicked_Formations = { Rats: "rats" } as const;
+const Wicked_Npcs = { Hermit: "hermit" } as const;
+const Wicked_Conditions = { ReachedVault: "reached-vault", PartyWiped: "party-wiped" } as const;
+const Wicked_Mechanics = { Dread: "dread" } as const;
+const Wicked_Archetypes = { Delver: "delver" } as const;
+```
+
+## 3. A custom mechanic
 
 A [`Mechanic`](/api/mechanics/mechanic/) hooks into the turn loop and the damage
 pipeline. "Dread" drains one Sanity from the acting character at the start of
@@ -70,7 +93,7 @@ const dread: Mechanic<JsonObject> = {
 };
 ```
 
-## 3. The registry
+## 4. The registry
 
 `defineRegistry` is the catalog of everything the template refers to by key:
 item factories, crafting recipes, scene behaviors (preconditions + script),
@@ -81,40 +104,40 @@ pass against it.
 ```ts
 const registry = defineRegistry({
   items: {
-    sword: () => makeItem({ behaviorKey: "sword", name: "Iron Sword", type: ItemType.Weapon, recipe: { metal: 2 }, modifier: 6, stat: StatType.Health, slot: SlotKind.Hand, maxDurability: 10 }, { equippable: true }),
-    torch: () => makeItem({ behaviorKey: "torch", name: "Torch", type: ItemType.Weapon, recipe: { item: 1 }, modifier: 0, stat: StatType.Health, slot: SlotKind.Hand, emitsLight: true }, { equippable: true }),
-    salve: () => makeItem({ behaviorKey: "salve", name: "Healing Salve", type: ItemType.Consumable, recipe: { healing: 1 }, modifier: 5, stat: StatType.Health }, { usable: true }),
-    "rusty-key": () => createKey({ name: "Rusty Key", keyCode: "vault", consumeOnUse: true }),
+    [Wicked_Items.Sword]: () => makeItem({ behaviorKey: Wicked_Items.Sword, name: "Iron Sword", type: ItemType.Weapon, recipe: { metal: 2 }, modifier: 6, stat: StatType.Health, slot: SlotKind.Hand, maxDurability: 10 }, { equippable: true }),
+    [Wicked_Items.Torch]: () => makeItem({ behaviorKey: Wicked_Items.Torch, name: "Torch", type: ItemType.Weapon, recipe: { item: 1 }, modifier: 0, stat: StatType.Health, slot: SlotKind.Hand, emitsLight: true }, { equippable: true }),
+    [Wicked_Items.Salve]: () => makeItem({ behaviorKey: Wicked_Items.Salve, name: "Healing Salve", type: ItemType.Consumable, recipe: { healing: 1 }, modifier: 5, stat: StatType.Health }, { usable: true }),
+    [Wicked_Items.Key]: () => createKey({ name: "Rusty Key", keyCode: "vault", consumeOnUse: true }),
   },
   recipes: {
-    "forge-blade": {
-      id: "forge-blade" as RecipeId,
+    [Wicked_Recipes.ForgeBlade]: {
+      id: Wicked_Recipes.ForgeBlade as RecipeId,
       materials: { metal: 2 },
-      create: () => makeItem({ behaviorKey: "sword", name: "Forged Blade", type: ItemType.Weapon, recipe: { metal: 2 }, modifier: 5, stat: StatType.Health, slot: SlotKind.Hand, maxDurability: 5 }, { equippable: true }),
+      create: () => makeItem({ behaviorKey: Wicked_Items.Sword, name: "Forged Blade", type: ItemType.Weapon, recipe: { metal: 2 }, modifier: 5, stat: StatType.Health, slot: SlotKind.Hand, maxDurability: 5 }, { equippable: true }),
     },
   },
   scenes: {
-    whisper: { preconditions: [], script: () => { console.log("  [scene] A cold whisper greets you."); } },
+    [Wicked_Scenes.Whisper]: { preconditions: [], script: () => { console.log("  [scene] A cold whisper greets you."); } },
   },
   formations: {
-    rats: { build: (campaign: ICampaign): IMob[] => [new Mob({ campaign, name: "Sewer Rat", stats: { [StatType.Health]: 4, [StatType.Sanity]: 4, [StatType.Energy]: 4 }, drops: [] })] },
+    [Wicked_Formations.Rats]: { build: (campaign: ICampaign): IMob[] => [new Mob({ campaign, name: "Sewer Rat", stats: { [StatType.Health]: 4, [StatType.Sanity]: 4, [StatType.Energy]: 4 }, drops: [] })] },
   },
   npcs: {
-    hermit: {
+    [Wicked_Npcs.Hermit]: {
       initialDialogue: "Turn back, delver.",
       // The precondition functions live here, keyed — so they re-bind on hydrate.
       dialogue: [{ type: "exact", trigger: "vault", response: ["The vault lies north, past the crypt."] }],
     },
   },
   conditions: {
-    "reached-vault": (c: ICampaign) => c.party.some((p) => p.currentRoom?.name === "Vault"),
-    "party-wiped": (c: ICampaign) => c.party.length > 0 && c.party.every((p) => p.status.includes(Status.KO)),
+    [Wicked_Conditions.ReachedVault]: (c: ICampaign) => c.party.some((p) => p.currentRoom?.name === Wicked_Rooms.Vault),
+    [Wicked_Conditions.PartyWiped]: (c: ICampaign) => c.party.length > 0 && c.party.every((p) => p.status.includes(Status.KO)),
   },
-  mechanics: { dread },
+  mechanics: { [Wicked_Mechanics.Dread]: dread },
 });
 ```
 
-## 4. The template
+## 5. The template
 
 `authorTemplate(title, registry, opts)` returns the fluent builder. Every method
 is ordering-agnostic (forward references to rooms resolve at build time), so the
@@ -128,26 +151,29 @@ timeout** outcomes.
 const stats = () => ({ [StatType.Health]: 10, [StatType.Sanity]: 10, [StatType.Energy]: 10 });
 
 const builder = authorTemplate("Get Wicked", registry, { maxRounds: 6, baseEncounterChance: 0, rng: () => 0.5 })
-  .archetype({ id: "delver", name: "Delver", baseStats: { [StatType.Health]: 14, [StatType.Sanity]: 20 }, inventorySlots: 6, immunities: [Status.Fear] })
-  .room("Entrance", { description: "A damp stone entrance." })
-  .room("Crypt", { description: "A pitch-black crypt.", dark: true })
-  .room("Vault", { description: "A sealed vault.", spawnModifier: 0 })
-  .startRoom("Entrance")
-  .exit("Entrance", "north", "Crypt")
-  .exit("Crypt", "north", "Vault")
-  .exit("Crypt", "south", "Entrance")
-  .exit("Vault", "south", "Crypt")
-  .loot("chest", { room: "Entrance", items: ["sword", "torch", "salve"], description: "A dusty chest." })
-  .cache("ore", { room: "Crypt", materials: { metal: 3 } })
+  .archetype({ id: Wicked_Archetypes.Delver, name: "Delver", baseStats: { [StatType.Health]: 14, [StatType.Sanity]: 20 }, inventorySlots: 6, immunities: [Status.Fear] })
+  .room(Wicked_Rooms.Entrance, { description: "A damp stone entrance." })
+  .room(Wicked_Rooms.Crypt, { description: "A pitch-black crypt.", dark: true })
+  .room(Wicked_Rooms.Vault, { description: "A sealed vault.", spawnModifier: 0 })
+  .startRoom(Wicked_Rooms.Entrance)
+  // .exit(from, direction, to) names both rooms explicitly — there is no "current
+  // room"; the chain only returns the builder. Exits are one-way, so each link is
+  // declared in both directions to allow walking back.
+  .exit(Wicked_Rooms.Entrance, "north", Wicked_Rooms.Crypt)
+  .exit(Wicked_Rooms.Crypt, "north", Wicked_Rooms.Vault)
+  .exit(Wicked_Rooms.Crypt, "south", Wicked_Rooms.Entrance)
+  .exit(Wicked_Rooms.Vault, "south", Wicked_Rooms.Crypt)
+  .loot("chest", { room: Wicked_Rooms.Entrance, items: [Wicked_Items.Sword, Wicked_Items.Torch, Wicked_Items.Salve], description: "A dusty chest." })
+  .cache("ore", { room: Wicked_Rooms.Crypt, materials: { metal: 3 } })
   .materials("starting-stock", { metal: 1 })
-  .mob("Gravewight", { stats: { [StatType.Health]: 5, [StatType.Sanity]: 5, [StatType.Energy]: 5 }, room: "Crypt", drops: ["rusty-key"] })
-  .npc("Hermit", { stats: stats(), room: "Entrance", behavior: "hermit" })
-  .scene("Crypt", "whisper")
-  .formation("rats", { weight: 1 })
-  .recipe("forge-blade")
-  .useMechanic("dread")
-  .winWhen("reached-vault", { text: "You breach the vault." })
-  .loseWhen("party-wiped", { text: "The party falls." })
+  .mob("Gravewight", { stats: { [StatType.Health]: 5, [StatType.Sanity]: 5, [StatType.Energy]: 5 }, room: Wicked_Rooms.Crypt, drops: [Wicked_Items.Key] })
+  .npc("Hermit", { stats: stats(), room: Wicked_Rooms.Entrance, behavior: Wicked_Npcs.Hermit })
+  .scene(Wicked_Rooms.Crypt, Wicked_Scenes.Whisper)
+  .formation(Wicked_Formations.Rats, { weight: 1 })
+  .recipe(Wicked_Recipes.ForgeBlade)
+  .useMechanic(Wicked_Mechanics.Dread)
+  .winWhen(Wicked_Conditions.ReachedVault, { text: "You breach the vault." })
+  .loseWhen(Wicked_Conditions.PartyWiped, { text: "The party falls." })
   .onTimeout({ text: "Dawn breaks; the delve is abandoned." });
 ```
 
@@ -160,7 +186,7 @@ an NPC's dialogue preconditions) can't be serialized, so they re-bind from the
 registry on hydrate. That keeps authored worlds fully round-trippable.
 :::
 
-## 5. Play it — every mechanic in motion
+## 6. Play it — every mechanic in motion
 
 `startSession` assembles the template, seats the players (a player starts at the
 baseline stats and is differentiated only by its archetype), sets the GM, and
@@ -169,7 +195,7 @@ loop exercises the runtime mechanics: combat, status effects, action gating,
 harvesting, crafting, and the win check.
 
 ```ts
-const campaign = startSession(builder, { players: [{ name: "Ada", archetype: "delver" }], gm: 0 });
+const campaign = startSession(builder, { players: [{ name: "Ada", archetype: Wicked_Archetypes.Delver }], gm: 0 });
 campaign.onCue(() => {}); // the cue stream drives a UI (chat / A-V / mechanic cues)
 
 const ada = campaign.activeCharacter;
@@ -194,7 +220,7 @@ ada.equip(sword);
 ada.equip(torch);
 
 // --- Dark / light: the crypt is dark with no placed light source ---
-const crypt = [...entrance.exits.values()].find((r) => r.name === "Crypt")!;
+const crypt = [...entrance.exits.values()].find((r) => r.name === Wicked_Rooms.Crypt)!;
 console.log("crypt lit while dark & empty:", crypt.isLit);
 ada.startTurn();
 ada.move(crypt); // a carried, equipped torch lights the room (and fires its scene)
@@ -222,7 +248,7 @@ ada.harvest(cache);
 console.log("pool after harvest:", campaign.materials, "cache depleted:", cache.depleted);
 
 // --- Crafting: spend pooled materials to forge a blade ---
-const forged = ada.craft("forge-blade" as RecipeId);
+const forged = ada.craft(Wicked_Recipes.ForgeBlade as RecipeId);
 console.log("crafted:", forged?.name);
 
 // --- Action gating / fizzle: a KO'd character cannot act, so the felled
@@ -239,7 +265,7 @@ console.log("KO'd mob's action gated:", gated);
 
 // --- Victory: reach the vault and end the round; the win condition fires ---
 ada.startTurn();
-ada.move([...crypt.exits.values()].find((r) => r.name === "Vault")!); // Crypt → Vault
+ada.move([...crypt.exits.values()].find((r) => r.name === Wicked_Rooms.Vault)!); // Crypt → Vault
 campaign.nextPlayer(); // single-player round end → win/lose conditions evaluated
 console.log("outcome:", campaign.outcome, "reason:", campaign.outcomeReason, "round:", campaign.round);
 ```
