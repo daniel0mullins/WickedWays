@@ -254,6 +254,14 @@ at runtime as well as at compile time — illegal moves throw
 
 ## Next steps
 
+You just wired a campaign together by hand to see the moving parts. For real
+authoring, prefer the declarative builder:
+
+- **[Get Wicked](./get-wicked)** — the **canonical pattern for authoring
+  campaigns**. Describe the whole world declaratively with `defineRegistry` +
+  `authorTemplate` (rooms, exits, loot, mobs, NPCs, scenes, encounters, crafting,
+  custom mechanics, win/lose conditions), then `startSession` to play. It's one
+  runnable file that exercises *every* engine mechanic at least once.
 - **[Architecture](./architecture)** — the authoritative deep dive: combat and
   mitigation math, status effects, mobs and encounters, loot, crafting,
   durability, equipment slots, keys, and dialogue.
