@@ -86,10 +86,14 @@ pipeline. "Dread" drains one Sanity from the acting character at the start of
 each turn by returning an `adjustStat` effect. (Mechanics can also `modifyDamage`,
 react `onAction`, emit cues, and expose custom actions.)
 
+`stat` takes a `StatType` member (`adjustStat` accepts `Sanity` or `Energy`).
+`kind` is the effect's discriminant — there's no enum for it; it's a
+string-literal union the compiler checks directly.
+
 ```ts
 const dread: Mechanic<JsonObject> = {
   initialState: () => ({}),
-  onTurnStart: (h) => [{ kind: "adjustStat", target: h.actor.id, stat: "sanity", delta: -1 }],
+  onTurnStart: (h) => [{ kind: "adjustStat", target: h.actor.id, stat: StatType.Sanity, delta: -1 }],
 };
 ```
 
