@@ -22,6 +22,14 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
         <div class="monitor-bezel-bottom">
           <span class="monitor-brand">WICKEDWAYS</span>
           <span class="monitor-vents" aria-hidden="true"></span>
+          <button id="audio-toggle" class="monitor-btn" type="button" aria-pressed="true" aria-label="Toggle audio" title="Audio: on">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path class="spk" d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="currentColor"/>
+              <path class="wave" d="M15.5 8 Q18.5 12 15.5 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path class="wave" d="M18 6 Q22.5 12 18 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line class="mute-slash" x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+            </svg>
+          </button>
           <span class="monitor-led" aria-hidden="true"></span>
         </div>
       </div>
@@ -36,6 +44,21 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
   const history: string[] = [];
   let historyIdx = 0;
   let clickableNouns: string[] = [];
+
+  // Audio toggle — placeholder control on the bezel. Music/sfx arrive in a later
+  // spec; for now this only tracks the on/off preference (mirrored to aria-pressed
+  // and root[data-audio]). The audio system will read `audioEnabled` / hook the seam.
+  const audioToggle = root.querySelector<HTMLButtonElement>("#audio-toggle")!;
+  let audioEnabled = true;
+  root.dataset.audio = "on";
+  audioToggle.addEventListener("click", () => {
+    audioEnabled = !audioEnabled;
+    audioToggle.setAttribute("aria-pressed", String(audioEnabled));
+    audioToggle.title = `Audio: ${audioEnabled ? "on" : "off"}`;
+    root.dataset.audio = audioEnabled ? "on" : "off";
+    // SEAM (later audio spec): start/stop playback here based on `audioEnabled`.
+    input.focus();
+  });
 
   // Typewriter state — one active animation at a time.
   let activeTypewriter: (() => void) | null = null;
@@ -438,6 +461,25 @@ function applyStyles(root: HTMLElement): void {
       background: radial-gradient(circle at 35% 30%, #ffd98a, var(--led-color) 60%, #b46b00 100%);
       box-shadow: 0 0 6px 1px var(--led-color), inset 0 0 2px rgba(0,0,0,0.4);
     }
+    .monitor-btn {
+      appearance: none; -webkit-appearance: none;
+      width: clamp(20px, 3.2vmin, 30px); height: clamp(20px, 3.2vmin, 30px);
+      padding: 0; display: grid; place-items: center;
+      border: 1px solid var(--plastic-shadow); border-radius: 5px;
+      background: linear-gradient(#3a3026, #241c14);
+      color: var(--color-text); cursor: pointer;
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.45);
+    }
+    .monitor-btn svg { width: 68%; height: 68%; display: block; }
+    .monitor-btn:hover { color: #fff; }
+    .monitor-btn:active { box-shadow: inset 0 1px 3px rgba(0,0,0,0.55); }
+    .monitor-btn:focus-visible { outline: 2px solid var(--led-color); outline-offset: 2px; }
+    /* Audio on: sound waves shown, no mute slash. */
+    .monitor-btn[aria-pressed="true"] .mute-slash { display: none; }
+    /* Audio off: hide waves, show slash, dim the icon. */
+    .monitor-btn[aria-pressed="false"] { color: var(--color-muted); }
+    .monitor-btn[aria-pressed="false"] .wave { display: none; }
+    .monitor-btn[aria-pressed="false"] .mute-slash { display: block; }
 
     .transcript { flex: 1; overflow-y: auto; padding: 1rem; position: relative; z-index: 1; }
     .block { margin-bottom: 0.9rem; }
