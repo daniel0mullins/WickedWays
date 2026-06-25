@@ -63,3 +63,22 @@ describe("parser — open", () => {
     expect(res.kind).toBe("error");
   });
 });
+
+describe("parser — direct take (item alias beats container description)", () => {
+  const lantern = ent("item-lantern", "Brass Lantern", ["lantern", "lamp", "light"], "item");
+  const hook = ent("box-hook", "A lantern hangs from a hook.", ["hook", "container"], "loot");
+
+  it("take lantern resolves to take intent for the item (exact alias wins over container partial)", () => {
+    const res = parse("take lantern", vm({ scope: [lantern, hook] }));
+    expect(res).toEqual({ kind: "intent", intent: { kind: "take", targetId: "item-lantern" } });
+  });
+
+  it("take <container-alias> still returns the can't-carry error", () => {
+    const drawer = ent("box-drawer", "a table drawer", ["drawer", "table", "container"], "loot");
+    const res = parse("take drawer", vm({ scope: [drawer] }));
+    expect(res.kind).toBe("error");
+    if (res.kind === "error") {
+      expect(res.message).toContain("try taking what's inside it");
+    }
+  });
+});

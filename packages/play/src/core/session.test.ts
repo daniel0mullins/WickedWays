@@ -55,6 +55,33 @@ describe("GameSession", () => {
     s.execute({ kind: "equip", targetId: item.id });
   };
 
+  it("take <item> succeeds WITHOUT a prior open — item lands in inventory and box auto-opens", () => {
+    const s = newSession();
+    // Foyer has a chest with the journal; box is not yet opened.
+    const box = s.view().loot.find((l) => l.contents.length > 0)!;
+    expect(box.opened).toBe(false);
+    // Item is already in scope (direct-take design).
+    const item = s.view().scope.find((e) => e.kind === "item" && e.name === "Water-Stained Journal")!;
+    expect(item).toBeDefined();
+    // Execute take without any prior open.
+    const result = s.execute({ kind: "take", targetId: item.id });
+    expect(result.error).toBeUndefined();
+    expect(s.view().inventory.items.some((i) => i.name === "Water-Stained Journal")).toBe(true);
+    // Box should be marked opened after auto-open.
+    expect(s.view().loot.find((l) => l.id === box.id)!.opened).toBe(true);
+  });
+
+  it("open then take still works (existing flow)", () => {
+    const s = newSession();
+    const box = s.view().loot.find((l) => l.contents.length > 0)!;
+    s.execute({ kind: "open", targetId: box.id });
+    expect(s.view().loot.find((l) => l.id === box.id)!.opened).toBe(true);
+    const item = s.view().scope.find((e) => e.kind === "item" && e.name === "Water-Stained Journal")!;
+    const result = s.execute({ kind: "take", targetId: item.id });
+    expect(result.error).toBeUndefined();
+    expect(s.view().inventory.items.some((i) => i.name === "Water-Stained Journal")).toBe(true);
+  });
+
   it("go into a locked door without the key is blocked — no move, fail cue emitted", () => {
     const s = newSession();
     s.execute({ kind: "move", dir: Directions.North });   // Hall

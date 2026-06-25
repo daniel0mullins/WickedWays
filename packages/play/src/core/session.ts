@@ -103,7 +103,11 @@ export class GameSession {
         return;
       }
       case "take": {
-        const { loot, item } = this.findInOpenedLoot(intent.targetId);
+        const { loot, item } = this.findInLoot(intent.targetId);
+        if (!this.opened.has(loot.id)) {
+          pc.openLootBox(loot);
+          this.opened.add(loot.id);
+        }
         pc.takeFromLootBox(loot, [item]);
         return;
       }
@@ -144,10 +148,9 @@ export class GameSession {
     }
   }
 
-  private findInOpenedLoot(itemId: string): { loot: ILoot; item: IItem } {
+  private findInLoot(itemId: string): { loot: ILoot; item: IItem } {
     const room = this.campaign.activeCharacter.currentRoom!;
     for (const loot of room.loot.values()) {
-      if (!this.opened.has(loot.id)) continue;
       const item = loot.contents.find((i) => i.id === itemId);
       if (item) return { loot, item };
     }

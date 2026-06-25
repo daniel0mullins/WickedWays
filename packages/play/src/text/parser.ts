@@ -25,8 +25,8 @@ const STOP_WORDS = new Set(["the", "a", "an", "at", "to", "with", "on"]);
 type NounVerb = (target: ScopeEntity) => Intent | { error: string };
 
 const NOUN_VERBS: Record<string, NounVerb> = {
-  take: (t) => t.kind === "loot" ? { error: "Open it first, then take what's inside." } : { kind: "take", targetId: t.id },
-  get: (t) => t.kind === "loot" ? { error: "Open it first, then take what's inside." } : { kind: "take", targetId: t.id },
+  take: (t) => t.kind === "loot" ? { error: "That's not something you can carry — try taking what's inside it." } : { kind: "take", targetId: t.id },
+  get: (t) => t.kind === "loot" ? { error: "That's not something you can carry — try taking what's inside it." } : { kind: "take", targetId: t.id },
   drop: (t) => ({ kind: "drop", targetId: t.id }),
   attack: (t) => ({ kind: "attack", targetId: t.id }),
   kill: (t) => ({ kind: "attack", targetId: t.id }),

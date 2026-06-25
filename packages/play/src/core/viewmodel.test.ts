@@ -44,4 +44,16 @@ describe("viewmodel", () => {
     expect(vm.loot[0]!.opened).toBe(true);
     expect(vm.scope.some((s) => s.kind === "item" && s.name === "Water-Stained Journal")).toBe(true);
   });
+  it("includes an UNOPENED container's contents in scope (direct-take support)", () => {
+    const builder = hauntedHouseTemplate();
+    const { campaign, rooms } = assemble(builder.description, builder.registry);
+    const pc = new PlayerCharacter({ campaign, name: "Heir" });
+    pc.joinCampaign(); pc.selectArchetype(Archetypes.Heir as never);
+    pc.move(rooms.get(Rooms.Foyer)!); campaign.gm = pc; campaign.beginCampaign();
+    // Pass no openedLootIds — box is NOT opened yet.
+    const vm = view(campaign, ALIASES);
+    expect(vm.loot[0]!.opened).toBe(false);
+    // The journal item should still be resolvable in scope.
+    expect(vm.scope.some((s) => s.kind === "item" && s.name === "Water-Stained Journal")).toBe(true);
+  });
 });

@@ -33,7 +33,9 @@ const aliasesFor = (behaviorKey: string | undefined, name: string, aliases: Reco
  *
  * The engine tracks no "opened loot" flag, so callers pass the session-managed
  * set of opened loot ids via `openedLootIds` (defaults to empty). Loot
- * contents only enter `scope` once the box has been opened.
+ * contents are always in `scope` so items can be taken directly; the
+ * `opened` flag on {@link LootView} is still set once explicitly opened or
+ * auto-opened by a `take`.
  */
 export function view(
   campaign: Campaign,
@@ -85,8 +87,8 @@ export function view(
     .filter(([, exit]) => !exit.canPass(pc))
     .map(([dir, exit]) => ({ name: exit.name ?? "door", dir }));
 
-  // Loot contents only enter scope once the box has been opened by the session.
-  const lootContentScope = loot.filter((l) => l.opened).flatMap((l) => l.contents);
+  // All container contents are in scope regardless of opened state; take auto-opens.
+  const lootContentScope = loot.flatMap((l) => l.contents);
   const lootScope: ScopeEntity[] = loot.map((l) => ({
     id: l.id,
     name: l.description,
