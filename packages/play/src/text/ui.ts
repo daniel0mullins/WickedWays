@@ -347,11 +347,11 @@ function applyStyles(root: HTMLElement): void {
     }
 
     /* (1) 4:3 screen — the live terminal fills the bounded glass.
-       --base-size is the single knob; everything else is em-relative so
-       text was 19px and is now doubled to 38px. */
+       --base-size is the single knob; everything else is em-relative.
+       (19px base, ~2x = 38px, then trimmed ~15% to 32px.) */
     .screen {
       position: absolute; inset: 0;
-      --base-size: 38px;
+      --base-size: 32px;
       display: flex; flex-direction: column;
       font: var(--base-size)/1.5 var(--font-body); color: var(--color-text);
       /* faint bulged-glass curvature */
