@@ -81,7 +81,10 @@ export function serializeCampaignWithIndex(
     index.set(r.id, r);
     rooms.push(r[SERIALIZE]());
     for (const [, exit] of r.exits) {
-      if (!exitsById.has(exit.id)) exitsById.set(exit.id, exit);
+      if (!exitsById.has(exit.id)) {
+        exitsById.set(exit.id, exit);
+        index.set(exit.id, exit);
+      }
       enqueueRoom(exit.otherSide(r));
     }
     for (const occ of r.occupants) allCharacters.set(occ.id, occ);

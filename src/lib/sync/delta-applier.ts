@@ -38,18 +38,6 @@ export class DeltaApplier {
     const ctx = new HydrateContext(opts.registry, opts.rng);
     for (const [id, instance] of index) ctx.put(id, instance);
 
-    // Index all exits from the replica's rooms so Room[HYDRATE] can resolve exitIds.
-    for (const room of index.values()) {
-      if (room && typeof (room as { exits?: unknown }).exits === "object") {
-        const exits = (room as { exits: Map<unknown, { id: string }> }).exits;
-        if (exits instanceof Map) {
-          for (const exit of exits.values()) {
-            if (exit && typeof exit.id === "string") ctx.put(exit.id, exit);
-          }
-        }
-      }
-    }
-
     const byType = (entries: EntitySnapshot[], type: EntitySnapshot["type"]) =>
       entries.filter((e) => e.type === type).map((e) => e.data);
 
