@@ -6,12 +6,25 @@ import { linkNouns } from "./link-nouns.js";
 export function mountTerminal(root: HTMLElement, session: GameSession): void {
   const narrator = new Narrator();
   root.innerHTML = `
-    <div class="screen">
-      <div id="transcript" class="transcript" aria-live="polite"></div>
-      <div id="compass" class="compass"></div>
-      <div id="status" class="status"></div>
-      <form id="prompt-form" class="prompt"><span class="caret">&gt;</span>
-        <input id="cmd" autocomplete="off" autofocus /></form>
+    <div class="backdrop">
+      <div class="monitor">
+        <div class="monitor-screen">
+          <div class="screen">
+            <div id="transcript" class="transcript" aria-live="polite"></div>
+            <div id="compass" class="compass"></div>
+            <div id="status" class="status"></div>
+            <form id="prompt-form" class="prompt"><span class="caret">&gt;</span>
+              <input id="cmd" autocomplete="off" autofocus /></form>
+          </div>
+          <div class="crt-overlay" aria-hidden="true"></div>
+          <div class="crt-sweep" aria-hidden="true"></div>
+        </div>
+        <div class="monitor-bezel-bottom">
+          <span class="monitor-brand">WICKEDWAYS</span>
+          <span class="monitor-vents" aria-hidden="true"></span>
+          <span class="monitor-led" aria-hidden="true"></span>
+        </div>
+      </div>
     </div>`;
   applyStyles(root);
 
@@ -241,15 +254,148 @@ function applyStyles(root: HTMLElement): void {
       --color-chip-bg: #25241d;
       --color-chip-border: #3a382e;
       --color-input: #e7e9df;
+      /* Monitor housing — swap --plastic to e.g. #3a3a3e for a charcoal monitor. */
+      --plastic: #cdbb97;
+      --plastic-dark: #9c8a68;
+      --plastic-light: #e4d6b6;
+      --plastic-shadow: #6f6147;
+      --led-color: #ffb347;
     }
-    body { margin: 0; background: var(--color-bg); }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; background: #0a0a0c; }
+
+    /* (4) Backdrop — dark room/desk placeholder (a later pass dresses this set). */
+    .backdrop {
+      min-height: 100vh; width: 100%;
+      display: flex; align-items: center; justify-content: center;
+      padding: 2vmin;
+      background: radial-gradient(ellipse at 50% 35%, #1c1b22 0%, #111016 55%, #08070a 100%);
+    }
+
+    /* (2) Monitor housing/cowling — molded plastic frame, pure CSS. */
+    .monitor {
+      --screen-h: min(82vh, calc((100vw - 14vmin) * 3 / 4));
+      position: relative;
+      padding: clamp(18px, 3vmin, 40px);
+      padding-bottom: clamp(34px, 6vmin, 64px);
+      border-radius: 28px;
+      background:
+        linear-gradient(160deg, var(--plastic-light) 0%, var(--plastic) 38%, var(--plastic-dark) 100%);
+      box-shadow:
+        inset 0 2px 3px rgba(255, 255, 255, 0.55),
+        inset 0 -6px 14px rgba(0, 0, 0, 0.35),
+        inset 8px 0 18px rgba(0, 0, 0, 0.12),
+        inset -8px 0 18px rgba(0, 0, 0, 0.12),
+        0 24px 60px rgba(0, 0, 0, 0.7),
+        0 2px 0 rgba(255, 255, 255, 0.2);
+    }
+
+    /* Recessed well that the glass tube sits inside. */
+    .monitor-screen {
+      position: relative;
+      height: var(--screen-h);
+      aspect-ratio: 4 / 3;
+      max-width: 100%;
+      border-radius: 14px / 18px;
+      overflow: hidden;
+      background: #000;
+      box-shadow:
+        inset 0 0 0 3px var(--plastic-shadow),
+        inset 0 0 14px 6px rgba(0, 0, 0, 0.9),
+        0 0 2px rgba(0, 0, 0, 0.8);
+    }
+
+    /* (1) 4:3 screen — the live terminal fills the bounded glass. */
     .screen {
-      max-width: 760px; margin: 0 auto; height: 100vh;
+      position: absolute; inset: 0;
       display: flex; flex-direction: column;
-      font: 19px/1.5 var(--font-body); color: var(--color-text); background: var(--color-bg);
+      font: 19px/1.5 var(--font-body); color: var(--color-text);
+      /* faint bulged-glass curvature */
+      background:
+        radial-gradient(ellipse at 50% 45%, #1b1a14 0%, var(--color-bg) 70%, #0c0b08 100%);
       text-shadow: 0 0 8px rgba(205, 210, 196, 0.18);
+      border-radius: 14px / 18px;
     }
-    .transcript { flex: 1; overflow-y: auto; padding: 1rem; }
+
+    /* (3) CRT artifacts — overlays inside the bezel, above the transcript.
+       HARD REQ: pointer-events:none so chips/nouns still receive clicks. */
+    .crt-overlay {
+      position: absolute; inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      border-radius: 14px / 18px;
+      background:
+        /* scanlines */
+        repeating-linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0.0) 0px,
+          rgba(0, 0, 0, 0.0) 2px,
+          rgba(0, 0, 0, 0.22) 3px,
+          rgba(0, 0, 0, 0.22) 4px
+        ),
+        /* edge vignette / bulged-tube darkening */
+        radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 100%);
+      animation: crt-flicker 5s steps(60) infinite;
+    }
+    /* slow-moving scanline sweep */
+    .crt-sweep {
+      position: absolute; left: 0; right: 0; top: 0;
+      height: 32%;
+      pointer-events: none;
+      z-index: 6;
+      border-radius: 14px / 18px;
+      background: linear-gradient(
+        to bottom,
+        rgba(217, 194, 122, 0) 0%,
+        rgba(217, 194, 122, 0.045) 50%,
+        rgba(217, 194, 122, 0) 100%
+      );
+      animation: crt-sweep 7s linear infinite;
+    }
+    @keyframes crt-flicker {
+      0%, 100% { opacity: 1; }
+      48% { opacity: 0.97; }
+      50% { opacity: 0.93; }
+      52% { opacity: 0.98; }
+    }
+    @keyframes crt-sweep {
+      0% { transform: translateY(-40%); }
+      100% { transform: translateY(360%); }
+    }
+
+    /* Bottom bezel strip — brand, vents, power LED. */
+    .monitor-bezel-bottom {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: clamp(28px, 5vmin, 52px);
+      display: flex; align-items: center; gap: 14px;
+      padding: 0 clamp(22px, 4vmin, 48px);
+    }
+    .monitor-brand {
+      font-family: var(--font-head);
+      font-size: clamp(7px, 1.1vmin, 11px);
+      letter-spacing: 0.18em;
+      color: var(--plastic-shadow);
+      text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+    }
+    .monitor-vents {
+      flex: 1; height: 60%;
+      background: repeating-linear-gradient(
+        to right,
+        rgba(0, 0, 0, 0.18) 0px,
+        rgba(0, 0, 0, 0.18) 2px,
+        rgba(255, 255, 255, 0.12) 3px,
+        rgba(255, 255, 255, 0.12) 6px
+      );
+      border-radius: 3px;
+      box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+    }
+    .monitor-led {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #ffd98a, var(--led-color) 60%, #b46b00 100%);
+      box-shadow: 0 0 6px 1px var(--led-color), inset 0 0 2px rgba(0,0,0,0.4);
+    }
+
+    .transcript { flex: 1; overflow-y: auto; padding: 1rem; position: relative; z-index: 1; }
     .block { margin-bottom: 0.9rem; }
     .line { white-space: pre-wrap; }
     .line.echo { color: var(--color-muted); }
@@ -264,14 +410,14 @@ function applyStyles(root: HTMLElement): void {
       text-shadow: 0 0 12px rgba(217, 194, 122, 0.35);
       margin-bottom: 0.15em;
     }
-    .compass { display: flex; gap: .4rem; flex-wrap: wrap; padding: .4rem 1rem; }
+    .compass { display: flex; gap: .4rem; flex-wrap: wrap; padding: .4rem 1rem; position: relative; z-index: 1; }
     .chip {
       background: var(--color-chip-bg); color: var(--color-text);
       border: 1px solid var(--color-chip-border); border-radius: 4px;
       padding: .15rem .5rem; cursor: pointer; font: inherit;
     }
-    .status { padding: .3rem 1rem; color: var(--color-muted); border-top: 1px solid var(--color-border); }
-    .prompt { display: flex; gap: .5rem; align-items: center; padding: .5rem 1rem 1rem; }
+    .status { padding: .3rem 1rem; color: var(--color-muted); border-top: 1px solid var(--color-border); position: relative; z-index: 1; }
+    .prompt { display: flex; gap: .5rem; align-items: center; padding: .5rem 1rem 1rem; position: relative; z-index: 1; }
     .caret { color: var(--color-accent); }
     #cmd {
       flex: 1; background: transparent; border: none;
@@ -280,6 +426,12 @@ function applyStyles(root: HTMLElement): void {
     .noun {
       cursor: pointer; text-decoration: underline dotted;
       text-underline-offset: 2px; color: var(--color-text);
+    }
+
+    /* (3) HARD REQ: all motion gated off when reduced motion is preferred. */
+    @media (prefers-reduced-motion: reduce) {
+      .crt-overlay { animation: none; }
+      .crt-sweep { animation: none; display: none; }
     }`;
   root.appendChild(style);
 }
