@@ -741,36 +741,28 @@ const take = (pc: PlayerCharacter, name: string) => {
 const go = (pc: PlayerCharacter, room: IRoom) => { pc.startTurn(); pc.move(room); };
 
 describe("The Hollow House — winning path", () => {
-  it("is winnable: gather journal/poker/lantern, brass→study, fell the revenant for the iron key, iron→attic", () => {
+  it("is winnable: journal + lantern + poker, fell the Revenant for the iron key, iron-door → Attic", () => {
     const { campaign, rooms } = boot();
     const pc = campaign.activeCharacter as unknown as PlayerCharacter;
 
-    take(pc, "Water-Stained Journal");              // Foyer
+    take(pc, "Water-Stained Journal");              // Foyer loot (a regular item, allowed in loot)
     go(pc, rooms.get(Rooms.Hall)!); campaign.nextPlayer();
     take(pc, "Iron Fire-Poker"); pc.equip(pc.inventory.items.find((i) => i.name === "Iron Fire-Poker")!);
     go(pc, rooms.get(Rooms.Kitchen)!); campaign.nextPlayer();
     take(pc, "Brass Lantern"); pc.equip(pc.inventory.items.find((i) => i.name === "Brass Lantern")!);
-    go(pc, rooms.get(Rooms.Hall)!); campaign.nextPlayer();
-    go(pc, rooms.get(Rooms.Parlor)!); campaign.nextPlayer();
-    take(pc, "Brass Key");
-    go(pc, rooms.get(Rooms.Hall)!); campaign.nextPlayer();
-    go(pc, rooms.get(Rooms.Landing)!); campaign.nextPlayer();
 
-    // Reveal the study door (what the session's unlock will do).
-    const studyDoor = LOCKED_DOORS.find((d) => d.id === "study-door")!;
-    rooms.get(studyDoor.from)!.addExit(studyDoor.dir, rooms.get(studyDoor.to)!);
-    rooms.get(studyDoor.to)!.addExit(reverse(studyDoor.dir), rooms.get(studyDoor.from)!);
-
-    // Down to the cellar, fell the Revenant (lantern keeps Dread off), grab the iron key.
+    // Down to the cellar (lantern keeps Dread off), fell the Revenant, grab the iron key.
+    // NOTE: the brass key / Study is an optional side-branch (covered by the next test) — the
+    // win path needs only the journal + iron key + Attic.
     go(pc, rooms.get(Rooms.Hall)!); campaign.nextPlayer();
     go(pc, rooms.get(Rooms.Foyer)!); campaign.nextPlayer();
     go(pc, rooms.get(Rooms.Cellar)!); campaign.nextPlayer();
     const revenant = pc.currentRoom!.occupants.find((o) => o.name === Mobs.Revenant)!;
     for (let i = 0; i < 12 && !revenant.status.includes(Status.KO); i++) { pc.startTurn(); pc.attack(revenant); campaign.nextPlayer(); }
     expect(revenant.status).toContain(Status.KO);
-    take(pc, "Iron Key");
+    take(pc, "Iron Key");                           // dropped into the cellar's loot on defeat
 
-    // Back up, reveal the attic door, climb in with the journal.
+    // Back up to the landing, reveal the attic door (what the session's unlock does), enter with the journal.
     go(pc, rooms.get(Rooms.Foyer)!); campaign.nextPlayer();
     go(pc, rooms.get(Rooms.Hall)!); campaign.nextPlayer();
     go(pc, rooms.get(Rooms.Landing)!); campaign.nextPlayer();
@@ -780,6 +772,20 @@ describe("The Hollow House — winning path", () => {
     go(pc, rooms.get(Rooms.Attic)!); campaign.nextPlayer();
 
     expect(campaign.outcome).toBe("won");
+  });
+
+  it("the Wraith drops the brass key (the brass key is a mob drop, not loot)", () => {
+    const { campaign, rooms } = boot();
+    const pc = campaign.activeCharacter as unknown as PlayerCharacter;
+    go(pc, rooms.get(Rooms.Hall)!); campaign.nextPlayer();
+    take(pc, "Iron Fire-Poker"); pc.equip(pc.inventory.items.find((i) => i.name === "Iron Fire-Poker")!);
+    go(pc, rooms.get(Rooms.Landing)!); campaign.nextPlayer();
+    go(pc, rooms.get(Rooms.Nursery)!); campaign.nextPlayer();
+    const wraith = pc.currentRoom!.occupants.find((o) => o.name === Mobs.Wraith)!;
+    for (let i = 0; i < 12 && !wraith.status.includes(Status.KO); i++) { pc.startTurn(); pc.attack(wraith); campaign.nextPlayer(); }
+    expect(wraith.status).toContain(Status.KO);
+    take(pc, "Brass Key");
+    expect(pc.inventory.keys.some((k) => k.keyCode === "brass")).toBe(true);
   });
 });
 
@@ -1307,19 +1313,44 @@ describe("GameSession", () => {
     expect(s.view().status.turn).toBe(afterMove); // open is free
     expect(s.view().loot[0]!.opened).toBe(true);
   });
-  it("unlock reveals a door when holding the matching key", () => {
+  // Helpers for the unlock success path. (The brass key is a Wraith drop — keys
+  // cannot be authored into loot — so the only legitimate route is through combat.)
+  const openTake = (s: GameSession, name: string): void => {
+    const box = s.view().loot.find((l) => l.contents.some((c) => c.name === name))!;
+    s.execute({ kind: "open", targetId: box.id });
+    const item = s.view().scope.find((e) => e.name === name)!;
+    s.execute({ kind: "take", targetId: item.id });
+  };
+  const equipNamed = (s: GameSession, name: string): void => {
+    const item = s.view().inventory.items.find((i) => i.name === name)!;
+    s.execute({ kind: "equip", targetId: item.id });
+  };
+
+  it("unlock fails in-voice without the matching key, and reveals nothing", () => {
     const s = newSession();
-    // grant the brass key directly via the engine for the unit test
-    // (full pickup flow is covered by the campaign integration test)
-    // ... navigate Foyer→Hall→Parlor, take brass key, Hall→Landing
     s.execute({ kind: "move", dir: Directions.North });   // Hall
-    s.execute({ kind: "move", dir: Directions.East });    // Parlor
-    const piano = s.view().loot[0]!;
-    s.execute({ kind: "open", targetId: piano.id });
-    const brass = s.view().scope.find((e) => e.name === "Brass Key")!;
-    s.execute({ kind: "take", targetId: brass.id });
-    s.execute({ kind: "move", dir: Directions.West });    // Hall
     s.execute({ kind: "move", dir: Directions.North });   // Landing
+    const door = s.view().lockedDoors.find((d) => d.id === "study-door")!;
+    const res = s.execute({ kind: "unlock", doorId: door.id });
+    expect(res.error).toBeTruthy();
+    expect(s.view().exits.map((e) => e.toName)).not.toContain(Rooms.Study);
+  });
+
+  it("unlock reveals the study door once the brass key (a Wraith drop) is in hand", () => {
+    const s = newSession();
+    // Mirror the proven winning sequence: equip poker + lantern (the lantern is
+    // required to fight in the dark Nursery), then fell the Wraith for the brass key.
+    s.execute({ kind: "move", dir: Directions.North });   // Hall
+    openTake(s, "Iron Fire-Poker"); equipNamed(s, "Iron Fire-Poker");
+    s.execute({ kind: "move", dir: Directions.West });    // Kitchen
+    openTake(s, "Brass Lantern"); equipNamed(s, "Brass Lantern");
+    s.execute({ kind: "move", dir: Directions.East });    // Hall
+    s.execute({ kind: "move", dir: Directions.North });   // Landing
+    s.execute({ kind: "move", dir: Directions.East });    // Nursery
+    const wraith = s.view().occupants.find((o) => o.name === "Wraith")!;
+    for (let i = 0; i < 10; i++) s.execute({ kind: "attack", targetId: wraith.id }); // KO'd early; later attacks no-op via caught error
+    openTake(s, "Brass Key");                              // dropped into the Nursery on defeat
+    s.execute({ kind: "move", dir: Directions.West });    // Landing
     const door = s.view().lockedDoors.find((d) => d.id === "study-door")!;
     s.execute({ kind: "unlock", doorId: door.id });
     expect(s.view().exits.map((e) => e.toName)).toContain(Rooms.Study);
