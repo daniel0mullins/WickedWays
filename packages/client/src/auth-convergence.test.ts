@@ -105,7 +105,7 @@ describe("authenticated convergence, anti-spoof, and reconnect re-auth", () => {
 
     const benChar = coordB.campaign.activeCharacter;
     const north = benChar.currentRoom!.exits.get(Directions.North)!;
-    const r3 = await coordB.submit({ kind: "move", actorId: benId, roomId: north.id });
+    const r3 = await coordB.submit({ kind: "move", actorId: benId, roomId: north.otherSide(benChar.currentRoom!).id });
     if (!r3.ok) throw new Error(`move(ben): ${r3.reason}`);
     await until(() => stateJSON(coordA) === stateJSON(coordB));
   });
@@ -143,7 +143,7 @@ describe("authenticated convergence, anti-spoof, and reconnect re-auth", () => {
     // Ada is active; B (ben) tries to move Ada (actorId = adaId) — ben does not own Ada's seat.
     const adaChar = coordB.campaign.activeCharacter;
     const adaNorth = adaChar.currentRoom!.exits.get(Directions.North)!;
-    const res = await coordB.submit({ kind: "move", actorId: adaId, roomId: adaNorth.id });
+    const res = await coordB.submit({ kind: "move", actorId: adaId, roomId: adaNorth.otherSide(adaChar.currentRoom!).id });
     expect(res.ok).toBe(false);
     expect("rejected" in res && res.rejected).toBe(true); // terminal denial, not retryable
     await flush();
