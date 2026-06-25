@@ -20,7 +20,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
               <div id="hud" class="hud"></div>
               <div id="status" class="status"></div>
               <form id="prompt-form" class="prompt"><span class="caret">&gt;</span>
-                <input id="cmd" autocomplete="off" /></form>
+                <input id="cmd" type="text" autocomplete="off" /></form>
             </div>
           </div>
           <div class="crt-overlay" aria-hidden="true"></div>
@@ -68,7 +68,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     audioToggle.title = `Audio: ${audioEnabled ? "on" : "off"}`;
     root.dataset.audio = audioEnabled ? "on" : "off";
     // SEAM (later audio spec): start/stop playback here based on `audioEnabled`.
-    input.focus();
+    if (gameStarted) input.focus(); // #cmd isn't focusable on the welcome screen
   });
 
   // Typewriter state — one active animation at a time.
@@ -348,7 +348,7 @@ function applyStyles(root: HTMLElement): void {
     *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; background: #0a0a0c; }
 
-    /* (4) Backdrop — dark room/desk placeholder (a later pass dresses this set). */
+    /* (4) Backdrop — dark surround behind the monitor. */
     .backdrop {
       min-height: 100vh; width: 100%;
       display: flex; align-items: center; justify-content: center;
