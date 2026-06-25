@@ -66,6 +66,8 @@ export class GameSession {
   execute(intent: Intent): ExecuteResult {
     this.cueBuffer.length = 0;
     const advances = isTimeAdvancing(intent);
+    // No rootRooms needed: locked doors are now always-present shared Exits,
+    // so the room graph is fully connected and the party-rooted BFS reaches every room.
     const pre = advances
       ? serializeCampaign(this.campaign)
       : null;
