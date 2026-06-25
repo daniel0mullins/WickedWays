@@ -4,7 +4,7 @@ import { Rooms, Items, Keys } from "./ids.js";
 export const TITLE = "The Hollow House";
 
 export const INTRO =
-  "Word came that the last of your kin had died alone in the old estate — and that the house would not give the body back. You arrive at dusk to settle what remains. The front door closes behind you, and does not open again. The Hollow House has been waiting, and it remembers everything. Find the truth it keeps — before the dark finds you first.";
+  "Word came that the last of your kin had died alone in the old estate — and that the house would not give the body back. You arrive at dusk to settle what remains. The Hollow House has been waiting, and it remembers everything. Find the truth it keeps — before the dark finds you first.";
 
 /**
  * Returns an {@link ExitBehavior} for a keyed door. The door is passable if the
