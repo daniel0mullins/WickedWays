@@ -22,7 +22,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
         <div class="monitor-bezel-bottom">
           <span class="monitor-brand">WICKEDWAYS</span>
           <span class="monitor-vents" aria-hidden="true"></span>
-          <button id="audio-toggle" class="monitor-btn" type="button" aria-pressed="true" aria-label="Toggle audio" title="Audio: on">
+          <button id="audio-toggle" class="monitor-btn" type="button" aria-pressed="false" aria-label="Toggle audio" title="Audio: off">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path class="spk" d="M4 9 H8 L13 5 V19 L8 15 H4 Z" fill="currentColor"/>
               <path class="wave" d="M15.5 8 Q18.5 12 15.5 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -49,8 +49,8 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
   // spec; for now this only tracks the on/off preference (mirrored to aria-pressed
   // and root[data-audio]). The audio system will read `audioEnabled` / hook the seam.
   const audioToggle = root.querySelector<HTMLButtonElement>("#audio-toggle")!;
-  let audioEnabled = true;
-  root.dataset.audio = "on";
+  let audioEnabled = false; // starts muted; music/sfx (later spec) begin only when toggled on
+  root.dataset.audio = "off";
   audioToggle.addEventListener("click", () => {
     audioEnabled = !audioEnabled;
     audioToggle.setAttribute("aria-pressed", String(audioEnabled));
