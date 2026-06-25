@@ -3,18 +3,25 @@ import { parse } from "./parser.js";
 import { Narrator } from "./narrator.js";
 import { linkNouns } from "./link-nouns.js";
 
-export function mountTerminal(root: HTMLElement, session: GameSession): void {
+export function mountTerminal(root: HTMLElement, session: GameSession, meta: { title: string; intro: string }): void {
   const narrator = new Narrator();
   root.innerHTML = `
     <div class="backdrop">
       <div class="monitor">
         <div class="monitor-screen">
           <div class="screen">
-            <div id="transcript" class="transcript" aria-live="polite"></div>
-            <div id="hud" class="hud"></div>
-            <div id="status" class="status"></div>
-            <form id="prompt-form" class="prompt"><span class="caret">&gt;</span>
-              <input id="cmd" autocomplete="off" autofocus /></form>
+            <div class="welcome" aria-label="Welcome screen">
+              <h1 class="welcome-title">${meta.title}</h1>
+              <p class="welcome-intro">${meta.intro}</p>
+              <button id="enter-game" class="enter-btn" type="button" autofocus>Enter Hollow House</button>
+            </div>
+            <div class="game-container" hidden>
+              <div id="transcript" class="transcript" aria-live="polite"></div>
+              <div id="hud" class="hud"></div>
+              <div id="status" class="status"></div>
+              <form id="prompt-form" class="prompt"><span class="caret">&gt;</span>
+                <input id="cmd" autocomplete="off" /></form>
+            </div>
           </div>
           <div class="crt-overlay" aria-hidden="true"></div>
           <div class="crt-sweep" aria-hidden="true"></div>
@@ -36,6 +43,9 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
     </div>`;
   applyStyles(root);
 
+  const welcome = root.querySelector<HTMLDivElement>(".welcome")!;
+  const gameContainer = root.querySelector<HTMLDivElement>(".game-container")!;
+  const enterBtn = root.querySelector<HTMLButtonElement>("#enter-game")!;
   const transcript = root.querySelector<HTMLDivElement>("#transcript")!;
   const hud = root.querySelector<HTMLDivElement>("#hud")!;
   const status = root.querySelector<HTMLDivElement>("#status")!;
@@ -44,6 +54,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
   const history: string[] = [];
   let historyIdx = 0;
   let clickableNouns: string[] = [];
+  let gameStarted = false;
 
   // Audio toggle — placeholder control on the bezel. Music/sfx arrive in a later
   // spec; for now this only tracks the on/off preference (mirrored to aria-pressed
@@ -234,10 +245,19 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
     transcript.scrollTop = transcript.scrollHeight;
   };
 
-  // Seed clickableNouns before the first room render so opening-room nouns are clickable.
-  computeClickableNouns();
-  printRoom(session.view());
-  refresh();
+  const startGame = () => {
+    if (gameStarted) return;
+    gameStarted = true;
+    welcome.hidden = true;
+    gameContainer.hidden = false;
+    // Seed clickableNouns before the first room render so opening-room nouns are clickable.
+    computeClickableNouns();
+    printRoom(session.view());
+    refresh();
+    input.focus();
+  };
+
+  enterBtn.addEventListener("click", startGame);
 
   async function onSubmit(ev: SubmitEvent): Promise<void> {
     ev.preventDefault();
@@ -480,6 +500,69 @@ function applyStyles(root: HTMLElement): void {
     .monitor-btn[aria-pressed="false"] { color: var(--color-muted); }
     .monitor-btn[aria-pressed="false"] .wave { display: none; }
     .monitor-btn[aria-pressed="false"] .mute-slash { display: block; }
+
+    /* Welcome screen — fills the .screen, centered column layout.
+       The [hidden] rule must override the flex display to properly hide it. */
+    .welcome {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: clamp(1rem, 4%, 2.5rem);
+      gap: 1.4em;
+      z-index: 2;
+      text-align: center;
+    }
+    .welcome[hidden] { display: none; }
+    .welcome-title {
+      font-family: var(--font-head);
+      font-size: clamp(1.6em, 5vmin, 2.6em);
+      letter-spacing: 0.08em;
+      color: var(--color-accent);
+      text-shadow: 0 0 18px rgba(217, 194, 122, 0.45), 0 0 4px rgba(217, 194, 122, 0.2);
+      margin: 0;
+      line-height: 1.2;
+    }
+    .welcome-intro {
+      font-family: var(--font-body);
+      font-size: clamp(0.85em, 2.2vmin, 1.1em);
+      color: var(--color-text);
+      line-height: 1.55;
+      max-width: 36em;
+      margin: 0;
+    }
+    .enter-btn {
+      font-family: var(--font-head);
+      font-size: clamp(1em, 3vmin, 1.5em);
+      letter-spacing: 0.1em;
+      padding: 0.55em 1.6em;
+      background: transparent;
+      color: var(--color-accent);
+      border: 2px solid var(--color-accent);
+      border-radius: 4px;
+      cursor: pointer;
+      text-shadow: 0 0 8px rgba(217, 194, 122, 0.4);
+      box-shadow: 0 0 10px rgba(217, 194, 122, 0.12), inset 0 0 8px rgba(217, 194, 122, 0.04);
+      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+      margin-top: 0.4em;
+    }
+    .enter-btn:hover {
+      background: rgba(217, 194, 122, 0.12);
+      box-shadow: 0 0 18px rgba(217, 194, 122, 0.28), inset 0 0 12px rgba(217, 194, 122, 0.08);
+    }
+    .enter-btn:focus-visible {
+      outline: 2px solid var(--led-color);
+      outline-offset: 3px;
+    }
+    .enter-btn:active {
+      background: rgba(217, 194, 122, 0.22);
+    }
+
+    /* Game container — takes over the full .screen flex column once welcome is hidden. */
+    .game-container {
+      display: flex; flex-direction: column;
+      flex: 1; min-height: 0;
+    }
+    .game-container[hidden] { display: none; }
 
     .transcript { flex: 1; overflow-y: auto; padding: 1rem; position: relative; z-index: 1; }
     .block { margin-bottom: 0.9rem; }

@@ -10,7 +10,7 @@ import { dread, makeStoryteller } from "./mechanics.js";
 import { LORE, doorBehavior } from "./content.js";
 import { Rooms, Items, Keys, Mobs, Mechanics, Archetypes, Conditions, ExitBehaviors } from "./ids.js";
 
-export { LORE, ALIASES } from "./content.js";
+export { LORE, ALIASES, TITLE, INTRO } from "./content.js";
 
 export function buildHauntedHouseRegistry(): CampaignRegistry {
   return defineRegistry({

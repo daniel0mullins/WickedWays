@@ -1,4 +1,10 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+/** Click the "Enter Hollow House" button and wait for the command input to appear. */
+async function enterGame(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Enter Hollow House" }).click();
+  await expect(page.locator("#cmd")).toBeVisible();
+}
 
 /**
  * Winning command sequence mirrored from capstone.test.ts.
@@ -53,6 +59,7 @@ test.describe("Wicked Ways browser playthrough", () => {
     test.setTimeout(120_000);
 
     await page.goto("/");
+    await enterGame(page);
 
     // Opening room must be the Foyer.
     await expect(page.locator("#transcript")).toContainText("Foyer");
@@ -73,6 +80,7 @@ test.describe("Wicked Ways browser playthrough", () => {
 
   test("exit link fills the command line without submitting", async ({ page }) => {
     await page.goto("/");
+    await enterGame(page);
 
     // The opening Foyer's bottom HUD lists passable exits as clickable text links.
     const firstExit = page.locator(".exit-link").first();
@@ -94,6 +102,7 @@ test.describe("Wicked Ways browser playthrough", () => {
 
   test("clicking a noun fills 'examine <noun>' without submitting", async ({ page }) => {
     await page.goto("/");
+    await enterGame(page);
 
     // The opening Foyer's bottom HUD shows "Here: A hall table with a single drawer."
     // "drawer" is an alias of the foyer-table loot container → rendered as a .noun span.
@@ -112,5 +121,19 @@ test.describe("Wicked Ways browser playthrough", () => {
     // No echo line for the examine command (not submitted).
     const transcriptText = await page.locator("#transcript").innerText();
     expect(transcriptText).not.toMatch(/^> examine /m);
+  });
+
+  test("welcome screen shows title and enter button; game starts after clicking", async ({ page }) => {
+    await page.goto("/");
+
+    // Before entering: welcome content is visible, game input is not.
+    await expect(page.locator(".welcome-title")).toContainText("The Hollow House");
+    await expect(page.getByRole("button", { name: "Enter Hollow House" })).toBeVisible();
+    await expect(page.locator("#cmd")).not.toBeVisible();
+
+    // After clicking enter: game input is visible and first room (Foyer) is rendered.
+    await enterGame(page);
+    await expect(page.locator("#transcript")).toContainText("Foyer");
+    await expect(page.locator("#cmd")).toBeVisible();
   });
 });
