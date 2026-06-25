@@ -52,6 +52,13 @@ export interface SceneSnapshot {
   state: Record<string, unknown>;
 }
 
+export interface ExitSnapshot {
+  id: string;
+  endpointIds: [string, string];
+  behaviorKey?: string;
+  state: Record<string, unknown>;
+}
+
 export interface RoomSnapshot {
   id: string;
   name: string;
