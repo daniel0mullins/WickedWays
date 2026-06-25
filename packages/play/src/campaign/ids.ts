@@ -20,3 +20,8 @@ export const Conditions = {
   SanityZero: "sanity-zero",
   PartyDown: "party-down",
 } as const;
+
+export const ExitBehaviors = {
+  StudyDoor: "study-door",
+  AtticDoor: "attic-door",
+} as const;

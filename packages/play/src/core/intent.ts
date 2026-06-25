@@ -5,7 +5,6 @@ export type Intent =
   | { kind: "take"; targetId: string }
   | { kind: "drop"; targetId: string }
   | { kind: "open"; targetId: string }
-  | { kind: "unlock"; doorId: string }
   | { kind: "attack"; targetId: string }
   | { kind: "equip"; targetId: string }
   | { kind: "unequip"; targetId: string }
@@ -13,7 +12,7 @@ export type Intent =
   | { kind: "talk"; npcId: string; prompt?: string }
   | { kind: "wait" };
 
-const TIME_ADVANCING = new Set(["move", "take", "drop", "use", "attack", "unlock", "wait", "talk"]);
+const TIME_ADVANCING = new Set(["move", "take", "drop", "use", "attack", "wait", "talk"]);
 
 export function isTimeAdvancing(intent: Intent): boolean {
   return TIME_ADVANCING.has(intent.kind);

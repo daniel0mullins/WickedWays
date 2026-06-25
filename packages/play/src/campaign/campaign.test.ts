@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { assemble } from "wickedways/lib/authoring/assembler";
 import { PlayerCharacter } from "wickedways/lib/character/player-character";
-import { hauntedHouseTemplate, LOCKED_DOORS } from "./index.js";
+import { hauntedHouseTemplate } from "./index.js";
 import { Rooms, Mobs, Archetypes } from "./ids.js";
+import { Directions } from "wickedways/lib/room";
 import { Status } from "wickedways/lib/status";
-import type { IRoom } from "wickedways/lib/room";
 import type { Campaign } from "wickedways/lib/campaign";
+import type { IRoom } from "wickedways/lib/room";
 
 function boot(): { campaign: Campaign; rooms: Map<string, IRoom> } {
   const builder = hauntedHouseTemplate();
@@ -38,8 +39,6 @@ describe("The Hollow House — winning path", () => {
     take(pc, "Brass Lantern"); pc.equip(pc.inventory.items.find((i) => i.name === "Brass Lantern")!);
 
     // Down to the cellar (lantern keeps Dread off), fell the Revenant, grab the iron key.
-    // NOTE: the brass key / Study is an optional side-branch (covered by the next test) — the
-    // win path needs only the journal + iron key + Attic.
     go(pc, rooms.get(Rooms.Hall)!); campaign.nextPlayer();
     go(pc, rooms.get(Rooms.Foyer)!); campaign.nextPlayer();
     go(pc, rooms.get(Rooms.Cellar)!); campaign.nextPlayer();
@@ -48,14 +47,13 @@ describe("The Hollow House — winning path", () => {
     expect(revenant.status).toContain(Status.KO);
     take(pc, "Iron Key");                           // dropped into the cellar's loot on defeat
 
-    // Back up to the landing, reveal the attic door (what the session's unlock does), enter with the journal.
+    // Back up to the landing, use the iron key to traverse the attic door, enter with the journal.
     go(pc, rooms.get(Rooms.Foyer)!); campaign.nextPlayer();
     go(pc, rooms.get(Rooms.Hall)!); campaign.nextPlayer();
     go(pc, rooms.get(Rooms.Landing)!); campaign.nextPlayer();
-    const atticDoor = LOCKED_DOORS.find((d) => d.id === "attic-door")!;
-    rooms.get(atticDoor.from)!.addExit(atticDoor.dir, rooms.get(atticDoor.to)!);
-    rooms.get(atticDoor.to)!.addExit(reverse(atticDoor.dir), rooms.get(atticDoor.from)!);
-    go(pc, rooms.get(Rooms.Attic)!); campaign.nextPlayer();
+    // go(Directions.North) evaluates the attic door's precondition — the iron key passes it,
+    // script fires (unlocked = true), and the character moves into the Attic.
+    pc.startTurn(); pc.go(Directions.North); campaign.nextPlayer();
 
     expect(campaign.outcome).toBe("won");
   });
@@ -78,18 +76,6 @@ describe("The Hollow House — winning path", () => {
     expect(pc.inventory.keys.some((k) => k.keyCode === "brass")).toBe(true);
   });
 });
-
-// Local reverse-direction helper for the test (the session owns the real one).
-import { Directions, type Direction } from "wickedways/lib/room";
-function reverse(d: Direction): Direction {
-  const m: Record<string, Direction> = {
-    [Directions.North]: Directions.South, [Directions.South]: Directions.North,
-    [Directions.East]: Directions.West, [Directions.West]: Directions.East,
-    [Directions.Northeast]: Directions.Southwest, [Directions.Southwest]: Directions.Northeast,
-    [Directions.Northwest]: Directions.Southeast, [Directions.Southeast]: Directions.Northwest,
-  };
-  return m[d]!;
-}
 
 describe("The Hollow House — losing path", () => {
   it("loses to Sanity drain when wandering the dark without the lantern", () => {

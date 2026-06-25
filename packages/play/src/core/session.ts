@@ -3,7 +3,6 @@ import { PlayerCharacter } from "wickedways/lib/character/player-character";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { deserializeCampaign } from "wickedways/lib/serialization/deserializer";
 import { ProceduralViolation } from "wickedways/lib/util";
-import { Directions, type Direction, type IRoom } from "wickedways/lib/room";
 import type { Campaign } from "wickedways/lib/campaign";
 import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
@@ -15,25 +14,12 @@ import type { IItem } from "wickedways/lib/inventory";
 import { isTimeAdvancing, type Intent } from "./intent.js";
 import { view, type ViewModel } from "./viewmodel.js";
 import type { SaveStore } from "./savestore.js";
-import type { LockedDoor } from "../campaign/content.js";
-
-const REVERSE: Record<string, Direction> = {
-  [Directions.North]: Directions.South,
-  [Directions.South]: Directions.North,
-  [Directions.East]: Directions.West,
-  [Directions.West]: Directions.East,
-  [Directions.Northeast]: Directions.Southwest,
-  [Directions.Southwest]: Directions.Northeast,
-  [Directions.Northwest]: Directions.Southeast,
-  [Directions.Southeast]: Directions.Northwest,
-};
 
 export interface ExecuteResult { cues: PresentationCue[]; error?: string; }
 
 export interface SessionOptions {
   builder: TemplateBuilder<string, string>;
   registry: CampaignRegistry;
-  doors: LockedDoor[];
   aliases: Record<string, string[]>;
   playerName: string;
   archetype?: string;
@@ -44,7 +30,6 @@ export interface SessionOptions {
 
 export class GameSession {
   private campaign!: Campaign;
-  private rooms!: Map<string, IRoom>;
   private readonly cueBuffer: PresentationCue[] = [];
   private readonly opened = new Set<string>();
   private undoSnapshot: CampaignSnapshot | null = null;
@@ -60,7 +45,6 @@ export class GameSession {
   private boot(builder: TemplateBuilder<string, string>): void {
     const { campaign, rooms } = assemble(builder.description, builder.registry);
     this.campaign = campaign;
-    this.rooms = rooms;
     const pc = new PlayerCharacter({ campaign, name: this.opts.playerName });
     pc.joinCampaign();
     if (this.opts.archetype !== undefined) {
@@ -72,29 +56,8 @@ export class GameSession {
     campaign.onCue((cue) => this.cueBuffer.push(cue));
   }
 
-  // Re-derive the rooms map after restore by walking exits from every party room.
-  // Disconnected rooms that were never unlocked stay disconnected on restore,
-  // which is correct: their unlocked state lives in room.exits and was serialized.
-  private reindexRooms(): void {
-    const map = new Map<string, IRoom>();
-    const seen = new Set<string>();
-    const queue: IRoom[] = [];
-    for (const p of this.campaign.party) {
-      const r = p.currentRoom;
-      if (r) queue.push(r);
-    }
-    while (queue.length > 0) {
-      const r = queue.shift()!;
-      if (seen.has(r.id)) continue;
-      seen.add(r.id);
-      map.set(r.name, r);
-      for (const next of r.exits.values()) queue.push(next);
-    }
-    this.rooms = map;
-  }
-
   view(): ViewModel {
-    return view(this.campaign, this.opts.doors, this.opts.aliases, this.opened);
+    return view(this.campaign, this.opts.aliases, this.opened);
   }
 
   get finished(): boolean { return this.campaign.finished; }
@@ -104,7 +67,7 @@ export class GameSession {
     this.cueBuffer.length = 0;
     const advances = isTimeAdvancing(intent);
     const pre = advances
-      ? serializeCampaign(this.campaign, { rootRooms: this.rooms.values() })
+      ? serializeCampaign(this.campaign)
       : null;
     try {
       if (advances) this.campaign.activeCharacter.startTurn();
@@ -125,9 +88,7 @@ export class GameSession {
     const room = pc.currentRoom!;
     switch (intent.kind) {
       case "move": {
-        const to = room.exits.get(intent.dir);
-        if (!to) throw new ProceduralViolation("You can't go that way.");
-        pc.move(to);
+        pc.go(intent.dir);
         return;
       }
       case "wait":
@@ -174,10 +135,6 @@ export class GameSession {
         pc.attack(target);
         return;
       }
-      case "unlock": {
-        this.unlock(intent.doorId);
-        return;
-      }
       case "talk": {
         // No NPCs in this campaign; dialogue is reserved for future content.
         throw new ProceduralViolation("There's no one here to talk to.");
@@ -195,28 +152,8 @@ export class GameSession {
     throw new ProceduralViolation("You don't see that here.");
   }
 
-  private unlock(doorId: string): void {
-    const pc = this.campaign.activeCharacter;
-    const door = this.opts.doors.find((d) => d.id === doorId);
-    if (!door || pc.currentRoom!.name !== door.from) {
-      throw new ProceduralViolation("There's no such door here.");
-    }
-    if (pc.currentRoom!.exits.has(door.dir)) {
-      throw new ProceduralViolation("That way is already open.");
-    }
-    const key = pc.inventory.keys.find((k) => k.keyCode === door.keyCode);
-    if (!key) {
-      throw new ProceduralViolation(`The ${door.name} won't budge — you don't have the right key.`);
-    }
-    const from = this.rooms.get(door.from)!;
-    const to = this.rooms.get(door.to)!;
-    from.addExit(door.dir, to);
-    to.addExit(REVERSE[door.dir]!, from);
-    if (door.consume) pc.consumeKey(key);
-  }
-
   async save(slot: string): Promise<void> {
-    const snapshot = serializeCampaign(this.campaign, { rootRooms: this.rooms.values() });
+    const snapshot = serializeCampaign(this.campaign);
     await this.opts.saveStore.save(slot, snapshot, this.opts.now());
   }
 
@@ -238,6 +175,5 @@ export class GameSession {
     this.campaign = deserializeCampaign(snapshot, { registry: this.opts.registry, rng: this.opts.rng });
     this.campaign.onCue((cue) => this.cueBuffer.push(cue));
     this.opened.clear();
-    this.reindexRooms();
   }
 }

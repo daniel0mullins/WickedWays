@@ -3,7 +3,7 @@ import { isTimeAdvancing, type Intent } from "./intent.js";
 
 describe("isTimeAdvancing", () => {
   it("advances time for world-changing intents", () => {
-    for (const k of ["move", "take", "drop", "use", "attack", "unlock", "wait"] as const) {
+    for (const k of ["move", "take", "drop", "use", "attack", "wait"] as const) {
       expect(isTimeAdvancing({ kind: k } as Intent)).toBe(true);
     }
   });

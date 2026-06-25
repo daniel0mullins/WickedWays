@@ -37,8 +37,7 @@ const NOUN_VERBS: Record<string, NounVerb> = {
   remove: (t) => ({ kind: "unequip", targetId: t.id }),
   extinguish: (t) => ({ kind: "unequip", targetId: t.id }),
   use: (t) => ({ kind: "use", targetId: t.id }),
-  unlock: (t) => t.kind === "door" ? { kind: "unlock", doorId: t.id } : { error: "That isn't a door." },
-  open: (t) => t.kind === "door" ? { kind: "unlock", doorId: t.id } : t.kind === "loot" ? { kind: "open", targetId: t.id } : { error: "You can't open that." },
+  open: (t) => t.kind === "loot" ? { kind: "open", targetId: t.id } : { error: "You can't open that." },
 };
 
 export function parse(input: string, vm: ViewModel): ParseResult {

@@ -7,11 +7,10 @@ import { Status } from "wickedways/lib/status";
 import { Directions } from "wickedways/lib/room";
 import { ITEM_FACTORIES } from "./items.js";
 import { dread, makeStoryteller } from "./mechanics.js";
-import { LORE } from "./content.js";
-import { Rooms, Items, Keys, Mobs, Mechanics, Archetypes, Conditions } from "./ids.js";
+import { LORE, doorBehavior } from "./content.js";
+import { Rooms, Items, Keys, Mobs, Mechanics, Archetypes, Conditions, ExitBehaviors } from "./ids.js";
 
-export { LORE, ALIASES, LOCKED_DOORS } from "./content.js";
-export type { LockedDoor } from "./content.js";
+export { LORE, ALIASES } from "./content.js";
 
 export function buildHauntedHouseRegistry(): CampaignRegistry {
   return defineRegistry({
@@ -24,6 +23,10 @@ export function buildHauntedHouseRegistry(): CampaignRegistry {
       },
       [Conditions.SanityZero]: (c: ICampaign) => c.party.some((p) => p.effectiveStat(StatType.Sanity) <= 0),
       [Conditions.PartyDown]: (c: ICampaign) => c.party.length > 0 && c.party.every((p) => p.status.includes(Status.KO)),
+    },
+    exits: {
+      [ExitBehaviors.StudyDoor]: doorBehavior("brass", "study door", "The brass key turns; the study door swings open."),
+      [ExitBehaviors.AtticDoor]: doorBehavior("iron", "attic door", "The iron key grinds in the lock; the attic stairs open above you."),
     },
   });
 }
@@ -49,8 +52,9 @@ export function hauntedHouseTemplate(): TemplateBuilder<string, string> {
     .exit(Rooms.Hall, Directions.East, Rooms.Parlor).exit(Rooms.Parlor, Directions.West, Rooms.Hall)
     .exit(Rooms.Hall, Directions.North, Rooms.Landing).exit(Rooms.Landing, Directions.South, Rooms.Hall)
     .exit(Rooms.Landing, Directions.East, Rooms.Nursery).exit(Rooms.Nursery, Directions.West, Rooms.Landing)
-    // NOTE: Landing↔Study (west) and Landing↔Attic (north) are intentionally NOT
-    // declared — they are revealed by the session on unlock (see LOCKED_DOORS).
+    // Keyed doors: Landing↔Study (west) and Landing↔Attic (north)
+    .exit(Rooms.Landing, Directions.West, Rooms.Study, { behaviorKey: ExitBehaviors.StudyDoor, name: "study door", initialState: { unlocked: false } })
+    .exit(Rooms.Landing, Directions.North, Rooms.Attic, { behaviorKey: ExitBehaviors.AtticDoor, name: "attic door", initialState: { unlocked: false } })
     // Loot
     .loot("foyer-table", { room: Rooms.Foyer, items: [Items.Journal], description: "A hall table with a single drawer." })
     .loot("hall-stand", { room: Rooms.Hall, items: [Items.Poker], description: "A fireplace stand." })

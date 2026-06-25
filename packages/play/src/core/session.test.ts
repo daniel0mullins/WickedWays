@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { GameSession } from "./session.js";
-import { hauntedHouseTemplate, buildHauntedHouseRegistry, LOCKED_DOORS, ALIASES } from "../campaign/index.js";
+import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES } from "../campaign/index.js";
 import { LocalStorageSaveStore } from "./savestore.js";
 import { Rooms, Archetypes } from "../campaign/ids.js";
 import { Directions } from "wickedways/lib/room";
@@ -18,7 +18,6 @@ function newSession() {
   return GameSession.start({
     builder: hauntedHouseTemplate(),
     registry: buildHauntedHouseRegistry(),
-    doors: LOCKED_DOORS,
     aliases: ALIASES,
     playerName: "Heir",
     archetype: Archetypes.Heir,
@@ -44,8 +43,7 @@ describe("GameSession", () => {
     expect(s.view().status.turn).toBe(afterMove); // open is free
     expect(s.view().loot[0]!.opened).toBe(true);
   });
-  // Helpers for the unlock success path. (The brass key is a Wraith drop — keys
-  // cannot be authored into loot — so the only legitimate route is through combat.)
+  // Helpers for acquiring items
   const openTake = (s: GameSession, name: string): void => {
     const box = s.view().loot.find((l) => l.contents.some((c) => c.name === name))!;
     s.execute({ kind: "open", targetId: box.id });
@@ -57,20 +55,20 @@ describe("GameSession", () => {
     s.execute({ kind: "equip", targetId: item.id });
   };
 
-  it("unlock fails in-voice without the matching key, and reveals nothing", () => {
+  it("go into a locked door without the key is blocked — no move, fail cue emitted", () => {
     const s = newSession();
     s.execute({ kind: "move", dir: Directions.North });   // Hall
     s.execute({ kind: "move", dir: Directions.North });   // Landing
-    const door = s.view().lockedDoors.find((d) => d.id === "study-door")!;
-    const res = s.execute({ kind: "unlock", doorId: door.id });
-    expect(res.error).toBeTruthy();
-    expect(s.view().exits.map((e) => e.toName)).not.toContain(Rooms.Study);
+    expect(s.view().room.name).toBe(Rooms.Landing);
+    // The study door is to the west — should block without brass key
+    const result = s.execute({ kind: "move", dir: Directions.West });
+    expect(s.view().room.name).toBe(Rooms.Landing);   // didn't move
+    expect(result.cues.some((c) => c.kind === "mechanic" && "cue" in c && (c.cue.text ?? "").includes("won't budge"))).toBe(true);
   });
 
-  it("unlock reveals the study door once the brass key (a Wraith drop) is in hand", () => {
+  it("go into a locked door with the key opens it and moves through", () => {
     const s = newSession();
-    // Mirror the proven winning sequence: equip poker + lantern (the lantern is
-    // required to fight in the dark Nursery), then fell the Wraith for the brass key.
+    // Arm with poker + lantern (lantern needed for dark Nursery), fell the Wraith for brass key
     s.execute({ kind: "move", dir: Directions.North });   // Hall
     openTake(s, "Iron Fire-Poker"); equipNamed(s, "Iron Fire-Poker");
     s.execute({ kind: "move", dir: Directions.West });    // Kitchen
@@ -79,13 +77,16 @@ describe("GameSession", () => {
     s.execute({ kind: "move", dir: Directions.North });   // Landing
     s.execute({ kind: "move", dir: Directions.East });    // Nursery
     const wraith = s.view().occupants.find((o) => o.name === "Wraith")!;
-    for (let i = 0; i < 10; i++) s.execute({ kind: "attack", targetId: wraith.id }); // KO'd early; later attacks no-op via caught error
-    openTake(s, "Brass Key");                              // dropped into the Nursery on defeat
+    for (let i = 0; i < 10; i++) s.execute({ kind: "attack", targetId: wraith.id });
+    openTake(s, "Brass Key");                              // dropped into Nursery on defeat
     s.execute({ kind: "move", dir: Directions.West });    // Landing
-    const door = s.view().lockedDoors.find((d) => d.id === "study-door")!;
-    s.execute({ kind: "unlock", doorId: door.id });
-    expect(s.view().exits.map((e) => e.toName)).toContain(Rooms.Study);
+    // Now go west through the study door — should open and move in
+    const result = s.execute({ kind: "move", dir: Directions.West });
+    expect(s.view().room.name).toBe(Rooms.Study);
+    // The pass narration should mention the brass key / study door
+    expect(result.cues.some((c) => c.kind === "mechanic")).toBe(true);
   });
+
   it("save then restore reproduces location and inventory", async () => {
     const s = newSession();
     s.execute({ kind: "move", dir: Directions.North });

@@ -1,12 +1,11 @@
 import type { Campaign } from "wickedways/lib/campaign";
 import type { Direction } from "wickedways/lib/room";
 import { StatType } from "wickedways/lib/character/stats";
-import type { LockedDoor } from "../campaign/content.js";
 
-export type ScopeKind = "occupant" | "item" | "loot" | "door";
+export type ScopeKind = "occupant" | "item" | "loot";
 export interface ScopeEntity { id: string; name: string; aliases: string[]; kind: ScopeKind; }
 export interface ExitView { dir: Direction; toName: string; }
-export interface LockedDoorView { id: string; name: string; dir: Direction; }
+export interface LockedDoorView { name: string; dir: Direction; }
 export interface LootView { id: string; description: string; opened: boolean; contents: ScopeEntity[]; }
 export interface ViewModel {
   room: { id: string; name: string; description: string; isLit: boolean };
@@ -29,13 +28,15 @@ const aliasesFor = (behaviorKey: string | undefined, name: string, aliases: Reco
 /**
  * Derives a plain {@link ViewModel} from the live engine `Campaign`.
  *
+ * Exits are classified by the active character's ability to pass them:
+ * passable exits appear in `exits`; impassable ones appear in `lockedDoors`.
+ *
  * The engine tracks no "opened loot" flag, so callers pass the session-managed
  * set of opened loot ids via `openedLootIds` (defaults to empty). Loot
  * contents only enter `scope` once the box has been opened.
  */
 export function view(
   campaign: Campaign,
-  doors: LockedDoor[],
   aliases: Record<string, string[]>,
   openedLootIds: ReadonlySet<string> = new Set(),
 ): ViewModel {
@@ -76,18 +77,13 @@ export function view(
     kind: "item" as const,
   }));
 
-  const exits: ExitView[] = [...room.exits.entries()].map(([dir, to]) => ({ dir, toName: to.name }));
+  const exits: ExitView[] = [...room.exits.entries()]
+    .filter(([, exit]) => exit.canPass(pc))
+    .map(([dir, exit]) => ({ dir, toName: exit.otherSide(room).name }));
 
-  const lockedDoors: LockedDoorView[] = doors
-    .filter((d) => d.from === roomName && !room.exits.has(d.dir))
-    .map((d) => ({ id: d.id, name: d.name, dir: d.dir }));
-
-  const doorScope: ScopeEntity[] = lockedDoors.map((d) => ({
-    id: d.id,
-    name: d.name,
-    aliases: [d.name, "door"],
-    kind: "door" as const,
-  }));
+  const lockedDoors: LockedDoorView[] = [...room.exits.entries()]
+    .filter(([, exit]) => !exit.canPass(pc))
+    .map(([dir, exit]) => ({ name: exit.name ?? "door", dir }));
 
   // Loot contents only enter scope once the box has been opened by the session.
   const lootContentScope = loot.filter((l) => l.opened).flatMap((l) => l.contents);
@@ -98,7 +94,7 @@ export function view(
     kind: "loot" as const,
   }));
 
-  const scope: ScopeEntity[] = [...occupants, ...lootContentScope, ...items, ...keys, ...doorScope, ...lootScope];
+  const scope: ScopeEntity[] = [...occupants, ...lootContentScope, ...items, ...keys, ...lootScope];
 
   return {
     room: { id: room.id, name: roomName, description: room.description, isLit: room.isLit },

@@ -1,20 +1,28 @@
-import { Directions, type Direction } from "wickedways/lib/room";
+import type { ExitBehavior } from "wickedways/lib/exit";
 import { Rooms, Items, Keys } from "./ids.js";
 
-export interface LockedDoor {
-  id: string;
-  from: string;
-  dir: Direction;
-  to: string;
-  keyCode: string;
-  consume: boolean;
-  name: string;
+/**
+ * Returns an {@link ExitBehavior} for a keyed door. The door is passable if the
+ * character carries a key with `keyCode === keyCode` OR if `state.unlocked` is
+ * already `true` (set by the script on first successful pass).
+ */
+export function doorBehavior(keyCode: string, name: string, opened: string): ExitBehavior {
+  return {
+    preconditions: [
+      (c, s) =>
+        (s as { unlocked: boolean }).unlocked ||
+        c.inventory.keys.some((k) => k.keyCode === keyCode),
+    ],
+    script: (_c, s) => {
+      const state = s as { unlocked: boolean };
+      if (!state.unlocked) {
+        state.unlocked = true;
+        return opened;
+      }
+    },
+    failMessage: `The ${name} won't budge — it's locked.`,
+  };
 }
-
-export const LOCKED_DOORS: LockedDoor[] = [
-  { id: "study-door", from: Rooms.Landing, dir: Directions.West, to: Rooms.Study, keyCode: "brass", consume: false, name: "study door" },
-  { id: "attic-door", from: Rooms.Landing, dir: Directions.North, to: Rooms.Attic, keyCode: "iron", consume: false, name: "attic door" },
-];
 
 export const LORE: Record<string, string> = {
   [Rooms.Parlor]: "A page of the journal clears: 'They would not let me bury her properly. The parlor still smells of lilies.'",

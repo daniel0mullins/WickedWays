@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { assemble } from "wickedways/lib/authoring/assembler";
 import { PlayerCharacter } from "wickedways/lib/character/player-character";
-import { hauntedHouseTemplate, LOCKED_DOORS, ALIASES } from "../campaign/index.js";
+import { hauntedHouseTemplate, ALIASES } from "../campaign/index.js";
 import { Rooms, Archetypes } from "../campaign/ids.js";
 import { view } from "./viewmodel.js";
 
@@ -16,15 +16,19 @@ function bootInLanding() {
 }
 
 describe("viewmodel", () => {
-  it("reports the room, exits, and locked doors in scope", () => {
+  it("reports the room, open exits, and locked doors classified by canPass", () => {
     const { campaign } = bootInLanding();
-    const vm = view(campaign, LOCKED_DOORS, ALIASES);
+    const vm = view(campaign, ALIASES);
     expect(vm.room.name).toBe(Rooms.Landing);
-    expect(vm.exits.map((e) => e.toName)).toContain(Rooms.Nursery);   // open exit
-    expect(vm.exits.map((e) => e.toName)).not.toContain(Rooms.Study); // locked, not yet revealed
-    expect(vm.lockedDoors.map((d) => d.id).sort()).toEqual(["attic-door", "study-door"]);
-    // a locked door is a resolvable scope entity
-    expect(vm.scope.some((s) => s.kind === "door" && s.aliases.includes("study door"))).toBe(true);
+    // The Landing↔Nursery corridor is open (no preconditions)
+    expect(vm.exits.map((e) => e.toName)).toContain(Rooms.Nursery);
+    // The Landing↔Hall corridor is also open
+    expect(vm.exits.map((e) => e.toName)).toContain(Rooms.Hall);
+    // The Study and Attic doors are locked (canPass=false for keyless PC)
+    expect(vm.exits.map((e) => e.toName)).not.toContain(Rooms.Study);
+    expect(vm.exits.map((e) => e.toName)).not.toContain(Rooms.Attic);
+    // Both locked doors appear in lockedDoors
+    expect(vm.lockedDoors.map((d) => d.name).sort()).toEqual(["attic door", "study door"]);
   });
   it("includes the Foyer's start-room journal loot in scope once opened", () => {
     const builder = hauntedHouseTemplate();
@@ -36,7 +40,7 @@ describe("viewmodel", () => {
     pc.openLootBox(box);
     // The engine tracks no "opened" flag; the session passes opened loot ids.
     const openedLootIds = new Set([box.id]);
-    const vm = view(campaign, LOCKED_DOORS, ALIASES, openedLootIds);
+    const vm = view(campaign, ALIASES, openedLootIds);
     expect(vm.loot[0]!.opened).toBe(true);
     expect(vm.scope.some((s) => s.kind === "item" && s.name === "Water-Stained Journal")).toBe(true);
   });

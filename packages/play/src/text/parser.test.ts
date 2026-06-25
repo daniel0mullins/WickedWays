@@ -52,15 +52,14 @@ describe("parser — noun resolution", () => {
   });
 });
 
-describe("parser — doors", () => {
-  it("unlock targets a locked door; open on a door is a synonym for unlock", () => {
-    const door = ent("study-door", "study door", ["study door", "door"], "door");
-    const v = vm({ scope: [door], lockedDoors: [{ id: "study-door", name: "study door", dir: Directions.West }] });
-    expect(parse("unlock study door", v)).toEqual({ kind: "intent", intent: { kind: "unlock", doorId: "study-door" } });
-    expect(parse("open door", v)).toEqual({ kind: "intent", intent: { kind: "unlock", doorId: "study-door" } });
-  });
+describe("parser — open", () => {
   it("open on a loot box is an open intent", () => {
     const box = ent("b1", "a chest", ["chest", "box"], "loot");
     expect(parse("open chest", vm({ scope: [box] }))).toEqual({ kind: "intent", intent: { kind: "open", targetId: "b1" } });
+  });
+  it("open on a non-loot item is an error", () => {
+    const item = ent("i1", "key", ["key"], "item");
+    const res = parse("open key", vm({ scope: [item] }));
+    expect(res.kind).toBe("error");
   });
 });
