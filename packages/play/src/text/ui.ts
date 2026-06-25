@@ -143,13 +143,32 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
 
     // "Here:" loot line — omitted when there is no loot. Rendered through
     // renderClickable so loot nouns (e.g. "drawer") stay clickable affordances.
-    const lootDescs = vm.loot.map((l) => l.description);
+    // Descriptions already end in a period, so strip a trailing one before
+    // re-punctuating the joined list (avoids "a drawer..").
+    const lootDescs = vm.loot.map((l) => l.description.replace(/\.\s*$/, ""));
     if (lootDescs.length) {
       const hereLine = document.createElement("div");
       hereLine.className = "hud-line";
       renderClickable(hereLine, `Here: ${lootDescs.join(", ")}.`, input, clickableNouns);
       hud.appendChild(hereLine);
     }
+
+    // "Carrying:" line — persistent inventory readout so gaining/losing an item
+    // is always visible at a glance (the transcript confirms the action; this
+    // shows the resulting state). Equipped gear is tagged; keys are listed too.
+    const equipped = new Set(vm.inventory.equippedNames);
+    const carried = [
+      ...vm.inventory.items.map((i) => (equipped.has(i.name) ? `${i.name} (equipped)` : i.name)),
+      ...vm.inventory.keys.map((k) => k.name),
+      // Equipped gear that has left the items list still belongs on the readout.
+      ...vm.inventory.equippedNames
+        .filter((n) => !vm.inventory.items.some((i) => i.name === n))
+        .map((n) => `${n} (equipped)`),
+    ];
+    const carryingLine = document.createElement("div");
+    carryingLine.className = "hud-line";
+    renderClickable(carryingLine, `Carrying: ${carried.length ? carried.join(", ") : "nothing"}.`, input, clickableNouns);
+    hud.appendChild(carryingLine);
 
     // "Exits:" line — passable exits as clickable text links (fill, no submit);
     // locked doors as dim, non-clickable text.
@@ -296,7 +315,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
         const result = session.execute(res.intent);
         if (result.error) { print([result.error], "error"); return; }
         const after = session.view();
-        print(narrator.renderCues(result.cues));
+        print([...narrator.renderAction(res.intent, before, after), ...narrator.renderCues(result.cues)]);
         if (res.intent.kind === "move") printRoom(after);
         refresh();
         if (after.finished) print(["", "— THE END —"], "end");
