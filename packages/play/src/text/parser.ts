@@ -17,7 +17,9 @@ const DIRECTIONS: Record<string, Direction> = {
   southeast: Directions.Southeast, se: Directions.Southeast, southwest: Directions.Southwest, sw: Directions.Southwest,
 };
 
-const ARTICLES = new Set(["the", "a", "an", "at", "to", "with", "on"]);
+// Leading filler words stripped from a command's noun phrase: articles plus the
+// common prepositions that show up in phrasings like "look at", "give to", "open with".
+const STOP_WORDS = new Set(["the", "a", "an", "at", "to", "with", "on"]);
 
 // Verb → a function needing a resolved noun, returning an Intent or an error.
 type NounVerb = (target: ScopeEntity) => Intent | { error: string };
@@ -66,7 +68,7 @@ export function parse(input: string, vm: ViewModel): ParseResult {
   if (verb === "help" || verb === "?") return { kind: "query", query: "help" };
   if (verb === "wait" || verb === "z") return { kind: "intent", intent: { kind: "wait" } };
 
-  const nounPhrase = tokens.slice(1).filter((t) => !ARTICLES.has(t)).join(" ");
+  const nounPhrase = tokens.slice(1).filter((t) => !STOP_WORDS.has(t)).join(" ");
 
   // examine is special: resolve then return an examine result (no engine call).
   if (verb === "examine" || verb === "x" || verb === "look-at") {

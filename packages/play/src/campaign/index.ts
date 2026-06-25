@@ -45,7 +45,9 @@ export function hauntedHouseTemplate(): TemplateBuilder<string, string> {
     .room(Rooms.Nursery, { description: "A child's nursery. A rocking horse moves, very slightly, on its own.", dark: true })
     .room(Rooms.Attic, { description: "The attic, under the bare ribs of the roof. This is where the journal ends." })
     .startRoom(Rooms.Foyer)
-    // Exits (one-way; declared both directions). Stairs/cellar use compass dirs.
+    // Exits are shared bidirectional Exit objects; the assembler links both rooms and
+    // dedupes by room-pair. Corridors are declared both ways below; KEYED DOORS are
+    // declared ONCE (a reverse declaration would shadow the door's behaviorKey).
     .exit(Rooms.Foyer, Directions.North, Rooms.Hall).exit(Rooms.Hall, Directions.South, Rooms.Foyer)
     .exit(Rooms.Foyer, Directions.South, Rooms.Cellar).exit(Rooms.Cellar, Directions.North, Rooms.Foyer)
     .exit(Rooms.Hall, Directions.West, Rooms.Kitchen).exit(Rooms.Kitchen, Directions.East, Rooms.Hall)
