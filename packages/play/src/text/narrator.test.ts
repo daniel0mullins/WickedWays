@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Narrator } from "./narrator";
+import { Narrator } from "./narrator.js";
 import { Directions } from "wickedways/lib/room";
 import type { ViewModel } from "../core/viewmodel.js";
 import type { PresentationCue } from "wickedways/lib/presentation";
