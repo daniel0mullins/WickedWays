@@ -11,7 +11,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
         <div class="monitor-screen">
           <div class="screen">
             <div id="transcript" class="transcript" aria-live="polite"></div>
-            <div id="compass" class="compass"></div>
+            <div id="hud" class="hud"></div>
             <div id="status" class="status"></div>
             <form id="prompt-form" class="prompt"><span class="caret">&gt;</span>
               <input id="cmd" autocomplete="off" autofocus /></form>
@@ -29,7 +29,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
   applyStyles(root);
 
   const transcript = root.querySelector<HTMLDivElement>("#transcript")!;
-  const compass = root.querySelector<HTMLDivElement>("#compass")!;
+  const hud = root.querySelector<HTMLDivElement>("#hud")!;
   const status = root.querySelector<HTMLDivElement>("#status")!;
   const input = root.querySelector<HTMLInputElement>("#cmd")!;
   const form = root.querySelector<HTMLFormElement>("#prompt-form")!;
@@ -100,16 +100,56 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
   const refresh = () => {
     const vm = session.view();
     status.textContent = `${vm.status.locationName}  ·  turn ${vm.status.turn}/${vm.status.maxTurns}  ·  Sanity ${vm.status.sanity}`;
-    compass.innerHTML = "";
-    for (const e of vm.exits) {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "chip";
-      chip.textContent = `${e.dir} → ${e.toName}`;
-      chip.addEventListener("click", () => { input.value = `go ${e.dir}`; input.focus(); });
-      compass.appendChild(chip);
-    }
+
+    // Recompute clickable nouns first so the HUD loot line links the current scope.
     computeClickableNouns();
+
+    // Persistent bottom HUD, driven from the viewmodel each turn.
+    hud.innerHTML = "";
+
+    // "Here:" loot line — omitted when there is no loot. Rendered through
+    // renderClickable so loot nouns (e.g. "drawer") stay clickable affordances.
+    const lootDescs = vm.loot.map((l) => l.description);
+    if (lootDescs.length) {
+      const hereLine = document.createElement("div");
+      hereLine.className = "hud-line";
+      renderClickable(hereLine, `Here: ${lootDescs.join(", ")}.`, input, clickableNouns);
+      hud.appendChild(hereLine);
+    }
+
+    // "Exits:" line — passable exits as clickable text links (fill, no submit);
+    // locked doors as dim, non-clickable text.
+    const exitsLine = document.createElement("div");
+    exitsLine.className = "hud-line";
+    const label = document.createElement("span");
+    label.textContent = "Exits: ";
+    exitsLine.appendChild(label);
+
+    const parts: Node[] = [];
+    for (const e of vm.exits) {
+      const link = document.createElement("span");
+      link.className = "exit-link";
+      link.textContent = e.dir;
+      link.addEventListener("click", () => { input.value = `go ${e.dir}`; input.focus(); });
+      parts.push(link);
+    }
+    for (const d of vm.lockedDoors) {
+      const locked = document.createElement("span");
+      locked.className = "exit-locked";
+      locked.textContent = `${d.dir} (${d.name}, locked)`;
+      parts.push(locked);
+    }
+    if (parts.length === 0) {
+      const none = document.createElement("span");
+      none.className = "exit-locked";
+      none.textContent = "none";
+      parts.push(none);
+    }
+    parts.forEach((node, i) => {
+      if (i > 0) exitsLine.appendChild(document.createTextNode(", "));
+      exitsLine.appendChild(node);
+    });
+    hud.appendChild(exitsLine);
   };
 
   /**
@@ -305,11 +345,14 @@ function applyStyles(root: HTMLElement): void {
         0 0 2px rgba(0, 0, 0, 0.8);
     }
 
-    /* (1) 4:3 screen — the live terminal fills the bounded glass. */
+    /* (1) 4:3 screen — the live terminal fills the bounded glass.
+       --base-size is the single knob; everything else is em-relative so
+       text was 19px and is now doubled to 38px. */
     .screen {
       position: absolute; inset: 0;
+      --base-size: 38px;
       display: flex; flex-direction: column;
-      font: 19px/1.5 var(--font-body); color: var(--color-text);
+      font: var(--base-size)/1.5 var(--font-body); color: var(--color-text);
       /* faint bulged-glass curvature */
       background:
         radial-gradient(ellipse at 50% 45%, #1b1a14 0%, var(--color-bg) 70%, #0c0b08 100%);
@@ -410,12 +453,19 @@ function applyStyles(root: HTMLElement): void {
       text-shadow: 0 0 12px rgba(217, 194, 122, 0.35);
       margin-bottom: 0.15em;
     }
-    .compass { display: flex; gap: .4rem; flex-wrap: wrap; padding: .4rem 1rem; position: relative; z-index: 1; }
-    .chip {
-      background: var(--color-chip-bg); color: var(--color-text);
-      border: 1px solid var(--color-chip-border); border-radius: 4px;
-      padding: .15rem .5rem; cursor: pointer; font: inherit;
+    /* Persistent bottom HUD — Here: / Exits: lines, between transcript and status. */
+    .hud {
+      padding: .4rem 1rem; position: relative; z-index: 1;
+      border-top: 1px solid var(--color-border);
+      color: var(--color-text);
+      display: flex; flex-direction: column; gap: .15em;
     }
+    .hud-line { white-space: pre-wrap; }
+    .exit-link {
+      cursor: pointer; text-decoration: underline;
+      text-underline-offset: 2px; color: var(--color-accent);
+    }
+    .exit-locked { color: var(--color-muted); opacity: 0.7; }
     .status { padding: .3rem 1rem; color: var(--color-muted); border-top: 1px solid var(--color-border); position: relative; z-index: 1; }
     .prompt { display: flex; gap: .5rem; align-items: center; padding: .5rem 1rem 1rem; position: relative; z-index: 1; }
     .caret { color: var(--color-accent); }

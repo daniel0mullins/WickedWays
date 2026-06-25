@@ -71,14 +71,14 @@ test.describe("Wicked Ways browser playthrough", () => {
     await expect(page.locator("#transcript")).toContainText("— THE END —");
   });
 
-  test("compass chip fills the command line without submitting", async ({ page }) => {
+  test("exit link fills the command line without submitting", async ({ page }) => {
     await page.goto("/");
 
-    // The opening Foyer has compass chips (north → Hall, south → Cellar).
-    const firstChip = page.locator("#compass .chip").first();
-    await expect(firstChip).toBeVisible();
+    // The opening Foyer's bottom HUD lists passable exits as clickable text links.
+    const firstExit = page.locator(".exit-link").first();
+    await expect(firstExit).toBeVisible();
 
-    await firstChip.click();
+    await firstExit.click();
 
     // #cmd should now contain "go <dir>" …
     await expect(page.locator("#cmd")).toHaveValue(/^go /);
@@ -95,9 +95,10 @@ test.describe("Wicked Ways browser playthrough", () => {
   test("clicking a noun fills 'examine <noun>' without submitting", async ({ page }) => {
     await page.goto("/");
 
-    // The opening Foyer render includes loot "Here: A hall table with a single drawer."
+    // The opening Foyer's bottom HUD shows "Here: A hall table with a single drawer."
     // "drawer" is an alias of the foyer-table loot container → rendered as a .noun span.
-    const firstNoun = page.locator("#transcript .noun").first();
+    // (Loot moved from the transcript to the persistent HUD, where nouns stay clickable.)
+    const firstNoun = page.locator("#hud .noun").first();
     await expect(firstNoun).toBeVisible();
 
     await firstNoun.click();

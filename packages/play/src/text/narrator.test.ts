@@ -52,11 +52,19 @@ describe("Narrator.renderRoomParts", () => {
     expect(second.header).toBe("Hall");
   });
 
-  it("body contains exits", () => {
+  it("body omits the Exits: line (moved to the bottom HUD)", () => {
     const n = new Narrator();
     const parts = n.renderRoomParts(vm());
-    expect(parts.body.join("\n")).toContain("Exits:");
-    expect(parts.body.join("\n")).toContain("north");
+    expect(parts.body.join("\n")).not.toContain("Exits:");
+  });
+
+  it("body omits the Here: loot line (moved to the bottom HUD)", () => {
+    const n = new Narrator();
+    const parts = n.renderRoomParts(vm({
+      loot: [{ id: "table", description: "A hall table", opened: false, contents: [] }],
+    }));
+    expect(parts.body.join("\n")).not.toContain("Here:");
+    expect(parts.body.join("\n")).not.toContain("A hall table");
   });
 
   it("body contains occupants when present", () => {

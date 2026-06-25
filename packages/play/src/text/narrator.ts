@@ -25,14 +25,11 @@ export class Narrator {
       return { header, description, body };
     }
 
+    // Loot ("Here: …") and exits ("Exits: …") now live in the persistent bottom
+    // HUD (rendered by ui.ts from the viewmodel), not in the scrolling transcript.
+    // Only occupants stay in the transcript body.
     const occ = sentence(vm.occupants.map((o) => o.name), "You see");
     if (occ) body.push(occ);
-    const loot = sentence(vm.loot.map((l) => l.description), "Here:");
-    if (loot) body.push(loot);
-    const exits = vm.exits.map((e) => e.dir);
-    const locked = vm.lockedDoors.map((d) => `${d.dir} (the ${d.name}, locked)`);
-    const ways = [...exits, ...locked];
-    if (ways.length) body.push(`Exits: ${ways.join(", ")}.`);
 
     return { header, description, body };
   }
