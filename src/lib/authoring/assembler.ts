@@ -107,6 +107,16 @@ export function assemble(
     }
   }
 
+  for (const e of desc.exits) {
+    if (e.behaviorKey !== undefined) {
+      try {
+        registry.exit(e.behaviorKey);
+      } catch {
+        problems.push(`exit from '${e.from}' to '${e.to}' references unregistered exit key '${e.behaviorKey}'.`);
+      }
+    }
+  }
+
   for (const f of desc.formations) {
     try {
       registry.formation(f.key);
@@ -261,7 +271,21 @@ export function assemble(
     const pair = [from.id, to.id].sort().join("|");
     if (wired.has(pair)) continue;
     wired.add(pair);
-    from.addExit(e.direction, to); // auto-reverse places exit in `to` too
+    if (e.behaviorKey !== undefined) {
+      const behavior = registry.exit(e.behaviorKey);
+      from.addExit(e.direction, to, {
+        behaviorKey: e.behaviorKey,
+        preconditions: behavior.preconditions,
+        script: behavior.script,
+        passMessage: behavior.passMessage,
+        failMessage: behavior.failMessage,
+        initialState: e.initialState,
+        name: e.name,
+        oneWay: e.oneWay,
+      });
+    } else {
+      from.addExit(e.direction, to, { name: e.name, oneWay: e.oneWay }); // auto-reverse places exit in `to` too
+    }
   }
 
   // Attach scenes (mirrors hydrateScene: behavior + key, default phase "enter").

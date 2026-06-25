@@ -5,7 +5,7 @@ import { hydrateItem } from "../inventory";
 import { hydrateLoot } from "../loot";
 import { hydrateMaterialCache } from "../material-cache";
 import { constructBareRoom } from "../room";
-import { constructBareExit, SET_ENDPOINTS } from "../exit";
+import { constructBareExit, hydrateExit, SET_ENDPOINTS } from "../exit";
 import { constructBareCharacter } from "../character/hydrate";
 import { HydrateContext } from "./context";
 import { HYDRATE, HYDRATE_CATALOG, HYDRATE_CODEX_ENTRIES } from "./symbols";
@@ -61,10 +61,10 @@ export function deserializeCampaign(
 
   // Build exits pass 1: construct bare exits and index them before rooms hydrate.
   for (const exitData of data.exits) {
-    const exit = constructBareExit(exitData);
-    if (exitData.behaviorKey !== undefined) {
-      // Task 4 will reattach behavior from registry.exit(exitData.behaviorKey).
-    }
+    const exit =
+      exitData.behaviorKey !== undefined
+        ? hydrateExit(exitData, opts.registry.exit(exitData.behaviorKey))
+        : constructBareExit(exitData);
     ctx.put(exit.id, exit);
   }
 

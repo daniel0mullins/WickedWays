@@ -113,6 +113,31 @@ throws.
   default) that persists across room visits for the life of the scene: the `script` may mutate
   it and `preconditions` read it (read-only), enabling fire-once events, world-state flags, and
   visit counters. The state is internal to the scene — nothing outside reads it.
+- An [`Exit`](src/lib/exit.ts) is a **first-class shared object** registered in _both_ rooms'
+  `exits` maps under the appropriate compass directions. A single `Exit` instance represents both
+  the north door in room A and the south door in room B — mutation (e.g. flipping `state.unlocked`)
+  is visible from either side immediately.
+  - **Traversal.** `Character.go(direction)` attempts the exit in that direction. If the exit's
+    `preconditions` all pass, the character moves and any `passMessage` is emitted; if a precondition
+    fails, movement is blocked and the exit's `failMessage` (if any) is emitted as a cue. A successful
+    pass also runs the exit's optional `script(character, state)`, which may mutate the exit's persisted
+    state and return a one-time narration line.
+  - **Door behavior.** An exit can carry author-defined behavior: a list of `preconditions`, an optional
+    `script`, and `passMessage`/`failMessage` strings. Doors that check for a matching key are a common
+    pattern — the precondition checks the character's inventory (or the exit's own `state.unlocked` flag),
+    and the script flips the flag permanently so subsequent characters pass without the key.
+  - **Registry.** For serializable exits, register an [`ExitBehavior`](src/lib/exit.ts) under a stable
+    key in the `CampaignRegistry` via `registry.registerExit(key, behavior)`, or via `defineRegistry`'s
+    `exits` map. The `behaviorKey` is stored in the snapshot; on deserialization the preconditions and
+    script re-bind from the registry (just as scenes do).
+  - **Authoring.** When using [`authorTemplate`](src/lib/authoring/template-builder.ts) /
+    [`TemplateBuilder`](src/lib/authoring/template-builder.ts), call
+    `.exit(from, dir, to, { behaviorKey, name, initialState })` to wire a keyed door. The `name`
+    field (e.g. `"Iron Door"`) is a display label readable by UIs; it survives serialize → deserialize.
+    Plain exits (no `behaviorKey`) are just `.exit(from, dir, to)`.
+  - **Serialization.** Exit state serializes natively — the persisted `state` object is included in
+    the exit snapshot, so a door that was unlocked during play stays unlocked across save/reload.
+    Exits without a `behaviorKey` carry an empty state and no behavior on restore.
 
 ### Darkness & light
 

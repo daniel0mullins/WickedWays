@@ -58,6 +58,8 @@ export interface AddExitOptions {
   behaviorKey?: string;
   passMessage?: string;
   failMessage?: string;
+  /** Optional display label for the exit (e.g. "Iron Door"). Survives serialization. */
+  name?: string;
   initialState?: Record<string, unknown>;
   preconditions?: ExitPrecondition<never>[];
   script?: ExitScript<never>;
@@ -306,6 +308,7 @@ export class Room implements IRoom {
       script: opts.script,
       passMessage: opts.passMessage,
       failMessage: opts.failMessage,
+      name: opts.name,
       initialState: opts.initialState as never,
       behaviorKey: opts.behaviorKey,
     });

@@ -6,6 +6,7 @@ import type { IMob } from "../character/mob";
 import type { IRoom } from "../room";
 import type { IDialogue } from "../character/non-player-character";
 import type { Mechanic, JsonObject } from "../mechanics/mechanic.js";
+import type { ExitBehavior } from "../exit";
 
 export interface SceneBehavior {
   preconditions: ((room: IRoom, state: never) => boolean)[];
@@ -40,6 +41,7 @@ export class CampaignRegistry {
   #conditions = new Map<string, (campaign: ICampaign) => boolean>();
   #mechanics = new Map<string, Mechanic<JsonObject, unknown, string>>();
   #npcs = new Map<string, NpcBehavior>();
+  #exits = new Map<string, ExitBehavior>();
 
   /**
    * Registers a {@link SceneBehavior} (preconditions + script) under `key`.
@@ -99,6 +101,14 @@ export class CampaignRegistry {
   registerNpc(key: string, behavior: NpcBehavior): void {
     this.#npcs.set(key, behavior);
   }
+  /**
+   * Registers an {@link ExitBehavior} (preconditions + script + messages) under `key`.
+   * Must match the `behaviorKey` passed into every {@link Exit} that needs to survive
+   * serialization — preconditions and the script re-bind from here on hydrate.
+   */
+  registerExit(key: string, behavior: ExitBehavior): void {
+    this.#exits.set(key, behavior);
+  }
 
   scene(key: string): SceneBehavior {
     return this.#require(this.#scenes.get(key), "scene", key);
@@ -120,6 +130,9 @@ export class CampaignRegistry {
   }
   npc(key: string): NpcBehavior {
     return this.#require(this.#npcs.get(key), "npc", key);
+  }
+  exit(key: string): ExitBehavior {
+    return this.#require(this.#exits.get(key), "exit", key);
   }
 
   #require<T>(value: T | undefined, kind: string, key: string): T {

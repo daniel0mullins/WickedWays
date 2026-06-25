@@ -27,6 +27,8 @@ export interface ExitConfig<TState = Record<string, never>> {
   script?: ExitScript<TState>;
   passMessage?: string;
   failMessage?: string;
+  /** Optional display label for the exit (e.g. "Iron Door"). Readable by UIs and survives serialization. */
+  name?: string;
   initialState?: TState;
   behaviorKey?: string;
 }
@@ -50,6 +52,8 @@ export interface IExit {
   get state(): Readonly<Record<string, unknown>>;
   failMessage?: string;
   passMessage?: string;
+  /** Optional display label for the exit (e.g. "Iron Door"). */
+  name?: string;
   otherSide(from: IRoom): IRoom;
   endpoints(): readonly [IRoom, IRoom];
   canPass(character: ICharacter): boolean;
@@ -64,6 +68,8 @@ export class Exit<TState = Record<string, never>> implements IExit {
   preconditions: ExitPrecondition<TState>[];
   failMessage?: string;
   passMessage?: string;
+  /** Optional display label for the exit (e.g. "Iron Door"). */
+  name?: string;
 
   #a?: IRoom;
   #b?: IRoom;
@@ -71,12 +77,13 @@ export class Exit<TState = Record<string, never>> implements IExit {
   #state: TState;
   #behaviorKey?: string;
 
-  constructor({ preconditions, script, passMessage, failMessage, initialState, behaviorKey }: ExitConfig<TState>) {
+  constructor({ preconditions, script, passMessage, failMessage, name, initialState, behaviorKey }: ExitConfig<TState>) {
     this.id = generateId<ExitId>();
     this.preconditions = preconditions;
     this.#script = script;
     this.passMessage = passMessage;
     this.failMessage = failMessage;
+    this.name = name;
     this.#state = initialState ?? ({} as TState);
     this.#behaviorKey = behaviorKey;
   }
@@ -122,6 +129,7 @@ export class Exit<TState = Record<string, never>> implements IExit {
       id: this.id,
       endpointIds: [a.id, b.id],
       behaviorKey: this.#behaviorKey,
+      name: this.name,
       state: this.#state as Record<string, unknown>,
     };
   }
@@ -136,6 +144,29 @@ export function constructBareExit(data: ExitSnapshot): Exit {
     preconditions: [],
     initialState: data.state,
     behaviorKey: data.behaviorKey,
+    name: data.name,
+  });
+  exit.id = data.id as ExitId;
+  return exit as unknown as Exit;
+}
+
+/**
+ * Pass-1 factory for exits with a registered behavior: reattaches preconditions,
+ * script, and messages from `behavior`, seeds state from the snapshot, and preserves
+ * the stored id. Mirrors {@link hydrateScene} — the constructor receives the full
+ * behavior so `#script` (private) is set correctly without a public setter.
+ *
+ * Endpoints stay unset; wired in pass 2 via {@link SET_ENDPOINTS}.
+ */
+export function hydrateExit(data: ExitSnapshot, behavior: ExitBehavior): Exit {
+  const exit = new Exit<never>({
+    preconditions: behavior.preconditions,
+    script: behavior.script,
+    passMessage: behavior.passMessage,
+    failMessage: behavior.failMessage,
+    initialState: data.state as never,
+    behaviorKey: data.behaviorKey,
+    name: data.name,
   });
   exit.id = data.id as ExitId;
   return exit as unknown as Exit;

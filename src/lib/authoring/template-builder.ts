@@ -7,7 +7,7 @@ import type { Direction } from "../room";
 import type { Stats } from "../character/stats";
 import type { MaterialMap } from "../inventory";
 import type { ArchetypeDef, CampaignTemplateDescription } from "./description";
-import type { ItemKeyOf, RecipeKeyOf, ConditionKeyOf, MechanicKeyOf, SceneKeyOf, FormationKeyOf, NpcKeyOf } from "./registry";
+import type { ItemKeyOf, RecipeKeyOf, ConditionKeyOf, MechanicKeyOf, SceneKeyOf, FormationKeyOf, NpcKeyOf, ExitKeyOf } from "./registry";
 import { AuthoringError } from "./errors";
 import type { OutcomeNarration } from "../victory";
 
@@ -28,7 +28,7 @@ import type { OutcomeNarration } from "../victory";
  *   .build();
  * ```
  */
-export class TemplateBuilder<ItemKey extends string, RecipeKey extends string, ConditionKey extends string = never, MechanicKey extends string = never, SceneKey extends string = never, FormationKey extends string = never, NpcKey extends string = never> {
+export class TemplateBuilder<ItemKey extends string, RecipeKey extends string, ConditionKey extends string = never, MechanicKey extends string = never, SceneKey extends string = never, FormationKey extends string = never, NpcKey extends string = never, ExitKey extends string = never> {
   /** @internal for orchestration (e.g. startSession) */
   readonly description: CampaignTemplateDescription;
   /** @internal for orchestration (e.g. startSession) */
@@ -83,9 +83,9 @@ export class TemplateBuilder<ItemKey extends string, RecipeKey extends string, C
     return this;
   }
 
-  /** Define a one-way directional exit between two rooms (forward refs are resolved at build time). */
-  exit(from: string, direction: Direction, to: string): this {
-    this.description.exits.push({ from, direction, to });
+  /** Define a directional exit between two rooms (forward refs are resolved at build time). When `behaviorKey` is provided, a registered door behavior (preconditions + script + state) is attached. */
+  exit(from: string, direction: Direction, to: string, opts: { behaviorKey?: ExitKey; name?: string; initialState?: Record<string, unknown>; oneWay?: boolean } = {}): this {
+    this.description.exits.push({ from, direction, to, ...opts });
     return this;
   }
 
@@ -261,6 +261,6 @@ export function authorTemplate<Registry extends CampaignRegistry>(
   title: string,
   registry: Registry,
   opts?: { rng?: () => number; maxRounds?: number; baseEncounterChance?: number },
-): TemplateBuilder<ItemKeyOf<Registry>, RecipeKeyOf<Registry>, ConditionKeyOf<Registry>, MechanicKeyOf<Registry>, SceneKeyOf<Registry>, FormationKeyOf<Registry>, NpcKeyOf<Registry>> {
-  return new TemplateBuilder<ItemKeyOf<Registry>, RecipeKeyOf<Registry>, ConditionKeyOf<Registry>, MechanicKeyOf<Registry>, SceneKeyOf<Registry>, FormationKeyOf<Registry>, NpcKeyOf<Registry>>(title, registry, opts);
+): TemplateBuilder<ItemKeyOf<Registry>, RecipeKeyOf<Registry>, ConditionKeyOf<Registry>, MechanicKeyOf<Registry>, SceneKeyOf<Registry>, FormationKeyOf<Registry>, NpcKeyOf<Registry>, ExitKeyOf<Registry>> {
+  return new TemplateBuilder<ItemKeyOf<Registry>, RecipeKeyOf<Registry>, ConditionKeyOf<Registry>, MechanicKeyOf<Registry>, SceneKeyOf<Registry>, FormationKeyOf<Registry>, NpcKeyOf<Registry>, ExitKeyOf<Registry>>(title, registry, opts);
 }

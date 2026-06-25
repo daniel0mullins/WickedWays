@@ -56,6 +56,8 @@ export interface ExitSnapshot {
   id: string;
   endpointIds: [string, string];
   behaviorKey?: string;
+  /** Optional display label for the exit; restored on hydrate. */
+  name?: string;
   state: Record<string, unknown>;
 }
 

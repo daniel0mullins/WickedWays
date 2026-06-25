@@ -18,9 +18,12 @@ import { deserializeCampaign } from "../serialization/deserializer";
 import { serializeCampaign } from "../serialization/serializer";
 import { Directions } from "../room";
 import { StatType } from "../character/stats";
-import { Item } from "../inventory";
+import { Item, createKey } from "../inventory";
 import type { RecipeId } from "../crafting";
 import type { ICampaign } from "../campaign";
+import { Campaign } from "../campaign";
+import { PlayerCharacter } from "../character/player-character";
+import { hydrateExit, type ExitBehavior } from "../exit";
 
 // ---------------------------------------------------------------------------
 // Item / recipe factories — every behaviorKey must be registered in the
@@ -282,5 +285,99 @@ describe("template round-trip (toSnapshot → deserializeCampaign)", () => {
     expect(() =>
       deserializeCampaign(snap, { registry: partialRegistry, rng: () => 0.5 }),
     ).toThrow();
+  });
+
+  it("a keyed exit round-trips: locked, opens with the key, stays unlocked across save/load", () => {
+    // ---- Registry with a keyed door behavior ----
+    const DOOR_KEY = "iron-door";
+    const ironDoorBehavior: ExitBehavior = {
+      preconditions: [
+        (c, s) =>
+          (s as Record<string, unknown>)["unlocked"] === true ||
+          c.inventory.keys.some((k) => k.keyCode === "iron"),
+      ],
+      script: (_c, s) => {
+        (s as Record<string, unknown>)["unlocked"] = true;
+        return "It opens.";
+      },
+      failMessage: "Locked.",
+    };
+    const doorRegistry = defineRegistry({
+      items: { [COIN_KEY]: makeCoin },
+      exits: { [DOOR_KEY]: ironDoorBehavior },
+    });
+
+    // ---- Build a live campaign with the locked door via assemble ----
+    const { campaign, rooms } = assemble(
+      authorTemplate("Iron Door Test", doorRegistry)
+        .room("hall", { description: "A dim hallway." })
+        .room("vault", { description: "The vault." })
+        .exit("hall", Directions.North, "vault", {
+          behaviorKey: DOOR_KEY,
+          initialState: { unlocked: false },
+          name: "Iron Door",
+        })
+        .description,
+      doorRegistry,
+    );
+
+    const hall = rooms.get("hall")!;
+
+    // keyless character: cannot pass
+    const keyless = new PlayerCharacter({ campaign, name: "Rogue" });
+    expect(hall.exits.get(Directions.North)!.canPass(keyless)).toBe(false);
+
+    // character with the iron key: can pass
+    const ironKey = createKey({ name: "Iron Key", keyCode: "iron", consumeOnUse: false });
+    const keyHolder = new PlayerCharacter({ campaign, name: "Hero" });
+    keyHolder.addToInventory(ironKey);
+    expect(hall.exits.get(Directions.North)!.canPass(keyHolder)).toBe(true);
+
+    // ---- Serialize → snap must carry behaviorKey, initialState, and name ----
+    const snap = serializeCampaign(campaign, { rootRooms: rooms.values() });
+    const exitSnap = snap.exits.find((e) => e.behaviorKey === DOOR_KEY);
+    expect(exitSnap).toBeDefined();
+    expect(exitSnap!.name).toBe("Iron Door");
+    expect(exitSnap!.state["unlocked"]).toBe(false);
+
+    // ---- Deserialize → behavior is reattached; door still locked ----
+    // deserializeCampaign must not throw (behavior re-binds from registry)
+    expect(() => deserializeCampaign(snap, { registry: doorRegistry })).not.toThrow();
+
+    // Verify re-attached behavior: hydrateExit (same code path as deserializeCampaign)
+    // with the locked snapshot — keyless character cannot pass.
+    const lockedRestoredExit = hydrateExit(exitSnap!, doorRegistry.exit(DOOR_KEY));
+    const keylessCampaign = new Campaign({ title: "Iron Door Test" });
+    const keylessCheck = new PlayerCharacter({ campaign: keylessCampaign, name: "Rogue" });
+    expect(lockedRestoredExit.canPass(keylessCheck)).toBe(false);
+    expect(lockedRestoredExit.name).toBe("Iron Door");
+
+    // ---- Unlock the door in the live campaign and re-serialize ----
+    const liveExit = hall.exits.get(Directions.North)!;
+    liveExit.runScript(keyHolder); // flips state.unlocked = true
+
+    // Keyless character can now pass the unlocked door
+    expect(liveExit.canPass(keyless)).toBe(true);
+
+    // Serialize the unlocked state
+    const unlockedSnap = serializeCampaign(campaign, { rootRooms: rooms.values() });
+    const unlockedExitSnap = unlockedSnap.exits.find((e) => e.behaviorKey === DOOR_KEY);
+    expect(unlockedExitSnap!.state["unlocked"]).toBe(true);
+    expect(unlockedExitSnap!.name).toBe("Iron Door");
+
+    // ---- Deserialize the unlocked snapshot → behavior reattached, canPass for keyless ----
+    // deserializeCampaign must not throw (behavior re-binds from registry)
+    expect(() => deserializeCampaign(unlockedSnap, { registry: doorRegistry })).not.toThrow();
+
+    // Verify the restored exit's behavior + state directly:
+    // hydrateExit re-creates the exit as deserializeCampaign does (same code path),
+    // seeding state from the snapshot and reattaching behavior from the registry.
+    const restoredExitFromSnap = hydrateExit(unlockedExitSnap!, doorRegistry.exit(DOOR_KEY));
+    const unlockedRestoreCampaign = new Campaign({ title: "Iron Door Test" });
+    const keylessAfterUnlock = new PlayerCharacter({ campaign: unlockedRestoreCampaign, name: "Rogue" });
+    // The persisted unlocked state must survive: a keyless character can now pass
+    expect(restoredExitFromSnap.canPass(keylessAfterUnlock)).toBe(true);
+    // name survives the round-trip
+    expect(restoredExitFromSnap.name).toBe("Iron Door");
   });
 });
