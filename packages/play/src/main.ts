@@ -1,3 +1,5 @@
+import "@fontsource/vt323";
+import "@fontsource/silkscreen";
 import { GameSession } from "./core/session.js";
 import { LocalStorageSaveStore } from "./core/savestore.js";
 import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES } from "./campaign/index.js";

@@ -4,24 +4,44 @@ import type { ViewModel, ScopeEntity } from "../core/viewmodel.js";
 const sentence = (items: string[], head: string): string | null =>
   items.length === 0 ? null : `${head} ${items.join(", ")}.`;
 
+export interface RoomParts {
+  header: string;
+  description: string | null;
+  body: string[];
+}
+
 export class Narrator {
   private readonly visited = new Set<string>();
 
-  renderRoom(vm: ViewModel): string[] {
-    const lines: string[] = [`*${vm.room.name}*`];
+  renderRoomParts(vm: ViewModel): RoomParts {
+    const header = vm.room.name;
     const firstVisit = !this.visited.has(vm.room.id);
     this.visited.add(vm.room.id);
-    if (firstVisit) lines.push(vm.room.description);
-    if (!vm.room.isLit) { lines.push("It is pitch dark. You can see nothing."); return lines; }
+    const description = firstVisit ? vm.room.description : null;
+
+    const body: string[] = [];
+    if (!vm.room.isLit) {
+      body.push("It is pitch dark. You can see nothing.");
+      return { header, description, body };
+    }
 
     const occ = sentence(vm.occupants.map((o) => o.name), "You see");
-    if (occ) lines.push(occ);
+    if (occ) body.push(occ);
     const loot = sentence(vm.loot.map((l) => l.description), "Here:");
-    if (loot) lines.push(loot);
+    if (loot) body.push(loot);
     const exits = vm.exits.map((e) => e.dir);
     const locked = vm.lockedDoors.map((d) => `${d.dir} (the ${d.name}, locked)`);
     const ways = [...exits, ...locked];
-    if (ways.length) lines.push(`Exits: ${ways.join(", ")}.`);
+    if (ways.length) body.push(`Exits: ${ways.join(", ")}.`);
+
+    return { header, description, body };
+  }
+
+  renderRoom(vm: ViewModel): string[] {
+    const { header, description, body } = this.renderRoomParts(vm);
+    const lines: string[] = [header];
+    if (description !== null) lines.push(description);
+    lines.push(...body);
     return lines;
   }
 
