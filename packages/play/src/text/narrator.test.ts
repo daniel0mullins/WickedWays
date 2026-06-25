@@ -94,6 +94,45 @@ describe("Narrator.renderRoomParts", () => {
   });
 });
 
+describe("Narrator.renderAction", () => {
+  const journal = { id: "journal", name: "Water-Stained Journal", aliases: ["journal"], kind: "item" as const };
+
+  it("confirms a take with the item's name", () => {
+    const n = new Narrator();
+    const before = vm({ scope: [journal] });          // journal is in the room as loot content
+    const after = vm({ scope: [journal], inventory: { items: [journal], keys: [], equippedNames: [] } });
+    expect(n.renderAction({ kind: "take", targetId: "journal" }, before, after).join(" ")).toContain("Water-Stained Journal");
+  });
+
+  it("confirms a drop with the item's name", () => {
+    const n = new Narrator();
+    const before = vm({ scope: [journal], inventory: { items: [journal], keys: [], equippedNames: [] } });
+    const after = vm();                               // gone from inventory after drop
+    const line = n.renderAction({ kind: "drop", targetId: "journal" }, before, after).join(" ");
+    expect(line).toContain("Water-Stained Journal");
+  });
+
+  it("describes opening a container by listing its contents", () => {
+    const n = new Narrator();
+    const loot = { id: "drawer", description: "A hall table with a single drawer.", opened: true, contents: [journal] };
+    const before = vm({ loot: [loot], scope: [journal] });
+    const line = n.renderAction({ kind: "open", targetId: "drawer" }, before, before).join(" ");
+    expect(line).toContain("Water-Stained Journal");
+  });
+
+  it("names the item on unequip via the after-view (item returns to inventory)", () => {
+    const n = new Narrator();
+    const before = vm();                              // equipped item not in scope
+    const after = vm({ scope: [journal], inventory: { items: [journal], keys: [], equippedNames: [] } });
+    expect(n.renderAction({ kind: "unequip", targetId: "journal" }, before, after).join(" ")).toContain("Water-Stained Journal");
+  });
+
+  it("returns no synthetic line for move (the room re-render speaks for it)", () => {
+    const n = new Narrator();
+    expect(n.renderAction({ kind: "move", dir: Directions.North }, vm(), vm())).toEqual([]);
+  });
+});
+
 describe("Narrator.renderCues", () => {
   it("passes mechanic cue text through verbatim", () => {
     const n = new Narrator();

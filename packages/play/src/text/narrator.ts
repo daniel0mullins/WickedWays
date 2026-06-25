@@ -1,5 +1,6 @@
 import type { PresentationCue } from "wickedways/lib/presentation";
 import type { ViewModel, ScopeEntity } from "../core/viewmodel.js";
+import type { Intent } from "../core/intent.js";
 
 const sentence = (items: string[], head: string): string | null =>
   items.length === 0 ? null : `${head} ${items.join(", ")}.`;
@@ -74,5 +75,46 @@ export class Narrator {
 
   renderExamine(target: ScopeEntity, _vm: ViewModel): string[] {
     return [`You look closely at the ${target.name}. Nothing more reveals itself — yet.`];
+  }
+
+  /**
+   * Confirmation line(s) for a state-changing action. The engine emits only a
+   * terse `action` cue (kind + actor, no item name), so feedback for
+   * take/drop/open/equip/use is synthesized here from the parsed intent and the
+   * before/after viewmodels. `move` and `attack` return nothing — the room
+   * re-render and combat cues already speak for them.
+   */
+  renderAction(intent: Intent, before: ViewModel, after: ViewModel): string[] {
+    // Resolve a target's display name from either view's scope. `before` covers
+    // take/drop/equip (item still visible beforehand); `after` covers unequip
+    // (the item only re-enters inventory scope once unequipped).
+    const nameOf = (id: string): string => {
+      for (const v of [before, after]) {
+        const hit = v.scope.find((e) => e.id === id);
+        if (hit) return hit.name;
+      }
+      return "it";
+    };
+
+    switch (intent.kind) {
+      case "take": return [`You take the ${nameOf(intent.targetId)}.`];
+      case "drop": return [`You set down the ${nameOf(intent.targetId)}.`];
+      case "equip": return [`You ready the ${nameOf(intent.targetId)}.`];
+      case "unequip": return [`You put away the ${nameOf(intent.targetId)}.`];
+      case "use": return [`You use the ${nameOf(intent.targetId)}.`];
+      case "open": {
+        const box = before.loot.find((l) => l.id === intent.targetId)
+          ?? after.loot.find((l) => l.id === intent.targetId);
+        const contents = box?.contents.map((c) => c.name) ?? [];
+        return contents.length
+          ? [`You open it. Inside: ${contents.join(", ")}.`]
+          : ["You open it. It is empty."];
+      }
+      case "wait": return ["You wait. The house holds its breath."];
+      case "move":
+      case "attack":
+      case "talk":
+        return [];
+    }
   }
 }
