@@ -147,7 +147,7 @@ describe("Campaign integration", () => {
     while (campaign.round < campaign.maxRounds) {
       const pc = campaign.activeCharacter;
       const exits = [...pc.currentRoom!.exits.values()];
-      const next = exits[0] ?? pc.currentRoom!;
+      const next = exits[0] !== undefined ? exits[0].otherSide(pc.currentRoom!) : pc.currentRoom!;
       pc.startTurn();
       pc.move(next);
       campaign.nextPlayer();
@@ -497,7 +497,7 @@ describe("SyncCoordinator two-client convergence", () => {
     A.start(); B.start();
 
     const active = A.campaign.activeCharacter;
-    const dest = active.currentRoom!.exits.get(Directions.North)!;
+    const dest = active.currentRoom!.exits.get(Directions.North)!.otherSide(active.currentRoom!);
     const res = await A.submit({ kind: "move", actorId: active.id, roomId: dest.id });
     expect(res.ok).toBe(true);
 
@@ -540,7 +540,7 @@ describe("SyncCoordinator join + late-join", () => {
     const A = SyncCoordinator.join({ registry, transport, rng: () => 0.5 });
     A.start();
     const active = A.campaign.activeCharacter;
-    const dest = active.currentRoom!.exits.get(Directions.North)!;
+    const dest = active.currentRoom!.exits.get(Directions.North)!.otherSide(active.currentRoom!);
     await A.submit({ kind: "move", actorId: active.id, roomId: dest.id });
 
     const C = SyncCoordinator.join({ registry, transport, rng: () => { throw new Error("no roll"); } });
@@ -578,7 +578,7 @@ describe("Victory conditions", () => {
 
     // Move the player into the exit room and close the round.
     hero.startTurn();
-    hero.move(hero.currentRoom!.exits.get(Directions.North)!);
+    hero.move(hero.currentRoom!.exits.get(Directions.North)!.otherSide(hero.currentRoom!));
     campaign.nextPlayer(); // sole party member → endRound() fires → resolveOutcome() runs
 
     expect(campaign.outcome).toBe("won");

@@ -64,7 +64,7 @@ describe("SyncCoordinator", () => {
     b.start();
 
     const active = a.campaign.activeCharacter;
-    const dest = active.currentRoom!.exits.get(Directions.North)!;
+    const dest = active.currentRoom!.exits.get(Directions.North)!.otherSide(active.currentRoom!);
     const res = await a.submit({ kind: "move", actorId: active.id, roomId: dest.id });
     expect(res.ok).toBe(true);
     expect(serializeCampaign(b.campaign)).toEqual(serializeCampaign(a.campaign));

@@ -138,7 +138,8 @@ export class Mob extends Combatant implements IMob {
    */
   escape() {
     if (!this.attemptAction(this.escape, false)) return;
-    const exits = [...(this.currentRoom?.exits.values() ?? [])];
+    const currentRoom = this.currentRoom;
+    const exits = [...(currentRoom?.exits.values() ?? [])];
     const threshold = clamp(
       this.#baseEscapeChance + this.effectiveStat(StatType.Health),
       0,
@@ -147,7 +148,8 @@ export class Mob extends Combatant implements IMob {
     const rolled = roll(100, this.rng) <= threshold;
     const success = rolled && exits.length > 0;
     if (success) {
-      const destination = exits[roll(exits.length, this.rng) - 1]!;
+      const exit = exits[roll(exits.length, this.rng) - 1]!;
+      const destination = exit.otherSide(currentRoom!);
       this.withGateSuppressed(() => this.move(destination));
     }
     this.recordAction(this.escape, { kind: "escape", success });

@@ -12,7 +12,7 @@ import { Scene, type IScene } from "./scene";
 import { ProceduralViolation } from "./util";
 import type { Presentation } from "./presentation";
 
-import { type ExitsArg, makeCampaign, makeStats } from "../test-utils";
+import { makeCampaign, makeStats } from "../test-utils";
 
 // `Room` only ever touches an occupant's `id`, a loot batch's `id`, and a
 // scene's `playScene`, so minimal stubs cast to the interfaces are enough.
@@ -31,8 +31,8 @@ function makeScene(): IScene & { playScene: ReturnType<typeof vi.fn> } {
   };
 }
 
-function makeRoom(loot: ILoot[] = [], exits: Partial<ExitsArg> = {}): Room {
-  return new Room({ name: "A Dim Room", description: "a dim room", loot, exits });
+function makeRoom(loot: ILoot[] = []): Room {
+  return new Room({ name: "A Dim Room", description: "a dim room", loot });
 }
 
 // Only the item's `id` and `emitsLight` flag matter to these tests; the rest of
@@ -99,9 +99,10 @@ describe("Room", () => {
 
     it("keys the exits map by direction", () => {
       const north = makeRoom();
-      const room = makeRoom([], { north });
+      const room = makeRoom();
+      room.addExit("north", north);
 
-      expect(room.exits.get("north")).toBe(north);
+      expect(room.exits.get("north")!.otherSide(room)).toBe(north);
     });
 
     it("keys the materials map by each cache's id", () => {
@@ -257,24 +258,26 @@ describe("Room", () => {
 
       room.addExit("east", east);
 
-      expect(room.exits.get("east")).toBe(east);
+      expect(room.exits.get("east")!.otherSide(room)).toBe(east);
     });
 
     it("overwrites an existing exit in the same direction", () => {
       const original = makeRoom();
       const replacement = makeRoom();
-      const room = makeRoom([], { south: original });
+      const room = makeRoom();
+      room.addExit("south", original);
 
       room.addExit("south", replacement);
 
-      expect(room.exits.get("south")).toBe(replacement);
+      expect(room.exits.get("south")!.otherSide(room)).toBe(replacement);
     });
   });
 
   describe("removeExit", () => {
     it("removes the exit in the given direction", () => {
       const west = makeRoom();
-      const room = makeRoom([], { west });
+      const room = makeRoom();
+      room.addExit("west", west);
 
       room.removeExit("west");
 

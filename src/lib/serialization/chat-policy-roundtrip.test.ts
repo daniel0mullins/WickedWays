@@ -24,7 +24,7 @@ describe("chatPolicy serialization", () => {
   it("migrate() upgrades a v2 snapshot by injecting the default policy", () => {
     const v2 = { schemaVersion: 2, campaign: {} as Record<string, unknown> } as unknown as CampaignSnapshot;
     const out = migrate(v2);
-    expect(out.schemaVersion).toBe(5);
+    expect(out.schemaVersion).toBe(6);
     expect(out.campaign.chatPolicy).toEqual(DEFAULT_CHAT_POLICY);
   });
 });

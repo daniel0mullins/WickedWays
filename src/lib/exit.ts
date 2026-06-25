@@ -126,3 +126,17 @@ export class Exit<TState = Record<string, never>> implements IExit {
     };
   }
 }
+
+/**
+ * Pass-1 factory: builds a bare {@link Exit} from a snapshot with id and state
+ * seeded but endpoints unset (wired in pass 2 via {@link SET_ENDPOINTS}).
+ */
+export function constructBareExit(data: ExitSnapshot): Exit {
+  const exit = new Exit<Record<string, unknown>>({
+    preconditions: [],
+    initialState: data.state,
+    behaviorKey: data.behaviorKey,
+  });
+  exit.id = data.id as ExitId;
+  return exit as unknown as Exit;
+}

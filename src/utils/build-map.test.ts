@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { Directions, Room } from "../lib/room";
-import type { IRoom } from "../lib/room";
+import type { IRoom, Direction } from "../lib/room";
 import { ProceduralViolation } from "../lib/util";
 import { buildMap } from "./build-map";
 
-import { type ExitsArg, makeRng } from "../test-utils";
+import { makeRng } from "../test-utils";
 
 function makeRooms(count: number): IRoom[] {
   return Array.from(
@@ -16,13 +16,15 @@ function makeRooms(count: number): IRoom[] {
 
 // Wires every room to all the others, one neighbor per compass direction, so
 // each ends up with all eight exits occupied (no free direction left).
+// Uses oneWay to prevent bidirectional auto-placement from clobbering slots
+// set by other rooms' iteration.
 function saturate(rooms: IRoom[]): void {
   const directions = Object.values(Directions);
   for (const room of rooms) {
     const others = rooms.filter((r) => r !== room);
     directions.forEach((dir, i) => {
       const dest = others[i];
-      if (dest) room.addExit(dir, dest);
+      if (dest) room.addExit(dir, dest, { oneWay: true });
     });
   }
 }
@@ -43,7 +45,8 @@ function reachableCount(start: IRoom): number {
   const queue: IRoom[] = [start];
   while (queue.length > 0) {
     const room = queue.shift()!;
-    for (const next of room.exits.values()) {
+    for (const exit of room.exits.values()) {
+      const next = exit.otherSide(room);
       if (!seen.has(next)) {
         seen.add(next);
         queue.push(next);
@@ -66,7 +69,7 @@ function exitSignature(rooms: IRoom[]): string {
   return rooms
     .map((room, i) =>
       [...room.exits.entries()]
-        .map(([dir, dest]) => `${i}:${dir}->${index.get(dest)}`)
+        .map(([dir, exit]) => `${i}:${dir}->${index.get(exit.otherSide(room))}`)
         .sort()
         .join(","),
     )
@@ -128,8 +131,9 @@ describe("buildMap", () => {
       const rooms = buildMap(makeRooms(12));
 
       for (const room of rooms) {
-        for (const [direction, dest] of room.exits.entries()) {
-          expect(dest.exits.get(OPPOSITE[direction]! as keyof ExitsArg)).toBe(room);
+        for (const [direction, exit] of room.exits.entries()) {
+          const dest = exit.otherSide(room);
+          expect(dest.exits.get(OPPOSITE[direction]! as Direction)!.otherSide(dest)).toBe(room);
         }
       }
     });
@@ -138,7 +142,7 @@ describe("buildMap", () => {
       const rooms = buildMap(makeRooms(12));
 
       for (const room of rooms) {
-        expect([...room.exits.values()]).not.toContain(room);
+        expect([...room.exits.values()].map((e) => e.otherSide(room))).not.toContain(room);
       }
     });
 
@@ -177,8 +181,9 @@ describe("buildMap", () => {
       const rooms = buildMap(makeRooms(12), { extraConnections: 5 });
 
       for (const room of rooms) {
-        for (const [direction, dest] of room.exits.entries()) {
-          expect(dest.exits.get(OPPOSITE[direction]! as keyof ExitsArg)).toBe(room);
+        for (const [direction, exit] of room.exits.entries()) {
+          const dest = exit.otherSide(room);
+          expect(dest.exits.get(OPPOSITE[direction]! as Direction)!.otherSide(dest)).toBe(room);
         }
       }
     });
@@ -186,8 +191,8 @@ describe("buildMap", () => {
 
   describe("requiredConnections", () => {
     function directionBetween(a: IRoom, b: IRoom): string | undefined {
-      for (const [dir, dest] of a.exits.entries()) {
-        if (dest === b) return dir;
+      for (const [dir, exit] of a.exits.entries()) {
+        if (exit.otherSide(a) === b) return dir;
       }
       return undefined;
     }
@@ -200,7 +205,7 @@ describe("buildMap", () => {
 
       const dir = directionBetween(a, b);
       expect(dir).toBeDefined();
-      expect(b.exits.get(OPPOSITE[dir!]! as keyof ExitsArg)).toBe(a);
+      expect(b.exits.get(OPPOSITE[dir!]! as Direction)!.otherSide(b)).toBe(a);
     });
 
     it("honors multiple required pairs at once", () => {
@@ -214,8 +219,8 @@ describe("buildMap", () => {
       buildMap(rooms, { rng: makeRng(7), requiredConnections: pairs });
 
       for (const [a, b] of pairs) {
-        expect([...a.exits.values()]).toContain(b);
-        expect([...b.exits.values()]).toContain(a);
+        expect([...a.exits.values()].map((e) => e.otherSide(a))).toContain(b);
+        expect([...b.exits.values()].map((e) => e.otherSide(b))).toContain(a);
       }
     });
 
@@ -243,7 +248,7 @@ describe("buildMap", () => {
         }),
       ).not.toThrow();
 
-      expect([...rooms[0]!.exits.values()]).not.toContain(rooms[0]!);
+      expect([...rooms[0]!.exits.values()].map((e) => e.otherSide(rooms[0]!))).not.toContain(rooms[0]!);
       expect(reachableCount(rooms[0]!)).toBe(12);
     });
 
@@ -268,7 +273,7 @@ describe("buildMap", () => {
         extraConnections: 3,
       });
 
-      expect([...rooms[0]!.exits.values()]).toContain(rooms[1]!);
+      expect([...rooms[0]!.exits.values()].map((e) => e.otherSide(rooms[0]!))).toContain(rooms[1]!);
       expect(reachableCount(rooms[0]!)).toBe(12);
       for (const room of rooms) {
         expect(room.exits.size).toBeLessThanOrEqual(8);

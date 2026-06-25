@@ -104,8 +104,8 @@ export function buildMap(
     parent.set(room, room);
   }
   for (const room of rooms) {
-    for (const neighbor of room.exits.values()) {
-      union(room, neighbor);
+    for (const exit of room.exits.values()) {
+      union(room, exit.otherSide(room));
     }
   }
 
@@ -171,8 +171,8 @@ function connect(a: IRoom, b: IRoom, rng: () => number): boolean {
   for (const direction of shuffle(freeDirections(a), rng)) {
     const opposite = OPPOSITES[direction];
     if (!b.exits.has(opposite)) {
+      // addExit is now bidirectional: one call places exit in both rooms.
       a.addExit(direction, b);
-      b.addExit(opposite, a);
       return true;
     }
   }
@@ -180,8 +180,8 @@ function connect(a: IRoom, b: IRoom, rng: () => number): boolean {
 }
 
 function areAdjacent(a: IRoom, b: IRoom): boolean {
-  for (const room of a.exits.values()) {
-    if (room === b) {
+  for (const exit of a.exits.values()) {
+    if (exit.otherSide(a) === b) {
       return true;
     }
   }

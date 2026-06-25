@@ -12,7 +12,7 @@ import type { Direction } from "../room";
 import type { CampaignTemplateDescription } from "./description";
 
 /** Empty exits object; individual exits are wired in via {@link Room.addExit} after construction. */
-const NO_EXITS = {} as Record<Direction, Room>;
+const NO_EXITS = {} as Record<Direction, never>;
 
 /**
  * Validates a {@link CampaignTemplateDescription} (collecting ALL problems into
@@ -253,9 +253,15 @@ export function assemble(
     campaign.addFormation({ id: f.key, weight: f.weight ?? 1, build: registry.formation(f.key).build });
   }
 
-  // Wire exits
+  // Wire exits — deduplicate by unordered room-pair since templates declare both directions.
+  const wired = new Set<string>();
   for (const e of desc.exits) {
-    rooms.get(e.from)!.addExit(e.direction, rooms.get(e.to)!);
+    const from = rooms.get(e.from)!;
+    const to = rooms.get(e.to)!;
+    const pair = [from.id, to.id].sort().join("|");
+    if (wired.has(pair)) continue;
+    wired.add(pair);
+    from.addExit(e.direction, to); // auto-reverse places exit in `to` too
   }
 
   // Attach scenes (mirrors hydrateScene: behavior + key, default phase "enter").

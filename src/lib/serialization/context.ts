@@ -5,6 +5,7 @@ import type { ILoot } from "../loot";
 import type { IRoom } from "../room";
 import type { ICharacter } from "../character/character";
 import type { IMaterialCache } from "../material-cache";
+import type { IExit } from "../exit";
 
 /** Carries the id→instance index, the registry, and the rng through reconstruction. */
 export class HydrateContext {
@@ -38,5 +39,8 @@ export class HydrateContext {
   }
   character(id: string): ICharacter {
     return this.#get<ICharacter>(id, "character");
+  }
+  exit(id: string): IExit {
+    return this.#get<IExit>(id, "exit");
   }
 }
