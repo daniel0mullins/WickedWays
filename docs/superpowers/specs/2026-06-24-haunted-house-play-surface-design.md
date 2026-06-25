@@ -1,7 +1,7 @@
 # Haunted House Campaign + Infocom-Style Play Surface — Design
 
-**Date:** 2026-06-24
-**Status:** Approved design, pending implementation plan
+**Date:** 2026-06-24 (locked-door model revised 2026-06-25)
+**Status:** Approved design; locked-door model revised mid-implementation — pending re-plan
 
 ## Goal
 
@@ -13,11 +13,20 @@ Two deliverables, one new package:
    adventures — a scrolling transcript and a typed command parser, with gentle
    modern affordances (clickable compass/nouns, history, save/restore).
 
-The engine (`src/`) is touched by **one small, additive, backward-compatible
-change**: a `hasItem(itemKey): boolean` method on the mechanic system's
-`CharacterView` (mirroring the existing `hasEquipped`). Everything else is new and
-lives in a new workspace package, `@wickedways/play`, that imports the engine and
-drives it in-browser.
+The engine (`src/`) gains **two changes**, both general-purpose (not play-specific):
+
+1. A `hasItem(itemKey): boolean` method on the mechanic system's `CharacterView`
+   (mirroring the existing `hasEquipped`) — small, additive, backward-compatible.
+2. A first-class **`Exit`** entity with author-defined **preconditions** and a
+   **`go(direction)`** traversal method on `Character`. This replaces the old model
+   where `Room.exits` mapped a direction straight to a room and a "locked door" was a
+   missing exit revealed at runtime. It is a breaking change to `Room.exits`'
+   shape and the serialization of exits (see *Locked doors*).
+
+Everything else is new and lives in a new workspace package, `@wickedways/play`, that
+imports the engine and drives it in-browser. Because doors become an engine concept,
+the play package ends up **thinner** than the original design — it no longer carries a
+locked-door table, an `unlock` intent, or any runtime exit-mutation glue.
 
 ### Why the one engine change
 
@@ -53,7 +62,7 @@ the text-specific modules.
 │                                                                        │
 │  ┌─────────── core/  ── UI-NEUTRAL, shared by every surface ───────┐   │
 │  │  session    Calls assemble() + seats the player to get a live    │   │
-│  │             Campaign + room map. Executes Intents, exposes the    │   │
+│  │             Campaign. Executes Intents, exposes the               │   │
 │  │             cue stream, save/restore/undo, finished/outcome.      │   │
 │  │  viewmodel  Derives a plain, render-agnostic snapshot from the    │   │
 │  │             live campaign: current room, exits, visible occupants │   │
@@ -111,9 +120,9 @@ parser/narrator/ui are untouched.
 The engine is round-based with a per-round action budget and a `maxRounds`
 timeout; mechanics like Dread tick on round boundaries. Classic Infocom treats one
 command as one turn. The session maps it that way: each **time-advancing** Intent
-(move, attack, take, drop, use, equip/unequip, unlock, wait, harvest, craft-as-an-
-action) is followed by `nextPlayer()` to end the round, so Dread/timeout/win-checks
-tick per meaningful command. Free queries (look/examine/inventory/exits/help) cost
+(move — including walking through a door, attack, take, drop, use, wait, harvest,
+craft-as-an-action) is followed by `nextPlayer()` to end the round, so
+Dread/timeout/win-checks tick per meaningful command. Free queries (look/examine/inventory/exits/help) cost
 no time. The 5-action budget is effectively invisible in single-player.
 
 `maxRounds: 150` — a relaxed upper bound (≈150 time-advancing commands). The timeout
@@ -142,7 +151,9 @@ the slow-burn threat.
               [Cellar] (dead end)
 ```
 
-(Exits are one-way in the engine, so each link is authored in both directions.)
+(Each link is **one shared `Exit` object** registered in both rooms' maps — see
+*Locked doors*. The `(locked: …)` links are exits whose precondition is holding the
+named key.)
 
 **No key is locked behind the room it opens** — the spine is solvable:
 
@@ -167,52 +178,86 @@ the slow-burn threat.
   the dark Cellar. (Hand slots are paired, so the lantern and a one-handed weapon can
   be equipped together for the Cellar fight.)
 - **Two keys** (authored with `createKey`, matched by `keyCode`):
-  - `brass key` — found in a loot box in the `Parlor`; reveals the door to the
-    `Study`, which holds a pivotal journal clue.
-  - `iron key` — dropped by the Revenant in the `Cellar`; reveals the door to the
-    `Attic` (the win room). The Cellar is reachable from the Foyer with no key, so the
-    fight that yields the iron key is never gated behind itself.
+  - `brass key` — dropped by the Wraith in the `Nursery`; its `keyCode` is the
+    precondition on the `Study` door (the Study holds a pivotal journal clue).
+  - `iron key` — dropped by the Revenant in the `Cellar`; its `keyCode` is the
+    precondition on the `Attic` door (the win room). The Cellar is reachable from the
+    Foyer with no key, so the fight that yields the iron key is never gated behind
+    itself.
+  - A key opens its door **once**: the first holder to `go` through it runs the
+    exit's script, which flips the exit's `unlocked` state, so the door then stands
+    open for everyone — see *Locked doors*. (`createKey` items cannot be placed in
+    authoring loot, so both keys are mob drops.)
 - **Two tense presences** (authored as `.mob`s with `drops`):
   - a **Wraith** in the `Nursery` (avoidable; provoking it drains Sanity);
   - a **Revenant** in the `Cellar` — the iron-key holder and the one fight that
     matters, fought in the dark unless you brought the lantern.
 
-### Locked doors — the engine-faithful model
+### Locked doors — first-class `Exit` entities (engine)
 
-The engine **never blocks movement** (`Character.move` is ungated; mechanics fire
-after the fact and cannot veto). A "locked door" is therefore **not** an enforced
-lock — it is **an exit that does not exist yet**. Runtime exit mutation *is*
-supported (`room.addExit(dir, to)` / `room.removeExit(dir)` are public).
+A door is modelled in the **engine**, not the play package. The exit becomes a
+first-class entity shaped like the existing `Scene`: it carries author-defined
+preconditions, an optional script, persisted state, and a serialization
+`behaviorKey`.
 
-Reveals **cannot** be done from a scene: a scene behavior only ever receives its own
-room, and the locked target room is disconnected, so a scene has no way to reference
-it for `addExit`. The room references live only in the `Map<string, IRoom>` that
-`assemble(description, registry)` returns — which `startSession` consumes and hides.
+**`Exit` (`src/lib/exit.ts`).** One shared object connects two rooms and is
+registered in **both** rooms' `exits` maps (`Landing.exits[North]` and
+`Attic.exits[South]` are the *same instance*). Per the repo's data-hiding
+convention, its mutable state is `#private` behind getters and written only through a
+symbol seam.
 
-So locked doors are handled in **`core/session`**, which obtains that map directly:
+```ts
+type ExitPrecondition<TState> = (character: ICharacter, state: Readonly<TState>) => boolean;
+type ExitScript<TState>       = (character: ICharacter, state: TState) => void;
 
-- The session calls `assemble(builder.description, builder.registry)` (instead of
-  `startSession`) to get `{ campaign, rooms }`, then replicates `startSession`'s
-  seating (construct each `PlayerCharacter`, `joinCampaign`, `selectArchetype`, move
-  to the start room, set the GM, `beginCampaign`). It retains the `rooms` map.
-- The campaign content exports a **locked-door table** — plain data, e.g.
-  `{ id, from, dir, to, keyCode, consume }[]`. The session is generic: it applies
-  whatever table it is handed, so `core/` stays campaign-agnostic.
-- An `unlock` Intent (a real, time-advancing action) names a locked door present in
-  the current room. The session checks the active character's `inventory.keys` for
-  the matching `keyCode`; on a match it calls `from.addExit(dir, rooms.get(to))` plus
-  the reverse exit, spends a `consume` key via `consumeKey`, and the reveal is
-  narrated. With no key it fails in-voice ("The study door won't budge — you don't
-  have the right key.").
+class Exit<TState> {
+  readonly endpoints: [IRoom, IRoom];        // the two rooms it joins
+  preconditions: ExitPrecondition<TState>[];
+  #script?: ExitScript<TState>;
+  #state: TState;                            // persisted, e.g. { unlocked: false }
+  failMessage?: string;                      // shown (as a cue) when a precondition fails
+  #behaviorKey?: string;                     // registry key for (de)serialization
 
-Because the reveal mutates `room.exits`, it is captured by `serializeCampaign`, so
-**save/restore restores unlocked doors automatically** — no client-side unlock state
-to persist separately.
+  otherSide(from: IRoom): IRoom;             // small helper: the far endpoint
+  canPass(character: ICharacter): boolean;   // pure — evaluates preconditions, no side effects
+  [SET_STATE_FLAG](...): void;               // symbol-gated state write (script path)
+}
+```
 
-Concretely: the **Landing** holds both upper-floor locked doors — `unlock study
-door` (brass key) reveals the `Study`; `unlock attic door` (iron key) reveals the
-`Attic`. `open <door>` is a synonym for `unlock` when its target is a door;
-`open <chest>` remains the loot-box action.
+**`Character.go(direction)` (engine, gated).** `Character.move(room)` stays as the
+ungated primitive (mob movement, forced moves). `go` is the player-facing traversal:
+
+1. Resolve `currentRoom.exits.get(direction)`; absent → soft "You can't go that way."
+2. Evaluate `preconditions.every(p => p(this, state))`.
+3. **Pass** → run the exit's script (which may flip persisted state, e.g.
+   `state.unlocked = true`, and consume the key on the unlocking transition), then
+   `move(exit.otherSide(currentRoom))`. The script owns the success narration, so a
+   one-time line ("You turn the iron key; the cellar door grinds open.") fires only
+   on the transition, not on every later walk-through.
+4. **Fail** → emit `failMessage` as a cue and **do not move**. This is a *soft* fail,
+   not a thrown `ProceduralViolation`.
+
+**Why state + script (not a bare `locked` flag).** The unlocked-ness belongs to the
+*door*, not the character: once the first key-holder opens it, `state.unlocked`
+flips, and thereafter `canPass` is true for **anyone** — other PCs and mobs included —
+with or without the key. A precondition like
+`(char, s) => s.unlocked || char.inventory.keys.some(k => k.keyCode === "iron")`
+captures exactly that.
+
+**Serialization is automatic.** The shared `Exit` serializes once as a top-level
+entity with its own id (like items/loot); each room stores `{ dir: exitId }`. Its
+`#state` and `#behaviorKey` round-trip, and the precondition/script functions
+reattach from the registry on hydrate — exactly as scenes do. Because the door's
+open-ness lives in serialized engine state, **save/restore/undo carry it for free**,
+with no client-side unlock state. And because a locked exit is still *present* in
+both maps, the room graph is permanently connected: the serializer's BFS reaches
+every room and nothing is ever disconnected. (This is what fixes the save→unlock
+crash class the old runtime-`addExit` model was prone to.)
+
+Concretely: the **Landing** holds both upper-floor doors as gated exits — west to the
+`Study` (brass-key precondition) and north to the `Attic` (iron-key precondition).
+The player simply walks into them (`w`, `n`, or `go west`); there is **no `unlock`
+verb and no `unlock` intent** — `go` does it all.
 - **The Dread mechanic** — a custom `Mechanic` that drains 1 Sanity per turn,
   returning an `adjustStat` effect on `onTurnStart`, **unless** the actor has the
   lantern equipped (`hasEquipped(lanternKey)`). Registered under `mechanics` and
@@ -223,22 +268,26 @@ door` (brass key) reveals the `Study`; `unlock attic door` (iron key) reveals th
   truth and gone to face it). **Lose** — Sanity hits zero (the house takes your
   mind) or the party is KO'd. **Timeout** at round 150.
 
-**Mechanics exercised:** rooms/exits, dark/light + lantern, loot containers, two
-keys + locked-door reveals, one real combat (with durability on a found weapon), the
-Dread custom mechanic, the Storyteller lore mechanic, a Sanity-based lose condition,
-and win/lose/timeout outcomes. (No engine `scene`s — scene scripts can't push text to
-a browser and can't reference disconnected rooms, so atmosphere comes from room
-descriptions + mechanic cues, and door reveals from the session.)
+**Mechanics exercised:** rooms/exits, **precondition-gated `Exit`s** (the two keyed
+doors), dark/light + lantern, loot containers, two keys, one real combat (with
+durability on a found weapon), the Dread custom mechanic, the Storyteller lore
+mechanic, a Sanity-based lose condition, and win/lose/timeout outcomes. (No engine
+`scene`s for atmosphere — scene scripts can't push text to a browser — so room
+atmosphere comes from descriptions + mechanic cues; door behavior, by contrast, now
+lives on the `Exit` itself.)
 
 **Single archetype** for the player (e.g. an "Heir"/"Visitor"), with baseline-ish
 stats and perhaps one thematic immunity.
 
 The campaign is authored as a module (mirroring `@wickedways/seed` and the Get Wicked
-guide) exporting: the **registry** (`buildHauntedHouseRegistry()`), the
-**`TemplateBuilder`** (`hauntedHouseTemplate()`), the **locked-door table**, the
-**lore-fragment table** (consumed by the Storyteller mechanic), and an **alias table**
-(item/entity synonyms for the parser). The session consumes the builder + door table;
-it does not use `startSession` (which would hide the room map).
+guide) exporting: the **registry** (`buildHauntedHouseRegistry()` — which now also
+registers the door exits' precondition/script behaviors by key, alongside the win/lose
+conditions and mechanics), the **`TemplateBuilder`** (`hauntedHouseTemplate()` —
+authoring the keyed exits via the builder), the **lore-fragment table** (consumed by
+the Storyteller mechanic), and an **alias table** (item/entity synonyms for the
+parser). There is **no locked-door table** — door behavior is on the `Exit`. The
+session consumes the builder; it still uses `assemble` rather than `startSession` (it
+needs the seated live campaign), but no longer needs the room map for unlocking.
 
 ## Component: `core/`
 
@@ -257,7 +306,6 @@ type Intent =
   | { kind: "equip"; targetId: string }
   | { kind: "unequip"; targetId: string }
   | { kind: "use"; targetId: string }
-  | { kind: "unlock"; doorId: string }                 // reveal a locked door
   | { kind: "talk"; npcId: string; prompt?: string }   // dialogue / read journal
   | { kind: "wait" }
   | { kind: "harvest"; targetId: string }
@@ -269,23 +317,24 @@ Targets are entity ids resolved by the parser from `viewmodel.scope`. Keeping id
 
 ### `session`
 
-- `start(opts)` — calls `assemble(builder.description, builder.registry)` to get
-  `{ campaign, rooms }`, replicates `startSession`'s seating (construct each
+- `start(opts)` — calls `assemble(builder.description, builder.registry)` to get the
+  seated, live `Campaign`, replicates `startSession`'s seating (construct each
   `PlayerCharacter`, `joinCampaign`, optional `selectArchetype`, move to the start
-  room, set GM, `beginCampaign`), subscribes a forwarding handler to
-  `campaign.onCue`, retains the `rooms` map and the campaign's **locked-door table**,
-  and returns a `GameSession`. (It uses `assemble` rather than `startSession` because
-  only `assemble` exposes the room map needed to reveal disconnected locked rooms.)
+  room, set GM, `beginCampaign`), subscribes a forwarding handler to `campaign.onCue`,
+  and returns a `GameSession`. (It still uses `assemble` rather than `startSession`,
+  but only to get the seated campaign — it no longer needs the room map, because door
+  reveals are now the engine's job.)
 - `execute(intent)` — snapshots for undo; for a **time-advancing** intent it calls
   `activeCharacter.startTurn()` (which ticks `onTurnStart` mechanics like Dread),
   dispatches the intent to the matching engine call, then `campaign.nextPlayer()`
   (single-player → `endRound` → round++, win/lose/timeout check); **free** intents
   (open, equip, unequip, craft, light) execute directly with no `startTurn`/
-  `nextPlayer`. An `unlock` intent looks the door up in the table, checks
-  `inventory.keys` for the `keyCode`, and on a match `addExit`s both directions via
-  the `rooms` map and `consumeKey`s. Returns the cues collected during execution; a
-  thrown `ProceduralViolation` is caught and mapped to an in-voice failure.
-- **Time-advancing intents:** move, take, drop, use, harvest, attack, unlock, wait.
+  `nextPlayer`. A **move** intent dispatches to `activeCharacter.go(dir)` — the engine
+  evaluates the exit's preconditions, narrates the pass/fail, and (on a pass) moves;
+  a blocked door is a soft fail whose `failMessage` arrives as a cue, not an error.
+  Returns the cues collected during execution; a thrown `ProceduralViolation` (e.g.
+  attacking in the dark) is still caught and mapped to an in-voice failure.
+- **Time-advancing intents:** move, take, drop, use, harvest, attack, wait.
   **Free intents:** open, equip, unequip, craft, repair, light, extinguish.
 - `cues` — subscription for the narrator.
 - `save(slot)` / `restore(slot)` / `undo()` — delegate to the SaveStore +
@@ -299,11 +348,13 @@ A pure function `view(campaign): ViewModel` producing render-agnostic data:
 
 - `room`: id, name, description (full vs. terse depending on visited-before),
   `isLit`.
-- `exits`: list of `{ dir, toName }` for available directions (drives the compass).
-- `lockedDoors`: locked-door entries whose `from` is the current room and whose
-  exit `dir` is not yet present — each `{ id, name, dir }` so the parser can resolve
-  "study door" and the compass can hint a locked way. (Derived from the door table +
-  current `room.exits`.)
+- `exits`: for each entry in `room.exits` that the active character `canPass`,
+  a `{ dir, toName }` (drives the compass). A door the player has already opened
+  reads as an ordinary exit here.
+- `lockedDoors`: each `room.exits` entry the active character **cannot** pass right
+  now → `{ name, dir }` (name from the exit's label) so the compass can hint a locked
+  way. (Derived by calling `exit.canPass(pc)` on the current room's exits — no door
+  table.)
 - `occupants`: NPCs/mobs present, each `{ id, name, aliases, kind }`.
 - `loot`: containers present and (once opened) their contents as scope entities.
 - `inventory`: carried items `{ id, name, aliases, equipped }`.
@@ -347,13 +398,13 @@ A hand-written tokenizer + verb table (not a heavyweight grammar):
 
 **Verb table** — two kinds of verbs:
 
-- *World verbs* → an `Intent`: `go`/`n`/`s`/`e`/`w`/`u`/`d` (and `north`…),
-  `take`/`get`, `drop`, `open` (a loot box → the `open` Intent),
-  `unlock` (a door → the `unlock` Intent; `open <door>` is a synonym),
+- *World verbs* → an `Intent`: `go`/`n`/`s`/`e`/`w` (and `north`…) → the `move`
+  Intent (walking *into* a locked door is just a `move`; the engine narrates the
+  locked-failure), `take`/`get`, `drop`, `open` (a loot box → the `open` Intent),
   `attack`/`kill`/`hit`, `equip`/`wear`/`wield`, `unequip`/`remove`, `use`,
   `talk`/`ask`/`read` (dialogue / journal), `light`/`extinguish` (lantern),
-  `harvest`, `craft`, `wait`/`z`. (`open` resolves by target type: a loot box →
-  `open`; a locked door → `unlock`.)
+  `harvest`, `craft`, `wait`/`z`. There is **no `unlock` verb** — doors open by
+  walking through them with the key.
 - *Meta verbs* → handled locally, **no time, no Intent**: `look`/`l`,
   `inventory`/`i`, `examine`/`x` (reads a description from the viewmodel),
   `exits`, `help`/`?`, plus `save`, `restore`, `undo` (routed to the session).
@@ -378,10 +429,12 @@ Subscribes to the session cue stream and reads the viewmodel. Responsibilities:
   Dread ticks and **journal lore fragments** (both `mechanic` cues — text passed
   through verbatim), and the win/lose/timeout `resolution` cue as the closing
   paragraph.
-- **Revealed exits**: a successful `unlock` reveals an exit via the session's
-  `addExit`, which surfaces as a **viewmodel exit diff** — after each command the
-  narrator compares the room's exits before/after and announces any newly-opened way
-  ("With a grinding click, the way to the Study opens.").
+- **Door pass/fail prose**: walking into a gated exit produces a cue either way — the
+  exit's script narrates a successful first unlock ("You turn the iron key; the cellar
+  door grinds open."), and its `failMessage` narrates a blocked attempt ("The study
+  door won't budge — it's locked."). The narrator simply renders those cues; there is
+  no separate exit-diff to compute, since opening a door is no longer a runtime exit
+  mutation.
 - A small **prose-templates** module keyed by cue kind keeps the voice consistent
   and is the single file to tune for tone.
 
@@ -431,8 +484,9 @@ The UI shell stays thin; it is verified by playing, not unit tests.
 3. Sanity → 0 and the round-150 timeout both end the game with their authored prose.
 4. Save, restore, and one-level undo work via the `SaveStore` interface.
 5. Clickable compass/nouns fill the command line; Enter confirms.
-6. The only engine (`src/`) change is the additive `CharacterView.hasItem` method
-   (plus its test); all other new code is in `@wickedways/play`.
+6. The engine (`src/`) changes are: (a) the additive `CharacterView.hasItem` method,
+   and (b) the first-class `Exit` entity + `Character.go(direction)` (with exit
+   (de)serialization), each with tests; all other new code is in `@wickedways/play`.
 7. `pnpm checks` (lint + typecheck + test) passes, including the new package's tests.
 
 ## Future graphical UI
