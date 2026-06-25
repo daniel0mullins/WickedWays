@@ -84,7 +84,6 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
         const result = session.execute(res.intent);
         if (result.error) { print([result.error], "error"); return; }
         const after = session.view();
-        print(narrator.renderExitDiff(before, after));
         print(narrator.renderCues(result.cues));
         if (res.intent.kind === "move") print(narrator.renderRoom(after));
         refresh();

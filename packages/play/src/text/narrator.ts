@@ -39,12 +39,6 @@ export class Narrator {
     return lines;
   }
 
-  renderExitDiff(before: ViewModel, after: ViewModel): string[] {
-    const had = new Set(before.exits.map((e) => `${e.dir}->${e.toName}`));
-    const opened = after.exits.filter((e) => !had.has(`${e.dir}->${e.toName}`));
-    return opened.map((e) => `With a grinding click, the way ${e.dir} to the ${e.toName} opens.`);
-  }
-
   renderQuery(query: "look" | "inventory" | "exits" | "help", vm: ViewModel): string[] {
     switch (query) {
       case "look": { this.visited.delete(vm.room.id); return this.renderRoom(vm); }

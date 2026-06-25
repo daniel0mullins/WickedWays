@@ -37,11 +37,3 @@ describe("Narrator.renderCues", () => {
   });
 });
 
-describe("Narrator.renderExitDiff", () => {
-  it("announces a newly opened exit", () => {
-    const n = new Narrator();
-    const before = vm({ exits: [{ dir: Directions.North, toName: "Hall" }] });
-    const after = vm({ exits: [{ dir: Directions.North, toName: "Hall" }, { dir: Directions.West, toName: "Study" }] });
-    expect(n.renderExitDiff(before, after).join("\n")).toContain("Study");
-  });
-});

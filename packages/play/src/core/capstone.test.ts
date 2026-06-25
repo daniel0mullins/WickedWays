@@ -102,7 +102,6 @@ function buildDriver(session: GameSession) {
           return;
         }
         const after = session.view();
-        push(narrator.renderExitDiff(before, after));
         push(narrator.renderCues(result.cues));
         if (res.intent.kind === "move") push(narrator.renderRoom(after));
         return;
