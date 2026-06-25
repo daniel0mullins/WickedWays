@@ -125,18 +125,19 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
     label.textContent = "Exits: ";
     exitsLine.appendChild(label);
 
+    const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
     const parts: Node[] = [];
     for (const e of vm.exits) {
       const link = document.createElement("span");
       link.className = "exit-link";
-      link.textContent = e.dir;
+      link.textContent = cap(e.dir);
       link.addEventListener("click", () => { input.value = `go ${e.dir}`; input.focus(); });
       parts.push(link);
     }
     for (const d of vm.lockedDoors) {
       const locked = document.createElement("span");
       locked.className = "exit-locked";
-      locked.textContent = `${d.dir} (${d.name}, locked)`;
+      locked.textContent = `${cap(d.dir)} (${d.name}, locked)`;
       parts.push(locked);
     }
     if (parts.length === 0) {
