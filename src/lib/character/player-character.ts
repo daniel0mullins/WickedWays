@@ -91,6 +91,9 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
     // `this.move` is the override (PlayerCharacter.prototype.move); super.move's
     // recordAction(this.move, …) resolves to that same override, so the budget ticks.
     this.isActionMap.set(this.move, true);
+    // `go` delegates to `this.move` (which records the "move" action); registering
+    // `go` here makes its attemptAction fizzle tick the budget, matching `move`.
+    this.isActionMap.set(this.go, true);
   }
 
   // ---------------------------------------------------------------------------
