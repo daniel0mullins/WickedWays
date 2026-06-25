@@ -1,6 +1,7 @@
 import type { GameSession } from "../core/session.js";
 import { parse } from "./parser.js";
 import { Narrator } from "./narrator.js";
+import { linkNouns } from "./link-nouns.js";
 
 export function mountTerminal(root: HTMLElement, session: GameSession): void {
   const narrator = new Narrator();
@@ -21,12 +22,29 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
   const form = root.querySelector<HTMLFormElement>("#prompt-form")!;
   const history: string[] = [];
   let historyIdx = 0;
+  let clickableNouns: string[] = [];
+
+  const computeClickableNouns = () => {
+    const scope = session.view().scope;
+    const all: string[] = [];
+    for (const entity of scope) {
+      all.push(entity.name, ...entity.aliases);
+    }
+    // De-duplicate (case-insensitive) while preserving original casing of first seen.
+    const seen = new Set<string>();
+    clickableNouns = all.filter((n) => {
+      const key = n.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
 
   const print = (lines: string[], cls = "") => {
     for (const line of lines) {
       const el = document.createElement("div");
       el.className = `line ${cls}`.trim();
-      renderClickable(el, line, input);
+      renderClickable(el, line, input, clickableNouns);
       transcript.appendChild(el);
     }
     transcript.scrollTop = transcript.scrollHeight;
@@ -44,8 +62,11 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
       chip.addEventListener("click", () => { input.value = `go ${e.dir}`; input.focus(); });
       compass.appendChild(chip);
     }
+    computeClickableNouns();
   };
 
+  // Seed clickableNouns before the first room render so opening-room nouns are clickable.
+  computeClickableNouns();
   print(narrator.renderRoom(session.view()));
   refresh();
 
@@ -96,9 +117,19 @@ export function mountTerminal(root: HTMLElement, session: GameSession): void {
 
 // Wrap known scope nouns in the printed line with clickable spans that pre-fill
 // "examine <noun>" (confirm with Enter — never fires an action on click).
-function renderClickable(el: HTMLElement, line: string, input: HTMLInputElement): void {
-  el.textContent = line; // v1: plain text. (Clickable-noun span-wrapping can be layered on here.)
-  void input;
+function renderClickable(el: HTMLElement, line: string, input: HTMLInputElement, nouns: string[]): void {
+  const segments = linkNouns(line, nouns);
+  for (const seg of segments) {
+    if (seg.noun !== undefined) {
+      const span = document.createElement("span");
+      span.className = "noun";
+      span.textContent = seg.text;
+      span.addEventListener("click", () => { input.value = `examine ${seg.noun}`; input.focus(); });
+      el.appendChild(span);
+    } else {
+      el.appendChild(document.createTextNode(seg.text));
+    }
+  }
 }
 
 function applyStyles(root: HTMLElement): void {
@@ -113,6 +144,7 @@ function applyStyles(root: HTMLElement): void {
     .status { padding: .3rem 1rem; color: #8a8f80; border-top: 1px solid #2a281f; }
     .prompt { display: flex; gap: .5rem; align-items: center; padding: .5rem 1rem 1rem; }
     .caret { color: #d9c27a; } #cmd { flex: 1; background: transparent; border: none; color: #e7e9df; font: inherit; outline: none; }
+    .noun { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 2px; color: #cdd2c4; }
     body { margin: 0; background: #14130f; }`;
   root.appendChild(style);
 }
