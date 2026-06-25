@@ -113,3 +113,32 @@ See `src/campaign/index.ts` for the full room graph, loot, mobs, and win/lose co
 - **End-to-end** — `e2e/playthrough.spec.ts` drives a full winning run in a real browser
   (welcome screen → loot → combat → save/undo → win), plus checks for the clickable-exit and
   clickable-noun affordances. Run with `pnpm --filter @wickedways/play test:e2e`.
+
+## Deployment (Coolify)
+
+The play surface ships as a static bundle served by nginx, built by the multi-stage
+[`Dockerfile`](./Dockerfile). Because the SPA bundles the `wickedways` engine straight from
+TypeScript source through the pnpm workspace, **the Docker build context is the repo root**
+(not this package directory) and there is no separate engine build step.
+
+Build/run locally to mirror production:
+
+```bash
+# from the repo root
+docker build -f packages/play/Dockerfile -t wickedways-play .
+docker run --rm -p 8080:80 wickedways-play   # → http://localhost:8080
+```
+
+Coolify is configured for Git-push auto-deploy from this repository. Create/point the
+application at these settings:
+
+| Setting | Value |
+|---------|-------|
+| Build Pack | **Dockerfile** |
+| Dockerfile Location | `/packages/play/Dockerfile` |
+| Base Directory (build context) | `/` |
+| Ports Exposed | `80` |
+| Source | this GitHub repo, deploy on push |
+
+No environment variables or runtime config are needed — the game is fully client-side.
+Asset caching, gzip, and the SPA fallback live in [`nginx.conf`](./nginx.conf).
