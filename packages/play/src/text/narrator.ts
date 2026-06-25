@@ -57,7 +57,7 @@ export class Narrator {
         return ways.length ? [`Exits: ${ways.join(", ")}.`] : ["There are no obvious exits."];
       }
       case "help":
-        return ["Commands: go <dir> (or n/s/e/w/…), look, examine <thing>, take/drop <thing>, open <chest>, unlock <door>, equip/use <thing>, attack <foe>, inventory, exits, wait, save, restore, undo."];
+        return ["Commands: go <dir> (or n/s/e/w/…) — walk into a locked door with its key to open it, look, examine <thing>, take/drop <thing>, open <chest>, equip/use <thing>, attack <foe>, inventory, exits, wait, save, restore, undo."];
     }
   }
 
