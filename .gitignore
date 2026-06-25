@@ -12,3 +12,5 @@ composer.*
 docs-site/.vitepress/dist/
 docs-site/.vitepress/cache/
 docs-site/api/
+test-results/
+playwright-report/
