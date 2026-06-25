@@ -238,7 +238,7 @@ async function main(): Promise<void> {
       if (active === undefined || active.currentRoom === null) throw new Error("no active room");
       const north = active.currentRoom.exits.get(Directions.North);
       if (north === undefined) throw new Error("no North exit");
-      return { kind: "move", actorId: active.id, roomId: north.id };
+      return { kind: "move", actorId: active.id, roomId: north.otherSide(active.currentRoom).id };
     }),
   );
 

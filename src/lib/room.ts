@@ -10,6 +10,7 @@ import type { Presentation } from "./presentation";
 import { SERIALIZE, HYDRATE } from "./serialization/symbols";
 import type { RoomSnapshot } from "./serialization/types";
 import type { HydrateContext } from "./serialization/context";
+import { Exit, SET_ENDPOINTS, type ExitPrecondition, type ExitScript } from "./exit";
 
 /** Unique identifier for a {@link Room}. */
 export type RoomId = Brand<string, "RoomId">;
@@ -29,14 +30,42 @@ export const Directions = {
 /** One of the {@link Directions} values. */
 export type Direction = (typeof Directions)[keyof typeof Directions];
 
+const REVERSE: Record<Direction, Direction> = {
+  north: "south",
+  south: "north",
+  east: "west",
+  west: "east",
+  northeast: "southwest",
+  southwest: "northeast",
+  northwest: "southeast",
+  southeast: "northwest",
+};
+
+/** Returns the compass direction directly opposite to `d`. */
+export function reverseDirection(d: Direction): Direction {
+  return REVERSE[d];
+}
+
 /**
  * The exits a {@link Room} is constructed with: a partial map from direction to
- * the adjacent room in that direction. Any subset of the eight compass
- * directions is valid, including none — the constructor's `exits` argument is
- * optional and defaults to empty, leaving the room to be wired later (e.g. via
- * {@link Room.addExit} or `buildMap`).
+ * the {@link Exit} in that direction. Defaults to empty; wire later via
+ * {@link Room.addExit}.
  */
-export type RoomExits = Partial<Record<Direction, IRoom>>;
+export type RoomExits = Partial<Record<Direction, Exit>>;
+
+/** Options for {@link Room.addExit}. */
+export interface AddExitOptions {
+  behaviorKey?: string;
+  passMessage?: string;
+  failMessage?: string;
+  /** Optional display label for the exit (e.g. "Iron Door"). Survives serialization. */
+  name?: string;
+  initialState?: Record<string, unknown>;
+  preconditions?: ExitPrecondition<never>[];
+  script?: ExitScript<never>;
+  /** When true, the exit is placed only in this room (not auto-reversed into the partner). */
+  oneWay?: boolean;
+}
 
 /**
  * A location in the game world. Rooms hold loot, track their occupants, connect
@@ -51,8 +80,8 @@ export interface IRoom {
   loot: Map<LootId, ILoot>;
   /** Material caches present in the room, keyed by id. */
   materials: Map<MaterialCacheId, IMaterialCache>;
-  /** Adjacent rooms keyed by the direction that leads to them. */
-  exits: Map<Direction, IRoom>;
+  /** Exits keyed by the direction that leads out of this room. Each exit is a shared bidirectional {@link Exit}. */
+  exits: Map<Direction, Exit>;
   /** Multiplier on the campaign's base encounter chance (0 = never spawns). */
   spawnModifier: number;
 
@@ -63,8 +92,11 @@ export interface IRoom {
   enterRoom: (character: ICharacter) => void;
   /** Plays any `"exit"` scenes and removes the character from the room. */
   exitRoom: (character: ICharacter) => void;
-  /** Connects `room` as the exit in `direction` (one-way at this level). */
-  addExit: (direction: Direction, room: IRoom) => void;
+  /**
+   * Builds one shared {@link Exit} connecting this room to `to` in `direction`,
+   * and (unless `opts.oneWay`) places the same exit in `to` under the reverse direction.
+   */
+  addExit: (direction: Direction, to: IRoom, opts?: AddExitOptions) => void;
   /** Registers a scene to be considered on enter/exit. */
   registerScene: (scene: IScene) => void;
   /** Removes the exit in `direction`, if any. */
@@ -139,7 +171,7 @@ export class Room implements IRoom {
   description: string;
   loot: Map<LootId, ILoot>;
   materials: Map<MaterialCacheId, IMaterialCache>;
-  exits: Map<Direction, IRoom>;
+  exits: Map<Direction, Exit>;
   spawnModifier: number;
   #occupants: Map<CharacterId, ICharacter>;
   #scenes: IScene[];
@@ -228,10 +260,10 @@ export class Room implements IRoom {
       this.materials.set(cache.id, cache);
     }
 
-    this.exits = new Map<Direction, IRoom>();
-    for (const [direction, room] of Object.entries(exits)) {
-      if (room === undefined) continue;
-      this.exits.set(direction as Direction, room);
+    this.exits = new Map<Direction, Exit>();
+    for (const [direction, exit] of Object.entries(exits)) {
+      if (exit === undefined) continue;
+      this.exits.set(direction as Direction, exit);
     }
 
     this.#lightSources = new Map<ItemId, IItem>();
@@ -267,14 +299,22 @@ export class Room implements IRoom {
   }
 
   /**
-   * Sets the exit in `direction` to `room`. An existing exit in that direction
-   * is overwritten.
-   *
-   * @param direction - Direction the exit leads.
-   * @param room - Destination room.
+   * Builds one shared {@link Exit} connecting this room to `to` in `direction`.
+   * Unless `opts.oneWay`, also places the exit in `to` under the reverse direction.
    */
-  addExit(direction: Direction, room: IRoom) {
-    this.exits.set(direction, room);
+  addExit(direction: Direction, to: IRoom, opts: AddExitOptions = {}) {
+    const exit = new Exit<never>({
+      preconditions: opts.preconditions ?? [],
+      script: opts.script,
+      passMessage: opts.passMessage,
+      failMessage: opts.failMessage,
+      name: opts.name,
+      initialState: opts.initialState as never,
+      behaviorKey: opts.behaviorKey,
+    });
+    exit[SET_ENDPOINTS](this, to);
+    this.exits.set(direction, exit as unknown as Exit);
+    if (!opts.oneWay) to.exits.set(reverseDirection(direction), exit as unknown as Exit);
   }
 
   /** Registers a scene to evaluate when characters enter or exit. */
@@ -316,7 +356,7 @@ export class Room implements IRoom {
       id: this.id,
       name: this.name,
       description: this.description,
-      exits: Object.fromEntries([...this.exits].map(([dir, room]) => [dir, room.id])),
+      exits: Object.fromEntries([...this.exits].map(([dir, exit]) => [dir, exit.id])),
       dark: this.#dark,
       spawnModifier: this.spawnModifier,
       occupantIds: [...this.#occupants.keys()],
@@ -333,8 +373,8 @@ export class Room implements IRoom {
    */
   [HYDRATE](data: RoomSnapshot, ctx: HydrateContext) {
     this.exits.clear();
-    for (const [dir, roomId] of Object.entries(data.exits)) {
-      this.exits.set(dir as Direction, ctx.room(roomId));
+    for (const [dir, exitId] of Object.entries(data.exits)) {
+      this.exits.set(dir as Direction, ctx.exit(exitId) as unknown as Exit);
     }
     this.loot.clear();
     for (const lootId of data.lootIds) {

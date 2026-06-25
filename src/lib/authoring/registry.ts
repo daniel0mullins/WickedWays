@@ -3,6 +3,7 @@ import type { Item } from "../inventory";
 import type { CraftingRecipe } from "../crafting";
 import type { ICampaign } from "../campaign";
 import type { Mechanic, JsonObject } from "../mechanics/mechanic.js";
+import type { ExitBehavior } from "../exit";
 
 declare const ITEM_KEYS: unique symbol;
 declare const RECIPE_KEYS: unique symbol;
@@ -11,8 +12,9 @@ declare const MECHANIC_KEYS: unique symbol;
 declare const SCENE_KEYS: unique symbol;
 declare const FORMATION_KEYS: unique symbol;
 declare const NPC_KEYS: unique symbol;
+declare const EXIT_KEYS: unique symbol;
 
-/** A {@link CampaignRegistry} whose item/recipe/condition/mechanic/scene/formation/npc key literals are carried in the type (phantom — no runtime field). */
+/** A {@link CampaignRegistry} whose item/recipe/condition/mechanic/scene/formation/npc/exit key literals are carried in the type (phantom — no runtime field). */
 export type TypedRegistry<
   ItemKey extends string,
   RecipeKey extends string,
@@ -21,6 +23,7 @@ export type TypedRegistry<
   SceneKey extends string = never,
   FormationKey extends string = never,
   NpcKey extends string = never,
+  ExitKey extends string = never,
 > = CampaignRegistry & {
   readonly [ITEM_KEYS]?: ItemKey;
   readonly [RECIPE_KEYS]?: RecipeKey;
@@ -29,6 +32,7 @@ export type TypedRegistry<
   readonly [SCENE_KEYS]?: SceneKey;
   readonly [FORMATION_KEYS]?: FormationKey;
   readonly [NPC_KEYS]?: NpcKey;
+  readonly [EXIT_KEYS]?: ExitKey;
 };
 
 /** The registered item-factory key union of a {@link TypedRegistry} (falls back to `string`). */
@@ -51,6 +55,8 @@ export type SceneKeyOf<Registry> = Registry extends { readonly [SCENE_KEYS]?: in
 export type FormationKeyOf<Registry> = Registry extends { readonly [FORMATION_KEYS]?: infer K extends string } ? K : string;
 /** The registered NPC-behavior key union of a {@link TypedRegistry} (falls back to `string`). */
 export type NpcKeyOf<Registry> = Registry extends { readonly [NPC_KEYS]?: infer K extends string } ? K : string;
+/** The registered exit-behavior key union of a {@link TypedRegistry} (falls back to `string`). */
+export type ExitKeyOf<Registry> = Registry extends { readonly [EXIT_KEYS]?: infer K extends string } ? K : string;
 
 /**
  * The config type of the mechanic registered under `Key` in `Registry`.
@@ -80,6 +86,7 @@ export function defineRegistry<
   Scenes extends Record<string, SceneBehavior> = Record<string, never>,
   Formations extends Record<string, FormationBehavior> = Record<string, never>,
   Npcs extends Record<string, NpcBehavior> = Record<string, never>,
+  Exits extends Record<string, ExitBehavior> = Record<string, never>,
 >(defs: {
   items: Items;
   recipes?: Recipes;
@@ -88,7 +95,8 @@ export function defineRegistry<
   npcs?: Npcs;
   conditions?: Conditions;
   mechanics?: Mechanics;
-}): TypedRegistry<keyof Items & string, keyof Recipes & string, keyof Conditions & string, keyof Mechanics & string, keyof Scenes & string, keyof Formations & string, keyof Npcs & string> {
+  exits?: Exits;
+}): TypedRegistry<keyof Items & string, keyof Recipes & string, keyof Conditions & string, keyof Mechanics & string, keyof Scenes & string, keyof Formations & string, keyof Npcs & string, keyof Exits & string> {
   const reg = new CampaignRegistry();
   for (const [key, factory] of Object.entries(defs.items)) reg.registerItem(key, factory);
   for (const [key, recipe] of Object.entries(defs.recipes ?? {})) reg.registerRecipe(key, recipe);
@@ -97,5 +105,6 @@ export function defineRegistry<
   for (const [key, predicate] of Object.entries(defs.conditions ?? {})) reg.registerCondition(key, predicate);
   for (const [key, mechanic] of Object.entries(defs.mechanics ?? {})) reg.registerMechanic(key, mechanic);
   for (const [key, npc] of Object.entries(defs.npcs ?? {})) reg.registerNpc(key, npc);
-  return reg as TypedRegistry<keyof Items & string, keyof Recipes & string, keyof Conditions & string, keyof Mechanics & string, keyof Scenes & string, keyof Formations & string, keyof Npcs & string>;
+  for (const [key, exitBehavior] of Object.entries(defs.exits ?? {})) reg.registerExit(key, exitBehavior);
+  return reg as TypedRegistry<keyof Items & string, keyof Recipes & string, keyof Conditions & string, keyof Mechanics & string, keyof Scenes & string, keyof Formations & string, keyof Npcs & string, keyof Exits & string>;
 }

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CLAIM, Item, PLACE, SET_DURABILITY, createKey, type IItem, type ItemId } from "../inventory";
 import { EquipmentSlot, SlotKind } from "../equipment";
 import type { IRoom, RoomId } from "../room";
+import { Directions } from "../room";
 import { Status } from "../status";
 import { ProceduralViolation } from "../util";
 
@@ -2246,6 +2247,115 @@ describe("Character", () => {
       const before = (player as unknown as { actionsThisRound: number }).actionsThisRound;
       player.useMechanicAction("rally", "shout");
       expect((player as unknown as { actionsThisRound: number }).actionsThisRound).toBe(before + 1);
+    });
+  });
+
+  describe("go", () => {
+    // Helper: builds a real Campaign + Character with a cue sink, places the
+    // character in `here`, and connects here→there via addExit.
+    function makeGoSetup(exitOpts?: Parameters<Room["addExit"]>[2]) {
+      const campaign = new Campaign({ title: "Go" });
+      const cues: PresentationCue[] = [];
+      campaign.onCue((cue) => cues.push(cue));
+      const here = new Room({ name: "Here", description: "starting room", loot: [] });
+      const there = new Room({ name: "There", description: "far room", loot: [] });
+      here.addExit(Directions.North, there, exitOpts);
+      const character = new Character({ campaign, name: "Hero", stats: makeStats() });
+      character.move(here);
+      character.startTurn();
+      return { campaign, cues, here, there, character };
+    }
+
+    it("moves through an open exit and currentRoom becomes the far room", () => {
+      const { there, character } = makeGoSetup();
+
+      character.go(Directions.North);
+
+      expect(character.currentRoom).toBe(there);
+    });
+
+    it("records exactly one move action in history (no double-recording)", () => {
+      const { character } = makeGoSetup();
+      const beforeLen = character.history.length;
+
+      character.go(Directions.North);
+
+      const moveEntries = character.history.slice(beforeLen).filter((e) => e.kind === "move");
+      expect(moveEntries).toHaveLength(1);
+    });
+
+    it("does NOT move through an exit whose precondition fails, and emits the failMessage cue", () => {
+      const { here, cues, character } = makeGoSetup({
+        preconditions: [() => false],
+        failMessage: "The door won't budge.",
+      });
+
+      character.go(Directions.North);
+
+      expect(character.currentRoom).toBe(here);
+      expect(cues.some(
+        (c) => c.kind === "mechanic" && (c as { kind: "mechanic"; cue: { text: string } }).cue.text === "The door won't budge.",
+      )).toBe(true);
+    });
+
+    it("runs the exit script on a successful pass, emits its one-time line, and subsequent characters pass too", () => {
+      const campaign = new Campaign({ title: "Go" });
+      const cues: PresentationCue[] = [];
+      campaign.onCue((cue) => cues.push(cue));
+      const here = new Room({ name: "Here", description: "starting room", loot: [] });
+      const there = new Room({ name: "There", description: "far room", loot: [] });
+      const doorKey = createKey({ name: "Iron Key", keyCode: "iron-door", consumeOnUse: false });
+
+      // Exit: locked until a holder with the key passes; script unlocks the door
+      // permanently by flipping state and returns a one-time narration line.
+      here.addExit(Directions.North, there, {
+        preconditions: [
+          (ch, state) =>
+            !!(state as Record<string, unknown>)["unlocked"] ||
+            ch.inventory.keys.some((k) => k.keyCode === "iron-door"),
+        ],
+        script: (_ch, state) => {
+          (state as Record<string, unknown>)["unlocked"] = true;
+          return "The lock turns with a satisfying click.";
+        },
+        initialState: { unlocked: false },
+      });
+
+      // First character carries the key.
+      const first = new Character({ campaign, name: "Hero", stats: makeStats() });
+      first.addToInventory(doorKey);
+      first.move(here);
+      first.startTurn();
+
+      first.go(Directions.North);
+
+      expect(first.currentRoom).toBe(there);
+      const scriptLine = cues.find(
+        (c) => c.kind === "mechanic" && (c as { kind: "mechanic"; cue: { text: string } }).cue.text === "The lock turns with a satisfying click.",
+      );
+      expect(scriptLine).toBeDefined();
+
+      // Second character has no key but the door stayed unlocked.
+      const second = new Character({ campaign, name: "Sidekick", stats: makeStats() });
+      second.move(here);
+      second.startTurn();
+      cues.length = 0;
+
+      second.go(Directions.North);
+
+      expect(second.currentRoom).toBe(there);
+    });
+
+    it("a missing exit in that direction does not move and emits a soft can't-go cue", () => {
+      const { here, cues, character } = makeGoSetup();
+
+      // South has no exit.
+      character.go(Directions.South);
+
+      expect(character.currentRoom).toBe(here);
+      expect(cues.some(
+        (c) => c.kind === "mechanic" && (c as { kind: "mechanic"; cue: { text: string } }).cue.text === "You can't go that way.",
+      )).toBe(true);
     });
   });
 });

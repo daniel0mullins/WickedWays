@@ -11,7 +11,7 @@ import type { ChatPolicy } from "../chat-policy";
 import type { AvPolicy } from "../av-policy";
 import type { JsonValue } from "../mechanics/mechanic.js";
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export interface AfflictionsSnapshot {
   active: Partial<Record<Status, boolean>>;
@@ -52,11 +52,20 @@ export interface SceneSnapshot {
   state: Record<string, unknown>;
 }
 
+export interface ExitSnapshot {
+  id: string;
+  endpointIds: [string, string];
+  behaviorKey?: string;
+  /** Optional display label for the exit; restored on hydrate. */
+  name?: string;
+  state: Record<string, unknown>;
+}
+
 export interface RoomSnapshot {
   id: string;
   name: string;
   description: string;
-  exits: Record<string, string>; // Direction -> roomId
+  exits: Record<string, string>; // Direction -> exitId
   dark: boolean;
   spawnModifier: number;
   occupantIds: string[];
@@ -132,6 +141,7 @@ export interface CampaignSnapshot {
   schemaVersion: number;
   campaign: CampaignCoreSnapshot;
   rooms: RoomSnapshot[];
+  exits: ExitSnapshot[];
   characters: CharacterSnapshot[];
   items: ItemSnapshot[];
   loot: LootSnapshot[];

@@ -33,6 +33,8 @@ export interface CharacterView {
   readonly roomId: string | undefined;
   /** True if an equipped item was registered under this registry key. */
   hasEquipped(itemKey: string): boolean;
+  /** True if an item in the character's inventory has this registry key. */
+  hasItem(itemKey: string): boolean;
 }
 export interface RoomView {
   readonly id: string;

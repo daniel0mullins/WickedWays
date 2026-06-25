@@ -30,6 +30,14 @@ export interface ExitDef {
   from: string;
   direction: Direction;
   to: string;
+  /** Registry exit-behavior key (preconditions + script). When set, the exit is a keyed/serializable door. */
+  behaviorKey?: string;
+  /** Optional display label for the exit (e.g. "Iron Door"). */
+  name?: string;
+  /** Initial persisted state for the exit. Defaults to `{}`. */
+  initialState?: Record<string, unknown>;
+  /** When true, the exit is placed only in the `from` room (not auto-reversed into `to`). */
+  oneWay?: boolean;
 }
 
 /** Defines a non-player mob to place in the world. */

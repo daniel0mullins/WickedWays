@@ -11,7 +11,7 @@ describe("Resolver.authorize", () => {
     const { campaign } = buildStartedCampaign();
     const active = campaign.activeCharacter;
     const r = new Resolver();
-    const adjacent = [...active.currentRoom!.exits.values()][0]!;
+    const adjacent = [...active.currentRoom!.exits.values()][0]!.otherSide(active.currentRoom!);
     expect(r.authorize(campaign, { kind: "move", actorId: active.id, roomId: adjacent.id }))
       .toEqual({ ok: true });
   });
@@ -44,7 +44,7 @@ describe("Resolver.apply", () => {
   it("moves the active character to the target room", () => {
     const { campaign } = buildStartedCampaign();
     const active = campaign.activeCharacter;
-    const dest = [...active.currentRoom!.exits.values()][0]!;
+    const dest = [...active.currentRoom!.exits.values()][0]!.otherSide(active.currentRoom!);
     const index = EntityIndex.fromCampaign(campaign);
     new Resolver().apply(campaign, { kind: "move", actorId: active.id, roomId: dest.id }, index);
     expect(active.currentRoom!.id).toBe(dest.id);

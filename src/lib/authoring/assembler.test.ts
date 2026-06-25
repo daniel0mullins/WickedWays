@@ -66,7 +66,7 @@ describe("assemble", () => {
     const { campaign, rooms } = assemble(baseDesc(), registry);
     expect(campaign.started).toBe(false);
     expect(campaign.party.length).toBe(0);          // no players
-    expect(rooms.get("start")!.exits.get(Directions.North)).toBe(rooms.get("next"));
+    expect(rooms.get("start")!.exits.get(Directions.North)!.otherSide(rooms.get("start")!)).toBe(rooms.get("next"));
     expect(serializeCampaign(campaign)).toBeDefined(); // serializable
   });
 

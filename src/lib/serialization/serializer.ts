@@ -3,6 +3,7 @@ import type { ICampaign } from "../campaign";
 import type { IItem } from "../inventory";
 import type { IRoom } from "../room";
 import type { ICharacter } from "../character/character";
+import type { Exit } from "../exit";
 import { SERIALIZE } from "./symbols";
 import { SCHEMA_VERSION } from "./types";
 import type {
@@ -12,6 +13,7 @@ import type {
   ItemSnapshot,
   LootSnapshot,
   MaterialCacheSnapshot,
+  ExitSnapshot,
 } from "./types";
 
 /**
@@ -47,6 +49,7 @@ export function serializeCampaignWithIndex(
   const items: ItemSnapshot[] = [];
   const loot: LootSnapshot[] = [];
   const materialCaches: MaterialCacheSnapshot[] = [];
+  const exitsById = new Map<string, Exit>();
 
   const seenItems = new Set<string>();
   const addItem = (item: IItem) => {
@@ -77,7 +80,13 @@ export function serializeCampaignWithIndex(
     const r = roomQueue.shift()!;
     index.set(r.id, r);
     rooms.push(r[SERIALIZE]());
-    for (const [, dest] of r.exits) enqueueRoom(dest);
+    for (const [, exit] of r.exits) {
+      if (!exitsById.has(exit.id)) {
+        exitsById.set(exit.id, exit);
+        index.set(exit.id, exit);
+      }
+      enqueueRoom(exit.otherSide(r));
+    }
     for (const occ of r.occupants) allCharacters.set(occ.id, occ);
     for (const [, box] of r.loot) {
       index.set(box.id, box);
@@ -102,10 +111,13 @@ export function serializeCampaignWithIndex(
     for (const [, it] of ch.equipment) addItem(it);
   }
 
+  const exits: ExitSnapshot[] = [...exitsById.values()].map((e) => e[SERIALIZE]());
+
   const snapshot: CampaignSnapshot = {
     schemaVersion: SCHEMA_VERSION,
     campaign: c[SERIALIZE](),
     rooms,
+    exits,
     characters,
     items,
     loot,

@@ -7,7 +7,7 @@ import {
   SLOT_KIND,
 } from "../equipment";
 import { DEPLETE, type IMaterialCache } from "../material-cache";
-import { IRoom } from "../room";
+import { IRoom, type Direction } from "../room";
 import { Status } from "../status";
 import { Afflictions, AfflictionConfig, DEFAULT_AFFLICTION_CONFIG } from "./afflictions";
 import { EMIT_CUE } from "../presentation";
@@ -113,6 +113,11 @@ export interface ICharacter extends IItemHolder {
   endTurn: () => void;
   /** Moves the character into `room`, leaving the current room first. */
   move: (room: IRoom) => void;
+  /**
+   * Evaluates the {@link Exit} in `direction` from the current room,
+   * emits pass/fail narration, and moves on success. Budgeted (like `move`).
+   */
+  go: (direction: Direction) => void;
   /** Drops one or more items, recording a single `drop` action. */
   removeFromInventory: (item: IItem | IItem[]) => void;
   /** Hands a key to another character (keyring to keyring; the only way keys change hands). */
@@ -1006,6 +1011,37 @@ export class Character implements ICharacter {
       kind: "move",
       room: { id: room.id, name: room.name },
     });
+  }
+
+  /**
+   * Evaluates the {@link Exit} in `direction` from the current room:
+   * - No exit → emits a soft "can't go that way" mechanic cue and returns.
+   * - Precondition fails → emits `failMessage` (if any) as a mechanic cue and returns.
+   * - Precondition passes → runs the exit script (or falls back to `passMessage`),
+   *   emits the resulting line as a mechanic cue, then moves to the far room.
+   *
+   * Budgeted action (like `move`). Uses {@link withGateSuppressed} for the inner
+   * `move` call to avoid double-gating (affliction check runs once, here).
+   *
+   * @param direction - The compass direction to travel.
+   * @throws {@link ProceduralViolation} if the character is not in any room.
+   */
+  go(direction: Direction) {
+    if (!this.attemptAction(this.go, true)) return;
+    const here = this.currentRoom;
+    if (here == null) throw new ProceduralViolation("Cannot move: not in any room.");
+    const exit = here.exits.get(direction);
+    if (exit === undefined) {
+      this.campaign[EMIT_CUE]({ kind: "mechanic", cue: { text: "You can't go that way." } });
+      return;
+    }
+    if (!exit.canPass(this)) {
+      if (exit.failMessage) this.campaign[EMIT_CUE]({ kind: "mechanic", cue: { text: exit.failMessage } });
+      return;
+    }
+    const line = exit.runScript(this) ?? exit.passMessage;
+    if (line) this.campaign[EMIT_CUE]({ kind: "mechanic", cue: { text: line } });
+    this.withGateSuppressed(() => this.move(exit.otherSide(here)));
   }
 
   /** Ends the turn: fires end-of-turn events and reconciles status conditions. */

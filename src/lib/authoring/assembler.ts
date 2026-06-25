@@ -12,7 +12,7 @@ import type { Direction } from "../room";
 import type { CampaignTemplateDescription } from "./description";
 
 /** Empty exits object; individual exits are wired in via {@link Room.addExit} after construction. */
-const NO_EXITS = {} as Record<Direction, Room>;
+const NO_EXITS = {} as Record<Direction, never>;
 
 /**
  * Validates a {@link CampaignTemplateDescription} (collecting ALL problems into
@@ -104,6 +104,16 @@ export function assemble(
       registry.scene(s.key);
     } catch {
       problems.push(`scene references unregistered scene key '${s.key}'.`);
+    }
+  }
+
+  for (const e of desc.exits) {
+    if (e.behaviorKey !== undefined) {
+      try {
+        registry.exit(e.behaviorKey);
+      } catch {
+        problems.push(`exit from '${e.from}' to '${e.to}' references unregistered exit key '${e.behaviorKey}'.`);
+      }
     }
   }
 
@@ -253,9 +263,29 @@ export function assemble(
     campaign.addFormation({ id: f.key, weight: f.weight ?? 1, build: registry.formation(f.key).build });
   }
 
-  // Wire exits
+  // Wire exits — deduplicate by unordered room-pair since templates declare both directions.
+  const wired = new Set<string>();
   for (const e of desc.exits) {
-    rooms.get(e.from)!.addExit(e.direction, rooms.get(e.to)!);
+    const from = rooms.get(e.from)!;
+    const to = rooms.get(e.to)!;
+    const pair = [from.id, to.id].sort().join("|");
+    if (wired.has(pair)) continue;
+    wired.add(pair);
+    if (e.behaviorKey !== undefined) {
+      const behavior = registry.exit(e.behaviorKey);
+      from.addExit(e.direction, to, {
+        behaviorKey: e.behaviorKey,
+        preconditions: behavior.preconditions,
+        script: behavior.script,
+        passMessage: behavior.passMessage,
+        failMessage: behavior.failMessage,
+        initialState: e.initialState,
+        name: e.name,
+        oneWay: e.oneWay,
+      });
+    } else {
+      from.addExit(e.direction, to, { name: e.name, oneWay: e.oneWay }); // auto-reverse places exit in `to` too
+    }
   }
 
   // Attach scenes (mirrors hydrateScene: behavior + key, default phase "enter").

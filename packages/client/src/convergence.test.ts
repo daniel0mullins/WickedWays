@@ -105,7 +105,7 @@ describe("two-client convergence", () => {
         build: () => {
           const a = coordA.campaign.activeCharacter;
           const north = a.currentRoom!.exits.get(Directions.North)!;
-          return { kind: "move", actorId: a.id, roomId: north.id };
+          return { kind: "move", actorId: a.id, roomId: north.otherSide(a.currentRoom!).id };
         },
       },
     ];

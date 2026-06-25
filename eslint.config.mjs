@@ -5,7 +5,7 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   // Generated output and dependencies are never linted.
   {
-    ignores: ["dist/", "coverage/", "node_modules/", "docs-site/"],
+    ignores: ["**/dist/", "**/coverage/", "**/node_modules/", "docs-site/"],
   },
 
   // Baseline JS rules apply to every file (including this config).
@@ -24,7 +24,7 @@ export default tseslint.config(
           // vitest.config.ts lives outside src/ so it can't be included in the
           // main tsconfig (rootDir: ./src). Allow it to be type-checked against
           // a default project so ESLint doesn't reject it outright.
-          allowDefaultProject: ["vitest.config.ts", "vitest.setup.ts", "packages/client/vite.config.ts"],
+          allowDefaultProject: ["vitest.config.ts", "vitest.setup.ts", "packages/client/vite.config.ts", "packages/play/vite.config.ts", "packages/play/playwright.config.ts", "packages/play/e2e/*.spec.ts"],
         },
         tsconfigRootDir: import.meta.dirname,
       },
@@ -60,6 +60,16 @@ export default tseslint.config(
       "@typescript-eslint/no-unsafe-call": "off",
       "@typescript-eslint/no-unsafe-argument": "off",
       "@typescript-eslint/no-unsafe-return": "off",
+    },
+  },
+
+  // Playwright config and E2E specs live outside any package tsconfig so they
+  // run under the default project; relax the no-unsafe-member-access rule
+  // (process.env access) for config-level files that cannot be fully resolved.
+  {
+    files: ["packages/play/playwright.config.ts", "packages/play/e2e/*.spec.ts"],
+    rules: {
+      "@typescript-eslint/no-unsafe-member-access": "off",
     },
   },
 );

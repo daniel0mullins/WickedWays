@@ -5,13 +5,14 @@ import { hydrateItem } from "../inventory";
 import { hydrateLoot } from "../loot";
 import { hydrateMaterialCache } from "../material-cache";
 import { constructBareRoom } from "../room";
+import { constructBareExit, hydrateExit, SET_ENDPOINTS } from "../exit";
 import { constructBareCharacter } from "../character/hydrate";
 import { HydrateContext } from "./context";
 import { HYDRATE, HYDRATE_CATALOG, HYDRATE_CODEX_ENTRIES } from "./symbols";
 import { DEFAULT_CHAT_POLICY } from "../chat-policy";
 import { DEFAULT_AV_POLICY } from "../av-policy";
 import { SCHEMA_VERSION } from "./types";
-import type { CampaignSnapshot } from "./types";
+import type { CampaignSnapshot, ExitSnapshot } from "./types";
 import type { CampaignRegistry } from "./registry";
 
 /**
@@ -57,6 +58,16 @@ export function deserializeCampaign(
     ctx.put(room.id, room);
     return { room, data: r };
   });
+
+  // Build exits pass 1: construct bare exits and index them before rooms hydrate.
+  for (const exitData of data.exits) {
+    const exit =
+      exitData.behaviorKey !== undefined
+        ? hydrateExit(exitData, opts.registry.exit(exitData.behaviorKey))
+        : constructBareExit(exitData);
+    ctx.put(exit.id, exit);
+  }
+
   const chars = data.characters.map((d) => {
     const ch = constructBareCharacter(d, campaign, opts.registry);
     ctx.put(ch.id, ch);
@@ -68,6 +79,13 @@ export function deserializeCampaign(
   campaign[HYDRATE_CODEX_ENTRIES](data.codex);
   for (const { ch, data: d } of chars) ch[HYDRATE](d, ctx);
   for (const { room, data: r } of rooms) room[HYDRATE](r, ctx);
+
+  // Wire exit endpoints after rooms are hydrated (so room instances exist).
+  for (const exitData of data.exits) {
+    const exit = ctx.exit(exitData.id);
+    const [aId, bId] = exitData.endpointIds;
+    exit[SET_ENDPOINTS](ctx.room(aId), ctx.room(bId));
+  }
 
   return campaign;
 }
@@ -90,6 +108,28 @@ export function migrate(data: CampaignSnapshot): CampaignSnapshot {
   if (data.schemaVersion === 4) {
     data.campaign.mechanics = [];
     data.schemaVersion = 5;
+  }
+  // v5 → v6: exits are now top-level entities. Room.exits was dir→roomId;
+  // synthesize one ExitSnapshot per unique room-pair edge and rewrite room maps.
+  if (data.schemaVersion === 5) {
+    const exits: ExitSnapshot[] = [];
+    const byPair = new Map<string, string>(); // "a|b" sorted -> exitId
+    for (const room of (data.rooms ?? [])) {
+      const newExits: Record<string, string> = {};
+      for (const [dir, toId] of Object.entries(room.exits)) {
+        const pair = [room.id, toId].sort().join("|");
+        let id = byPair.get(pair);
+        if (id === undefined) {
+          id = `exit-${exits.length}`;
+          byPair.set(pair, id);
+          exits.push({ id, endpointIds: [room.id, toId], behaviorKey: undefined, state: {} });
+        }
+        newExits[dir] = id;
+      }
+      room.exits = newExits;
+    }
+    (data).exits = exits;
+    data.schemaVersion = 6;
   }
   if (data.schemaVersion !== SCHEMA_VERSION) {
     throw new ProceduralViolation(

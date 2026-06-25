@@ -24,7 +24,7 @@ describe("avPolicy serialization", () => {
   it("migrate() upgrades a v3 snapshot by injecting the default policy", () => {
     const v3 = { schemaVersion: 3, campaign: {} as Record<string, unknown> } as unknown as CampaignSnapshot;
     const out = migrate(v3);
-    expect(out.schemaVersion).toBe(5);
+    expect(out.schemaVersion).toBe(6);
     expect(out.campaign.avPolicy).toEqual(DEFAULT_AV_POLICY);
   });
 });
