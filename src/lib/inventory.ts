@@ -68,6 +68,7 @@ export const ItemAction = {
   Transfer: "transfer",
   Destroy: "destroy",
   Use: "use",
+  Read: "read",
 } as const;
 
 /**
@@ -82,6 +83,8 @@ export type ItemActions = {
   [ItemAction.Transfer]: ItemActionSharedEvent;
   [ItemAction.Use]: ItemActionEvent;
   [ItemAction.Destroy]: () => ItemComponentType[] | null;
+  /** Optional, non-consuming inspect behaviour run by {@link ICharacter.read}. */
+  [ItemAction.Read]?: ItemActionEvent;
 };
 
 /**
@@ -95,6 +98,7 @@ export type ItemEvents = {
   onUse?: ItemActionEvent;
   onTransfer?: ItemActionSharedEvent;
   onDestroy?: ItemActionEvent;
+  onRead?: ItemActionEvent;
 };
 
 /** Mutable flags describing what may currently be done with an item. */
@@ -254,6 +258,8 @@ export interface IItem {
   readonly twoHanded?: boolean;
   /** Light sources only: when active (carried or placed) this item lights its room. */
   readonly emitsLight?: boolean;
+  /** Evocative flavour/backstory text revealed on {@link ICharacter.read}, if any. */
+  readonly lore?: string;
   /** A recipe this item imparts to the party when picked up. */
   readonly teaches?: CraftingRecipe;
   /** Statuses this item confers immunity to while equipped (passive immunity). */
@@ -295,6 +301,8 @@ export interface ItemDescriptor {
   emitsLight?: boolean;
   presentation?: Presentation;
   behaviorKey?: string;
+  /** Evocative flavour/backstory text revealed when the item is read (see {@link ICharacter.read}). */
+  lore?: string;
 }
 
 /** Constructor options for an {@link Item}. */
@@ -338,6 +346,7 @@ export class Item implements IItem {
   readonly slot?: SlotKind;
   readonly twoHanded?: boolean;
   readonly emitsLight?: boolean;
+  readonly lore?: string;
   #durability?: number;
   #presentation?: Presentation;
   // The raw equip/unequip behavior and events, captured from the constructor so
@@ -482,6 +491,7 @@ export class Item implements IItem {
       emitsLight,
       presentation,
       behaviorKey,
+      lore,
     } = descriptor;
     this.id = uuid() as ItemId;
     this.name = name;
@@ -500,6 +510,7 @@ export class Item implements IItem {
     this.slot = slot;
     this.twoHanded = twoHanded;
     this.emitsLight = emitsLight;
+    this.lore = lore;
     this.#presentation = presentation;
     this.#durability =
       maxDurability === undefined
@@ -573,6 +584,15 @@ export class Item implements IItem {
         // Consume via the gate-suppressed seam so a Panicked/Confused holder can
         // still use the item; this still records the drop and ticks the budget.
         holder[CONSUME_VIA_USE](this);
+      },
+      // Reading is a passive inspection: it runs any author read behaviour and
+      // fires onRead, but — unlike Use — never consumes the item. The lore text
+      // itself is surfaced by Character.read through the cue seam.
+      [ItemAction.Read]: () => {
+        const holder = this.#characterHolder();
+        if (!holder) return;
+        actions[ItemAction.Read]?.(holder);
+        events.onRead?.(holder);
       },
       [ItemAction.Destroy]: () => {
         const holder = this.#characterHolder();

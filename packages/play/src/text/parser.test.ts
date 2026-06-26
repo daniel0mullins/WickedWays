@@ -52,6 +52,14 @@ describe("parser — noun resolution", () => {
   });
 });
 
+describe("parser — read", () => {
+  const journal = ent("j1", "Water-Stained Journal", ["journal", "diary", "book"], "item");
+  it("treats `read <thing>` as examine", () => {
+    const res = parse("read journal", vm({ scope: [journal] }));
+    expect(res).toEqual({ kind: "examine", target: journal });
+  });
+});
+
 describe("parser — open", () => {
   it("open on a loot box is an open intent", () => {
     const box = ent("b1", "a chest", ["chest", "box"], "loot");

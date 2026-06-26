@@ -7,6 +7,15 @@ export const INTRO =
   "Word came that the last of your kin had died alone in the old estate — and that the house would not give the body back. You arrive at dusk to settle what remains. The Hollow House has been waiting, and it remembers everything. Find the truth it keeps — before the dark finds you first.";
 
 /**
+ * The Water-Stained Journal's backstory, surfaced when the player reads it
+ * (`examine`/`read journal`). It threads the per-room {@link LORE} fragments —
+ * the cellar burial, the iron key, the child who never cried, the lilies — into
+ * one revealing whole, without spoiling the win path.
+ */
+export const JOURNAL_LORE =
+  "The journal's spine cracks as you open it. The early pages are a household's ordinary griefs — debts, a failing orchard, a wife taken too young. Then the hand changes. \"We buried her in the cellar because the ground outside would not hold her. By the third night she had climbed halfway back.\" The ink grows frantic: a child who never wept, a face in the dark that was almost hers, an iron key forged to keep the cellar door honest. The last entries are barely words — \"it wears her now; it wears all of us, in time\" — and beneath them, pressed flat and brown, a sprig of the lilies they laid on a coffin that never stayed shut. Whoever kept this journal loved the house once. It did not love them back.";
+
+/**
  * Returns an {@link ExitBehavior} for a keyed door. The door is passable if the
  * character carries a key with `keyCode === keyCode` OR if `state.unlocked` is
  * already `true` (set by the script on first successful pass).

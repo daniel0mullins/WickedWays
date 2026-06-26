@@ -133,6 +133,23 @@ describe("Narrator.renderAction", () => {
   });
 });
 
+describe("Narrator.renderExamine", () => {
+  it("phrases a loot container without a doubled article or period", () => {
+    const n = new Narrator();
+    const loot = { id: "table", name: "A hall table with a single drawer.", aliases: ["drawer"], kind: "loot" as const };
+    const line = n.renderExamine(loot, vm()).join(" ");
+    expect(line).not.toContain("the A ");
+    expect(line).not.toContain("..");
+    expect(line).toContain("the hall table with a single drawer.");
+  });
+
+  it("leaves a plain item name untouched", () => {
+    const n = new Narrator();
+    const item = { id: "j", name: "Water-Stained Journal", aliases: [], kind: "item" as const };
+    expect(n.renderExamine(item, vm()).join(" ")).toContain("the Water-Stained Journal.");
+  });
+});
+
 describe("Narrator.renderCues", () => {
   it("passes mechanic cue text through verbatim", () => {
     const n = new Narrator();

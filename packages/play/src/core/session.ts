@@ -60,6 +60,20 @@ export class GameSession {
     return view(this.campaign, this.opts.aliases, this.opened);
   }
 
+  /**
+   * Reads a held item, returning the cues its lore emits (empty when the item is
+   * not held or has no lore). Free and non-time-advancing — reading never spends
+   * a turn, consumes the item, or snapshots for undo. Used by `examine`/`read`.
+   */
+  read(itemId: string): PresentationCue[] {
+    const pc = this.campaign.activeCharacter;
+    const item = pc.inventory.items.find((i) => i.id === itemId);
+    if (!item) return [];
+    this.cueBuffer.length = 0;
+    pc.read(item);
+    return [...this.cueBuffer];
+  }
+
   get finished(): boolean { return this.campaign.finished; }
   get outcome(): string { return this.campaign.outcome; }
 

@@ -619,3 +619,37 @@ it("Item[HYDRATE] updates durability and modifier in place, preserving identity"
   item[HYDRATE]({ kind: "item", id: item.id, behaviorKey: "items/sword", durability: 3, modifier: 2 });
   expect(item.durability).toBe(3);
 });
+
+describe("item lore + read", () => {
+  const noop = () => {};
+
+  it("exposes descriptor lore, or undefined when unset", () => {
+    const withLore = new Item({
+      descriptor: { type: "consumable", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Journal", lore: "Once, the orchard bloomed." },
+      properties: { equippable: false, equipped: false, destroyable: true, usable: false },
+      actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+      events: { onPickUp: noop },
+    });
+    expect(withLore.lore).toBe("Once, the orchard bloomed.");
+    expect(makeItem().item.lore).toBeUndefined();
+  });
+
+  it("read runs the author read action and fires onRead, without consuming", () => {
+    const read = vi.fn();
+    const onRead = vi.fn();
+    const item = new Item({
+      descriptor: { type: "consumable", recipe: { item: 1 }, modifier: 0, stat: StatType.Health, name: "Journal", lore: "..." },
+      properties: { equippable: false, equipped: false, destroyable: true, usable: false },
+      actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null, read },
+      events: { onPickUp: noop, onRead },
+    });
+    const holder = makeHolder();
+    hold(item, holder);
+
+    item.actions.read?.(holder);
+
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(onRead).toHaveBeenCalledTimes(1);
+    expect((holder as unknown as { [CONSUME_VIA_USE]: ReturnType<typeof vi.fn> })[CONSUME_VIA_USE]).not.toHaveBeenCalled();
+  });
+});

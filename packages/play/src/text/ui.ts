@@ -304,7 +304,13 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
       case "error": print([res.message], "error"); return;
       case "ambiguous": print([`Which do you mean — ${res.candidates.map((c) => c.name).join(", or ")}?`]); return;
       case "query": print(narrator.renderQuery(res.query, before)); return;
-      case "examine": print(narrator.renderExamine(res.target, before)); return;
+      case "examine": {
+        // Reading an item reveals its lore (engine-backed, free, non-consuming);
+        // anything without lore falls back to the generic look line.
+        const cues = res.target.kind === "item" ? session.read(res.target.id) : [];
+        print(cues.length ? narrator.renderCues(cues) : narrator.renderExamine(res.target, before));
+        return;
+      }
       case "meta": {
         if (res.meta === "save") { await session.save("slot1"); print(["Saved."]); }
         else if (res.meta === "restore") { const ok = await session.restore("slot1"); print([ok ? "Restored." : "No save found."]); if (ok) printRoom(session.view()); }
