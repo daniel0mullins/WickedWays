@@ -147,15 +147,27 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     // Persistent bottom HUD, driven from the viewmodel each turn.
     hud.innerHTML = "";
 
+    // A HUD line that opens with a bold label ("Here:", "Carrying:", "Exits:")
+    // followed by a space; the caller fills in the rest.
+    const hudLine = (label: string): HTMLDivElement => {
+      const line = document.createElement("div");
+      line.className = "hud-line";
+      const lbl = document.createElement("span");
+      lbl.className = "hud-label";
+      lbl.textContent = label;
+      line.appendChild(lbl);
+      line.appendChild(document.createTextNode(" "));
+      return line;
+    };
+
     // "Here:" loot line — omitted when there is no loot. Rendered through
     // renderClickable so loot nouns (e.g. "drawer") stay clickable affordances.
     // Descriptions already end in a period, so strip a trailing one before
     // re-punctuating the joined list (avoids "a drawer..").
     const lootDescs = vm.loot.map((l) => l.description.replace(/\.\s*$/, ""));
     if (lootDescs.length) {
-      const hereLine = document.createElement("div");
-      hereLine.className = "hud-line";
-      renderClickable(hereLine, `Here: ${lootDescs.join(", ")}.`, input, clickableNouns);
+      const hereLine = hudLine("Here:");
+      renderClickable(hereLine, `${lootDescs.join(", ")}.`, input, clickableNouns);
       hud.appendChild(hereLine);
     }
 
@@ -171,18 +183,13 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
         .filter((n) => !vm.inventory.items.some((i) => i.name === n))
         .map((n) => `${n} (equipped)`),
     ];
-    const carryingLine = document.createElement("div");
-    carryingLine.className = "hud-line";
-    renderClickable(carryingLine, `Carrying: ${carried.length ? carried.join(", ") : "nothing"}.`, input, clickableNouns);
+    const carryingLine = hudLine("Carrying:");
+    renderClickable(carryingLine, `${carried.length ? carried.join(", ") : "nothing"}.`, input, clickableNouns);
     hud.appendChild(carryingLine);
 
     // "Exits:" line — passable exits as clickable text links (fill, no submit);
     // locked doors as dim, non-clickable text.
-    const exitsLine = document.createElement("div");
-    exitsLine.className = "hud-line";
-    const label = document.createElement("span");
-    label.textContent = "Exits: ";
-    exitsLine.appendChild(label);
+    const exitsLine = hudLine("Exits:");
 
     const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
     const parts: Node[] = [];
@@ -660,8 +667,8 @@ function applyStyles(root: HTMLElement): void {
     .game-container[hidden] { display: none; }
 
     .transcript { flex: 1; overflow-y: auto; padding: 1rem; position: relative; z-index: 1; }
-    .block { margin-bottom: 0.9rem; }
-    .line { white-space: pre-wrap; }
+    .block { margin-bottom: 0.35rem; }
+    .line { white-space: pre-wrap; line-height: 1.2; }
     .line.echo { color: var(--color-muted); }
     .line.error { color: var(--color-error); }
     .line.end { color: var(--color-accent); }
@@ -676,12 +683,13 @@ function applyStyles(root: HTMLElement): void {
     }
     /* Persistent bottom HUD — Here: / Exits: lines, between transcript and status. */
     .hud {
-      padding: .4rem 1rem; position: relative; z-index: 1;
+      padding: .25rem 1rem; position: relative; z-index: 1;
       border-top: 1px solid var(--color-border);
       color: var(--color-text);
-      display: flex; flex-direction: column; gap: .15em;
+      display: flex; flex-direction: column; gap: .05em;
     }
-    .hud-line { white-space: pre-wrap; }
+    .hud-line { white-space: pre-wrap; line-height: 1.2; }
+    .hud-label { font-weight: bold; color: color-mix(in srgb, var(--color-accent) 72%, var(--color-bg)); }
     .exit-link {
       cursor: pointer; text-decoration: underline;
       text-underline-offset: 2px; color: var(--color-accent);
