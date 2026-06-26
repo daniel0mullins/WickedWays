@@ -1,10 +1,12 @@
 import type { GameSession } from "../core/session.js";
 import { parse } from "./parser.js";
 import { Narrator } from "./narrator.js";
+import { AudioManager } from "../audio/audio-manager.js";
 import { linkNouns } from "./link-nouns.js";
 
 export function mountTerminal(root: HTMLElement, session: GameSession, meta: { title: string; intro: string }): void {
   let narrator = new Narrator();
+  const audio = new AudioManager();
   root.innerHTML = `
     <div class="backdrop">
       <div class="monitor">
@@ -59,18 +61,18 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
   // any other command disarms it (see handle()).
   let restartPending = false;
 
-  // Audio toggle — placeholder control on the bezel. Music/sfx arrive in a later
-  // spec; for now this only tracks the on/off preference (mirrored to aria-pressed
-  // and root[data-audio]). The audio system will read `audioEnabled` / hook the seam.
+  // Audio toggle — master switch on the bezel for procedural music + SFX.
+  // Audio starts muted; the first enable resumes the AudioContext (this click is
+  // the required user gesture) and starts the sanity-reactive ambient bed.
   const audioToggle = root.querySelector<HTMLButtonElement>("#audio-toggle")!;
-  let audioEnabled = false; // starts muted; music/sfx (later spec) begin only when toggled on
+  let audioEnabled = false; // starts muted
   root.dataset.audio = "off";
   audioToggle.addEventListener("click", () => {
     audioEnabled = !audioEnabled;
     audioToggle.setAttribute("aria-pressed", String(audioEnabled));
     audioToggle.title = `Audio: ${audioEnabled ? "on" : "off"}`;
     root.dataset.audio = audioEnabled ? "on" : "off";
-    // SEAM (later audio spec): start/stop playback here based on `audioEnabled`.
+    audio.setEnabled(audioEnabled);
     if (gameStarted) input.focus(); // #cmd isn't focusable on the welcome screen
   });
 
@@ -207,6 +209,8 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
       exitsLine.appendChild(node);
     });
     hud.appendChild(exitsLine);
+    // Drive the ambient drone from the current Sanity each turn.
+    audio.update(vm.status.sanity);
   };
 
   /**
@@ -308,7 +312,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
       restartPending = false;
     }
     switch (res.kind) {
-      case "error": print([res.message], "error"); return;
+      case "error": audio.noteError(); print([res.message], "error"); return;
       case "ambiguous": print([`Which do you mean — ${res.candidates.map((c) => c.name).join(", or ")}?`]); return;
       case "query": print(narrator.renderQuery(res.query, before)); return;
       case "examine": {
@@ -340,13 +344,16 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
       }
       case "intent": {
         const result = session.execute(res.intent);
-        if (result.error) { print([result.error], "error"); return; }
+        if (result.error) { audio.noteError(); print([result.error], "error"); return; }
         const after = session.view();
+        for (const cue of result.cues) audio.playCue(cue);
         print([...narrator.renderAction(res.intent, before, after), ...narrator.renderCues(result.cues)]);
         if (res.intent.kind === "move") printRoom(after);
         // Mob reactions print last — after the room render on a move, so "you enter,
         // you see the Wraith, the Wraith strikes" reads in the right order.
-        const mobLines = narrator.renderMobAttacks(result.mobAttacks ?? []);
+        const mobAttacks = result.mobAttacks ?? [];
+        for (const atk of mobAttacks) audio.playMobAttack(atk);
+        const mobLines = narrator.renderMobAttacks(mobAttacks);
         if (mobLines.length) print(mobLines);
         refresh();
         if (after.finished) print(["", "— THE END —"], "end");
