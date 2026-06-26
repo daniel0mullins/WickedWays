@@ -1,9 +1,12 @@
 /**
- * A continuous, sanity-reactive drone. Two detuned low oscillators feed a
- * low-pass filter and a master gain. As tension rises (sanity falls), the second
- * oscillator detunes wider (beating → dissonance), the filter opens brighter, and
- * the gain lifts slightly. Designed to run only in the browser; tests inject a
- * fake AudioContext.
+ * A continuous, sanity-reactive drone. Two detuned sawtooth oscillators feed a
+ * fixed dark low-pass filter and a master gain — a deep sub-bass hum. Dread is
+ * expressed purely as BEAT RATE: the two oscillators beat at a frequency equal
+ * to their detune (Hz), so as sanity falls the partner drifts further from the
+ * fundamental and the pulse quickens — a slow calm throb when sane, fast and
+ * anxious as sanity drains. Timbre and loudness stay constant (so it never reads
+ * as "getting louder"). Designed to run only in the browser; tests inject a fake
+ * AudioContext.
  */
 export class AmbientBed {
   #ctx: AudioContext | null = null;
@@ -12,9 +15,14 @@ export class AmbientBed {
   #gain: GainNode | null = null;
   #nodes: AudioScheduledSourceNode[] = [];
 
-  static readonly #BASE_HZ = 55; // A1
-  static readonly #FADE_S = 0.12;   // gain fade in/out to avoid clicks
-  static readonly #GLIDE_S = 0.05;  // per-update parameter glide
+  // Tunable voice — dial these by ear on the running dev server.
+  static readonly #BASE_HZ = 55;          // A1 fundamental
+  static readonly #DETUNE_HZ = 0.5;       // calm beat rate: osc2 sits BASE + DETUNE (~0.5 Hz pulse)
+  static readonly #DETUNE_SPREAD_HZ = 5.5; // beat rate at full dread: BASE + DETUNE + SPREAD (~6 Hz throb)
+  static readonly #CUTOFF = 120;          // fixed dark sub-bass cutoff (no longer sweeps — was the loudness creep)
+  static readonly #LEVEL = 0.3;           // bed gain (lower if it overpowers SFX)
+  static readonly #FADE_S = 0.12;         // gain fade-in to avoid a click on enable
+  static readonly #GLIDE_S = 0.05;        // per-update beat glide
 
   get running(): boolean {
     return this.#ctx !== null;
@@ -31,24 +39,24 @@ export class AmbientBed {
 
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.setValueAtTime(300, now); // tension-0 cutoff
+    filter.frequency.setValueAtTime(AmbientBed.#CUTOFF, now); // fixed dark cutoff
     filter.connect(gain);
 
     const osc1 = ctx.createOscillator();
-    osc1.type = "sine";
+    osc1.type = "sawtooth";
     osc1.frequency.setValueAtTime(AmbientBed.#BASE_HZ, now);
     osc1.connect(filter);
     osc1.start(now);
 
     const osc2 = ctx.createOscillator();
     osc2.type = "sawtooth";
-    osc2.frequency.setValueAtTime(AmbientBed.#BASE_HZ * 1.01, now); // tension-0 detune
+    osc2.frequency.setValueAtTime(AmbientBed.#BASE_HZ + AmbientBed.#DETUNE_HZ, now); // slow beat
     osc2.connect(filter);
     osc2.start(now);
 
     // Fade in from silence so enabling audio doesn't click.
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.linearRampToValueAtTime(0.04, now + AmbientBed.#FADE_S);
+    gain.gain.linearRampToValueAtTime(AmbientBed.#LEVEL, now + AmbientBed.#FADE_S);
 
     this.#gain = gain;
     this.#filter = filter;
@@ -59,13 +67,16 @@ export class AmbientBed {
   /** Update the drone's unease, `t` in `[0, 1]`. No-op when not running. */
   setTension(t: number): void {
     const ctx = this.#ctx;
-    if (ctx === null || this.#osc2 === null || this.#filter === null || this.#gain === null) return;
+    if (ctx === null || this.#osc2 === null) return;
     const clamped = Math.min(1, Math.max(0, t));
     const end = ctx.currentTime + AmbientBed.#GLIDE_S;
-    // Glide so per-turn sanity changes don't click.
-    this.#osc2.frequency.linearRampToValueAtTime(AmbientBed.#BASE_HZ * (1.01 + clamped * 0.06), end);
-    this.#filter.frequency.linearRampToValueAtTime(300 + clamped * 900, end);
-    this.#gain.gain.linearRampToValueAtTime(0.04 + clamped * 0.05, end);
+    // Dread = beat rate only. Drift the detuned partner further from the
+    // fundamental as sanity falls, so the two oscillators beat faster (slow calm
+    // pulse → anxious throb). Glided so it doesn't click; loudness/timbre fixed.
+    this.#osc2.frequency.linearRampToValueAtTime(
+      AmbientBed.#BASE_HZ + AmbientBed.#DETUNE_HZ + clamped * AmbientBed.#DETUNE_SPREAD_HZ,
+      end,
+    );
   }
 
   /** Stop and disconnect all nodes. */
