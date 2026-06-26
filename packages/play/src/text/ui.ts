@@ -291,34 +291,53 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     transcript.scrollTop = transcript.scrollHeight;
   };
 
-  let mapOverlay: HTMLDivElement | null = null;
-  const closeMap = () => {
-    if (!mapOverlay) return;
-    mapOverlay.remove();
-    mapOverlay = null;
+  // A single in-CRT overlay shared by the map and help screens: a bordered frame
+  // plus a legend strip, dismissed by any keypress. Only one is open at a time.
+  let overlay: HTMLDivElement | null = null;
+  const closeOverlay = () => {
+    if (!overlay) return;
+    overlay.remove();
+    overlay = null;
     if (gameStarted) input.focus();
   };
-  const openMap = () => {
-    if (mapOverlay) return; // idempotent
+  const openOverlay = (fill: (frame: HTMLDivElement) => void, legendText: string) => {
+    if (overlay) return; // idempotent
     const screen = root.querySelector<HTMLDivElement>(".screen")!;
-    mapOverlay = document.createElement("div");
-    mapOverlay.className = "map-overlay";
+    overlay = document.createElement("div");
+    overlay.className = "overlay";
     const frame = document.createElement("div");
-    frame.className = "map-frame";
-    frame.appendChild(renderMapSvg(layoutMap(mapModel)));
+    frame.className = "overlay-frame";
+    fill(frame);
     const legend = document.createElement("div");
-    legend.className = "map-legend";
-    legend.textContent = "─ open   ╌ locked   ? unexplored   ✕ remains   ▣ here   ·   any key to close";
-    mapOverlay.append(frame, legend);
-    screen.appendChild(mapOverlay);
+    legend.className = "overlay-legend";
+    legend.textContent = legendText;
+    overlay.append(frame, legend);
+    screen.appendChild(overlay);
     // Any keypress dismisses; capture so it never reaches #cmd.
     const onKey = (ev: KeyboardEvent) => {
       ev.preventDefault();
       window.removeEventListener("keydown", onKey, true);
-      closeMap();
+      closeOverlay();
     };
     window.addEventListener("keydown", onKey, true);
   };
+  const openMap = () =>
+    openOverlay(
+      (frame) => frame.appendChild(renderMapSvg(layoutMap(mapModel))),
+      "─ open   ╌ locked   ? unexplored   ✕ remains   ▣ here   ·   any key to close",
+    );
+  const openHelp = () =>
+    openOverlay((frame) => {
+      const list = document.createElement("div");
+      list.className = "help-list";
+      for (const line of narrator.renderQuery("help", session.view())) {
+        const row = document.createElement("div");
+        row.className = "help-row";
+        row.textContent = line;
+        list.appendChild(row);
+      }
+      frame.appendChild(list);
+    }, "any key to close");
 
   const startGame = () => {
     if (gameStarted) return;
@@ -363,7 +382,10 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     switch (res.kind) {
       case "error": audio.noteError(); print([res.message], "error"); return;
       case "ambiguous": print([`Which do you mean — ${res.candidates.map((c) => c.name).join(", or ")}?`]); return;
-      case "query": print(narrator.renderQuery(res.query, before)); return;
+      case "query":
+        // `help` opens an in-CRT overlay (like `map`); the rest print inline.
+        if (res.query === "help") { openHelp(); return; }
+        print(narrator.renderQuery(res.query, before)); return;
       case "examine": {
         // Reading an item reveals its lore (engine-backed, free, non-consuming);
         // anything without lore falls back to the generic look line.
@@ -787,14 +809,22 @@ function applyStyles(root: HTMLElement): void {
       .enter-btn { animation: none; } /* keep the static bloom, drop the pulse */
     }
 
-    /* Map overlay — inside the CRT, beneath the scanline/glow overlays (z 5–6). */
-    .map-overlay {
+    /* Shared overlay (map + help) — inside the CRT, beneath the scanline/glow overlays (z 5–6). */
+    .overlay {
       position: absolute; inset: 0; z-index: 3;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       gap: 0.6em; padding: 1rem;
       background: rgba(10, 10, 8, 0.92);
     }
-    .map-frame { max-width: 100%; max-height: 80%; overflow: auto; }
+    .overlay-frame {
+      max-width: 100%; max-height: 80%; overflow: auto;
+      padding: 0.8em; border-radius: 6px;
+      border: 2px solid var(--color-accent);
+      background: rgba(10, 10, 8, 0.6);
+      box-shadow: 0 0 10px rgba(217, 194, 122, 0.35), inset 0 0 14px rgba(0, 0, 0, 0.5);
+    }
+    .help-list { display: flex; flex-direction: column; gap: 0.35em; }
+    .help-row { font-family: var(--font-body); font-size: 0.8em; color: var(--color-text); white-space: nowrap; }
     .map-svg { max-width: 100%; height: auto; }
     .map-svg .map-box { fill: var(--color-chip-bg); stroke: var(--color-muted); stroke-width: 1.5; }
     .map-svg .map-box.current { stroke: var(--color-accent); stroke-width: 2.5;
@@ -806,6 +836,6 @@ function applyStyles(root: HTMLElement): void {
     .map-svg .map-stub.locked { stroke: var(--color-border); stroke-dasharray: 4 4; }
     .map-svg .map-q { fill: var(--color-muted); font: 0.5em var(--font-body); }
     .map-svg .map-remains { fill: var(--color-error); font: 0.5em var(--font-body); }
-    .map-legend { font-family: var(--font-body); font-size: 0.5em; color: var(--color-muted); text-align: center; }`;
+    .overlay-legend { font-family: var(--font-body); font-size: 0.7em; color: var(--color-muted); text-align: center; }`;
   root.appendChild(style);
 }
