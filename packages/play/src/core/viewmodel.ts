@@ -1,9 +1,19 @@
 import type { Campaign } from "wickedways/lib/campaign";
 import type { Direction } from "wickedways/lib/room";
 import { StatType } from "wickedways/lib/character/stats";
+import { Status } from "wickedways/lib/status";
 
 export type ScopeKind = "occupant" | "item" | "loot";
-export interface ScopeEntity { id: string; name: string; aliases: string[]; kind: ScopeKind; }
+export interface ScopeEntity {
+  id: string;
+  name: string;
+  aliases: string[];
+  kind: ScopeKind;
+  /** Occupants only: current effective Health, for combat-damage feedback. */
+  health?: number;
+  /** Occupants only: true once knocked out (a defeated mob the engine keeps in the room). */
+  defeated?: boolean;
+}
 export interface ExitView { dir: Direction; toName: string; }
 export interface LockedDoorView { name: string; dir: Direction; }
 export interface LootView { id: string; description: string; opened: boolean; contents: ScopeEntity[]; }
@@ -48,7 +58,14 @@ export function view(
 
   const occupants: ScopeEntity[] = room.occupants
     .filter((o) => o.id !== pc.id)
-    .map((o) => ({ id: o.id, name: o.name, aliases: [o.name.toLowerCase()], kind: "occupant" as const }));
+    .map((o) => ({
+      id: o.id,
+      name: o.name,
+      aliases: [o.name.toLowerCase()],
+      kind: "occupant" as const,
+      health: o.effectiveStat(StatType.Health),
+      defeated: o.status.includes(Status.KO),
+    }));
 
   const loot: LootView[] = [...room.loot.values()].map((l) => {
     const opened = openedLootIds.has(l.id);

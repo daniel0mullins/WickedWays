@@ -114,6 +114,61 @@ describe("GameSession", () => {
     expect(result.cues.some((c) => c.kind === "mechanic")).toBe(true);
   });
 
+  // Arms with poker + lantern and walks to the Nursery's Wraith.
+  const reachWraith = (s: GameSession) => {
+    s.execute({ kind: "move", dir: Directions.North });   // Hall
+    openTake(s, "Iron Fire-Poker"); equipNamed(s, "Iron Fire-Poker");
+    s.execute({ kind: "move", dir: Directions.West });    // Kitchen
+    openTake(s, "Brass Lantern"); equipNamed(s, "Brass Lantern");
+    s.execute({ kind: "move", dir: Directions.East });    // Hall
+    s.execute({ kind: "move", dir: Directions.North });   // Landing
+    s.execute({ kind: "move", dir: Directions.East });    // Nursery
+    return s.view().occupants.find((o) => o.name === "Wraith")!;
+  };
+
+  it("exposes occupant health, and marks a felled mob defeated", () => {
+    const s = newSession();
+    const wraith = reachWraith(s);
+    expect(typeof wraith.health).toBe("number");
+    const fullHealth = wraith.health!;
+    s.execute({ kind: "attack", targetId: wraith.id });
+    const afterOneHit = s.view().occupants.find((o) => o.id === wraith.id)!;
+    expect(afterOneHit.health!).toBeLessThan(fullHealth);   // took damage
+    expect(afterOneHit.defeated).toBeFalsy();
+    for (let i = 0; i < 10; i++) s.execute({ kind: "attack", targetId: wraith.id });
+    expect(s.view().occupants.find((o) => o.id === wraith.id)!.defeated).toBe(true);
+  });
+
+  it("rejects attacking an already-defeated mob", () => {
+    const s = newSession();
+    const wraith = reachWraith(s);
+    for (let i = 0; i < 11; i++) s.execute({ kind: "attack", targetId: wraith.id });
+    const result = s.execute({ kind: "attack", targetId: wraith.id });
+    expect(result.error).toMatch(/already dead/i);
+  });
+
+  it("restart re-boots the campaign to a fresh opening state", () => {
+    const s = newSession();
+    // Make progress: take the journal, move, open a box, set up an undo snapshot.
+    const journal = s.view().scope.find((e) => e.name === "Water-Stained Journal")!;
+    s.execute({ kind: "take", targetId: journal.id });
+    s.execute({ kind: "move", dir: Directions.North });   // Hall
+    expect(s.view().room.name).toBe(Rooms.Hall);
+    expect(s.view().inventory.items.length).toBeGreaterThan(0);
+    expect(s.view().status.turn).toBeGreaterThan(0);
+
+    s.restart();
+
+    const vm = s.view();
+    expect(vm.room.name).toBe(Rooms.Foyer);          // back at the start room
+    expect(vm.status.turn).toBe(0);                   // turn counter reset
+    expect(vm.inventory.items).toEqual([]);           // inventory cleared
+    expect(vm.loot.every((l) => !l.opened)).toBe(true); // opened-loot tracking reset
+    expect(s.undo()).toBe(false);                     // undo snapshot cleared
+    // Foyer drawer holds the journal again — fully fresh world.
+    expect(s.view().scope.some((e) => e.name === "Water-Stained Journal")).toBe(true);
+  });
+
   it("save then restore reproduces location and inventory", async () => {
     const s = newSession();
     s.execute({ kind: "move", dir: Directions.North });

@@ -4,7 +4,7 @@ import { Narrator } from "./narrator.js";
 import { linkNouns } from "./link-nouns.js";
 
 export function mountTerminal(root: HTMLElement, session: GameSession, meta: { title: string; intro: string }): void {
-  const narrator = new Narrator();
+  let narrator = new Narrator();
   root.innerHTML = `
     <div class="backdrop">
       <div class="monitor">
@@ -55,6 +55,9 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
   let historyIdx = 0;
   let clickableNouns: string[] = [];
   let gameStarted = false;
+  // `restart` confirms first: the first one arms this flag, a second one fires;
+  // any other command disarms it (see handle()).
+  let restartPending = false;
 
   // Audio toggle — placeholder control on the bezel. Music/sfx arrive in a later
   // spec; for now this only tracks the on/off preference (mirrored to aria-pressed
@@ -300,6 +303,10 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
   async function handle(line: string): Promise<void> {
     const before = session.view();
     const res = parse(line, before);
+    // Any command other than a confirming `restart` cancels a pending restart.
+    if (restartPending && !(res.kind === "meta" && res.meta === "restart")) {
+      restartPending = false;
+    }
     switch (res.kind) {
       case "error": print([res.message], "error"); return;
       case "ambiguous": print([`Which do you mean — ${res.candidates.map((c) => c.name).join(", or ")}?`]); return;
@@ -312,6 +319,20 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
         return;
       }
       case "meta": {
+        if (res.meta === "restart") {
+          if (!restartPending) {
+            restartPending = true;
+            print(["Restart from the beginning? All progress will be lost. Type `restart` again to confirm."]);
+            return;
+          }
+          restartPending = false;
+          session.restart();
+          narrator = new Narrator();      // fresh "visited" set so the opening room re-narrates fully
+          transcript.innerHTML = "";
+          printRoom(session.view());
+          refresh();
+          return;
+        }
         if (res.meta === "save") { await session.save("slot1"); print(["Saved."]); }
         else if (res.meta === "restore") { const ok = await session.restore("slot1"); print([ok ? "Restored." : "No save found."]); if (ok) printRoom(session.view()); }
         else { const ok = session.undo(); print([ok ? "The last moment unwinds." : "Nothing to undo."]); if (ok) printRoom(session.view()); }

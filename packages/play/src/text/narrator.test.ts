@@ -75,6 +75,18 @@ describe("Narrator.renderRoomParts", () => {
     expect(parts.body.join("\n")).toContain("You see ghost.");
   });
 
+  it("body omits defeated occupants from 'You see'", () => {
+    const n = new Narrator();
+    const parts = n.renderRoomParts(vm({
+      occupants: [
+        { id: "ghost", name: "ghost", aliases: [], kind: "occupant" as const },
+        { id: "corpse", name: "Wraith", aliases: [], kind: "occupant" as const, defeated: true },
+      ],
+    }));
+    expect(parts.body.join("\n")).toContain("You see ghost.");
+    expect(parts.body.join("\n")).not.toContain("Wraith");
+  });
+
   it("description is null on first visit when dark (dark returns body-only)", () => {
     const n = new Narrator();
     const parts = n.renderRoomParts(vm({ room: { id: "cellar", name: "Cellar", description: "A dank cellar.", isLit: false } }));
@@ -130,6 +142,30 @@ describe("Narrator.renderAction", () => {
   it("returns no synthetic line for move (the room re-render speaks for it)", () => {
     const n = new Narrator();
     expect(n.renderAction({ kind: "move", dir: Directions.North }, vm(), vm())).toEqual([]);
+  });
+
+  const foe = (id: string, name: string, health: number, defeated = false) =>
+    ({ id, name, aliases: [name.toLowerCase()], kind: "occupant" as const, health, defeated });
+
+  it("reports how much damage an attack dealt", () => {
+    const n = new Narrator();
+    const before = vm({ occupants: [foe("w", "Wraith", 6)] });
+    const after = vm({ occupants: [foe("w", "Wraith", 4)] });
+    expect(n.renderAction({ kind: "attack", targetId: "w" }, before, after).join(" ")).toContain("for 2");
+  });
+
+  it("announces a defeat on the killing blow", () => {
+    const n = new Narrator();
+    const before = vm({ occupants: [foe("w", "Wraith", 1)] });
+    const after = vm({ occupants: [foe("w", "Wraith", 0, true)] });
+    expect(n.renderAction({ kind: "attack", targetId: "w" }, before, after).join(" ").toLowerCase()).toContain("down");
+  });
+
+  it("notes a glancing blow when no damage lands", () => {
+    const n = new Narrator();
+    const before = vm({ occupants: [foe("w", "Wraith", 6)] });
+    const after = vm({ occupants: [foe("w", "Wraith", 6)] });
+    expect(n.renderAction({ kind: "attack", targetId: "w" }, before, after).join(" ").toLowerCase()).toContain("glance");
   });
 });
 
