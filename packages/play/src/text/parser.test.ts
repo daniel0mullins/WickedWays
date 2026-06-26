@@ -37,6 +37,7 @@ describe("parser — meta and queries", () => {
     expect(parse("fs", vm())).toEqual({ kind: "meta", meta: "fullscreen" });
     expect(parse("audio", vm())).toEqual({ kind: "meta", meta: "audio" });
     expect(parse("mute", vm())).toEqual({ kind: "meta", meta: "audio" });
+    expect(parse("map", vm())).toEqual({ kind: "meta", meta: "map" });
   });
 });
 
