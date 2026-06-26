@@ -62,18 +62,25 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
   let restartPending = false;
 
   // Audio toggle — master switch on the bezel for procedural music + SFX.
-  // Audio starts muted; the first enable resumes the AudioContext (this click is
-  // the required user gesture) and starts the sanity-reactive ambient bed.
+  // Audio starts muted; the first enable resumes the AudioContext (the click, or
+  // the Enter that submits the `audio` verb, is the required user gesture) and
+  // starts the sanity-reactive ambient bed.
   const audioToggle = root.querySelector<HTMLButtonElement>("#audio-toggle")!;
-  let audioEnabled = false; // starts muted
-  root.dataset.audio = "off";
+  root.dataset.audio = "off"; // starts muted
+
+  // Flip the master switch and mirror the REAL state onto the bezel button
+  // (enabling no-ops if the AudioContext is unavailable). Shared by the button
+  // and the `audio` verb so the two never drift. Returns the resulting state.
+  const toggleAudio = (): boolean => {
+    audio.setEnabled(!audio.enabled);
+    const on = audio.enabled;
+    audioToggle.setAttribute("aria-pressed", String(on));
+    audioToggle.title = `Audio: ${on ? "on" : "off"}`;
+    root.dataset.audio = on ? "on" : "off";
+    return on;
+  };
   audioToggle.addEventListener("click", () => {
-    audio.setEnabled(!audioEnabled);
-    // Reflect the real state — enabling no-ops if the AudioContext is unavailable.
-    audioEnabled = audio.enabled;
-    audioToggle.setAttribute("aria-pressed", String(audioEnabled));
-    audioToggle.title = `Audio: ${audioEnabled ? "on" : "off"}`;
-    root.dataset.audio = audioEnabled ? "on" : "off";
+    toggleAudio();
     if (gameStarted) input.focus(); // #cmd isn't focusable on the welcome screen
   });
 
@@ -340,10 +347,33 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
           }
           restartPending = false;
           session.restart();
-          narrator = new Narrator();      // fresh "visited" set so the opening room re-narrates fully
+          narrator = new Narrator();      // reset narrator state for a clean restart
           transcript.innerHTML = "";
           printRoom(session.view());
           refresh();
+          return;
+        }
+        if (res.meta === "fullscreen") {
+          // Pure shell command — no game state changes, so no refresh. The Enter
+          // keypress that submitted this counts as the required user gesture.
+          if (document.fullscreenElement) {
+            void document.exitFullscreen();
+            print(["Leaving fullscreen."]);
+          } else {
+            void document.documentElement.requestFullscreen().then(
+              () => print(["Entering fullscreen."]),
+              () => print(["Fullscreen isn't available here."], "error"),
+            );
+          }
+          input.focus();
+          return;
+        }
+        if (res.meta === "audio") {
+          // Shell command — mirrors the bezel toggle, spends no turn. The Enter
+          // that submitted this is the gesture that lets the AudioContext resume.
+          const on = toggleAudio();
+          print([`Audio ${on ? "on" : "off"}.`]);
+          input.focus();
           return;
         }
         if (res.meta === "save") { await session.save("slot1"); print(["Saved."]); }
