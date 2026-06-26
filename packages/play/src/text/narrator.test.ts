@@ -15,12 +15,12 @@ const vm = (over: Partial<ViewModel> = {}): ViewModel => ({
 });
 
 describe("Narrator.renderRoom", () => {
-  it("gives the full description first, terse on return", () => {
+  it("gives the full description on every visit", () => {
     const n = new Narrator();
     const first = n.renderRoom(vm()).join("\n");
     expect(first).toContain("A long central hall.");
     const second = n.renderRoom(vm()).join("\n");
-    expect(second).not.toContain("A long central hall.");
+    expect(second).toContain("A long central hall.");
     expect(second).toContain("Hall");
   });
 });
@@ -39,11 +39,11 @@ describe("Narrator.renderRoomParts", () => {
     expect(parts.description).toBe("A long central hall.");
   });
 
-  it("description is null on re-entry", () => {
+  it("description is present on re-entry", () => {
     const n = new Narrator();
     n.renderRoomParts(vm()); // first visit
     const second = n.renderRoomParts(vm());
-    expect(second.description).toBeNull();
+    expect(second.description).toBe("A long central hall.");
   });
 
   it("header still present on re-entry", () => {
@@ -88,16 +88,14 @@ describe("Narrator.renderRoomParts", () => {
     expect(parts.body.join("\n")).not.toContain("Wraith");
   });
 
-  it("description is null on first visit when dark (dark returns body-only)", () => {
+  it("returns the description even when dark (dark message goes in body)", () => {
     const n = new Narrator();
     const parts = n.renderRoomParts(vm({ room: { id: "cellar", name: "Cellar", description: "A dank cellar.", isLit: false } }));
-    // Description is still returned on first visit even when dark — dark message goes in body
     expect(parts.description).toBe("A dank cellar.");
     expect(parts.body).toContain("It is pitch dark. You can see nothing.");
   });
 
   it("renderRoom and renderRoomParts produce the same flat lines", () => {
-    // Use a fresh narrator for each so visited state is clean
     const n1 = new Narrator();
     const n2 = new Narrator();
     const flat = n1.renderRoom(vm());

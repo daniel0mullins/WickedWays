@@ -33,6 +33,10 @@ describe("parser — meta and queries", () => {
     expect(parse("save", vm())).toEqual({ kind: "meta", meta: "save" });
     expect(parse("undo", vm())).toEqual({ kind: "meta", meta: "undo" });
     expect(parse("restart", vm())).toEqual({ kind: "meta", meta: "restart" });
+    expect(parse("fullscreen", vm())).toEqual({ kind: "meta", meta: "fullscreen" });
+    expect(parse("fs", vm())).toEqual({ kind: "meta", meta: "fullscreen" });
+    expect(parse("audio", vm())).toEqual({ kind: "meta", meta: "audio" });
+    expect(parse("mute", vm())).toEqual({ kind: "meta", meta: "audio" });
   });
 });
 

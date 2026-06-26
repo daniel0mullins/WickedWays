@@ -62,18 +62,25 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
   let restartPending = false;
 
   // Audio toggle — master switch on the bezel for procedural music + SFX.
-  // Audio starts muted; the first enable resumes the AudioContext (this click is
-  // the required user gesture) and starts the sanity-reactive ambient bed.
+  // Audio starts muted; the first enable resumes the AudioContext (the click, or
+  // the Enter that submits the `audio` verb, is the required user gesture) and
+  // starts the sanity-reactive ambient bed.
   const audioToggle = root.querySelector<HTMLButtonElement>("#audio-toggle")!;
-  let audioEnabled = false; // starts muted
-  root.dataset.audio = "off";
+  root.dataset.audio = "off"; // starts muted
+
+  // Flip the master switch and mirror the REAL state onto the bezel button
+  // (enabling no-ops if the AudioContext is unavailable). Shared by the button
+  // and the `audio` verb so the two never drift. Returns the resulting state.
+  const toggleAudio = (): boolean => {
+    audio.setEnabled(!audio.enabled);
+    const on = audio.enabled;
+    audioToggle.setAttribute("aria-pressed", String(on));
+    audioToggle.title = `Audio: ${on ? "on" : "off"}`;
+    root.dataset.audio = on ? "on" : "off";
+    return on;
+  };
   audioToggle.addEventListener("click", () => {
-    audio.setEnabled(!audioEnabled);
-    // Reflect the real state — enabling no-ops if the AudioContext is unavailable.
-    audioEnabled = audio.enabled;
-    audioToggle.setAttribute("aria-pressed", String(audioEnabled));
-    audioToggle.title = `Audio: ${audioEnabled ? "on" : "off"}`;
-    root.dataset.audio = audioEnabled ? "on" : "off";
+    toggleAudio();
     if (gameStarted) input.focus(); // #cmd isn't focusable on the welcome screen
   });
 
@@ -147,15 +154,27 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     // Persistent bottom HUD, driven from the viewmodel each turn.
     hud.innerHTML = "";
 
+    // A HUD line that opens with a bold label ("Here:", "Carrying:", "Exits:")
+    // followed by a space; the caller fills in the rest.
+    const hudLine = (label: string): HTMLDivElement => {
+      const line = document.createElement("div");
+      line.className = "hud-line";
+      const lbl = document.createElement("span");
+      lbl.className = "hud-label";
+      lbl.textContent = label;
+      line.appendChild(lbl);
+      line.appendChild(document.createTextNode(" "));
+      return line;
+    };
+
     // "Here:" loot line — omitted when there is no loot. Rendered through
     // renderClickable so loot nouns (e.g. "drawer") stay clickable affordances.
     // Descriptions already end in a period, so strip a trailing one before
     // re-punctuating the joined list (avoids "a drawer..").
     const lootDescs = vm.loot.map((l) => l.description.replace(/\.\s*$/, ""));
     if (lootDescs.length) {
-      const hereLine = document.createElement("div");
-      hereLine.className = "hud-line";
-      renderClickable(hereLine, `Here: ${lootDescs.join(", ")}.`, input, clickableNouns);
+      const hereLine = hudLine("Here:");
+      renderClickable(hereLine, `${lootDescs.join(", ")}.`, input, clickableNouns);
       hud.appendChild(hereLine);
     }
 
@@ -171,18 +190,13 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
         .filter((n) => !vm.inventory.items.some((i) => i.name === n))
         .map((n) => `${n} (equipped)`),
     ];
-    const carryingLine = document.createElement("div");
-    carryingLine.className = "hud-line";
-    renderClickable(carryingLine, `Carrying: ${carried.length ? carried.join(", ") : "nothing"}.`, input, clickableNouns);
+    const carryingLine = hudLine("Carrying:");
+    renderClickable(carryingLine, `${carried.length ? carried.join(", ") : "nothing"}.`, input, clickableNouns);
     hud.appendChild(carryingLine);
 
     // "Exits:" line — passable exits as clickable text links (fill, no submit);
     // locked doors as dim, non-clickable text.
-    const exitsLine = document.createElement("div");
-    exitsLine.className = "hud-line";
-    const label = document.createElement("span");
-    label.textContent = "Exits: ";
-    exitsLine.appendChild(label);
+    const exitsLine = hudLine("Exits:");
 
     const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
     const parts: Node[] = [];
@@ -243,7 +257,8 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
       } else {
         const text = parts.description;
         let idx = 0;
-        const CHAR_INTERVAL_MS = 22;
+        // Type at full speed on first sight; twice as fast on a room you've seen.
+        const CHAR_INTERVAL_MS = parts.firstVisit ? 22 : 11;
         const complete = () => {
           descEl.textContent = text;
           transcript.scrollTop = transcript.scrollHeight;
@@ -332,10 +347,33 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
           }
           restartPending = false;
           session.restart();
-          narrator = new Narrator();      // fresh "visited" set so the opening room re-narrates fully
+          narrator = new Narrator();      // reset narrator state for a clean restart
           transcript.innerHTML = "";
           printRoom(session.view());
           refresh();
+          return;
+        }
+        if (res.meta === "fullscreen") {
+          // Pure shell command — no game state changes, so no refresh. The Enter
+          // keypress that submitted this counts as the required user gesture.
+          if (document.fullscreenElement) {
+            void document.exitFullscreen();
+            print(["Leaving fullscreen."]);
+          } else {
+            void document.documentElement.requestFullscreen().then(
+              () => print(["Entering fullscreen."]),
+              () => print(["Fullscreen isn't available here."], "error"),
+            );
+          }
+          input.focus();
+          return;
+        }
+        if (res.meta === "audio") {
+          // Shell command — mirrors the bezel toggle, spends no turn. The Enter
+          // that submitted this is the gesture that lets the AudioContext resume.
+          const on = toggleAudio();
+          print([`Audio ${on ? "on" : "off"}.`]);
+          input.focus();
           return;
         }
         if (res.meta === "save") { await session.save("slot1"); print(["Saved."]); }
@@ -606,14 +644,24 @@ function applyStyles(root: HTMLElement): void {
       border: 2px solid var(--color-accent);
       border-radius: 4px;
       cursor: pointer;
-      text-shadow: 0 0 8px rgba(217, 194, 122, 0.4);
-      box-shadow: 0 0 10px rgba(217, 194, 122, 0.12), inset 0 0 8px rgba(217, 194, 122, 0.04);
-      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+      /* Phosphor bloom — layered halo + text glow, breathing slowly. */
+      text-shadow: 0 0 8px rgba(217, 194, 122, 0.55), 0 0 18px rgba(217, 194, 122, 0.32);
+      box-shadow:
+        0 0 6px rgba(217, 194, 122, 0.45),
+        0 0 16px rgba(217, 194, 122, 0.30),
+        0 0 34px rgba(217, 194, 122, 0.18),
+        inset 0 0 10px rgba(217, 194, 122, 0.10);
+      transition: background 0.15s, color 0.15s, box-shadow 0.25s, text-shadow 0.25s;
+      animation: enter-bloom 2.6s ease-in-out infinite;
       margin-top: 0.4em;
     }
     .enter-btn:hover {
       background: rgba(217, 194, 122, 0.12);
-      box-shadow: 0 0 18px rgba(217, 194, 122, 0.28), inset 0 0 12px rgba(217, 194, 122, 0.08);
+      box-shadow:
+        0 0 12px rgba(217, 194, 122, 0.8),
+        0 0 30px rgba(217, 194, 122, 0.55),
+        0 0 70px rgba(217, 194, 122, 0.40),
+        inset 0 0 18px rgba(217, 194, 122, 0.20);
     }
     .enter-btn:focus-visible {
       outline: 2px solid var(--led-color);
@@ -621,6 +669,25 @@ function applyStyles(root: HTMLElement): void {
     }
     .enter-btn:active {
       background: rgba(217, 194, 122, 0.22);
+    }
+    /* The bloom swells and recedes — a slow phosphor breath. */
+    @keyframes enter-bloom {
+      0%, 100% {
+        box-shadow:
+          0 0 6px rgba(217, 194, 122, 0.42),
+          0 0 16px rgba(217, 194, 122, 0.28),
+          0 0 34px rgba(217, 194, 122, 0.16),
+          inset 0 0 10px rgba(217, 194, 122, 0.10);
+        text-shadow: 0 0 8px rgba(217, 194, 122, 0.5), 0 0 16px rgba(217, 194, 122, 0.30);
+      }
+      50% {
+        box-shadow:
+          0 0 11px rgba(217, 194, 122, 0.72),
+          0 0 26px rgba(217, 194, 122, 0.50),
+          0 0 60px rgba(217, 194, 122, 0.34),
+          inset 0 0 16px rgba(217, 194, 122, 0.18);
+        text-shadow: 0 0 12px rgba(217, 194, 122, 0.78), 0 0 26px rgba(217, 194, 122, 0.46);
+      }
     }
 
     /* Game container — takes over the full .screen flex column once welcome is hidden. */
@@ -631,8 +698,8 @@ function applyStyles(root: HTMLElement): void {
     .game-container[hidden] { display: none; }
 
     .transcript { flex: 1; overflow-y: auto; padding: 1rem; position: relative; z-index: 1; }
-    .block { margin-bottom: 0.9rem; }
-    .line { white-space: pre-wrap; }
+    .block { margin-bottom: 0.35rem; }
+    .line { white-space: pre-wrap; line-height: 1.2; }
     .line.echo { color: var(--color-muted); }
     .line.error { color: var(--color-error); }
     .line.end { color: var(--color-accent); }
@@ -647,12 +714,13 @@ function applyStyles(root: HTMLElement): void {
     }
     /* Persistent bottom HUD — Here: / Exits: lines, between transcript and status. */
     .hud {
-      padding: .4rem 1rem; position: relative; z-index: 1;
+      padding: .25rem 1rem; position: relative; z-index: 1;
       border-top: 1px solid var(--color-border);
       color: var(--color-text);
-      display: flex; flex-direction: column; gap: .15em;
+      display: flex; flex-direction: column; gap: .05em;
     }
-    .hud-line { white-space: pre-wrap; }
+    .hud-line { white-space: pre-wrap; line-height: 1.2; }
+    .hud-label { font-weight: bold; color: color-mix(in srgb, var(--color-accent) 72%, var(--color-bg)); }
     .exit-link {
       cursor: pointer; text-decoration: underline;
       text-underline-offset: 2px; color: var(--color-accent);
@@ -674,6 +742,7 @@ function applyStyles(root: HTMLElement): void {
     @media (prefers-reduced-motion: reduce) {
       .crt-overlay { animation: none; }
       .crt-sweep { animation: none; display: none; }
+      .enter-btn { animation: none; } /* keep the static bloom, drop the pulse */
     }`;
   root.appendChild(style);
 }
