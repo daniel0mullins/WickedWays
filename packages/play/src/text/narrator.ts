@@ -77,7 +77,25 @@ export class Narrator {
         return ways.length ? [`Exits: ${ways.join(", ")}.`] : ["There are no obvious exits."];
       }
       case "help":
-        return ["Commands: go <dir> (or n/s/e/w/…) — walk into a locked door with its key to open it, look, examine/read <thing>, take/drop <thing>, open <chest>, equip/use <thing>, attack <foe>, inventory, exits, wait, save, restore, undo, restart, fullscreen, audio."];
+        return [
+          "go <dir> (n/s/e/w/ne/nw/se/sw) — walk; into a locked door with its key opens it",
+          "look — describe the room again",
+          "examine / read <thing> — inspect something closely",
+          "take / drop <thing> — pick up or set down",
+          "open <chest> — open a container",
+          "equip / use <thing> — wield, wear, or use an item",
+          "attack <foe> — strike an enemy",
+          "inventory — what you are carrying",
+          "exits — the ways out of this room",
+          "wait — let a turn pass",
+          "map — show the explored map",
+          "save / restore — store or reload your game",
+          "undo — take back the last turn",
+          "restart — begin again from the start",
+          "fullscreen — toggle fullscreen",
+          "audio — toggle sound",
+          "help — show this list",
+        ];
     }
   }
 

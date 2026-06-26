@@ -196,9 +196,17 @@ describe("GameSession", () => {
     await s.save("slot1");
     s.execute({ kind: "move", dir: Directions.West });    // Kitchen
     expect(s.view().room.name).toBe(Rooms.Kitchen);
-    expect(await s.restore("slot1")).toBe(true);
+    expect((await s.restore("slot1")).ok).toBe(true);
     expect(s.view().room.name).toBe(Rooms.Hall);
   });
+  it("save carries a surface payload that restore returns", async () => {
+    const s = newSession();
+    await s.save("slot1", { map: { rooms: [], edges: [], stubs: [], currentId: "x" } });
+    const res = await s.restore("slot1");
+    expect(res.ok).toBe(true);
+    expect(res.surface).toEqual({ map: { rooms: [], edges: [], stubs: [], currentId: "x" } });
+  });
+
   it("undo reverts the last time-advancing command", () => {
     const s = newSession();
     s.execute({ kind: "move", dir: Directions.North });

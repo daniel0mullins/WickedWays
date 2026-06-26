@@ -3,10 +3,13 @@ import { parse } from "./parser.js";
 import { Narrator } from "./narrator.js";
 import { AudioManager } from "../audio/audio-manager.js";
 import { linkNouns } from "./link-nouns.js";
+import { MapModel } from "../core/map-model.js";
+import { layoutMap, renderMapSvg } from "./map-view.js";
 
 export function mountTerminal(root: HTMLElement, session: GameSession, meta: { title: string; intro: string }): void {
   let narrator = new Narrator();
   const audio = new AudioManager();
+  const mapModel = new MapModel();
   root.innerHTML = `
     <div class="backdrop">
       <div class="monitor">
@@ -226,6 +229,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     hud.appendChild(exitsLine);
     // Drive the ambient drone from the current Sanity each turn.
     audio.update(vm.status.sanity);
+    mapModel.observe(vm);
   };
 
   /**
@@ -287,6 +291,54 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     transcript.scrollTop = transcript.scrollHeight;
   };
 
+  // A single in-CRT overlay shared by the map and help screens: a bordered frame
+  // plus a legend strip, dismissed by any keypress. Only one is open at a time.
+  let overlay: HTMLDivElement | null = null;
+  const closeOverlay = () => {
+    if (!overlay) return;
+    overlay.remove();
+    overlay = null;
+    if (gameStarted) input.focus();
+  };
+  const openOverlay = (fill: (frame: HTMLDivElement) => void, legendText: string) => {
+    if (overlay) return; // idempotent
+    const screen = root.querySelector<HTMLDivElement>(".screen")!;
+    overlay = document.createElement("div");
+    overlay.className = "overlay";
+    const frame = document.createElement("div");
+    frame.className = "overlay-frame";
+    fill(frame);
+    const legend = document.createElement("div");
+    legend.className = "overlay-legend";
+    legend.textContent = legendText;
+    overlay.append(frame, legend);
+    screen.appendChild(overlay);
+    // Any keypress dismisses; capture so it never reaches #cmd.
+    const onKey = (ev: KeyboardEvent) => {
+      ev.preventDefault();
+      window.removeEventListener("keydown", onKey, true);
+      closeOverlay();
+    };
+    window.addEventListener("keydown", onKey, true);
+  };
+  const openMap = () =>
+    openOverlay(
+      (frame) => frame.appendChild(renderMapSvg(layoutMap(mapModel))),
+      "─ open   ╌ locked   ? unexplored   ✕ remains   ▣ here   ·   any key to close",
+    );
+  const openHelp = () =>
+    openOverlay((frame) => {
+      const list = document.createElement("div");
+      list.className = "help-list";
+      for (const line of narrator.renderQuery("help", session.view())) {
+        const row = document.createElement("div");
+        row.className = "help-row";
+        row.textContent = line;
+        list.appendChild(row);
+      }
+      frame.appendChild(list);
+    }, "any key to close");
+
   const startGame = () => {
     if (gameStarted) return;
     gameStarted = true;
@@ -309,7 +361,6 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     history.push(line); historyIdx = history.length;
     // Flush any in-progress typewriter before rendering new output.
     flushTypewriter();
-    print([`> ${line}`], "echo");
     await handle(line);
   }
 
@@ -323,6 +374,11 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
   async function handle(line: string): Promise<void> {
     const before = session.view();
     const res = parse(line, before);
+    // Echo the typed command into the log — except `map`/`help`, which only open
+    // a transient overlay and would leave a bare `> map` with no response below it.
+    const opensOverlay =
+      (res.kind === "meta" && res.meta === "map") || (res.kind === "query" && res.query === "help");
+    if (!opensOverlay) print([`> ${line}`], "echo");
     // Any command other than a confirming `restart` cancels a pending restart.
     if (restartPending && !(res.kind === "meta" && res.meta === "restart")) {
       restartPending = false;
@@ -330,7 +386,10 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     switch (res.kind) {
       case "error": audio.noteError(); print([res.message], "error"); return;
       case "ambiguous": print([`Which do you mean — ${res.candidates.map((c) => c.name).join(", or ")}?`]); return;
-      case "query": print(narrator.renderQuery(res.query, before)); return;
+      case "query":
+        // `help` opens an in-CRT overlay (like `map`); the rest print inline.
+        if (res.query === "help") { openHelp(); return; }
+        print(narrator.renderQuery(res.query, before)); return;
       case "examine": {
         // Reading an item reveals its lore (engine-backed, free, non-consuming);
         // anything without lore falls back to the generic look line.
@@ -348,6 +407,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
           restartPending = false;
           session.restart();
           narrator = new Narrator();      // reset narrator state for a clean restart
+          mapModel.reset();
           transcript.innerHTML = "";
           printRoom(session.view());
           refresh();
@@ -376,8 +436,13 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
           input.focus();
           return;
         }
-        if (res.meta === "save") { await session.save("slot1"); print(["Saved."]); }
-        else if (res.meta === "restore") { const ok = await session.restore("slot1"); print([ok ? "Restored." : "No save found."]); if (ok) printRoom(session.view()); }
+        if (res.meta === "map") { openMap(); return; }
+        if (res.meta === "save") { await session.save("slot1", { map: mapModel.serialize() }); print(["Saved."]); }
+        else if (res.meta === "restore") {
+          const { ok, surface } = await session.restore("slot1");
+          print([ok ? "Restored." : "No save found."]);
+          if (ok) { if (surface?.map) mapModel.hydrate(surface.map); printRoom(session.view()); }
+        }
         else { const ok = session.undo(); print([ok ? "The last moment unwinds." : "Nothing to undo."]); if (ok) printRoom(session.view()); }
         refresh(); return;
       }
@@ -391,7 +456,10 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
         const stepCues = result.cues.filter((c) => c.kind !== "resolution");
         for (const cue of stepCues) audio.playCue(cue);
         print([...narrator.renderAction(res.intent, before, after), ...narrator.renderCues(stepCues)]);
-        if (res.intent.kind === "move") printRoom(after);
+        if (res.intent.kind === "move") {
+          mapModel.recordMove(before.room.id, res.intent.dir, after.room.id);
+          printRoom(after);
+        }
         // Mob reactions print after the room render on a move, so "you enter,
         // you see the Wraith, the Wraith strikes" reads in the right order.
         const mobAttacks = result.mobAttacks ?? [];
@@ -743,6 +811,35 @@ function applyStyles(root: HTMLElement): void {
       .crt-overlay { animation: none; }
       .crt-sweep { animation: none; display: none; }
       .enter-btn { animation: none; } /* keep the static bloom, drop the pulse */
-    }`;
+    }
+
+    /* Shared overlay (map + help) — inside the CRT, beneath the scanline/glow overlays (z 5–6). */
+    .overlay {
+      position: absolute; inset: 0; z-index: 3;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 0.6em; padding: 1rem;
+      background: rgba(10, 10, 8, 0.92);
+    }
+    .overlay-frame {
+      max-width: 100%; max-height: 80%; overflow: auto;
+      padding: 0.8em; border-radius: 6px;
+      border: 2px solid var(--color-accent);
+      background: rgba(10, 10, 8, 0.6);
+      box-shadow: 0 0 10px rgba(217, 194, 122, 0.35), inset 0 0 14px rgba(0, 0, 0, 0.5);
+    }
+    .help-list { display: flex; flex-direction: column; gap: 0.35em; }
+    .help-row { font-family: var(--font-body); font-size: 0.8em; color: var(--color-text); white-space: nowrap; }
+    .map-svg { max-width: 100%; height: auto; }
+    .map-svg .map-box { fill: var(--color-chip-bg); stroke: var(--color-muted); stroke-width: 1.5; }
+    .map-svg .map-box.current { stroke: var(--color-accent); stroke-width: 2.5;
+      filter: drop-shadow(0 0 6px rgba(217, 194, 122, 0.7)); }
+    .map-svg .map-label { fill: var(--color-text); font: 0.5em var(--font-body); }
+    .map-svg .map-link { stroke: var(--color-muted); stroke-width: 2; }
+    .map-svg .map-link.locked { stroke: var(--color-muted); stroke-dasharray: 4 4; }
+    .map-svg .map-stub { stroke: var(--color-border); stroke-width: 2; }
+    .map-svg .map-stub.locked { stroke: var(--color-border); stroke-dasharray: 4 4; }
+    .map-svg .map-q { fill: var(--color-muted); font: 0.5em var(--font-body); }
+    .map-svg .map-remains { fill: var(--color-error); font: 0.5em var(--font-body); }
+    .overlay-legend { font-family: var(--font-body); font-size: 0.7em; color: var(--color-muted); text-align: center; }`;
   root.appendChild(style);
 }

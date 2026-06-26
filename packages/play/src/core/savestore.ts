@@ -1,14 +1,17 @@
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
+import type { MapSnapshot } from "./map-model.js";
 
 export interface SaveSlot { slot: string; savedAt: number; }
+/** Play-surface state persisted beside the campaign snapshot (opaque to the engine). */
+export interface SurfaceState { map?: MapSnapshot; }
 export interface SaveStore {
   list(): Promise<SaveSlot[]>;
-  save(slot: string, snapshot: CampaignSnapshot, savedAt: number): Promise<void>;
-  load(slot: string): Promise<CampaignSnapshot | null>;
+  save(slot: string, snapshot: CampaignSnapshot, savedAt: number, surface?: SurfaceState): Promise<void>;
+  load(slot: string): Promise<{ snapshot: CampaignSnapshot; surface?: SurfaceState } | null>;
   delete(slot: string): Promise<void>;
 }
 
-interface Envelope { savedAt: number; snapshot: CampaignSnapshot; }
+interface Envelope { savedAt: number; snapshot: CampaignSnapshot; surface?: SurfaceState; }
 const PREFIX = "wickedways:save:";
 
 export class LocalStorageSaveStore implements SaveStore {
@@ -26,15 +29,16 @@ export class LocalStorageSaveStore implements SaveStore {
     }
     return Promise.resolve(out);
   }
-  save(slot: string, snapshot: CampaignSnapshot, savedAt: number): Promise<void> {
-    const env: Envelope = { savedAt, snapshot };
+  save(slot: string, snapshot: CampaignSnapshot, savedAt: number, surface?: SurfaceState): Promise<void> {
+    const env: Envelope = { savedAt, snapshot, surface };
     this.storage.setItem(PREFIX + slot, JSON.stringify(env));
     return Promise.resolve();
   }
-  load(slot: string): Promise<CampaignSnapshot | null> {
+  load(slot: string): Promise<{ snapshot: CampaignSnapshot; surface?: SurfaceState } | null> {
     const raw = this.storage.getItem(PREFIX + slot);
     if (raw === null) return Promise.resolve(null);
-    return Promise.resolve((JSON.parse(raw) as Envelope).snapshot);
+    const env = JSON.parse(raw) as Envelope;
+    return Promise.resolve({ snapshot: env.snapshot, surface: env.surface });
   }
   delete(slot: string): Promise<void> {
     this.storage.removeItem(PREFIX + slot);

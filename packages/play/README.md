@@ -149,7 +149,7 @@ deterministically from actor/entity id hashes (`detuneFactor` in `cue-sound.ts`)
 | Items | `take` / `get`, `drop`, `equip` / `wear` / `wield` / `light`, `unequip` / `remove` / `extinguish`, `use`, `open <container>` |
 | Combat | `attack` / `kill` / `hit` `<foe>` |
 | Query | `inventory` / `i` / `inv`, `exits`, `help` / `?` |
-| Meta | `save`, `restore` / `load`, `undo`, `restart`, `wait` / `z` |
+| Meta | `save`, `restore` / `load`, `undo`, `restart`, `wait` / `z`, `map` |
 
 Nouns resolve against everything currently in scope — room occupants, loot containers and
 their contents, and carried items/keys — by name or alias (aliases defined per campaign in
@@ -168,6 +168,17 @@ turn 0, empty inventory). Because it wipes all progress with no undo, it **confi
 the first `restart` prompts, a second `restart` performs it, and any other command cancels.
 Saved games are untouched, and `restart` works after the game has ended (the natural "play
 again"). It re-runs `GameSession.boot` from the stored builder — see `GameSession.restart`.
+
+**Fog-of-war map.** `map` opens a vector SVG map inside the CRT screen showing only the
+rooms you have explored, built from the directions you have traveled. The current room is
+highlighted with a glowing accent border; each room is labeled with its name; locked doors
+render as dashed lines; unexplored exits branch out as `?` stubs; and rooms where a mob was
+defeated show a `✕` marker. Any keypress dismisses the overlay. The map persists across
+`save`/`restore` — it travels in the save envelope's opaque `surface` payload alongside
+other UI state — and is cleared on `restart`. Internal seam: `MapModel` (populated
+incrementally via `refresh` on each turn and `handle` on each move) → `layoutMap` (grid
+placement from compass directions) → `renderMapSvg` (produces the SVG string embedded in
+the overlay).
 
 ## The Hollow House (bundled campaign)
 

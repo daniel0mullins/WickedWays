@@ -11,7 +11,7 @@ import { GameSession } from "./session.js";
 import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES } from "../campaign/index.js";
 import { parse } from "../text/parser.js";
 import { Narrator } from "../text/narrator.js";
-import type { SaveStore, SaveSlot } from "./savestore.js";
+import type { SaveStore, SaveSlot, SurfaceState } from "./savestore.js";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
 import { Rooms, Archetypes } from "../campaign/ids.js";
 import { Directions } from "wickedways/lib/room";
@@ -19,17 +19,18 @@ import { Directions } from "wickedways/lib/room";
 // ── In-memory SaveStore ───────────────────────────────────────────────────────
 
 class MemSaveStore implements SaveStore {
-  private readonly map = new Map<string, { savedAt: number; snapshot: CampaignSnapshot }>();
+  private readonly map = new Map<string, { savedAt: number; snapshot: CampaignSnapshot; surface?: SurfaceState }>();
 
   list(): Promise<SaveSlot[]> {
     return Promise.resolve([...this.map.entries()].map(([slot, v]) => ({ slot, savedAt: v.savedAt })));
   }
-  save(slot: string, snapshot: CampaignSnapshot, savedAt: number): Promise<void> {
-    this.map.set(slot, { savedAt, snapshot });
+  save(slot: string, snapshot: CampaignSnapshot, savedAt: number, surface?: SurfaceState): Promise<void> {
+    this.map.set(slot, { savedAt, snapshot, surface });
     return Promise.resolve();
   }
-  load(slot: string): Promise<CampaignSnapshot | null> {
-    return Promise.resolve(this.map.get(slot)?.snapshot ?? null);
+  load(slot: string): Promise<{ snapshot: CampaignSnapshot; surface?: SurfaceState } | null> {
+    const e = this.map.get(slot);
+    return Promise.resolve(e ? { snapshot: e.snapshot, surface: e.surface } : null);
   }
   delete(slot: string): Promise<void> {
     this.map.delete(slot);
@@ -85,7 +86,7 @@ function buildDriver(session: GameSession) {
           await session.save("slot1");
           push(["[meta] Saved."]);
         } else if (res.meta === "restore") {
-          const ok = await session.restore("slot1");
+          const { ok } = await session.restore("slot1");
           push([ok ? "[meta] Restored." : "[meta] No save found."]);
           if (ok) push(narrator.renderQuery("look", session.view()));
         } else {

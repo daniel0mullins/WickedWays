@@ -6,7 +6,7 @@ export type ParseResult =
   | { kind: "intent"; intent: Intent }
   | { kind: "query"; query: "look" | "inventory" | "exits" | "help" }
   | { kind: "examine"; target: ScopeEntity }
-  | { kind: "meta"; meta: "save" | "restore" | "undo" | "restart" | "fullscreen" | "audio" }
+  | { kind: "meta"; meta: "save" | "restore" | "undo" | "restart" | "fullscreen" | "audio" | "map" }
   | { kind: "ambiguous"; candidates: ScopeEntity[] }
   | { kind: "error"; message: string };
 
@@ -63,6 +63,7 @@ export function parse(input: string, vm: ViewModel): ParseResult {
   if (verb === "restart") return { kind: "meta", meta: "restart" };
   if (verb === "fullscreen" || verb === "fs") return { kind: "meta", meta: "fullscreen" };
   if (verb === "audio" || verb === "sound" || verb === "mute") return { kind: "meta", meta: "audio" };
+  if (verb === "map") return { kind: "meta", meta: "map" };
 
   // Zero-noun queries.
   if (verb === "look" || verb === "l") return { kind: "query", query: "look" };
