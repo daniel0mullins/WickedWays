@@ -92,7 +92,53 @@ query.
 | `src/text/narrator.ts` | Renders room text, action confirmations, cues, queries, and examine lines (pure → `string[]`). |
 | `src/text/link-nouns.ts` | Tokenizes a line into plain + clickable noun segments (longest-phrase-first, word-boundary aware) for the "click a noun to `examine` it" affordance. |
 | `src/text/ui.ts` | The DOM terminal: CRT housing/overlay styling, welcome screen, typewriter, command history, clickable exits/nouns, HUD, and the submit→parse→render loop. |
+| `src/audio/` | Procedural Web Audio subsystem — pure cue→sound mapping (`cue-sound.ts`), Web Audio rendering (`synth.ts`), sanity-reactive ambient drone (`ambient.ts`), and the `AudioManager` orchestrator. See [**Audio**](#audio) below. |
 | `src/campaign/` | The bundled **Hollow House** campaign: `index.ts` (template + registry), `content.ts` (intro/lore/keyed-door behaviors/aliases), `mechanics.ts` (`dread`, `storyteller`), `items.ts`, `ids.ts`. |
+
+## Audio
+
+The play surface generates all sound via **procedural Web Audio synthesis** — no shipped audio
+assets, no licensing or bundle-size concerns. The approach fits the retro-CRT aesthetic and keeps
+the mapping logic purely deterministic (separated from the Web Audio backend so it is
+unit-testable under Vitest's `node` environment, which has no Web Audio API).
+
+### Four SFX categories
+
+| Category | Trigger |
+|----------|---------|
+| **Combat (strikes & death)** | `action` cue with `attack`/`takeDamage` kind; `MobAttack` from `session.runMobReactions`; a `resolution` win-sting / lose-fall on campaign end. |
+| **Mob encounter** | `encounter` cue (first time the player meets a given mob). |
+| **Item use / pickup** | `action` cue with `pickUp`/`drop` kind — a soft confirming blip via `playCue` (taking an item emits `pickUp`, dropping emits `drop`). |
+| **Movement, lights & UI** | `action` cue with `move` kind (soft whoosh); `visibility` cue (light click); rejected command or parser error (short buzz). |
+
+### Sanity-reactive ambient drone
+
+A continuous low drone (layered oscillators through a low-pass filter) runs while audio is
+enabled. `AmbientBed.setTension(t)` adjusts detune, filter brightness, and gain as `t` moves
+from 0 to 1. Tension is computed by `sanityToTension(current, baseline)` — a ratio normalized
+against the session's **high-water-mark** sanity so the drone is calm at a healthy baseline and
+grows dissonant only as sanity degrades. Updated every turn from `refresh()`.
+
+### Master toggle
+
+A single button in the monitor bezel controls all audio (ambient + SFX together). Audio starts
+**muted** on every page load and never plays without a user gesture — the toggle click is the
+gesture that resumes the `AudioContext`. The preference is **in-memory** only (not persisted to
+`localStorage`). If `AudioContext` is unavailable or blocked, the manager no-ops gracefully; the
+game is unaffected.
+
+### Integration seams (`src/audio/audio-manager.ts`)
+
+```
+cue from session.execute()   →  AudioManager.playCue(cue)
+mob strike from runMobReactions →  AudioManager.playMobAttack(atk)
+rejected command / error     →  AudioManager.noteError()
+each turn in refresh()       →  AudioManager.update(view.status.sanity)
+toggle click in ui.ts        →  AudioManager.setEnabled(on)
+```
+
+No `Math.random` is used — the slight pitch variation between instances is derived
+deterministically from actor/entity id hashes (`detuneFactor` in `cue-sound.ts`).
 
 ## Command vocabulary
 

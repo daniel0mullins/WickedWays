@@ -325,6 +325,29 @@ describe("Item", () => {
       expect(holder[CONSUME_VIA_USE]).toHaveBeenCalledWith(item);
     });
 
+    it("runs author behaviors with `this` bound to the item (so a behavior can read its own item)", () => {
+      const holder = makeHolder();
+      const seen: Record<string, unknown> = {};
+      const item = new Item({
+        descriptor: { type: "consumable", recipe: { healing: 1 }, modifier: 4, stat: StatType.Sanity, name: "Tonic" },
+        properties: { equippable: false, equipped: false, destroyable: true, usable: true },
+        actions: {
+          pickUp() { seen.pickUp = this; },
+          equip: () => {}, unequip: () => {}, transfer: () => {},
+          use() { seen.use = this; },
+          destroy: () => null,
+        },
+        events: { onPickUp: () => {} },
+      });
+      hold(item, holder);
+
+      item.actions.pickUp(holder);
+      item.actions.use(holder);
+
+      expect(seen.pickUp).toBe(item);
+      expect(seen.use).toBe(item);
+    });
+
     it("does nothing when the item is not held", () => {
       const { item, actions } = makeItem();
 

@@ -191,6 +191,9 @@ back to the campaign's `actionSounds` default for that action kind (e.g. `move â
 none. The `visibility` cue carries no `sound` (it drives reveal/conceal, not audio). Subscriber
 errors are isolated so a faulty handler can't disrupt the turn loop.
 
+The `@wickedways/play` browser surface builds a full procedural audio layer on this cue stream
+(four SFX categories + a sanity-reactive ambient drone); see [`packages/play/README.md`](packages/play/README.md#audio).
+
 ### Loot and inventory
 
 - [`Loot`](src/lib/loot.ts) is a fixed-capacity container (default: initial contents + 2 slots).

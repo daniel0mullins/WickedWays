@@ -60,6 +60,24 @@ type ItemActionSharedEvent = <Actor extends ICharacter, Recipient extends IChara
   cc: Recipient,
 ) => void;
 
+/**
+ * Author-supplied action behaviors (the {@link ItemActionsInput} passed to the
+ * constructor) run with `this` bound to the item, so a behavior can read its own
+ * item — e.g. a consumable that heals `this.modifier` of `this.stat`. The public
+ * {@link Item.actions} wrappers are `this`-less (they close over the item), so
+ * callers invoke them without binding.
+ */
+type BoundActionEvent = <Actor extends ICharacter>(
+  this: IItem,
+  c: Actor,
+  components?: ItemComponentType[] | null,
+) => void;
+type BoundSharedEvent = <Actor extends ICharacter, Recipient extends ICharacter>(
+  this: IItem,
+  c: Actor,
+  cc: Recipient,
+) => void;
+
 /** The interactions an item can be the subject of. */
 export const ItemAction = {
   PickUp: "pickUp",
@@ -85,6 +103,23 @@ export type ItemActions = {
   [ItemAction.Destroy]: () => ItemComponentType[] | null;
   /** Optional, non-consuming inspect behaviour run by {@link ICharacter.read}. */
   [ItemAction.Read]?: ItemActionEvent;
+};
+
+/**
+ * The action behaviors supplied to the {@link Item} constructor. Same shape as
+ * {@link ItemActions}, except each behavior runs with `this` bound to the item
+ * (see {@link BoundActionEvent}). The constructor wraps these into the `this`-less
+ * {@link ItemActions} exposed on {@link Item.actions}.
+ */
+export type ItemActionsInput = {
+  [ItemAction.PickUp]: BoundActionEvent;
+  [ItemAction.Equip]: BoundActionEvent;
+  [ItemAction.Unequip]: BoundActionEvent;
+  [ItemAction.Transfer]: BoundSharedEvent;
+  [ItemAction.Use]: BoundActionEvent;
+  [ItemAction.Destroy]: (this: IItem) => ItemComponentType[] | null;
+  /** Optional, non-consuming inspect behaviour run by {@link ICharacter.read}. */
+  [ItemAction.Read]?: BoundActionEvent;
 };
 
 /**
@@ -311,8 +346,9 @@ export interface ItemOptions {
   descriptor: ItemDescriptor;
   /** Initial mutable flags (equippable, equipped, …). */
   properties: ItemProperties;
-  /** Core behaviour for each interaction; wrapped on construction. */
-  actions: ItemActions;
+  /** Core behaviour for each interaction; wrapped on construction. Each behavior
+   *  runs with `this` bound to the item (see {@link ItemActionsInput}). */
+  actions: ItemActionsInput;
   /** Observer hooks fired after the matching action runs. */
   events: ItemEvents;
 }
@@ -352,8 +388,8 @@ export class Item implements IItem {
   // The raw equip/unequip behavior and events, captured from the constructor so
   // the class-level {@link EQUIP}/{@link UNEQUIP} methods can reach them (unlike
   // the other action wrappers, which close over the constructor params inline).
-  #equipBehavior: ItemActionEvent;
-  #unequipBehavior: ItemActionEvent;
+  #equipBehavior: BoundActionEvent;
+  #unequipBehavior: BoundActionEvent;
   #onEquip?: ItemActionEvent;
   #onUnequip?: ItemActionEvent;
 
@@ -437,13 +473,13 @@ export class Item implements IItem {
   // Character.equip can route a slotted item through validation and finish here
   // without looping back into the action wrapper.
   [EQUIP](holder: ICharacter) {
-    this.#equipBehavior(holder);
+    this.#equipBehavior.call(this, holder);
     this.properties.equipped = true;
     this.#onEquip?.(holder);
   }
 
   [UNEQUIP](holder: ICharacter) {
-    this.#unequipBehavior(holder);
+    this.#unequipBehavior.call(this, holder);
     this.properties.equipped = false;
     this.#onUnequip?.(holder);
   }
@@ -523,7 +559,7 @@ export class Item implements IItem {
 
     this.actions = {
       [ItemAction.PickUp]: (c) => {
-        actions[ItemAction.PickUp](c);
+        actions[ItemAction.PickUp].call(this, c);
         events.onPickUp(c);
       },
       // A slotted item routes through Character.equip so slot capacity is
@@ -558,7 +594,7 @@ export class Item implements IItem {
             "Attempted to transfer an item, but the recipient has no free inventory slots",
           );
         }
-        actions[ItemAction.Transfer](holder, cc);
+        actions[ItemAction.Transfer].call(this, holder, cc);
         events.onTransfer?.(holder, cc);
         holder.removeFromInventory(this);
         // receiveItem deposits the item into the recipient's inventory and
@@ -573,7 +609,7 @@ export class Item implements IItem {
         if (holder.status.includes(Status.KO)) {
           throw new ProceduralViolation("Cannot use items while KO'd.");
         }
-        actions[ItemAction.Use](holder);
+        actions[ItemAction.Use].call(this, holder);
         events.onUse?.(holder);
         if (this.grantsImmunity) {
           holder[GRANT_IMMUNITY](
@@ -591,7 +627,7 @@ export class Item implements IItem {
       [ItemAction.Read]: () => {
         const holder = this.#characterHolder();
         if (!holder) return;
-        actions[ItemAction.Read]?.(holder);
+        actions[ItemAction.Read]?.call(this, holder);
         events.onRead?.(holder);
       },
       [ItemAction.Destroy]: () => {
@@ -599,7 +635,7 @@ export class Item implements IItem {
         if (!holder) return null;
         // A non-destroyable item (e.g. a key) cannot be broken down.
         if (!this.properties.destroyable) return null;
-        const components = actions[ItemAction.Destroy]();
+        const components = actions[ItemAction.Destroy].call(this);
         // Scrapping returns the item's makeup to the party pool; `recipe` is the
         // single source of truth for both scrap-yield and (later) craft-cost.
         holder.campaign[DEPOSIT_MATERIALS](this.recipe);

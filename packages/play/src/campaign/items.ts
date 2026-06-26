@@ -1,40 +1,50 @@
-import { Item, ItemType, createKey, type ItemDescriptor } from "wickedways/lib/inventory";
+import { Item, ItemType, createKey } from "wickedways/lib/inventory";
 import { StatType } from "wickedways/lib/character/stats";
+import { ADJUST_STAT } from "wickedways/lib/mechanics/symbols";
 import { SlotKind } from "wickedways/lib/equipment";
 import { Items, Keys } from "./ids.js";
 import { JOURNAL_LORE } from "./content.js";
 
 const noop = () => {};
 
-export function makeItem(
-  descriptor: ItemDescriptor,
-  props: { equippable?: boolean; usable?: boolean } = {},
-): Item {
-  return new Item({
-    descriptor,
-    properties: { equippable: props.equippable ?? false, equipped: false, destroyable: true, usable: props.usable ?? false },
+export const lantern = (): Item =>
+  new Item({
+    descriptor: { behaviorKey: Items.Lantern, name: "Brass Lantern", type: ItemType.Weapon, recipe: { item: 1 }, modifier: 0, stat: StatType.Health, slot: SlotKind.Hand, emitsLight: true },
+    properties: { equippable: true, equipped: false, destroyable: true, usable: false },
     actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
     events: { onPickUp: noop },
   });
-}
-
-export const lantern = (): Item =>
-  makeItem(
-    { behaviorKey: Items.Lantern, name: "Brass Lantern", type: ItemType.Weapon, recipe: { item: 1 }, modifier: 0, stat: StatType.Health, slot: SlotKind.Hand, emitsLight: true },
-    { equippable: true },
-  );
 
 export const journal = (): Item =>
-  makeItem({ behaviorKey: Items.Journal, name: "Water-Stained Journal", type: ItemType.Consumable, recipe: { item: 1 }, modifier: 0, stat: StatType.Health, lore: JOURNAL_LORE });
+  new Item({
+    descriptor: { behaviorKey: Items.Journal, name: "Water-Stained Journal", type: ItemType.Consumable, recipe: { item: 1 }, modifier: 0, stat: StatType.Health, lore: JOURNAL_LORE },
+    properties: { equippable: false, equipped: false, destroyable: true, usable: false },
+    actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    events: { onPickUp: noop },
+  });
 
 export const poker = (): Item =>
-  makeItem(
-    { behaviorKey: Items.Poker, name: "Iron Fire-Poker", type: ItemType.Weapon, recipe: { metal: 1 }, modifier: 5, stat: StatType.Health, slot: SlotKind.Hand, maxDurability: 8 },
-    { equippable: true },
-  );
+  new Item({
+    descriptor: { behaviorKey: Items.Poker, name: "Iron Fire-Poker", type: ItemType.Weapon, recipe: { metal: 1 }, modifier: 5, stat: StatType.Health, slot: SlotKind.Hand, maxDurability: 8 },
+    properties: { equippable: true, equipped: false, destroyable: true, usable: false },
+    actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
+    events: { onPickUp: noop },
+  });
 
 export const laudanum = (): Item =>
-  makeItem({ behaviorKey: Items.Laudanum, name: "Vial of Laudanum", type: ItemType.Consumable, recipe: { healing: 1 }, modifier: 6, stat: StatType.Sanity }, { usable: true });
+  new Item({
+    descriptor: { behaviorKey: Items.Laudanum, name: "Vial of Laudanum", type: ItemType.Consumable, recipe: { healing: 1 }, modifier: 6, stat: StatType.Sanity },
+    properties: { equippable: false, equipped: false, destroyable: true, usable: true },
+    actions: {
+      pickUp: noop, equip: noop, unequip: noop, transfer: noop,
+      // The engine consumes a usable item but never auto-applies its modifier/stat,
+      // so the heal lives here. `this` is the vial, so the descriptor stays the
+      // single source of truth; the stat seam floors at 0 (no upper cap).
+      use(holder) { holder[ADJUST_STAT](this.stat, this.modifier); },
+      destroy: () => null,
+    },
+    events: { onPickUp: noop },
+  });
 
 export const brassKey = (): Item => createKey({ name: "Brass Key", keyCode: "brass", consumeOnUse: false });
 export const ironKey = (): Item => createKey({ name: "Iron Key", keyCode: "iron", consumeOnUse: false });
