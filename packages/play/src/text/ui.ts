@@ -3,10 +3,13 @@ import { parse } from "./parser.js";
 import { Narrator } from "./narrator.js";
 import { AudioManager } from "../audio/audio-manager.js";
 import { linkNouns } from "./link-nouns.js";
+import { MapModel } from "../core/map-model.js";
+import { layoutMap, renderMapSvg } from "./map-view.js";
 
 export function mountTerminal(root: HTMLElement, session: GameSession, meta: { title: string; intro: string }): void {
   let narrator = new Narrator();
   const audio = new AudioManager();
+  const mapModel = new MapModel();
   root.innerHTML = `
     <div class="backdrop">
       <div class="monitor">
@@ -226,6 +229,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     hud.appendChild(exitsLine);
     // Drive the ambient drone from the current Sanity each turn.
     audio.update(vm.status.sanity);
+    mapModel.observe(vm);
   };
 
   /**
@@ -285,6 +289,35 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     }
 
     transcript.scrollTop = transcript.scrollHeight;
+  };
+
+  let mapOverlay: HTMLDivElement | null = null;
+  const closeMap = () => {
+    if (!mapOverlay) return;
+    mapOverlay.remove();
+    mapOverlay = null;
+    if (gameStarted) input.focus();
+  };
+  const openMap = () => {
+    if (mapOverlay) return; // idempotent
+    const screen = root.querySelector<HTMLDivElement>(".screen")!;
+    mapOverlay = document.createElement("div");
+    mapOverlay.className = "map-overlay";
+    const frame = document.createElement("div");
+    frame.className = "map-frame";
+    frame.appendChild(renderMapSvg(layoutMap(mapModel)));
+    const legend = document.createElement("div");
+    legend.className = "map-legend";
+    legend.textContent = "─ open   ╌ locked   ? unexplored   ✕ remains   ▣ here   ·   any key to close";
+    mapOverlay.append(frame, legend);
+    screen.appendChild(mapOverlay);
+    // Any keypress dismisses; capture so it never reaches #cmd.
+    const onKey = (ev: KeyboardEvent) => {
+      ev.preventDefault();
+      window.removeEventListener("keydown", onKey, true);
+      closeMap();
+    };
+    window.addEventListener("keydown", onKey, true);
   };
 
   const startGame = () => {
@@ -348,6 +381,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
           restartPending = false;
           session.restart();
           narrator = new Narrator();      // reset narrator state for a clean restart
+          mapModel.reset();
           transcript.innerHTML = "";
           printRoom(session.view());
           refresh();
@@ -376,8 +410,13 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
           input.focus();
           return;
         }
-        if (res.meta === "save") { await session.save("slot1"); print(["Saved."]); }
-        else if (res.meta === "restore") { const ok = await session.restore("slot1"); print([ok ? "Restored." : "No save found."]); if (ok) printRoom(session.view()); }
+        if (res.meta === "map") { openMap(); return; }
+        if (res.meta === "save") { await session.save("slot1", { map: mapModel.serialize() }); print(["Saved."]); }
+        else if (res.meta === "restore") {
+          const { ok, surface } = await session.restore("slot1");
+          print([ok ? "Restored." : "No save found."]);
+          if (ok) { if (surface?.map) mapModel.hydrate(surface.map); printRoom(session.view()); }
+        }
         else { const ok = session.undo(); print([ok ? "The last moment unwinds." : "Nothing to undo."]); if (ok) printRoom(session.view()); }
         refresh(); return;
       }
@@ -391,7 +430,10 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
         const stepCues = result.cues.filter((c) => c.kind !== "resolution");
         for (const cue of stepCues) audio.playCue(cue);
         print([...narrator.renderAction(res.intent, before, after), ...narrator.renderCues(stepCues)]);
-        if (res.intent.kind === "move") printRoom(after);
+        if (res.intent.kind === "move") {
+          mapModel.recordMove(before.room.id, res.intent.dir, after.room.id);
+          printRoom(after);
+        }
         // Mob reactions print after the room render on a move, so "you enter,
         // you see the Wraith, the Wraith strikes" reads in the right order.
         const mobAttacks = result.mobAttacks ?? [];
@@ -743,6 +785,27 @@ function applyStyles(root: HTMLElement): void {
       .crt-overlay { animation: none; }
       .crt-sweep { animation: none; display: none; }
       .enter-btn { animation: none; } /* keep the static bloom, drop the pulse */
-    }`;
+    }
+
+    /* Map overlay — inside the CRT, beneath the scanline/glow overlays (z 5–6). */
+    .map-overlay {
+      position: absolute; inset: 0; z-index: 3;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 0.6em; padding: 1rem;
+      background: rgba(10, 10, 8, 0.92);
+    }
+    .map-frame { max-width: 100%; max-height: 80%; overflow: auto; }
+    .map-svg { max-width: 100%; height: auto; }
+    .map-svg .map-box { fill: var(--color-chip-bg); stroke: var(--color-muted); stroke-width: 1.5; }
+    .map-svg .map-box.current { stroke: var(--color-accent); stroke-width: 2.5;
+      filter: drop-shadow(0 0 6px rgba(217, 194, 122, 0.7)); }
+    .map-svg .map-label { fill: var(--color-text); font: 0.5em var(--font-body); }
+    .map-svg .map-link { stroke: var(--color-muted); stroke-width: 2; }
+    .map-svg .map-link.locked { stroke: var(--color-muted); stroke-dasharray: 4 4; }
+    .map-svg .map-stub { stroke: var(--color-border); stroke-width: 2; }
+    .map-svg .map-stub.locked { stroke: var(--color-border); stroke-dasharray: 4 4; }
+    .map-svg .map-q { fill: var(--color-muted); font: 0.5em var(--font-body); }
+    .map-svg .map-remains { fill: var(--color-error); font: 0.5em var(--font-body); }
+    .map-legend { font-family: var(--font-body); font-size: 0.5em; color: var(--color-muted); text-align: center; }`;
   root.appendChild(style);
 }
