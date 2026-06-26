@@ -73,13 +73,16 @@ export class AmbientBed {
     const ctx = this.#ctx;
     if (ctx === null) return;
     const now = ctx.currentTime;
-    const end = now + AmbientBed.#FADE_S;
-    // Fade out, then stop the source nodes after the fade.
-    if (this.#gain !== null) this.#gain.gain.linearRampToValueAtTime(0.0001, end);
+    // Tear down synchronously and fully: AudioManager suspends the context right
+    // after this, so a scheduled fade-out would be cut off mid-ramp anyway.
+    // Disconnecting here keeps the graph from accumulating detached filter/gain
+    // nodes across toggle cycles. (The fade-IN on start still smooths enabling.)
     for (const n of this.#nodes) {
-      try { n.stop(end); } catch { /* already stopped */ }
+      try { n.stop(now); } catch { /* already stopped */ }
+      n.disconnect();
     }
-    // Detach now (running → false); the fading nodes release to GC once the scheduled stop fires.
+    this.#filter?.disconnect();
+    this.#gain?.disconnect();
     this.#nodes = [];
     this.#osc2 = null;
     this.#filter = null;
