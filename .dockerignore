@@ -1,0 +1,16 @@
+# Keep the Docker build context small and reproducible. Anything needed to
+# install + build the workspace (package.json files, lockfile, source, configs)
+# is NOT listed here; everything generated or host-local is.
+.git
+.github
+**/node_modules
+**/dist
+coverage
+**/coverage
+test-results
+playwright-report
+docs-site/.vitepress/cache
+docs-site/.vitepress/dist
+landing/vendor
+**/*.log
+.DS_Store
