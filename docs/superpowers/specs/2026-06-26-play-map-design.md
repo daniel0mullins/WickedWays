@@ -26,7 +26,13 @@ dismisses it.
 - A move intent carries its `dir`; in `handle()` the before/after `view()` give the
   source and destination room ids. So every traversal yields a `(fromId, dir, toId)`
   edge — the basis for placing rooms on a grid.
-- The map is derived purely from directions; **no engine or session changes.**
+- The map is derived purely from directions; **no engine changes** (the engine is
+  `wickedways/lib`). The map persists with save/restore by riding along in the play
+  package's own save envelope — see Persistence.
+- Save/restore today: `session.save(slot)` serializes the campaign and calls
+  `SaveStore.save(slot, snapshot, savedAt)`; `LocalStorageSaveStore` wraps it in an
+  `Envelope { savedAt, snapshot }` under one localStorage key. `SaveStore` and
+  `GameSession` are **play-package** code, so they may carry play-surface state.
 - Test environment is **node** (no DOM/SVG) → pure layout logic is unit-tested; the
   SVG-DOM emitter and overlay are browser-only (manual / optional e2e).
 - CRT overlays are z-index 5–6, game content 1–2; the map overlay sits at ~3–4 so
@@ -43,6 +49,8 @@ Two new units plus UI wiring, mirroring the audio feature's pure-core / thin-DOM
 | `text/ui.ts` (mod) | `map` verb handling, the in-CRT overlay element, any-key dismiss, and per-turn `MapModel` updates. | e2e / manual |
 | `text/parser.ts` + `parser.test.ts` (mod) | the `map` verb (`meta: "map"`). | unit |
 | `text/narrator.ts` (mod) | add `map` to the `help` line. | (covered) |
+| `core/savestore.ts` (mod) | save envelope carries an optional play-surface `surface` payload (`{ map?: MapSnapshot }`) beside the campaign snapshot. | unit |
+| `core/session.ts` (mod) | `save(slot, surface?)` passes the payload through; `restore` returns it for the UI to hydrate. Treats it opaquely. | unit |
 
 ### `MapModel`
 
@@ -71,6 +79,9 @@ Updates (fed from `ui.ts` each turn):
 - Conflict rule: a room's coord is assigned once (first-placement wins); a later edge
   implying a different coord is still drawn as a connection but does not move the box.
   (The Hollow House is grid-consistent; this only guards pathological authoring.)
+- `serialize(): MapSnapshot` / `hydrate(snap)` — round-trip all state (rooms with
+  coords + remains, edges, stubs, currentId) as plain JSON. `reset()` clears it (used
+  on restart). `MapSnapshot` is a plain-data type (numbers/strings/booleans only).
 
 Fog-of-war specifics:
 - `ExitView.toName` is available but **deliberately unused** for stubs — unexplored
@@ -109,6 +120,29 @@ Fog-of-war specifics:
   `preventDefault`s that key so it doesn't type into `#cmd`, and refocuses `#cmd`.
   Opening twice is harmless (idempotent). The map is only available once the game has
   started.
+- **Save:** the `save` meta branch calls `session.save(slot, { map: mapModel.serialize() })`.
+- **Restore:** the `restore` branch reads the returned `surface` and calls
+  `mapModel.hydrate(surface.map)` (or leaves the map as-is if a legacy save has no
+  payload), so the restored game shows the exploration as it was when saved.
+- **Restart:** alongside the fresh `Narrator`, `mapModel.reset()` clears the map so the
+  new playthrough re-explores from blank.
+
+### Persistence
+
+The save envelope carries the map beside the campaign snapshot, so one slot is one
+complete save:
+- `SaveStore.save(slot, snapshot, savedAt, surface?)` and
+  `load(slot): { snapshot; surface? } | null`; `Envelope` gains `surface?: SurfaceState`.
+  `SurfaceState = { map?: MapSnapshot }` (extensible for future play-surface state).
+- `GameSession.save(slot, surface?: SurfaceState)` forwards the payload;
+  `restore(slot): Promise<{ ok: boolean; surface?: SurfaceState }>` returns it (the
+  session treats `surface` as opaque — it never reads the map).
+- The play surface (`ui.ts`) is the only place that builds/consumes the `map` payload.
+- **Backward compatibility:** a legacy save with no `surface` deserializes to
+  `surface: undefined`; restore then leaves the live map untouched. New saves always
+  include it.
+- `undo` needs no map handling: fog-of-war never un-reveals, and the post-undo
+  `refresh()→observe` moves the you-are-here marker to the reverted room.
 
 ### Data flow
 
@@ -117,6 +151,9 @@ each turn:  handle(move) → mapModel.recordMove(from, dir, to)
             refresh()    → mapModel.observe(view)              [rooms, remains, stubs]
 `map` verb: handle → openMap() → layoutMap(mapModel) → renderMapSvg → .map-overlay
 any keydown while open → close overlay, consume key, refocus #cmd
+save:       handle → session.save(slot, { map: mapModel.serialize() })
+restore:    handle → { ok, surface } = session.restore(slot) → mapModel.hydrate(surface.map)
+restart:    handle → mapModel.reset()
 ```
 
 ## Error handling / edge cases
@@ -138,6 +175,12 @@ any keydown while open → close overlay, consume key, refocus #cmd
   connections are links (locked flagged), unexplored exits are stubs, the current room
   is marked, and remains boxes are flagged; assert the computed `width`/`height`.
 - `parser.test.ts` — `map` → `{ kind: "meta", meta: "map" }`.
+- `map-model.test.ts` — `serialize` → `hydrate` round-trips an explored map to an
+  identical model; `reset()` clears it.
+- `savestore.test.ts` — the envelope round-trips the `surface` payload; a legacy
+  envelope without `surface` loads as `surface: undefined`.
+- `session.test.ts` — `save(slot, surface)` then `restore(slot)` returns the same
+  `surface`; `restore` of a payload-less save returns `surface: undefined`.
 - Manual / optional Playwright e2e: type `map`, assert `.map-overlay` appears, a
   keypress dismisses it.
 - `pnpm checks` green.
@@ -152,5 +195,5 @@ TSDoc, per the project's living-documentation convention.
 - Exposing the full house graph / revealing unexplored rooms.
 - A persistent on-screen minimap or a bezel button (verb-only for now).
 - Showing live (non-defeated) mobs or loot on the map — only mob *remains*.
-- Persisting the explored map across reloads (it rebuilds as you move; a fresh load
-  starts blank, consistent with a fresh `Narrator`).
+- Persisting the map to a *bare page reload* with no save (it rebuilds as you move).
+  Explicit save/restore **does** persist the map (see Persistence).
