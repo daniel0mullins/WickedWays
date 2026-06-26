@@ -100,7 +100,7 @@ query.
 The play surface generates all sound via **procedural Web Audio synthesis** — no shipped audio
 assets, no licensing or bundle-size concerns. The approach fits the retro-CRT aesthetic and keeps
 the mapping logic purely deterministic (separated from the Web Audio backend so it is
-unit-testable under Vitest/jsdom, which has no Web Audio API).
+unit-testable under Vitest's `node` environment, which has no Web Audio API).
 
 ### Four SFX categories
 
@@ -108,7 +108,7 @@ unit-testable under Vitest/jsdom, which has no Web Audio API).
 |----------|---------|
 | **Combat (strikes & death)** | `action` cue with `attack`/`takeDamage` kind; `MobAttack` from `session.runMobReactions`; a `resolution` win-sting / lose-fall on campaign end. |
 | **Mob encounter** | `encounter` cue (first time the player meets a given mob). |
-| **Item use / pickup** | `action` cue with `pickUp`/`drop` kind; intent-level `use`/`take`/`equip` blips. |
+| **Item use / pickup** | `action` cue with `pickUp`/`drop` kind — a soft confirming blip via `playCue` (taking an item emits `pickUp`, dropping emits `drop`). |
 | **Movement, lights & UI** | `action` cue with `move` kind (soft whoosh); `visibility` cue (light click); rejected command or parser error (short buzz). |
 
 ### Sanity-reactive ambient drone
