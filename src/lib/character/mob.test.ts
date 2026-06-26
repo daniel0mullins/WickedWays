@@ -41,9 +41,10 @@ function makeMob(
     rng?: () => number;
     campaign?: Campaign;
     lightAverse?: boolean;
+    naturalAttack?: { stat: StatType; power: number };
   } = {},
 ) {
-  return new Mob({ campaign: opts.campaign ?? makeCampaign(), name: "Goblin", stats: makeStats(opts.stats), inventorySlots: 2, actionsPerRound: opts.actionsPerRound ?? 2, drops: opts.drops ?? [], materialDrops: opts.materialDrops, lightAverse: opts.lightAverse, rng: opts.rng });
+  return new Mob({ campaign: opts.campaign ?? makeCampaign(), name: "Goblin", stats: makeStats(opts.stats), inventorySlots: 2, actionsPerRound: opts.actionsPerRound ?? 2, drops: opts.drops ?? [], materialDrops: opts.materialDrops, lightAverse: opts.lightAverse, naturalAttack: opts.naturalAttack, rng: opts.rng });
 }
 
 describe("Mob", () => {
@@ -69,6 +70,16 @@ describe("Mob", () => {
 
       expect(defender.takeDamage).toHaveBeenCalledTimes(1);
       expect(defender.takeDamage).toHaveBeenCalledWith(1, StatType.Health);
+    });
+
+    it("strikes with its naturalAttack stat and power when one is configured", () => {
+      const mob = makeMob({ naturalAttack: { stat: StatType.Sanity, power: 3 } });
+      const defender = makeDefender();
+
+      mob.attack(defender);
+
+      expect(defender.takeDamage).toHaveBeenCalledTimes(1);
+      expect(defender.takeDamage).toHaveBeenCalledWith(3, StatType.Sanity);
     });
 
     it("a Panicked mob's attack throws", () => {

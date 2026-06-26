@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Narrator } from "./narrator.js";
 import { Directions } from "wickedways/lib/room";
+import { StatType } from "wickedways/lib/character/stats";
 import type { ViewModel } from "../core/viewmodel.js";
 import type { PresentationCue } from "wickedways/lib/presentation";
 
@@ -183,6 +184,24 @@ describe("Narrator.renderExamine", () => {
     const n = new Narrator();
     const item = { id: "j", name: "Water-Stained Journal", aliases: [], kind: "item" as const };
     expect(n.renderExamine(item, vm()).join(" ")).toContain("the Water-Stained Journal.");
+  });
+});
+
+describe("Narrator.renderMobAttacks", () => {
+  it("names the stat lost, with stat-specific flavor", () => {
+    const n = new Narrator();
+    const lines = n.renderMobAttacks([
+      { name: "Wraith", stat: StatType.Sanity, amount: 3 },
+      { name: "Revenant", stat: StatType.Health, amount: 2 },
+    ]);
+    expect(lines[0]).toContain("Wraith");
+    expect(lines[0]).toContain("3 Sanity");
+    expect(lines[0]!.toLowerCase()).toContain("mind");
+    expect(lines[1]).toContain("2 Health");
+  });
+
+  it("renders nothing for no attacks", () => {
+    expect(new Narrator().renderMobAttacks([])).toEqual([]);
   });
 });
 

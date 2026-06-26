@@ -344,6 +344,10 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
         const after = session.view();
         print([...narrator.renderAction(res.intent, before, after), ...narrator.renderCues(result.cues)]);
         if (res.intent.kind === "move") printRoom(after);
+        // Mob reactions print last — after the room render on a move, so "you enter,
+        // you see the Wraith, the Wraith strikes" reads in the right order.
+        const mobLines = narrator.renderMobAttacks(result.mobAttacks ?? []);
+        if (mobLines.length) print(mobLines);
         refresh();
         if (after.finished) print(["", "— THE END —"], "end");
         return;

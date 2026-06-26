@@ -1,4 +1,5 @@
 import type { Stats } from "../character/stats";
+import type { NaturalAttack } from "../character/combatant";
 import type { Status } from "../status";
 import type { Direction } from "../room";
 import type { MaterialMap } from "../inventory";
@@ -53,6 +54,8 @@ export interface MobDef {
   baseEscapeChance?: number;
   materialDrops?: MaterialMap;
   lightAverse?: boolean;
+  /** The mob's unarmed strike (stat + power). Defaults to a 1-point Health jab. */
+  naturalAttack?: NaturalAttack;
 }
 
 /** Defines a loot container placed in a room. */

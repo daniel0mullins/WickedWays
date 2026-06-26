@@ -4,6 +4,8 @@ import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { deserializeCampaign } from "wickedways/lib/serialization/deserializer";
 import { ProceduralViolation } from "wickedways/lib/util";
 import { Status } from "wickedways/lib/status";
+import { Mob } from "wickedways/lib/character/mob";
+import { StatType } from "wickedways/lib/character/stats";
 import type { Campaign } from "wickedways/lib/campaign";
 import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
@@ -16,7 +18,10 @@ import { isTimeAdvancing, type Intent } from "./intent.js";
 import { view, type ViewModel } from "./viewmodel.js";
 import type { SaveStore } from "./savestore.js";
 
-export interface ExecuteResult { cues: PresentationCue[]; error?: string; }
+/** A single mob-on-player strike, surfaced for typed combat feedback. */
+export interface MobAttack { name: string; stat: StatType; amount: number; }
+
+export interface ExecuteResult { cues: PresentationCue[]; error?: string; mobAttacks?: MobAttack[]; }
 
 export interface SessionOptions {
   builder: TemplateBuilder<string, string>;
@@ -103,15 +108,56 @@ export class GameSession {
     try {
       if (advances) this.campaign.activeCharacter.startTurn();
       this.dispatch(intent);
+      // Solo GM: after a time-advancing action, live mobs sharing the player's
+      // room strike back. Runs before nextPlayer so a fatal blow is caught by the
+      // round's outcome check, and within the `pre` snapshot so undo reverts it too.
+      const mobAttacks = advances ? this.runMobReactions() : [];
       if (advances) this.campaign.nextPlayer();
       if (advances && pre !== null) this.undoSnapshot = pre;
-      return { cues: [...this.cueBuffer] };
+      return { cues: [...this.cueBuffer], mobAttacks };
     } catch (e) {
       if (e instanceof ProceduralViolation) {
         return { cues: [...this.cueBuffer], error: e.message };
       }
       throw e;
     }
+  }
+
+  /**
+   * Each live (non-KO) mob in the active player's current room attacks the player
+   * (the "aggro while sharing its room" rule). Returns the typed damage each dealt,
+   * derived from the player's effective-stat deltas. A mob that can't act (afflicted)
+   * simply doesn't strike; a downed player is not piled on.
+   */
+  private runMobReactions(): MobAttack[] {
+    const pc = this.campaign.activeCharacter;
+    const room = pc.currentRoom;
+    const attacks: MobAttack[] = [];
+    if (!room || pc.status.includes(Status.KO)) return attacks;
+
+    const stats = (): Record<StatType, number> => ({
+      [StatType.Health]: pc.effectiveStat(StatType.Health),
+      [StatType.Sanity]: pc.effectiveStat(StatType.Sanity),
+      [StatType.Energy]: pc.effectiveStat(StatType.Energy),
+    });
+
+    for (const occ of [...room.occupants]) {
+      if (occ.id === pc.id || !(occ instanceof Mob) || occ.status.includes(Status.KO)) continue;
+      const before = stats();
+      try {
+        occ.attack(pc);
+      } catch (e) {
+        if (e instanceof ProceduralViolation) continue; // afflicted/blocked mob can't strike
+        throw e;
+      }
+      const after = stats();
+      for (const stat of [StatType.Health, StatType.Sanity, StatType.Energy]) {
+        const dealt = before[stat] - after[stat];
+        if (dealt > 0) attacks.push({ name: occ.name, stat, amount: dealt });
+      }
+      if (pc.status.includes(Status.KO)) break; // don't pile on a downed player
+    }
+    return attacks;
   }
 
   private dispatch(intent: Intent): void {

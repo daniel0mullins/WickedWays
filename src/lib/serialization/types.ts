@@ -1,4 +1,4 @@
-import type { Stats } from "../character/stats";
+import type { Stats, StatType } from "../character/stats";
 import type { Status } from "../status";
 import type { MaterialMap } from "../inventory";
 import type { ActionHistoryEntry } from "../character/history";
@@ -93,6 +93,7 @@ export interface CharacterSnapshot {
   baseEscapeChance?: number;
   materialDrops?: MaterialMap;
   lightAverse?: boolean;
+  naturalAttack?: { stat: StatType; power: number }; // mob-only
   npcBehaviorKey?: string; // npc-only: registry key its dialogue re-binds from
 }
 

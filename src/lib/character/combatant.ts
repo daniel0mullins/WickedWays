@@ -3,6 +3,15 @@ import { typedEntries } from "../util";
 import { Character, CharacterOptions, ICharacter } from "./character";
 import { StatType } from "./stats";
 
+/** A combatant's innate strike when wielding no weapon: which stat it hits and how hard. */
+export interface NaturalAttack {
+  stat: StatType;
+  power: number;
+}
+
+/** The default natural attack: a 1-point unarmed strike against Health. */
+export const DEFAULT_NATURAL_ATTACK: NaturalAttack = { stat: StatType.Health, power: 1 };
+
 /** A {@link ICharacter} that can attack other characters. */
 export interface ICombatant extends ICharacter {
   /** Attacks `c`, dealing weapon- or unarmed-based damage. */
@@ -18,6 +27,15 @@ export abstract class Combatant extends Character implements ICombatant {
   constructor(opts: CharacterOptions) {
     super(opts);
     this.isActionMap.set(this.attack, true);
+  }
+
+  /**
+   * The combatant's unarmed strike — which stat it hits and how hard, used when
+   * no weapon is equipped. Defaults to a 1-point Health jab; {@link Mob} overrides
+   * it so resident horrors can claw Sanity, batter Health, etc.
+   */
+  protected get naturalAttack(): NaturalAttack {
+    return DEFAULT_NATURAL_ATTACK;
   }
 
   /**
@@ -37,16 +55,21 @@ export abstract class Combatant extends Character implements ICombatant {
     );
 
     const attackMatrix: Record<StatType, number> = {
-      // If there are no usable weapons, do an unarmed attack against defender health
-      [StatType.Health]: weapons.length === 0 ? 1 : 0,
+      [StatType.Health]: 0,
       [StatType.Energy]: 0,
       [StatType.Sanity]: 0,
     };
 
-    // Fill up the attack matrix with a single loop
-    weapons.forEach((weapon) => {
-      attackMatrix[weapon.stat] += weapon.modifier;
-    });
+    if (weapons.length === 0) {
+      // No weapon: fall back to the combatant's natural attack (default: 1 Health).
+      const natural = this.naturalAttack;
+      attackMatrix[natural.stat] += natural.power;
+    } else {
+      // Each equipped weapon adds its modifier to the stat it targets.
+      weapons.forEach((weapon) => {
+        attackMatrix[weapon.stat] += weapon.modifier;
+      });
+    }
 
     // Inflict the damage for each stat type to the defender
     for (const [stat, strength] of typedEntries(attackMatrix)) {
