@@ -11,7 +11,7 @@ import { roll } from "../dice";
 import { clamp, typedEntries } from "../util";
 import { RECORD_ENCOUNTER } from "../codex";
 import type { ICharacter } from "./character";
-import { Combatant, ICombatant } from "./combatant";
+import { Combatant, DEFAULT_NATURAL_ATTACK, ICombatant, type NaturalAttack } from "./combatant";
 import { Stats, StatType } from "./stats";
 import type { AfflictionConfig } from "./afflictions";
 import type { Presentation } from "../presentation";
@@ -49,6 +49,8 @@ export interface MobOptions {
   materialDrops?: MaterialMap;
   /** When true, the mob sees in the dark but takes amplified damage in lit rooms. */
   lightAverse?: boolean;
+  /** The mob's unarmed strike (stat + power). Defaults to a 1-point Health jab. */
+  naturalAttack?: NaturalAttack;
   /** Injected randomness for deterministic tests. */
   rng?: () => number;
   /** Overrides the default affliction thresholds/roll config. */
@@ -67,6 +69,7 @@ export class Mob extends Combatant implements IMob {
   #baseEscapeChance: number;
   #materialDrops: MaterialMap;
   #lightAverse: boolean;
+  #naturalAttack: NaturalAttack;
 
   /** See {@link MobOptions} for parameter details. */
   constructor(opts: MobOptions) {
@@ -86,6 +89,7 @@ export class Mob extends Combatant implements IMob {
     this.#baseEscapeChance = opts.baseEscapeChance ?? 50;
     this.#materialDrops = opts.materialDrops ?? {};
     this.#lightAverse = opts.lightAverse ?? false;
+    this.#naturalAttack = opts.naturalAttack ?? { ...DEFAULT_NATURAL_ATTACK };
     // Load drops into the inventory so "what the mob carries" IS its loot.
     for (const drop of drops) {
       this.receiveItem(drop);
@@ -104,6 +108,11 @@ export class Mob extends Combatant implements IMob {
     return this.#lightAverse;
   }
 
+  /** The mob's configured unarmed strike (defaults to a 1-point Health jab). */
+  protected override get naturalAttack(): NaturalAttack {
+    return this.#naturalAttack;
+  }
+
   /** Sets the mob's origin. Engine-internal seam. */
   [SET_ORIGIN](origin: MobOrigin) {
     this.#origin = origin;
@@ -120,6 +129,7 @@ export class Mob extends Combatant implements IMob {
     snap.baseEscapeChance = this.#baseEscapeChance;
     snap.materialDrops = { ...this.#materialDrops };
     snap.lightAverse = this.#lightAverse;
+    snap.naturalAttack = { ...this.#naturalAttack };
   }
 
   protected override hydrateExtra(data: CharacterSnapshot, _ctx: HydrateContext): void {

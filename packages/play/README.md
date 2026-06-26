@@ -64,6 +64,17 @@ The play surface treats them as gone: they drop out of `You see …`, and re-att
 is rejected (`"The Revenant is already dead."`). Their dropped loot (`"<name>'s remains"`)
 still appears in the HUD to collect.
 
+**Mob aggression.** The session acts as the *solo GM*: after any time-advancing action, each
+live (non-KO) mob in the player's current room strikes back via the engine's `mob.attack(pc)`
+(`session.runMobReactions`). Entering a mob's room costs you; fleeing out that turn is safe;
+the killing blow draws no retaliation. The damage and its **stat** are read from the player's
+effective-stat deltas and surfaced as typed feedback — *"The Wraith claws at your mind — you
+lose 3 Sanity."* In the Hollow House, both mobs attack **Sanity** (the haunt preys on the
+mind); the Heir's Energy is tuned to 5 so the Sanity-damage multiplier is 1.0 and a mob's
+`power` lands as whole points (see the mitigation note in the engine README — Health attacks
+can't land on the Sanity-16 Heir, so the threat is wholly a sanity drain). A mob can kill the
+player: a fatal blow drops Sanity to 0 and the round's outcome check ends the game.
+
 The persistent bottom **HUD** (`Here:` loot, `Carrying:` inventory, `Exits:`) is redrawn from
 `session.view()` every turn, so inventory and location state are always visible without a
 query.

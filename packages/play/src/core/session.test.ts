@@ -139,6 +139,27 @@ describe("GameSession", () => {
     expect(s.view().occupants.find((o) => o.id === wraith.id)!.defeated).toBe(true);
   });
 
+  it("a live mob in the room strikes back after a time-advancing action, hitting its stat", () => {
+    const s = newSession();
+    const wraith = reachWraith(s);
+    const sanityBefore = s.view().status.sanity;
+
+    const result = s.execute({ kind: "attack", targetId: wraith.id });
+
+    expect(result.mobAttacks?.some((m) => m.name === "Wraith" && m.stat === "sanity" && m.amount > 0)).toBe(true);
+    expect(s.view().status.sanity).toBeLessThan(sanityBefore);   // the Wraith clawed the Heir's mind
+  });
+
+  it("a defeated mob no longer strikes back", () => {
+    const s = newSession();
+    const wraith = reachWraith(s);
+    for (let i = 0; i < 11; i++) s.execute({ kind: "attack", targetId: wraith.id });
+    const sanityAfterKill = s.view().status.sanity;
+    const result = s.execute({ kind: "wait" });   // wait in the room with the corpse
+    expect(result.mobAttacks ?? []).toEqual([]);
+    expect(s.view().status.sanity).toBe(sanityAfterKill);
+  });
+
   it("rejects attacking an already-defeated mob", () => {
     const s = newSession();
     const wraith = reachWraith(s);

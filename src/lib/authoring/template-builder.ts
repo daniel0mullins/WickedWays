@@ -5,6 +5,7 @@ import type { Campaign } from "../campaign";
 import type { CampaignSnapshot } from "../serialization/types";
 import type { Direction } from "../room";
 import type { Stats } from "../character/stats";
+import type { NaturalAttack } from "../character/combatant";
 import type { MaterialMap } from "../inventory";
 import type { ArchetypeDef, CampaignTemplateDescription } from "./description";
 import type { ItemKeyOf, RecipeKeyOf, ConditionKeyOf, MechanicKeyOf, SceneKeyOf, FormationKeyOf, NpcKeyOf, ExitKeyOf } from "./registry";
@@ -99,6 +100,7 @@ export class TemplateBuilder<ItemKey extends string, RecipeKey extends string, C
     baseEscapeChance?: number;
     materialDrops?: MaterialMap;
     lightAverse?: boolean;
+    naturalAttack?: NaturalAttack;
   }): this {
     this.description.mobs.push({
       name,
@@ -110,6 +112,7 @@ export class TemplateBuilder<ItemKey extends string, RecipeKey extends string, C
       baseEscapeChance: opts.baseEscapeChance,
       materialDrops: opts.materialDrops,
       lightAverse: opts.lightAverse,
+      naturalAttack: opts.naturalAttack,
     });
     return this;
   }

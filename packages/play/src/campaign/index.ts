@@ -33,7 +33,9 @@ export function buildHauntedHouseRegistry(): CampaignRegistry {
 
 export function hauntedHouseTemplate(): TemplateBuilder<string, string> {
   return authorTemplate("The Hollow House", buildHauntedHouseRegistry(), { maxRounds: 150, baseEncounterChance: 0, rng: () => 0.5 })
-    .archetype({ id: Archetypes.Heir, name: "Heir", baseStats: { [StatType.Health]: 12, [StatType.Sanity]: 16 }, inventorySlots: 6, immunities: [Status.Fear] })
+    // Energy 5 makes the Sanity-damage multiplier exactly 1.0 (max(0,10-5)*0.2),
+    // so a mob's Sanity `power` lands as whole points — the house preys on a frail will.
+    .archetype({ id: Archetypes.Heir, name: "Heir", baseStats: { [StatType.Health]: 12, [StatType.Sanity]: 16, [StatType.Energy]: 5 }, inventorySlots: 6, immunities: [Status.Fear] })
     // Rooms
     .room(Rooms.Foyer, { description: "The entrance hall of the Hollow House. Dust sheets shroud the furniture; the front door has locked itself behind you." })
     .room(Rooms.Cellar, { description: "A low brick cellar, black as a throat. Water seeps somewhere unseen.", dark: true })
@@ -66,8 +68,8 @@ export function hauntedHouseTemplate(): TemplateBuilder<string, string> {
     // study-desk retains the brief's laudanum.
     .loot("study-desk", { room: Rooms.Study, items: [Items.Laudanum], description: "A writing desk with a locked-open drawer." })
     // Mobs — Wraith drops the brass key (guards study door), Revenant drops iron key
-    .mob(Mobs.Wraith, { stats: { [StatType.Health]: 6, [StatType.Sanity]: 5, [StatType.Energy]: 5 }, room: Rooms.Nursery, drops: [Keys.Brass] })
-    .mob(Mobs.Revenant, { stats: { [StatType.Health]: 10, [StatType.Sanity]: 8, [StatType.Energy]: 6 }, room: Rooms.Cellar, drops: [Keys.Iron] })
+    .mob(Mobs.Wraith, { stats: { [StatType.Health]: 6, [StatType.Sanity]: 5, [StatType.Energy]: 5 }, room: Rooms.Nursery, drops: [Keys.Brass], naturalAttack: { stat: StatType.Sanity, power: 3 } })
+    .mob(Mobs.Revenant, { stats: { [StatType.Health]: 10, [StatType.Sanity]: 8, [StatType.Energy]: 6 }, room: Rooms.Cellar, drops: [Keys.Iron], naturalAttack: { stat: StatType.Sanity, power: 2 } })
     // Mechanics + outcomes
     .useMechanic(Mechanics.Dread)
     .useMechanic(Mechanics.Storyteller)

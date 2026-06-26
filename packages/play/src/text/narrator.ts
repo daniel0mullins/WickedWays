@@ -1,6 +1,8 @@
 import type { PresentationCue } from "wickedways/lib/presentation";
+import { StatType } from "wickedways/lib/character/stats";
 import type { ViewModel, ScopeEntity } from "../core/viewmodel.js";
 import type { Intent } from "../core/intent.js";
+import type { MobAttack } from "../core/session.js";
 
 const sentence = (items: string[], head: string): string | null =>
   items.length === 0 ? null : `${head} ${items.join(", ")}.`;
@@ -127,12 +129,27 @@ export class Narrator {
         }
         const damage = (target?.health ?? 0) - (result?.health ?? 0);
         return damage > 0
-          ? [`You hit the ${name} for ${damage}.`]
+          ? [`You hit the ${name} for ${damage} Health.`]
           : [`Your blow glances off the ${name}.`];
       }
       case "move":
       case "talk":
         return [];
     }
+  }
+
+  /**
+   * Renders incoming mob strikes, each naming the stat lost so the player sees
+   * what kind of harm landed (Sanity vs Health vs Energy).
+   */
+  renderMobAttacks(attacks: MobAttack[]): string[] {
+    return attacks.map((a) => {
+      switch (a.stat) {
+        case StatType.Sanity: return `The ${a.name} claws at your mind — you lose ${a.amount} Sanity.`;
+        case StatType.Energy: return `The ${a.name} saps your strength — you lose ${a.amount} Energy.`;
+        case StatType.Health:
+        default: return `The ${a.name} tears into you — you lose ${a.amount} Health.`;
+      }
+    });
   }
 }

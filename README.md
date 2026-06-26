@@ -350,10 +350,17 @@ Both fields are plain declarative `Item` descriptor fields — no factory or sub
 
 `Combatant.attack(target)` collects the attacker's *equipped weapons*, sums each weapon's
 modifier onto the stat it targets, and applies the result to the defender via `takeDamage`
-(which runs the mitigation above). With no equipped weapon, an attack deals 1 point of
-unarmed Health damage. Because weapons occupy hand slots (see Equipment below), an attacker
-fields at most two one-handed weapons — or one two-handed — so the summed modifier is
-naturally bounded.
+(which runs the mitigation above). With no equipped weapon, an attack falls back to the
+combatant's **natural attack** — `naturalAttack: { stat, power }`, defaulting to a 1-point
+Health jab. `Mob` exposes this as an authorable trait (`.mob(name, { …, naturalAttack })`),
+so a resident horror can claw Sanity, batter Health, etc.; it is serialized with the mob.
+Because weapons occupy hand slots (see Equipment below), an attacker fields at most two
+one-handed weapons — or one two-handed — so the summed modifier is naturally bounded.
+
+Note the mitigation interaction: a defender whose *mitigator* stat for the attacked stat is
+≥ the cap fully absorbs the hit (multiplier `max(0, MAX_STAT − mitigator) × …` → 0). So a
+natural attack only lands on a target with a sub-cap mitigator for that stat — power alone
+can't punch through full mitigation.
 
 ### Custom mechanics
 
