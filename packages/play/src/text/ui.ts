@@ -347,15 +347,23 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
         const result = session.execute(res.intent);
         if (result.error) { audio.noteError(); print([result.error], "error"); return; }
         const after = session.view();
-        for (const cue of result.cues) audio.playCue(cue);
-        print([...narrator.renderAction(res.intent, before, after), ...narrator.renderCues(result.cues)]);
+        // Resolution (win/lose) cues are the OUTCOME — they must read after the
+        // mob's retaliation that may have caused it, so split them off the rest.
+        const resolutionCues = result.cues.filter((c) => c.kind === "resolution");
+        const stepCues = result.cues.filter((c) => c.kind !== "resolution");
+        for (const cue of stepCues) audio.playCue(cue);
+        print([...narrator.renderAction(res.intent, before, after), ...narrator.renderCues(stepCues)]);
         if (res.intent.kind === "move") printRoom(after);
-        // Mob reactions print last — after the room render on a move, so "you enter,
+        // Mob reactions print after the room render on a move, so "you enter,
         // you see the Wraith, the Wraith strikes" reads in the right order.
         const mobAttacks = result.mobAttacks ?? [];
         for (const atk of mobAttacks) audio.playMobAttack(atk);
         const mobLines = narrator.renderMobAttacks(mobAttacks);
         if (mobLines.length) print(mobLines);
+        // Then the outcome those events led to (death / victory), and the end.
+        for (const cue of resolutionCues) audio.playCue(cue);
+        const resolutionLines = narrator.renderCues(resolutionCues);
+        if (resolutionLines.length) print(resolutionLines);
         refresh();
         if (after.finished) print(["", "— THE END —"], "end");
         return;
