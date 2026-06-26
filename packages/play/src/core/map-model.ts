@@ -34,9 +34,9 @@ export class MapModel {
   #currentId: string | null = null;
 
   get currentId(): string | null { return this.#currentId; }
-  rooms(): MapRoom[] { return [...this.#rooms.values()]; }
-  edges(): readonly MapEdge[] { return this.#edges; }
-  stubsFor(id: string): readonly MapStub[] { return this.#stubs.get(id) ?? []; }
+  rooms(): MapRoom[] { return [...this.#rooms.values()].map((r) => ({ ...r })); }
+  edges(): readonly MapEdge[] { return this.#edges.map((e) => ({ ...e })); }
+  stubsFor(id: string): readonly MapStub[] { return (this.#stubs.get(id) ?? []).map((s) => ({ ...s })); }
 
   /** Record/refresh the room the player is currently in. */
   observe(view: ViewModel): void {
@@ -74,6 +74,7 @@ export class MapModel {
     }
     const known = this.#edges.some((e) =>
       (e.a === fromId && e.b === toId) || (e.a === toId && e.b === fromId));
+    // A traversed edge is an open passage: you can only walk through a door once it's unlocked, so edges are never locked (locked doors render as dashed *stubs* until walked).
     if (!known) this.#edges.push({ a: fromId, b: toId, dir, locked: false });
     const fromStubs = this.#stubs.get(fromId);
     if (fromStubs) this.#stubs.set(fromId, fromStubs.filter((s) => s.dir !== dir));

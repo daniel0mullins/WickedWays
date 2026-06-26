@@ -34,7 +34,7 @@ describe("MapModel", () => {
     const m = new MapModel();
     m.observe(view({ id: "foyer", name: "Foyer", exits: [{ dir: "north" }] }));
     m.recordMove("foyer", "north", "hall");
-    m.observe(view({ id: "hall", name: "Hall", exits: [{ dir: "east" }] }));
+    m.observe(view({ id: "hall", name: "Hall", exits: [{ dir: "east" }, { dir: "south" }] }));
     const hall = m.rooms().find((r) => r.id === "hall");
     expect(hall).toMatchObject({ id: "hall", name: "Hall", x: 0, y: -1 });
     expect(m.edges()).toEqual([{ a: "foyer", b: "hall", dir: "north", locked: false }]);
