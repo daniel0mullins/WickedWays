@@ -606,14 +606,24 @@ function applyStyles(root: HTMLElement): void {
       border: 2px solid var(--color-accent);
       border-radius: 4px;
       cursor: pointer;
-      text-shadow: 0 0 8px rgba(217, 194, 122, 0.4);
-      box-shadow: 0 0 10px rgba(217, 194, 122, 0.12), inset 0 0 8px rgba(217, 194, 122, 0.04);
-      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+      /* Phosphor bloom — layered halo + text glow, breathing slowly. */
+      text-shadow: 0 0 8px rgba(217, 194, 122, 0.55), 0 0 18px rgba(217, 194, 122, 0.32);
+      box-shadow:
+        0 0 6px rgba(217, 194, 122, 0.45),
+        0 0 16px rgba(217, 194, 122, 0.30),
+        0 0 34px rgba(217, 194, 122, 0.18),
+        inset 0 0 10px rgba(217, 194, 122, 0.10);
+      transition: background 0.15s, color 0.15s, box-shadow 0.25s, text-shadow 0.25s;
+      animation: enter-bloom 2.6s ease-in-out infinite;
       margin-top: 0.4em;
     }
     .enter-btn:hover {
       background: rgba(217, 194, 122, 0.12);
-      box-shadow: 0 0 18px rgba(217, 194, 122, 0.28), inset 0 0 12px rgba(217, 194, 122, 0.08);
+      box-shadow:
+        0 0 12px rgba(217, 194, 122, 0.8),
+        0 0 30px rgba(217, 194, 122, 0.55),
+        0 0 70px rgba(217, 194, 122, 0.40),
+        inset 0 0 18px rgba(217, 194, 122, 0.20);
     }
     .enter-btn:focus-visible {
       outline: 2px solid var(--led-color);
@@ -621,6 +631,25 @@ function applyStyles(root: HTMLElement): void {
     }
     .enter-btn:active {
       background: rgba(217, 194, 122, 0.22);
+    }
+    /* The bloom swells and recedes — a slow phosphor breath. */
+    @keyframes enter-bloom {
+      0%, 100% {
+        box-shadow:
+          0 0 6px rgba(217, 194, 122, 0.42),
+          0 0 16px rgba(217, 194, 122, 0.28),
+          0 0 34px rgba(217, 194, 122, 0.16),
+          inset 0 0 10px rgba(217, 194, 122, 0.10);
+        text-shadow: 0 0 8px rgba(217, 194, 122, 0.5), 0 0 16px rgba(217, 194, 122, 0.30);
+      }
+      50% {
+        box-shadow:
+          0 0 11px rgba(217, 194, 122, 0.72),
+          0 0 26px rgba(217, 194, 122, 0.50),
+          0 0 60px rgba(217, 194, 122, 0.34),
+          inset 0 0 16px rgba(217, 194, 122, 0.18);
+        text-shadow: 0 0 12px rgba(217, 194, 122, 0.78), 0 0 26px rgba(217, 194, 122, 0.46);
+      }
     }
 
     /* Game container — takes over the full .screen flex column once welcome is hidden. */
@@ -674,6 +703,7 @@ function applyStyles(root: HTMLElement): void {
     @media (prefers-reduced-motion: reduce) {
       .crt-overlay { animation: none; }
       .crt-sweep { animation: none; display: none; }
+      .enter-btn { animation: none; } /* keep the static bloom, drop the pulse */
     }`;
   root.appendChild(style);
 }
