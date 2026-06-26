@@ -29,7 +29,9 @@ export class Narrator {
     // Loot ("Here: …") and exits ("Exits: …") now live in the persistent bottom
     // HUD (rendered by ui.ts from the viewmodel), not in the scrolling transcript.
     // Only occupants stay in the transcript body.
-    const occ = sentence(vm.occupants.map((o) => o.name), "You see");
+    // Defeated mobs linger in the room (KO is a downed status, not removal) but
+    // are no longer "present" to the player — list only the living.
+    const occ = sentence(vm.occupants.filter((o) => !o.defeated).map((o) => o.name), "You see");
     if (occ) body.push(occ);
 
     return { header, description, body };
@@ -69,7 +71,7 @@ export class Narrator {
         return ways.length ? [`Exits: ${ways.join(", ")}.`] : ["There are no obvious exits."];
       }
       case "help":
-        return ["Commands: go <dir> (or n/s/e/w/…) — walk into a locked door with its key to open it, look, examine <thing>, take/drop <thing>, open <chest>, equip/use <thing>, attack <foe>, inventory, exits, wait, save, restore, undo."];
+        return ["Commands: go <dir> (or n/s/e/w/…) — walk into a locked door with its key to open it, look, examine/read <thing>, take/drop <thing>, open <chest>, equip/use <thing>, attack <foe>, inventory, exits, wait, save, restore, undo, restart."];
     }
   }
 
@@ -116,8 +118,19 @@ export class Narrator {
           : ["You open it. It is empty."];
       }
       case "wait": return ["You wait. The house holds its breath."];
+      case "attack": {
+        const target = before.occupants.find((o) => o.id === intent.targetId);
+        const result = after.occupants.find((o) => o.id === intent.targetId);
+        const name = target?.name ?? result?.name ?? "it";
+        if (result?.defeated && !target?.defeated) {
+          return [`You strike the ${name} down. It leaves its remains behind.`];
+        }
+        const damage = (target?.health ?? 0) - (result?.health ?? 0);
+        return damage > 0
+          ? [`You hit the ${name} for ${damage}.`]
+          : [`Your blow glances off the ${name}.`];
+      }
       case "move":
-      case "attack":
       case "talk":
         return [];
     }

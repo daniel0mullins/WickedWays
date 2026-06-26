@@ -3,6 +3,7 @@ import { PlayerCharacter } from "wickedways/lib/character/player-character";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { deserializeCampaign } from "wickedways/lib/serialization/deserializer";
 import { ProceduralViolation } from "wickedways/lib/util";
+import { Status } from "wickedways/lib/status";
 import type { Campaign } from "wickedways/lib/campaign";
 import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
@@ -54,6 +55,20 @@ export class GameSession {
     campaign.gm = pc;
     campaign.beginCampaign();
     campaign.onCue((cue) => this.cueBuffer.push(cue));
+  }
+
+  /**
+   * Restarts the campaign from scratch: re-boots a fresh world from the same
+   * builder (new campaign, PC at the start room, turn 0, full stats, empty
+   * inventory) and clears all session-local progress (opened loot, undo). Saved
+   * games are untouched. `assemble` rebuilds everything from the immutable
+   * description, so re-booting the stored builder is safe.
+   */
+  restart(): void {
+    this.cueBuffer.length = 0;
+    this.opened.clear();
+    this.undoSnapshot = null;
+    this.boot(this.opts.builder);
   }
 
   view(): ViewModel {
@@ -152,6 +167,9 @@ export class GameSession {
       case "attack": {
         const target = room.occupants.find((o) => o.id === intent.targetId);
         if (!target) throw new ProceduralViolation("There's nothing like that to attack here.");
+        if (target.status.includes(Status.KO)) {
+          throw new ProceduralViolation(`The ${target.name} is already dead.`);
+        }
         pc.attack(target);
         return;
       }

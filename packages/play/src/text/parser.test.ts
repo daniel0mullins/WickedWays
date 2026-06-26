@@ -32,6 +32,7 @@ describe("parser — meta and queries", () => {
     expect(parse("i", vm())).toEqual({ kind: "query", query: "inventory" });
     expect(parse("save", vm())).toEqual({ kind: "meta", meta: "save" });
     expect(parse("undo", vm())).toEqual({ kind: "meta", meta: "undo" });
+    expect(parse("restart", vm())).toEqual({ kind: "meta", meta: "restart" });
   });
 });
 

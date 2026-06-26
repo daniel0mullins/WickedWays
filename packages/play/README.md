@@ -50,12 +50,19 @@ round and snapshot the pre-state so a single level of **undo** is available; que
 ### Feedback model
 
 The engine emits terse `PresentationCue`s — an `action` cue carries only the action *kind*
-and actor, **not** the affected item's name. So confirmation text for inventory-class actions
-(`take`/`drop`/`open`/`equip`/`unequip`/`use`/`wait`) is synthesized in
-`Narrator.renderAction(intent, before, after)`, which reads item names out of the before/after
-view models. `move` and `attack` return no synthetic line — the room re-render and combat cues
-already speak for them. Mechanic, encounter, visibility, and resolution cues are rendered by
-`Narrator.renderCues`.
+and actor, **not** the affected item's name or damage dealt. So confirmation text for
+inventory-class actions (`take`/`drop`/`open`/`equip`/`unequip`/`use`/`wait`) and for combat
+is synthesized in `Narrator.renderAction(intent, before, after)`, which reads names, item
+details, and occupant **health** out of the before/after view models. `attack` reports the
+damage dealt (`before.health − after.health`), announces a kill when the target becomes
+`defeated`, and notes a glancing blow when nothing lands; `move` returns no synthetic line —
+the room re-render speaks for it. Mechanic, encounter, visibility, and resolution cues are
+rendered by `Narrator.renderCues`.
+
+Defeated mobs are a `defeated` (KO) status, not removal — the engine keeps them in the room.
+The play surface treats them as gone: they drop out of `You see …`, and re-attacking a corpse
+is rejected (`"The Revenant is already dead."`). Their dropped loot (`"<name>'s remains"`)
+still appears in the HUD to collect.
 
 The persistent bottom **HUD** (`Here:` loot, `Carrying:` inventory, `Exits:`) is redrawn from
 `session.view()` every turn, so inventory and location state are always visible without a
@@ -85,7 +92,7 @@ query.
 | Items | `take` / `get`, `drop`, `equip` / `wear` / `wield` / `light`, `unequip` / `remove` / `extinguish`, `use`, `open <container>` |
 | Combat | `attack` / `kill` / `hit` `<foe>` |
 | Query | `inventory` / `i` / `inv`, `exits`, `help` / `?` |
-| Meta | `save`, `restore` / `load`, `undo`, `wait` / `z` |
+| Meta | `save`, `restore` / `load`, `undo`, `restart`, `wait` / `z` |
 
 Nouns resolve against everything currently in scope — room occupants, loot containers and
 their contents, and carried items/keys — by name or alias (aliases defined per campaign in
@@ -98,6 +105,12 @@ the engine's free, non-consuming `Character.read` (see `session.read`), so readi
 spends a turn or consumes the item. You read what you carry — examine an item still sitting
 in a container gives only the generic line until you take it. In the bundled campaign, the
 **Water-Stained Journal** carries the family's backstory; take it, then `read journal`.
+
+**Restart.** `restart` re-boots the campaign to a fresh opening state (new world, start room,
+turn 0, empty inventory). Because it wipes all progress with no undo, it **confirms first**:
+the first `restart` prompts, a second `restart` performs it, and any other command cancels.
+Saved games are untouched, and `restart` works after the game has ended (the natural "play
+again"). It re-runs `GameSession.boot` from the stored builder — see `GameSession.restart`.
 
 ## The Hollow House (bundled campaign)
 
