@@ -62,4 +62,21 @@ describe("AudioManager", () => {
     const applied = tensionSpy.mock.calls.at(-1)?.[0] ?? -1;
     expect(applied).toBeCloseTo(0.5, 5);
   });
+
+  it("does not mark audio enabled if context resume fails", () => {
+    const engine = new AudioEngine(() => {
+      throw new Error("gated");
+    });
+    const ambient = new AmbientBed();
+    const playSpy = vi.spyOn(engine, "play");
+    const startSpy = vi.spyOn(ambient, "start");
+    const mgr = new AudioManager({ engine, ambient });
+
+    mgr.setEnabled(true);
+    expect(mgr.enabled).toBe(false);
+
+    mgr.playCue({ kind: "action", action: "attack", actor: { id: "p", name: "P" } });
+    expect(playSpy).not.toHaveBeenCalled();
+    expect(startSpy).not.toHaveBeenCalled();
+  });
 });

@@ -35,16 +35,20 @@ export class AudioManager {
 
   /** Turn all audio on/off. Enabling resumes the context and starts the drone. */
   setEnabled(on: boolean): void {
-    this.#enabled = on;
     if (on) {
       const ok = this.#engine.resume();
       const ctx = this.#engine.context;
       if (ok && ctx !== null) {
+        this.#enabled = true;
         this.#ambient.start(ctx);
         this.#ambient.setTension(this.#currentTension());
       }
+      // if resume fails, #enabled stays false — SFX and update remain no-ops
     } else {
-      this.#ambient.stop();
+      if (this.#enabled) {
+        this.#enabled = false;
+        this.#ambient.stop();
+      }
     }
   }
 
