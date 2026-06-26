@@ -63,6 +63,17 @@ describe("AudioManager", () => {
     expect(applied).toBeCloseTo(0.5, 5);
   });
 
+  it("suspends the audio context on disable", () => {
+    const { ctx } = makeFakeAudioContext();
+    const engine = new AudioEngine(() => ctx);
+    const ambient = new AmbientBed();
+    const suspendSpy = vi.spyOn(engine, "suspend");
+    const mgr = new AudioManager({ engine, ambient });
+    mgr.setEnabled(true);
+    mgr.setEnabled(false);
+    expect(suspendSpy).toHaveBeenCalled();
+  });
+
   it("does not mark audio enabled if context resume fails", () => {
     const engine = new AudioEngine(() => {
       throw new Error("gated");

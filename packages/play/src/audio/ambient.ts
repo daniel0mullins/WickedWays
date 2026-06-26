@@ -13,6 +13,8 @@ export class AmbientBed {
   #nodes: AudioScheduledSourceNode[] = [];
 
   static readonly #BASE_HZ = 55; // A1
+  static readonly #FADE_S = 0.12;   // gain fade in/out to avoid clicks
+  static readonly #GLIDE_S = 0.05;  // per-update parameter glide
 
   get running(): boolean {
     return this.#ctx !== null;
@@ -25,12 +27,11 @@ export class AmbientBed {
     const now = ctx.currentTime;
 
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.04, now);
     gain.connect(ctx.destination);
 
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.setValueAtTime(400, now);
+    filter.frequency.setValueAtTime(300, now); // tension-0 cutoff
     filter.connect(gain);
 
     const osc1 = ctx.createOscillator();
@@ -41,15 +42,18 @@ export class AmbientBed {
 
     const osc2 = ctx.createOscillator();
     osc2.type = "sawtooth";
-    osc2.frequency.setValueAtTime(AmbientBed.#BASE_HZ * 1.01, now);
+    osc2.frequency.setValueAtTime(AmbientBed.#BASE_HZ * 1.01, now); // tension-0 detune
     osc2.connect(filter);
     osc2.start(now);
+
+    // Fade in from silence so enabling audio doesn't click.
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.04, now + AmbientBed.#FADE_S);
 
     this.#gain = gain;
     this.#filter = filter;
     this.#osc2 = osc2;
     this.#nodes = [osc1, osc2];
-    this.setTension(0);
   }
 
   /** Update the drone's unease, `t` in `[0, 1]`. No-op when not running. */
@@ -57,12 +61,11 @@ export class AmbientBed {
     const ctx = this.#ctx;
     if (ctx === null || this.#osc2 === null || this.#filter === null || this.#gain === null) return;
     const clamped = Math.min(1, Math.max(0, t));
-    const now = ctx.currentTime;
-    // Wider detune → dissonant beating as tension rises.
-    this.#osc2.frequency.setValueAtTime(AmbientBed.#BASE_HZ * (1.01 + clamped * 0.06), now);
-    // Brighter/harsher filter and a touch louder when tense.
-    this.#filter.frequency.setValueAtTime(300 + clamped * 900, now);
-    this.#gain.gain.setValueAtTime(0.04 + clamped * 0.05, now);
+    const end = ctx.currentTime + AmbientBed.#GLIDE_S;
+    // Glide so per-turn sanity changes don't click.
+    this.#osc2.frequency.linearRampToValueAtTime(AmbientBed.#BASE_HZ * (1.01 + clamped * 0.06), end);
+    this.#filter.frequency.linearRampToValueAtTime(300 + clamped * 900, end);
+    this.#gain.gain.linearRampToValueAtTime(0.04 + clamped * 0.05, end);
   }
 
   /** Stop and disconnect all nodes. */
@@ -70,12 +73,13 @@ export class AmbientBed {
     const ctx = this.#ctx;
     if (ctx === null) return;
     const now = ctx.currentTime;
+    const end = now + AmbientBed.#FADE_S;
+    // Fade out, then stop the source nodes after the fade.
+    if (this.#gain !== null) this.#gain.gain.linearRampToValueAtTime(0.0001, end);
     for (const n of this.#nodes) {
-      try { n.stop(now); } catch { /* already stopped */ }
-      n.disconnect();
+      try { n.stop(end); } catch { /* already stopped */ }
     }
-    this.#filter?.disconnect();
-    this.#gain?.disconnect();
+    // Detach now (running → false); the fading nodes release to GC once the scheduled stop fires.
     this.#nodes = [];
     this.#osc2 = null;
     this.#filter = null;

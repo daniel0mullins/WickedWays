@@ -68,11 +68,12 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
   let audioEnabled = false; // starts muted
   root.dataset.audio = "off";
   audioToggle.addEventListener("click", () => {
-    audioEnabled = !audioEnabled;
+    audio.setEnabled(!audioEnabled);
+    // Reflect the real state — enabling no-ops if the AudioContext is unavailable.
+    audioEnabled = audio.enabled;
     audioToggle.setAttribute("aria-pressed", String(audioEnabled));
     audioToggle.title = `Audio: ${audioEnabled ? "on" : "off"}`;
     root.dataset.audio = audioEnabled ? "on" : "off";
-    audio.setEnabled(audioEnabled);
     if (gameStarted) input.focus(); // #cmd isn't focusable on the welcome screen
   });
 

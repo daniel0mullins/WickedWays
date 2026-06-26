@@ -17,6 +17,7 @@ export function makeFakeAudioContext(): { ctx: AudioContext; counts: Counts } {
     state: "running",
     destination: {},
     resume: () => Promise.resolve(),
+    suspend: () => Promise.resolve(),
     close: () => Promise.resolve(),
     createOscillator: () => { counts.oscillators++; return { ...node(), type: "sine", frequency: fakeParam(), detune: fakeParam() }; },
     createGain: () => { counts.gains++; return { ...node(), gain: fakeParam() }; },

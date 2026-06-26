@@ -49,6 +49,7 @@ export class AudioManager {
         this.#enabled = false;
         this.#ambient.stop();
       }
+      this.#engine.suspend();
     }
   }
 

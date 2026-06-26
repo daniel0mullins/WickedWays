@@ -80,4 +80,9 @@ export class AudioEngine {
       this.#ctx = null;
     }
   }
+
+  /** Suspend the context to release audio hardware while muted. No-op if none. */
+  suspend(): void {
+    if (this.#ctx !== null) void this.#ctx.suspend();
+  }
 }
