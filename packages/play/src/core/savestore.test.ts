@@ -17,9 +17,15 @@ describe("LocalStorageSaveStore", () => {
   let store: LocalStorageSaveStore;
   beforeEach(() => { store = new LocalStorageSaveStore(new MemStorage() as unknown as Storage); });
 
-  it("round-trips a snapshot", async () => {
+  it("round-trips a snapshot (no surface)", async () => {
     await store.save("slot1", snap, 1000);
-    expect(await store.load("slot1")).toEqual(snap);
+    expect(await store.load("slot1")).toEqual({ snapshot: snap, surface: undefined });
+  });
+
+  it("round-trips a surface payload alongside the snapshot", async () => {
+    const surface = { map: { rooms: [], edges: [], stubs: [], currentId: null } };
+    await store.save("slot1", snap, 1000, surface);
+    expect(await store.load("slot1")).toEqual({ snapshot: snap, surface });
   });
   it("lists saved slots with timestamps", async () => {
     await store.save("a", snap, 1000);

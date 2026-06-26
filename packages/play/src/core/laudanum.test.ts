@@ -10,14 +10,14 @@ import { GameSession } from "./session.js";
 import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES } from "../campaign/index.js";
 import { parse } from "../text/parser.js";
 import { Rooms, Archetypes } from "../campaign/ids.js";
-import type { SaveStore, SaveSlot } from "./savestore.js";
+import type { SaveStore, SaveSlot, SurfaceState } from "./savestore.js";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
 
 class MemSaveStore implements SaveStore {
-  private readonly map = new Map<string, { savedAt: number; snapshot: CampaignSnapshot }>();
+  private readonly map = new Map<string, { savedAt: number; snapshot: CampaignSnapshot; surface?: SurfaceState }>();
   list(): Promise<SaveSlot[]> { return Promise.resolve([]); }
-  save(slot: string, snapshot: CampaignSnapshot, savedAt: number): Promise<void> { this.map.set(slot, { savedAt, snapshot }); return Promise.resolve(); }
-  load(slot: string): Promise<CampaignSnapshot | null> { return Promise.resolve(this.map.get(slot)?.snapshot ?? null); }
+  save(slot: string, snapshot: CampaignSnapshot, savedAt: number, surface?: SurfaceState): Promise<void> { this.map.set(slot, { savedAt, snapshot, surface }); return Promise.resolve(); }
+  load(slot: string): Promise<{ snapshot: CampaignSnapshot; surface?: SurfaceState } | null> { const e = this.map.get(slot); return Promise.resolve(e ? { snapshot: e.snapshot, surface: e.surface } : null); }
   delete(slot: string): Promise<void> { this.map.delete(slot); return Promise.resolve(); }
 }
 

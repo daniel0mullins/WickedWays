@@ -16,7 +16,7 @@ import type { ILoot } from "wickedways/lib/loot";
 import type { IItem } from "wickedways/lib/inventory";
 import { isTimeAdvancing, type Intent } from "./intent.js";
 import { view, type ViewModel } from "./viewmodel.js";
-import type { SaveStore } from "./savestore.js";
+import type { SaveStore, SurfaceState } from "./savestore.js";
 
 /** A single mob-on-player strike, surfaced for typed combat feedback. */
 export interface MobAttack { name: string; stat: StatType; amount: number; }
@@ -235,16 +235,16 @@ export class GameSession {
     throw new ProceduralViolation("You don't see that here.");
   }
 
-  async save(slot: string): Promise<void> {
+  async save(slot: string, surface?: SurfaceState): Promise<void> {
     const snapshot = serializeCampaign(this.campaign);
-    await this.opts.saveStore.save(slot, snapshot, this.opts.now());
+    await this.opts.saveStore.save(slot, snapshot, this.opts.now(), surface);
   }
 
-  async restore(slot: string): Promise<boolean> {
-    const snapshot = await this.opts.saveStore.load(slot);
-    if (!snapshot) return false;
-    this.loadSnapshot(snapshot);
-    return true;
+  async restore(slot: string): Promise<{ ok: boolean; surface?: SurfaceState }> {
+    const loaded = await this.opts.saveStore.load(slot);
+    if (!loaded) return { ok: false };
+    this.loadSnapshot(loaded.snapshot);
+    return { ok: true, surface: loaded.surface };
   }
 
   undo(): boolean {
