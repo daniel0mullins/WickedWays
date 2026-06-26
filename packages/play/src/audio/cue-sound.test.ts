@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import type { PresentationCue } from "wickedways/lib/presentation";
 import { soundForCue, soundForMobAttack, errorSound, detuneFactor } from "./cue-sound.js";
 
 const actor = { id: "p1", name: "Heir" };
