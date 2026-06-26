@@ -130,4 +130,23 @@ describe("GameSession", () => {
     expect(s.undo()).toBe(true);
     expect(s.view().room.name).toBe(Rooms.Foyer);
   });
+
+  it("read reveals the journal's lore as a cue, without consuming it or advancing time", () => {
+    const s = newSession();
+    const inScope = s.view().scope.find((e) => e.name === "Water-Stained Journal")!;
+    s.execute({ kind: "take", targetId: inScope.id });
+    const held = s.view().inventory.items.find((i) => i.name === "Water-Stained Journal")!;
+    const turnBefore = s.view().status.turn;
+
+    const cues = s.read(held.id);
+
+    expect(cues.some((c) => c.kind === "mechanic" && Boolean(c.cue.text))).toBe(true);
+    expect(s.view().status.turn).toBe(turnBefore);                         // free — no turn spent
+    expect(s.view().inventory.items.some((i) => i.name === "Water-Stained Journal")).toBe(true); // not consumed
+    expect(s.read(held.id).length).toBeGreaterThan(0);                     // re-readable
+  });
+
+  it("read returns nothing for an item the player is not holding", () => {
+    expect(newSession().read("no-such-item")).toEqual([]);
+  });
 });

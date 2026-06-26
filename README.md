@@ -198,9 +198,15 @@ errors are isolated so a faulty handler can't disrupt the turn loop.
 - [`Item`](src/lib/inventory.ts) carries a type (weapon, armor, accessory, consumable,
   throwable, key), recipe, modifier, target stat, and properties
   (equippable/equipped/destroyable/usable), plus actions: `pickUp`, `equip`, `unequip`,
-  `transfer`, `use`, `destroy`. Optional authored fields layer on behaviour: `maxDurability`
+  `transfer`, `use`, `read`, `destroy`. Optional authored fields layer on behaviour: `maxDurability`
   (gear that wears), `slot` / `twoHanded` (equipment slots and handedness), `keyCode` /
-  `consumeOnUse` (keys), and `teaches` (a recipe imparted to the party on pickup).
+  `consumeOnUse` (keys), `teaches` (a recipe imparted to the party on pickup), and `lore`
+  (evocative backstory text).
+- **Reading** is a first-class, non-consuming interaction. `Character.read(item)` is free
+  (no budget tick, no history), emits the item's `lore` as a cue, and fires the item's
+  optional `onRead` hook — so the item stays in inventory and can be read again. Unlike `use`
+  (which always consumes), `read` is the seam for examinable flavour and for read-triggered
+  side effects (e.g. a cursed tome that drains Sanity via `onRead`).
 - Both characters and loot boxes are **item holders**. State that must not be forged is
   symbol-keyed: ownership through `HELD_BY` (read-only) and `CLAIM`, durability through
   `SET_DURABILITY`, and equip/unequip through `EQUIP` / `UNEQUIP` — so external code can't

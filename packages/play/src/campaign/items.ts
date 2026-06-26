@@ -2,6 +2,7 @@ import { Item, ItemType, createKey, type ItemDescriptor } from "wickedways/lib/i
 import { StatType } from "wickedways/lib/character/stats";
 import { SlotKind } from "wickedways/lib/equipment";
 import { Items, Keys } from "./ids.js";
+import { JOURNAL_LORE } from "./content.js";
 
 const noop = () => {};
 
@@ -24,7 +25,7 @@ export const lantern = (): Item =>
   );
 
 export const journal = (): Item =>
-  makeItem({ behaviorKey: Items.Journal, name: "Water-Stained Journal", type: ItemType.Consumable, recipe: { item: 1 }, modifier: 0, stat: StatType.Health });
+  makeItem({ behaviorKey: Items.Journal, name: "Water-Stained Journal", type: ItemType.Consumable, recipe: { item: 1 }, modifier: 0, stat: StatType.Health, lore: JOURNAL_LORE });
 
 export const poker = (): Item =>
   makeItem(

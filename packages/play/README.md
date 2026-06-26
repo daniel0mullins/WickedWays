@@ -81,7 +81,7 @@ query.
 | Category | Commands |
 |----------|----------|
 | Move | `n` `s` `e` `w` `ne` `nw` `se` `sw` (and full names), `go <dir>`, `walk <dir>` |
-| Look | `look` / `l`, `examine` / `x` `<thing>` |
+| Look | `look` / `l`, `examine` / `x` / `read` `<thing>` |
 | Items | `take` / `get`, `drop`, `equip` / `wear` / `wield` / `light`, `unequip` / `remove` / `extinguish`, `use`, `open <container>` |
 | Combat | `attack` / `kill` / `hit` `<foe>` |
 | Query | `inventory` / `i` / `inv`, `exits`, `help` / `?` |
@@ -91,6 +91,13 @@ Nouns resolve against everything currently in scope — room occupants, loot con
 their contents, and carried items/keys — by name or alias (aliases defined per campaign in
 `content.ts`). An unambiguous substring match is accepted; multiple matches prompt a
 "which do you mean?" disambiguation.
+
+**Reading items.** `examine`/`read`/`x <item>` reveals a held item's `lore` (its backstory
+text) when it has any, falling back to the generic look line otherwise. This routes through
+the engine's free, non-consuming `Character.read` (see `session.read`), so reading never
+spends a turn or consumes the item. You read what you carry — examine an item still sitting
+in a container gives only the generic line until you take it. In the bundled campaign, the
+**Water-Stained Journal** carries the family's backstory; take it, then `read journal`.
 
 ## The Hollow House (bundled campaign)
 

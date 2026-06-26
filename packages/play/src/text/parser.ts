@@ -71,7 +71,8 @@ export function parse(input: string, vm: ViewModel): ParseResult {
   const nounPhrase = tokens.slice(1).filter((t) => !STOP_WORDS.has(t)).join(" ");
 
   // examine is special: resolve then return an examine result (no engine call).
-  if (verb === "examine" || verb === "x" || verb === "look-at") {
+  // `read` is an alias — reading an item reveals its lore through the same path.
+  if (verb === "examine" || verb === "x" || verb === "look-at" || verb === "read") {
     if (!nounPhrase) return { kind: "query", query: "look" };
     return resolveThen(nounPhrase, vm, (t) => ({ kind: "examine", target: t }));
   }

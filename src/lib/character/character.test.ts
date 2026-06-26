@@ -2359,3 +2359,80 @@ describe("Character", () => {
     });
   });
 });
+
+describe("Character.read", () => {
+  beforeEach(() => {
+    itemCounter = 0;
+  });
+
+  // A held-item stub carrying `lore` and an optional author `read` action.
+  function makeReadableItem(opts: { lore?: string; read?: () => void } = {}): IItem {
+    const itemId = `read-${++itemCounter}` as ItemId;
+    let holder: unknown = null;
+    return {
+      id: itemId,
+      name: "Water-Stained Journal",
+      properties: { equippable: false, equipped: false, destroyable: true, usable: false },
+      lore: opts.lore,
+      actions: { pickUp: vi.fn(), read: opts.read ?? vi.fn() },
+      [CLAIM]: (h: unknown) => { holder = h; },
+      get [Symbol.for("heldBy")]() { return holder; },
+    } as unknown as IItem;
+  }
+
+  it("emits the item's lore as a mechanic cue", () => {
+    const cues: PresentationCue[] = [];
+    const hero = makeCharacterWithCueSink(cues);
+    const journal = makeReadableItem({ lore: "The orchard failed the year she died." });
+    hero.addToInventory(journal);
+    cues.length = 0; // drop the pickUp action cue
+    hero.read(journal);
+    expect(cues).toContainEqual({ kind: "mechanic", cue: { text: "The orchard failed the year she died." } });
+  });
+
+  it("does not consume the item — it stays in inventory and is re-readable", () => {
+    const cues: PresentationCue[] = [];
+    const hero = makeCharacterWithCueSink(cues);
+    const journal = makeReadableItem({ lore: "x" });
+    hero.addToInventory(journal);
+    hero.read(journal);
+    hero.read(journal);
+    expect(hero.inventory.items).toContain(journal);
+  });
+
+  it("runs the item's read action (firing its onRead hook)", () => {
+    const cues: PresentationCue[] = [];
+    const hero = makeCharacterWithCueSink(cues);
+    const read = vi.fn();
+    const journal = makeReadableItem({ lore: "x", read });
+    hero.addToInventory(journal);
+    hero.read(journal);
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  it("emits nothing for an item that has no lore", () => {
+    const cues: PresentationCue[] = [];
+    const hero = makeCharacterWithCueSink(cues);
+    const plain = makeReadableItem({});
+    hero.addToInventory(plain);
+    cues.length = 0;
+    hero.read(plain);
+    expect(cues).toEqual([]);
+  });
+
+  it("throws when reading an item the character is not holding", () => {
+    const hero = makeCharacter();
+    const journal = makeReadableItem({ lore: "x" });
+    expect(() => hero.read(journal)).toThrow(ProceduralViolation);
+  });
+
+  it("is free — reading records no history entry", () => {
+    const cues: PresentationCue[] = [];
+    const hero = makeCharacterWithCueSink(cues);
+    const journal = makeReadableItem({ lore: "x" });
+    hero.addToInventory(journal);
+    const before = hero.history.length;
+    hero.read(journal);
+    expect(hero.history.length).toBe(before);
+  });
+});

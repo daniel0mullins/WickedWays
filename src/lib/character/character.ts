@@ -1,6 +1,6 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { ADD_LIGHT_SOURCE, CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, MaterialMap, PLACE, REMOVE_LIGHT_SOURCE, SET_DURABILITY, UNEQUIP } from "../inventory";
+import { ADD_LIGHT_SOURCE, CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, ItemAction, MaterialMap, PLACE, REMOVE_LIGHT_SOURCE, SET_DURABILITY, UNEQUIP } from "../inventory";
 import {
   DEFAULT_EQUIPMENT_SLOTS,
   EquipmentSlot,
@@ -160,6 +160,13 @@ export interface ICharacter extends IItemHolder {
    * A Confused fizzle records a `fumble` to history but still does not tick the action budget.
    */
   unequip: (item: IItem) => void;
+  /**
+   * Reads a held item, surfacing its {@link IItem.lore} as a cue and firing its
+   * `onRead` hook. Free, ungated, and non-consuming — the item stays in inventory
+   * and may be read again. No-op cue when the item has no lore.
+   * @throws {@link ProceduralViolation} if the item is not held.
+   */
+  read: (item: IItem) => void;
   /**
    * Crafts an item using the materials-track recipe identified by `recipeId`.
    * Returns `null` if the action was gated (fizzled due to Confused status).
@@ -770,6 +777,24 @@ export class Character implements ICharacter {
     }
     item[UNEQUIP](this);
     this.#emitVisibilityIfFlipped(flipRoom ?? undefined, flipWasLit);
+  }
+
+  /**
+   * Reads a held item: runs its `read` behaviour/`onRead` hook and emits its
+   * {@link IItem.lore} as a `mechanic` cue. Free, ungated, and non-consuming — no
+   * budget tick, no history, and the item remains in inventory (re-readable). A
+   * lore-less item is a quiet no-op.
+   *
+   * @throws {@link ProceduralViolation} if the item is not held.
+   */
+  read(item: IItem) {
+    if (!this.#inventory.items.some((i) => i.id === item.id)) {
+      throw new ProceduralViolation("Cannot read an item the character is not holding.");
+    }
+    item.actions[ItemAction.Read]?.(this);
+    if (item.lore !== undefined) {
+      this.campaign[EMIT_CUE]({ kind: "mechanic", cue: { text: item.lore } });
+    }
   }
 
   /**

@@ -74,7 +74,12 @@ export class Narrator {
   }
 
   renderExamine(target: ScopeEntity, _vm: ViewModel): string[] {
-    return [`You look closely at the ${target.name}. Nothing more reveals itself — yet.`];
+    // Loot containers carry their full description as `name` (e.g. "A hall table
+    // with a single drawer."), so strip a leading article and trailing period
+    // before the "the …" frame to avoid "the A hall table…..". Bare item/occupant
+    // names have neither, so this is a no-op for them.
+    const noun = target.name.replace(/^(a|an|the)\s+/i, "").replace(/\.\s*$/, "");
+    return [`You look closely at the ${noun}. Nothing more reveals itself — yet.`];
   }
 
   /**
