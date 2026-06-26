@@ -11,6 +11,9 @@ export interface RoomParts {
   header: string;
   description: string | null;
   body: string[];
+  /** True the first time a room is described this session — only affects pacing
+   *  (the description prints on every visit). */
+  firstVisit: boolean;
 }
 
 export class Narrator {
@@ -20,12 +23,13 @@ export class Narrator {
     const header = vm.room.name;
     const firstVisit = !this.visited.has(vm.room.id);
     this.visited.add(vm.room.id);
-    const description = firstVisit ? vm.room.description : null;
+    // The room description prints on every visit (firstVisit only paces the typing).
+    const description = vm.room.description;
 
     const body: string[] = [];
     if (!vm.room.isLit) {
       body.push("It is pitch dark. You can see nothing.");
-      return { header, description, body };
+      return { header, description, body, firstVisit };
     }
 
     // Loot ("Here: …") and exits ("Exits: …") now live in the persistent bottom
@@ -36,7 +40,7 @@ export class Narrator {
     const occ = sentence(vm.occupants.filter((o) => !o.defeated).map((o) => o.name), "You see");
     if (occ) body.push(occ);
 
-    return { header, description, body };
+    return { header, description, body, firstVisit };
   }
 
   renderRoom(vm: ViewModel): string[] {
@@ -63,7 +67,7 @@ export class Narrator {
 
   renderQuery(query: "look" | "inventory" | "exits" | "help", vm: ViewModel): string[] {
     switch (query) {
-      case "look": { this.visited.delete(vm.room.id); return this.renderRoom(vm); }
+      case "look": return this.renderRoom(vm);
       case "inventory": {
         const names = [...vm.inventory.items.map((i) => i.name), ...vm.inventory.keys.map((k) => k.name)];
         return names.length ? [`You are carrying: ${names.join(", ")}.`] : ["You are carrying nothing."];

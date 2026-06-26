@@ -250,7 +250,8 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
       } else {
         const text = parts.description;
         let idx = 0;
-        const CHAR_INTERVAL_MS = 22;
+        // Type at full speed on first sight; twice as fast on a room you've seen.
+        const CHAR_INTERVAL_MS = parts.firstVisit ? 22 : 11;
         const complete = () => {
           descEl.textContent = text;
           transcript.scrollTop = transcript.scrollHeight;
