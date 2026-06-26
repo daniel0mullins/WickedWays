@@ -361,7 +361,6 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     history.push(line); historyIdx = history.length;
     // Flush any in-progress typewriter before rendering new output.
     flushTypewriter();
-    print([`> ${line}`], "echo");
     await handle(line);
   }
 
@@ -375,6 +374,11 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
   async function handle(line: string): Promise<void> {
     const before = session.view();
     const res = parse(line, before);
+    // Echo the typed command into the log — except `map`/`help`, which only open
+    // a transient overlay and would leave a bare `> map` with no response below it.
+    const opensOverlay =
+      (res.kind === "meta" && res.meta === "map") || (res.kind === "query" && res.query === "help");
+    if (!opensOverlay) print([`> ${line}`], "echo");
     // Any command other than a confirming `restart` cancels a pending restart.
     if (restartPending && !(res.kind === "meta" && res.meta === "restart")) {
       restartPending = false;
