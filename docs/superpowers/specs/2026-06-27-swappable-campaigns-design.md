@@ -271,17 +271,33 @@ and pushes updates via cues** — the same "campaign owns presentation, surface 
 handed" philosophy as the audio and themes. Neither the runtime nor a surface holds stat-specific
 knowledge.
 
-The channel is a **status presentation cue** carrying the full bar state as an ordered field list:
+The channel is a **first-class status presentation cue**. This requires a small, additive
+**engine change** (the engine's cue/effect sets are intentionally closed):
 
 ```ts
+// src/lib/presentation.ts — new types + a new PresentationCue variant
 interface StatusField { label: string; value: string; emphasis?: "normal" | "warn" | "critical" }
-interface StatusCue  { kind: "status"; fields: StatusField[] }   // a PresentationCue variant
+// add to the PresentationCue union:  | { kind: "status"; fields: readonly StatusField[] }
+
+// src/lib/mechanics/mechanic.ts — new effect a mechanic may emit
+// add to EffectKind:  Status: "status"
+// add to the Effect union:  | { kind: typeof EffectKind.Status; fields: readonly StatusField[] }
+
+// src/lib/mechanics/apply.ts — applier wiring
+// case EffectKind.Status: campaign[EMIT_CUE]({ kind: "status", fields: e.fields }); break;
 ```
 
-- The campaign **emits a `StatusCue`** (typically from its mechanics — `dread` already runs each
-  round) at **boot** and **whenever a displayed value changes**. The payload *is* the declaration:
-  the campaign sets both the fields and their values each emission. Hollow House emits e.g.
-  `[{label:"Sanity", value:"12", emphasis:"warn"}, {label:"Round", value:"37/150"}]`.
+No serialization change is needed — cues are transient (emitted via `onCue`, not persisted), and
+the new effect emits a cue immediately. The change is additive: existing cue switches
+(`narrator.renderCues`, `cue-sound.soundForCue`) have no exhaustiveness guard, so they ignore the
+new variant until updated.
+
+- The campaign **emits the status cue from a mechanic** (Hollow House adds a small `statusBar`
+  mechanic; `dread` already runs each round) — at **round start** (initial paint) and **turn end**
+  (after that turn's effects, so values are current), and whenever a displayed value changes. The
+  payload *is* the declaration: the campaign sets both the fields and their values each emission.
+  Hollow House emits e.g. `[{label:"Sanity", value:"12", emphasis:"warn"}, {label:"Round",
+  value:"37/150"}]`.
 - The **surface renders the most recent `StatusCue`** into its status area; before any status cue
   it is empty/neutral. `emphasis` maps to the active theme's styling (`critical` → the theme's
   `critical` palette color).
@@ -372,3 +388,11 @@ Per the project's standing convention:
 - The `scored` soundpack, `SampleRenderer`, and any shipped audio assets (architecture only).
 - Renaming or moving `@wickedways/seed`, `server`, `client`, or the Coolify deploy config.
 - Persisting audio/theme/mute preferences (all stay in-memory).
+
+## Engine changes (in scope, minimal)
+
+The only engine edits are the additive status-cue support above:
+`src/lib/presentation.ts` (the `StatusField` type + `status` `PresentationCue` variant),
+`src/lib/mechanics/mechanic.ts` (`EffectKind.Status` + the `Effect` arm), and
+`src/lib/mechanics/apply.ts` (the applier case). Everything else is confined to the `packages/*`
+play layer.
