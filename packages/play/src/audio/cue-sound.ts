@@ -70,6 +70,8 @@ export function soundForCue(cue: PresentationCue): SoundSpec | null {
         : { source: "sine", freq: 220, endFreq: 55, duration: 0.8, gain: 0.16, attack: 0.02 };
     case "mechanic":
       return null;
+    case "status":
+      return null;
   }
 }
 
