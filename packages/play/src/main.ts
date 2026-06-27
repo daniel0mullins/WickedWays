@@ -17,5 +17,5 @@ if (app) {
     saveStore: new LocalStorageSaveStore(),
     now: () => Date.now(),
   });
-  mountTerminal(app, session, { title: m.title, intro: m.intro, buttonText: m.buttonText });
+  mountTerminal(app, session, { title: m.title, intro: m.intro, buttonText: m.buttonText, audio: m.audio });
 }

@@ -2,14 +2,15 @@ import type { GameSession } from "../core/session.js";
 import type { StatusField } from "wickedways/lib/presentation";
 import { parse } from "./parser.js";
 import { Narrator } from "./narrator.js";
-import { AudioManager } from "../audio/audio-manager.js";
+import { AudioRuntime } from "../audio/audio-runtime.js";
+import type { CampaignAudio } from "../audio/contracts.js";
 import { linkNouns } from "./link-nouns.js";
 import { MapModel } from "../core/map-model.js";
 import { layoutMap, renderMapSvg } from "./map-view.js";
 
-export function mountTerminal(root: HTMLElement, session: GameSession, meta: { title: string; intro: string; buttonText?: string }): void {
+export function mountTerminal(root: HTMLElement, session: GameSession, meta: { title: string; intro: string; buttonText?: string; audio?: CampaignAudio }): void {
   let narrator = new Narrator();
-  const audio = new AudioManager();
+  const audio = AudioRuntime.forCampaign(meta.audio);
   const mapModel = new MapModel();
   root.innerHTML = `
     <div class="backdrop">
@@ -43,6 +44,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
               <line class="mute-slash" x1="3" y1="3" x2="21" y2="21" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
             </svg>
           </button>
+          <select id="soundpack-select" class="monitor-select" aria-label="Sound pack" hidden></select>
           <span class="monitor-led" aria-hidden="true"></span>
         </div>
       </div>
@@ -96,6 +98,19 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     toggleAudio();
     if (gameStarted) input.focus(); // #cmd isn't focusable on the welcome screen
   });
+
+  // Soundpack switcher — populate and show only when ≥2 packs are available.
+  const soundpackSelect = root.querySelector<HTMLSelectElement>("#soundpack-select")!;
+  if (audio.soundpacks.length >= 2) {
+    for (const sp of audio.soundpacks) {
+      const opt = document.createElement("option");
+      opt.value = sp.id;
+      opt.textContent = sp.label;
+      soundpackSelect.appendChild(opt);
+    }
+    soundpackSelect.hidden = false;
+    soundpackSelect.addEventListener("change", () => { audio.setSoundpack(soundpackSelect.value); });
+  }
 
   // Typewriter state — one active animation at a time.
   let activeTypewriter: (() => void) | null = null;
@@ -246,8 +261,8 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
       exitsLine.appendChild(node);
     });
     hud.appendChild(exitsLine);
-    // Drive the ambient drone from the current Sanity each turn.
-    audio.update(vm.status.sanity);
+    // Drive the ambient drone from the live campaign each turn.
+    audio.update(session.campaign);
     mapModel.observe(vm);
   };
 
@@ -476,7 +491,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
         // mob's retaliation that may have caused it, so split them off the rest.
         const resolutionCues = result.cues.filter((c) => c.kind === "resolution");
         const stepCues = result.cues.filter((c) => c.kind !== "resolution");
-        for (const cue of stepCues) audio.playCue(cue);
+        for (const cue of stepCues) audio.playCue(cue, after);
         print([...narrator.renderAction(res.intent, before, after), ...narrator.renderCues(stepCues)]);
         if (res.intent.kind === "move") {
           mapModel.recordMove(before.room.id, res.intent.dir, after.room.id);
@@ -489,7 +504,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
         const mobLines = narrator.renderMobAttacks(mobAttacks);
         if (mobLines.length) print(mobLines);
         // Then the outcome those events led to (death / victory), and the end.
-        for (const cue of resolutionCues) audio.playCue(cue);
+        for (const cue of resolutionCues) audio.playCue(cue, after);
         const resolutionLines = narrator.renderCues(resolutionCues);
         if (resolutionLines.length) print(resolutionLines);
         refresh();
@@ -688,6 +703,19 @@ function applyStyles(root: HTMLElement): void {
     .monitor-btn:hover { color: #fff; }
     .monitor-btn:active { box-shadow: inset 0 1px 3px rgba(0,0,0,0.55); }
     .monitor-btn:focus-visible { outline: 2px solid var(--led-color); outline-offset: 2px; }
+    .monitor-select {
+      appearance: none; -webkit-appearance: none;
+      height: clamp(20px, 3.2vmin, 30px);
+      padding: 0 0.4em;
+      border: 1px solid var(--plastic-shadow); border-radius: 5px;
+      background: linear-gradient(#3a3026, #241c14);
+      color: var(--color-text);
+      font: clamp(7px, 1.1vmin, 11px) var(--font-head);
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.12), 0 1px 2px rgba(0,0,0,0.45);
+    }
+    .monitor-select:focus-visible { outline: 2px solid var(--led-color); outline-offset: 2px; }
     /* Audio on: sound waves shown, no mute slash. */
     .monitor-btn[aria-pressed="true"] .mute-slash { display: none; }
     /* Audio off: hide waves, show slash, dim the icon. */

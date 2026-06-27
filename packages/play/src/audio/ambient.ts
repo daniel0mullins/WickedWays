@@ -84,7 +84,7 @@ export class AmbientBed {
     const ctx = this.#ctx;
     if (ctx === null) return;
     const now = ctx.currentTime;
-    // Tear down synchronously and fully: AudioManager suspends the context right
+    // Tear down synchronously and fully: AudioRuntime suspends the context right
     // after this, so a scheduled fade-out would be cut off mid-ramp anyway.
     // Disconnecting here keeps the graph from accumulating detached filter/gain
     // nodes across toggle cycles. (The fade-IN on start still smooths enabling.)

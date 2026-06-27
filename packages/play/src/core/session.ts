@@ -35,7 +35,8 @@ export interface SessionOptions {
 }
 
 export class GameSession {
-  private campaign!: Campaign;
+  #campaign!: Campaign;
+  get campaign(): Campaign { return this.#campaign; }
   private readonly cueBuffer: PresentationCue[] = [];
   private readonly opened = new Set<string>();
   private undoSnapshot: CampaignSnapshot | null = null;
@@ -50,7 +51,7 @@ export class GameSession {
 
   private boot(builder: TemplateBuilder<string, string>): void {
     const { campaign, rooms } = assemble(builder.description, builder.registry);
-    this.campaign = campaign;
+    this.#campaign = campaign;
     const pc = new PlayerCharacter({ campaign, name: this.opts.playerName });
     pc.joinCampaign();
     if (this.opts.archetype !== undefined) {
@@ -77,7 +78,7 @@ export class GameSession {
   }
 
   view(): ViewModel {
-    return view(this.campaign, this.opts.aliases, this.opened);
+    return view(this.#campaign, this.opts.aliases, this.opened);
   }
 
   /**
@@ -86,7 +87,7 @@ export class GameSession {
    * a turn, consumes the item, or snapshots for undo. Used by `examine`/`read`.
    */
   read(itemId: string): PresentationCue[] {
-    const pc = this.campaign.activeCharacter;
+    const pc = this.#campaign.activeCharacter;
     const item = pc.inventory.items.find((i) => i.id === itemId);
     if (!item) return [];
     this.cueBuffer.length = 0;
@@ -94,8 +95,8 @@ export class GameSession {
     return [...this.cueBuffer];
   }
 
-  get finished(): boolean { return this.campaign.finished; }
-  get outcome(): string { return this.campaign.outcome; }
+  get finished(): boolean { return this.#campaign.finished; }
+  get outcome(): string { return this.#campaign.outcome; }
 
   execute(intent: Intent): ExecuteResult {
     this.cueBuffer.length = 0;
@@ -103,16 +104,16 @@ export class GameSession {
     // No rootRooms needed: locked doors are now always-present shared Exits,
     // so the room graph is fully connected and the party-rooted BFS reaches every room.
     const pre = advances
-      ? serializeCampaign(this.campaign)
+      ? serializeCampaign(this.#campaign)
       : null;
     try {
-      if (advances) this.campaign.activeCharacter.startTurn();
+      if (advances) this.#campaign.activeCharacter.startTurn();
       this.dispatch(intent);
       // Solo GM: after a time-advancing action, live mobs sharing the player's
       // room strike back. Runs before nextPlayer so a fatal blow is caught by the
       // round's outcome check, and within the `pre` snapshot so undo reverts it too.
       const mobAttacks = advances ? this.runMobReactions() : [];
-      if (advances) this.campaign.nextPlayer();
+      if (advances) this.#campaign.nextPlayer();
       if (advances && pre !== null) this.undoSnapshot = pre;
       return { cues: [...this.cueBuffer], mobAttacks };
     } catch (e) {
@@ -130,7 +131,7 @@ export class GameSession {
    * simply doesn't strike; a downed player is not piled on.
    */
   private runMobReactions(): MobAttack[] {
-    const pc = this.campaign.activeCharacter;
+    const pc = this.#campaign.activeCharacter;
     const room = pc.currentRoom;
     const attacks: MobAttack[] = [];
     if (!room || pc.status.includes(Status.KO)) return attacks;
@@ -161,7 +162,7 @@ export class GameSession {
   }
 
   private dispatch(intent: Intent): void {
-    const pc = this.campaign.activeCharacter;
+    const pc = this.#campaign.activeCharacter;
     const room = pc.currentRoom!;
     switch (intent.kind) {
       case "move": {
@@ -227,7 +228,7 @@ export class GameSession {
   }
 
   private findInLoot(itemId: string): { loot: ILoot; item: IItem } {
-    const room = this.campaign.activeCharacter.currentRoom!;
+    const room = this.#campaign.activeCharacter.currentRoom!;
     for (const loot of room.loot.values()) {
       const item = loot.contents.find((i) => i.id === itemId);
       if (item) return { loot, item };
@@ -236,7 +237,7 @@ export class GameSession {
   }
 
   async save(slot: string, surface?: SurfaceState): Promise<void> {
-    const snapshot = serializeCampaign(this.campaign);
+    const snapshot = serializeCampaign(this.#campaign);
     await this.opts.saveStore.save(slot, snapshot, this.opts.now(), surface);
   }
 
@@ -255,8 +256,8 @@ export class GameSession {
   }
 
   private loadSnapshot(snapshot: CampaignSnapshot): void {
-    this.campaign = deserializeCampaign(snapshot, { registry: this.opts.registry, rng: this.opts.rng });
-    this.campaign.onCue((cue) => this.cueBuffer.push(cue));
+    this.#campaign = deserializeCampaign(snapshot, { registry: this.opts.registry, rng: this.opts.rng });
+    this.#campaign.onCue((cue) => this.cueBuffer.push(cue));
     this.opened.clear();
   }
 }

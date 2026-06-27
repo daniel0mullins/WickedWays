@@ -1,6 +1,7 @@
 import type { CampaignManifest } from "../core/manifest.js";
 import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES, TITLE, INTRO } from "./index.js";
 import { Archetypes } from "./ids.js";
+import { hollowHouseAudio } from "./audio.js";
 
 export const hollowHouse: CampaignManifest = {
   slug: "hollow-house",
@@ -13,4 +14,5 @@ export const hollowHouse: CampaignManifest = {
   aliases: ALIASES,
   playerName: "Heir",
   archetype: Archetypes.Heir,
+  audio: hollowHouseAudio,
 };
