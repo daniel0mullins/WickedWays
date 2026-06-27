@@ -6,7 +6,7 @@ import { linkNouns } from "./link-nouns.js";
 import { MapModel } from "../core/map-model.js";
 import { layoutMap, renderMapSvg } from "./map-view.js";
 
-export function mountTerminal(root: HTMLElement, session: GameSession, meta: { title: string; intro: string }): void {
+export function mountTerminal(root: HTMLElement, session: GameSession, meta: { title: string; intro: string; buttonText?: string }): void {
   let narrator = new Narrator();
   const audio = new AudioManager();
   const mapModel = new MapModel();
@@ -18,7 +18,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
             <div class="welcome" aria-label="Welcome screen">
               <h1 class="welcome-title">${meta.title}</h1>
               <p class="welcome-intro">${meta.intro}</p>
-              <button id="enter-game" class="enter-btn" type="button" autofocus>Enter Hollow House</button>
+              <button id="enter-game" class="enter-btn" type="button" autofocus>${meta.buttonText ?? `Enter ${meta.title}`}</button>
             </div>
             <div class="game-container" hidden>
               <div id="transcript" class="transcript" aria-live="polite"></div>
