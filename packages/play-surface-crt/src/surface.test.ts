@@ -27,6 +27,7 @@ const makeAudio = () => ({
   noteError: () => {},
   update: () => {},
   setSoundpack: () => {},
+  dispose: vi.fn(),
 }) as never;
 
 describe("crtSurface", () => {
@@ -37,10 +38,19 @@ describe("crtSurface", () => {
 
   it("mount returns a handle whose unmount clears the container", () => {
     const app = document.createElement("div");
-    const handle = crtSurface.mount({ app, session: makeSession(), manifest: { title: "T", intro: "", buttonText: "Go" } as never, themes: [crtSurface.defaultTheme], audio: makeAudio(), onExit: vi.fn() });
+    const audio = makeAudio();
+    const handle = crtSurface.mount({ app, session: makeSession(), manifest: { title: "T", intro: "", buttonText: "Go" } as never, themes: [crtSurface.defaultTheme], audio, onExit: vi.fn() });
     expect(typeof handle.unmount).toBe("function");
     handle.unmount();
     expect(app.childElementCount).toBe(0);
+  });
+
+  it("unmount disposes the AudioRuntime to stop audio and release the AudioContext", () => {
+    const app = document.createElement("div");
+    const audio = makeAudio();
+    const handle = crtSurface.mount({ app, session: makeSession(), manifest: { title: "T", intro: "", buttonText: "Go" } as never, themes: [crtSurface.defaultTheme], audio, onExit: vi.fn() });
+    handle.unmount();
+    expect((audio as { dispose: ReturnType<typeof vi.fn> }).dispose).toHaveBeenCalledOnce();
   });
 
   it("unmount removes the overlay keydown listener if an overlay is open", async () => {

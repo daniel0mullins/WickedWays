@@ -6,7 +6,7 @@ function deps() {
   return {
     render: vi.fn(),
     bed: { setTension: vi.fn(), start: vi.fn(), stop: vi.fn(), get running() { return true; } },
-    engine: { resume: () => true, suspend: () => {}, close: () => {}, get context() { return {} as never; }, play: vi.fn() },
+    engine: { resume: () => true, suspend: () => {}, close: vi.fn(), get context() { return {} as never; }, play: vi.fn() },
   };
 }
 
@@ -36,7 +36,7 @@ describe("AudioRuntime", () => {
   it("stays disabled when engine.context is null", () => {
     const d = {
       ...deps(),
-      engine: { resume: () => true, suspend: () => {}, close: () => {}, get context() { return null; }, play: vi.fn() },
+      engine: { resume: () => true, suspend: () => {}, close: vi.fn(), get context() { return null; }, play: vi.fn() },
     };
     const rt = AudioRuntime.forCampaign(undefined, d as never);
     rt.setEnabled(true);
@@ -47,5 +47,40 @@ describe("AudioRuntime", () => {
     const d = deps();
     const rt = AudioRuntime.forCampaign({ createDirector: () => ({ react: () => [], tension: () => 0 }), soundpacks: [defaultChiptunePack] }, d as never);
     expect(rt.soundpacks).toEqual([{ id: "chiptune", label: "Chiptune" }]);
+  });
+
+  describe("dispose()", () => {
+    it("stops the bed and closes the engine", () => {
+      const d = deps();
+      const bedStop = vi.spyOn(d.bed, "stop");
+      const engineClose = d.engine.close;
+      const rt = AudioRuntime.forCampaign(undefined, d as never);
+      rt.setEnabled(true);
+      rt.dispose();
+      expect(bedStop).toHaveBeenCalled();
+      expect(engineClose).toHaveBeenCalled();
+    });
+    it("sets enabled to false", () => {
+      const d = deps();
+      const rt = AudioRuntime.forCampaign(undefined, d as never);
+      rt.setEnabled(true);
+      expect(rt.enabled).toBe(true);
+      rt.dispose();
+      expect(rt.enabled).toBe(false);
+    });
+    it("is safe to call when audio was never enabled (engine never opened)", () => {
+      const d = deps();
+      const engineClose = d.engine.close;
+      const rt = AudioRuntime.forCampaign(undefined, d as never);
+      // Never called setEnabled — should not throw
+      expect(() => rt.dispose()).not.toThrow();
+      expect(engineClose).toHaveBeenCalled();
+    });
+    it("is idempotent — safe to call multiple times", () => {
+      const d = deps();
+      const rt = AudioRuntime.forCampaign(undefined, d as never);
+      rt.dispose();
+      expect(() => rt.dispose()).not.toThrow();
+    });
   });
 });

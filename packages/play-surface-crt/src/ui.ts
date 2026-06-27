@@ -552,6 +552,7 @@ export function mountTerminal(
       activeTypewriter = null;
       activeOverlayCleanup?.();
       activeOverlayCleanup = null;
+      audio.dispose();
       root.replaceChildren();
     },
   };
@@ -902,7 +903,7 @@ function applyStyles(root: HTMLElement): void {
     .exit-locked { color: var(--color-muted); opacity: 0.7; }
     .status { padding: .3rem 1rem; color: var(--color-muted); border-top: 1px solid var(--color-border); position: relative; z-index: 1; }
     .status-critical { color: var(--color-error); }
-    .status-warn { color: var(--color-accent); }
+    .status-warn { color: var(--color-warn); }
     .prompt { display: flex; gap: .5rem; align-items: center; padding: .5rem 1rem 1rem; position: relative; z-index: 1; }
     .caret { color: var(--color-accent); }
     #cmd {
