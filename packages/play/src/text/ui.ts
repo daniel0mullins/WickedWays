@@ -356,6 +356,7 @@ export function mountTerminal(
   // A single in-CRT overlay shared by the map and help screens: a bordered frame
   // plus a legend strip, dismissed by any keypress. Only one is open at a time.
   let overlay: HTMLDivElement | null = null;
+  let activeOverlayCleanup: (() => void) | null = null;
   const closeOverlay = () => {
     if (!overlay) return;
     overlay.remove();
@@ -379,8 +380,10 @@ export function mountTerminal(
     const onKey = (ev: KeyboardEvent) => {
       ev.preventDefault();
       window.removeEventListener("keydown", onKey, true);
+      activeOverlayCleanup = null;
       closeOverlay();
     };
+    activeOverlayCleanup = () => window.removeEventListener("keydown", onKey, true);
     window.addEventListener("keydown", onKey, true);
   };
   const openMap = () =>
@@ -544,6 +547,10 @@ export function mountTerminal(
 
   return {
     unmount() {
+      activeTypewriter?.();
+      activeTypewriter = null;
+      activeOverlayCleanup?.();
+      activeOverlayCleanup = null;
       root.replaceChildren();
     },
   };
@@ -571,15 +578,15 @@ function applyStyles(root: HTMLElement): void {
   style.textContent = `
     :root {
       /* CRT theme defaults — overridden per-element by applyTheme */
-      --crt-bg: #14130f;
-      --crt-fg: #cdd2c4;
-      --crt-accent: #d9c27a;
+      --crt-bg: #0b0e0a;
+      --crt-fg: #9be89b;
+      --crt-accent: #d7ffd7;
       --crt-warn: #e8d36b;
-      --crt-critical: #c98b6b;
-      --crt-font-body: "VT323", ui-monospace, monospace;
-      --crt-font-display: "Silkscreen", "VT323", monospace;
-      --crt-scanline: 0.22;
-      --crt-glow: 0.18;
+      --crt-critical: #e86b6b;
+      --crt-font-body: 'VT323', monospace;
+      --crt-font-display: 'Silkscreen', monospace;
+      --crt-scanline: 0.25;
+      --crt-glow: 0.6;
       --crt-flicker: 0.0;
       /* Derived aliases used throughout the rest of the CSS */
       --font-body: var(--crt-font-body);
@@ -587,6 +594,7 @@ function applyStyles(root: HTMLElement): void {
       --color-bg: var(--crt-bg);
       --color-text: var(--crt-fg);
       --color-accent: var(--crt-accent);
+      --color-warn: var(--crt-warn);
       --color-error: var(--crt-critical);
       --color-muted: #8a8f80;
       --color-border: #2a281f;
