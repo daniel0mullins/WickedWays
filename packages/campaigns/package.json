@@ -8,7 +8,8 @@
   "dependencies": {
     "wickedways": "workspace:*",
     "@wickedways/play-runtime": "workspace:*",
-    "@wickedways/play-surface-crt": "workspace:*"
+    "@wickedways/play-surface-crt": "workspace:*",
+    "@wickedways/seed": "workspace:*"
   },
   "devDependencies": { "@types/node": "^22.10.0" }
 }

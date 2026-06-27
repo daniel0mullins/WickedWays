@@ -72,6 +72,9 @@ importers:
       '@wickedways/play-surface-crt':
         specifier: workspace:*
         version: link:../play-surface-crt
+      '@wickedways/seed':
+        specifier: workspace:*
+        version: link:../seed
       wickedways:
         specifier: workspace:*
         version: link:../..
