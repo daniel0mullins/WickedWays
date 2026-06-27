@@ -24,4 +24,18 @@ describe("defaultDirector", () => {
     expect(cues.some((c) => c.type === "strike")).toBe(true);
     expect(d.tension({} as never)).toBe(0);
   });
+  it("maps engine takeDamage action to a 'takeDamage' cue, distinct from 'strike'", () => {
+    const d = defaultDirector();
+    const cues = d.react({ kind: "action", action: "takeDamage", actor: { id: "p", name: "Player" } }, {} as never);
+    expect(cues.some((c) => c.type === "takeDamage")).toBe(true);
+    expect(cues.some((c) => c.type === "strike")).toBe(false);
+  });
+});
+
+describe("defaultChiptunePack takeDamage cue", () => {
+  it("returns a non-null synth SoundSpec for a takeDamage AudioCue", () => {
+    const spec = defaultChiptunePack.voice({ type: "takeDamage" });
+    expect(spec).not.toBeNull();
+    expect(spec!.kind).toBe("synth");
+  });
 });
