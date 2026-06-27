@@ -3,7 +3,8 @@ import "@fontsource/silkscreen";
 import { GameSession } from "./core/session.js";
 import { LocalStorageSaveStore } from "./core/savestore.js";
 import { hollowHouse } from "./campaign/manifest.js";
-import { mountTerminal } from "./text/ui.js";
+import { AudioRuntime } from "./audio/audio-runtime.js";
+import { crtSurface } from "./text/surface.js";
 
 const app = document.getElementById("app");
 if (app) {
@@ -17,5 +18,13 @@ if (app) {
     saveStore: new LocalStorageSaveStore(),
     now: () => Date.now(),
   });
-  mountTerminal(app, session, { title: m.title, intro: m.intro, buttonText: m.buttonText, audio: m.audio });
+  const audio = AudioRuntime.forCampaign(m.audio);
+  crtSurface.mount({
+    app,
+    session,
+    manifest: m,
+    themes: [crtSurface.defaultTheme],
+    audio,
+    onExit: () => {},
+  });
 }

@@ -2,15 +2,20 @@ import type { GameSession } from "../core/session.js";
 import type { StatusField } from "wickedways/lib/presentation";
 import { parse } from "./parser.js";
 import { Narrator } from "./narrator.js";
-import { AudioRuntime } from "../audio/audio-runtime.js";
-import type { CampaignAudio } from "../audio/contracts.js";
+import type { AudioRuntime } from "../audio/audio-runtime.js";
 import { linkNouns } from "./link-nouns.js";
 import { MapModel } from "../core/map-model.js";
 import { layoutMap, renderMapSvg } from "./map-view.js";
+import type { SurfaceHandle, Theme } from "../core/surface.js";
+import { type CrtTheme, defaultCrtTheme, applyTheme } from "./theme.js";
 
-export function mountTerminal(root: HTMLElement, session: GameSession, meta: { title: string; intro: string; buttonText?: string; audio?: CampaignAudio }): void {
+export function mountTerminal(
+  root: HTMLElement,
+  session: GameSession,
+  meta: { title: string; intro: string; buttonText?: string; audio: AudioRuntime; themes: Theme[]; onExit(): void },
+): SurfaceHandle {
   let narrator = new Narrator();
-  const audio = AudioRuntime.forCampaign(meta.audio);
+  const audio = meta.audio;
   const mapModel = new MapModel();
   root.innerHTML = `
     <div class="backdrop">
@@ -45,10 +50,13 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
             </svg>
           </button>
           <select id="soundpack-select" class="monitor-select" aria-label="Sound pack" hidden></select>
+          <select id="theme-select" class="monitor-select" aria-label="Theme" hidden></select>
+          <button id="back-to-menu" class="monitor-btn monitor-btn-text" type="button" title="Back to menu" aria-label="Back to menu">&#x2190;</button>
           <span class="monitor-led" aria-hidden="true"></span>
         </div>
       </div>
     </div>`;
+  applyTheme(root, (meta.themes[0] as CrtTheme) ?? defaultCrtTheme);
   applyStyles(root);
 
   const welcome = root.querySelector<HTMLDivElement>(".welcome")!;
@@ -111,6 +119,26 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
     soundpackSelect.hidden = false;
     soundpackSelect.addEventListener("change", () => { audio.setSoundpack(soundpackSelect.value); });
   }
+
+  // Theme switcher — shown only when ≥2 themes are available.
+  const themeSelect = root.querySelector<HTMLSelectElement>("#theme-select")!;
+  if (meta.themes.length >= 2) {
+    for (const t of meta.themes) {
+      const opt = document.createElement("option");
+      opt.value = t.id;
+      opt.textContent = t.label;
+      themeSelect.appendChild(opt);
+    }
+    themeSelect.hidden = false;
+    themeSelect.addEventListener("change", () => {
+      const chosen = meta.themes.find((t) => t.id === themeSelect.value);
+      if (chosen) applyTheme(root, (chosen as CrtTheme));
+    });
+  }
+
+  // Back to menu button.
+  const backToMenuBtn = root.querySelector<HTMLButtonElement>("#back-to-menu")!;
+  backToMenuBtn.addEventListener("click", () => { meta.onExit(); });
 
   // Typewriter state — one active animation at a time.
   let activeTypewriter: (() => void) | null = null;
@@ -513,6 +541,12 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
       }
     }
   }
+
+  return {
+    unmount() {
+      root.replaceChildren();
+    },
+  };
 }
 
 // Wrap known scope nouns in the printed line with clickable spans that pre-fill
@@ -536,13 +570,25 @@ function applyStyles(root: HTMLElement): void {
   const style = document.createElement("style");
   style.textContent = `
     :root {
-      --font-body: "VT323", ui-monospace, monospace;
-      --font-head: "Silkscreen", "VT323", monospace;
-      --color-bg: #14130f;
-      --color-text: #cdd2c4;
-      --color-accent: #d9c27a;
+      /* CRT theme defaults — overridden per-element by applyTheme */
+      --crt-bg: #14130f;
+      --crt-fg: #cdd2c4;
+      --crt-accent: #d9c27a;
+      --crt-warn: #e8d36b;
+      --crt-critical: #c98b6b;
+      --crt-font-body: "VT323", ui-monospace, monospace;
+      --crt-font-display: "Silkscreen", "VT323", monospace;
+      --crt-scanline: 0.22;
+      --crt-glow: 0.18;
+      --crt-flicker: 0.0;
+      /* Derived aliases used throughout the rest of the CSS */
+      --font-body: var(--crt-font-body);
+      --font-head: var(--crt-font-display);
+      --color-bg: var(--crt-bg);
+      --color-text: var(--crt-fg);
+      --color-accent: var(--crt-accent);
+      --color-error: var(--crt-critical);
       --color-muted: #8a8f80;
-      --color-error: #c98b6b;
       --color-border: #2a281f;
       --color-chip-bg: #25241d;
       --color-chip-border: #3a382e;
@@ -703,6 +749,7 @@ function applyStyles(root: HTMLElement): void {
     .monitor-btn:hover { color: #fff; }
     .monitor-btn:active { box-shadow: inset 0 1px 3px rgba(0,0,0,0.55); }
     .monitor-btn:focus-visible { outline: 2px solid var(--led-color); outline-offset: 2px; }
+    .monitor-btn-text { font-family: var(--font-head); font-size: clamp(10px, 1.8vmin, 14px); padding: 0 0.4em; }
     .monitor-select {
       appearance: none; -webkit-appearance: none;
       height: clamp(20px, 3.2vmin, 30px);
