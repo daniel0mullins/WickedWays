@@ -64,6 +64,22 @@ importers:
         specifier: ^4.1.8
         version: 4.1.8(@types/node@22.19.21)(@vitest/coverage-v8@4.1.8)(happy-dom@20.10.6)(vite@8.0.16(@types/node@22.19.21)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0))
 
+  packages/campaigns:
+    dependencies:
+      '@wickedways/play-runtime':
+        specifier: workspace:*
+        version: link:../play-runtime
+      '@wickedways/play-surface-crt':
+        specifier: workspace:*
+        version: link:../play-surface-crt
+      wickedways:
+        specifier: workspace:*
+        version: link:../..
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.21
+
   packages/client:
     dependencies:
       '@wickedways/seed':
@@ -100,6 +116,9 @@ importers:
       '@fontsource/vt323':
         specifier: ^5.2.7
         version: 5.2.7
+      '@wickedways/campaigns':
+        specifier: workspace:*
+        version: link:../campaigns
       '@wickedways/play-runtime':
         specifier: workspace:*
         version: link:../play-runtime

@@ -1,10 +1,10 @@
-// packages/play/src/core/viewmodel.test.ts
+// packages/campaigns/src/hollow-house/viewmodel.test.ts
 import { describe, it, expect } from "vitest";
 import { assemble } from "wickedways/lib/authoring/assembler";
 import { PlayerCharacter } from "wickedways/lib/character/player-character";
-import { hauntedHouseTemplate, ALIASES } from "../../play/src/campaign/index.js";
-import { Rooms, Archetypes } from "../../play/src/campaign/ids.js";
-import { view } from "./viewmodel.js";
+import { hauntedHouseTemplate, ALIASES } from "./index.js";
+import { Rooms, Archetypes } from "./ids.js";
+import { view } from "@wickedways/play-runtime";
 
 function bootInLanding() {
   const builder = hauntedHouseTemplate();

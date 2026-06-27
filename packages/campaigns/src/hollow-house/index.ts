@@ -12,6 +12,8 @@ import { LORE, doorBehavior } from "./content.js";
 import { Rooms, Items, Keys, Mobs, Mechanics, Archetypes, Conditions, ExitBehaviors } from "./ids.js";
 
 export { LORE, ALIASES, TITLE, INTRO } from "./content.js";
+export { hollowHouse } from "./manifest.js";
+export { Rooms, Archetypes } from "./ids.js";
 
 export function buildHauntedHouseRegistry(): CampaignRegistry {
   return defineRegistry({
