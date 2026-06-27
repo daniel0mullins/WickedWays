@@ -1,13 +1,12 @@
 # @wickedways/play
 
-A browser **play surface** for the [`wickedways`](../../README.md) engine: a single-page,
-keyboard-driven text adventure rendered as a retro CRT terminal. It bundles one playable
-campaign — **The Hollow House** — and is the reference example of how to drive the engine
-from a UI.
+The **deploy shell** for the [`wickedways`](../../README.md) browser play experience.
+It registers the available campaigns and surfaces, calls `bootLauncher`, and serves the
+resulting SPA from nginx. All substantive logic lives in the three packages it depends on.
 
 The engine itself (turn loop, combat, items, mobs, serialization) is documented in the
-[root `README.md`](../../README.md). This package only covers the play surface that sits on
-top of it.
+[root `README.md`](../../README.md). See [`packages/play-runtime/`](../play-runtime/) and
+[`packages/play-surface-crt/`](../play-surface-crt/) for the runtime and CRT surface.
 
 ## Quick start
 
@@ -20,6 +19,38 @@ pnpm --filter @wickedways/play test:e2e   # Playwright end-to-end playthrough
 
 Unit tests (`*.test.ts`) run as part of the repo-wide `pnpm test`; the Playwright e2e suite
 in `e2e/` is separate and driven by `test:e2e`.
+
+## Package topology
+
+The play layer is split into four workspace packages with a clear dependency direction:
+
+```
+@wickedways/play (deploy shell)
+  ├── @wickedways/play-runtime    — surface-independent runtime + contracts
+  ├── @wickedways/play-surface-crt — CRT terminal surface implementation
+  └── @wickedways/campaigns        — per-campaign manifests (subpath exports)
+        ├── /hollow-house
+        └── /seed
+```
+
+| Package | Role |
+|---------|------|
+| `@wickedways/play-runtime` | `GameSession`, view models, `SaveStore`, `AudioRuntime`, the launcher (`bootLauncher`/`resolveCampaign`), and all contracts: `CampaignManifest`, `PlaySurface`/`SurfaceHandle`/`Theme`/`MountArgs`, audio contracts (`AudioDirector`/`SoundPack`/`CampaignAudio`/`SoundSpec`). Zero Hollow-House / CRT references. |
+| `@wickedways/play-surface-crt` | The CRT terminal — the first `PlaySurface` implementation. Parser, narrator, map view, link-nouns, and the full DOM terminal (`ui.ts`). Also exports `CrtTheme`/`defaultCrtTheme`/`applyTheme` for campaigns that designate this surface. |
+| `@wickedways/campaigns` | All player-facing campaigns under `src/<slug>/`, each exporting a `CampaignManifest`. Subpath-exported: `@wickedways/campaigns/hollow-house`, `@wickedways/campaigns/seed`. |
+| `@wickedways/play` | **This package.** Thin deploy shell: `src/main.ts`, `index.html`, `Dockerfile`, `nginx.conf`, `e2e/`. Registers campaigns + surfaces and calls `bootLauncher`. |
+
+### Source layout
+
+| Path | Responsibility |
+|------|----------------|
+| `src/main.ts` | Entry point — imports the two campaigns and the CRT surface, then calls `bootLauncher`. |
+| `e2e/` | Playwright end-to-end tests (winning playthrough, deep-link, theme switch, etc.). |
+| `Dockerfile` | Multi-stage build (Node + nginx). Build context is the **repo root** (see Deployment). |
+| `nginx.conf` | Static file serving with gzip, asset caching, and SPA fallback. |
+
+The former `src/core/`, `src/audio/`, `src/text/`, and `src/campaign/` directories have been
+**split out** into the packages above and no longer live here.
 
 ## How it works
 
@@ -47,6 +78,153 @@ Time-advancing intents (`move`, `take`, `drop`, `use`, `attack`, `wait`, `talk`)
 round and snapshot the pre-state so a single level of **undo** is available; queries,
 `examine`, and meta commands do not advance time.
 
+## Campaign menu and deep-link
+
+`bootLauncher` starts the play experience:
+
+1. **`?campaign=<slug>`** — if present and matched, boots that campaign directly.
+2. **No / unknown param** — shows the in-launcher campaign menu: a surface-independent
+   picker (its own retro styling) listing each manifest's `title` and `blurb`.
+   Keyboard and click both work.
+3. **On select** — sets `?campaign=<slug>` in the URL, resolves the campaign's designated
+   surface, builds the `AudioRuntime`, starts a `GameSession`, and calls `surface.mount(...)`.
+4. **"Back to menu" (`onExit`)** — unmounts the surface, clears `?campaign=`, and re-renders
+   the picker. The in-game restart path uses the same callback.
+
+`e2e/` tests cover: winning playthrough (via deep-link), menu navigation, and theme switching.
+
+## `PlaySurface` contract
+
+`@wickedways/play-runtime` defines the `PlaySurface` interface. The shell injects the
+available surfaces into `bootLauncher`; the runtime selects the right one for each campaign.
+
+```ts
+interface PlaySurface {
+  id: string;           // "crt-terminal" — matched against CampaignManifest.surface
+  label: string;        // "CRT Terminal"
+  defaultTheme: Theme;  // fallback when a campaign supplies no themes
+  mount(args: MountArgs): SurfaceHandle;
+}
+
+interface MountArgs {
+  app: HTMLElement;
+  session: GameSession;
+  manifest: CampaignManifest;
+  themes: Theme[];      // manifest.themes ?? [surface.defaultTheme] — always non-empty
+  audio: AudioRuntime;  // shared audio service for this session
+  onExit(): void;       // "back to menu"
+}
+
+interface SurfaceHandle { unmount(): void }
+```
+
+The runtime owns session, view models, cues, audio, and save store. The **surface** owns
+input→intent, the turn loop, DOM rendering, and its own control UI.
+
+## Per-surface themes and theme switcher
+
+A campaign supplies `CrtTheme[]` in `manifest.themes`; `themes[0]` is the default.
+The CRT surface renders a **theme switcher** in the monitor bezel (beside audio controls)
+that **auto-hides when fewer than two themes are present**, mirroring the soundpack switcher.
+Switching re-applies palette, fonts, and effects live via CSS custom properties on the CRT
+housing. Theme preference is **in-memory** (not persisted across page loads).
+
+`CrtTheme` extends the base `Theme` with:
+
+```ts
+interface CrtTheme extends Theme {
+  palette: { bg: string; fg: string; accent: string; warn: string; critical: string };
+  fonts:   { body: string; display: string };
+  effects: { scanlineIntensity: number; glow: number; flicker: number };
+}
+```
+
+The Hollow House campaign ships two themes: `default` (current green-phosphor look) and
+`haunted` (warm pinkish-red palette with heavier glow and flicker).
+
+**Adding a theme.** Declare a `CrtTheme` in the campaign's `themes.ts` file and include it
+in `manifest.themes`. No edits to the runtime or surface are needed.
+
+## Campaign-defined status bar
+
+The status bar is **campaign-defined and cue-driven** — neither the runtime nor the CRT
+surface hard-codes any stat name.
+
+1. A campaign's `statusBar` mechanic emits `{ kind: "status", fields: StatusField[] }`
+   presentation cues at round start and after each turn's effects.
+2. The CRT surface renders the most recent `StatusCue` payload into its HUD status area.
+   Before the first emission the area is empty.
+3. `StatusField` carries `{ label, value, emphasis? }` where `emphasis` maps to the active
+   theme's palette (`"warn"` → `--crt-warn`, `"critical"` → `--crt-critical`).
+
+The Hollow House emits `[{label:"Sanity", value:"12", emphasis:"warn"}, {label:"Round", value:"37/150"}]`.
+A campaign that never emits a `StatusCue` (e.g. the seed demo) simply shows an empty bar.
+
+## Audio
+
+The play surface generates all sound via **procedural Web Audio synthesis** — no shipped audio
+assets, no licensing or bundle-size concerns.
+
+### Four-layer architecture
+
+```
+Engine PresentationCue + live campaign state
+        │
+        ▼   AudioDirector              ◀── campaign-owned (in CampaignManifest.audio)
+AudioCue { type, entityId?, intensity? }   +  continuous tension(0..1)
+        │
+        ▼   SoundPack (one per audio theme)  ◀── campaign-owned
+SoundSpec  ({ kind:'synth', voice } | { kind:'sample', asset, … })
+        │
+        ▼   AudioBackend               ◀── runtime-owned (SynthRenderer; SampleRenderer deferred)
+Web Audio output
+```
+
+- **`AudioDirector`** (campaign-owned) translates engine `PresentationCue`s into discrete
+  `AudioCue`s and computes continuous tension (0–1) from the live campaign. Stateful factory
+  (`createDirector()` called per boot/restart); closes over session-level state (e.g. the
+  high-water-mark sanity for tension normalization).
+- **`SoundPack`** (campaign-owned) maps `AudioCue`s to `SoundSpec`s and controls the ambient
+  bed via `ambient(tension)`. The runtime ships `defaultChiptunePack` covering every
+  `BaseAudioCue`; campaigns spread/override it.
+- **`SoundSpec`** — `{ kind: "synth", voice }` for procedural synthesis (active);
+  `{ kind: "sample", … }` for decoded audio assets (deferred — the arm exists so samples
+  can be added without touching the contracts).
+- **`AudioRuntime`** (runtime-owned service) — the integration seam: `playCue(cue, view)`,
+  `playMobAttack(atk)`, `noteError()`, `update(campaign)` (recomputes tension via the
+  director), `setEnabled(on)`, plus `soundpacks` / `setSoundpack(id)`.
+
+Omit `audio` from `CampaignManifest` to get the flat ambient bed + default chiptune SFX only.
+
+### Soundpack switcher
+
+The CRT surface renders a soundpack switcher that **auto-hides when fewer than two packs
+are present** (mirrors the theme switcher). Preference is **in-memory** only.
+
+The Hollow House ships one pack: `defaultChiptunePack`. A second "scored" pack (with real
+audio assets via `SampleRenderer`) is architecturally deferred.
+
+### Master audio toggle
+
+A single mute button in the monitor bezel controls all audio (ambient + SFX together). Audio
+starts **muted** on every page load and never plays without a user gesture — the toggle click
+is the gesture that resumes the `AudioContext`. If `AudioContext` is unavailable or blocked,
+the runtime no-ops gracefully; the game is unaffected.
+
+### Integration seams
+
+```
+cue from session.execute()       →  AudioRuntime.playCue(cue, view)
+mob strike from runMobReactions  →  AudioRuntime.playMobAttack(atk)
+rejected command / error         →  AudioRuntime.noteError()
+each turn in refresh()           →  AudioRuntime.update(campaign)
+toggle click                     →  AudioRuntime.setEnabled(on)
+soundpack switcher               →  AudioRuntime.setSoundpack(id)
+```
+
+No `Math.random` is used — pitch variation is derived deterministically from actor/entity id
+hashes (`detuneFactor` in `cue-sound.ts`).
+
 ### Feedback model
 
 The engine emits terse `PresentationCue`s — an `action` cue carries only the action *kind*
@@ -57,7 +235,7 @@ details, and occupant **health** out of the before/after view models. `attack` r
 damage dealt (`before.health − after.health`), announces a kill when the target becomes
 `defeated`, and notes a glancing blow when nothing lands; `move` returns no synthetic line —
 the room re-render speaks for it. Mechanic, encounter, visibility, and resolution cues are
-rendered by `Narrator.renderCues`.
+rendered by `Narrator.renderCues`. `status` cues are handled in the HUD, not the transcript.
 
 Defeated mobs are a `defeated` (KO) status, not removal — the engine keeps them in the room.
 The play surface treats them as gone: they drop out of `You see …`, and re-attacking a corpse
@@ -79,67 +257,6 @@ The persistent bottom **HUD** (`Here:` loot, `Carrying:` inventory, `Exits:`) is
 `session.view()` every turn, so inventory and location state are always visible without a
 query.
 
-## Source layout
-
-| Path | Responsibility |
-|------|----------------|
-| `src/main.ts` | Entry point — boots a `GameSession` for The Hollow House and mounts the terminal into `#app`. |
-| `src/core/session.ts` | `GameSession`: boot, `execute`/`dispatch` (intent → engine calls), `save`/`restore`/`undo`. Catches `ProceduralViolation` and surfaces it as an `error`. |
-| `src/core/intent.ts` | The `Intent` union and `isTimeAdvancing`. |
-| `src/core/viewmodel.ts` | Derives a plain `ViewModel` (room, exits, locked doors, occupants, loot, inventory, scope, status) from the live `Campaign`. Classifies exits as passable vs. locked per the active character. |
-| `src/core/savestore.ts` | `SaveStore` interface + `LocalStorageSaveStore` (slots persisted under `wickedways:save:<slot>`). |
-| `src/text/parser.ts` | Natural-language command → `ParseResult`. Verb tables, direction aliases, noun resolution against the view-model scope (exact, then substring), ambiguity detection. |
-| `src/text/narrator.ts` | Renders room text, action confirmations, cues, queries, and examine lines (pure → `string[]`). |
-| `src/text/link-nouns.ts` | Tokenizes a line into plain + clickable noun segments (longest-phrase-first, word-boundary aware) for the "click a noun to `examine` it" affordance. |
-| `src/text/ui.ts` | The DOM terminal: CRT housing/overlay styling, welcome screen, typewriter, command history, clickable exits/nouns, HUD, and the submit→parse→render loop. |
-| `src/audio/` | Procedural Web Audio subsystem — pure cue→sound mapping (`cue-sound.ts`), Web Audio rendering (`synth.ts`), sanity-reactive ambient drone (`ambient.ts`), and the `AudioManager` orchestrator. See [**Audio**](#audio) below. |
-| `src/campaign/` | The bundled **Hollow House** campaign: `index.ts` (template + registry), `content.ts` (intro/lore/keyed-door behaviors/aliases), `mechanics.ts` (`dread`, `storyteller`), `items.ts`, `ids.ts`. |
-
-## Audio
-
-The play surface generates all sound via **procedural Web Audio synthesis** — no shipped audio
-assets, no licensing or bundle-size concerns. The approach fits the retro-CRT aesthetic and keeps
-the mapping logic purely deterministic (separated from the Web Audio backend so it is
-unit-testable under Vitest's `node` environment, which has no Web Audio API).
-
-### Four SFX categories
-
-| Category | Trigger |
-|----------|---------|
-| **Combat (strikes & death)** | `action` cue with `attack`/`takeDamage` kind; `MobAttack` from `session.runMobReactions`; a `resolution` win-sting / lose-fall on campaign end. |
-| **Mob encounter** | `encounter` cue (first time the player meets a given mob). |
-| **Item use / pickup** | `action` cue with `pickUp`/`drop` kind — a soft confirming blip via `playCue` (taking an item emits `pickUp`, dropping emits `drop`). |
-| **Movement, lights & UI** | `action` cue with `move` kind (soft whoosh); `visibility` cue (light click); rejected command or parser error (short buzz). |
-
-### Sanity-reactive ambient drone
-
-A continuous low drone (layered oscillators through a low-pass filter) runs while audio is
-enabled. `AmbientBed.setTension(t)` adjusts detune, filter brightness, and gain as `t` moves
-from 0 to 1. Tension is computed by `sanityToTension(current, baseline)` — a ratio normalized
-against the session's **high-water-mark** sanity so the drone is calm at a healthy baseline and
-grows dissonant only as sanity degrades. Updated every turn from `refresh()`.
-
-### Master toggle
-
-A single button in the monitor bezel controls all audio (ambient + SFX together). Audio starts
-**muted** on every page load and never plays without a user gesture — the toggle click is the
-gesture that resumes the `AudioContext`. The preference is **in-memory** only (not persisted to
-`localStorage`). If `AudioContext` is unavailable or blocked, the manager no-ops gracefully; the
-game is unaffected.
-
-### Integration seams (`src/audio/audio-manager.ts`)
-
-```
-cue from session.execute()   →  AudioManager.playCue(cue)
-mob strike from runMobReactions →  AudioManager.playMobAttack(atk)
-rejected command / error     →  AudioManager.noteError()
-each turn in refresh()       →  AudioManager.update(view.status.sanity)
-toggle click in ui.ts        →  AudioManager.setEnabled(on)
-```
-
-No `Math.random` is used — the slight pitch variation between instances is derived
-deterministically from actor/entity id hashes (`detuneFactor` in `cue-sound.ts`).
-
 ## Command vocabulary
 
 | Category | Commands |
@@ -153,21 +270,19 @@ deterministically from actor/entity id hashes (`detuneFactor` in `cue-sound.ts`)
 
 Nouns resolve against everything currently in scope — room occupants, loot containers and
 their contents, and carried items/keys — by name or alias (aliases defined per campaign in
-`content.ts`). An unambiguous substring match is accepted; multiple matches prompt a
-"which do you mean?" disambiguation.
+the manifest's `aliases` map). An unambiguous substring match is accepted; multiple matches
+prompt a "which do you mean?" disambiguation.
 
 **Reading items.** `examine`/`read`/`x <item>` reveals a held item's `lore` (its backstory
 text) when it has any, falling back to the generic look line otherwise. This routes through
 the engine's free, non-consuming `Character.read` (see `session.read`), so reading never
-spends a turn or consumes the item. You read what you carry — examine an item still sitting
-in a container gives only the generic line until you take it. In the bundled campaign, the
-**Water-Stained Journal** carries the family's backstory; take it, then `read journal`.
+spends a turn or consumes the item.
 
 **Restart.** `restart` re-boots the campaign to a fresh opening state (new world, start room,
 turn 0, empty inventory). Because it wipes all progress with no undo, it **confirms first**:
 the first `restart` prompts, a second `restart` performs it, and any other command cancels.
 Saved games are untouched, and `restart` works after the game has ended (the natural "play
-again"). It re-runs `GameSession.boot` from the stored builder — see `GameSession.restart`.
+again"). It re-runs `GameSession.restart` from the stored builder/registry factories.
 
 **Fog-of-war map.** `map` opens a vector SVG map inside the CRT screen showing only the
 rooms you have explored, built from the directions you have traveled. The current room is
@@ -180,7 +295,9 @@ incrementally via `refresh` on each turn and `handle` on each move) → `layoutM
 placement from compass directions) → `renderMapSvg` (produces the SVG string embedded in
 the overlay).
 
-## The Hollow House (bundled campaign)
+## The campaigns
+
+### The Hollow House (`@wickedways/campaigns/hollow-house`)
 
 A nine-room haunted estate played as the **Heir** archetype.
 
@@ -191,23 +308,76 @@ A nine-room haunted estate played as the **Heir** archetype.
   the **iron key** (dropped by the Revenant in the Cellar) opens the Attic. Walk into a locked
   door while carrying its key to open it.
 - **Storyteller:** entering a room while carrying the journal reveals a one-time lore fragment.
+- **Audio:** sanity-driven chiptune ambient + SFX via the default chiptune pack.
+- **Themes:** `default` (green phosphor) and `haunted` (warm pinkish-red, heavier glow/flicker).
 
-See `src/campaign/index.ts` for the full room graph, loot, mobs, and win/lose conditions.
+See `packages/campaigns/src/hollow-house/` for the full room graph, loot, mobs, and conditions.
+
+### Seed Demo (`@wickedways/campaigns/seed`)
+
+A minimal engine-exercise world (a few rooms, a recipe, the `delver` archetype). Omits
+`audio`, `themes`, and status mechanics — exercises the flat-bed / default-theme /
+empty-status-bar paths. Both switchers (theme, soundpack) are auto-hidden.
+
+The campaign content lives in `@wickedways/seed` (the engine-only demo world); this entry
+is a thin `CampaignManifest` wrapper that presents it in the launcher.
+
+## Adding a campaign
+
+1. Create a folder `packages/campaigns/src/<slug>/`.
+2. Export a `CampaignManifest` as a named export from its `index.ts`:
+   ```ts
+   export const myCampaign: CampaignManifest = {
+     slug: "my-campaign",
+     title: "My Campaign",
+     blurb: "Short description for the launcher menu.",
+     intro: "Welcome-screen body text.",
+     builder: myTemplate,       // () => TemplateBuilder
+     registry: myRegistry,      // () => CampaignRegistry
+     aliases: {},
+     playerName: "Hero",
+     archetype: "fighter",
+     // audio, surface, themes are optional
+   };
+   ```
+3. Register it in `packages/play/src/main.ts`:
+   ```ts
+   import { myCampaign } from "@wickedways/campaigns/my-campaign";
+   bootLauncher(app, { campaigns: [hollowHouse, seed, myCampaign], surfaces: [crtSurface] }, …);
+   ```
+
+## Adding a surface
+
+1. Implement the `PlaySurface` interface in a new package (e.g. `@wickedways/play-surface-foo`):
+   ```ts
+   export const fooSurface: PlaySurface = {
+     id: "foo",
+     label: "Foo Surface",
+     defaultTheme: { id: "default", label: "Default" },
+     mount({ app, session, themes, audio, onExit }): SurfaceHandle {
+       // render, subscribe to cues, drive the turn loop …
+       return { unmount() { /* teardown */ } };
+     },
+   };
+   ```
+2. Register it in `packages/play/src/main.ts` alongside the existing surfaces.
+3. Point a campaign at it via `manifest.surface = "foo"`.
 
 ## Testing
 
-- **Unit** — co-located `*.test.ts` covering the parser, narrator, view model, session,
-  save store, and campaign wiring.
+- **Unit** — co-located `*.test.ts` in each package covering the parser, narrator, view model,
+  session, save store, audio, and campaign wiring.
 - **End-to-end** — `e2e/playthrough.spec.ts` drives a full winning run in a real browser
-  (welcome screen → loot → combat → save/undo → win), plus checks for the clickable-exit and
+  (welcome screen → loot → combat → save/undo → win), plus checks the clickable-exit and
   clickable-noun affordances. Run with `pnpm --filter @wickedways/play test:e2e`.
 
 ## Deployment (Coolify)
 
 The play surface ships as a static bundle served by nginx, built by the multi-stage
-[`Dockerfile`](./Dockerfile). Because the SPA bundles the `wickedways` engine straight from
-TypeScript source through the pnpm workspace, **the Docker build context is the repo root**
-(not this package directory) and there is no separate engine build step.
+[`Dockerfile`](./Dockerfile). Because the SPA bundles `wickedways`, `play-runtime`,
+`play-surface-crt`, and `campaigns` straight from TypeScript source through the pnpm
+workspace, **the Docker build context is the repo root** (not this package directory) and
+there is no separate engine build step.
 
 Build/run locally to mirror production:
 

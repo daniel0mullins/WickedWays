@@ -103,6 +103,8 @@ export interface MechanicCue {
  * - `adjustStat` — adjusts `"sanity"` or `"energy"` by a signed delta.
  * - `grantImmunity` — grants all-status immunity for `turns` rounds (floored, truncated).
  * - `cue` — emits a `{ kind: "mechanic", cue }` {@link PresentationCue}.
+ * - `status` — emits a `{ kind: "status", fields }` {@link PresentationCue}; the play surface
+ *   renders the latest payload in its HUD status bar (campaign-defined readout).
  */
 /** The discriminants of the {@link Effect} union. */
 export const EffectKind = {

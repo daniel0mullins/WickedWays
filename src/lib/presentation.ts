@@ -32,6 +32,16 @@ export type ActionKind = ActionDetail["kind"];
 /**
  * A presentation event emitted by the campaign. `sound` is pre-resolved by the
  * engine (entity sound → campaign default → undefined); the host plays it if set.
+ *
+ * - `action` — a recorded player action (move, attack, take, …).
+ * - `encounter` — the first time the player meets a given mob.
+ * - `visibility` — a dark room's lit state changed (reveal/conceal).
+ * - `resolution` — the campaign ended (win / loss / timeout).
+ * - `mechanic` — a custom mechanic emitted a narration line.
+ * - `status` — the campaign pushes a new status-bar readout (`StatusField[]`).
+ *   The play surface renders the latest payload in its HUD; before the first
+ *   emission the status area is empty. Campaigns without a status mechanic (e.g.
+ *   the seed demo) simply never emit this cue.
  */
 export type PresentationCue =
   | { kind: "action"; action: ActionKind; actor: EntityRef; sound?: AssetRef }

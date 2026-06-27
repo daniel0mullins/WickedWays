@@ -60,6 +60,7 @@ export class Narrator {
         case "visibility": lines.push(cue.lit ? "Light spills into the room." : "Darkness closes in."); break;
         case "resolution": if (cue.narration?.text) lines.push("", cue.narration.text); break;
         case "action": break; // movement/attack already implied by room re-render; keep terse
+        case "status": break; // status cues render in the HUD, not the transcript
       }
     }
     return lines;
