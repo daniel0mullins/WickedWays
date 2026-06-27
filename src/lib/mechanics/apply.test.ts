@@ -5,6 +5,11 @@ import { PlayerCharacter } from "../character/player-character.js";
 import { StatType } from "../character/stats.js";
 import { Status } from "../status.js";
 import { assignNeutralArchetype } from "../../test-utils.js";
+import { defineRegistry } from "../authoring/registry.js";
+import { authorTemplate } from "../authoring/template-builder.js";
+import { assemble } from "../authoring/assembler.js";
+import { EffectKind } from "./mechanic.js";
+import type { PresentationCue } from "../presentation.js";
 
 /** Build a started one-PC campaign containing a real PlayerCharacter. */
 function makeStartedCampaign() {
@@ -73,5 +78,24 @@ describe("applyEffect", () => {
     // endTurn reconciles afflictions while timed immunity is active — Panic must clear.
     player.endTurn();
     expect(player.isNormal).toBe(true);
+  });
+});
+
+describe("applyEffect — status", () => {
+  it("emits a status PresentationCue carrying the fields", () => {
+    const registry = defineRegistry({ items: {} });
+    const builder = authorTemplate("t", registry).room("R", { description: "r" }).startRoom("R");
+    const { campaign } = assemble(builder.description, builder.registry);
+    const cues: PresentationCue[] = [];
+    campaign.onCue((c) => cues.push(c));
+
+    applyEffect(campaign, {
+      kind: EffectKind.Status,
+      fields: [{ label: "Sanity", value: "12", emphasis: "warn" }],
+    });
+
+    expect(cues).toEqual([
+      { kind: "status", fields: [{ label: "Sanity", value: "12", emphasis: "warn" }] },
+    ]);
   });
 });

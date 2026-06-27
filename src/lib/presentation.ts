@@ -19,6 +19,13 @@ export interface EntityRef {
   name: string;
 }
 
+/** One labelled readout in a campaign-defined status bar. */
+export interface StatusField {
+  label: string;
+  value: string;
+  emphasis?: "normal" | "warn" | "critical";
+}
+
 /** The action kinds an action cue can carry — kept in sync with {@link ActionDetail}. */
 export type ActionKind = ActionDetail["kind"];
 
@@ -31,7 +38,8 @@ export type PresentationCue =
   | { kind: "encounter"; mob: EntityRef; room: EntityRef; sound?: AssetRef }
   | { kind: "visibility"; room: EntityRef; lit: boolean }
   | { kind: "resolution"; outcome: CampaignOutcome; reason?: string; narration?: OutcomeNarration }
-  | { kind: "mechanic"; cue: MechanicCue };
+  | { kind: "mechanic"; cue: MechanicCue }
+  | { kind: "status"; fields: readonly StatusField[] };
 
 /**
  * Engine-internal seam for publishing a cue to the campaign's subscribers.
