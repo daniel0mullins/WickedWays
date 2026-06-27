@@ -103,6 +103,9 @@ importers:
       '@wickedways/play-runtime':
         specifier: workspace:*
         version: link:../play-runtime
+      '@wickedways/play-surface-crt':
+        specifier: workspace:*
+        version: link:../play-surface-crt
       wickedways:
         specifier: workspace:*
         version: link:../..
@@ -123,6 +126,21 @@ importers:
       '@types/node':
         specifier: ^22.10.0
         version: 22.19.21
+
+  packages/play-surface-crt:
+    dependencies:
+      '@fontsource/silkscreen':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/vt323':
+        specifier: ^5.2.7
+        version: 5.2.7
+      '@wickedways/play-runtime':
+        specifier: workspace:*
+        version: link:../play-runtime
+      wickedways:
+        specifier: workspace:*
+        version: link:../..
 
   packages/seed:
     dependencies:

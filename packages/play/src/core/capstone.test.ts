@@ -9,8 +9,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { GameSession } from "@wickedways/play-runtime";
 import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES } from "../campaign/index.js";
-import { parse } from "../text/parser.js";
-import { Narrator } from "../text/narrator.js";
+import { parse, Narrator } from "@wickedways/play-surface-crt";
 import type { SaveStore, SaveSlot, SurfaceState } from "@wickedways/play-runtime";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
 import { Rooms, Archetypes } from "../campaign/ids.js";

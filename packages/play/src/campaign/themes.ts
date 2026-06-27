@@ -1,4 +1,4 @@
-import { defaultCrtTheme, type CrtTheme } from "../text/theme.js";
+import { defaultCrtTheme, type CrtTheme } from "@wickedways/play-surface-crt";
 
 export const hauntedCrtTheme: CrtTheme = {
   id: "haunted",

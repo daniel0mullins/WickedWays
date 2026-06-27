@@ -3,7 +3,7 @@ import "@fontsource/silkscreen";
 import { bootLauncher } from "@wickedways/play-runtime";
 import { LocalStorageSaveStore } from "@wickedways/play-runtime";
 import { hollowHouse } from "./campaign/manifest.js";
-import { crtSurface } from "./text/surface.js";
+import { crtSurface } from "@wickedways/play-surface-crt";
 
 const app = document.getElementById("app");
 if (app) {

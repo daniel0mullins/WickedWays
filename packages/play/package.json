@@ -13,7 +13,8 @@
     "@fontsource/silkscreen": "^5.2.8",
     "@fontsource/vt323": "^5.2.7",
     "wickedways": "workspace:*",
-    "@wickedways/play-runtime": "workspace:*"
+    "@wickedways/play-runtime": "workspace:*",
+    "@wickedways/play-surface-crt": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
