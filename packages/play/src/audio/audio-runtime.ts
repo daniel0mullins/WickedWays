@@ -23,7 +23,8 @@ export class AudioRuntime {
   static forCampaign(audio: CampaignAudio | undefined, deps?: Partial<AudioDeps>): AudioRuntime {
     const engine = deps?.engine ?? new AudioEngine();
     const bed = deps?.bed ?? new AmbientBed();
-    const renderer = deps?.render ?? ((spec) => new SynthRenderer(engine).render(spec));
+    const defaultRenderer = new SynthRenderer(engine);
+    const renderer = deps?.render ?? ((spec) => defaultRenderer.render(spec));
     const director = audio ? audio.createDirector() : defaultDirector();
     const packs = audio?.soundpacks?.length ? audio.soundpacks : [defaultChiptunePack];
     return new AudioRuntime({ render: renderer, bed, engine }, director, packs, packs[0]!);
@@ -31,9 +32,19 @@ export class AudioRuntime {
 
   get enabled(): boolean { return this.#enabled; }
   setEnabled(on: boolean): void {
-    this.#enabled = on;
-    if (on) { this.deps.engine.resume(); if (!this.deps.bed.running) this.deps.bed.start(this.deps.engine.context!); }
-    else { this.deps.bed.stop(); this.deps.engine.suspend(); }
+    if (on) {
+      const ok = this.deps.engine.resume();
+      const ctx = this.deps.engine.context;
+      if (ok && ctx !== null) {
+        this.#enabled = true;
+        if (!this.deps.bed.running) this.deps.bed.start(ctx);
+      }
+      // resume failed / no context yet → stay disabled, no bed; caller may retry on a later gesture
+    } else {
+      this.#enabled = false;
+      this.deps.bed.stop();
+      this.deps.engine.suspend();
+    }
   }
 
   get soundpacks(): { id: string; label: string }[] { return this.packs.map((p) => ({ id: p.id, label: p.label })); }
@@ -46,9 +57,9 @@ export class AudioRuntime {
       if (spec) this.deps.render(spec);
     }
   }
-  playMobAttack(_atk: MobAttack): void {
+  playMobAttack(atk: MobAttack): void {
     if (!this.#enabled) return;
-    this.deps.render({ kind: "synth", voice: soundForMobAttack(_atk) });
+    this.deps.render({ kind: "synth", voice: soundForMobAttack(atk) });
   }
   noteError(): void { if (this.#enabled) this.deps.render({ kind: "synth", voice: errorSound() }); }
 

@@ -25,6 +25,24 @@ describe("AudioRuntime", () => {
     rt.playCue({ kind: "action", action: "move", actor: { id: "pc", name: "" } }, {} as never);
     expect(d.render).not.toHaveBeenCalled();
   });
+  it("stays disabled when engine.resume() returns false", () => {
+    const d = deps();
+    (d.engine as unknown as { resume: () => boolean }).resume = () => false;
+    const rt = AudioRuntime.forCampaign(undefined, d as never);
+    rt.setEnabled(true);
+    expect(rt.enabled).toBe(false);
+    expect(d.bed.start).not.toHaveBeenCalled();
+  });
+  it("stays disabled when engine.context is null", () => {
+    const d = {
+      ...deps(),
+      engine: { resume: () => true, suspend: () => {}, close: () => {}, get context() { return null; }, play: vi.fn() },
+    };
+    const rt = AudioRuntime.forCampaign(undefined, d as never);
+    rt.setEnabled(true);
+    expect(rt.enabled).toBe(false);
+    expect(d.bed.start).not.toHaveBeenCalled();
+  });
   it("exposes the campaign soundpacks for the switcher", () => {
     const d = deps();
     const rt = AudioRuntime.forCampaign({ createDirector: () => ({ react: () => [], tension: () => 0 }), soundpacks: [defaultChiptunePack] }, d as never);
