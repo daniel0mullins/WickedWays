@@ -12,7 +12,8 @@
   "dependencies": {
     "@fontsource/silkscreen": "^5.2.8",
     "@fontsource/vt323": "^5.2.7",
-    "wickedways": "workspace:*"
+    "wickedways": "workspace:*",
+    "@wickedways/play-runtime": "workspace:*"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

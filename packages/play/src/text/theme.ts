@@ -1,4 +1,4 @@
-import type { Theme } from "../core/surface.js";
+import type { Theme } from "@wickedways/play-runtime";
 
 export interface CrtTheme extends Theme {
   palette: { bg: string; fg: string; accent: string; warn: string; critical: string };

@@ -1,4 +1,4 @@
-import { DIRECTION_DELTA, type MapModel, type MapRoom } from "../core/map-model.js";
+import { DIRECTION_DELTA, type MapModel, type MapRoom } from "@wickedways/play-runtime";
 
 const CELL = 90;
 const BOX_W = 70;

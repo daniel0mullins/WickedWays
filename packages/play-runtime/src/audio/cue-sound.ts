@@ -1,5 +1,5 @@
 import type { PresentationCue } from "wickedways/lib/presentation";
-import type { MobAttack } from "../core/session.js";
+import type { MobAttack } from "../session.js";
 
 /** Oscillator waveforms a SoundSpec can request. */
 export type Waveform = "sine" | "square" | "sawtooth" | "triangle";

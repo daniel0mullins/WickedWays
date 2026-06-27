@@ -1,8 +1,8 @@
 import { StatType } from "wickedways/lib/character/stats";
 import type { ICampaign } from "wickedways/lib/campaign";
-import type { AudioDirector, CampaignAudio } from "../audio/contracts.js";
-import { defaultDirector, defaultChiptunePack } from "../audio/default-pack.js";
-import { sanityToTension } from "../audio/tension.js";
+import type { AudioDirector, CampaignAudio } from "@wickedways/play-runtime";
+import { defaultDirector, defaultChiptunePack } from "@wickedways/play-runtime";
+import { sanityToTension } from "@wickedways/play-runtime";
 
 /** Discrete cues use the base mapping; tension is sanity vs. a session high-water-mark. */
 export function createHollowHouseDirector(): AudioDirector {

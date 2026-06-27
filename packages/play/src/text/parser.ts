@@ -1,6 +1,6 @@
 import { Directions, type Direction } from "wickedways/lib/room";
-import type { Intent } from "../core/intent.js";
-import type { ViewModel, ScopeEntity } from "../core/viewmodel.js";
+import type { Intent } from "@wickedways/play-runtime";
+import type { ViewModel, ScopeEntity } from "@wickedways/play-runtime";
 
 export type ParseResult =
   | { kind: "intent"; intent: Intent }

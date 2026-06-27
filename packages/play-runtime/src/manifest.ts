@@ -1,6 +1,6 @@
 import type { TemplateBuilder } from "wickedways/lib/authoring/template-builder";
 import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
-import type { CampaignAudio } from "../audio/contracts.js";
+import type { CampaignAudio } from "./audio/contracts.js";
 import type { Theme } from "./surface.js";
 
 export type AliasMap = Record<string, string[]>;

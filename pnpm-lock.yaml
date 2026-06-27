@@ -100,6 +100,9 @@ importers:
       '@fontsource/vt323':
         specifier: ^5.2.7
         version: 5.2.7
+      '@wickedways/play-runtime':
+        specifier: workspace:*
+        version: link:../play-runtime
       wickedways:
         specifier: workspace:*
         version: link:../..
@@ -110,6 +113,16 @@ importers:
       vite:
         specifier: ^8.0.0
         version: 8.0.16(@types/node@22.19.21)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0)
+
+  packages/play-runtime:
+    dependencies:
+      wickedways:
+        specifier: workspace:*
+        version: link:../..
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.21
 
   packages/seed:
     dependencies:

@@ -7,11 +7,11 @@
  * the same typed command strings a player would type.
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import { GameSession } from "./session.js";
+import { GameSession } from "@wickedways/play-runtime";
 import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES } from "../campaign/index.js";
 import { parse } from "../text/parser.js";
 import { Narrator } from "../text/narrator.js";
-import type { SaveStore, SaveSlot, SurfaceState } from "./savestore.js";
+import type { SaveStore, SaveSlot, SurfaceState } from "@wickedways/play-runtime";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
 import { Rooms, Archetypes } from "../campaign/ids.js";
 import { Directions } from "wickedways/lib/room";

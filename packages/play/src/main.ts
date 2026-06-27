@@ -1,7 +1,7 @@
 import "@fontsource/vt323";
 import "@fontsource/silkscreen";
-import { bootLauncher } from "./core/launcher.js";
-import { LocalStorageSaveStore } from "./core/savestore.js";
+import { bootLauncher } from "@wickedways/play-runtime";
+import { LocalStorageSaveStore } from "@wickedways/play-runtime";
 import { hollowHouse } from "./campaign/manifest.js";
 import { crtSurface } from "./text/surface.js";
 

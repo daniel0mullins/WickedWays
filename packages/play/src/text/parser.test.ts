@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { parse } from "./parser.js";
 import { Directions } from "wickedways/lib/room";
-import type { ViewModel, ScopeEntity } from "../core/viewmodel.js";
+import type { ViewModel, ScopeEntity } from "@wickedways/play-runtime";
 
 const ent = (id: string, name: string, aliases: string[], kind: ScopeEntity["kind"]): ScopeEntity => ({ id, name, aliases, kind });
 const vm = (over: Partial<ViewModel> = {}): ViewModel => ({

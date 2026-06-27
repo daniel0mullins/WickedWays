@@ -1,8 +1,8 @@
 import type { PresentationCue } from "wickedways/lib/presentation";
 import { StatType } from "wickedways/lib/character/stats";
-import type { ViewModel, ScopeEntity } from "../core/viewmodel.js";
-import type { Intent } from "../core/intent.js";
-import type { MobAttack } from "../core/session.js";
+import type { ViewModel, ScopeEntity } from "@wickedways/play-runtime";
+import type { Intent } from "@wickedways/play-runtime";
+import type { MobAttack } from "@wickedways/play-runtime";
 
 const sentence = (items: string[], head: string): string | null =>
   items.length === 0 ? null : `${head} ${items.join(", ")}.`;

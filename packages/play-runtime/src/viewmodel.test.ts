@@ -2,8 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { assemble } from "wickedways/lib/authoring/assembler";
 import { PlayerCharacter } from "wickedways/lib/character/player-character";
-import { hauntedHouseTemplate, ALIASES } from "../campaign/index.js";
-import { Rooms, Archetypes } from "../campaign/ids.js";
+import { hauntedHouseTemplate, ALIASES } from "../../play/src/campaign/index.js";
+import { Rooms, Archetypes } from "../../play/src/campaign/ids.js";
 import { view } from "./viewmodel.js";
 
 function bootInLanding() {

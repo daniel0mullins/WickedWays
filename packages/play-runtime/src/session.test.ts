@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { GameSession } from "./session.js";
-import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES } from "../campaign/index.js";
+import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES } from "../../play/src/campaign/index.js";
 import { LocalStorageSaveStore } from "./savestore.js";
-import { Rooms, Archetypes } from "../campaign/ids.js";
+import { Rooms, Archetypes } from "../../play/src/campaign/ids.js";
 import { Directions } from "wickedways/lib/room";
 
 class MemStorage {

@@ -1,4 +1,4 @@
-import type { PlaySurface, MountArgs, SurfaceHandle } from "../core/surface.js";
+import type { PlaySurface, MountArgs, SurfaceHandle } from "@wickedways/play-runtime";
 import { defaultCrtTheme } from "./theme.js";
 import { mountTerminal } from "./ui.js";
 

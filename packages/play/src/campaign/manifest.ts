@@ -1,4 +1,4 @@
-import type { CampaignManifest } from "../core/manifest.js";
+import type { CampaignManifest } from "@wickedways/play-runtime";
 import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES, TITLE, INTRO } from "./index.js";
 import { Archetypes } from "./ids.js";
 import { hollowHouseAudio } from "./audio.js";

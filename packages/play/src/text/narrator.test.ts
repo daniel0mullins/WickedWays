@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { Narrator } from "./narrator.js";
 import { Directions } from "wickedways/lib/room";
 import { StatType } from "wickedways/lib/character/stats";
-import type { ViewModel } from "../core/viewmodel.js";
+import type { ViewModel } from "@wickedways/play-runtime";
 import type { PresentationCue } from "wickedways/lib/presentation";
 
 const vm = (over: Partial<ViewModel> = {}): ViewModel => ({

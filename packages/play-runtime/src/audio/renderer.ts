@@ -1,4 +1,4 @@
-import type { AudioEngine } from "./synth.js";
+import type { AudioEngine } from "./engine.js";
 import type { Renderer, SoundSpec } from "./contracts.js";
 
 /** Renders the `synth` arm of a SoundSpec through the procedural engine. */

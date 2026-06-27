@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { MapModel } from "../core/map-model.js";
-import type { ViewModel } from "../core/viewmodel.js";
+import { MapModel } from "@wickedways/play-runtime";
+import type { ViewModel } from "@wickedways/play-runtime";
 import { layoutMap } from "./map-view.js";
 
 function view(over: { id: string; name: string; exits?: { dir: string }[]; locked?: { dir: string }[]; remains?: boolean }): ViewModel {

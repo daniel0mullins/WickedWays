@@ -6,11 +6,11 @@
  * Study, uses the vial, and asserts the heal lands (and the vial is consumed).
  */
 import { describe, it, expect } from "vitest";
-import { GameSession } from "./session.js";
+import { GameSession } from "@wickedways/play-runtime";
 import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES } from "../campaign/index.js";
 import { parse } from "../text/parser.js";
 import { Rooms, Archetypes } from "../campaign/ids.js";
-import type { SaveStore, SaveSlot, SurfaceState } from "./savestore.js";
+import type { SaveStore, SaveSlot, SurfaceState } from "@wickedways/play-runtime";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
 
 class MemSaveStore implements SaveStore {

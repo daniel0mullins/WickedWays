@@ -1,6 +1,6 @@
 import type { GameSession } from "./session.js";
 import type { CampaignManifest } from "./manifest.js";
-import type { AudioRuntime } from "../audio/audio-runtime.js";
+import type { AudioRuntime } from "./audio/audio-runtime.js";
 
 export interface Theme { id: string; label: string }
 export interface SurfaceHandle { unmount(): void }

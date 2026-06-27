@@ -1,12 +1,12 @@
-import type { GameSession } from "../core/session.js";
+import type { GameSession } from "@wickedways/play-runtime";
 import type { StatusField } from "wickedways/lib/presentation";
 import { parse } from "./parser.js";
 import { Narrator } from "./narrator.js";
-import type { AudioRuntime } from "../audio/audio-runtime.js";
+import type { AudioRuntime } from "@wickedways/play-runtime";
 import { linkNouns } from "./link-nouns.js";
-import { MapModel } from "../core/map-model.js";
+import { MapModel } from "@wickedways/play-runtime";
 import { layoutMap, renderMapSvg } from "./map-view.js";
-import type { SurfaceHandle, Theme } from "../core/surface.js";
+import type { SurfaceHandle, Theme } from "@wickedways/play-runtime";
 import { type CrtTheme, defaultCrtTheme, applyTheme } from "./theme.js";
 
 export function mountTerminal(
@@ -301,7 +301,7 @@ export function mountTerminal(
    * - body lines rendered instantly
    * All output goes into one block.
    */
-  const printRoom = (vm: import("../core/viewmodel.js").ViewModel) => {
+  const printRoom = (vm: import("@wickedways/play-runtime").ViewModel) => {
     flushTypewriter();
     const parts = narrator.renderRoomParts(vm);
     const block = appendBlock();

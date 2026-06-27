@@ -1,11 +1,11 @@
 import type { PresentationCue } from "wickedways/lib/presentation";
 import type { ICampaign } from "wickedways/lib/campaign";
-import type { ViewModel } from "../core/viewmodel.js";
-import type { MobAttack } from "../core/session.js";
+import type { ViewModel } from "../viewmodel.js";
+import type { MobAttack } from "../session.js";
 import type { AudioDirector, CampaignAudio, Renderer, SoundPack } from "./contracts.js";
 import { defaultChiptunePack, defaultDirector } from "./default-pack.js";
 import { SynthRenderer } from "./renderer.js";
-import { AudioEngine } from "./synth.js";
+import { AudioEngine } from "./engine.js";
 import { AmbientBed } from "./ambient.js";
 import { soundForMobAttack, errorSound } from "./cue-sound.js";
 

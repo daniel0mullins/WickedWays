@@ -2,7 +2,7 @@ import type { CampaignManifest } from "./manifest.js";
 import type { PlaySurface, SurfaceHandle } from "./surface.js";
 import type { SaveStore } from "./savestore.js";
 import { GameSession } from "./session.js";
-import { AudioRuntime } from "../audio/audio-runtime.js";
+import { AudioRuntime } from "./audio/audio-runtime.js";
 
 export function resolveCampaign(slug: string | null, campaigns: CampaignManifest[]): CampaignManifest | null {
   if (!slug) return null;

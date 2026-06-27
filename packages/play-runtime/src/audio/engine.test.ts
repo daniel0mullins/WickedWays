@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AudioEngine } from "./synth.js";
+import { AudioEngine } from "./engine.js";
 import { makeFakeAudioContext } from "./fake-audio-context.js";
 
 describe("AudioEngine", () => {

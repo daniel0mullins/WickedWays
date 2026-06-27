@@ -1,7 +1,7 @@
 import type { SynthVoice } from "./cue-sound.js";
 import type { PresentationCue } from "wickedways/lib/presentation";
 import type { ICampaign } from "wickedways/lib/campaign";
-import type { ViewModel } from "../core/viewmodel.js";
+import type { ViewModel } from "../viewmodel.js";
 
 export type SoundSpec =
   | { kind: "synth"; voice: SynthVoice }
