@@ -56,6 +56,7 @@ export function mountTerminal(
         </div>
       </div>
     </div>`;
+  root.dataset.crtHousing = "";
   applyTheme(root, (meta.themes[0] as CrtTheme) ?? defaultCrtTheme);
   applyStyles(root);
 
