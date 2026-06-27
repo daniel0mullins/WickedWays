@@ -5,11 +5,12 @@ import type { MobAttack } from "../core/session.js";
 export type Waveform = "sine" | "square" | "sawtooth" | "triangle";
 
 /**
- * A declarative, backend-agnostic description of a one-shot sound. The Web Audio
- * backend ({@link AudioEngine}) renders it; this module never touches Web Audio,
- * so the mapping stays pure and unit-testable under the node test environment.
+ * A declarative, backend-agnostic description of a one-shot procedural sound.
+ * The Web Audio backend ({@link AudioEngine}) renders it; this module never
+ * touches Web Audio, so the mapping stays pure and unit-testable under the
+ * node test environment.
  */
-export interface SoundSpec {
+export interface SynthVoice {
   /** Oscillator waveform, or "noise" for a white-noise burst. */
   source: Waveform | "noise";
   /** Start frequency in Hz (ignored when `source` is "noise"). */
@@ -36,7 +37,7 @@ export function detuneFactor(id: string): number {
 }
 
 /** Maps a presentation cue to a sound, or `null` when the event is silent. */
-export function soundForCue(cue: PresentationCue): SoundSpec | null {
+export function soundForCue(cue: PresentationCue): SynthVoice | null {
   switch (cue.kind) {
     case "action":
       switch (cue.action) {
@@ -76,11 +77,11 @@ export function soundForCue(cue: PresentationCue): SoundSpec | null {
 }
 
 /** A mob's strike landing on the player. */
-export function soundForMobAttack(_atk: MobAttack): SoundSpec {
+export function soundForMobAttack(_atk: MobAttack): SynthVoice {
   return { source: "square", freq: 150, endFreq: 80, duration: 0.13, gain: 0.16, attack: 0.001 };
 }
 
 /** A short low buzz for a rejected command or illegal action. */
-export function errorSound(): SoundSpec {
+export function errorSound(): SynthVoice {
   return { source: "square", freq: 90, duration: 0.12, gain: 0.1, attack: 0.001 };
 }

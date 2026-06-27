@@ -1,4 +1,4 @@
-import type { SoundSpec } from "./cue-sound.js";
+import type { SynthVoice } from "./cue-sound.js";
 
 /**
  * Web Audio backend that renders {@link SoundSpec}s as one-shot sounds. The
@@ -32,8 +32,9 @@ export class AudioEngine {
     return this.#ctx;
   }
 
-  /** Render a one-shot sound now. No-op if there is no context. */
-  play(spec: SoundSpec): void {
+  /** Render a one-shot procedural voice now. No-op if there is no context. */
+  play(voice: SynthVoice): void {
+    const spec = voice;
     const ctx = this.#ctx;
     if (ctx === null) return;
     const t0 = ctx.currentTime;
