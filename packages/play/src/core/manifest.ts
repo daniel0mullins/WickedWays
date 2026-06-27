@@ -1,6 +1,7 @@
 import type { TemplateBuilder } from "wickedways/lib/authoring/template-builder";
 import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
 import type { CampaignAudio } from "../audio/contracts.js";
+import type { Theme } from "./surface.js";
 
 export type AliasMap = Record<string, string[]>;
 
@@ -19,5 +20,6 @@ export interface CampaignManifest {
   playerName: string;
   archetype: string;
   audio?: CampaignAudio;
-  // surface and themes are added in later tasks.
+  surface?: string;
+  themes?: Theme[];
 }
