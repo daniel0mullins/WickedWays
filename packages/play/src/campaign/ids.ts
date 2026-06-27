@@ -11,7 +11,7 @@ export const Keys = { Brass: "brass-key", Iron: "iron-key" } as const;
 
 export const Mobs = { Wraith: "Wraith", Revenant: "Revenant" } as const;
 
-export const Mechanics = { Dread: "dread", Storyteller: "storyteller" } as const;
+export const Mechanics = { Dread: "dread", Storyteller: "storyteller", StatusBar: "status-bar" } as const;
 
 export const Archetypes = { Heir: "heir" } as const;
 

@@ -7,6 +7,7 @@ import { Status } from "wickedways/lib/status";
 import { Directions } from "wickedways/lib/room";
 import { ITEM_FACTORIES } from "./items.js";
 import { dread, makeStoryteller } from "./mechanics.js";
+import { statusBar } from "./status.js";
 import { LORE, doorBehavior } from "./content.js";
 import { Rooms, Items, Keys, Mobs, Mechanics, Archetypes, Conditions, ExitBehaviors } from "./ids.js";
 
@@ -15,7 +16,7 @@ export { LORE, ALIASES, TITLE, INTRO } from "./content.js";
 export function buildHauntedHouseRegistry(): CampaignRegistry {
   return defineRegistry({
     items: ITEM_FACTORIES,
-    mechanics: { [Mechanics.Dread]: dread, [Mechanics.Storyteller]: makeStoryteller(LORE) },
+    mechanics: { [Mechanics.Dread]: dread, [Mechanics.Storyteller]: makeStoryteller(LORE), [Mechanics.StatusBar]: statusBar },
     conditions: {
       [Conditions.ReachedAtticWithJournal]: (c: ICampaign) => {
         const pc = c.party[0];
@@ -73,6 +74,7 @@ export function hauntedHouseTemplate(): TemplateBuilder<string, string> {
     // Mechanics + outcomes
     .useMechanic(Mechanics.Dread)
     .useMechanic(Mechanics.Storyteller)
+    .useMechanic(Mechanics.StatusBar)
     .winWhen(Conditions.ReachedAtticWithJournal, { text: "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave." })
     .loseWhen(Conditions.SanityZero, { text: "The dark gets in. Your thoughts come apart like wet paper, and the Hollow House keeps what is left of you." })
     .loseWhen(Conditions.PartyDown, { text: "You fall, and do not rise. The house is patient. It has all the time there is." })

@@ -1,4 +1,5 @@
 import type { GameSession } from "../core/session.js";
+import type { StatusField } from "wickedways/lib/presentation";
 import { parse } from "./parser.js";
 import { Narrator } from "./narrator.js";
 import { AudioManager } from "../audio/audio-manager.js";
@@ -63,6 +64,15 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
   // `restart` confirms first: the first one arms this flag, a second one fires;
   // any other command disarms it (see handle()).
   let restartPending = false;
+  // Latest campaign-defined status bar fields (updated from status cues).
+  // Empty until the first status cue arrives; bar shows just the location then.
+  let latestStatus: readonly StatusField[] = [];
+
+  const absorbStatusCues = (cues: readonly { kind: string; fields?: readonly StatusField[] }[]) => {
+    for (const cue of cues) {
+      if (cue.kind === "status" && cue.fields !== undefined) latestStatus = cue.fields;
+    }
+  };
 
   // Audio toggle — master switch on the bezel for procedural music + SFX.
   // Audio starts muted; the first enable resumes the AudioContext (the click, or
@@ -149,7 +159,16 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
 
   const refresh = () => {
     const vm = session.view();
-    status.textContent = `${vm.status.locationName}  ·  turn ${vm.status.turn}/${vm.status.maxTurns}  ·  Sanity ${vm.status.sanity}`;
+    // Status bar: location from the view model; stat readouts from the latest campaign cue.
+    status.innerHTML = "";
+    status.appendChild(document.createTextNode(vm.status.locationName));
+    for (const f of latestStatus) {
+      status.appendChild(document.createTextNode("  ·  "));
+      const span = document.createElement("span");
+      if (f.emphasis) span.className = `status-${f.emphasis}`;
+      span.textContent = `${f.label} ${f.value}`;
+      status.appendChild(span);
+    }
 
     // Recompute clickable nouns first so the HUD loot line links the current scope.
     computeClickableNouns();
@@ -394,6 +413,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
         // Reading an item reveals its lore (engine-backed, free, non-consuming);
         // anything without lore falls back to the generic look line.
         const cues = res.target.kind === "item" ? session.read(res.target.id) : [];
+        absorbStatusCues(cues);
         print(cues.length ? narrator.renderCues(cues) : narrator.renderExamine(res.target, before));
         return;
       }
@@ -408,6 +428,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
           session.restart();
           narrator = new Narrator();      // reset narrator state for a clean restart
           mapModel.reset();
+          latestStatus = [];
           transcript.innerHTML = "";
           printRoom(session.view());
           refresh();
@@ -449,6 +470,7 @@ export function mountTerminal(root: HTMLElement, session: GameSession, meta: { t
       case "intent": {
         const result = session.execute(res.intent);
         if (result.error) { audio.noteError(); print([result.error], "error"); return; }
+        absorbStatusCues(result.cues);
         const after = session.view();
         // Resolution (win/lose) cues are the OUTCOME — they must read after the
         // mob's retaliation that may have caused it, so split them off the rest.
@@ -795,6 +817,8 @@ function applyStyles(root: HTMLElement): void {
     }
     .exit-locked { color: var(--color-muted); opacity: 0.7; }
     .status { padding: .3rem 1rem; color: var(--color-muted); border-top: 1px solid var(--color-border); position: relative; z-index: 1; }
+    .status-critical { color: var(--color-error); }
+    .status-warn { color: var(--color-accent); }
     .prompt { display: flex; gap: .5rem; align-items: center; padding: .5rem 1rem 1rem; position: relative; z-index: 1; }
     .caret { color: var(--color-accent); }
     #cmd {
