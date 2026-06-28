@@ -172,6 +172,39 @@ test.describe("Wicked Ways browser playthrough", () => {
     expect(errors).toHaveLength(0);
   });
 
+  test("haunted theme persists across page reload via ?theme= param", async ({ page }) => {
+    await page.goto("/?campaign=hollow-house");
+    await page.getByRole("button", { name: /Enter Hollow House/ }).click();
+    await expect(page.locator("#cmd")).toBeVisible();
+
+    // Switch to haunted theme via the bezel combobox.
+    await page.getByRole("combobox", { name: /theme/i }).selectOption("haunted");
+
+    // URL must immediately reflect the new theme (replaceState is synchronous).
+    await expect(page).toHaveURL(/theme=haunted/);
+
+    // Haunted palette bg (#080406) must be applied to the CRT housing element.
+    const housing = page.locator("[data-crt-housing]");
+    const bgBeforeReload = await housing.evaluate(
+      (el) => getComputedStyle(el).getPropertyValue("--crt-bg").trim(),
+    );
+    expect(bgBeforeReload).toBe("#080406");
+
+    // Reload — the ?theme=haunted param must survive and be re-applied on boot.
+    await page.reload();
+    // Wait for the app to have re-booted (welcome screen re-appears).
+    await expect(page.getByRole("button", { name: /Enter Hollow House/ })).toBeVisible();
+
+    // URL still carries ?theme=haunted after reload.
+    expect(page.url()).toContain("theme=haunted");
+
+    // Haunted theme must still be applied on the housing after reload.
+    const bgAfterReload = await housing.evaluate(
+      (el) => getComputedStyle(el).getPropertyValue("--crt-bg").trim(),
+    );
+    expect(bgAfterReload).toBe("#080406");
+  });
+
   test("theme switcher reskins the CRT", async ({ page }) => {
     await page.goto("/?campaign=hollow-house");
     await page.getByRole("button", { name: /Enter Hollow House/ }).click();
