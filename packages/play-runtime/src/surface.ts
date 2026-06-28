@@ -44,6 +44,10 @@ export interface MountArgs {
   audio: AudioRuntime;
   /** Callback the surface fires when the player chooses "back to menu". */
   onExit(): void;
+  /** Theme id to apply on mount (from `?theme=`); falls back to `themes[0]` if unknown/absent. */
+  initialThemeId?: string;
+  /** Fired by the surface when the player switches theme, so the launcher can persist `?theme=`. */
+  onThemeChange?(id: string): void;
 }
 
 /**
@@ -62,6 +66,8 @@ export interface PlaySurface {
   id: string;
   /** Human-readable label for future surface-picker UI. */
   label: string;
+  /** One-line description for the surface picker; falls back to `label`. */
+  description?: string;
   /** Fallback theme used when a campaign supplies no `manifest.themes`. */
   defaultTheme: Theme;
   /**
