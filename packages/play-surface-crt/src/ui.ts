@@ -475,6 +475,7 @@ export function mountTerminal(
           session.restart();
           narrator = new Narrator();      // reset narrator state for a clean restart
           mapModel.reset();
+          audio.reset();                  // recreate director so the tension high-water-mark resets
           latestStatus = [];
           transcript.innerHTML = "";
           printRoom(session.view());
