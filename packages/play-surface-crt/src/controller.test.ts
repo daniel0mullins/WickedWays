@@ -1,0 +1,199 @@
+// @vitest-environment happy-dom
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { mountTerminal } from "./controller.js";
+import { defaultCrtTheme } from "./theme.js";
+import type { CrtGame } from "./components/crt-game.js";
+import type { CrtWelcome } from "./components/crt-welcome.js";
+import type { CrtPrompt } from "./components/crt-prompt.js";
+
+/** Walk shadow roots recursively — happy-dom `querySelector` does not pierce them. */
+function deepQuery(root: ParentNode, selector: string): Element | null {
+  const direct = root.querySelector(selector);
+  if (direct) return direct;
+  const candidates: Element[] = Array.from(root.querySelectorAll("*"));
+  // Include the root itself so its own shadow root is searched too.
+  if (root instanceof Element) candidates.unshift(root);
+  for (const el of candidates) {
+    const sr = (el as Element & { shadowRoot?: ShadowRoot | null }).shadowRoot;
+    if (sr) {
+      const found = deepQuery(sr, selector);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/** Pump enough microtasks so Lit's firstUpdated has run for the tree + nested elements. */
+async function flushRender(...els: Array<{ updateComplete?: Promise<unknown> } | null>): Promise<void> {
+  for (let i = 0; i < 4; i++) {
+    await Promise.resolve();
+    for (const el of els) if (el?.updateComplete) await el.updateComplete;
+  }
+}
+
+const makeView = (overrides: Record<string, unknown> = {}) => ({
+  status: { locationName: "Cellar" },
+  room: { id: "r1", name: "Cellar", description: "A damp stone cellar.", isLit: true },
+  exits: [],
+  lockedDoors: [],
+  occupants: [],
+  loot: [],
+  inventory: { items: [], keys: [], equippedNames: [] },
+  scope: [],
+  finished: false,
+  outcome: "",
+  ...overrides,
+});
+
+const makeSession = () => {
+  let finished = false;
+  const session = {
+    view: () => makeView({ finished }),
+    execute: vi.fn(() => ({ cues: [], mobAttacks: [] })),
+    read: vi.fn(() => []),
+    restart: vi.fn(() => {}),
+    save: vi.fn((): Promise<void> => Promise.resolve()),
+    restore: vi.fn((): Promise<{ ok: boolean }> => Promise.resolve({ ok: false })),
+    undo: vi.fn(() => false),
+    get campaign() {
+      return {};
+    },
+    /** Test hook: flip the session into a finished state. */
+    finish() {
+      finished = true;
+    },
+  };
+  return session;
+};
+
+const makeAudio = () => {
+  let enabled = false;
+  return {
+    setEnabled: vi.fn((v: boolean) => {
+      enabled = v;
+    }),
+    get enabled() {
+      return enabled;
+    },
+    soundpacks: [] as { id: string; label: string }[],
+    playCue: vi.fn(),
+    playMobAttack: vi.fn(),
+    noteError: vi.fn(),
+    update: vi.fn(),
+    reset: vi.fn(),
+    setSoundpack: vi.fn(),
+    dispose: vi.fn(),
+  };
+};
+
+const mount = () => {
+  const root = document.createElement("div");
+  document.body.appendChild(root);
+  const session = makeSession();
+  const audio = makeAudio();
+  const onExit = vi.fn();
+  const handle = mountTerminal(root, session as never, {
+    title: "Test",
+    intro: "An intro.",
+    buttonText: "Enter",
+    audio: audio as never,
+    themes: [defaultCrtTheme],
+    onExit,
+  });
+  const housing = root.querySelector("crt-housing")!;
+  const welcome = housing.querySelector<CrtWelcome>("crt-welcome")!;
+  const game = housing.querySelector<CrtGame>("crt-game")!;
+  return { root, session, audio, onExit, handle, housing, welcome, game };
+};
+
+describe("mountTerminal (controller)", () => {
+  beforeEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it("builds the housing + slotted components with the game hidden", () => {
+    const { root, welcome, game } = mount();
+    expect(root.querySelector("crt-housing")).toBeTruthy();
+    expect(welcome).toBeTruthy();
+    expect(root.dataset.crtHousing).toBe("");
+    expect(game.hidden).toBe(true);
+    expect(welcome.hidden).toBe(false);
+  });
+
+  it("starts the game on `enter`, hiding welcome and printing the room", async () => {
+    const { welcome, game } = mount();
+    await flushRender(game, game.transcript);
+    welcome.dispatchEvent(new CustomEvent("enter", { bubbles: true, composed: true }));
+    await flushRender(game, game.transcript);
+
+    expect(welcome.hidden).toBe(true);
+    expect(game.hidden).toBe(false);
+    const transcript = deepQuery(game, "#transcript")!;
+    expect(transcript.textContent).toContain("Cellar");
+  });
+
+  it("runs a turn from a `command` event without throwing", async () => {
+    const { game } = mount();
+    await flushRender(game, game.transcript);
+    game.dispatchEvent(new CustomEvent("enter", { bubbles: true, composed: true }));
+    await flushRender(game, game.transcript);
+
+    game.dispatchEvent(new CustomEvent("command", { detail: { line: "look" }, bubbles: true }));
+    await flushRender(game, game.transcript);
+    const transcript = deepQuery(game, "#transcript")!;
+    expect(transcript.textContent).toContain("> look");
+  });
+
+  it("prints THE END and disables the prompt when the session finishes", async () => {
+    const { session, game } = mount();
+    await flushRender(game, game.transcript);
+    game.dispatchEvent(new CustomEvent("enter", { bubbles: true, composed: true }));
+    await flushRender(game, game.transcript);
+
+    session.execute.mockImplementationOnce(() => {
+      session.finish();
+      return { cues: [], mobAttacks: [] };
+    });
+    game.dispatchEvent(new CustomEvent("command", { detail: { line: "wait" }, bubbles: true }));
+    await flushRender(game, game.transcript);
+
+    const transcript = deepQuery(game, "#transcript")!;
+    expect(transcript.textContent).toContain("— THE END —");
+    const prompt = deepQuery(game, "crt-prompt") as unknown as CrtPrompt;
+    expect(prompt.disabled).toBe(true);
+  });
+
+  it("confirms `restart` on the second command and reprints", async () => {
+    const { session, game } = mount();
+    await flushRender(game, game.transcript);
+    game.dispatchEvent(new CustomEvent("enter", { bubbles: true, composed: true }));
+    await flushRender(game, game.transcript);
+
+    game.dispatchEvent(new CustomEvent("command", { detail: { line: "restart" }, bubbles: true }));
+    await flushRender(game, game.transcript);
+    expect(session.restart).not.toHaveBeenCalled();
+    expect(deepQuery(game, "#transcript")!.textContent).toContain("Restart from the beginning");
+
+    game.dispatchEvent(new CustomEvent("command", { detail: { line: "restart" }, bubbles: true }));
+    await flushRender(game, game.transcript);
+    expect(session.restart).toHaveBeenCalledOnce();
+  });
+
+  it("opens a map overlay on the `map` command", async () => {
+    const { game } = mount();
+    await flushRender(game, game.transcript);
+    game.dispatchEvent(new CustomEvent("enter", { bubbles: true, composed: true }));
+    await flushRender(game, game.transcript);
+
+    game.dispatchEvent(new CustomEvent("command", { detail: { line: "map" }, bubbles: true }));
+    await flushRender(game, game.transcript);
+    expect(deepQuery(game, ".overlay")).toBeTruthy();
+  });
+
+  it("unmount disposes audio and empties the root", () => {
+    const { root, audio, handle } = mount();
+    handle.unmount();
+    expect(audio.dispose).toHaveBeenCalledOnce();
+    expect(root.childElementCount).toBe(0);
+  });
+});
