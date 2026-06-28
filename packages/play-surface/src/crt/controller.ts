@@ -23,7 +23,16 @@ import "./components/crt-bezel.js";
 export function mountTerminal(
   root: HTMLElement,
   session: GameSession,
-  meta: { title: string; intro: string; buttonText?: string; audio: AudioRuntime; themes: Theme[]; onExit(): void },
+  meta: {
+    title: string;
+    intro: string;
+    buttonText?: string;
+    audio: AudioRuntime;
+    themes: Theme[];
+    onExit(): void;
+    initialThemeId?: string;
+    onThemeChange?: (id: string) => void;
+  },
 ): SurfaceHandle {
   let narrator = new Narrator();
   const audio = meta.audio;
@@ -50,12 +59,15 @@ export function mountTerminal(
   bezel.soundpacks = audio.soundpacks;
   bezel.activeSoundpack = audio.soundpacks[0]?.id ?? "";
   bezel.themes = meta.themes;
-  bezel.activeTheme = meta.themes[0]?.id ?? "";
+  const initialTheme = (meta.initialThemeId
+    ? meta.themes.find((t) => t.id === meta.initialThemeId)
+    : undefined) ?? meta.themes[0];
+  bezel.activeTheme = initialTheme?.id ?? "";
 
   housing.append(welcome, game, bezel);
   root.appendChild(housing);
   root.dataset.crtHousing = ""; // preserve — e2e/theme marker
-  applyTheme(root, (meta.themes[0] as CrtTheme) ?? defaultCrtTheme);
+  applyTheme(root, (initialTheme as CrtTheme) ?? defaultCrtTheme);
 
   // ── Controller state ────────────────────────────────────────────────────────
   let gameStarted = false;
@@ -260,6 +272,7 @@ export function mountTerminal(
     const chosen = meta.themes.find((t) => t.id === id);
     if (chosen) applyTheme(root, chosen as CrtTheme);
     bezel.activeTheme = id;
+    meta.onThemeChange?.(id);
   });
   bezel.addEventListener("exit", () => meta.onExit());
 

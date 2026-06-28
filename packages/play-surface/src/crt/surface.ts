@@ -14,6 +14,8 @@ export const crtSurface: PlaySurface = {
       audio: args.audio,
       themes: args.themes,
       onExit: args.onExit,
+      initialThemeId: args.initialThemeId,
+      onThemeChange: args.onThemeChange,
     });
   },
 };
