@@ -13,12 +13,14 @@ export interface ScopeEntity {
   health?: number;
   /** Occupants only: true once knocked out (a defeated mob the engine keeps in the room). */
   defeated?: boolean;
+  /** Campaign-supplied image asset reference, if the entity carries one. */
+  image?: string;
 }
 export interface ExitView { dir: Direction; toName: string; }
 export interface LockedDoorView { name: string; dir: Direction; }
 export interface LootView { id: string; description: string; opened: boolean; contents: ScopeEntity[]; }
 export interface ViewModel {
-  room: { id: string; name: string; description: string; isLit: boolean };
+  room: { id: string; name: string; description: string; isLit: boolean; image?: string };
   exits: ExitView[];
   lockedDoors: LockedDoorView[];
   occupants: ScopeEntity[];
@@ -65,6 +67,7 @@ export function view(
       kind: "occupant" as const,
       health: o.effectiveStat(StatType.Health),
       defeated: o.status.includes(Status.KO),
+      image: o.presentation?.image,
     }));
 
   const loot: LootView[] = [...room.loot.values()].map((l) => {
@@ -78,6 +81,7 @@ export function view(
         name: i.name,
         aliases: aliasesFor(i.behaviorKey, i.name, aliases),
         kind: "item" as const,
+        image: i.presentation?.image,
       })),
     };
   });
@@ -87,6 +91,7 @@ export function view(
     name: i.name,
     aliases: aliasesFor(i.behaviorKey, i.name, aliases),
     kind: "item" as const,
+    image: i.presentation?.image,
   }));
 
   const keys: ScopeEntity[] = pc.inventory.keys.map((k) => ({
@@ -94,6 +99,7 @@ export function view(
     name: k.name,
     aliases: aliasesFor(k.behaviorKey, k.name, aliases),
     kind: "item" as const,
+    image: k.presentation?.image,
   }));
 
   const exits: ExitView[] = [...room.exits.entries()]
@@ -116,7 +122,7 @@ export function view(
   const scope: ScopeEntity[] = [...occupants, ...lootContentScope, ...items, ...keys, ...lootScope];
 
   return {
-    room: { id: room.id, name: roomName, description: room.description, isLit: room.isLit },
+    room: { id: room.id, name: roomName, description: room.description, isLit: room.isLit, image: room.presentation?.image },
     exits,
     lockedDoors,
     occupants,
