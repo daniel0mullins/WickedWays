@@ -2,8 +2,8 @@ import type { GameSession, AudioRuntime, SurfaceHandle, Theme } from "@wickedway
 import { MapModel } from "@wickedways/play-runtime";
 import type { StatusField } from "wickedways/lib/presentation";
 import { parse } from "./parser.js";
-import { Narrator } from "./narrator.js";
-import { layoutMap, renderMapSvg } from "./map-view.js";
+import { Narrator } from "../shared/narrator.js";
+import { layoutMap, renderMapSvg } from "../shared/map-view.js";
 import { type CrtTheme, defaultCrtTheme, applyTheme } from "./theme.js";
 import { ensureGlobalTokens } from "./styles.js";
 // Side-effect imports register the four top-level custom elements.
