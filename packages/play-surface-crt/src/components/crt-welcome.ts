@@ -114,6 +114,10 @@ export class CrtWelcome extends LitElement {
     }
   `;
 
+  override firstUpdated() {
+    this.renderRoot.querySelector<HTMLButtonElement>(".enter-btn")?.focus();
+  }
+
   private _handleEnter() {
     this.dispatchEvent(new CustomEvent("enter", { bubbles: true, composed: true }));
   }

@@ -251,12 +251,15 @@ export function mountTerminal(
     if (gameStarted) game.focusInput(); // the prompt isn't focusable on the welcome screen
   });
   bezel.addEventListener("soundpack-change", (e) => {
-    audio.setSoundpack((e as CustomEvent<{ id: string }>).detail.id);
+    const id = (e as CustomEvent<{ id: string }>).detail.id;
+    audio.setSoundpack(id);
+    bezel.activeSoundpack = id;
   });
   bezel.addEventListener("theme-change", (e) => {
     const id = (e as CustomEvent<{ id: string }>).detail.id;
     const chosen = meta.themes.find((t) => t.id === id);
     if (chosen) applyTheme(root, chosen as CrtTheme);
+    bezel.activeTheme = id;
   });
   bezel.addEventListener("exit", () => meta.onExit());
 

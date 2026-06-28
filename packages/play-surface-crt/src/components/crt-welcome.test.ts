@@ -71,4 +71,12 @@ describe("<crt-welcome>", () => {
     el.hidden = true;
     expect(el.hasAttribute("hidden")).toBe(true);
   });
+
+  it("auto-focuses the enter button on first render", async () => {
+    el.title = "Hollow House";
+    el.intro = "Intro";
+    await el.updateComplete;
+    const btn = el.shadowRoot!.querySelector<HTMLButtonElement>(".enter-btn")!;
+    expect(el.shadowRoot!.activeElement).toBe(btn);
+  });
 });

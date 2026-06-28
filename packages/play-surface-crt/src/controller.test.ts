@@ -196,4 +196,57 @@ describe("mountTerminal (controller)", () => {
     expect(audio.dispose).toHaveBeenCalledOnce();
     expect(root.childElementCount).toBe(0);
   });
+
+  it("REGRESSION: bezel theme/soundpack selects do not snap back after toggle-audio re-render", async () => {
+    // Mount with ≥2 themes and ≥2 soundpacks so both selects render in the bezel.
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const session = makeSession();
+    const audio = makeAudio();
+    audio.soundpacks = [
+      { id: "sp-default", label: "Default" },
+      { id: "haunted", label: "Haunted" },
+    ];
+    const secondTheme = {
+      id: "dark",
+      label: "Dark",
+      palette: { bg: "#000", fg: "#fff", accent: "#ccc", warn: "#ff0", critical: "#f00" },
+      fonts: { body: "monospace", display: "monospace" },
+      effects: { scanlineIntensity: 0, glow: 0, flicker: 0 },
+    };
+    mountTerminal(root, session as never, {
+      title: "Test",
+      intro: "Intro",
+      audio: audio as never,
+      themes: [defaultCrtTheme, secondTheme],
+      onExit: vi.fn(),
+    });
+
+    const housing = root.querySelector("crt-housing")!;
+    const bezel = housing.querySelector("crt-bezel")! as Element & { updateComplete: Promise<unknown> };
+    await flushRender(bezel);
+
+    // Dispatch theme-change and soundpack-change with non-default ids.
+    bezel.dispatchEvent(
+      new CustomEvent("theme-change", { detail: { id: "dark" }, bubbles: true, composed: true }),
+    );
+    bezel.dispatchEvent(
+      new CustomEvent("soundpack-change", { detail: { id: "haunted" }, bubbles: true, composed: true }),
+    );
+    await flushRender(bezel);
+
+    // Dispatch toggle-audio — the controller sets bezel.audioEnabled, triggering a Lit re-render.
+    // Without Fix 1, this re-render reasserts ?selected against the stale activeTheme/activeSoundpack,
+    // snapping the displayed select values back to the originals.
+    bezel.dispatchEvent(new CustomEvent("toggle-audio", { bubbles: true, composed: true }));
+    await flushRender(bezel);
+
+    // After the re-render, the select values must still reflect the chosen ids.
+    const themeSelect = deepQuery(bezel, 'select[aria-label="Theme"]') as HTMLSelectElement | null;
+    const soundpackSelect = deepQuery(bezel, 'select[aria-label="Sound pack"]') as HTMLSelectElement | null;
+    expect(themeSelect).not.toBeNull();
+    expect(soundpackSelect).not.toBeNull();
+    expect(themeSelect!.value).toBe("dark");
+    expect(soundpackSelect!.value).toBe("haunted");
+  });
 });
