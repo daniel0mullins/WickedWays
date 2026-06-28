@@ -2,10 +2,10 @@ import { describe, it, expect } from "vitest";
 import { seed } from "./index.js";
 
 describe("seed campaign manifest", () => {
-  it("wraps the seed world with no audio/themes (flat-bed path)", () => {
+  it("wraps the seed world with no audio/surfaces (flat-bed path)", () => {
     expect(seed.slug).toBe("seed");
     expect(seed.audio).toBeUndefined();
-    expect(seed.themes).toBeUndefined();
+    expect(seed.surfaces).toBeUndefined();
     expect(typeof seed.builder).toBe("function");
     expect(typeof seed.registry).toBe("function");
   });

@@ -16,6 +16,5 @@ export const hollowHouse: CampaignManifest = {
   playerName: "Heir",
   archetype: Archetypes.Heir,
   audio: hollowHouseAudio,
-  surface: "crt-terminal",
-  themes: hollowHouseThemes,
+  surfaces: [{ id: "crt-terminal", themes: hollowHouseThemes }],
 };

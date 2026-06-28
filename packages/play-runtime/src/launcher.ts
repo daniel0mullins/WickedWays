@@ -22,7 +22,7 @@ export interface BootOpts { saveStore: SaveStore; now: () => number; locationSea
  * 2. Otherwise renders the **campaign menu** — a surface-independent picker that
  *    lists each manifest's `title` and `blurb`. Keyboard and click both work.
  * 3. On select: sets `?campaign=<slug>` in history, resolves the campaign's
- *    designated surface (`manifest.surface ?? "crt-terminal"`), builds an
+ *    designated surface (`manifest.surfaces?.[0]?.id ?? "crt-terminal"`), builds an
  *    `AudioRuntime` from `manifest.audio`, starts a `GameSession`, and calls
  *    `surface.mount(...)`.
  * 4. `onExit` ("back to menu"): calls `handle.unmount()`, clears `?campaign=`, and
@@ -42,7 +42,8 @@ export function bootLauncher(
   let handle: SurfaceHandle | null = null;
 
   const launch = (m: CampaignManifest): void => {
-    const surface = reg.surfaces.find((s) => s.id === (m.surface ?? "crt-terminal")) ?? reg.surfaces[0]!;
+    const surfaceId = m.surfaces?.[0]?.id ?? "crt-terminal";
+    const surface = reg.surfaces.find((s) => s.id === surfaceId) ?? reg.surfaces[0]!;
     const url = new URL(window.location.href);
     url.searchParams.set("campaign", m.slug);
     window.history.replaceState(null, "", url);
@@ -51,9 +52,10 @@ export function bootLauncher(
       playerName: m.playerName, archetype: m.archetype, saveStore: opts.saveStore, now: opts.now,
     });
     const audio = AudioRuntime.forCampaign(m.audio);
+    const themes = m.surfaces?.[0]?.themes;
     handle = surface.mount({
       app, session, manifest: m,
-      themes: m.themes && m.themes.length ? m.themes : [surface.defaultTheme],
+      themes: (themes && themes.length ? [...themes] : [surface.defaultTheme]),
       audio,
       onExit: () => {
         handle?.unmount();

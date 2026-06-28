@@ -6,6 +6,16 @@ import type { Theme } from "./surface.js";
 export type AliasMap = Record<string, string[]>;
 
 /**
+ * A surface this campaign can run on, with that surface's themes (its own Theme shape).
+ */
+export interface SurfaceChoice {
+  /** `PlaySurface` id, e.g. `"crt-terminal"` or `"point-and-click"`. */
+  id: string;
+  /** Themes for THIS surface; `themes[0]` is the default. Omit → the surface's own default. */
+  themes?: readonly Theme[];
+}
+
+/**
  * Everything the launcher needs to present and boot one campaign.
  *
  * **Adding a campaign.** Create a folder under `packages/campaigns/src/<slug>/`
@@ -45,14 +55,8 @@ export interface CampaignManifest {
    */
   audio?: CampaignAudio;
   /**
-   * `PlaySurface` id this campaign runs on.
-   * Defaults to `"crt-terminal"` when omitted.
+   * Surfaces this campaign offers; `surfaces[0]` is the default.
+   * Omit → one default `"crt-terminal"`.
    */
-  surface?: string;
-  /**
-   * Campaign-supplied themes for the designated surface.
-   * `themes[0]` is the active default; the player may switch between them live.
-   * Omit to use the surface's own default theme (switcher auto-hides).
-   */
-  themes?: Theme[];
+  surfaces?: readonly SurfaceChoice[];
 }
