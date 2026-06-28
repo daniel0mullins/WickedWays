@@ -66,9 +66,9 @@ export function soundForCue(cue: PresentationCue): SynthVoice | null {
     case "resolution":
       // CampaignOutcome: "ongoing" | "won" | "lost" | "timed-out" | "ended".
       // "won" rises triumphantly; every other terminal outcome falls.
-      return cue.outcome === "won"
-        ? { source: "triangle", freq: 523, endFreq: 784, duration: 0.6, gain: 0.16, attack: 0.02 }
-        : { source: "sine", freq: 220, endFreq: 55, duration: 0.8, gain: 0.16, attack: 0.02 };
+      if (cue.outcome === "won") return { source: "triangle", freq: 523, endFreq: 784, duration: 0.6, gain: 0.16, attack: 0.02 };
+      if (cue.outcome === "lost") return { source: "sine", freq: 220, endFreq: 55, duration: 0.8, gain: 0.16, attack: 0.02 };
+      return null;
     case "mechanic":
       return null;
     case "status":

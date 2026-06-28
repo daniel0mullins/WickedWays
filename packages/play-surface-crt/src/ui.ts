@@ -209,7 +209,7 @@ export function mountTerminal(
     for (const f of latestStatus) {
       status.appendChild(document.createTextNode("  ·  "));
       const span = document.createElement("span");
-      if (f.emphasis) span.className = `status-${f.emphasis}`;
+      if (f.emphasis && f.emphasis !== "normal") span.className = `status-${f.emphasis}`;
       span.textContent = `${f.label} ${f.value}`;
       status.appendChild(span);
     }

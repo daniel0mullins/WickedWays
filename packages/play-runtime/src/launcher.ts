@@ -10,7 +10,7 @@ export function resolveCampaign(slug: string | null, campaigns: CampaignManifest
   return campaigns.find((c) => c.slug === slug) ?? null;
 }
 
-interface BootOpts { saveStore: SaveStore; now: () => number; locationSearch?: string }
+export interface BootOpts { saveStore: SaveStore; now: () => number; locationSearch?: string }
 
 /**
  * Wires the campaign registry, surfaces, and save store into the root DOM element.
@@ -72,7 +72,13 @@ export function bootLauncher(
     for (const m of reg.campaigns) {
       const btn = document.createElement("button");
       btn.className = "launcher-entry";
-      btn.innerHTML = `<span class="launcher-title">${m.title}</span><span class="launcher-blurb">${m.blurb}</span>`;
+      const titleSpan = document.createElement("span");
+      titleSpan.className = "launcher-title";
+      titleSpan.textContent = m.title;
+      const blurbSpan = document.createElement("span");
+      blurbSpan.className = "launcher-blurb";
+      blurbSpan.textContent = m.blurb;
+      btn.append(titleSpan, blurbSpan);
       btn.addEventListener("click", () => launch(m));
       menu.appendChild(btn);
     }

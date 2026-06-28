@@ -1,7 +1,7 @@
 import type { SynthVoice } from "./cue-sound.js";
 
 /**
- * Web Audio backend that renders {@link SoundSpec}s as one-shot sounds. The
+ * Web Audio backend that renders {@link SynthVoice}s as one-shot sounds. The
  * `AudioContext` is created lazily through an injected factory so tests can pass
  * a fake (the node test environment has no Web Audio) and so construction is
  * deferred until a user gesture enables audio.
@@ -34,21 +34,20 @@ export class AudioEngine {
 
   /** Render a one-shot procedural voice now. No-op if there is no context. */
   play(voice: SynthVoice): void {
-    const spec = voice;
     const ctx = this.#ctx;
     if (ctx === null) return;
     const t0 = ctx.currentTime;
-    const end = t0 + spec.duration;
+    const end = t0 + voice.duration;
 
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
     gain.gain.setValueAtTime(0.0001, t0);
-    gain.gain.linearRampToValueAtTime(spec.gain, t0 + spec.attack);
+    gain.gain.linearRampToValueAtTime(voice.gain, t0 + voice.attack);
     gain.gain.exponentialRampToValueAtTime(0.0001, end);
 
-    if (spec.source === "noise") {
+    if (voice.source === "noise") {
       const src = ctx.createBufferSource();
-      const frames = Math.max(1, Math.floor(ctx.sampleRate * spec.duration));
+      const frames = Math.max(1, Math.floor(ctx.sampleRate * voice.duration));
       const buffer = ctx.createBuffer(1, frames, ctx.sampleRate);
       const data = buffer.getChannelData(0);
       // Deterministic pseudo-noise (no Math.random): a cheap LCG over the buffer.
@@ -63,10 +62,10 @@ export class AudioEngine {
       src.stop(end);
     } else {
       const osc = ctx.createOscillator();
-      osc.type = spec.source;
-      osc.frequency.setValueAtTime(spec.freq, t0);
-      if (spec.endFreq !== undefined && spec.endFreq !== spec.freq) {
-        osc.frequency.exponentialRampToValueAtTime(Math.max(1, spec.endFreq), end);
+      osc.type = voice.source;
+      osc.frequency.setValueAtTime(voice.freq, t0);
+      if (voice.endFreq !== undefined && voice.endFreq !== voice.freq) {
+        osc.frequency.exponentialRampToValueAtTime(Math.max(1, voice.endFreq), end);
       }
       osc.connect(gain);
       osc.start(t0);
