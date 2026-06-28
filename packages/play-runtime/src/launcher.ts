@@ -3,6 +3,7 @@ import type { PlaySurface, SurfaceHandle } from "./surface.js";
 import type { SaveStore } from "./savestore.js";
 import { GameSession } from "./session.js";
 import { AudioRuntime } from "./audio/audio-runtime.js";
+import "./components/campaign-menu.js";
 
 /** Finds a campaign by slug from the registered list; returns `null` if not found. */
 export function resolveCampaign(slug: string | null, campaigns: CampaignManifest[]): CampaignManifest | null {
@@ -67,21 +68,13 @@ export function bootLauncher(
 
   const showMenu = (): void => {
     app.replaceChildren();
-    const menu = document.createElement("div");
-    menu.className = "launcher-menu";
-    for (const m of reg.campaigns) {
-      const btn = document.createElement("button");
-      btn.className = "launcher-entry";
-      const titleSpan = document.createElement("span");
-      titleSpan.className = "launcher-title";
-      titleSpan.textContent = m.title;
-      const blurbSpan = document.createElement("span");
-      blurbSpan.className = "launcher-blurb";
-      blurbSpan.textContent = m.blurb;
-      btn.append(titleSpan, blurbSpan);
-      btn.addEventListener("click", () => launch(m));
-      menu.appendChild(btn);
-    }
+    const menu = document.createElement("campaign-menu");
+    menu.campaigns = reg.campaigns.map((m) => ({ slug: m.slug, title: m.title, blurb: m.blurb }));
+    menu.addEventListener("select", (e) => {
+      const slug = (e as CustomEvent<{ slug: string }>).detail.slug;
+      const m = resolveCampaign(slug, reg.campaigns);
+      if (m) launch(m);
+    });
     app.appendChild(menu);
   };
 

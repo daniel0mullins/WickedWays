@@ -1,6 +1,6 @@
 import type { PlaySurface, MountArgs, SurfaceHandle } from "@wickedways/play-runtime";
 import { defaultCrtTheme } from "./theme.js";
-import { mountTerminal } from "./ui.js";
+import { mountTerminal } from "./controller.js";
 
 export const crtSurface: PlaySurface = {
   id: "crt-terminal",

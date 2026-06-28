@@ -941,7 +941,7 @@ the full topology and per-surface documentation.
 | Package | Role |
 |---------|------|
 | `@wickedways/play-runtime` | Surface-independent runtime, audio engine, launcher, and **all contracts**: `CampaignManifest`, `PlaySurface`, `Theme`, `AudioDirector`, `SoundPack`, `CampaignAudio`. Zero Hollow-House / CRT references. |
-| `@wickedways/play-surface-crt` | The CRT terminal — the first `PlaySurface` implementation. Parser, narrator, DOM terminal, `CrtTheme`/`defaultCrtTheme`/`applyTheme`. |
+| `@wickedways/play-surface-crt` | The CRT terminal — the first `PlaySurface` implementation. Parser, narrator, Lit component tree + `mountTerminal` controller, `CrtTheme`/`defaultCrtTheme`/`applyTheme`. |
 | `@wickedways/campaigns` | All player-facing campaigns under `src/<slug>/`; subpath-exported as `@wickedways/campaigns/hollow-house` and `@wickedways/campaigns/seed`. |
 | `@wickedways/play` | Thin deploy shell — registers campaigns + surfaces, calls `bootLauncher`. `Dockerfile` and `nginx.conf` ship from here. |
 
@@ -1001,6 +1001,51 @@ interface MountArgs {
 }
 interface SurfaceHandle { unmount(): void }
 ```
+
+### CRT terminal: component tree
+
+The CRT surface renders through a **Lit component tree** driven by the `mountTerminal`
+controller function (`packages/play-surface-crt/src/controller.ts`). `lit` (~5 KB, no
+build step) is a declared dependency of both `play-runtime` (the `<campaign-menu>`
+launcher picker) and `play-surface-crt` (the terminal itself); the engine packages
+remain dependency-free.
+
+**Why Lit?** Lit's template-based rendering with retained DOM cooperates naturally with
+the surface's imperatively-animated, append-only DOM — the typewriter, the growing
+transcript, the focused input. A virtual-DOM library would fight those patterns; Lit
+leaves them alone. The transcript is intentionally appended imperatively (outside Lit's
+reactive render) for exactly this reason.
+
+**Component tree.** `mountTerminal` builds this tree into the host element:
+
+```
+<crt-housing>                   frame + CRT artifacts (scanlines, sweep); screen + bezel slots
+  <crt-welcome slot="screen">   title card + start button
+  <crt-game    slot="screen">   game area; composes:
+    <crt-transcript>            append-only typewriter scroll
+    <crt-hud>                   persistent loot / inventory / exits bar
+    <crt-status>                location + campaign-defined stat readouts
+    <crt-prompt>                focused command input
+  <crt-bezel   slot="bezel">    audio toggle, soundpack/theme switchers, back button
+```
+
+The launcher (before a campaign is selected) renders `<campaign-menu>` (from `play-runtime`).
+
+**Logic / view boundary.** `mountTerminal` owns all behavior — session, parser, narrator,
+audio, map model, status cues, and the turn loop. The components are purely presentational.
+Data flows **down** via reactive properties and method calls; intent flows **up** via
+`composed` `CustomEvent`s: `enter`, `command`, `fill-input`, `toggle-audio`,
+`soundpack-change`, `theme-change`, `exit` (from the CRT components), and `select` (from
+`<campaign-menu>`).
+
+**Theming unchanged.** `CrtTheme`, `applyTheme`, and the `manifest.themes` contract are
+unchanged. CSS custom properties (`--crt-*`) are applied on the app root and pierce shadow
+boundaries, so switching a theme re-applies them with no component re-render.
+
+**Contracts unchanged.** `PlaySurface` / `MountArgs` / `SurfaceHandle` / `CampaignManifest`
+are unchanged. `mount()` now builds the Lit tree; `unmount()` removes the housing element
+and each component's `disconnectedCallback` handles its own cleanup (replacing the old
+manual interval and listener removal).
 
 ### The 4-layer audio architecture
 
