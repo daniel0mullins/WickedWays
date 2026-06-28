@@ -101,14 +101,13 @@ describe("<pnc-inventory>", () => {
     await el.updateComplete;
 
     let received: CustomEvent | null = null;
-    document.addEventListener("inventory-activate", (ev) => {
-      received = ev as CustomEvent;
-    });
+    const vialHandler = (ev: Event) => { received = ev as CustomEvent; };
+    document.addEventListener("inventory-activate", vialHandler);
 
     const entry = el.shadowRoot!.querySelector<HTMLElement>(".inventory-entry")!;
     entry.click();
 
-    document.removeEventListener("inventory-activate", received as unknown as EventListener);
+    document.removeEventListener("inventory-activate", vialHandler);
 
     expect(received).not.toBeNull();
     expect((received as unknown as CustomEvent).detail.id).toBe("i-99");
@@ -121,14 +120,13 @@ describe("<pnc-inventory>", () => {
     await el.updateComplete;
 
     let received: CustomEvent | null = null;
-    document.addEventListener("inventory-activate", (ev) => {
-      received = ev as CustomEvent;
-    });
+    const keyHandler = (ev: Event) => { received = ev as CustomEvent; };
+    document.addEventListener("inventory-activate", keyHandler);
 
     const entry = el.shadowRoot!.querySelector<HTMLElement>(".inventory-entry")!;
     entry.click();
 
-    document.removeEventListener("inventory-activate", received as unknown as EventListener);
+    document.removeEventListener("inventory-activate", keyHandler);
 
     expect(received).not.toBeNull();
     expect((received as unknown as CustomEvent).detail.id).toBe("k-42");

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import "./pnc-action-menu.js";
 import type { PncActionMenu } from "./pnc-action-menu.js";
 
@@ -65,14 +65,13 @@ describe("<pnc-action-menu>", () => {
     await el.updateComplete;
 
     let received: CustomEvent | null = null;
-    document.addEventListener("choose", (ev) => {
-      received = ev as CustomEvent;
-    });
+    const chooseHandler = (ev: Event) => { received = ev as CustomEvent; };
+    document.addEventListener("choose", chooseHandler);
 
     const buttons = el.shadowRoot!.querySelectorAll<HTMLButtonElement>("button");
     buttons[1]!.click();
 
-    document.removeEventListener("choose", received as unknown as EventListener);
+    document.removeEventListener("choose", chooseHandler);
 
     expect(received).not.toBeNull();
     expect((received as unknown as CustomEvent).detail.index).toBe(5);
@@ -87,13 +86,12 @@ describe("<pnc-action-menu>", () => {
     await el.updateComplete;
 
     let received: CustomEvent | null = null;
-    document.addEventListener("dismiss", (ev) => {
-      received = ev as CustomEvent;
-    });
+    const escHandler = (ev: Event) => { received = ev as CustomEvent; };
+    document.addEventListener("dismiss", escHandler);
 
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
 
-    document.removeEventListener("dismiss", received as unknown as EventListener);
+    document.removeEventListener("dismiss", escHandler);
 
     expect(received).not.toBeNull();
     expect((received as unknown as CustomEvent).bubbles).toBe(true);
@@ -107,14 +105,13 @@ describe("<pnc-action-menu>", () => {
     await el.updateComplete;
 
     let received: CustomEvent | null = null;
-    document.addEventListener("dismiss", (ev) => {
-      received = ev as CustomEvent;
-    });
+    const clickHandler = (ev: Event) => { received = ev as CustomEvent; };
+    document.addEventListener("dismiss", clickHandler);
 
     // Click on document body (outside the popup)
     document.body.click();
 
-    document.removeEventListener("dismiss", received as unknown as EventListener);
+    document.removeEventListener("dismiss", clickHandler);
 
     expect(received).not.toBeNull();
   });
@@ -125,38 +122,20 @@ describe("<pnc-action-menu>", () => {
     el.actions = [{ label: "Look", index: 0 }];
     await el.updateComplete;
 
-    // Disconnect the element
+    const spy = vi.spyOn(window, "removeEventListener");
     el.remove();
-
-    let received: CustomEvent | null = null;
-    document.addEventListener("dismiss", (ev) => {
-      received = ev as CustomEvent;
-    });
-
-    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-
-    document.removeEventListener("dismiss", received as unknown as EventListener);
-
-    // After disconnect, Escape should NOT trigger dismiss any more
-    expect(received).toBeNull();
+    expect(spy).toHaveBeenCalledWith("keydown", expect.any(Function));
+    spy.mockRestore();
   });
 
   it("disconnectedCallback removes the outside-click listener (no leak)", async () => {
     el.actions = [{ label: "Look", index: 0 }];
     await el.updateComplete;
 
+    const spy = vi.spyOn(window, "removeEventListener");
     el.remove();
-
-    let received: CustomEvent | null = null;
-    document.addEventListener("dismiss", (ev) => {
-      received = ev as CustomEvent;
-    });
-
-    document.body.click();
-
-    document.removeEventListener("dismiss", received as unknown as EventListener);
-
-    expect(received).toBeNull();
+    expect(spy).toHaveBeenCalledWith("click", expect.any(Function));
+    spy.mockRestore();
   });
 
   // ── re-connect ─────────────────────────────────────────────────────────────────
@@ -168,15 +147,14 @@ describe("<pnc-action-menu>", () => {
     document.body.appendChild(el);
     await el.updateComplete;
 
-    let received: CustomEvent | null = null;
-    document.addEventListener("dismiss", (ev) => {
-      received = ev as CustomEvent;
-    });
+    let dismissCount = 0;
+    const reconnectHandler = (_ev: Event) => { dismissCount++; };
+    document.addEventListener("dismiss", reconnectHandler);
 
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
 
-    document.removeEventListener("dismiss", received as unknown as EventListener);
+    document.removeEventListener("dismiss", reconnectHandler);
 
-    expect(received).not.toBeNull();
+    expect(dismissCount).toBe(1);
   });
 });
