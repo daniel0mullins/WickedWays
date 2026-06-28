@@ -16,7 +16,7 @@ import type { MountArgs, SurfaceHandle } from "./surface.js";
 
 const mk = (slug: string): CampaignManifest => ({ slug, title: slug, blurb: `blurb-${slug}`, intro: "", builder: (() => ({})) as never, registry: (() => ({})) as never, aliases: {}, playerName: "p", archetype: "a" });
 
-const mkSurface = (id: string, label: string, description?: string) => {
+const mkSurface = (id: string, label: string, description?: string, themes?: { id: string; label: string }[]) => {
   const mountSpy = vi.fn((_args: MountArgs): SurfaceHandle => ({ unmount: vi.fn() }));
   return {
     id,
@@ -24,6 +24,7 @@ const mkSurface = (id: string, label: string, description?: string) => {
     description,
     defaultTheme: { id: "default", label: "Default" },
     mount: mountSpy,
+    themes,
   };
 };
 
@@ -119,6 +120,7 @@ describe("bootLauncher surface picker", () => {
     expect(pnc.mount).toHaveBeenCalledOnce();
     expect(crt.mount).not.toHaveBeenCalled();
     expect(app.querySelector("surface-picker")).toBeNull();
+    expect(window.location.search).toContain("surface=point-and-click");
   });
 
   it("mounts the sole surface directly when campaign has fewer than 2 surfaces (no picker)", () => {
@@ -139,6 +141,7 @@ describe("bootLauncher surface picker", () => {
 
     expect(crt.mount).toHaveBeenCalledOnce();
     expect(app.querySelector("surface-picker")).toBeNull();
+    expect(window.location.search).toContain("surface=crt-terminal");
   });
 
   it("selecting a surface in the picker mounts the correct surface", () => {
@@ -149,7 +152,10 @@ describe("bootLauncher surface picker", () => {
     const pnc = mkSurface("point-and-click", "Point & Click");
     const campaign: CampaignManifest = {
       ...mk("hollow-house"),
-      surfaces: [{ id: "crt-terminal" }, { id: "point-and-click" }],
+      surfaces: [
+        { id: "crt-terminal", themes: [{ id: "classic", label: "Classic" }] },
+        { id: "point-and-click", themes: [{ id: "neon", label: "Neon" }] },
+      ],
     };
 
     bootLauncher(
@@ -165,6 +171,9 @@ describe("bootLauncher surface picker", () => {
 
     expect(pnc.mount).toHaveBeenCalledOnce();
     expect(crt.mount).not.toHaveBeenCalled();
+    // Assert the mounted surface received its own themes, not the first surface's
+    const args = pnc.mount.mock.calls[0]![0];
+    expect(args.themes).toEqual([{ id: "neon", label: "Neon" }]);
   });
 
   it("passes initialThemeId from ?theme= to surface.mount", () => {
@@ -186,6 +195,7 @@ describe("bootLauncher surface picker", () => {
     expect(crt.mount).toHaveBeenCalledOnce();
     const args = crt.mount.mock.calls[0]![0];
     expect(args.initialThemeId).toBe("dark");
+    expect(args.themes).toEqual([{ id: "dark", label: "Dark" }, { id: "light", label: "Light" }]);
   });
 
   it("onThemeChange sets ?theme= in window.location.search", () => {
@@ -215,8 +225,8 @@ describe("bootLauncher surface picker", () => {
     app = document.createElement("div");
     document.body.appendChild(app);
 
-    // Seed window.location with campaign param so clearParams has something to clear
-    window.history.replaceState(null, "", "/?campaign=hollow-house&theme=dark");
+    // Seed window.location with campaign, surface, and theme params so clearParams has something to clear
+    window.history.replaceState(null, "", "/?campaign=hollow-house&surface=invalid&theme=dark");
 
     const crt = mkSurface("crt-terminal", "CRT Terminal");
     const pnc = mkSurface("point-and-click", "Point & Click");
@@ -241,8 +251,9 @@ describe("bootLauncher surface picker", () => {
     expect(app.querySelector("surface-picker")).toBeNull();
     expect(app.querySelector("campaign-menu")).not.toBeNull();
 
-    // URL params cleared
+    // URL params cleared (including surface)
     expect(window.location.search).not.toContain("campaign");
+    expect(window.location.search).not.toContain("surface");
     expect(window.location.search).not.toContain("theme");
   });
 
