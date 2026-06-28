@@ -4,6 +4,7 @@ import type { RoomParts } from "../narrator.js";
 
 export type { RoomParts };
 
+/** Scrolling, append-only game log with typewriter animation and clickable noun chips. */
 export class CrtTranscript extends LitElement {
   static override properties = {
     clickableNouns: { attribute: false },

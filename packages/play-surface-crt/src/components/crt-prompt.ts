@@ -1,5 +1,6 @@
 import { LitElement, html, css } from "lit";
 
+/** Focused command input with per-session history; emits `command` on submit. */
 export class CrtPrompt extends LitElement {
   static override properties = {
     disabled: { type: Boolean },

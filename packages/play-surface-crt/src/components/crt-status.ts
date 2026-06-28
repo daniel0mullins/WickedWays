@@ -2,6 +2,7 @@ import { LitElement, html, css } from "lit";
 import { classMap } from "lit/directives/class-map.js";
 import type { StatusField } from "wickedways/lib/presentation";
 
+/** Status bar — location name plus campaign-defined `StatusField` readouts (color-coded by emphasis). */
 export class CrtStatus extends LitElement {
   static override properties = {
     location: { type: String },

@@ -36,7 +36,7 @@ The play layer is split into four workspace packages with a clear dependency dir
 | Package | Role |
 |---------|------|
 | `@wickedways/play-runtime` | `GameSession`, view models, `SaveStore`, `AudioRuntime`, the launcher (`bootLauncher`/`resolveCampaign`), and all contracts: `CampaignManifest`, `PlaySurface`/`SurfaceHandle`/`Theme`/`MountArgs`, audio contracts (`AudioDirector`/`SoundPack`/`CampaignAudio`/`SoundSpec`). Zero Hollow-House / CRT references. |
-| `@wickedways/play-surface-crt` | The CRT terminal — the first `PlaySurface` implementation. Parser, narrator, map view, link-nouns, and the full DOM terminal (`ui.ts`). Also exports `CrtTheme`/`defaultCrtTheme`/`applyTheme` for campaigns that designate this surface. |
+| `@wickedways/play-surface-crt` | The CRT terminal — the first `PlaySurface` implementation. Parser, narrator, map view, link-nouns, and a **Lit component tree** driven by `mountTerminal`. Also exports `CrtTheme`/`defaultCrtTheme`/`applyTheme` for campaigns that designate this surface. |
 | `@wickedways/campaigns` | All player-facing campaigns under `src/<slug>/`, each exporting a `CampaignManifest`. Subpath-exported: `@wickedways/campaigns/hollow-house`, `@wickedways/campaigns/seed`. |
 | `@wickedways/play` | **This package.** Thin deploy shell: `src/main.ts`, `index.html`, `Dockerfile`, `nginx.conf`, `e2e/`. Registers campaigns + surfaces and calls `bootLauncher`. |
 
@@ -77,6 +77,61 @@ keypress ─▶ parse(input, viewModel) ─▶ ParseResult
 Time-advancing intents (`move`, `take`, `drop`, `use`, `attack`, `wait`, `talk`) tick the
 round and snapshot the pre-state so a single level of **undo** is available; queries,
 `examine`, and meta commands do not advance time.
+
+## CRT surface: component architecture
+
+The CRT surface renders through a **Lit component tree** driven by `mountTerminal`
+(`packages/play-surface-crt/src/controller.ts`). `lit` (~5 KB, no build step) is a
+declared dependency of both `play-runtime` (the `<campaign-menu>` picker) and
+`play-surface-crt` (the terminal itself); the engine packages remain dependency-free.
+
+**Why Lit?** Lit's template-based rendering with retained DOM cooperates with the
+surface's imperatively-animated, append-only DOM — the typewriter, the growing transcript,
+the focused input. A virtual-DOM library would fight those patterns; Lit leaves them alone.
+The transcript is intentionally appended imperatively (outside Lit's reactive render) for
+exactly this reason.
+
+**Component tree.** `mountTerminal` builds this tree into the host `app` element:
+
+```
+<crt-housing>                   frame + CRT artifacts (scanlines, sweep); screen + bezel slots
+  <crt-welcome slot="screen">   title card + start button; emits `enter`
+  <crt-game    slot="screen">   game area; composes:
+    <crt-transcript>            append-only typewriter scroll; noun chips emit `fill-input`
+    <crt-hud>                   persistent loot / inventory / exits bar; noun chips emit `fill-input`
+    <crt-status>                location name + campaign-defined stat readouts
+    <crt-prompt>                focused command input; emits `command`
+  <crt-bezel   slot="bezel">    audio toggle, soundpack/theme switchers, back button
+```
+
+The launcher (before a campaign is selected) renders `<campaign-menu>` from `play-runtime`;
+it emits a `select` CustomEvent with `{ slug }` when the player chooses.
+
+**Logic / view boundary.** `mountTerminal` owns all behavior: session, parser, narrator,
+audio, map model, status cues, and the turn loop. The components are purely presentational.
+Data flows **down** via reactive properties and method calls; intent flows **up** via
+`composed` `CustomEvent`s:
+
+| Event | Fired by | Handled by |
+|-------|----------|------------|
+| `enter` | `<crt-welcome>` | controller — starts the game |
+| `command` | `<crt-prompt>` (via `<crt-game>`) | controller — parses + executes |
+| `fill-input` | noun chips in `<crt-hud>` / `<crt-transcript>` | `<crt-game>` — fills the prompt |
+| `toggle-audio` | `<crt-bezel>` | controller |
+| `soundpack-change` | `<crt-bezel>` | controller |
+| `theme-change` | `<crt-bezel>` | controller → `applyTheme` |
+| `exit` | `<crt-bezel>` | controller → `onExit()` |
+| `select` | `<campaign-menu>` | launcher → `bootLauncher` |
+
+**Theming unchanged.** `CrtTheme`, `applyTheme`, and the `manifest.themes` contract are
+unchanged. CSS custom properties (`--crt-*`) are applied on the app root and pierce shadow
+boundaries, so switching a theme re-applies them with no component re-render. Theme
+preference is in-memory (not persisted across page loads).
+
+**Contracts unchanged.** `PlaySurface` / `MountArgs` / `SurfaceHandle` / `CampaignManifest`
+are unchanged. `mount()` now builds the Lit tree; `unmount()` removes the housing element
+and each component's `disconnectedCallback` handles its own cleanup (the old manual
+interval and listener removal is gone).
 
 ## Campaign menu and deep-link
 

@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from "lit";
 
+/** Monitor bezel controls — audio toggle, soundpack/theme switchers, and back-to-menu button. */
 export class CrtBezel extends LitElement {
   static override properties = {
     audioEnabled: { type: Boolean },

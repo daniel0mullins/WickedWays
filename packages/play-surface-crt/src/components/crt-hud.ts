@@ -3,6 +3,7 @@ import type { TemplateResult } from "lit";
 import type { ViewModel } from "@wickedways/play-runtime";
 import { linkNouns } from "../link-nouns.js";
 
+/** Persistent bottom HUD; re-renders location, loot, inventory, and exits on every turn. */
 export class CrtHud extends LitElement {
   static override properties = {
     vm: { attribute: false },

@@ -1,5 +1,6 @@
 import { LitElement, html, css } from "lit";
 
+/** Welcome screen shown before the game starts; emits `enter` when the start button is pressed. */
 export class CrtWelcome extends LitElement {
   static override properties = {
     title: { type: String },

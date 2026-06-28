@@ -1,5 +1,6 @@
 import { LitElement, html, css } from "lit";
 
+/** Campaign-picker shown before play begins; emits a `select` CustomEvent with `{ slug }` when the player chooses. */
 export class CampaignMenu extends LitElement {
   static override properties = {
     campaigns: { attribute: false },

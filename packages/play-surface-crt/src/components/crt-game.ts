@@ -10,6 +10,7 @@ import type { CrtPrompt } from "./crt-prompt.js";
 import type { ViewModel } from "@wickedways/play-runtime";
 import type { StatusField } from "wickedways/lib/presentation";
 
+/** Game area — composes the transcript, HUD, status bar, prompt, and the map/help overlay. */
 export class CrtGame extends LitElement {
   static override styles = css`
     :host { display: flex; flex-direction: column; flex: 1; min-height: 0; position: relative; }

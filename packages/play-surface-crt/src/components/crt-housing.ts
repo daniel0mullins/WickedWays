@@ -1,5 +1,6 @@
 import { LitElement, html, css } from "lit";
 
+/** Outer monitor frame — CRT artifacts (scanlines, flicker, sweep) and named `screen`/`bezel` slots. */
 export class CrtHousing extends LitElement {
   static override styles = css`
     /*
