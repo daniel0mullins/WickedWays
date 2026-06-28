@@ -1,7 +1,7 @@
 import type { CharacterId } from "../character/character";
 import type { StatType } from "../character/stats";
 import type { Status } from "../status";
-import type { AssetRef } from "../presentation";
+import type { AssetRef, StatusField } from "../presentation";
 import type { ActionDetail } from "../character/history";
 
 /** Runaway backstop: max effects one mechanic may emit for a single event. */
@@ -103,6 +103,8 @@ export interface MechanicCue {
  * - `adjustStat` — adjusts `"sanity"` or `"energy"` by a signed delta.
  * - `grantImmunity` — grants all-status immunity for `turns` rounds (floored, truncated).
  * - `cue` — emits a `{ kind: "mechanic", cue }` {@link PresentationCue}.
+ * - `status` — emits a `{ kind: "status", fields }` {@link PresentationCue}; the play surface
+ *   renders the latest payload in its HUD status bar (campaign-defined readout).
  */
 /** The discriminants of the {@link Effect} union. */
 export const EffectKind = {
@@ -111,6 +113,7 @@ export const EffectKind = {
   AdjustStat: "adjustStat",
   GrantImmunity: "grantImmunity",
   Cue: "cue",
+  Status: "status",
 } as const;
 /** One of the {@link EffectKind} values. */
 export type EffectKind = (typeof EffectKind)[keyof typeof EffectKind];
@@ -120,7 +123,8 @@ export type Effect =
   | { kind: typeof EffectKind.Heal; target: CharacterId; amount: number }
   | { kind: typeof EffectKind.AdjustStat; target: CharacterId; stat: "sanity" | "energy"; delta: number }
   | { kind: typeof EffectKind.GrantImmunity; target: CharacterId; turns: number }
-  | { kind: typeof EffectKind.Cue; cue: MechanicCue };
+  | { kind: typeof EffectKind.Cue; cue: MechanicCue }
+  | { kind: typeof EffectKind.Status; fields: readonly StatusField[] };
 
 /**
  * A named action exposed by a mechanic and invoked via

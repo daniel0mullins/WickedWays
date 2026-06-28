@@ -929,6 +929,143 @@ const builder = authorTemplate("Escape", reg)
 registered in the registry (compile-time-checked by `TypedRegistry`). `.onTimeout(prose)` and
 `.onEnd(prose)` set the fallback prose for those two resolution paths.
 
+## Swappable campaigns & play surfaces
+
+The [`@wickedways/play`](packages/play/README.md) browser experience is built on three
+workspace packages that keep the runtime, the surface implementation, and the campaign
+content fully decoupled. See [`packages/play/README.md`](packages/play/README.md) for
+the full topology and per-surface documentation.
+
+### Package overview
+
+| Package | Role |
+|---------|------|
+| `@wickedways/play-runtime` | Surface-independent runtime, audio engine, launcher, and **all contracts**: `CampaignManifest`, `PlaySurface`, `Theme`, `AudioDirector`, `SoundPack`, `CampaignAudio`. Zero Hollow-House / CRT references. |
+| `@wickedways/play-surface-crt` | The CRT terminal — the first `PlaySurface` implementation. Parser, narrator, DOM terminal, `CrtTheme`/`defaultCrtTheme`/`applyTheme`. |
+| `@wickedways/campaigns` | All player-facing campaigns under `src/<slug>/`; subpath-exported as `@wickedways/campaigns/hollow-house` and `@wickedways/campaigns/seed`. |
+| `@wickedways/play` | Thin deploy shell — registers campaigns + surfaces, calls `bootLauncher`. `Dockerfile` and `nginx.conf` ship from here. |
+
+Dependency direction is acyclic: `play` → `play-runtime`, `play-surface-crt`, `campaigns` →
+(engine). `play-runtime` defines the `PlaySurface` contract but never imports a concrete
+surface — the shell injects the available surfaces at startup. Campaign packages depend on the
+engine for content and are type-only on surface-specific types (e.g. `import type { CrtTheme }`),
+so campaign code stays node-testable and DOM-free.
+
+### `CampaignManifest`
+
+The contract between a campaign and the launcher. All fields are in
+`packages/play-runtime/src/manifest.ts`:
+
+```ts
+interface CampaignManifest {
+  slug: string;           // "hollow-house" — registry key + ?campaign= deep-link value
+  title: string;          // "The Hollow House" — shown in the campaign menu
+  blurb: string;          // one/two-line description for the menu
+  intro: string;          // welcome-screen body text
+  buttonText?: string;    // start button label; defaults to "Enter <title>"
+
+  // Engine wiring — factories so restart re-boots from a clean template
+  builder: () => TemplateBuilder<string, string>;
+  registry: () => CampaignRegistry;
+  aliases: AliasMap;      // verb/noun aliases for the parser
+  playerName: string;     // player character display name
+  archetype: string;      // archetype id applied at session start
+
+  // Optional: omit for defaults
+  surface?: string;       // PlaySurface id; defaults to "crt-terminal"
+  themes?: Theme[];       // surface themes; themes[0] = default; player can switch live
+  audio?: CampaignAudio;  // director + soundpacks; omit for flat bed + generic SFX
+}
+```
+
+`builder`/`registry` are **factories** because `GameSession.restart` re-boots from them.
+
+### `PlaySurface` contract
+
+A surface takes a live `GameSession` and renders/drives it. The runtime owns the session,
+view models, cues, audio, and save store; the **surface** owns input→intent, the turn loop,
+DOM rendering, and its own control UI (mute toggle, soundpack switcher, theme switcher, map):
+
+```ts
+interface PlaySurface {
+  id: string;            // "crt-terminal" — matched against CampaignManifest.surface
+  label: string;         // "CRT Terminal"
+  defaultTheme: Theme;   // fallback when a campaign supplies no manifest.themes
+  mount(args: MountArgs): SurfaceHandle;
+}
+interface MountArgs {
+  app: HTMLElement;  session: GameSession;  manifest: CampaignManifest;
+  themes: Theme[];   // manifest.themes ?? [surface.defaultTheme] — always non-empty
+  audio: AudioRuntime;
+  onExit(): void;    // "back to menu"
+}
+interface SurfaceHandle { unmount(): void }
+```
+
+### The 4-layer audio architecture
+
+```
+Engine PresentationCue + live campaign state
+        │
+        ▼  AudioDirector              ◀── campaign-owned (CampaignManifest.audio)
+AudioCue { type, entityId?, intensity? }  +  continuous tension(0..1)
+        │
+        ▼  SoundPack (one per audio theme)  ◀── campaign-owned
+SoundSpec  ({ kind:'synth', voice } | { kind:'sample', … })
+        │
+        ▼  AudioBackend               ◀── runtime-owned (SynthRenderer; SampleRenderer deferred)
+Web Audio output
+```
+
+Omit `manifest.audio` for the flat ambient bed + default chiptune SFX (`defaultChiptunePack`).
+
+### Campaign-defined status bar
+
+The status bar is **campaign-driven via `StatusCue`** — no stat name is hard-coded in the
+runtime or surface. A campaign's `statusBar` mechanic emits
+`{ kind: "status", fields: StatusField[] }` presentation cues; the surface renders the most
+recent payload in its HUD. Before the first emission the area is empty. Campaigns that emit
+no `StatusCue` (e.g. the seed demo) show an empty bar. The `StatusField` carries `{ label,
+value, emphasis? }` where `emphasis` (`"warn"` / `"critical"`) maps to the active theme's
+palette for color-coding.
+
+The engine side: `PresentationCue` gains a `{ kind: "status"; fields }` variant;
+`EffectKind.Status` + `Effect` arm in `src/lib/mechanics/mechanic.ts`; the applier in
+`src/lib/mechanics/apply.ts` routes it through `EMIT_CUE`. See the spec:
+[`docs/superpowers/specs/2026-06-27-swappable-campaigns-design.md`](docs/superpowers/specs/2026-06-27-swappable-campaigns-design.md).
+
+### Per-surface themes
+
+The CRT surface defines `CrtTheme` (palette/fonts/effects) and exports `defaultCrtTheme`.
+A campaign supplies `CrtTheme[]` in `manifest.themes`; `themes[0]` is the default. The
+surface renders a **theme switcher** that **auto-hides with fewer than two themes** (the
+soundpack switcher behaves the same way). Switching re-applies CSS custom properties on the
+CRT housing live; theme preference is in-memory.
+
+The Hollow House ships two themes: `default` (green phosphor) and `haunted` (warm pinkish-red,
+heavier glow and flicker — no new assets, pure palette/effect parameters).
+
+### How to add a campaign
+
+1. Create `packages/campaigns/src/<slug>/` with an `index.ts` that exports a `CampaignManifest`.
+2. Register it in `packages/play/src/main.ts`:
+   ```ts
+   import { myCampaign } from "@wickedways/campaigns/my-campaign";
+   bootLauncher(app, { campaigns: [hollowHouse, seed, myCampaign], surfaces: [crtSurface] }, …);
+   ```
+
+### How to add a theme
+
+Add a `CrtTheme` to the campaign's `manifest.themes` array (`themes[0]` is the default; the
+switcher appears automatically once there are two or more). No edits to the runtime or surface
+are needed.
+
+### How to add a surface
+
+1. Implement `PlaySurface` in a new package (e.g. `@wickedways/play-surface-foo`).
+2. Add it to `surfaces: [crtSurface, fooSurface]` in `packages/play/src/main.ts`.
+3. Point a campaign at it with `manifest.surface = "foo"`.
+
 ### Deferred / not yet shipped
 
 The following are planned but not part of this release:

@@ -33,5 +33,8 @@ export function applyEffect(campaign: Campaign, e: Effect): void {
     case EffectKind.Cue:
       campaign[EMIT_CUE]({ kind: "mechanic", cue: e.cue });
       break;
+    case EffectKind.Status:
+      campaign[EMIT_CUE]({ kind: "status", fields: e.fields });
+      break;
   }
 }

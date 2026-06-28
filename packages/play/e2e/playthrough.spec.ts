@@ -58,7 +58,7 @@ test.describe("Wicked Ways browser playthrough", () => {
   test("plays the haunted house to a win", async ({ page }) => {
     test.setTimeout(120_000);
 
-    await page.goto("/");
+    await page.goto("/?campaign=hollow-house");
     await enterGame(page);
 
     // Opening room must be the Foyer.
@@ -79,7 +79,7 @@ test.describe("Wicked Ways browser playthrough", () => {
   });
 
   test("exit link fills the command line without submitting", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/?campaign=hollow-house");
     await enterGame(page);
 
     // The opening Foyer's bottom HUD lists passable exits as clickable text links.
@@ -101,7 +101,7 @@ test.describe("Wicked Ways browser playthrough", () => {
   });
 
   test("clicking a noun fills 'examine <noun>' without submitting", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/?campaign=hollow-house");
     await enterGame(page);
 
     // The opening Foyer's bottom HUD shows "Here: A hall table with a single drawer."
@@ -124,7 +124,7 @@ test.describe("Wicked Ways browser playthrough", () => {
   });
 
   test("welcome screen shows title and enter button; game starts after clicking", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/?campaign=hollow-house");
 
     // Before entering: welcome content is visible, game input is not.
     await expect(page.locator(".welcome-title")).toContainText("The Hollow House");
@@ -135,5 +135,63 @@ test.describe("Wicked Ways browser playthrough", () => {
     await enterGame(page);
     await expect(page.locator("#transcript")).toContainText("Foyer");
     await expect(page.locator("#cmd")).toBeVisible();
+  });
+
+  test("campaign menu lists entries, enters one, and returns", async ({ page }) => {
+    await page.goto("/");
+
+    // Both campaigns must be listed in the menu.
+    await expect(page.getByText("The Hollow House")).toBeVisible();
+    await expect(page.getByText("Seed Demo")).toBeVisible();
+
+    // Clicking the Hollow House entry launches the CRT welcome screen.
+    await page.getByRole("button", { name: /Hollow House/ }).click();
+    await expect(page.getByRole("button", { name: /Enter Hollow House/ })).toBeVisible();
+
+    // Back to menu — the bezel button navigates back.
+    await page.getByRole("button", { name: /menu/i }).click();
+    await expect(page.getByText("Seed Demo")).toBeVisible();
+  });
+
+  test("seed campaign boots without error", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (err) => errors.push(err.message));
+    page.on("console", (msg) => {
+      if (msg.type() === "error") errors.push(msg.text());
+    });
+
+    await page.goto("/");
+
+    // Click the Seed Demo entry in the launcher menu.
+    await page.getByRole("button", { name: /Seed Demo/ }).click();
+
+    // The seed welcome screen appears with its enter button.
+    await expect(page.getByRole("button", { name: /Enter Demo/ })).toBeVisible();
+
+    // No uncaught page errors or console errors during seed boot.
+    expect(errors).toHaveLength(0);
+  });
+
+  test("theme switcher reskins the CRT", async ({ page }) => {
+    await page.goto("/?campaign=hollow-house");
+    await page.getByRole("button", { name: /Enter Hollow House/ }).click();
+    await expect(page.locator("#cmd")).toBeVisible();
+
+    // Read the current foreground colour from the CRT housing element
+    // (applyTheme sets --crt-fg on the root element).
+    const housing = page.locator("[data-crt-housing]");
+    const before = await housing.evaluate(
+      (el) => getComputedStyle(el).getPropertyValue("--crt-fg"),
+    );
+
+    // Switch to the haunted theme via the bezel combobox.
+    await page.getByRole("combobox", { name: /theme/i }).selectOption("haunted");
+
+    const after = await housing.evaluate(
+      (el) => getComputedStyle(el).getPropertyValue("--crt-fg"),
+    );
+
+    // The foreground colour must have changed.
+    expect(after).not.toBe(before);
   });
 });

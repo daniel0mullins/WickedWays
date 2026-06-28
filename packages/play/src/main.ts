@@ -1,21 +1,15 @@
 import "@fontsource/vt323";
 import "@fontsource/silkscreen";
-import { GameSession } from "./core/session.js";
-import { LocalStorageSaveStore } from "./core/savestore.js";
-import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES, TITLE, INTRO } from "./campaign/index.js";
-import { Archetypes } from "./campaign/ids.js";
-import { mountTerminal } from "./text/ui.js";
+import { bootLauncher } from "@wickedways/play-runtime";
+import { LocalStorageSaveStore } from "@wickedways/play-runtime";
+import { hollowHouse } from "@wickedways/campaigns/hollow-house";
+import { seed } from "@wickedways/campaigns/seed";
+import { crtSurface } from "@wickedways/play-surface-crt";
 
 const app = document.getElementById("app");
 if (app) {
-  const session = GameSession.start({
-    builder: hauntedHouseTemplate(),
-    registry: buildHauntedHouseRegistry(),
-    aliases: ALIASES,
-    playerName: "Heir",
-    archetype: Archetypes.Heir,
+  bootLauncher(app, { campaigns: [hollowHouse, seed], surfaces: [crtSurface] }, {
     saveStore: new LocalStorageSaveStore(),
     now: () => Date.now(),
   });
-  mountTerminal(app, session, { title: TITLE, intro: INTRO });
 }

@@ -19,19 +19,37 @@ export interface EntityRef {
   name: string;
 }
 
+/** One labelled readout in a campaign-defined status bar. */
+export interface StatusField {
+  label: string;
+  value: string;
+  emphasis?: "normal" | "warn" | "critical";
+}
+
 /** The action kinds an action cue can carry — kept in sync with {@link ActionDetail}. */
 export type ActionKind = ActionDetail["kind"];
 
 /**
  * A presentation event emitted by the campaign. `sound` is pre-resolved by the
  * engine (entity sound → campaign default → undefined); the host plays it if set.
+ *
+ * - `action` — a recorded player action (move, attack, take, …).
+ * - `encounter` — the first time the player meets a given mob.
+ * - `visibility` — a dark room's lit state changed (reveal/conceal).
+ * - `resolution` — the campaign ended (win / loss / timeout).
+ * - `mechanic` — a custom mechanic emitted a narration line.
+ * - `status` — the campaign pushes a new status-bar readout (`StatusField[]`).
+ *   The play surface renders the latest payload in its HUD; before the first
+ *   emission the status area is empty. Campaigns without a status mechanic (e.g.
+ *   the seed demo) simply never emit this cue.
  */
 export type PresentationCue =
   | { kind: "action"; action: ActionKind; actor: EntityRef; sound?: AssetRef }
   | { kind: "encounter"; mob: EntityRef; room: EntityRef; sound?: AssetRef }
   | { kind: "visibility"; room: EntityRef; lit: boolean }
   | { kind: "resolution"; outcome: CampaignOutcome; reason?: string; narration?: OutcomeNarration }
-  | { kind: "mechanic"; cue: MechanicCue };
+  | { kind: "mechanic"; cue: MechanicCue }
+  | { kind: "status"; fields: readonly StatusField[] };
 
 /**
  * Engine-internal seam for publishing a cue to the campaign's subscribers.
