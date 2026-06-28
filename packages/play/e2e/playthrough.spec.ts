@@ -185,6 +185,7 @@ test.describe("Wicked Ways browser playthrough", () => {
     );
 
     // Switch to the haunted theme via the bezel combobox.
+    await expect(page.getByRole("combobox", { name: /theme/i })).toBeVisible();
     await page.getByRole("combobox", { name: /theme/i }).selectOption("haunted");
 
     const after = await housing.evaluate(

@@ -22,7 +22,7 @@ export interface Renderer { render(spec: SoundSpec): void }
  */
 export type BaseAudioCue =
   | "strike" | "death" | "pickup" | "drop" | "move"
-  | "light" | "encounter" | "win" | "lose" | "error";
+  | "light" | "encounter" | "win" | "lose" | "error" | "takeDamage";
 
 /** A discrete sound event produced by the `AudioDirector` from a `PresentationCue`. */
 export interface AudioCue { type: BaseAudioCue | (string & {}); entityId?: string; intensity?: number }

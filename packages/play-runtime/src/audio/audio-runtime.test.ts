@@ -49,6 +49,17 @@ describe("AudioRuntime", () => {
     expect(rt.soundpacks).toEqual([{ id: "chiptune", label: "Chiptune" }]);
   });
 
+  describe("reset()", () => {
+    it("recreates the director — createDirector called once at forCampaign, again after reset()", () => {
+      const d = deps();
+      const createDirector = vi.fn(() => ({ react: () => [], tension: () => 0 }));
+      const rt = AudioRuntime.forCampaign({ createDirector, soundpacks: [defaultChiptunePack] }, d as never);
+      expect(createDirector).toHaveBeenCalledTimes(1);
+      rt.reset();
+      expect(createDirector).toHaveBeenCalledTimes(2);
+    });
+  });
+
   describe("dispose()", () => {
     it("stops the bed and closes the engine", () => {
       const d = deps();

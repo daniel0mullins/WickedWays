@@ -14,17 +14,20 @@ interface AudioDeps { render: Renderer["render"]; bed: AmbientBed; engine: Audio
 export class AudioRuntime {
   #enabled = false;
   readonly #deps: AudioDeps;
-  readonly #director: AudioDirector;
+  #director: AudioDirector;
+  readonly #makeDirector: () => AudioDirector;
   readonly #packs: SoundPack[];
   #active: SoundPack;
 
   private constructor(
     deps: AudioDeps,
+    makeDirector: () => AudioDirector,
     director: AudioDirector,
     packs: SoundPack[],
     active: SoundPack,
   ) {
     this.#deps = deps;
+    this.#makeDirector = makeDirector;
     this.#director = director;
     this.#packs = packs;
     this.#active = active;
@@ -35,9 +38,10 @@ export class AudioRuntime {
     const bed = deps?.bed ?? new AmbientBed();
     const defaultRenderer = new SynthRenderer(engine);
     const renderer = deps?.render ?? ((spec) => defaultRenderer.render(spec));
-    const director = audio ? audio.createDirector() : defaultDirector();
+    const makeDirector = audio ? () => audio.createDirector() : () => defaultDirector();
+    const director = makeDirector();
     const packs = audio?.soundpacks?.length ? audio.soundpacks : [defaultChiptunePack];
-    return new AudioRuntime({ render: renderer, bed, engine }, director, packs, packs[0]!);
+    return new AudioRuntime({ render: renderer, bed, engine }, makeDirector, director, packs, packs[0]!);
   }
 
   get enabled(): boolean { return this.#enabled; }
@@ -67,6 +71,13 @@ export class AudioRuntime {
     this.#deps.bed.stop();
     this.#deps.engine.close();
   }
+
+  /**
+   * Recreate the director, resetting session-scoped state (e.g. the tension
+   * high-water-mark closure). Called on restart so the next session starts fresh.
+   * Does NOT change the active soundpack, enabled state, or mute state.
+   */
+  reset(): void { this.#director = this.#makeDirector(); }
 
   get soundpacks(): { id: string; label: string }[] { return this.#packs.map((p) => ({ id: p.id, label: p.label })); }
   setSoundpack(id: string): void { const p = this.#packs.find((x) => x.id === id); if (p) this.#active = p; }

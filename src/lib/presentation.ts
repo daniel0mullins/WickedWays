@@ -21,8 +21,11 @@ export interface EntityRef {
 
 /** One labelled readout in a campaign-defined status bar. */
 export interface StatusField {
+  /** The readout's label, e.g. `"Sanity"`. */
   label: string;
+  /** The formatted value string, e.g. `"7"`. */
   value: string;
+  /** Optional severity. `"warn"` and `"critical"` map to the active theme's palette; omitting or passing `"normal"` renders plainly. */
   emphasis?: "normal" | "warn" | "critical";
 }
 

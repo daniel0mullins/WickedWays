@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { defaultChiptunePack, defaultDirector } from "./default-pack.js";
 import type { BaseAudioCue } from "./contracts.js";
 
-const BASE: BaseAudioCue[] = ["strike","death","pickup","drop","move","light","encounter","win","lose","error"];
+const BASE: BaseAudioCue[] = ["strike","death","pickup","drop","move","light","encounter","win","lose","error","takeDamage"];
 
 describe("defaultChiptunePack", () => {
   it("returns a synth SoundSpec for every base cue", () => {

@@ -1,5 +1,4 @@
-import { EffectKind, type Mechanic, type JsonObject, type TurnCtx, type HookCtx } from "wickedways/lib/mechanics/mechanic";
-import type { Effect } from "wickedways/lib/mechanics/mechanic";
+import { EffectKind, type Mechanic, type JsonObject, type TurnCtx, type HookCtx, type Effect } from "wickedways/lib/mechanics/mechanic";
 import type { StatusField } from "wickedways/lib/presentation";
 
 function emphasisFor(sanity: number): StatusField["emphasis"] {

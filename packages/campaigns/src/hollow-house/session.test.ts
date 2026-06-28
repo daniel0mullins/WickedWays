@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { GameSession } from "@wickedways/play-runtime";
+import { GameSession, LocalStorageSaveStore } from "@wickedways/play-runtime";
 import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES } from "./index.js";
-import { LocalStorageSaveStore } from "@wickedways/play-runtime";
 import { Rooms, Archetypes } from "./ids.js";
 import { Directions } from "wickedways/lib/room";
 
