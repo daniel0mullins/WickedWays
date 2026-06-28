@@ -10,6 +10,7 @@
     "@fontsource/silkscreen": "^5.2.8",
     "@fontsource/vt323": "^5.2.7",
     "@wickedways/play-runtime": "workspace:*",
+    "lit": "^3",
     "wickedways": "workspace:*"
   }
 }
