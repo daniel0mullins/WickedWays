@@ -49,11 +49,11 @@ body {
   aspect-ratio: 16 / 9;
   width: min(100vw, calc(100vh * 16 / 9));
   height: min(100vh, calc(100vw * 9 / 16));
-  /* Base typography for the whole surface: a sans-serif body font and a 1.5rem
-     base size (50% above the 16px default). Every component sizes in em and the
+  /* Base typography for the whole surface: a sans-serif body font and a 1.2rem
+     base size (20% above the 16px default). Every component sizes in em and the
      transcript inherits its font, so both cascade down from here. */
   font-family: var(--font-body);
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   display: flex;
   flex-direction: column;
 }

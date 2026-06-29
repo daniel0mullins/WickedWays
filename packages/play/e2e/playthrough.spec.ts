@@ -438,7 +438,20 @@ test.describe("Wicked Ways browser playthrough", () => {
     expect(color).toBe("rgb(232, 226, 208)");
   });
 
-  test("PnC text is sans-serif and 50% larger than the root size", async ({ page }) => {
+  test("PnC map labels room names in a legible (non-black) color", async ({ page }) => {
+    await page.goto("/?campaign=hollow-house&surface=point-and-click");
+    await enterPncGame(page);
+
+    // Open the map via the topbar map button.
+    await page.locator(".topbar-btn-map").click();
+    const label = page.locator("pnc-map-overlay .map-label").first();
+    await expect(label).toHaveText("Foyer");
+    // The room-name label must use the theme ink fill, not the SVG default black.
+    const fill = await label.evaluate((el) => getComputedStyle(el).fill);
+    expect(fill).toBe("rgb(232, 226, 208)");
+  });
+
+  test("PnC text is sans-serif and 20% larger than the root size", async ({ page }) => {
     await page.goto("/?campaign=hollow-house&surface=point-and-click");
     await enterPncGame(page);
 
@@ -454,8 +467,8 @@ test.describe("Wicked Ways browser playthrough", () => {
     expect(m.family).toContain("sans-serif");
     expect(m.family).not.toContain("georgia");
     expect(m.family).not.toContain("serif,"); // a serif stack would read "…, serif"
-    // 50% larger than the document root font size.
-    expect(m.size).toBeCloseTo(m.root * 1.5, 1);
+    // 20% larger than the document root font size.
+    expect(m.size).toBeCloseTo(m.root * 1.2, 1);
   });
 
   test("PnC transcript room headings are bold and underlined", async ({ page }) => {
