@@ -27,8 +27,8 @@ export const defaultPncTheme: PncTheme = {
     hotspot: "#4a8ec8",
   },
   fonts: {
-    body: "Georgia, 'Times New Roman', serif",
-    display: "'Palatino Linotype', Palatino, Georgia, serif",
+    body: "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    display: "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
   },
   scene: { vignette: 0.2, grain: 0.0 },
 };

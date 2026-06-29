@@ -15,8 +15,8 @@ export const hauntedPncTheme: PncTheme = {
     hotspot: "#3a6a8c",
   },
   fonts: {
-    body: "Georgia, 'Times New Roman', serif",
-    display: "'Palatino Linotype', Palatino, Georgia, serif",
+    body: "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    display: "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
   },
   scene: { vignette: 0.6, grain: 0.08, fog: 0.18 },
 };

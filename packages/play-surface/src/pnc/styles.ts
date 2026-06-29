@@ -9,8 +9,8 @@ export const pncGlobalTokensCss = `
   --pnc-warn: #d4a843;
   --pnc-critical: #c04040;
   --pnc-hotspot: #4a8ec8;
-  --pnc-font-body: Georgia, 'Times New Roman', serif;
-  --pnc-font-display: 'Palatino Linotype', Palatino, Georgia, serif;
+  --pnc-font-body: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --pnc-font-display: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --pnc-vignette: 0.2;
   --pnc-grain: 0.0;
   /* Derived aliases used throughout the rest of the CSS */
@@ -49,6 +49,11 @@ body {
   aspect-ratio: 16 / 9;
   width: min(100vw, calc(100vh * 16 / 9));
   height: min(100vh, calc(100vw * 9 / 16));
+  /* Base typography for the whole surface: a sans-serif body font and a 1.5rem
+     base size (50% above the 16px default). Every component sizes in em and the
+     transcript inherits its font, so both cascade down from here. */
+  font-family: var(--font-body);
+  font-size: 1.5rem;
   display: flex;
   flex-direction: column;
 }

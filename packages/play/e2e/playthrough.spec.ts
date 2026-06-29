@@ -438,6 +438,26 @@ test.describe("Wicked Ways browser playthrough", () => {
     expect(color).toBe("rgb(232, 226, 208)");
   });
 
+  test("PnC text is sans-serif and 50% larger than the root size", async ({ page }) => {
+    await page.goto("/?campaign=hollow-house&surface=point-and-click");
+    await enterPncGame(page);
+
+    const m = await page.locator("pnc-log .line").first().evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return {
+        family: cs.fontFamily.toLowerCase(),
+        size: parseFloat(cs.fontSize),
+        root: parseFloat(getComputedStyle(document.documentElement).fontSize),
+      };
+    });
+    // Sans-serif stack, not the old serif (Georgia/Palatino) one.
+    expect(m.family).toContain("sans-serif");
+    expect(m.family).not.toContain("georgia");
+    expect(m.family).not.toContain("serif,"); // a serif stack would read "…, serif"
+    // 50% larger than the document root font size.
+    expect(m.size).toBeCloseTo(m.root * 1.5, 1);
+  });
+
   test("PnC transcript room headings are bold and underlined", async ({ page }) => {
     await page.goto("/?campaign=hollow-house&surface=point-and-click");
     await enterPncGame(page);
