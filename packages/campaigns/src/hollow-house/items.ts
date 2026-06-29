@@ -18,7 +18,8 @@ export const lantern = (): Item =>
 export const journal = (): Item =>
   new Item({
     descriptor: { behaviorKey: Items.Journal, name: "Water-Stained Journal", type: ItemType.Consumable, recipe: { item: 1 }, modifier: 0, stat: StatType.Health, lore: JOURNAL_LORE },
-    properties: { equippable: false, equipped: false, destroyable: true, usable: false },
+    // The journal is the win item (carry it to the attic) — it must not be dropped.
+    properties: { equippable: false, equipped: false, destroyable: true, usable: false, droppable: false },
     actions: { pickUp: noop, equip: noop, unequip: noop, transfer: noop, use: noop, destroy: () => null },
     events: { onPickUp: noop },
   });

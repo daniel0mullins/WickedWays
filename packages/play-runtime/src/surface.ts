@@ -36,7 +36,7 @@ export interface MountArgs {
   /** The campaign's manifest (title, intro text, etc.). */
   manifest: CampaignManifest;
   /**
-   * Non-empty theme list — `manifest.themes` if present, otherwise `[surface.defaultTheme]`.
+   * Non-empty theme list — `manifest.surfaces[i].themes` if present, otherwise `[surface.defaultTheme]`.
    * The surface renders the switcher and applies `themes[0]` on mount.
    */
   themes: Theme[];
@@ -44,6 +44,10 @@ export interface MountArgs {
   audio: AudioRuntime;
   /** Callback the surface fires when the player chooses "back to menu". */
   onExit(): void;
+  /** Theme id to apply on mount (from `?theme=`); falls back to `themes[0]` if unknown/absent. */
+  initialThemeId?: string;
+  /** Fired by the surface when the player switches theme, so the launcher can persist `?theme=`. */
+  onThemeChange?(id: string): void;
 }
 
 /**
@@ -55,14 +59,16 @@ export interface MountArgs {
  *
  * **Adding a surface.** Implement this interface, give it a unique `id`, and pass
  * it in the `surfaces` array to `bootLauncher`. Register it in
- * `packages/play/src/main.ts` and reference it from any campaign's `manifest.surface`.
+ * `packages/play/src/main.ts` and reference it from any campaign's `manifest.surfaces`.
  */
 export interface PlaySurface {
-  /** Stable identifier matched against `CampaignManifest.surface` (e.g. `"crt-terminal"`). */
+  /** Stable identifier matched against a `SurfaceChoice.id` in `CampaignManifest.surfaces` (e.g. `"crt-terminal"`). */
   id: string;
   /** Human-readable label for future surface-picker UI. */
   label: string;
-  /** Fallback theme used when a campaign supplies no `manifest.themes`. */
+  /** One-line description for the surface picker; falls back to `label`. */
+  description?: string;
+  /** Fallback theme used when the campaign's `SurfaceChoice` for this surface supplies no `themes`. */
   defaultTheme: Theme;
   /**
    * Mount the surface into `args.app` and return a handle.

@@ -14,7 +14,7 @@
     "@fontsource/vt323": "^5.2.7",
     "wickedways": "workspace:*",
     "@wickedways/play-runtime": "workspace:*",
-    "@wickedways/play-surface-crt": "workspace:*",
+    "@wickedways/play-surface": "workspace:*",
     "@wickedways/campaigns": "workspace:*"
   },
   "devDependencies": {

@@ -10,7 +10,7 @@ const vm = (over: Partial<ViewModel> = {}): ViewModel => ({
   lockedDoors: [],
   occupants: [],
   loot: [],
-  inventory: { items: [], keys: [], equippedNames: [] },
+  inventory: { items: [], keys: [], equippedNames: [], slots: 0 },
   scope: [],
   status: { locationName: "Hall", turn: 1, maxTurns: 150, sanity: 10, health: 10 },
   outcome: "ongoing",

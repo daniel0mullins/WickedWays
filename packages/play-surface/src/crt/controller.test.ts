@@ -38,7 +38,7 @@ const makeView = (overrides: Record<string, unknown> = {}) => ({
   lockedDoors: [],
   occupants: [],
   loot: [],
-  inventory: { items: [], keys: [], equippedNames: [] },
+  inventory: { items: [], keys: [], equippedNames: [], slots: 6 },
   scope: [],
   finished: false,
   outcome: "",
@@ -51,6 +51,7 @@ const makeSession = () => {
     view: () => makeView({ finished }),
     execute: vi.fn(() => ({ cues: [], mobAttacks: [] })),
     read: vi.fn(() => []),
+    takeStartupCues: vi.fn(() => []),
     restart: vi.fn(() => {}),
     save: vi.fn((): Promise<void> => Promise.resolve()),
     restore: vi.fn((): Promise<{ ok: boolean }> => Promise.resolve({ ok: false })),
@@ -195,6 +196,102 @@ describe("mountTerminal (controller)", () => {
     handle.unmount();
     expect(audio.dispose).toHaveBeenCalledOnce();
     expect(root.childElementCount).toBe(0);
+  });
+
+  it("mount with initialThemeId applies that theme and sets bezel.activeTheme", async () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const session = makeSession();
+    const audio = makeAudio();
+    const secondTheme = {
+      id: "dark",
+      label: "Dark",
+      palette: { bg: "#000", fg: "#fff", accent: "#ccc", warn: "#ff0", critical: "#f00" },
+      fonts: { body: "monospace", display: "monospace" },
+      effects: { scanlineIntensity: 0, glow: 0, flicker: 0 },
+    };
+    mountTerminal(root, session as never, {
+      title: "Test",
+      intro: "Intro",
+      audio: audio as never,
+      themes: [defaultCrtTheme, secondTheme],
+      onExit: vi.fn(),
+      initialThemeId: "dark",
+    });
+
+    const housing = root.querySelector("crt-housing")!;
+    const bezel = housing.querySelector("crt-bezel")! as Element & {
+      updateComplete: Promise<unknown>;
+      activeTheme: string;
+    };
+    await flushRender(bezel);
+
+    // bezel.activeTheme must reflect the initialThemeId, not themes[0].
+    expect(bezel.activeTheme).toBe("dark");
+    // The CSS custom property must come from the second theme's palette.
+    expect(root.style.getPropertyValue("--crt-bg")).toBe("#000");
+  });
+
+  it("mount falls back to themes[0] when initialThemeId is absent or unknown", () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const session = makeSession();
+    const audio = makeAudio();
+    const secondTheme = {
+      id: "dark",
+      label: "Dark",
+      palette: { bg: "#000", fg: "#fff", accent: "#ccc", warn: "#ff0", critical: "#f00" },
+      fonts: { body: "monospace", display: "monospace" },
+      effects: { scanlineIntensity: 0, glow: 0, flicker: 0 },
+    };
+
+    // No initialThemeId — should use themes[0].
+    mountTerminal(root, session as never, {
+      title: "Test",
+      intro: "Intro",
+      audio: audio as never,
+      themes: [defaultCrtTheme, secondTheme],
+      onExit: vi.fn(),
+    });
+    const housing = root.querySelector("crt-housing")!;
+    const bezel = housing.querySelector("crt-bezel")! as Element & { activeTheme: string };
+    expect(bezel.activeTheme).toBe(defaultCrtTheme.id);
+    expect(root.style.getPropertyValue("--crt-bg")).toBe(defaultCrtTheme.palette.bg);
+  });
+
+  it("theme-change event calls onThemeChange spy with the chosen id", async () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const session = makeSession();
+    const audio = makeAudio();
+    const onThemeChange = vi.fn();
+    const secondTheme = {
+      id: "dark",
+      label: "Dark",
+      palette: { bg: "#000", fg: "#fff", accent: "#ccc", warn: "#ff0", critical: "#f00" },
+      fonts: { body: "monospace", display: "monospace" },
+      effects: { scanlineIntensity: 0, glow: 0, flicker: 0 },
+    };
+    mountTerminal(root, session as never, {
+      title: "Test",
+      intro: "Intro",
+      audio: audio as never,
+      themes: [defaultCrtTheme, secondTheme],
+      onExit: vi.fn(),
+      onThemeChange,
+    });
+
+    const housing = root.querySelector("crt-housing")!;
+    const bezel = housing.querySelector("crt-bezel")! as Element & { updateComplete: Promise<unknown> };
+    await flushRender(bezel);
+
+    bezel.dispatchEvent(
+      new CustomEvent("theme-change", { detail: { id: "dark" }, bubbles: true, composed: true }),
+    );
+    await flushRender(bezel);
+
+    expect(onThemeChange).toHaveBeenCalledOnce();
+    expect(onThemeChange).toHaveBeenCalledWith("dark");
   });
 
   it("REGRESSION: bezel theme/soundpack selects do not snap back after toggle-audio re-render", async () => {

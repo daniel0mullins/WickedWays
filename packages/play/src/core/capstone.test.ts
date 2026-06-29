@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { GameSession } from "@wickedways/play-runtime";
 import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES, Rooms, Archetypes } from "@wickedways/campaigns/hollow-house";
-import { parse, Narrator } from "@wickedways/play-surface-crt";
+import { parse, Narrator } from "@wickedways/play-surface/crt";
 import type { SaveStore, SaveSlot, SurfaceState } from "@wickedways/play-runtime";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
 import { Directions } from "wickedways/lib/room";

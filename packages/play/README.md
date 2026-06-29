@@ -6,7 +6,7 @@ resulting SPA from nginx. All substantive logic lives in the three packages it d
 
 The engine itself (turn loop, combat, items, mobs, serialization) is documented in the
 [root `README.md`](../../README.md). See [`packages/play-runtime/`](../play-runtime/) and
-[`packages/play-surface-crt/`](../play-surface-crt/) for the runtime and CRT surface.
+[`packages/play-surface/`](../play-surface/) for the runtime and play surfaces.
 
 ## Quick start
 
@@ -26,17 +26,20 @@ The play layer is split into four workspace packages with a clear dependency dir
 
 ```
 @wickedways/play (deploy shell)
-  ├── @wickedways/play-runtime    — surface-independent runtime + contracts
-  ├── @wickedways/play-surface-crt — CRT terminal surface implementation
-  └── @wickedways/campaigns        — per-campaign manifests (subpath exports)
+  ├── @wickedways/play-runtime   — surface-independent runtime + contracts
+  ├── @wickedways/play-surface   — both surface implementations (subpath exports)
+  │     ├── /crt                  CRT terminal (mountTerminal)
+  │     ├── /pnc                  point-and-click (mountPointAndClick)
+  │     └── src/shared/           Narrator, map-view (shared by both)
+  └── @wickedways/campaigns      — per-campaign manifests (subpath exports)
         ├── /hollow-house
         └── /seed
 ```
 
 | Package | Role |
 |---------|------|
-| `@wickedways/play-runtime` | `GameSession`, view models, `SaveStore`, `AudioRuntime`, the launcher (`bootLauncher`/`resolveCampaign`), and all contracts: `CampaignManifest`, `PlaySurface`/`SurfaceHandle`/`Theme`/`MountArgs`, audio contracts (`AudioDirector`/`SoundPack`/`CampaignAudio`/`SoundSpec`). Zero Hollow-House / CRT references. |
-| `@wickedways/play-surface-crt` | The CRT terminal — the first `PlaySurface` implementation. Parser, narrator, map view, link-nouns, and a **Lit component tree** driven by `mountTerminal`. Also exports `CrtTheme`/`defaultCrtTheme`/`applyTheme` for campaigns that designate this surface. |
+| `@wickedways/play-runtime` | `GameSession`, view models, `SaveStore`, `AudioRuntime`, the launcher (`bootLauncher`/`resolveCampaign`), and all contracts: `CampaignManifest`/`SurfaceChoice`, `PlaySurface`/`SurfaceHandle`/`Theme`/`MountArgs`, audio contracts (`AudioDirector`/`SoundPack`/`CampaignAudio`/`SoundSpec`). Zero Hollow-House / surface references. |
+| `@wickedways/play-surface` | Both play surfaces, subpath-exported as `@wickedways/play-surface/crt` and `@wickedways/play-surface/pnc`. The CRT surface exports `crtSurface`/`mountTerminal`/`CrtTheme`/`defaultCrtTheme`/`applyTheme`; the PnC surface exports `pncSurface`/`mountPointAndClick`/`PncTheme`/`defaultPncTheme`/`applyPncTheme`. `src/shared/` (Narrator, map-view) is reused by both. |
 | `@wickedways/campaigns` | All player-facing campaigns under `src/<slug>/`, each exporting a `CampaignManifest`. Subpath-exported: `@wickedways/campaigns/hollow-house`, `@wickedways/campaigns/seed`. |
 | `@wickedways/play` | **This package.** Thin deploy shell: `src/main.ts`, `index.html`, `Dockerfile`, `nginx.conf`, `e2e/`. Registers campaigns + surfaces and calls `bootLauncher`. |
 
@@ -44,8 +47,8 @@ The play layer is split into four workspace packages with a clear dependency dir
 
 | Path | Responsibility |
 |------|----------------|
-| `src/main.ts` | Entry point — imports the two campaigns and the CRT surface, then calls `bootLauncher`. |
-| `e2e/` | Playwright end-to-end tests (winning playthrough, deep-link, theme switch, etc.). |
+| `src/main.ts` | Entry point — imports the two campaigns and both surfaces (`crtSurface`, `pncSurface`), then calls `bootLauncher`. |
+| `e2e/` | Playwright end-to-end tests (winning playthrough, deep-link, theme switch, surface picker, etc.). |
 | `Dockerfile` | Multi-stage build (Node + nginx). Build context is the **repo root** (see Deployment). |
 | `nginx.conf` | Static file serving with gzip, asset caching, and SPA fallback. |
 
@@ -78,12 +81,13 @@ Time-advancing intents (`move`, `take`, `drop`, `use`, `attack`, `wait`, `talk`)
 round and snapshot the pre-state so a single level of **undo** is available; queries,
 `examine`, and meta commands do not advance time.
 
-## CRT surface: component architecture
+## CRT surface (`@wickedways/play-surface/crt`)
 
 The CRT surface renders through a **Lit component tree** driven by `mountTerminal`
-(`packages/play-surface-crt/src/controller.ts`). `lit` (~5 KB, no build step) is a
-declared dependency of both `play-runtime` (the `<campaign-menu>` picker) and
-`play-surface-crt` (the terminal itself); the engine packages remain dependency-free.
+(`packages/play-surface/src/crt/controller.ts`). `lit` (~5 KB, no build step) is a
+declared dependency of both `play-runtime` (the `<campaign-menu>` and `<surface-picker>`
+launcher components) and `play-surface` (both surfaces); the engine packages remain
+dependency-free.
 
 **Why Lit?** Lit's template-based rendering with retained DOM cooperates with the
 surface's imperatively-animated, append-only DOM — the typewriter, the growing transcript,
@@ -123,30 +127,72 @@ Data flows **down** via reactive properties and method calls; intent flows **up*
 | `exit` | `<crt-bezel>` | controller → `onExit()` |
 | `select` | `<campaign-menu>` | launcher → `bootLauncher` |
 
-**Theming unchanged.** `CrtTheme`, `applyTheme`, and the `manifest.themes` contract are
-unchanged. CSS custom properties (`--crt-*`) are applied on the app root and pierce shadow
-boundaries, so switching a theme re-applies them with no component re-render. Theme
-preference is in-memory (not persisted across page loads).
+**Theming.** `CrtTheme` (palette/fonts/effects), `applyTheme`, and CSS custom properties
+(`--crt-*`) are applied on the app root and pierce shadow boundaries, so switching a theme
+re-applies them with no component re-render. Theme preference persists via `?theme=` URL
+param (written by `onThemeChange`, read via `initialThemeId` on next mount).
 
-**Contracts unchanged.** `PlaySurface` / `MountArgs` / `SurfaceHandle` / `CampaignManifest`
-are unchanged. `mount()` now builds the Lit tree; `unmount()` removes the housing element
-and each component's `disconnectedCallback` handles its own cleanup (the old manual
-interval and listener removal is gone).
+## Point-and-click surface (`@wickedways/play-surface/pnc`)
 
-## Campaign menu and deep-link
+`pncSurface` (`id: "point-and-click"`) renders the campaign as a procedural room scene
+with a sidebar and click-based input. The controller is `mountPointAndClick`
+(`packages/play-surface/src/pnc/controller.ts`); it shares the CRT surface's cue-handling
+order and reuses `Narrator` and `MapModel` from `src/shared/`.
+
+**Component tree** (`mountPointAndClick` builds this into the host element):
+
+```
+<pnc-welcome>          title card + start button (overlay, dismissed on enter)
+<pnc-topbar>           room name, audio/soundpack/theme controls, map + menu buttons
+<pnc-scene>            procedural CSS room (or image background); clickable hotspots
+  → <pnc-action-menu>  contextual verb menu (attached dynamically on hotspot click)
+<aside.pnc-sidebar>
+  <pnc-status>         campaign-defined stat readouts (StatusCue fields)
+  <pnc-inventory>      two tabs — "Inventory" (one numbered slot per inventory slot,
+                       "--empty--" when unfilled) and "Key Items" (bulleted keyring);
+                       clicking an entry opens an action menu
+  <pnc-log>            scrolling narration log (room headings, descriptions + action feedback)
+<pnc-map-overlay>      fog-of-war map; opened from topbar
+<pnc-menu>             save / restore / undo / restart / fullscreen / back to menu
+```
+
+**Affordance model.** `affordances.ts` (`sceneHotspots`, `inventoryActions`) derives
+all clickable hotspots and their verb lists from the `ViewModel` and builds engine
+`Intent`s directly — no text parser. Hotspot kinds: `exit` (Go direction), `locked`
+(informational only), `occupant` (Examine + Attack), `loot` (Examine + Open), `item`
+(Examine + Take). Inventory verbs are gated by item capability (`equippable` / `usable` /
+`hasLore` / `droppable` on the `ViewModel`): Examine always, then Read (lore items),
+Equip/Unequip (equippable), Use (usable), Drop (unless a required `droppable: false` item).
+A lone move-intent fires immediately without a menu; any other action set opens `<pnc-action-menu>`.
+
+**`presentation.image` support.** `ViewModel` surfaces `image?` from `presentation.image`
+on rooms and entities. `<pnc-scene>` renders `room.image` as a CSS background when present
+and falls back to a procedural CSS scene otherwise; occupant and item hotspots carry `image?`
+for optional artwork overlays. The Hollow House renders entirely procedurally — campaign-authored
+art and an asset pipeline are out of scope for this release.
+
+**`PncTheme`.** `PncTheme` (palette/fonts/scene) and `applyPncTheme` apply `--pnc-*` CSS
+custom properties. Hollow House ships `default` (dark amber/stone) and `haunted` (near-black,
+heavier vignette/grain/fog). Theming mechanism is unchanged — CSS custom properties applied
+on the app root pierce shadow boundaries with no component re-render.
+
+## Campaign menu, surface picker, and deep-link
 
 `bootLauncher` starts the play experience:
 
-1. **`?campaign=<slug>`** — if present and matched, boots that campaign directly.
-2. **No / unknown param** — shows the in-launcher campaign menu: a surface-independent
-   picker (its own retro styling) listing each manifest's `title` and `blurb`.
-   Keyboard and click both work.
-3. **On select** — sets `?campaign=<slug>` in the URL, resolves the campaign's designated
-   surface, builds the `AudioRuntime`, starts a `GameSession`, and calls `surface.mount(...)`.
-4. **"Back to menu" (`onExit`)** — unmounts the surface, clears `?campaign=`, and re-renders
-   the picker. The in-game restart path uses the same callback.
+1. **`?campaign=<slug>&surface=<id>`** — if both are present and valid, mounts that surface
+   directly, bypassing all pickers.
+2. **`?campaign=<slug>`** (no surface param) — if the campaign offers ≥2 surfaces, shows the
+   **`<surface-picker>`** (from `play-runtime`); otherwise mounts the sole/default surface.
+3. **No / unknown campaign param** — shows the **`<campaign-menu>`**: a surface-independent
+   picker listing each manifest's `title` and `blurb`. Keyboard and click both work.
+4. **On mount** — sets `?campaign=` and `?surface=` in the URL; reads `?theme=` to pass
+   `initialThemeId` to the surface; wires `onThemeChange` to write `?theme=` back.
+5. **"Back to menu" (`onExit`)** — unmounts the surface, clears `?campaign=`/`?surface=`/
+   `?theme=`, and re-renders the campaign menu. The in-game restart path uses the same callback.
 
-`e2e/` tests cover: winning playthrough (via deep-link), menu navigation, and theme switching.
+`e2e/` tests cover: winning playthrough (via deep-link), menu navigation, theme switching,
+and surface picker selection.
 
 ## `PlaySurface` contract
 
@@ -155,9 +201,10 @@ available surfaces into `bootLauncher`; the runtime selects the right one for ea
 
 ```ts
 interface PlaySurface {
-  id: string;           // "crt-terminal" — matched against CampaignManifest.surface
-  label: string;        // "CRT Terminal"
-  defaultTheme: Theme;  // fallback when a campaign supplies no themes
+  id: string;            // e.g. "crt-terminal" or "point-and-click"
+  label: string;         // e.g. "CRT Terminal"
+  description?: string;  // one-line description shown in the surface picker
+  defaultTheme: Theme;   // fallback when a campaign supplies no themes for this surface
   mount(args: MountArgs): SurfaceHandle;
 }
 
@@ -165,9 +212,11 @@ interface MountArgs {
   app: HTMLElement;
   session: GameSession;
   manifest: CampaignManifest;
-  themes: Theme[];      // manifest.themes ?? [surface.defaultTheme] — always non-empty
-  audio: AudioRuntime;  // shared audio service for this session
-  onExit(): void;       // "back to menu"
+  themes: Theme[];            // choice.themes ?? [surface.defaultTheme] — always non-empty
+  audio: AudioRuntime;        // shared audio service for this session
+  onExit(): void;             // "back to menu"
+  initialThemeId?: string;    // from ?theme=; surface falls back to themes[0] if unknown
+  onThemeChange?(id: string): void; // fired when player switches theme → launcher writes ?theme=
 }
 
 interface SurfaceHandle { unmount(): void }
@@ -178,13 +227,13 @@ input→intent, the turn loop, DOM rendering, and its own control UI.
 
 ## Per-surface themes and theme switcher
 
-A campaign supplies `CrtTheme[]` in `manifest.themes`; `themes[0]` is the default.
-The CRT surface renders a **theme switcher** in the monitor bezel (beside audio controls)
-that **auto-hides when fewer than two themes are present**, mirroring the soundpack switcher.
-Switching re-applies palette, fonts, and effects live via CSS custom properties on the CRT
-housing. Theme preference is **in-memory** (not persisted across page loads).
+Each surface defines its own theme type that extends the base `Theme`. Themes are supplied
+per-surface in each `SurfaceChoice.themes`; `themes[0]` is the default. Both surfaces render
+a **theme switcher** that **auto-hides when fewer than two themes are present**, mirroring the
+soundpack switcher. Switching re-applies properties live via CSS custom properties. Theme
+preference persists via `?theme=` URL param across page reloads.
 
-`CrtTheme` extends the base `Theme` with:
+`CrtTheme` (from `@wickedways/play-surface/crt`):
 
 ```ts
 interface CrtTheme extends Theme {
@@ -194,11 +243,23 @@ interface CrtTheme extends Theme {
 }
 ```
 
-The Hollow House campaign ships two themes: `default` (current green-phosphor look) and
-`haunted` (warm pinkish-red palette with heavier glow and flicker).
+`PncTheme` (from `@wickedways/play-surface/pnc`):
 
-**Adding a theme.** Declare a `CrtTheme` in the campaign's `themes.ts` file and include it
-in `manifest.themes`. No edits to the runtime or surface are needed.
+```ts
+interface PncTheme extends Theme {
+  palette: { bg: string; panel: string; ink: string; accent: string; warn: string; critical: string; hotspot: string };
+  fonts:   { body: string; display: string };
+  scene:   { vignette: number; grain: number; fog?: number };
+}
+```
+
+The Hollow House ships two themes per surface:
+- **CRT:** `default` (green phosphor) and `haunted` (warm pinkish-red, heavier glow/flicker).
+- **PnC:** `default` (dark amber/stone) and `haunted` (near-black, heavier vignette/grain/fog).
+
+**Adding a theme.** Declare a theme of the appropriate type and include it in the
+`themes` array of the relevant `SurfaceChoice` in `manifest.surfaces`. No edits to the
+runtime or surface are needed.
 
 ## Campaign-defined status bar
 
@@ -392,31 +453,37 @@ is a thin `CampaignManifest` wrapper that presents it in the launcher.
      aliases: {},
      playerName: "Hero",
      archetype: "fighter",
-     // audio, surface, themes are optional
+     // audio and surfaces are optional; omit surfaces → defaults to crt-terminal
+     surfaces: [
+       { id: "crt-terminal", themes: [myCrtTheme] },
+       { id: "point-and-click", themes: [myPncTheme] },
+     ],
    };
    ```
 3. Register it in `packages/play/src/main.ts`:
    ```ts
    import { myCampaign } from "@wickedways/campaigns/my-campaign";
-   bootLauncher(app, { campaigns: [hollowHouse, seed, myCampaign], surfaces: [crtSurface] }, …);
+   bootLauncher(app, { campaigns: [hollowHouse, seed, myCampaign], surfaces: [crtSurface, pncSurface] }, …);
    ```
 
 ## Adding a surface
 
-1. Implement the `PlaySurface` interface in a new package (e.g. `@wickedways/play-surface-foo`):
+1. Implement the `PlaySurface` interface:
    ```ts
    export const fooSurface: PlaySurface = {
      id: "foo",
      label: "Foo Surface",
+     description: "A new kind of UI.",
      defaultTheme: { id: "default", label: "Default" },
-     mount({ app, session, themes, audio, onExit }): SurfaceHandle {
+     mount({ app, session, themes, audio, initialThemeId, onThemeChange, onExit }): SurfaceHandle {
        // render, subscribe to cues, drive the turn loop …
        return { unmount() { /* teardown */ } };
      },
    };
    ```
 2. Register it in `packages/play/src/main.ts` alongside the existing surfaces.
-3. Point a campaign at it via `manifest.surface = "foo"`.
+3. Add `{ id: "foo" }` to `manifest.surfaces` in any campaign that should offer it.
+   If the campaign lists ≥2 surfaces the launcher will show the `<surface-picker>` automatically.
 
 ## Testing
 
@@ -430,7 +497,7 @@ is a thin `CampaignManifest` wrapper that presents it in the launcher.
 
 The play surface ships as a static bundle served by nginx, built by the multi-stage
 [`Dockerfile`](./Dockerfile). Because the SPA bundles `wickedways`, `play-runtime`,
-`play-surface-crt`, and `campaigns` straight from TypeScript source through the pnpm
+`play-surface`, and `campaigns` straight from TypeScript source through the pnpm
 workspace, **the Docker build context is the repo root** (not this package directory) and
 there is no separate engine build step.
 

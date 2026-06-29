@@ -1,6 +1,6 @@
 import { LitElement, html, css } from "lit";
 import { linkNouns } from "../link-nouns.js";
-import type { RoomParts } from "../narrator.js";
+import type { RoomParts } from "../../shared/narrator.js";
 
 export type { RoomParts };
 

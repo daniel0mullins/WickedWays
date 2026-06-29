@@ -1,4 +1,4 @@
-import { defaultCrtTheme, type CrtTheme } from "@wickedways/play-surface-crt";
+import { defaultCrtTheme, type CrtTheme } from "@wickedways/play-surface/crt";
 
 // Near-black bg, muted blood fg — accent is warm candlelit bone/amber for visible, horror-coherent highlights.
 export const hauntedCrtTheme: CrtTheme = {

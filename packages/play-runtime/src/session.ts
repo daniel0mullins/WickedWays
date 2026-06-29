@@ -59,8 +59,23 @@ export class GameSession {
     }
     pc.move(rooms.get(builder.description.startRoom!)!);
     campaign.gm = pc;
-    campaign.beginCampaign();
+    // Subscribe BEFORE beginCampaign: the round-start dispatch inside it emits the
+    // opening status readout synchronously, so a later subscription would miss it.
+    // The buffered cue is handed to the surface via takeStartupCues().
     campaign.onCue((cue) => this.cueBuffer.push(cue));
+    campaign.beginCampaign();
+  }
+
+  /**
+   * Cues emitted during boot, before any player turn — currently the campaign's
+   * opening status readout (the status mechanic's `onRoundStart`). Returns and
+   * clears them so a surface can paint the initial HUD at game start. Empty after
+   * the first call, and after the first {@link execute} (which resets the buffer).
+   */
+  takeStartupCues(): PresentationCue[] {
+    const cues = [...this.cueBuffer];
+    this.cueBuffer.length = 0;
+    return cues;
   }
 
   /**
@@ -190,6 +205,10 @@ export class GameSession {
       case "drop": {
         const item = pc.inventory.items.find((i) => i.id === intent.targetId);
         if (!item) throw new ProceduralViolation("You aren't carrying that.");
+        // Required quest items (droppable === false) can't be set down.
+        if (item.properties.droppable === false) {
+          throw new ProceduralViolation(`You can't bring yourself to part with the ${item.name}.`);
+        }
         pc.removeFromInventory([item]);
         return;
       }

@@ -5,6 +5,7 @@ import { mountTerminal } from "./controller.js";
 export const crtSurface: PlaySurface = {
   id: "crt-terminal",
   label: "CRT Terminal",
+  description: "Typed retro terminal",
   defaultTheme: defaultCrtTheme,
   mount(args: MountArgs): SurfaceHandle {
     return mountTerminal(args.app, args.session, {
@@ -14,6 +15,8 @@ export const crtSurface: PlaySurface = {
       audio: args.audio,
       themes: args.themes,
       onExit: args.onExit,
+      initialThemeId: args.initialThemeId,
+      onThemeChange: args.onThemeChange,
     });
   },
 };

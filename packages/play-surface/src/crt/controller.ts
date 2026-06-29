@@ -2,8 +2,8 @@ import type { GameSession, AudioRuntime, SurfaceHandle, Theme } from "@wickedway
 import { MapModel } from "@wickedways/play-runtime";
 import type { StatusField } from "wickedways/lib/presentation";
 import { parse } from "./parser.js";
-import { Narrator } from "./narrator.js";
-import { layoutMap, renderMapSvg } from "./map-view.js";
+import { Narrator } from "../shared/narrator.js";
+import { layoutMap, renderMapSvg } from "../shared/map-view.js";
 import { type CrtTheme, defaultCrtTheme, applyTheme } from "./theme.js";
 import { ensureGlobalTokens } from "./styles.js";
 // Side-effect imports register the four top-level custom elements.
@@ -23,7 +23,16 @@ import "./components/crt-bezel.js";
 export function mountTerminal(
   root: HTMLElement,
   session: GameSession,
-  meta: { title: string; intro: string; buttonText?: string; audio: AudioRuntime; themes: Theme[]; onExit(): void },
+  meta: {
+    title: string;
+    intro: string;
+    buttonText?: string;
+    audio: AudioRuntime;
+    themes: Theme[];
+    onExit(): void;
+    initialThemeId?: string;
+    onThemeChange?: (id: string) => void;
+  },
 ): SurfaceHandle {
   let narrator = new Narrator();
   const audio = meta.audio;
@@ -50,12 +59,15 @@ export function mountTerminal(
   bezel.soundpacks = audio.soundpacks;
   bezel.activeSoundpack = audio.soundpacks[0]?.id ?? "";
   bezel.themes = meta.themes;
-  bezel.activeTheme = meta.themes[0]?.id ?? "";
+  const initialTheme = (meta.initialThemeId
+    ? meta.themes.find((t) => t.id === meta.initialThemeId)
+    : undefined) ?? meta.themes[0];
+  bezel.activeTheme = initialTheme?.id ?? "";
 
   housing.append(welcome, game, bezel);
   root.appendChild(housing);
   root.dataset.crtHousing = ""; // preserve — e2e/theme marker
-  applyTheme(root, (meta.themes[0] as CrtTheme) ?? defaultCrtTheme);
+  applyTheme(root, (initialTheme as CrtTheme) ?? defaultCrtTheme);
 
   // ── Controller state ────────────────────────────────────────────────────────
   let gameStarted = false;
@@ -117,6 +129,8 @@ export function mountTerminal(
     gameStarted = true;
     welcome.hidden = true;
     game.hidden = false;
+    // Paint the opening status readout the campaign emitted at boot.
+    absorbStatusCues(session.takeStartupCues());
     // Seed clickableNouns before the first room render so opening-room nouns are clickable.
     computeClickableNouns();
     game.transcript.printRoom(narrator.renderRoomParts(session.view()));
@@ -164,6 +178,7 @@ export function mountTerminal(
           mapModel.reset();
           audio.reset();                  // recreate director so the tension high-water-mark resets
           latestStatus = [];
+          absorbStatusCues(session.takeStartupCues());
           game.clearTranscript();
           game.transcript.printRoom(narrator.renderRoomParts(session.view()));
           refresh();
@@ -260,6 +275,7 @@ export function mountTerminal(
     const chosen = meta.themes.find((t) => t.id === id);
     if (chosen) applyTheme(root, chosen as CrtTheme);
     bezel.activeTheme = id;
+    meta.onThemeChange?.(id);
   });
   bezel.addEventListener("exit", () => meta.onExit());
 
