@@ -44,6 +44,21 @@ export class PncMapOverlay extends LitElement {
       box-shadow: 0 0 10px rgba(217, 194, 122, 0.35), inset 0 0 14px rgba(0, 0, 0, 0.5);
     }
     .svg-frame { max-width: 100%; height: auto; }
+    /* The map SVG (class "map-svg") is built by the shared renderer with .map-*
+       classes but carries no inline colors, so it must be styled here — without
+       these rules its text/boxes fall back to the SVG default black fill and
+       vanish against the dark overlay. */
+    .map-svg { max-width: 100%; height: auto; }
+    .map-svg .map-box { fill: var(--color-panel, #252220); stroke: var(--color-muted, #8a8070); stroke-width: 1.5; }
+    .map-svg .map-box.current { stroke: var(--pnc-accent, var(--color-accent, #b8943c)); stroke-width: 2.5;
+      filter: drop-shadow(0 0 6px rgba(217, 194, 122, 0.7)); }
+    .map-svg .map-label { fill: var(--color-text, #e8e2d0); font: 0.5em var(--font-body); }
+    .map-svg .map-link { stroke: var(--color-muted, #8a8070); stroke-width: 2; }
+    .map-svg .map-link.locked { stroke: var(--color-muted, #8a8070); stroke-dasharray: 4 4; }
+    .map-svg .map-stub { stroke: var(--color-muted, #8a8070); stroke-width: 2; }
+    .map-svg .map-stub.locked { stroke: var(--color-muted, #8a8070); stroke-dasharray: 4 4; }
+    .map-svg .map-q { fill: var(--color-muted, #8a8070); font: 0.5em var(--font-body); }
+    .map-svg .map-remains { fill: var(--pnc-critical, var(--color-error, #c04040)); font: 0.5em var(--font-body); }
     .overlay-legend {
       font-family: var(--font-body);
       font-size: 0.7em;
