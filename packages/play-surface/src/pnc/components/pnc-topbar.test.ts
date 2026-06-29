@@ -238,6 +238,13 @@ describe("<pnc-topbar>", () => {
       expect((received as unknown as CustomEvent).bubbles).toBe(true);
       expect((received as unknown as CustomEvent).composed).toBe(true);
     });
+
+    it("shows a gear icon and a 'Menu' title", async () => {
+      await el.updateComplete;
+      const btn = el.shadowRoot!.querySelector<HTMLButtonElement>(".topbar-btn-menu")!;
+      expect(btn.textContent).toContain("⚙"); // ⚙ gear
+      expect(btn.getAttribute("title")).toBe("Menu");
+    });
   });
 
   // 8. Layout structure

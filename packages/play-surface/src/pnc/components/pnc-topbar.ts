@@ -212,10 +212,10 @@ export class PncTopbar extends LitElement {
         <button
           class="topbar-btn topbar-btn-menu"
           type="button"
-          aria-label="Back to menu"
+          aria-label="Open menu"
           title="Menu"
           @click=${this.#onOpenMenu}
-        >&#x21A9;</button>
+        >&#x2699;</button>
       </div>
     `;
   }
