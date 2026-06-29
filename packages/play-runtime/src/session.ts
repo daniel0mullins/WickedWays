@@ -205,6 +205,10 @@ export class GameSession {
       case "drop": {
         const item = pc.inventory.items.find((i) => i.id === intent.targetId);
         if (!item) throw new ProceduralViolation("You aren't carrying that.");
+        // Required quest items (droppable === false) can't be set down.
+        if (item.properties.droppable === false) {
+          throw new ProceduralViolation(`You can't bring yourself to part with the ${item.name}.`);
+        }
         pc.removeFromInventory([item]);
         return;
       }

@@ -21,6 +21,8 @@ export interface ScopeEntity {
   usable?: boolean;
   /** Items only: whether the item carries lore text (readable). */
   hasLore?: boolean;
+  /** Items only: whether the item may be dropped (false for required quest items). */
+  droppable?: boolean;
 }
 export interface ExitView { dir: Direction; toName: string; }
 export interface LockedDoorView { name: string; dir: Direction; }
@@ -91,6 +93,7 @@ export function view(
         equippable: i.properties.equippable,
         usable: i.properties.usable,
         hasLore: i.lore !== undefined,
+        droppable: i.properties.droppable !== false,
       })),
     };
   });
@@ -104,6 +107,7 @@ export function view(
     equippable: i.properties.equippable,
     usable: i.properties.usable,
     hasLore: i.lore !== undefined,
+    droppable: i.properties.droppable !== false,
   }));
 
   const keys: ScopeEntity[] = pc.inventory.keys.map((k) => ({
@@ -115,6 +119,7 @@ export function view(
     equippable: k.properties.equippable,
     usable: k.properties.usable,
     hasLore: k.lore !== undefined,
+    droppable: k.properties.droppable !== false,
   }));
 
   const exits: ExitView[] = [...room.exits.entries()]

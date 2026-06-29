@@ -272,6 +272,14 @@ describe("inventoryActions", () => {
     expect(inventoryActions(sword, false).map((a) => a.label)).not.toContain("Read");
   });
 
+  it("omits Drop for non-droppable items (required quest items)", () => {
+    const quest = ent("q-1", "Journal", "item", { hasLore: true, droppable: false });
+    const labels = inventoryActions(quest, false).map((a) => a.label);
+    expect(labels).not.toContain("Drop");
+    // A normal item still offers Drop.
+    expect(inventoryActions(sword, false).map((a) => a.label)).toContain("Drop");
+  });
+
   it("omits Use for non-usable items and Equip for non-equippable items", () => {
     // A story item: not equippable, not usable, has lore (e.g. the journal).
     const journal = ent("j-1", "Journal", "item", { hasLore: true });

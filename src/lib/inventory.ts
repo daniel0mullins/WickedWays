@@ -142,6 +142,9 @@ export type ItemProperties = {
   equipped: boolean;
   destroyable: boolean;
   usable: boolean;
+  /** Whether the item may be dropped. Absent ⇒ droppable; `false` marks a
+   *  required item (e.g. a quest item) that must not be set down. */
+  droppable?: boolean;
 };
 
 /**

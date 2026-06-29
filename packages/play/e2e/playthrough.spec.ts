@@ -492,13 +492,33 @@ test.describe("Wicked Ways browser playthrough", () => {
     await inv.locator(".slot .inventory-entry", { hasText: /Journal/i }).click();
     const menu = page.locator("pnc-action-menu");
     await expect(menu.locator("button", { hasText: "Read" })).toBeVisible();
-    // The journal is a story item: not usable, not equippable.
+    // The journal is a required story item: not usable, not equippable, not droppable.
     await expect(menu.locator("button", { hasText: "Use" })).toHaveCount(0);
     await expect(menu.locator("button", { hasText: "Equip" })).toHaveCount(0);
+    await expect(menu.locator("button", { hasText: "Drop" })).toHaveCount(0);
 
     // Reading surfaces lore and leaves the journal in the inventory.
     await menu.locator("button", { hasText: "Read" }).click();
     await expect(inv.locator(".slot").first()).toContainText("Water-Stained Journal");
+  });
+
+  test("CRT cannot drop a required quest item (the journal)", async ({ page }) => {
+    await page.goto("/?campaign=hollow-house&surface=crt-terminal");
+    await enterGame(page);
+    const cmd = page.locator("#cmd");
+
+    // Get the journal into inventory: open the foyer-table drawer, take the journal.
+    await cmd.fill("open drawer");
+    await cmd.press("Enter");
+    await cmd.fill("take journal");
+    await cmd.press("Enter");
+    await expect(page.locator("#hud")).toContainText("Water-Stained Journal");
+
+    // Attempting to drop it is rejected, and it stays in the carrying list.
+    await cmd.fill("drop journal");
+    await cmd.press("Enter");
+    await expect(page.locator("#transcript")).toContainText("can't bring yourself to part");
+    await expect(page.locator("#hud")).toContainText("Water-Stained Journal");
   });
 
   test("PnC status bar shows Sanity/Round from the opening turn (no action yet)", async ({ page }) => {

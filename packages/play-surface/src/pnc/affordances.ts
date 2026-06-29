@@ -147,6 +147,9 @@ export function inventoryActions(item: ScopeEntity, equipped: boolean): ActionDe
   if (item.usable) {
     actions.push({ label: "Use", kind: "intent", intent: { kind: "use", targetId: item.id } });
   }
-  actions.push({ label: "Drop", kind: "intent", intent: { kind: "drop", targetId: item.id } });
+  // Required quest items (droppable === false) can't be set down.
+  if (item.droppable !== false) {
+    actions.push({ label: "Drop", kind: "intent", intent: { kind: "drop", targetId: item.id } });
+  }
   return actions;
 }
