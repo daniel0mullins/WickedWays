@@ -313,12 +313,12 @@ export function mountPointAndClick(
 
   inventory.addEventListener("inventory-activate", (e) => {
     if (interactionLocked) return;
-    const id = (e as CustomEvent<{ id: string }>).detail.id;
+    const { id, x = 0, y = 0 } = (e as CustomEvent<{ id: string; x?: number; y?: number }>).detail;
     const vm = currentVm ?? session.view();
     const item = [...vm.inventory.items, ...vm.inventory.keys].find((i) => i.id === id);
     if (!item) return;
     const equipped = vm.inventory.equippedNames.includes(item.name);
-    openActionMenu(inventoryActions(item, equipped));
+    openActionMenu(inventoryActions(item, equipped), x, y);
   });
 
   topbar.addEventListener("toggle-audio", () => {

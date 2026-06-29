@@ -131,6 +131,24 @@ describe("<pnc-inventory>", () => {
     expect((received as unknown as CustomEvent).composed).toBe(true);
   });
 
+  it("carries the click coordinates so the action menu can be anchored to the click", async () => {
+    el.slots = 1;
+    el.items = [item({ id: "i-7", name: "Vial" })];
+    await el.updateComplete;
+
+    let received: CustomEvent | null = null;
+    const handler = (ev: Event) => { received = ev as CustomEvent; };
+    document.addEventListener("inventory-activate", handler);
+    el.shadowRoot!
+      .querySelector<HTMLElement>(".inventory-entry")!
+      .dispatchEvent(new MouseEvent("click", { clientX: 137, clientY: 84, bubbles: true, composed: true }));
+    document.removeEventListener("inventory-activate", handler);
+
+    expect(received).not.toBeNull();
+    expect((received as unknown as CustomEvent).detail.x).toBe(137);
+    expect((received as unknown as CustomEvent).detail.y).toBe(84);
+  });
+
   it("emits the correct id when clicking a key entry", async () => {
     el.keys = [item({ id: "k-42", name: "Silver Key" })];
     await el.updateComplete;

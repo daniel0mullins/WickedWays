@@ -9,9 +9,10 @@ type Tab = "inventory" | "keys";
  *     slots read "--empty--".
  *   - "Key Items": an unordered (bulleted) list of held keys.
  *
- * Clicking a filled item slot or a key emits `inventory-activate` with `{ id }`
- * so the controller can build an action menu. This component is deliberately
- * dumb: it does NOT compute verbs; it only emits the entity id.
+ * Clicking a filled item slot or a key emits `inventory-activate` with
+ * `{ id, x, y }` (the click's viewport coordinates) so the controller can build
+ * an action menu anchored to the click. This component is deliberately dumb: it
+ * does NOT compute verbs; it only emits the entity id and click position.
  */
 export class PncInventory extends LitElement {
   static override properties = {
@@ -112,10 +113,10 @@ export class PncInventory extends LitElement {
     .empty-note { padding: 0.5rem; color: var(--color-muted, #8a8070); font-style: italic; }
   `;
 
-  #emit(id: string): void {
+  #emit(id: string, ev: MouseEvent): void {
     this.dispatchEvent(
       new CustomEvent("inventory-activate", {
-        detail: { id },
+        detail: { id, x: ev.clientX, y: ev.clientY },
         bubbles: true,
         composed: true,
       }),
@@ -130,7 +131,7 @@ export class PncInventory extends LitElement {
     const equipped = this.equippedNames.includes(entity.name);
     return html`<button
       class="inventory-entry"
-      @click=${() => this.#emit(entity.id)}
+      @click=${(e: MouseEvent) => this.#emit(entity.id, e)}
     >${entity.image
       ? html`<img src=${entity.image} alt=${entity.name} />`
       : nothing}<span class="entry-name">${entity.name}</span>${equipped
