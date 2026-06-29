@@ -61,6 +61,8 @@ body {
   flex: 1;
   display: flex;
   min-height: 0;
+  gap: 0.4rem;
+  padding: 0.4rem;
 }
 /* pnc-scene is the flex child that fills the remaining horizontal space. */
 pnc-scene {
@@ -73,6 +75,15 @@ pnc-scene {
   flex-direction: column;
   min-height: 0;
   overflow: auto;
+  gap: 0.4rem;
+}
+/* Each content section gets a subtle outline and a little inset padding so the
+   scene and the sidebar panels read as distinct framed regions. */
+pnc-scene, pnc-status, pnc-inventory, pnc-log {
+  box-sizing: border-box;
+  border: 1px solid var(--color-muted, #8a8070);
+  border-radius: 4px;
+  padding: 0.35rem;
 }
 `;
 

@@ -438,6 +438,25 @@ test.describe("Wicked Ways browser playthrough", () => {
     expect(color).toBe("rgb(232, 226, 208)");
   });
 
+  test("PnC content sections each have an outline and padding", async ({ page }) => {
+    await page.goto("/?campaign=hollow-house&surface=point-and-click");
+    await enterPncGame(page);
+
+    for (const sel of ["pnc-scene", "pnc-status", "pnc-inventory", "pnc-log"]) {
+      const m = await page.locator(sel).first().evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return {
+          borderWidth: parseFloat(cs.borderTopWidth),
+          borderStyle: cs.borderTopStyle,
+          padding: parseFloat(cs.paddingTop),
+        };
+      });
+      expect(m.borderWidth, `${sel} border width`).toBeGreaterThanOrEqual(1);
+      expect(m.borderStyle, `${sel} border style`).toBe("solid");
+      expect(m.padding, `${sel} padding`).toBeGreaterThan(0);
+    }
+  });
+
   test("PnC map labels room names in a legible (non-black) color", async ({ page }) => {
     await page.goto("/?campaign=hollow-house&surface=point-and-click");
     await enterPncGame(page);

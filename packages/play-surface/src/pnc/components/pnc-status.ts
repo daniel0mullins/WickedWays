@@ -34,7 +34,6 @@ export class PncStatus extends LitElement {
       gap: 0.5rem 1.25rem;
       padding: 0.35rem 1rem;
       color: var(--color-text, #e8e2d0);
-      border-top: 1px solid var(--pnc-accent, #b8943c);
       font-family: var(--font-body);
       font-size: 0.85em;
     }
