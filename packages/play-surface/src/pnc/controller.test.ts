@@ -166,6 +166,40 @@ describe("mountPointAndClick (controller)", () => {
     expect(deepQuery(log, "#pnc-log")!.textContent).toContain("Revenant");
   });
 
+  it("real .click() on a scene hotspot does not self-dismiss the action menu (opening-click bug)", async () => {
+    // Multi-verb hotspot: occupant → Examine + Attack
+    const view = () =>
+      makeView({
+        occupants: [{ id: "m1", name: "Revenant", aliases: ["revenant"], kind: "occupant", health: 3, defeated: false }],
+        scope: [{ id: "m1", name: "Revenant", aliases: ["revenant"], kind: "occupant", health: 3, defeated: false }],
+      });
+    const { welcome, scene, session, log } = mount({ view });
+    await flushRender(scene, log);
+    await enter(welcome, scene, log);
+    // Ensure pnc-scene has rendered the hotspot div into its shadow root.
+    await flushRender(scene);
+
+    // Find the actual hotspot div inside pnc-scene's shadow root.
+    const hotspotDiv = deepQuery(document.body, '[data-key="m1"]') as HTMLElement | null;
+    expect(hotspotDiv, "hotspot div must be rendered before clicking").not.toBeNull();
+
+    // Fire a REAL click (not a synthetic CustomEvent) — it bubbles to window and
+    // triggers the opening-click self-dismiss bug in the unfixed code.
+    hotspotDiv!.click();
+
+    // Flush microtasks: with the fix the window listener is armed NOW (after the click).
+    await Promise.resolve();
+
+    // The menu must still be open — it must NOT have self-dismissed on the opening click.
+    const menu = deepQuery(document.body, "pnc-action-menu");
+    expect(menu, "pnc-action-menu must still be open after the opening click").not.toBeNull();
+
+    // Verify action routing still works: choose Attack (index 1).
+    menu!.dispatchEvent(new CustomEvent("choose", { detail: { index: 1 }, bubbles: true, composed: true }));
+    await flushRender(scene, log);
+    expect(session.execute).toHaveBeenCalledWith({ kind: "attack", targetId: "m1" });
+  });
+
   it("moves immediately when an exit hotspot is clicked (single move-intent)", async () => {
     const view = () => makeView({ exits: [{ dir: "north", toName: "Hall" }] });
     const { welcome, scene, session, log } = mount({ view });

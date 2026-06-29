@@ -131,11 +131,38 @@ describe("<pnc-action-menu>", () => {
   it("disconnectedCallback removes the outside-click listener (no leak)", async () => {
     el.actions = [{ label: "Look", index: 0 }];
     await el.updateComplete;
+    // The outside-click listener is deferred via queueMicrotask; flush it so
+    // the listener is actually armed before we assert it gets torn down.
+    await Promise.resolve();
 
     const spy = vi.spyOn(window, "removeEventListener");
     el.remove();
     expect(spy).toHaveBeenCalledWith("click", expect.any(Function));
     spy.mockRestore();
+  });
+
+  it("does not self-dismiss when connected synchronously during a click handler", async () => {
+    // Reproduce the opening-click race at the component level: the menu is
+    // appended to the DOM synchronously inside a click handler, so the opening
+    // click is still bubbling to window when connectedCallback fires.
+    const menu = document.createElement("pnc-action-menu");
+    menu.actions = [{ label: "Examine", index: 0 }];
+
+    let dismissCount = 0;
+    menu.addEventListener("dismiss", () => { dismissCount++; });
+
+    // Append synchronously inside a click handler so the click is mid-bubble.
+    document.body.addEventListener("click", () => { document.body.appendChild(menu); }, { once: true });
+    document.body.click();
+
+    // The opening click must NOT have triggered dismiss (listener was deferred).
+    expect(dismissCount, "menu must not self-dismiss on the opening click").toBe(0);
+
+    // After the microtask the listener is armed; the opening click is already done.
+    await Promise.resolve();
+    expect(dismissCount, "menu must still be open after microtask flush").toBe(0);
+
+    menu.remove();
   });
 
   // ── re-connect ─────────────────────────────────────────────────────────────────
