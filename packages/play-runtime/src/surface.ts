@@ -36,7 +36,7 @@ export interface MountArgs {
   /** The campaign's manifest (title, intro text, etc.). */
   manifest: CampaignManifest;
   /**
-   * Non-empty theme list — `manifest.themes` if present, otherwise `[surface.defaultTheme]`.
+   * Non-empty theme list — `manifest.surfaces[i].themes` if present, otherwise `[surface.defaultTheme]`.
    * The surface renders the switcher and applies `themes[0]` on mount.
    */
   themes: Theme[];
@@ -59,7 +59,7 @@ export interface MountArgs {
  *
  * **Adding a surface.** Implement this interface, give it a unique `id`, and pass
  * it in the `surfaces` array to `bootLauncher`. Register it in
- * `packages/play/src/main.ts` and reference it from any campaign's `manifest.surface`.
+ * `packages/play/src/main.ts` and reference it from any campaign's `manifest.surfaces`.
  */
 export interface PlaySurface {
   /** Stable identifier matched against `CampaignManifest.surface` (e.g. `"crt-terminal"`). */

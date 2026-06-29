@@ -66,7 +66,7 @@ export class PncActionMenu extends LitElement {
 
   // Whether the outside-click listener has been registered on window.
   #clickArmed = false;
-  // Whether a queueMicrotask registration is pending (cleared on disconnect).
+  // Whether a setTimeout registration is pending (cleared on disconnect).
   #clickPending = false;
 
   #onKeydown = (ev: KeyboardEvent): void => {
@@ -85,23 +85,28 @@ export class PncActionMenu extends LitElement {
   override connectedCallback(): void {
     super.connectedCallback();
     window.addEventListener("keydown", this.#onKeydown);
-    // Defer the outside-click listener registration until AFTER the opening
-    // click finishes bubbling. Without the deferral the same physical click
-    // that opens the menu would reach window and immediately self-dismiss it.
-    // Escape (keydown) is unaffected by click timing, so it stays synchronous.
+    // Defer the outside-click listener registration past the full current task.
+    // A queueMicrotask deferral is NOT sufficient in Chromium: when the menu is
+    // opened via a hotspot CustomEvent dispatched inside a click handler,
+    // the nested dispatchEvent call triggers a microtask checkpoint on return,
+    // which runs the queueMicrotask callback BEFORE the original outer click
+    // finishes propagating to window — arming the listener too early and
+    // self-dismissing the menu on that very click.
+    // setTimeout(fn, 0) runs in a new task, safely after the full click
+    // propagation and its associated microtasks are complete.
     this.#clickPending = true;
-    queueMicrotask(() => {
-      if (!this.#clickPending) return; // disconnected before the microtask ran
+    setTimeout(() => {
+      if (!this.#clickPending) return; // disconnected before the timer fired
       this.#clickPending = false;
       window.addEventListener("click", this.#onOutsideClick);
       this.#clickArmed = true;
-    });
+    }, 0);
   }
 
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener("keydown", this.#onKeydown);
-    this.#clickPending = false; // cancel a not-yet-run registration
+    this.#clickPending = false; // cancel a not-yet-fired registration
     if (this.#clickArmed) {
       window.removeEventListener("click", this.#onOutsideClick);
       this.#clickArmed = false;

@@ -52,7 +52,7 @@ export class PncScene extends LitElement {
   }
 
   static override styles = css`
-    :host { display: block; }
+    :host { display: block; height: 100%; }
 
     /* ── Scene canvas ─────────────────────────────────────────────────────────── */
     .scene {
@@ -138,10 +138,10 @@ export class PncScene extends LitElement {
 
   // ── event helper ─────────────────────────────────────────────────────────────
 
-  #emitHotspot(key: string): void {
+  #emitHotspot(key: string, ev?: MouseEvent): void {
     this.dispatchEvent(
       new CustomEvent("hotspot", {
-        detail: { key },
+        detail: { key, x: ev?.clientX ?? 0, y: ev?.clientY ?? 0 },
         bubbles: true,
         composed: true,
       }),
@@ -184,7 +184,7 @@ export class PncScene extends LitElement {
       ${perimeterHotspots.map((hs) => {
         const pos = DIR_POSITION[hs.dir] ?? { left: "50%", top: "50%" };
         const isInteractive = hs.kind !== "locked";
-        const clickHandler = isInteractive ? () => this.#emitHotspot(hs.key) : undefined;
+        const clickHandler = isInteractive ? (e: MouseEvent) => this.#emitHotspot(hs.key, e) : undefined;
         return html`<div
           class="hotspot ${hs.kind}"
           data-key=${hs.key}
@@ -200,7 +200,7 @@ export class PncScene extends LitElement {
           class="hotspot ${hs.kind}"
           data-key=${hs.key}
           style=${styleMap({ left: pos.left, top: pos.top })}
-          @click=${() => this.#emitHotspot(hs.key)}
+          @click=${(e: MouseEvent) => this.#emitHotspot(hs.key, e)}
         >${this.#renderContent(hs, "body")}</div>`;
       })}
 

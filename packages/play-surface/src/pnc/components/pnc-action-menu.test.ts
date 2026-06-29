@@ -103,6 +103,9 @@ describe("<pnc-action-menu>", () => {
   it("clicking outside the popup emits 'dismiss'", async () => {
     el.actions = [{ label: "Look", index: 0 }];
     await el.updateComplete;
+    // The outside-click listener is deferred via setTimeout(fn, 0); flush it so
+    // the listener is actually armed before we test that it dismisses.
+    await new Promise<void>((r) => setTimeout(r, 0));
 
     let received: CustomEvent | null = null;
     const clickHandler = (ev: Event) => { received = ev as CustomEvent; };
@@ -131,9 +134,9 @@ describe("<pnc-action-menu>", () => {
   it("disconnectedCallback removes the outside-click listener (no leak)", async () => {
     el.actions = [{ label: "Look", index: 0 }];
     await el.updateComplete;
-    // The outside-click listener is deferred via queueMicrotask; flush it so
+    // The outside-click listener is deferred via setTimeout(fn, 0); flush it so
     // the listener is actually armed before we assert it gets torn down.
-    await Promise.resolve();
+    await new Promise<void>((r) => setTimeout(r, 0));
 
     const spy = vi.spyOn(window, "removeEventListener");
     el.remove();
@@ -145,6 +148,8 @@ describe("<pnc-action-menu>", () => {
     // Reproduce the opening-click race at the component level: the menu is
     // appended to the DOM synchronously inside a click handler, so the opening
     // click is still bubbling to window when connectedCallback fires.
+    // The fix uses setTimeout(fn, 0) so the window click listener is armed only
+    // AFTER the current task (the opening click) fully completes.
     const menu = document.createElement("pnc-action-menu");
     menu.actions = [{ label: "Examine", index: 0 }];
 
@@ -158,7 +163,8 @@ describe("<pnc-action-menu>", () => {
     // The opening click must NOT have triggered dismiss (listener was deferred).
     expect(dismissCount, "menu must not self-dismiss on the opening click").toBe(0);
 
-    // After the microtask the listener is armed; the opening click is already done.
+    // Even after flushing microtasks, the setTimeout hasn't fired — listener
+    // still not armed — so the menu remains open.
     await Promise.resolve();
     expect(dismissCount, "menu must still be open after microtask flush").toBe(0);
 

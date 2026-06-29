@@ -132,6 +132,9 @@ describe("<pnc-scene>", () => {
 
     expect(received).not.toBeNull();
     expect((received as unknown as CustomEvent).detail.key).toBe("east");
+    // detail must include numeric x/y coordinates for action-menu positioning
+    expect(typeof (received as unknown as CustomEvent).detail.x).toBe("number");
+    expect(typeof (received as unknown as CustomEvent).detail.y).toBe("number");
     expect((received as unknown as CustomEvent).bubbles).toBe(true);
     expect((received as unknown as CustomEvent).composed).toBe(true);
   });

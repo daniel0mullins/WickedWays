@@ -180,9 +180,11 @@ export function mountPointAndClick(
     activeActionMenu = null;
   };
 
-  const openActionMenu = (actions: ActionDescriptor[]): void => {
+  const openActionMenu = (actions: ActionDescriptor[], x = 0, y = 0): void => {
     closeActionMenu();
     const menu = document.createElement("pnc-action-menu");
+    menu.x = x;
+    menu.y = y;
     menu.actions = actions.map((a, index) => ({ label: a.label, index }));
     menu.addEventListener("choose", (e) => {
       const index = (e as CustomEvent<{ index: number }>).detail.index;
@@ -196,14 +198,14 @@ export function mountPointAndClick(
   };
 
   /** Open a menu for the hotspot's verbs, or fire a lone move-intent immediately. */
-  const offerActions = (actions: ActionDescriptor[]): void => {
+  const offerActions = (actions: ActionDescriptor[], x = 0, y = 0): void => {
     if (actions.length === 0) return;
     const only = actions.length === 1 ? actions[0] : undefined;
     if (only && only.kind === "intent" && only.intent.kind === "move") {
       applyDescriptor(only);
       return;
     }
-    openActionMenu(actions);
+    openActionMenu(actions, x, y);
   };
 
   // ── Overlays ──────────────────────────────────────────────────────────────────
@@ -290,9 +292,9 @@ export function mountPointAndClick(
 
   scene.addEventListener("hotspot", (e) => {
     if (interactionLocked) return;
-    const key = (e as CustomEvent<{ key: string }>).detail.key;
+    const { key, x = 0, y = 0 } = (e as CustomEvent<{ key: string; x?: number; y?: number }>).detail;
     const hs = currentHotspots.find((h) => h.key === key);
-    if (hs) offerActions(hs.actions);
+    if (hs) offerActions(hs.actions, x, y);
   });
 
   inventory.addEventListener("inventory-activate", (e) => {

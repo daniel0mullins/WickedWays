@@ -145,28 +145,32 @@ describe("<pnc-menu>", () => {
     expect((received as unknown as CustomEvent).composed).toBe(true);
   });
 
-  it("clicking outside the menu emits 'dismiss'", () => {
+  it("clicking the backdrop (overlay, not frame) emits 'dismiss'", () => {
+    // The overlay is fixed full-screen; clicking it directly (not via a child)
+    // should dismiss. Simulate by dispatching a click whose target IS the overlay.
     let received: CustomEvent | null = null;
     const handler = (ev: Event) => {
       received = ev as CustomEvent;
     };
     document.addEventListener("dismiss", handler);
-    document.body.click();
+    const overlay = el.shadowRoot!.querySelector<HTMLElement>(".menu-overlay")!;
+    // Dispatch a click whose target is the overlay element itself (no bubbling from a child).
+    overlay.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
     document.removeEventListener("dismiss", handler);
 
     expect(received).not.toBeNull();
   });
 
-  it("does not self-dismiss on the opening click (queueMicrotask deferral)", async () => {
-    const menu = document.createElement("pnc-menu");
+  it("clicking inside the menu frame does NOT emit 'dismiss'", () => {
     let dismissCount = 0;
-    menu.addEventListener("dismiss", () => { dismissCount++; });
-    document.body.addEventListener("click", () => { document.body.appendChild(menu); }, { once: true });
-    document.body.click();
+    const handler = () => { dismissCount++; };
+    document.addEventListener("dismiss", handler);
+    // Click a button inside the frame — should bubble to overlay but not dismiss.
+    el.shadowRoot!.querySelector<HTMLButtonElement>('button[data-action="save"]')!.click();
+    document.removeEventListener("dismiss", handler);
+
+    // The 'command' event fires but 'dismiss' must NOT.
     expect(dismissCount).toBe(0);
-    await Promise.resolve();        // flush the queueMicrotask
-    expect(dismissCount).toBe(0);
-    menu.remove();
   });
 
   it("non-Escape keys do NOT emit 'dismiss'", () => {
@@ -190,13 +194,13 @@ describe("<pnc-menu>", () => {
     spy.mockRestore();
   });
 
-  it("disconnectedCallback removes the outside-click listener (no leak)", async () => {
-    // The outside-click listener is deferred via queueMicrotask; flush it so
-    // the listener is actually armed before we assert its removal.
-    await Promise.resolve();
+  it("disconnectedCallback does NOT add or remove a window click listener (backdrop uses element @click)", () => {
+    // pnc-menu uses a @click handler on the overlay element, not a window-level
+    // listener, so removeEventListener("click", ...) must NOT be called on window.
     const spy = vi.spyOn(window, "removeEventListener");
     el.remove();
-    expect(spy).toHaveBeenCalledWith("click", expect.any(Function));
+    const clickCalls = spy.mock.calls.filter((args) => args[0] === "click");
+    expect(clickCalls).toHaveLength(0);
     spy.mockRestore();
   });
 

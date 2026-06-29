@@ -26,6 +26,34 @@ export const pncGlobalTokensCss = `
 }
 *, *::before, *::after { box-sizing: border-box; }
 body { margin: 0; background: #0a0a08; }
+
+/* ── PnC app layout ────────────────────────────────────────────────────────────
+   These selectors style the light-DOM wrappers created by the controller.
+   The controller sets position:relative on .pnc-app for overlay containment;
+   we add the flex geometry here so the scene has a real, non-zero height.
+   ─────────────────────────────────────────────────────────────────────────── */
+.pnc-app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.pnc-stage {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+/* pnc-scene is the flex child that fills the remaining horizontal space. */
+pnc-scene {
+  flex: 1;
+  min-height: 0;
+}
+.pnc-sidebar {
+  width: clamp(220px, 28%, 360px);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: auto;
+}
 `;
 
 /** Inject pncGlobalTokensCss once into doc.head, guarded by a <style id="pnc-global-tokens">. Idempotent. */

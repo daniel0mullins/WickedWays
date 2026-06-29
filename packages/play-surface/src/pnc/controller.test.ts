@@ -187,7 +187,9 @@ describe("mountPointAndClick (controller)", () => {
     // triggers the opening-click self-dismiss bug in the unfixed code.
     hotspotDiv!.click();
 
-    // Flush microtasks: with the fix the window listener is armed NOW (after the click).
+    // Flush microtasks. With the fix (setTimeout deferral) the window listener
+    // is NOT armed yet at this point — the menu stays open because no outside
+    // click has arrived since the setTimeout hasn't fired.
     await Promise.resolve();
 
     // The menu must still be open — it must NOT have self-dismissed on the opening click.

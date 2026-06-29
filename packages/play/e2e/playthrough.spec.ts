@@ -25,19 +25,16 @@ async function enterPncGame(page: Page): Promise<void> {
 }
 
 /**
- * Navigate through an exit hotspot by dispatching a click to the direction's
- * hotspot element. The PnC controller fires a lone move-intent immediately —
- * no action menu appears for exit hotspots. We verify the navigation happened
- * by waiting for the topbar room name to change.
+ * Navigate through an exit hotspot by clicking it. The PnC controller fires a
+ * lone move-intent immediately — no action menu appears for exit hotspots.
+ * We verify the navigation happened by waiting for the topbar room name to change.
  */
 async function goDirection(page: Page, dir: string): Promise<void> {
   // Capture the current room name displayed in the topbar.
   const roomNameEl = page.locator(".room-name");
   const before = (await roomNameEl.textContent()) ?? "";
-  // dispatchEvent("click") sends the event directly to the shadow-DOM hotspot
-  // element, bypassing the coordinate-based hit-test that fails when the
-  // sidebar / topbar overlaps the bounding box.
-  await page.locator(`.hotspot[data-key="${dir}"]`).dispatchEvent("click");
+  // Real coordinate-based click — exercises the layout's actual hit-testing.
+  await page.locator(`.hotspot[data-key="${dir}"]`).click();
   // Wait for the topbar room name to update (confirms the move intent completed).
   await expect(roomNameEl).not.toHaveText(before, { timeout: 5_000 });
 }
@@ -56,11 +53,8 @@ async function clickBodyHotspot(
 ): Promise<void> {
   const hs = page.locator(`.hotspot.${kind}`, { hasText: textMatch });
   await expect(hs).toBeVisible({ timeout: 5_000 });
-  // dispatchEvent("click") sends the click event DIRECTLY to the located shadow-DOM
-  // element, bypassing Playwright's coordinate-based hit-test. This is necessary
-  // because pnc-status/pnc-topbar can overlap the hotspot's bounding box from
-  // Playwright's CDP perspective, causing coordinate-based clicks to miss.
-  await hs.dispatchEvent("click");
+  // Real coordinate-based click — proves the layout gives hotspots real hit areas.
+  await hs.click();
   const menuBtn = page.locator("pnc-action-menu button", { hasText: verb });
   await expect(menuBtn).toBeVisible({ timeout: 5_000 });
   await menuBtn.click();
@@ -73,8 +67,8 @@ async function clickBodyHotspot(
 async function clickInventoryVerb(page: Page, itemName: string, verb: string): Promise<void> {
   const entry = page.locator("pnc-inventory .inventory-entry", { hasText: itemName });
   await expect(entry).toBeVisible({ timeout: 5_000 });
-  // dispatchEvent("click") to avoid coordinate-based interception.
-  await entry.dispatchEvent("click");
+  // Real coordinate-based click — the sidebar has real layout dimensions.
+  await entry.click();
   const menuBtn = page.locator("pnc-action-menu button", { hasText: verb });
   await expect(menuBtn).toBeVisible({ timeout: 5_000 });
   await menuBtn.click();
@@ -457,11 +451,9 @@ test.describe("Wicked Ways browser playthrough", () => {
     await enterPncGame(page);
 
     // The topbar "Back to menu" button (class "topbar-btn-menu") opens the pnc-menu overlay.
-    // pnc-menu defers its outside-click listener via queueMicrotask so the opening click
-    // does not self-dismiss the overlay.
-    // dispatchEvent("click") delivers the click directly to the shadow-DOM button,
-    // sidestepping coordinate-based interception.
-    await page.locator(".topbar-btn-menu").dispatchEvent("click");
+    // pnc-menu uses a backdrop @click handler (not a window listener) so the opening
+    // click does not self-dismiss the overlay. Real coordinate click works here.
+    await page.locator(".topbar-btn-menu").click();
 
     // The pnc-menu overlay must be visible. pnc-menu is a LitElement with a shadow root
     // containing a `.menu-overlay` div. We locate that inner div instead of the host
