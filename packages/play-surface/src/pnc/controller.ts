@@ -166,20 +166,23 @@ export function mountPointAndClick(
     }
   };
 
+  // Examine is a generic look; Read surfaces an item's lore via the engine's
+  // free, non-consuming read seam.
   const runExamine = (targetId: string): void => {
     const vm = session.view();
-    const cues = session.read(targetId);
-    absorbStatusCues(cues);
-    if (cues.length) {
-      log.print(narrator.renderCues(cues));
-      return;
-    }
     const entity = vm.scope.find((e) => e.id === targetId);
     if (entity) log.print(narrator.renderExamine(entity, vm));
   };
 
+  const runRead = (targetId: string): void => {
+    const cues = session.read(targetId);
+    absorbStatusCues(cues);
+    if (cues.length) log.print(narrator.renderCues(cues));
+  };
+
   const applyDescriptor = (desc: ActionDescriptor): void => {
     if (desc.kind === "intent") runIntent(desc.intent);
+    else if (desc.kind === "read") runRead(desc.targetId);
     else runExamine(desc.targetId);
   };
 

@@ -3,7 +3,8 @@ import type { ViewModel, ScopeEntity, Intent } from "@wickedways/play-runtime";
 
 export type ActionDescriptor =
   | { label: string; kind: "intent"; intent: Intent }
-  | { label: string; kind: "examine"; targetId: string };
+  | { label: string; kind: "examine"; targetId: string }
+  | { label: string; kind: "read"; targetId: string };
 
 export interface Hotspot {
   key: string;                 // stable: dir for exits/doors, entity id otherwise
@@ -120,18 +121,32 @@ export function sceneHotspots(vm: ViewModel): Hotspot[] {
 }
 
 /**
- * Returns the action verbs available for an inventory item.
+ * Returns the action verbs available for an inventory item, gated by the item's
+ * capabilities so the menu never offers a verb the engine would reject:
  *
- * - Unequipped: Examine, Equip, Use, Drop
- * - Equipped: Examine, Unequip, Use, Drop
+ * - Examine (always) — a generic look.
+ * - Read — only if the item carries lore.
+ * - Equip / Unequip — only if the item is equippable.
+ * - Use — only if the item is usable (consumed on use).
+ * - Drop (always).
  */
 export function inventoryActions(item: ScopeEntity, equipped: boolean): ActionDescriptor[] {
-  return [
+  const actions: ActionDescriptor[] = [
     { label: "Examine", kind: "examine", targetId: item.id },
-    equipped
-      ? { label: "Unequip", kind: "intent", intent: { kind: "unequip", targetId: item.id } }
-      : { label: "Equip", kind: "intent", intent: { kind: "equip", targetId: item.id } },
-    { label: "Use", kind: "intent", intent: { kind: "use", targetId: item.id } },
-    { label: "Drop", kind: "intent", intent: { kind: "drop", targetId: item.id } },
   ];
+  if (item.hasLore) {
+    actions.push({ label: "Read", kind: "read", targetId: item.id });
+  }
+  if (item.equippable) {
+    actions.push(
+      equipped
+        ? { label: "Unequip", kind: "intent", intent: { kind: "unequip", targetId: item.id } }
+        : { label: "Equip", kind: "intent", intent: { kind: "equip", targetId: item.id } },
+    );
+  }
+  if (item.usable) {
+    actions.push({ label: "Use", kind: "intent", intent: { kind: "use", targetId: item.id } });
+  }
+  actions.push({ label: "Drop", kind: "intent", intent: { kind: "drop", targetId: item.id } });
+  return actions;
 }

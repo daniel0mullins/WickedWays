@@ -481,6 +481,26 @@ test.describe("Wicked Ways browser playthrough", () => {
     await expect(inv.locator(".empty-note")).toBeVisible();
   });
 
+  test("PnC journal: Read is offered, Use is not, and reading does not consume it", async ({ page }) => {
+    await page.goto("/?campaign=hollow-house&surface=point-and-click");
+    await enterPncGame(page);
+    await clickBodyHotspot(page, "loot", /drawer/i, "Open");
+    await clickBodyHotspot(page, "item", /Journal/i, "Take");
+
+    const inv = page.locator("pnc-inventory");
+    // Open the journal's action menu from its inventory slot.
+    await inv.locator(".slot .inventory-entry", { hasText: /Journal/i }).click();
+    const menu = page.locator("pnc-action-menu");
+    await expect(menu.locator("button", { hasText: "Read" })).toBeVisible();
+    // The journal is a story item: not usable, not equippable.
+    await expect(menu.locator("button", { hasText: "Use" })).toHaveCount(0);
+    await expect(menu.locator("button", { hasText: "Equip" })).toHaveCount(0);
+
+    // Reading surfaces lore and leaves the journal in the inventory.
+    await menu.locator("button", { hasText: "Read" }).click();
+    await expect(inv.locator(".slot").first()).toContainText("Water-Stained Journal");
+  });
+
   test("PnC status bar shows Sanity/Round from the opening turn (no action yet)", async ({ page }) => {
     await page.goto("/?campaign=hollow-house&surface=point-and-click");
     await enterPncGame(page);

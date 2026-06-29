@@ -15,6 +15,12 @@ export interface ScopeEntity {
   defeated?: boolean;
   /** Campaign-supplied image asset reference, if the entity carries one. */
   image?: string;
+  /** Items only: whether the item can be equipped. */
+  equippable?: boolean;
+  /** Items only: whether the item can be used (consumed on use). */
+  usable?: boolean;
+  /** Items only: whether the item carries lore text (readable). */
+  hasLore?: boolean;
 }
 export interface ExitView { dir: Direction; toName: string; }
 export interface LockedDoorView { name: string; dir: Direction; }
@@ -82,6 +88,9 @@ export function view(
         aliases: aliasesFor(i.behaviorKey, i.name, aliases),
         kind: "item" as const,
         image: i.presentation?.image,
+        equippable: i.properties.equippable,
+        usable: i.properties.usable,
+        hasLore: i.lore !== undefined,
       })),
     };
   });
@@ -92,6 +101,9 @@ export function view(
     aliases: aliasesFor(i.behaviorKey, i.name, aliases),
     kind: "item" as const,
     image: i.presentation?.image,
+    equippable: i.properties.equippable,
+    usable: i.properties.usable,
+    hasLore: i.lore !== undefined,
   }));
 
   const keys: ScopeEntity[] = pc.inventory.keys.map((k) => ({
@@ -100,6 +112,9 @@ export function view(
     aliases: aliasesFor(k.behaviorKey, k.name, aliases),
     kind: "item" as const,
     image: k.presentation?.image,
+    equippable: k.properties.equippable,
+    usable: k.properties.usable,
+    hasLore: k.lore !== undefined,
   }));
 
   const exits: ExitView[] = [...room.exits.entries()]

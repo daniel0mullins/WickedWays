@@ -235,8 +235,8 @@ describe("mountPointAndClick (controller)", () => {
   it("opens an action menu for an inventory item", async () => {
     const view = () =>
       makeView({
-        inventory: { items: [{ id: "i1", name: "Torch", aliases: ["torch"], kind: "item" }], keys: [], equippedNames: [] },
-        scope: [{ id: "i1", name: "Torch", aliases: ["torch"], kind: "item" }],
+        inventory: { items: [{ id: "i1", name: "Torch", aliases: ["torch"], kind: "item", equippable: true, usable: true }], keys: [], equippedNames: [], slots: 6 },
+        scope: [{ id: "i1", name: "Torch", aliases: ["torch"], kind: "item", equippable: true, usable: true }],
       });
     const { welcome, scene, inventory, log } = mount({ view });
     await flushRender(scene, inventory, log);

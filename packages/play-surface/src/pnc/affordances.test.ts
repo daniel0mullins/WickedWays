@@ -246,9 +246,10 @@ describe("sceneHotspots — floor items", () => {
 // ── inventoryActions ───────────────────────────────────────────────────────
 
 describe("inventoryActions", () => {
-  const sword = ent("sword-1", "Rusty Sword", "item");
+  // A usable, equippable weapon (no lore).
+  const sword = ent("sword-1", "Rusty Sword", "item", { equippable: true, usable: true });
 
-  it("unequipped item → Examine, Equip, Use, Drop (in that order)", () => {
+  it("unequipped equippable+usable item → Examine, Equip, Use, Drop (in that order)", () => {
     const actions = inventoryActions(sword, false);
     expect(actions).toEqual([
       { label: "Examine", kind: "examine", targetId: "sword-1" },
@@ -258,26 +259,26 @@ describe("inventoryActions", () => {
     ]);
   });
 
-  it("equipped item → Examine, Unequip, Use, Drop (in that order)", () => {
+  it("equipped item swaps Equip for Unequip", () => {
     const actions = inventoryActions(sword, true);
-    expect(actions).toEqual([
-      { label: "Examine", kind: "examine", targetId: "sword-1" },
-      { label: "Unequip", kind: "intent", intent: { kind: "unequip", targetId: "sword-1" } },
-      { label: "Use", kind: "intent", intent: { kind: "use", targetId: "sword-1" } },
-      { label: "Drop", kind: "intent", intent: { kind: "drop", targetId: "sword-1" } },
-    ]);
+    expect(actions.map((a) => a.label)).toEqual(["Examine", "Unequip", "Use", "Drop"]);
   });
 
-  it("equipped:false → no Unequip; equipped:true → no Equip", () => {
-    const unequipped = inventoryActions(sword, false);
-    const equipped = inventoryActions(sword, true);
-    expect(unequipped.some((a) => a.label === "Unequip")).toBe(false);
-    expect(equipped.some((a) => a.label === "Equip")).toBe(false);
+  it("offers Read (after Examine) only for items with lore", () => {
+    const journal = ent("j-1", "Journal", "item", { hasLore: true });
+    const labels = inventoryActions(journal, false).map((a) => a.label);
+    expect(labels).toContain("Read");
+    expect(labels.indexOf("Read")).toBe(1); // right after Examine
+    expect(inventoryActions(sword, false).map((a) => a.label)).not.toContain("Read");
   });
 
-  it("returns four actions in both equipped states", () => {
-    expect(inventoryActions(sword, false)).toHaveLength(4);
-    expect(inventoryActions(sword, true)).toHaveLength(4);
+  it("omits Use for non-usable items and Equip for non-equippable items", () => {
+    // A story item: not equippable, not usable, has lore (e.g. the journal).
+    const journal = ent("j-1", "Journal", "item", { hasLore: true });
+    const labels = inventoryActions(journal, false).map((a) => a.label);
+    expect(labels).toEqual(["Examine", "Read", "Drop"]);
+    expect(labels).not.toContain("Use");
+    expect(labels).not.toContain("Equip");
   });
 });
 
@@ -331,7 +332,7 @@ describe("winning-path verbs", () => {
   });
 
   it("equip intent is emitted by inventoryActions for unequipped items", () => {
-    const staff = ent("staff-1", "Oaken Staff", "item");
+    const staff = ent("staff-1", "Oaken Staff", "item", { equippable: true });
     const actions = inventoryActions(staff, false);
     const equipAction = actions.find(
       (a): a is Extract<ActionDescriptor, { kind: "intent" }> =>
