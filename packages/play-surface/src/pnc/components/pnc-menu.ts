@@ -18,7 +18,7 @@ const MENU_ITEMS: { label: string; action: MenuAction }[] = [
  * Events:
  *   - `command` — emitted when an action button is clicked;
  *     `detail.action` is one of {@link MenuAction}.
- *   - `dismiss` — emitted on Escape keydown, click outside, or the ✕ close button.
+ *   - `dismiss` — emitted on Escape keydown, backdrop/overlay click, or the ✕ close button.
  *
  * Window-level listeners are added in `connectedCallback` and removed in
  * `disconnectedCallback` to prevent leaks (same pattern as `pnc-action-menu.ts`).

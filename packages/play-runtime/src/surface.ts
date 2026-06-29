@@ -62,13 +62,13 @@ export interface MountArgs {
  * `packages/play/src/main.ts` and reference it from any campaign's `manifest.surfaces`.
  */
 export interface PlaySurface {
-  /** Stable identifier matched against `CampaignManifest.surface` (e.g. `"crt-terminal"`). */
+  /** Stable identifier matched against a `SurfaceChoice.id` in `CampaignManifest.surfaces` (e.g. `"crt-terminal"`). */
   id: string;
   /** Human-readable label for future surface-picker UI. */
   label: string;
   /** One-line description for the surface picker; falls back to `label`. */
   description?: string;
-  /** Fallback theme used when a campaign supplies no `manifest.themes`. */
+  /** Fallback theme used when the campaign's `SurfaceChoice` for this surface supplies no `themes`. */
   defaultTheme: Theme;
   /**
    * Mount the surface into `args.app` and return a handle.
