@@ -438,6 +438,20 @@ test.describe("Wicked Ways browser playthrough", () => {
     expect(color).toBe("rgb(232, 226, 208)");
   });
 
+  test("PnC transcript room headings are bold and underlined", async ({ page }) => {
+    await page.goto("/?campaign=hollow-house&surface=point-and-click");
+    await enterPncGame(page);
+
+    const heading = page.locator("pnc-log .line.heading").first();
+    await expect(heading).toHaveText("Foyer");
+    const style = await heading.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      return { weight: cs.fontWeight, decoration: cs.textDecorationLine };
+    });
+    expect(Number(style.weight)).toBeGreaterThanOrEqual(700);
+    expect(style.decoration).toContain("underline");
+  });
+
   test("PnC surface holds a centered 16:9 box on an off-ratio (tall) window", async ({ page }) => {
     // A very tall window must not stretch the surface; it letterboxes to 16:9.
     await page.setViewportSize({ width: 900, height: 1400 });

@@ -102,7 +102,14 @@ export function mountPointAndClick(
     }
   };
 
-  const printRoom = (vm: ViewModel): void => log.print(narrator.renderRoom(vm));
+  const printRoom = (vm: ViewModel): void => {
+    // The room name prints as a heading line (bold + underlined); the
+    // description and any body lines follow as plain transcript text.
+    const { header, description, body } = narrator.renderRoomParts(vm);
+    log.print([header], "heading");
+    const rest = description !== null ? [description, ...body] : body;
+    if (rest.length) log.print(rest);
+  };
 
   const refresh = (): void => {
     const vm = session.view();

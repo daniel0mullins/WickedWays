@@ -140,6 +140,21 @@ describe("mountPointAndClick (controller)", () => {
     expect(logEl.textContent).toContain("damp stone cellar");
   });
 
+  it("prints the room name as a styled heading line, separate from the description", async () => {
+    const { welcome, scene, log } = mount();
+    await flushRender(scene, log);
+    await enter(welcome, scene, log);
+
+    const lines = Array.from(deepQuery(log, "#pnc-log")!.querySelectorAll(".line"));
+    // First line is the room name, tagged as a heading for bold/underline styling.
+    expect(lines[0]?.textContent).toBe("Cellar");
+    expect(lines[0]?.className).toContain("heading");
+    // The description is a plain line — not a heading.
+    const desc = lines.find((l) => l.textContent?.includes("damp stone cellar"));
+    expect(desc).toBeTruthy();
+    expect(desc?.className).not.toContain("heading");
+  });
+
   it("opens an action menu for a multi-verb hotspot and runs the chosen attack", async () => {
     const view = () =>
       makeView({
