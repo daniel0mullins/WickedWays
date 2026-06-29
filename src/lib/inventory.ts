@@ -604,6 +604,11 @@ export class Item implements IItem {
       [ItemAction.Use]: () => {
         const holder = this.#characterHolder();
         if (!holder) return;
+        // A non-usable item cannot be used — using it must neither run author
+        // behaviour nor consume the item (e.g. a story item like a journal).
+        if (!this.properties.usable) {
+          throw new ProceduralViolation(`The ${this.name} isn't something you can use.`);
+        }
         // `use` is the always-allowed escape hatch UNDER Panic/Fear/Confused, but
         // a KO'd character can do nothing at all — including use an item.
         if (holder.status.includes(Status.KO)) {

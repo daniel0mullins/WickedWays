@@ -325,6 +325,17 @@ describe("Item", () => {
       expect(holder[CONSUME_VIA_USE]).toHaveBeenCalledWith(item);
     });
 
+    it("throws and consumes nothing when the item is not usable", () => {
+      const { item, actions, events } = makeItem({ usable: false });
+      const holder = makeHolder();
+      hold(item, holder);
+
+      expect(() => item.actions.use(holder)).toThrow(ProceduralViolation);
+      expect(actions.use).not.toHaveBeenCalled();
+      expect(events.onUse).not.toHaveBeenCalled();
+      expect(holder[CONSUME_VIA_USE]).not.toHaveBeenCalled();
+    });
+
     it("runs author behaviors with `this` bound to the item (so a behavior can read its own item)", () => {
       const holder = makeHolder();
       const seen: Record<string, unknown> = {};
