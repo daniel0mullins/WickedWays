@@ -1,10 +1,87 @@
 import { test, expect, type Page } from "@playwright/test";
 
-/** Click the "Enter Hollow House" button and wait for the command input to appear. */
+// ── Shared helpers ──────────────────────────────────────────────────────────────
+
+/**
+ * Click the "Enter Hollow House" button and wait for the CRT command input to appear.
+ * Callers must have already navigated to the CRT surface (e.g. via ?surface=crt-terminal).
+ */
 async function enterGame(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Enter Hollow House" }).click();
   await expect(page.locator("#cmd")).toBeVisible();
 }
+
+/**
+ * Navigate to the PnC surface via the surface picker and click "Enter Hollow House" on the
+ * PnC welcome screen. Waits until `pnc-scene` has at least one hotspot visible, confirming
+ * the game is live and the first room has rendered.
+ */
+async function enterPncGame(page: Page): Promise<void> {
+  // The PnC welcome screen has a button rendered inside pnc-welcome shadow DOM.
+  // Playwright pierces open shadow roots automatically, so getByRole works here.
+  await page.getByRole("button", { name: "Enter Hollow House" }).click();
+  // Wait for at least one scene hotspot (the opening Foyer has north/south exits + foyer-table).
+  await expect(page.locator(".hotspot").first()).toBeVisible({ timeout: 10_000 });
+}
+
+/**
+ * Navigate through an exit hotspot by dispatching a click to the direction's
+ * hotspot element. The PnC controller fires a lone move-intent immediately —
+ * no action menu appears for exit hotspots. We verify the navigation happened
+ * by waiting for the topbar room name to change.
+ */
+async function goDirection(page: Page, dir: string): Promise<void> {
+  // Capture the current room name displayed in the topbar.
+  const roomNameEl = page.locator(".room-name");
+  const before = (await roomNameEl.textContent()) ?? "";
+  // dispatchEvent("click") sends the event directly to the shadow-DOM hotspot
+  // element, bypassing the coordinate-based hit-test that fails when the
+  // sidebar / topbar overlaps the bounding box.
+  await page.locator(`.hotspot[data-key="${dir}"]`).dispatchEvent("click");
+  // Wait for the topbar room name to update (confirms the move intent completed).
+  await expect(roomNameEl).not.toHaveText(before, { timeout: 5_000 });
+}
+
+
+/**
+ * Click a body hotspot (loot, item, or occupant) by matching text visible in its label,
+ * then pick the given verb from the action menu. Body hotspot keys are generated IDs,
+ * so text matching is the only reliable way to locate them.
+ */
+async function clickBodyHotspot(
+  page: Page,
+  kind: "loot" | "item" | "occupant",
+  textMatch: string | RegExp,
+  verb: string,
+): Promise<void> {
+  const hs = page.locator(`.hotspot.${kind}`, { hasText: textMatch });
+  await expect(hs).toBeVisible({ timeout: 5_000 });
+  // dispatchEvent("click") sends the click event DIRECTLY to the located shadow-DOM
+  // element, bypassing Playwright's coordinate-based hit-test. This is necessary
+  // because pnc-status/pnc-topbar can overlap the hotspot's bounding box from
+  // Playwright's CDP perspective, causing coordinate-based clicks to miss.
+  await hs.dispatchEvent("click");
+  const menuBtn = page.locator("pnc-action-menu button", { hasText: verb });
+  await expect(menuBtn).toBeVisible({ timeout: 5_000 });
+  await menuBtn.click();
+  await expect(page.locator("pnc-action-menu")).not.toBeVisible({ timeout: 5_000 });
+}
+
+/**
+ * Click an inventory entry by its visible label text, then click a verb in the action menu.
+ */
+async function clickInventoryVerb(page: Page, itemName: string, verb: string): Promise<void> {
+  const entry = page.locator("pnc-inventory .inventory-entry", { hasText: itemName });
+  await expect(entry).toBeVisible({ timeout: 5_000 });
+  // dispatchEvent("click") to avoid coordinate-based interception.
+  await entry.dispatchEvent("click");
+  const menuBtn = page.locator("pnc-action-menu button", { hasText: verb });
+  await expect(menuBtn).toBeVisible({ timeout: 5_000 });
+  await menuBtn.click();
+  await expect(page.locator("pnc-action-menu")).not.toBeVisible({ timeout: 5_000 });
+}
+
+// ── Winning command sequence (CRT surface) ──────────────────────────────────────
 
 /**
  * Winning command sequence mirrored from capstone.test.ts.
@@ -54,11 +131,14 @@ const WINNING_COMMANDS = [
   "n",
 ];
 
+// ── CRT surface tests ───────────────────────────────────────────────────────────
+
 test.describe("Wicked Ways browser playthrough", () => {
   test("plays the haunted house to a win", async ({ page }) => {
     test.setTimeout(120_000);
 
-    await page.goto("/?campaign=hollow-house");
+    // Deep-link directly to the CRT surface to bypass the surface picker.
+    await page.goto("/?campaign=hollow-house&surface=crt-terminal");
     await enterGame(page);
 
     // Opening room must be the Foyer.
@@ -79,7 +159,7 @@ test.describe("Wicked Ways browser playthrough", () => {
   });
 
   test("exit link fills the command line without submitting", async ({ page }) => {
-    await page.goto("/?campaign=hollow-house");
+    await page.goto("/?campaign=hollow-house&surface=crt-terminal");
     await enterGame(page);
 
     // The opening Foyer's bottom HUD lists passable exits as clickable text links.
@@ -101,7 +181,7 @@ test.describe("Wicked Ways browser playthrough", () => {
   });
 
   test("clicking a noun fills 'examine <noun>' without submitting", async ({ page }) => {
-    await page.goto("/?campaign=hollow-house");
+    await page.goto("/?campaign=hollow-house&surface=crt-terminal");
     await enterGame(page);
 
     // The opening Foyer's bottom HUD shows "Here: A hall table with a single drawer."
@@ -124,7 +204,7 @@ test.describe("Wicked Ways browser playthrough", () => {
   });
 
   test("welcome screen shows title and enter button; game starts after clicking", async ({ page }) => {
-    await page.goto("/?campaign=hollow-house");
+    await page.goto("/?campaign=hollow-house&surface=crt-terminal");
 
     // Before entering: welcome content is visible, game input is not.
     await expect(page.locator(".welcome-title")).toContainText("The Hollow House");
@@ -144,8 +224,19 @@ test.describe("Wicked Ways browser playthrough", () => {
     await expect(page.getByText("The Hollow House")).toBeVisible();
     await expect(page.getByText("Seed Demo")).toBeVisible();
 
-    // Clicking the Hollow House entry launches the CRT welcome screen.
+    // Clicking the Hollow House entry launches the surface picker (Hollow House has 2 surfaces).
     await page.getByRole("button", { name: /Hollow House/ }).click();
+    await expect(page.locator("surface-picker")).toBeVisible();
+
+    // The picker must list both surfaces. CRT Terminal has no description, so its label
+    // text appears twice (in .surface-label AND .surface-desc). Use .surface-label to
+    // avoid a strict-mode multi-match on getByText("CRT Terminal").
+    await expect(page.locator(".surface-label", { hasText: "CRT Terminal" })).toBeVisible();
+    await expect(page.locator(".surface-label", { hasText: "Point & Click" })).toBeVisible();
+
+    // Pick CRT Terminal — the CRT welcome screen should appear.
+    // Click the .surface-entry button that contains "CRT Terminal" text (unique match).
+    await page.locator(".surface-entry", { hasText: "CRT Terminal" }).click();
     await expect(page.getByRole("button", { name: /Enter Hollow House/ })).toBeVisible();
 
     // Back to menu — the bezel button navigates back.
@@ -173,7 +264,7 @@ test.describe("Wicked Ways browser playthrough", () => {
   });
 
   test("haunted theme persists across page reload via ?theme= param", async ({ page }) => {
-    await page.goto("/?campaign=hollow-house");
+    await page.goto("/?campaign=hollow-house&surface=crt-terminal");
     await page.getByRole("button", { name: /Enter Hollow House/ }).click();
     await expect(page.locator("#cmd")).toBeVisible();
 
@@ -206,7 +297,7 @@ test.describe("Wicked Ways browser playthrough", () => {
   });
 
   test("theme switcher reskins the CRT", async ({ page }) => {
-    await page.goto("/?campaign=hollow-house");
+    await page.goto("/?campaign=hollow-house&surface=crt-terminal");
     await page.getByRole("button", { name: /Enter Hollow House/ }).click();
     await expect(page.locator("#cmd")).toBeVisible();
 
@@ -227,5 +318,162 @@ test.describe("Wicked Ways browser playthrough", () => {
 
     // The foreground colour must have changed.
     expect(after).not.toBe(before);
+  });
+
+  // ── Point-and-click surface tests ─────────────────────────────────────────────
+
+  test("surface picker lists both surfaces; picking Point & Click mounts the PnC scene", async ({ page }) => {
+    // ?campaign=hollow-house has two surfaces → shows the surface picker.
+    await page.goto("/?campaign=hollow-house");
+
+    // The surface picker must list both options. CRT Terminal has no description so
+    // its label appears in both .surface-label and .surface-desc — use .surface-label
+    // selectors to avoid a strict-mode multi-match.
+    const picker = page.locator("surface-picker");
+    await expect(picker).toBeVisible();
+    await expect(page.locator(".surface-label", { hasText: "CRT Terminal" })).toBeVisible();
+    await expect(page.locator(".surface-label", { hasText: "Point & Click" })).toBeVisible();
+
+    // Click "Point & Click" — launcher must set ?surface=point-and-click in the URL.
+    await page.locator(".surface-entry", { hasText: "Point & Click" }).click();
+    await expect(page).toHaveURL(/surface=point-and-click/);
+
+    // The PnC welcome screen mounts (pnc-welcome component rendered).
+    await expect(page.getByRole("button", { name: "Enter Hollow House" })).toBeVisible();
+
+    // Enter the game — the scene hotspots must appear.
+    await enterPncGame(page);
+    // At least one hotspot must be present in the Foyer (north/south exits + foyer-table loot).
+    await expect(page.locator(".hotspot").first()).toBeVisible();
+  });
+
+  /**
+   * Win Hollow House by clicking only — uses hotspots, inventory entries, and action-menu verbs.
+   *
+   * Loot container hotspot keys are generated IDs (not the template builder key like
+   * "foyer-table"), so loot and item hotspots are located by their visible label text using
+   * `.hotspot.loot` / `.hotspot.item` with `{ hasText }` rather than `data-key`.
+   * Exit hotspots use stable direction strings as keys and are clicked via `clickHotspotVerb`.
+   *
+   * Combat: Revenant has Health=10, Sanity=8. Player equips Iron Fire-Poker (modifier=5).
+   * Damage per hit = 5 × (10−8) × 0.2 = 2. Five hits → 10 damage → KO. The PnC affordances
+   * remove the "Attack" verb once the occupant is defeated, so exactly 5 attacks are used
+   * (unlike the CRT test which uses 6 because the engine silently no-ops on a KO'd mob).
+   */
+  test("wins Hollow House by clicking (PnC surface)", async ({ page }) => {
+    test.setTimeout(120_000);
+
+    await page.goto("/?campaign=hollow-house&surface=point-and-click");
+    await enterPncGame(page);
+
+    // ── Foyer: open chest (foyer-table), take journal ────────────────────────────
+    // Loot containers are identified by their description text.
+    // "foyer-table" description: "A hall table with a single drawer."
+    await clickBodyHotspot(page, "loot", /drawer/i, "Open");
+
+    // After opening, "Water-Stained Journal" appears as a floor-item hotspot.
+    await clickBodyHotspot(page, "item", /Journal/i, "Take");
+
+    // ── Hall: go north, open stand (hall-stand), take + equip poker ──────────────
+    await goDirection(page, "north");  // Foyer → Hall
+
+    // "hall-stand" description: "A fireplace stand."
+    await clickBodyHotspot(page, "loot", /fireplace stand/i, "Open");
+    await clickBodyHotspot(page, "item", /Poker/i, "Take");
+
+    // Poker is now in inventory — click it → Equip.
+    await clickInventoryVerb(page, "Poker", "Equip");
+
+    // ── Kitchen: go west, open hook (kitchen-hook), take + equip lantern ─────────
+    await goDirection(page, "west");  // Hall → Kitchen
+
+    // "kitchen-hook" description: "A lantern hangs from a hook."
+    await clickBodyHotspot(page, "loot", /hangs from a hook/i, "Open");
+    await clickBodyHotspot(page, "item", /Lantern/i, "Take");
+
+    // Lantern is now in inventory — Equip it.
+    await clickInventoryVerb(page, "Lantern", "Equip");
+
+    // ── Navigate: Kitchen → Hall → Landing → Hall → Foyer → Cellar ──────────────
+    await goDirection(page, "east");   // Kitchen → Hall
+    await goDirection(page, "north");  // Hall → Landing
+    await goDirection(page, "south");  // Landing → Hall
+    await goDirection(page, "south");  // Hall → Foyer
+    await goDirection(page, "south");  // Foyer → Cellar
+
+    // ── Cellar: attack Revenant ×5 (exact: 5 hits × 2 dmg = 10 HP = KO) ─────────
+    for (let i = 0; i < 5; i++) {
+      await clickBodyHotspot(page, "occupant", "Revenant", "Attack");
+    }
+
+    // After KO, the Revenant's remains loot container appears. Open it, then take the key.
+    await clickBodyHotspot(page, "loot", /remains/i, "Open");
+    await clickBodyHotspot(page, "item", /Iron Key/i, "Take");
+
+    // ── Navigate to Landing: Cellar → Foyer → Hall → Landing ────────────────────
+    await goDirection(page, "north");  // Cellar → Foyer
+    await goDirection(page, "north");  // Foyer → Hall
+    await goDirection(page, "north");  // Hall → Landing
+
+    // ── Enter the Attic (iron key unlocks the north door → WIN) ──────────────────
+    // With the Iron Key in inventory, the north exit in Landing is now passable.
+    await goDirection(page, "north");  // Landing → Attic
+
+    // Assert win narration in pnc-log.
+    await expect(page.locator("pnc-log")).toContainText(
+      "You climb into the attic with the journal in hand",
+      { timeout: 30_000 },
+    );
+    await expect(page.locator("pnc-log")).toContainText("— THE END —");
+  });
+
+  test("PnC deep-link with ?theme=haunted applies haunted theme and persists across reload", async ({ page }) => {
+    // Deep-link directly into PnC with haunted theme.
+    await page.goto("/?campaign=hollow-house&surface=point-and-click&theme=haunted");
+
+    // PnC welcome screen mounts.
+    await expect(page.getByRole("button", { name: "Enter Hollow House" })).toBeVisible();
+
+    // The haunted PnC theme sets --pnc-bg to #070508 on the pnc-app element.
+    const app = page.locator("[data-pnc-app]");
+    const bgBefore = await app.evaluate(
+      (el) => getComputedStyle(el).getPropertyValue("--pnc-bg").trim(),
+    );
+    expect(bgBefore).toBe("#070508");
+
+    // Reload — ?theme=haunted must survive and re-apply.
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Enter Hollow House" })).toBeVisible();
+    expect(page.url()).toContain("theme=haunted");
+
+    const bgAfter = await app.evaluate(
+      (el) => getComputedStyle(el).getPropertyValue("--pnc-bg").trim(),
+    );
+    expect(bgAfter).toBe("#070508");
+  });
+
+  test("PnC back-to-menu returns to the campaign menu", async ({ page }) => {
+    await page.goto("/?campaign=hollow-house&surface=point-and-click");
+    await enterPncGame(page);
+
+    // The topbar "Back to menu" button (class "topbar-btn-menu") opens the pnc-menu overlay.
+    // pnc-menu defers its outside-click listener via queueMicrotask so the opening click
+    // does not self-dismiss the overlay.
+    // dispatchEvent("click") delivers the click directly to the shadow-DOM button,
+    // sidestepping coordinate-based interception.
+    await page.locator(".topbar-btn-menu").dispatchEvent("click");
+
+    // The pnc-menu overlay must be visible. pnc-menu is a LitElement with a shadow root
+    // containing a `.menu-overlay` div. We locate that inner div instead of the host
+    // element tag (more reliable with Playwright's shadow-DOM CSS piercing).
+    const menuOverlay = page.locator(".menu-overlay");
+    await expect(menuOverlay).toBeVisible({ timeout: 5_000 });
+
+    // Click the "Back to menu" action button inside the overlay.
+    await page.locator("button[data-action='exit']").click();
+
+    // Should now be back on the campaign menu.
+    await expect(page.getByText("Seed Demo")).toBeVisible();
+    await expect(page.getByText("The Hollow House")).toBeVisible();
   });
 });

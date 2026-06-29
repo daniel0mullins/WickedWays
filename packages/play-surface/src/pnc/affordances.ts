@@ -89,13 +89,16 @@ export function sceneHotspots(vm: ViewModel): Hotspot[] {
   }
 
   // ── Floor items ───────────────────────────────────────────────────────────
-  // scope items that are NOT in inventory (items or keys) and NOT inside a loot container.
+  // scope items that are NOT in inventory (items or keys) and NOT inside a
+  // CLOSED (not yet opened) loot container.  Once a container is opened its
+  // contents are revealed and become individually clickable floor items so the
+  // player can pick them up.
   const inventoryIds = new Set<string>([
     ...vm.inventory.items.map((i) => i.id),
     ...vm.inventory.keys.map((k) => k.id),
   ]);
   const lootContentIds = new Set<string>(
-    vm.loot.flatMap((l) => l.contents.map((c) => c.id)),
+    vm.loot.filter((l) => !l.opened).flatMap((l) => l.contents.map((c) => c.id)),
   );
   const floorItems = vm.scope.filter(
     (e) => e.kind === "item" && !inventoryIds.has(e.id) && !lootContentIds.has(e.id),
