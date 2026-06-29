@@ -59,8 +59,23 @@ export class GameSession {
     }
     pc.move(rooms.get(builder.description.startRoom!)!);
     campaign.gm = pc;
-    campaign.beginCampaign();
+    // Subscribe BEFORE beginCampaign: the round-start dispatch inside it emits the
+    // opening status readout synchronously, so a later subscription would miss it.
+    // The buffered cue is handed to the surface via takeStartupCues().
     campaign.onCue((cue) => this.cueBuffer.push(cue));
+    campaign.beginCampaign();
+  }
+
+  /**
+   * Cues emitted during boot, before any player turn — currently the campaign's
+   * opening status readout (the status mechanic's `onRoundStart`). Returns and
+   * clears them so a surface can paint the initial HUD at game start. Empty after
+   * the first call, and after the first {@link execute} (which resets the buffer).
+   */
+  takeStartupCues(): PresentationCue[] {
+    const cues = [...this.cueBuffer];
+    this.cueBuffer.length = 0;
+    return cues;
   }
 
   /**

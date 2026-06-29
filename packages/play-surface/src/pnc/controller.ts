@@ -259,6 +259,7 @@ export function mountPointAndClick(
         mapModel.reset();
         audio.reset();
         latestStatus = [];
+        absorbStatusCues(session.takeStartupCues());
         interactionLocked = false;
         log.clear();
         printRoom(session.view());
@@ -290,6 +291,8 @@ export function mountPointAndClick(
     if (started) return;
     started = true;
     welcome.hidden = true;
+    // Paint the opening status readout the campaign emitted at boot.
+    absorbStatusCues(session.takeStartupCues());
     printRoom(session.view());
     refresh();
   };

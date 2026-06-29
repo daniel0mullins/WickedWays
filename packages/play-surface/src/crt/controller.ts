@@ -129,6 +129,8 @@ export function mountTerminal(
     gameStarted = true;
     welcome.hidden = true;
     game.hidden = false;
+    // Paint the opening status readout the campaign emitted at boot.
+    absorbStatusCues(session.takeStartupCues());
     // Seed clickableNouns before the first room render so opening-room nouns are clickable.
     computeClickableNouns();
     game.transcript.printRoom(narrator.renderRoomParts(session.view()));
@@ -176,6 +178,7 @@ export function mountTerminal(
           mapModel.reset();
           audio.reset();                  // recreate director so the tension high-water-mark resets
           latestStatus = [];
+          absorbStatusCues(session.takeStartupCues());
           game.clearTranscript();
           game.transcript.printRoom(narrator.renderRoomParts(session.view()));
           refresh();

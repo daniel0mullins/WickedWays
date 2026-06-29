@@ -18,6 +18,7 @@ const makeSession = () => ({
   }),
   execute: vi.fn(() => ({ cues: [], mobAttacks: [] })),
   read: vi.fn(() => []),
+  takeStartupCues: vi.fn(() => []),
   restart: vi.fn(() => {}),
   save: vi.fn((): Promise<void> => Promise.resolve()),
   restore: vi.fn((): Promise<{ ok: boolean }> => Promise.resolve({ ok: false })),

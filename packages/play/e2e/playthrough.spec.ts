@@ -457,6 +457,20 @@ test.describe("Wicked Ways browser playthrough", () => {
     }
   });
 
+  test("PnC status bar shows Sanity/Round from the opening turn (no action yet)", async ({ page }) => {
+    await page.goto("/?campaign=hollow-house&surface=point-and-click");
+    await enterPncGame(page);
+    // Status must be populated immediately, before any turn-advancing action.
+    await expect(page.locator("pnc-status")).toContainText("Sanity");
+    await expect(page.locator("pnc-status")).toContainText("Round");
+  });
+
+  test("CRT status bar shows Sanity from the opening turn (no action yet)", async ({ page }) => {
+    await page.goto("/?campaign=hollow-house&surface=crt-terminal");
+    await enterGame(page);
+    await expect(page.locator("crt-status")).toContainText("Sanity");
+  });
+
   test("PnC map labels room names in a legible (non-black) color", async ({ page }) => {
     await page.goto("/?campaign=hollow-house&surface=point-and-click");
     await enterPncGame(page);
