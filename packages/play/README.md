@@ -148,8 +148,10 @@ order and reuses `Narrator` and `MapModel` from `src/shared/`.
   → <pnc-action-menu>  contextual verb menu (attached dynamically on hotspot click)
 <aside.pnc-sidebar>
   <pnc-status>         campaign-defined stat readouts (StatusCue fields)
-  <pnc-inventory>      item + key list; clicking an item opens an action menu
-  <pnc-log>            scrolling narration log (room descriptions + action feedback)
+  <pnc-inventory>      two tabs — "Inventory" (one numbered slot per inventory slot,
+                       "--empty--" when unfilled) and "Key Items" (bulleted keyring);
+                       clicking an entry opens an action menu
+  <pnc-log>            scrolling narration log (room headings, descriptions + action feedback)
 <pnc-map-overlay>      fog-of-war map; opened from topbar
 <pnc-menu>             save / restore / undo / restart / fullscreen / back to menu
 ```
@@ -158,8 +160,10 @@ order and reuses `Narrator` and `MapModel` from `src/shared/`.
 all clickable hotspots and their verb lists from the `ViewModel` and builds engine
 `Intent`s directly — no text parser. Hotspot kinds: `exit` (Go direction), `locked`
 (informational only), `occupant` (Examine + Attack), `loot` (Examine + Open), `item`
-(Examine + Take). Inventory items offer Examine / Equip or Unequip / Use / Drop. A lone
-move-intent fires immediately without a menu; any other action set opens `<pnc-action-menu>`.
+(Examine + Take). Inventory verbs are gated by item capability (`equippable` / `usable` /
+`hasLore` / `droppable` on the `ViewModel`): Examine always, then Read (lore items),
+Equip/Unequip (equippable), Use (usable), Drop (unless a required `droppable: false` item).
+A lone move-intent fires immediately without a menu; any other action set opens `<pnc-action-menu>`.
 
 **`presentation.image` support.** `ViewModel` surfaces `image?` from `presentation.image`
 on rooms and entities. `<pnc-scene>` renders `room.image` as a CSS background when present

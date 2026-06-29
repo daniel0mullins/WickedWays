@@ -200,16 +200,20 @@ The `@wickedways/play` browser surface builds a full procedural audio layer on t
   `stowItem` throws `ContainerFullException` once full; `removeItems` extracts items by id.
 - [`Item`](src/lib/inventory.ts) carries a type (weapon, armor, accessory, consumable,
   throwable, key), recipe, modifier, target stat, and properties
-  (equippable/equipped/destroyable/usable), plus actions: `pickUp`, `equip`, `unequip`,
-  `transfer`, `use`, `read`, `destroy`. Optional authored fields layer on behaviour: `maxDurability`
-  (gear that wears), `slot` / `twoHanded` (equipment slots and handedness), `keyCode` /
-  `consumeOnUse` (keys), `teaches` (a recipe imparted to the party on pickup), and `lore`
-  (evocative backstory text).
+  (equippable/equipped/destroyable/usable, plus optional `droppable`), plus actions: `pickUp`,
+  `equip`, `unequip`, `transfer`, `use`, `read`, `destroy`. Optional authored fields layer on
+  behaviour: `maxDurability` (gear that wears), `slot` / `twoHanded` (equipment slots and
+  handedness), `keyCode` / `consumeOnUse` (keys), `teaches` (a recipe imparted to the party on
+  pickup), and `lore` (evocative backstory text).
+- **Item capability flags are enforced, not advisory.** `use` is rejected (a `ProceduralViolation`,
+  nothing consumed) unless the item is `usable`; and `droppable: false` marks a required item — a
+  quest item such as a win-condition object — that the drop path refuses to set down. `droppable`
+  is absent on ordinary items (⇒ droppable); only required items opt out.
 - **Reading** is a first-class, non-consuming interaction. `Character.read(item)` is free
   (no budget tick, no history), emits the item's `lore` as a cue, and fires the item's
   optional `onRead` hook — so the item stays in inventory and can be read again. Unlike `use`
-  (which always consumes), `read` is the seam for examinable flavour and for read-triggered
-  side effects (e.g. a cursed tome that drains Sanity via `onRead`).
+  (which consumes the item, and only works on a `usable` one), `read` is the seam for examinable
+  flavour and for read-triggered side effects (e.g. a cursed tome that drains Sanity via `onRead`).
 - Both characters and loot boxes are **item holders**. State that must not be forged is
   symbol-keyed: ownership through `HELD_BY` (read-only) and `CLAIM`, durability through
   `SET_DURABILITY`, and equip/unequip through `EQUIP` / `UNEQUIP` — so external code can't
@@ -1085,8 +1089,10 @@ input instead of a text parser.
   → <pnc-action-menu>  contextual verb menu (Examine / Attack / Take / …); attached dynamically
 <aside.pnc-sidebar>
   <pnc-status>          campaign-defined stat readouts (StatusCue fields)
-  <pnc-inventory>       item + key list; clicking an item opens an action menu
-  <pnc-log>             scrolling narration log (room descriptions + action feedback)
+  <pnc-inventory>       two tabs — "Inventory" (one numbered slot per inventory slot,
+                        "--empty--" when unfilled) and "Key Items" (bulleted keyring);
+                        clicking an entry opens an action menu
+  <pnc-log>             scrolling narration log (room headings, descriptions + action feedback)
 <pnc-map-overlay>       fog-of-war map (same MapModel as CRT); opened from topbar
 <pnc-menu>              save / restore / undo / restart / fullscreen / back to menu
 ```
@@ -1095,8 +1101,11 @@ input instead of a text parser.
 clickable hotspots and their verb lists from the `ViewModel` and builds engine `Intent`s
 directly — no text parser. Hotspot kinds: `exit` (Go direction), `locked` (informational,
 no actions), `occupant` (Examine + Attack), `loot` (Examine + Open), `item` (Examine + Take).
-Inventory items offer Examine / Equip or Unequip / Use / Drop. A lone move-intent fires
-immediately without a menu; any other action set opens `<pnc-action-menu>`.
+Inventory verbs are gated by item capability (surfaced on the `ViewModel` as
+`equippable` / `usable` / `hasLore` / `droppable`): Examine always, then Read (lore items),
+Equip/Unequip (equippable), Use (usable), and Drop (unless a required `droppable: false` item)
+— so the menu never offers a verb the engine would reject. A lone move-intent fires immediately
+without a menu; any other action set opens `<pnc-action-menu>`.
 
 **`presentation.image` support.** `ViewModel` surfaces `image?` from `presentation.image`
 on rooms and entities. `<pnc-scene>` renders `room.image` as a CSS background when present
