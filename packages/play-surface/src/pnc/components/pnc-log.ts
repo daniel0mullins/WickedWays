@@ -5,7 +5,7 @@ export class PncLog extends LitElement {
   #log: HTMLDivElement | null = null;
 
   static override styles = css`
-    :host { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    :host { display: flex; flex-direction: column; flex: 1; min-height: 0; color: var(--color-text, #e8e2d0); }
     .log { flex: 1; overflow-y: auto; padding: 0.75rem 1rem; }
     .line { white-space: pre-wrap; line-height: 1.45; }
     .line.echo { color: var(--color-muted, #888); }

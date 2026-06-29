@@ -421,6 +421,23 @@ test.describe("Wicked Ways browser playthrough", () => {
     await expect(page.locator("pnc-log")).toContainText("— THE END —");
   });
 
+  test("PnC transcript text is legible (not black-on-black)", async ({ page }) => {
+    // Regression: the opening room name + description print into pnc-log, but a
+    // missing foreground color let the `.line` text inherit the UA default
+    // (black) against the dark PnC background — present in the DOM (so
+    // toContainText passed) yet invisible to the player.
+    await page.goto("/?campaign=hollow-house&surface=point-and-click");
+    await enterPncGame(page);
+
+    // The first transcript line is the Foyer room name.
+    const firstLine = page.locator("pnc-log .line").first();
+    await expect(firstLine).toHaveText("Foyer");
+
+    // It must render in the theme ink (cream), not black — i.e. legible.
+    const color = await firstLine.evaluate((el) => getComputedStyle(el).color);
+    expect(color).toBe("rgb(232, 226, 208)");
+  });
+
   test("PnC deep-link with ?theme=haunted applies haunted theme and persists across reload", async ({ page }) => {
     // Deep-link directly into PnC with haunted theme.
     await page.goto("/?campaign=hollow-house&surface=point-and-click&theme=haunted");
