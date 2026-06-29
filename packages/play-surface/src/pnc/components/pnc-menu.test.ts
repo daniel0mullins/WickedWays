@@ -157,6 +157,18 @@ describe("<pnc-menu>", () => {
     expect(received).not.toBeNull();
   });
 
+  it("does not self-dismiss on the opening click (queueMicrotask deferral)", async () => {
+    const menu = document.createElement("pnc-menu");
+    let dismissCount = 0;
+    menu.addEventListener("dismiss", () => { dismissCount++; });
+    document.body.addEventListener("click", () => { document.body.appendChild(menu); }, { once: true });
+    document.body.click();
+    expect(dismissCount).toBe(0);
+    await Promise.resolve();        // flush the queueMicrotask
+    expect(dismissCount).toBe(0);
+    menu.remove();
+  });
+
   it("non-Escape keys do NOT emit 'dismiss'", () => {
     let received: CustomEvent | null = null;
     const handler = (ev: Event) => {
@@ -178,7 +190,10 @@ describe("<pnc-menu>", () => {
     spy.mockRestore();
   });
 
-  it("disconnectedCallback removes the outside-click listener (no leak)", () => {
+  it("disconnectedCallback removes the outside-click listener (no leak)", async () => {
+    // The outside-click listener is deferred via queueMicrotask; flush it so
+    // the listener is actually armed before we assert its removal.
+    await Promise.resolve();
     const spy = vi.spyOn(window, "removeEventListener");
     el.remove();
     expect(spy).toHaveBeenCalledWith("click", expect.any(Function));

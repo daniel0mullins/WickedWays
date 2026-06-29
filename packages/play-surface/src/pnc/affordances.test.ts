@@ -227,6 +227,14 @@ describe("sceneHotspots — floor items", () => {
     expect(floorHotspots.every((h) => h.key !== "candle-1")).toBe(true);
   });
 
+  it("contents of an OPENED container appear as floor-item hotspots", () => {
+    const contentItem = ent("candle-1", "Candle", "item");
+    const loot: LootView = { id: "box-1", description: "a box", opened: true, contents: [contentItem] };
+    const vm = mkVm({ scope: [contentItem], loot: [loot] });
+    const floorHotspots = sceneHotspots(vm).filter((h) => h.kind === "item");
+    expect(floorHotspots.some((h) => h.key === "candle-1")).toBe(true);
+  });
+
   it("floor item carries image when present", () => {
     const item = ent("torch-1", "Torch", "item", { image: "torch.png" });
     const vm = mkVm({ scope: [item] });
