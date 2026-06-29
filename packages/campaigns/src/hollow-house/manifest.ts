@@ -3,6 +3,7 @@ import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES, TITLE, INTRO 
 import { Archetypes } from "./ids.js";
 import { hollowHouseAudio } from "./audio.js";
 import { hollowHouseThemes } from "./themes.js";
+import { hollowHousePncThemes } from "./pnc-themes.js";
 
 export const hollowHouse: CampaignManifest = {
   slug: "hollow-house",
@@ -16,5 +17,8 @@ export const hollowHouse: CampaignManifest = {
   playerName: "Heir",
   archetype: Archetypes.Heir,
   audio: hollowHouseAudio,
-  surfaces: [{ id: "crt-terminal", themes: hollowHouseThemes }],
+  surfaces: [
+    { id: "crt-terminal", themes: hollowHouseThemes },
+    { id: "point-and-click", themes: hollowHousePncThemes },
+  ],
 };
