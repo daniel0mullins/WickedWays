@@ -38,7 +38,8 @@ export function hauntedHouseTemplate(): TemplateBuilder<string, string> {
   return authorTemplate("The Hollow House", buildHauntedHouseRegistry(), { maxRounds: 150, baseEncounterChance: 0, rng: () => 0.5 })
     // Energy 5 makes the Sanity-damage multiplier exactly 1.0 (max(0,10-5)*0.2),
     // so a mob's Sanity `power` lands as whole points — the house preys on a frail will.
-    .archetype({ id: Archetypes.Heir, name: "Heir", baseStats: { [StatType.Health]: 12, [StatType.Sanity]: 16, [StatType.Energy]: 5 }, inventorySlots: 6, immunities: [Status.Fear] })
+    // inventorySlots is a delta on the base capacity (default 5), so +1 → 6 total.
+    .archetype({ id: Archetypes.Heir, name: "Heir", baseStats: { [StatType.Health]: 12, [StatType.Sanity]: 16, [StatType.Energy]: 5 }, inventorySlots: 1, immunities: [Status.Fear] })
     // Rooms
     .room(Rooms.Foyer, { description: "The entrance hall of the Hollow House. Dust sheets shroud the furniture; the front door has locked itself behind you." })
     .room(Rooms.Cellar, { description: "A low brick cellar, black as a throat. Water seeps somewhere unseen.", dark: true })
