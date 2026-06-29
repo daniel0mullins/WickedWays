@@ -457,6 +457,30 @@ test.describe("Wicked Ways browser playthrough", () => {
     }
   });
 
+  test("PnC inventory panel: numbered slots, --empty--, and a Key Items tab", async ({ page }) => {
+    await page.goto("/?campaign=hollow-house&surface=point-and-click");
+    await enterPncGame(page);
+
+    const inv = page.locator("pnc-inventory");
+    // Default "Inventory" tab: an ordered slot list, one entry per slot.
+    await expect(inv.locator("ol.slot-list")).toBeVisible();
+    // Heir capacity = base 5 + archetype delta 1 = 6 slots.
+    await expect(inv.locator(".slot")).toHaveCount(6);
+    // Empty at start → every slot reads "--empty--".
+    await expect(inv.locator(".slot").first()).toHaveText("--empty--");
+
+    // Take the journal → it fills the first slot.
+    await clickBodyHotspot(page, "loot", /drawer/i, "Open");
+    await clickBodyHotspot(page, "item", /Journal/i, "Take");
+    await expect(inv.locator(".slot").first()).toContainText("Water-Stained Journal");
+
+    // "Key Items" tab: switching hides the slot list and shows the keys view
+    // (empty note here, since no keys have been collected yet).
+    await inv.getByRole("tab", { name: "Key Items" }).click();
+    await expect(inv.locator("ol.slot-list")).toHaveCount(0);
+    await expect(inv.locator(".empty-note")).toBeVisible();
+  });
+
   test("PnC status bar shows Sanity/Round from the opening turn (no action yet)", async ({ page }) => {
     await page.goto("/?campaign=hollow-house&surface=point-and-click");
     await enterPncGame(page);

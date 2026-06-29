@@ -38,7 +38,7 @@ const makeView = (overrides: Record<string, unknown> = {}) => ({
   lockedDoors: [],
   occupants: [],
   loot: [],
-  inventory: { items: [], keys: [], equippedNames: [] },
+  inventory: { items: [], keys: [], equippedNames: [], slots: 6 },
   scope: [],
   finished: false,
   outcome: "",

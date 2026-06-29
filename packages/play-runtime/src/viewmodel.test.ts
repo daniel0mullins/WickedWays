@@ -100,6 +100,8 @@ describe("view() — presentation.image mapping", () => {
     expect(vm.occupants[0]!.image).toBe("wraith.png");
     expect(vm.inventory.items[0]!.image).toBe("lantern.png");
     expect(vm.inventory.keys[0]!.image).toBe("iron-key.png");
+    // Inventory capacity is surfaced for the slot-numbered panel (PC default: 5).
+    expect(vm.inventory.slots).toBe(5);
     expect(vm.loot[0]!.contents[0]!.image).toBe("tome.png");
   });
 

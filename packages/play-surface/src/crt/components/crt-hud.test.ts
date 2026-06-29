@@ -11,7 +11,7 @@ function makeVM(overrides: Partial<ViewModel> = {}): ViewModel {
     lockedDoors: [],
     occupants: [],
     loot: [],
-    inventory: { items: [], keys: [], equippedNames: [] },
+    inventory: { items: [], keys: [], equippedNames: [], slots: 0 },
     scope: [],
     status: { locationName: "", turn: 0, maxTurns: 0, sanity: 0, health: 0 },
     outcome: "",
@@ -91,6 +91,7 @@ describe("<crt-hud>", () => {
           ],
           keys: [],
           equippedNames: ["Iron Sword"],
+          slots: 6,
         },
       });
       await el.updateComplete;
@@ -108,6 +109,7 @@ describe("<crt-hud>", () => {
           items: [],
           keys: [{ id: "k1", name: "Brass Key", aliases: [], kind: "item" }],
           equippedNames: [],
+          slots: 6,
         },
       });
       await el.updateComplete;
@@ -122,6 +124,7 @@ describe("<crt-hud>", () => {
           items: [],
           keys: [],
           equippedNames: ["Ancient Robe"],
+          slots: 6,
         },
       });
       await el.updateComplete;

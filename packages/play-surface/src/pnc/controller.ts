@@ -122,6 +122,7 @@ export function mountPointAndClick(
     inventory.items = vm.inventory.items;
     inventory.keys = vm.inventory.keys;
     inventory.equippedNames = vm.inventory.equippedNames;
+    inventory.slots = vm.inventory.slots;
     audio.update(session.campaign);
     mapModel.observe(vm);
   };

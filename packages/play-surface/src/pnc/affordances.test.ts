@@ -12,7 +12,7 @@ const mkVm = (over: Partial<ViewModel> = {}): ViewModel => ({
   lockedDoors: [],
   occupants: [],
   loot: [],
-  inventory: { items: [], keys: [], equippedNames: [] },
+  inventory: { items: [], keys: [], equippedNames: [], slots: 6 },
   scope: [],
   status: { locationName: "Hall", turn: 1, maxTurns: 150, sanity: 10, health: 10 },
   outcome: "ongoing",
@@ -196,7 +196,7 @@ describe("sceneHotspots — floor items", () => {
     const invItem = ent("key-1", "Brass Key", "item");
     const vm = mkVm({
       scope: [invItem],
-      inventory: { items: [invItem], keys: [], equippedNames: [] },
+      inventory: { items: [invItem], keys: [], equippedNames: [], slots: 6 },
     });
     const hotspots = sceneHotspots(vm);
     expect(hotspots.every((h) => h.key !== "key-1")).toBe(true);
@@ -206,7 +206,7 @@ describe("sceneHotspots — floor items", () => {
     const keyItem = ent("skel-key", "Skeleton Key", "item");
     const vm = mkVm({
       scope: [keyItem],
-      inventory: { items: [], keys: [keyItem], equippedNames: [] },
+      inventory: { items: [], keys: [keyItem], equippedNames: [], slots: 6 },
     });
     const hotspots = sceneHotspots(vm);
     expect(hotspots.every((h) => h.key !== "skel-key")).toBe(true);

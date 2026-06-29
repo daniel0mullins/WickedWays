@@ -16,7 +16,7 @@ function makeVM(overrides: Partial<ViewModel> = {}): ViewModel {
     lockedDoors: [],
     occupants: [],
     loot: [],
-    inventory: { items: [], keys: [], equippedNames: [] },
+    inventory: { items: [], keys: [], equippedNames: [], slots: 0 },
     scope: [],
     status: { locationName: "", turn: 0, maxTurns: 0, sanity: 0, health: 0 },
     outcome: "",

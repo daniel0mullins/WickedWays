@@ -9,7 +9,7 @@ const vm = (over: Partial<ViewModel> = {}): ViewModel => ({
   room: { id: "hall", name: "Hall", description: "A long central hall.", isLit: true },
   exits: [{ dir: Directions.North, toName: "Landing" }],
   lockedDoors: [], occupants: [], loot: [],
-  inventory: { items: [], keys: [], equippedNames: [] }, scope: [],
+  inventory: { items: [], keys: [], equippedNames: [], slots: 0 }, scope: [],
   status: { locationName: "Hall", turn: 1, maxTurns: 150, sanity: 10, health: 10 },
   outcome: "ongoing", finished: false, ...over,
 });
@@ -111,13 +111,13 @@ describe("Narrator.renderAction", () => {
   it("confirms a take with the item's name", () => {
     const n = new Narrator();
     const before = vm({ scope: [journal] });          // journal is in the room as loot content
-    const after = vm({ scope: [journal], inventory: { items: [journal], keys: [], equippedNames: [] } });
+    const after = vm({ scope: [journal], inventory: { items: [journal], keys: [], equippedNames: [], slots: 6 } });
     expect(n.renderAction({ kind: "take", targetId: "journal" }, before, after).join(" ")).toContain("Water-Stained Journal");
   });
 
   it("confirms a drop with the item's name", () => {
     const n = new Narrator();
-    const before = vm({ scope: [journal], inventory: { items: [journal], keys: [], equippedNames: [] } });
+    const before = vm({ scope: [journal], inventory: { items: [journal], keys: [], equippedNames: [], slots: 6 } });
     const after = vm();                               // gone from inventory after drop
     const line = n.renderAction({ kind: "drop", targetId: "journal" }, before, after).join(" ");
     expect(line).toContain("Water-Stained Journal");
@@ -134,7 +134,7 @@ describe("Narrator.renderAction", () => {
   it("names the item on unequip via the after-view (item returns to inventory)", () => {
     const n = new Narrator();
     const before = vm();                              // equipped item not in scope
-    const after = vm({ scope: [journal], inventory: { items: [journal], keys: [], equippedNames: [] } });
+    const after = vm({ scope: [journal], inventory: { items: [journal], keys: [], equippedNames: [], slots: 6 } });
     expect(n.renderAction({ kind: "unequip", targetId: "journal" }, before, after).join(" ")).toContain("Water-Stained Journal");
   });
 

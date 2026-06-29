@@ -25,7 +25,7 @@ export interface ViewModel {
   lockedDoors: LockedDoorView[];
   occupants: ScopeEntity[];
   loot: LootView[];
-  inventory: { items: ScopeEntity[]; keys: ScopeEntity[]; equippedNames: string[] };
+  inventory: { items: ScopeEntity[]; keys: ScopeEntity[]; equippedNames: string[]; slots: number };
   scope: ScopeEntity[];
   status: { locationName: string; turn: number; maxTurns: number; sanity: number; health: number };
   outcome: string;
@@ -131,6 +131,7 @@ export function view(
       items,
       keys,
       equippedNames: [...pc.equipment.values()].map((i) => i.name),
+      slots: pc.inventory.slots,
     },
     scope,
     status: {
