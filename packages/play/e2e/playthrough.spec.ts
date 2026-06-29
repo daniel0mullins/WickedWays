@@ -438,6 +438,24 @@ test.describe("Wicked Ways browser playthrough", () => {
     expect(color).toBe("rgb(232, 226, 208)");
   });
 
+  test("PnC surface holds a centered 16:9 box on an off-ratio (tall) window", async ({ page }) => {
+    // A very tall window must not stretch the surface; it letterboxes to 16:9.
+    await page.setViewportSize({ width: 900, height: 1400 });
+    await page.goto("/?campaign=hollow-house&surface=point-and-click");
+    await enterPncGame(page);
+
+    const box = await page.locator("[data-pnc-app]").boundingBox();
+    expect(box).not.toBeNull();
+    // 16:9 aspect (within rounding tolerance).
+    expect(box!.width / box!.height).toBeCloseTo(16 / 9, 1);
+    // Width-limited on a tall window: full width, height capped well under 1400.
+    expect(Math.round(box!.width)).toBe(900);
+    expect(box!.height).toBeLessThan(1400);
+    // Centered: roughly equal dark bars top and bottom.
+    const bottomGap = 1400 - (box!.y + box!.height);
+    expect(Math.abs(box!.y - bottomGap)).toBeLessThan(2);
+  });
+
   test("PnC deep-link with ?theme=haunted applies haunted theme and persists across reload", async ({ page }) => {
     // Deep-link directly into PnC with haunted theme.
     await page.goto("/?campaign=hollow-house&surface=point-and-click&theme=haunted");

@@ -32,7 +32,10 @@ export class PncActionMenu extends LitElement {
   static override styles = css`
     :host { display: block; }
     .action-menu {
-      position: absolute;
+      /* Fixed (not absolute) so the (x, y) viewport click coordinates from the
+         scene place it correctly regardless of where the centered 16:9 .pnc-app
+         box sits in the viewport. */
+      position: fixed;
       z-index: 100;
       display: flex;
       flex-direction: column;

@@ -25,15 +25,30 @@ export const pncGlobalTokensCss = `
   --color-hotspot: var(--pnc-hotspot);
 }
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; background: #0a0a08; }
+/* Center the 16:9 surface in the viewport; the page background shows through as
+   letterbox bars on whichever axis the window is longer than 16:9. */
+body {
+  margin: 0;
+  background: #0a0a08;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* ── PnC app layout ────────────────────────────────────────────────────────────
    These selectors style the light-DOM wrappers created by the controller.
    The controller sets position:relative on .pnc-app for overlay containment;
    we add the flex geometry here so the scene has a real, non-zero height.
+
+   The surface is locked to a 16:9 box sized to fit inside the viewport: it fills
+   whichever axis is the binding constraint and letterboxes the other, so a very
+   tall (or very wide) window never stretches the layout.
    ─────────────────────────────────────────────────────────────────────────── */
 .pnc-app {
-  height: 100vh;
+  aspect-ratio: 16 / 9;
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: min(100vh, calc(100vw * 9 / 16));
   display: flex;
   flex-direction: column;
 }
