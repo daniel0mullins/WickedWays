@@ -256,3 +256,37 @@ regenerates it — the self-referential-gate bug caught in sub-plan 1 must not r
   sound resolved from the actor's presentation (runtime descriptor, not snapshot). Confirm Hollow
   House party members carry no action sound at genesis (so the cue's `sound` is `None`); otherwise
   the sound source is a registry/presentation concern and the cue's `sound` field defers.
+
+## Build notes (post-implementation — what the gate forced)
+
+The differential gate surfaced three places where movement/turn-start **mutate snapshot fields
+this design marked inert/deferred**, so minimal slices were pulled in to keep the byte-for-byte
+match (they are part of the snapshot the gate compares):
+
+- **`afflictions.turnsActive`** — `start_turn` now runs the counter clear/increment. This is a
+  **stub**: it omits the `roll(100, rng)` early-clear draw, `applyFromStats`/`#clearEpisode`
+  (stat-recovery zeroing + shake-off), and the immunity-timer tick. Correct only while afflictions
+  are empty (as in the corpus). **Sub-plan 4 must REPLACE this method with the full `onTurnStart`,
+  not extend it** — the skipped rng draw would otherwise desync the entire rng stream vs. the oracle.
+- **`encounterTable.visited`** — `move_to` appends the destination room on a player's first visit
+  (faithful to `maybeSpawn`); the spawn *rolls* are correctly deferred (corpus has empty formations).
+- **`codex`** — `move_to` records the room codex entry on a player's first visit (faithful shape;
+  the conditional room `presentation` field is deferred until a campaign sets it).
+
+These remain typed as inert `serde_json::Value` and are mutated via Value surgery, consistent with
+the inert-as-Value convention; they get promoted to typed structs when their owning subsystem lands
+(4/5).
+
+**Conformance driver change:** the gate is driven by a **bespoke inline campaign** in
+`conformance/fixtures/turn-movement.gen.test.ts` (rooms Start/Next lit + Cellar dark, behavior-free
+exits, 2 PCs, `maxRounds` 10), **not** the shared seed or Hollow House. This was chosen so the stream
+can enter a **dark room** and diff a real `{kind:"visibility", lit:false}` cue against the oracle
+(differential, not just the Rust unit test), without modifying the widely-consumed shared seed
+(which would ripple through server/client convergence tests) and without Hollow House's status
+mechanic (which would emit `status` cues sub-plan 2 cannot yet produce). The supersedes the earlier
+"seed is the driver / visibility cue is unit-tested only" note above.
+
+**Deferred decision (before Phase 2 cutover):** ts-rs maps Rust `i64` → TS `bigint`, but the TS
+engine uses `number`. The JSON wire format is unaffected (the gate passes), but the *generated
+bindings* are type-mismatched for every `i64` field. Resolve uniformly before cutover (recommended:
+`u32`/`i32` for small non-negative counts → `number`).
