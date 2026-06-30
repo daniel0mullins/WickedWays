@@ -98,8 +98,7 @@ pub fn world_with_party(ids: &[&str], max_rounds: i64) -> World {
 /// - A player character "pc"/"Heir" in room "start"/"Start".
 /// - A behavior-free exit "north" from "start" → room "next"/"Next"
 ///   (id "exit-north"). The reverse "south" exit on "next" → "start"
-///   is NOT added (not required by the movement tests; the endpoint logic
-///   handles either ordering).
+///   IS added (same `ExitId` reused; the endpoint logic handles either ordering).
 /// - `next_dark` controls `dark` on the "next" room.
 ///
 /// Exposes `make_north_exit_keyed` to mark the exit as behavior-keyed.

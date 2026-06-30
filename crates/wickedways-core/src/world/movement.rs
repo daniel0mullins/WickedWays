@@ -20,6 +20,7 @@ impl World {
     pub fn is_lit(&self, room: &RoomId) -> bool {
         let Some(r) = self.rooms.get(room) else { return true };
         if !r.dark { return true; }
+        // TODO(sub-plan 3): also require !light.broken per source, plus occupant-carried light (occupant.has_light)
         !r.light_source_ids.is_empty()
     }
 
@@ -179,9 +180,14 @@ mod tests {
             action: ActionKind::Move,
             actor: EntityRef { id: "pc".into(), name: "Heir".into() },
             sound: None }]);
-        // history append
-        assert!(matches!(w.characters[&cid("pc")].history.last(),
-            Some(ActionHistoryEntry::Move { .. })));
+        // history append — pin exact round and room
+        assert_eq!(
+            w.characters[&cid("pc")].history.last(),
+            Some(&ActionHistoryEntry::Move {
+                round: 0,
+                room: RoomRef { id: rid("next"), name: "Next".into() },
+            })
+        );
     }
 
     #[test]
@@ -189,7 +195,17 @@ mod tests {
         let mut w = world_two_rooms(/*next_dark=*/true);
         let mut cues = Vec::new();
         w.go(&cid("pc"), Direction::North, &mut cues).unwrap();
-        assert!(cues.iter().any(|c| matches!(c, PresentationCue::Visibility { lit: false, .. })));
+        assert_eq!(cues, vec![
+            PresentationCue::Visibility {
+                room: EntityRef { id: "next".into(), name: "Next".into() },
+                lit: false,
+            },
+            PresentationCue::Action {
+                action: ActionKind::Move,
+                actor: EntityRef { id: "pc".into(), name: "Heir".into() },
+                sound: None,
+            },
+        ]);
     }
 
     #[test]
