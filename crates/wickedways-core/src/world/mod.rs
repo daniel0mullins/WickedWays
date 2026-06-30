@@ -4,6 +4,7 @@ pub mod descriptor;
 pub mod direction;
 pub mod history;
 pub mod ids;
+pub mod resolve;
 pub mod snapshot;
 mod movement;
 mod turn;
