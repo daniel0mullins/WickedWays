@@ -78,5 +78,12 @@ mod ts_export {
         ThinOccupant::export_all().expect("export ThinOccupant");
         ThinStatus::export_all().expect("export ThinStatus");
         ThinViewModel::export_all().expect("export ThinViewModel");
+        // Task 5 (sub-plan 3a): widened ViewModel
+        use crate::world::view::{ScopeEntity, LootView, Inventory, StatusView, ViewModel};
+        ScopeEntity::export_all().expect("export ScopeEntity");
+        LootView::export_all().expect("export LootView");
+        Inventory::export_all().expect("export Inventory");
+        StatusView::export_all().expect("export StatusView");
+        ViewModel::export_all().expect("export ViewModel");
     }
 }
