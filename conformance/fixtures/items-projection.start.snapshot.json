@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "0b06f3e4-4514-4baf-9d09-21b5cc3fa688",
+    "title": "Item Test (conformance)",
+    "maxRounds": 5,
+    "round": 0,
+    "started": true,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "9e73870b-aa85-4fad-9d66-a58242737eef",
+      "9740c88f-4045-46ef-9c90-f903c1cb8702"
+    ],
+    "actedThisRound": [],
+    "gmId": "9e73870b-aa85-4fad-9d66-a58242737eef",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "delver",
+        "name": "Delver",
+        "baseStats": {
+          "health": 12,
+          "sanity": 10
+        },
+        "inventorySlots": 1
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 20,
+      "visited": [
+        "8efae5fd-83a5-4be8-8ecf-a02ea3958c74"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74",
+      "name": "Hall",
+      "description": "A stone hall.",
+      "exits": {},
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "9e73870b-aa85-4fad-9d66-a58242737eef",
+        "9740c88f-4045-46ef-9c90-f903c1cb8702"
+      ],
+      "lootIds": [
+        "5d695217-4218-4532-a059-d1ce56c423ea"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "9e73870b-aa85-4fad-9d66-a58242737eef",
+      "name": "Ada",
+      "stats": {
+        "health": 12,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 2,
+      "currentRoomId": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74",
+      "inventory": {
+        "slots": 6,
+        "itemIds": [
+          "5987ec71-22e0-4cf0-abd0-cb03eee32789",
+          "4c18063b-bf44-484f-9add-c39384da9da5",
+          "9a6a8cae-c152-431b-9f53-036e9a942883"
+        ],
+        "keyIds": [
+          "453426b6-5577-4dfa-8d7c-e591b87e48f9"
+        ]
+      },
+      "equipment": {
+        "leftIndexFinger": "4c18063b-bf44-484f-9add-c39384da9da5"
+      },
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74",
+            "name": "Hall"
+          },
+          "round": 0
+        },
+        {
+          "kind": "pickUp",
+          "items": [
+            {
+              "id": "5987ec71-22e0-4cf0-abd0-cb03eee32789",
+              "name": "Iron Sword"
+            },
+            {
+              "id": "4c18063b-bf44-484f-9add-c39384da9da5",
+              "name": "Silver Ring"
+            },
+            {
+              "id": "9a6a8cae-c152-431b-9f53-036e9a942883",
+              "name": "Healing Tonic"
+            }
+          ],
+          "round": 0
+        },
+        {
+          "kind": "pickUp",
+          "items": [
+            {
+              "id": "453426b6-5577-4dfa-8d7c-e591b87e48f9",
+              "name": "Old Key"
+            }
+          ],
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {
+          "panic": 0,
+          "fear": 0,
+          "confused": 0
+        },
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "delver"
+    },
+    {
+      "kind": "player",
+      "id": "9740c88f-4045-46ef-9c90-f903c1cb8702",
+      "name": "Ben",
+      "stats": {
+        "health": 12,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74",
+      "inventory": {
+        "slots": 6,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74",
+            "name": "Hall"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "delver"
+    }
+  ],
+  "items": [
+    {
+      "kind": "item",
+      "id": "3bcde3c6-1f6f-494b-b569-39f105cd532e",
+      "behaviorKey": "items/old-coin",
+      "modifier": 0
+    },
+    {
+      "kind": "item",
+      "id": "5987ec71-22e0-4cf0-abd0-cb03eee32789",
+      "behaviorKey": "items/iron-sword",
+      "durability": 10,
+      "modifier": 5
+    },
+    {
+      "kind": "item",
+      "id": "4c18063b-bf44-484f-9add-c39384da9da5",
+      "behaviorKey": "items/silver-ring",
+      "modifier": 3
+    },
+    {
+      "kind": "item",
+      "id": "9a6a8cae-c152-431b-9f53-036e9a942883",
+      "behaviorKey": "items/healing-tonic",
+      "modifier": 4
+    },
+    {
+      "kind": "key",
+      "id": "453426b6-5577-4dfa-8d7c-e591b87e48f9",
+      "name": "Old Key",
+      "keyCode": "old",
+      "consumeOnUse": false
+    }
+  ],
+  "loot": [
+    {
+      "id": "5d695217-4218-4532-a059-d1ce56c423ea",
+      "description": "An old chest.",
+      "capacity": 3,
+      "contentIds": [
+        "3bcde3c6-1f6f-494b-b569-39f105cd532e"
+      ]
+    }
+  ],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74",
+      "snapshot": {
+        "name": "Hall",
+        "description": "A stone hall."
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "9e73870b-aa85-4fad-9d66-a58242737eef",
+        "roomId": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74"
+      }
+    },
+    {
+      "kind": "item",
+      "key": "weapon:Iron Sword",
+      "snapshot": {
+        "name": "Iron Sword",
+        "type": "weapon",
+        "slot": "hand"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "9e73870b-aa85-4fad-9d66-a58242737eef",
+        "roomId": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74"
+      }
+    },
+    {
+      "kind": "item",
+      "key": "accessory:Silver Ring",
+      "snapshot": {
+        "name": "Silver Ring",
+        "type": "accessory",
+        "slot": "finger"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "9e73870b-aa85-4fad-9d66-a58242737eef",
+        "roomId": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74"
+      }
+    },
+    {
+      "kind": "item",
+      "key": "consumable:Healing Tonic",
+      "snapshot": {
+        "name": "Healing Tonic",
+        "type": "consumable"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "9e73870b-aa85-4fad-9d66-a58242737eef",
+        "roomId": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74"
+      }
+    },
+    {
+      "kind": "key",
+      "key": "old:Old Key",
+      "snapshot": {
+        "name": "Old Key",
+        "keyCode": "old",
+        "consumeOnUse": false
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "9e73870b-aa85-4fad-9d66-a58242737eef",
+        "roomId": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74"
+      }
+    }
+  ]
+}

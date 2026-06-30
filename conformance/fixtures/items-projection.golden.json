@@ -1,0 +1,204 @@
+{
+  "view": {
+    "room": {
+      "id": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74",
+      "name": "Hall",
+      "description": "A stone hall.",
+      "isLit": true
+    },
+    "occupants": [
+      {
+        "id": "9740c88f-4045-46ef-9c90-f903c1cb8702",
+        "name": "Ben",
+        "aliases": [
+          "ben"
+        ],
+        "kind": "occupant",
+        "health": 12
+      }
+    ],
+    "loot": [
+      {
+        "id": "5d695217-4218-4532-a059-d1ce56c423ea",
+        "description": "An old chest.",
+        "opened": false,
+        "contents": [
+          {
+            "id": "3bcde3c6-1f6f-494b-b569-39f105cd532e",
+            "name": "Old Coin",
+            "aliases": [
+              "old coin",
+              "coin"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          }
+        ]
+      }
+    ],
+    "inventory": {
+      "items": [
+        {
+          "id": "5987ec71-22e0-4cf0-abd0-cb03eee32789",
+          "name": "Iron Sword",
+          "aliases": [
+            "iron sword",
+            "sword",
+            "blade"
+          ],
+          "kind": "item",
+          "equippable": true,
+          "usable": false,
+          "hasLore": true,
+          "droppable": true
+        },
+        {
+          "id": "4c18063b-bf44-484f-9add-c39384da9da5",
+          "name": "Silver Ring",
+          "aliases": [
+            "silver ring",
+            "ring",
+            "band"
+          ],
+          "kind": "item",
+          "equippable": true,
+          "usable": false,
+          "hasLore": false,
+          "droppable": true
+        },
+        {
+          "id": "9a6a8cae-c152-431b-9f53-036e9a942883",
+          "name": "Healing Tonic",
+          "aliases": [
+            "healing tonic",
+            "tonic",
+            "vial"
+          ],
+          "kind": "item",
+          "equippable": false,
+          "usable": true,
+          "hasLore": false,
+          "droppable": true
+        }
+      ],
+      "keys": [
+        {
+          "id": "453426b6-5577-4dfa-8d7c-e591b87e48f9",
+          "name": "Old Key",
+          "aliases": [
+            "old key"
+          ],
+          "kind": "item",
+          "equippable": false,
+          "usable": false,
+          "hasLore": false,
+          "droppable": true
+        }
+      ],
+      "equippedNames": [
+        "Silver Ring"
+      ],
+      "slots": 6
+    },
+    "scope": [
+      {
+        "id": "9740c88f-4045-46ef-9c90-f903c1cb8702",
+        "name": "Ben",
+        "aliases": [
+          "ben"
+        ],
+        "kind": "occupant",
+        "health": 12
+      },
+      {
+        "id": "3bcde3c6-1f6f-494b-b569-39f105cd532e",
+        "name": "Old Coin",
+        "aliases": [
+          "old coin",
+          "coin"
+        ],
+        "kind": "item",
+        "equippable": false,
+        "usable": false,
+        "hasLore": false,
+        "droppable": true
+      },
+      {
+        "id": "5987ec71-22e0-4cf0-abd0-cb03eee32789",
+        "name": "Iron Sword",
+        "aliases": [
+          "iron sword",
+          "sword",
+          "blade"
+        ],
+        "kind": "item",
+        "equippable": true,
+        "usable": false,
+        "hasLore": true,
+        "droppable": true
+      },
+      {
+        "id": "4c18063b-bf44-484f-9add-c39384da9da5",
+        "name": "Silver Ring",
+        "aliases": [
+          "silver ring",
+          "ring",
+          "band"
+        ],
+        "kind": "item",
+        "equippable": true,
+        "usable": false,
+        "hasLore": false,
+        "droppable": true
+      },
+      {
+        "id": "9a6a8cae-c152-431b-9f53-036e9a942883",
+        "name": "Healing Tonic",
+        "aliases": [
+          "healing tonic",
+          "tonic",
+          "vial"
+        ],
+        "kind": "item",
+        "equippable": false,
+        "usable": true,
+        "hasLore": false,
+        "droppable": true
+      },
+      {
+        "id": "453426b6-5577-4dfa-8d7c-e591b87e48f9",
+        "name": "Old Key",
+        "aliases": [
+          "old key"
+        ],
+        "kind": "item",
+        "equippable": false,
+        "usable": false,
+        "hasLore": false,
+        "droppable": true
+      },
+      {
+        "id": "5d695217-4218-4532-a059-d1ce56c423ea",
+        "name": "An old chest.",
+        "aliases": [
+          "chest",
+          "box",
+          "drawer",
+          "container"
+        ],
+        "kind": "loot"
+      }
+    ],
+    "status": {
+      "turn": 0,
+      "maxTurns": 5,
+      "sanity": 13,
+      "health": 12
+    },
+    "outcome": "ongoing",
+    "finished": false
+  }
+}
