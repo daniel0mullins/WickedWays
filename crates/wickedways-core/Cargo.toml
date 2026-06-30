@@ -10,6 +10,7 @@ ts = ["dep:ts-rs", "std"]
 
 [dependencies]
 serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
+serde_json = { version = "1", default-features = false, features = ["alloc"] }
 ts-rs = { version = "10", optional = true }
 
 [dev-dependencies]
