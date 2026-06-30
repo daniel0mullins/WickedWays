@@ -1,5 +1,5 @@
 /** Canonical form for snapshot comparison: deep-sort object keys, and sort the
- *  7 top-level entity arrays by `id` (they are id-keyed sets; element order is
+ *  6 top-level entity arrays by `id` (they are id-keyed sets; element order is
  *  not semantic). All other arrays keep their order (semantically ordered). */
 const TOP_LEVEL_ENTITY_ARRAYS = new Set([
   "rooms", "exits", "characters", "items", "loot", "materialCaches",
