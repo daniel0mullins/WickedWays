@@ -2,6 +2,10 @@
 pub mod history;
 pub mod ids;
 pub mod snapshot;
+mod turn;
+
+#[cfg(test)]
+pub mod test_support;
 
 pub use ids::{CharacterId, ExitId, ItemId, LootId, MaterialCacheId, RoomId};
 pub use snapshot::{ExitSnapshot, ItemSnapshot, LootSnapshot, MaterialCacheSnapshot, SceneSnapshot};

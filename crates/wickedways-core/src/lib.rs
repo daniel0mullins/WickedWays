@@ -19,5 +19,8 @@ pub use presentation::{
     PresentationCue, StatusField,
 };
 
+pub mod error;
+pub use error::ProceduralViolation;
+
 pub mod world;
 pub use world::{World, snapshot::CampaignSnapshot};
