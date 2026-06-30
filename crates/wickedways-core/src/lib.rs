@@ -7,3 +7,6 @@ pub use dice::roll;
 
 pub mod stats;
 pub use stats::StatType;
+
+pub mod damage;
+pub use damage::{compute_mitigated_damage, DamageInput, LIGHT_VULNERABILITY, MAX_STAT, MITIGATION_PER_POINT};

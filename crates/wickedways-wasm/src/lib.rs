@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use wickedways_core::StatType;
+use wickedways_core::{compute_mitigated_damage, DamageInput, StatType};
 
 /// Toolchain smoke test: proves Rust→WASM→Node loading works end-to-end.
 #[wasm_bindgen]
@@ -23,4 +23,12 @@ pub fn mitigator(stat: &str) -> Result<String, JsValue> {
 #[wasm_bindgen]
 pub fn roll(sides: u32, unit: f64) -> u32 {
     wickedways_core::roll(sides, unit)
+}
+
+/// Mitigation formula over the serde boundary. Proves struct marshalling
+/// (serde-wasm-bindgen) end-to-end.
+#[wasm_bindgen]
+pub fn mitigated_damage(input: JsValue) -> Result<f64, JsValue> {
+    let parsed: DamageInput = serde_wasm_bindgen::from_value(input)?;
+    Ok(compute_mitigated_damage(parsed))
 }

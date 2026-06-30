@@ -28,10 +28,12 @@ impl StatType {
 #[cfg(all(test, feature = "ts"))]
 mod ts_export {
     use super::StatType;
+    use crate::damage::DamageInput;
     use ts_rs::TS;
 
     #[test]
     fn export_typescript_bindings() {
         StatType::export_all().expect("export StatType bindings");
+        DamageInput::export_all().expect("export DamageInput");
     }
 }
