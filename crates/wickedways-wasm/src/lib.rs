@@ -1,5 +1,5 @@
 use wasm_bindgen::prelude::*;
-use wickedways_core::{compute_mitigated_damage, DamageInput, StatType};
+use wickedways_core::{compute_mitigated_damage, CampaignSnapshot, DamageInput, StatType, World};
 
 /// Toolchain smoke test: proves Rust→WASM→Node loading works end-to-end.
 #[wasm_bindgen]
@@ -31,4 +31,14 @@ pub fn roll(sides: u32, unit: f64) -> u32 {
 pub fn mitigated_damage(input: JsValue) -> Result<f64, JsValue> {
     let parsed: DamageInput = serde_wasm_bindgen::from_value(input)?;
     Ok(compute_mitigated_damage(parsed))
+}
+
+/// Parse a CampaignSnapshot JSON, fold into the id-keyed World, and re-emit.
+/// Used by the conformance harness to prove byte-faithful round-trip vs TS.
+#[wasm_bindgen]
+pub fn roundtrip_snapshot(json: &str) -> Result<String, JsValue> {
+    let snap: CampaignSnapshot =
+        serde_json::from_str(json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let out = World::from_snapshot(snap).to_snapshot();
+    serde_json::to_string(&out).map_err(|e| JsValue::from_str(&e.to_string()))
 }

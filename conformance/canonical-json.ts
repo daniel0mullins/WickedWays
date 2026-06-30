@@ -1,0 +1,32 @@
+/** Canonical form for snapshot comparison: deep-sort object keys, and sort the
+ *  7 top-level entity arrays by `id` (they are id-keyed sets; element order is
+ *  not semantic). All other arrays keep their order (semantically ordered). */
+const TOP_LEVEL_ENTITY_ARRAYS = new Set([
+  "rooms", "exits", "characters", "items", "loot", "materialCaches",
+]);
+
+function sortKeys(value: unknown, keyHint?: string): unknown {
+  if (Array.isArray(value)) {
+    const mapped = value.map((v) => sortKeys(v));
+    if (keyHint && TOP_LEVEL_ENTITY_ARRAYS.has(keyHint)) {
+      return [...mapped].sort((a, b) => {
+        const ai = (a as { id?: string }).id ?? "";
+        const bi = (b as { id?: string }).id ?? "";
+        return ai < bi ? -1 : ai > bi ? 1 : 0;
+      });
+    }
+    return mapped;
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const k of Object.keys(value as Record<string, unknown>).sort()) {
+      out[k] = sortKeys((value as Record<string, unknown>)[k], k);
+    }
+    return out;
+  }
+  return value;
+}
+
+export function canonical(value: unknown): string {
+  return JSON.stringify(sortKeys(value));
+}

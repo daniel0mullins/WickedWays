@@ -1,0 +1,478 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "6422d57e-ffdd-45c0-9ceb-7090e3a70a69",
+    "title": "The Hollow House",
+    "maxRounds": 150,
+    "round": 0,
+    "started": false,
+    "outcome": "ongoing",
+    "winConditions": [
+      {
+        "key": "reached-attic-with-journal",
+        "narration": {
+          "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
+        }
+      }
+    ],
+    "loseConditions": [
+      {
+        "key": "sanity-zero",
+        "narration": {
+          "text": "The dark gets in. Your thoughts come apart like wet paper, and the Hollow House keeps what is left of you."
+        }
+      },
+      {
+        "key": "party-down",
+        "narration": {
+          "text": "You fall, and do not rise. The house is patient. It has all the time there is."
+        }
+      }
+    ],
+    "timeoutNarration": {
+      "text": "Dawn never comes. You realize, slowly, that it never will — and that you stopped looking for the door some hours ago."
+    },
+    "activeCharacterIndex": 0,
+    "partyIds": [],
+    "actedThisRound": [],
+    "gmId": null,
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "heir",
+        "name": "Heir",
+        "baseStats": {
+          "health": 12,
+          "sanity": 16,
+          "energy": 5
+        },
+        "inventorySlots": 1,
+        "immunities": [
+          "fear"
+        ]
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 0,
+      "visited": [],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": [
+      {
+        "key": "dread",
+        "state": {}
+      },
+      {
+        "key": "storyteller",
+        "state": {
+          "seen": {}
+        }
+      },
+      {
+        "key": "status-bar",
+        "state": {}
+      }
+    ]
+  },
+  "rooms": [
+    {
+      "id": "d00d8566-b21c-48b8-b3da-aa6ad4ec7861",
+      "name": "Foyer",
+      "description": "The entrance hall of the Hollow House. Dust sheets shroud the furniture; the front door has locked itself behind you.",
+      "exits": {
+        "north": "e119e0d8-afd9-44fb-8f3d-c6ab14faae0b",
+        "south": "1e0582d1-fc8c-4b26-ae8a-ccec0a48686b"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [
+        "70b90225-401d-4eb9-b166-908b01433618"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "14d3b33f-7a4f-41ef-a8a3-27ed95866471",
+      "name": "Cellar",
+      "description": "A low brick cellar, black as a throat. Water seeps somewhere unseen.",
+      "exits": {
+        "north": "1e0582d1-fc8c-4b26-ae8a-ccec0a48686b"
+      },
+      "dark": true,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "fe232ea0-e6d3-4035-ae57-724c66d73643"
+      ],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "f12e351f-4d1c-4997-9711-63dac642106c",
+      "name": "Hall",
+      "description": "A long central hall. Portraits watch from the walls, their eyes scratched out.",
+      "exits": {
+        "south": "e119e0d8-afd9-44fb-8f3d-c6ab14faae0b",
+        "west": "4cc3ac62-1683-48d2-a7de-3e9707e62e5d",
+        "east": "dd80501a-5a87-4433-970b-620fd8e0f1e6",
+        "north": "0c112605-0b13-41a2-be90-29bce11bf215"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [
+        "7e8a622d-acf6-4cfc-ade4-6960c02919f4"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "a2414996-2e68-4c6f-b7bf-0eae7f1c9886",
+      "name": "Kitchen",
+      "description": "A cold scullery. Copper pots hang in rows; one still sways.",
+      "exits": {
+        "east": "4cc3ac62-1683-48d2-a7de-3e9707e62e5d"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [
+        "cf220a22-808a-4b34-b86f-d59befc692c5"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "416252a1-f22a-4fb4-8a73-755239f537f7",
+      "name": "Parlor",
+      "description": "A receiving parlor gone to mildew. A piano sits with its lid nailed shut.",
+      "exits": {
+        "west": "dd80501a-5a87-4433-970b-620fd8e0f1e6"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "78bd33f2-8731-4286-a07b-ac29f01cfc02",
+      "name": "Landing",
+      "description": "The upstairs landing. Two doors face you — one to the west, one leading further up — and a nursery stands open to the east.",
+      "exits": {
+        "south": "0c112605-0b13-41a2-be90-29bce11bf215",
+        "east": "9df04f2e-f3b4-45b6-a3ee-bf3b4f44eab0",
+        "west": "20b59dd8-12ad-41ea-91d0-0ebce5cd50c8",
+        "north": "b8bdaff2-3866-48df-9498-e249f0947e0d"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "da100a75-1147-4b03-a0e2-d1dc214fba2f",
+      "name": "Study",
+      "description": "A cramped study, papers everywhere, as if someone left mid-sentence.",
+      "exits": {
+        "east": "20b59dd8-12ad-41ea-91d0-0ebce5cd50c8"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [
+        "b2c09a35-da5b-4e72-92eb-ab79931dfbe9"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "f8f07118-7d09-48a1-a37b-bb4d9f53f837",
+      "name": "Nursery",
+      "description": "A child's nursery. A rocking horse moves, very slightly, on its own.",
+      "exits": {
+        "west": "9df04f2e-f3b4-45b6-a3ee-bf3b4f44eab0"
+      },
+      "dark": true,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "edf39f6e-1f22-46ab-b198-e3d9818d174d"
+      ],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "e53c401c-f8ce-4cb3-ae58-6fed586f1c7a",
+      "name": "Attic",
+      "description": "The attic, under the bare ribs of the roof. This is where the journal ends.",
+      "exits": {
+        "south": "b8bdaff2-3866-48df-9498-e249f0947e0d"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [
+    {
+      "id": "e119e0d8-afd9-44fb-8f3d-c6ab14faae0b",
+      "endpointIds": [
+        "d00d8566-b21c-48b8-b3da-aa6ad4ec7861",
+        "f12e351f-4d1c-4997-9711-63dac642106c"
+      ],
+      "state": {}
+    },
+    {
+      "id": "1e0582d1-fc8c-4b26-ae8a-ccec0a48686b",
+      "endpointIds": [
+        "d00d8566-b21c-48b8-b3da-aa6ad4ec7861",
+        "14d3b33f-7a4f-41ef-a8a3-27ed95866471"
+      ],
+      "state": {}
+    },
+    {
+      "id": "4cc3ac62-1683-48d2-a7de-3e9707e62e5d",
+      "endpointIds": [
+        "f12e351f-4d1c-4997-9711-63dac642106c",
+        "a2414996-2e68-4c6f-b7bf-0eae7f1c9886"
+      ],
+      "state": {}
+    },
+    {
+      "id": "dd80501a-5a87-4433-970b-620fd8e0f1e6",
+      "endpointIds": [
+        "f12e351f-4d1c-4997-9711-63dac642106c",
+        "416252a1-f22a-4fb4-8a73-755239f537f7"
+      ],
+      "state": {}
+    },
+    {
+      "id": "0c112605-0b13-41a2-be90-29bce11bf215",
+      "endpointIds": [
+        "f12e351f-4d1c-4997-9711-63dac642106c",
+        "78bd33f2-8731-4286-a07b-ac29f01cfc02"
+      ],
+      "state": {}
+    },
+    {
+      "id": "9df04f2e-f3b4-45b6-a3ee-bf3b4f44eab0",
+      "endpointIds": [
+        "78bd33f2-8731-4286-a07b-ac29f01cfc02",
+        "f8f07118-7d09-48a1-a37b-bb4d9f53f837"
+      ],
+      "state": {}
+    },
+    {
+      "id": "20b59dd8-12ad-41ea-91d0-0ebce5cd50c8",
+      "endpointIds": [
+        "78bd33f2-8731-4286-a07b-ac29f01cfc02",
+        "da100a75-1147-4b03-a0e2-d1dc214fba2f"
+      ],
+      "behaviorKey": "study-door",
+      "name": "study door",
+      "state": {
+        "unlocked": false
+      }
+    },
+    {
+      "id": "b8bdaff2-3866-48df-9498-e249f0947e0d",
+      "endpointIds": [
+        "78bd33f2-8731-4286-a07b-ac29f01cfc02",
+        "e53c401c-f8ce-4cb3-ae58-6fed586f1c7a"
+      ],
+      "behaviorKey": "attic-door",
+      "name": "attic door",
+      "state": {
+        "unlocked": false
+      }
+    }
+  ],
+  "characters": [
+    {
+      "kind": "mob",
+      "id": "fe232ea0-e6d3-4035-ae57-724c66d73643",
+      "name": "Revenant",
+      "stats": {
+        "health": 10,
+        "sanity": 8,
+        "energy": 6
+      },
+      "actionsPerRound": 2,
+      "actionsThisRound": 0,
+      "currentRoomId": "14d3b33f-7a4f-41ef-a8a3-27ed95866471",
+      "inventory": {
+        "slots": 2,
+        "itemIds": [],
+        "keyIds": [
+          "4efa4d45-874c-487c-af22-7644458da3d9"
+        ]
+      },
+      "equipment": {},
+      "history": [],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "origin": "room",
+      "baseEscapeChance": 50,
+      "materialDrops": {},
+      "lightAverse": false,
+      "naturalAttack": {
+        "stat": "sanity",
+        "power": 2
+      }
+    },
+    {
+      "kind": "mob",
+      "id": "edf39f6e-1f22-46ab-b198-e3d9818d174d",
+      "name": "Wraith",
+      "stats": {
+        "health": 6,
+        "sanity": 5,
+        "energy": 5
+      },
+      "actionsPerRound": 2,
+      "actionsThisRound": 0,
+      "currentRoomId": "f8f07118-7d09-48a1-a37b-bb4d9f53f837",
+      "inventory": {
+        "slots": 2,
+        "itemIds": [],
+        "keyIds": [
+          "6cc69c56-d56c-4422-b6f1-dab197a65dc4"
+        ]
+      },
+      "equipment": {},
+      "history": [],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "origin": "room",
+      "baseEscapeChance": 50,
+      "materialDrops": {},
+      "lightAverse": false,
+      "naturalAttack": {
+        "stat": "sanity",
+        "power": 3
+      }
+    }
+  ],
+  "items": [
+    {
+      "kind": "item",
+      "id": "4df50fec-5c7e-4fb7-a0c1-fb791e25c607",
+      "behaviorKey": "journal",
+      "modifier": 0
+    },
+    {
+      "kind": "item",
+      "id": "246ecfa7-ce21-49f5-a26a-81ae4dacdfd4",
+      "behaviorKey": "poker",
+      "durability": 8,
+      "modifier": 5
+    },
+    {
+      "kind": "item",
+      "id": "3a46a47e-f5e1-4b5e-bd58-f8b0a91f6c7e",
+      "behaviorKey": "lantern",
+      "modifier": 0
+    },
+    {
+      "kind": "item",
+      "id": "15712db1-29b2-4a0f-929f-fd3bae2b23ed",
+      "behaviorKey": "laudanum",
+      "modifier": 6
+    },
+    {
+      "kind": "key",
+      "id": "4efa4d45-874c-487c-af22-7644458da3d9",
+      "name": "Iron Key",
+      "keyCode": "iron",
+      "consumeOnUse": false
+    },
+    {
+      "kind": "key",
+      "id": "6cc69c56-d56c-4422-b6f1-dab197a65dc4",
+      "name": "Brass Key",
+      "keyCode": "brass",
+      "consumeOnUse": false
+    }
+  ],
+  "loot": [
+    {
+      "id": "70b90225-401d-4eb9-b166-908b01433618",
+      "description": "A hall table with a single drawer.",
+      "capacity": 3,
+      "contentIds": [
+        "4df50fec-5c7e-4fb7-a0c1-fb791e25c607"
+      ]
+    },
+    {
+      "id": "7e8a622d-acf6-4cfc-ade4-6960c02919f4",
+      "description": "A fireplace stand.",
+      "capacity": 3,
+      "contentIds": [
+        "246ecfa7-ce21-49f5-a26a-81ae4dacdfd4"
+      ]
+    },
+    {
+      "id": "cf220a22-808a-4b34-b86f-d59befc692c5",
+      "description": "A lantern hangs from a hook.",
+      "capacity": 3,
+      "contentIds": [
+        "3a46a47e-f5e1-4b5e-bd58-f8b0a91f6c7e"
+      ]
+    },
+    {
+      "id": "b2c09a35-da5b-4e72-92eb-ab79931dfbe9",
+      "description": "A writing desk with a locked-open drawer.",
+      "capacity": 3,
+      "contentIds": [
+        "15712db1-29b2-4a0f-929f-fd3bae2b23ed"
+      ]
+    }
+  ],
+  "materialCaches": [],
+  "codex": []
+}
