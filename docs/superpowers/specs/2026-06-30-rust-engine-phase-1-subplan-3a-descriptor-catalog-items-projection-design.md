@@ -191,3 +191,27 @@ streams are 3b. Generators stay under the isolated fixtures config (no main-gate
   3b's `take`/`open` actions exercise it.
 - **Number-normalization in the comparator** (carried from sub-plan 1): the new descriptor integers
   (`modifier`, `maxDurability`) stay integer-typed so no fractional representation can arise.
+
+## Build notes (post-implementation)
+
+- **ViewModel coexistence (execution decision).** To keep every task's gate green, the widened `view`
+  was added ALONGSIDE the sub-plan-2 `view_thin` rather than widening one struct in place: the
+  turn-movement gate stays on `view_thin`; the items-projection gate uses `view`. Consolidation
+  (delete `view_thin`, regenerate the turn-movement golden under `view`) is **deferred to sub-plan 3b**,
+  to be paired with wiring `view` into `replay_commands`. (Widening in place would have red-lit the
+  turn-movement gate from the view-widening task until the golden regenerate, which itself needs the
+  catalog plumbing — a circular dependency.)
+- **Key `droppable` correction (gate-found).** The projection-parity gate revealed that a key projects
+  `droppable: true` in the view: TS `createKey` omits `droppable` (`undefined`), and the ViewModel
+  computes `droppable !== false` = `true`. `resolve_item`'s Key arm therefore resolves
+  `droppable: None` (not `Some(false)`); key un-droppability is enforced by the action layer's key
+  type-check, not by `properties.droppable`. (This reversed an earlier task's reviewed guess — the
+  differential gate is the authority.)
+- **`effective_stat` source (verified).** Equipped-ness is read from the equipment slot map; this is
+  provably equivalent to the TS `inventory.items`-filtered-by-`properties.equipped` because `equip()`
+  throws unless the item is held, keeping equipped ⊆ inventory.
+- **Deferred decisions (carried).** `i64`→`bigint` binding strategy + `ts(optional)` retro-fix for
+  sub-plan-2 optionals → the pre-Phase-2 binding pass (decide once, apply uniformly; recommend
+  `u32`/`i32` for small bounded counts). `equipped_names` ordering (equipment BTreeMap slot-key order
+  vs TS Map insertion order) is dormant here (corpus equips one item) and must become a first-class
+  multi-equip conformance fixture in 3b.
