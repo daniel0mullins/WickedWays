@@ -1,8 +1,8 @@
 {
   "schemaVersion": 6,
   "campaign": {
-    "id": "6a1e0c65-648f-40bb-bbad-326fb9450328",
-    "title": "Crypt",
+    "id": "87bb08b2-ab99-4bb7-863a-78c0a1b46925",
+    "title": "Crypt (conformance)",
     "maxRounds": 10,
     "round": 0,
     "started": true,
@@ -11,35 +11,27 @@
     "loseConditions": [],
     "activeCharacterIndex": 0,
     "partyIds": [
-      "99b182bd-7003-4a47-9df7-2eb1661130bf",
-      "d7751cec-c2f3-4a2b-b3ad-c0e44b184624"
+      "05396300-1bc8-457e-9f44-86d9be4036f9",
+      "5047b19e-5cd2-48ec-abe2-348726362a3c"
     ],
     "actedThisRound": [],
-    "gmId": "99b182bd-7003-4a47-9df7-2eb1661130bf",
-    "materials": {
-      "metal": 2
-    },
-    "claims": [
-      "seed"
-    ],
+    "gmId": "05396300-1bc8-457e-9f44-86d9be4036f9",
+    "materials": {},
+    "claims": [],
     "encountered": [],
-    "knownRecipes": [
-      "widget"
-    ],
+    "knownRecipes": [],
     "archetypes": [
       {
         "id": "delver",
         "name": "Delver",
-        "baseStats": {
-          "health": 2
-        }
+        "baseStats": {}
       }
     ],
     "actionSounds": {},
     "encounterTable": {
       "baseChance": 20,
       "visited": [
-        "d59023f1-4b31-413b-9328-cc38e191c23a"
+        "2c15e606-b6d4-45fb-82bb-8d9a70336b68"
       ],
       "formations": []
     },
@@ -61,17 +53,18 @@
   },
   "rooms": [
     {
-      "id": "d59023f1-4b31-413b-9328-cc38e191c23a",
+      "id": "2c15e606-b6d4-45fb-82bb-8d9a70336b68",
       "name": "Start",
       "description": "the entrance",
       "exits": {
-        "north": "02bfdd38-14dc-4daa-b555-7d8f58787610"
+        "north": "747ff7cc-e37d-4949-8569-d3f9240a186d",
+        "south": "d34582d8-951e-496c-b96c-54ddea83ed91"
       },
       "dark": false,
       "spawnModifier": 1,
       "occupantIds": [
-        "99b182bd-7003-4a47-9df7-2eb1661130bf",
-        "d7751cec-c2f3-4a2b-b3ad-c0e44b184624"
+        "05396300-1bc8-457e-9f44-86d9be4036f9",
+        "5047b19e-5cd2-48ec-abe2-348726362a3c"
       ],
       "lootIds": [],
       "materialCacheIds": [],
@@ -79,13 +72,28 @@
       "scenes": []
     },
     {
-      "id": "b4f1f7ed-58e8-49a6-b4ae-280e9b0a5821",
+      "id": "fbc003a4-1c28-43d3-baed-ee8d801d2198",
       "name": "Next",
       "description": "an adjoining chamber",
       "exits": {
-        "south": "02bfdd38-14dc-4daa-b555-7d8f58787610"
+        "south": "747ff7cc-e37d-4949-8569-d3f9240a186d"
       },
       "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "e713b063-d5ba-4cda-9043-c3e2b0a1fe83",
+      "name": "Cellar",
+      "description": "a pitch-black cellar",
+      "exits": {
+        "north": "d34582d8-951e-496c-b96c-54ddea83ed91"
+      },
+      "dark": true,
       "spawnModifier": 1,
       "occupantIds": [],
       "lootIds": [],
@@ -96,10 +104,18 @@
   ],
   "exits": [
     {
-      "id": "02bfdd38-14dc-4daa-b555-7d8f58787610",
+      "id": "747ff7cc-e37d-4949-8569-d3f9240a186d",
       "endpointIds": [
-        "d59023f1-4b31-413b-9328-cc38e191c23a",
-        "b4f1f7ed-58e8-49a6-b4ae-280e9b0a5821"
+        "2c15e606-b6d4-45fb-82bb-8d9a70336b68",
+        "fbc003a4-1c28-43d3-baed-ee8d801d2198"
+      ],
+      "state": {}
+    },
+    {
+      "id": "d34582d8-951e-496c-b96c-54ddea83ed91",
+      "endpointIds": [
+        "2c15e606-b6d4-45fb-82bb-8d9a70336b68",
+        "e713b063-d5ba-4cda-9043-c3e2b0a1fe83"
       ],
       "state": {}
     }
@@ -107,16 +123,16 @@
   "characters": [
     {
       "kind": "player",
-      "id": "99b182bd-7003-4a47-9df7-2eb1661130bf",
+      "id": "05396300-1bc8-457e-9f44-86d9be4036f9",
       "name": "Ada",
       "stats": {
-        "health": 2,
+        "health": 10,
         "sanity": 10,
         "energy": 10
       },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "d59023f1-4b31-413b-9328-cc38e191c23a",
+      "currentRoomId": "2c15e606-b6d4-45fb-82bb-8d9a70336b68",
       "inventory": {
         "slots": 5,
         "itemIds": [],
@@ -127,7 +143,7 @@
         {
           "kind": "move",
           "room": {
-            "id": "d59023f1-4b31-413b-9328-cc38e191c23a",
+            "id": "2c15e606-b6d4-45fb-82bb-8d9a70336b68",
             "name": "Start"
           },
           "round": 0
@@ -144,16 +160,16 @@
     },
     {
       "kind": "player",
-      "id": "d7751cec-c2f3-4a2b-b3ad-c0e44b184624",
+      "id": "5047b19e-5cd2-48ec-abe2-348726362a3c",
       "name": "Ben",
       "stats": {
-        "health": 2,
+        "health": 10,
         "sanity": 10,
         "energy": 10
       },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "d59023f1-4b31-413b-9328-cc38e191c23a",
+      "currentRoomId": "2c15e606-b6d4-45fb-82bb-8d9a70336b68",
       "inventory": {
         "slots": 5,
         "itemIds": [],
@@ -164,7 +180,7 @@
         {
           "kind": "move",
           "room": {
-            "id": "d59023f1-4b31-413b-9328-cc38e191c23a",
+            "id": "2c15e606-b6d4-45fb-82bb-8d9a70336b68",
             "name": "Start"
           },
           "round": 0
@@ -185,30 +201,16 @@
   "materialCaches": [],
   "codex": [
     {
-      "kind": "recipe",
-      "key": "widget",
-      "snapshot": {
-        "id": "widget",
-        "outputName": "Widget",
-        "materials": {
-          "metal": 2
-        }
-      },
-      "firstSeen": {
-        "round": 0
-      }
-    },
-    {
       "kind": "room",
-      "key": "d59023f1-4b31-413b-9328-cc38e191c23a",
+      "key": "2c15e606-b6d4-45fb-82bb-8d9a70336b68",
       "snapshot": {
         "name": "Start",
         "description": "the entrance"
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "99b182bd-7003-4a47-9df7-2eb1661130bf",
-        "roomId": "d59023f1-4b31-413b-9328-cc38e191c23a"
+        "characterId": "05396300-1bc8-457e-9f44-86d9be4036f9",
+        "roomId": "2c15e606-b6d4-45fb-82bb-8d9a70336b68"
       }
     }
   ]

@@ -1,9 +1,13 @@
 /**
  * Turn-movement golden generator — run once to write the committed fixture files.
  *
- * Boots the seed campaign (Ada + Ben, Start↔Next via North), drives a
- * deterministic command stream through the engine directly, and writes:
- *   - turn-movement.start.snapshot.json  (serialized booted-seed state)
+ * Uses a bespoke inline campaign (NOT the shared seed campaign from packages/seed)
+ * so we can add a dark "Cellar" room without disturbing the shared seed fixture.
+ * Two players: Ada (active) and Ben. Rooms: Start (lit, start), Next (lit),
+ * Cellar (dark: true, reachable from Start via South).
+ *
+ * Writes:
+ *   - turn-movement.start.snapshot.json  (serialized booted state)
  *   - turn-movement.golden.json          (commands + per-step cues/snapshots/viewThin)
  *
  * Run via:
@@ -17,7 +21,9 @@ import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { describe, it } from "vitest";
-import { buildSeedCampaign } from "../../packages/seed/src/index.ts";
+import { buildSeedRegistry } from "../../packages/seed/src/index.ts";
+import { authorTemplate } from "wickedways/lib/authoring/template-builder";
+import { startSession } from "wickedways/lib/authoring/orchestration";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { Directions } from "wickedways/lib/room";
 import type { PresentationCue } from "wickedways/lib/presentation";
@@ -49,13 +55,49 @@ function viewThin(campaign: Campaign) {
   };
 }
 
+/**
+ * Bespoke campaign for the differential conformance gate.
+ *
+ * Rooms:
+ *   - Start  (lit, start room) — exits: North→Next, South→Cellar
+ *   - Next   (lit)             — exits: South→Start
+ *   - Cellar (dark: true)      — exits: North→Start
+ *
+ * Registry: reuses buildSeedRegistry() (provides the delver archetype, widget
+ * recipe, and materials) — the archetype id "delver" must exist.
+ * Players: Ada (active), Ben.
+ * rng: () => 0.5, maxRounds: 10 (determinism + reachable timeout).
+ */
+function buildBespokeCampaign() {
+  const registry = buildSeedRegistry();
+  const template = authorTemplate("Crypt (conformance)", registry, { rng: () => 0.5, maxRounds: 10 })
+    .archetype({ id: "delver", name: "Delver", baseStats: {} })
+    .room("Start", { description: "the entrance" })
+    .room("Next", { description: "an adjoining chamber" })
+    .room("Cellar", { description: "a pitch-black cellar", dark: true })
+    .startRoom("Start")
+    .exit("Start", Directions.North, "Next")
+    .exit("Next", Directions.South, "Start")
+    .exit("Start", Directions.South, "Cellar")
+    .exit("Cellar", Directions.North, "Start");
+
+  const campaign = startSession(template, {
+    players: [
+      { name: "Ada", archetype: "delver" },
+      { name: "Ben", archetype: "delver" },
+    ],
+    gm: 0,
+  });
+  return { campaign, registry };
+}
+
 describe("generate turn-movement golden", () => {
   it("writes the booted-seed snapshot + per-step golden", () => {
     // -------------------------------------------------------------------------
-    // Boot the seed campaign. Two players: Ada (active) and Ben.
+    // Boot the bespoke campaign. Two players: Ada (active) and Ben.
     // Both start in "Start". Round 0, maxRounds 10.
     // -------------------------------------------------------------------------
-    const { campaign } = buildSeedCampaign();
+    const { campaign } = buildBespokeCampaign();
 
     // Verify boot invariants (these assertions document the oracle state).
     const bootPc = campaign.activeCharacter;
@@ -73,7 +115,7 @@ describe("generate turn-movement golden", () => {
       );
     }
 
-    // Write the booted-seed snapshot (pre-command state).
+    // Write the booted snapshot (pre-command state).
     const start = serializeCampaign(campaign);
     writeFileSync(
       join(here, "turn-movement.start.snapshot.json"),
@@ -98,11 +140,19 @@ describe("generate turn-movement golden", () => {
     // Starting at round 0, maxRounds 10: 20 nextPlayer() calls reach round 10.
     // The 20th nextPlayer() triggers endRound() → resolveOutcome → timed-out.
     //
-    // Turn 1 (Ada's turn): startTurn, go North (Start→Next), go South (Next→Start),
-    //   go East (wall → mechanic "You can't go that way."), then nextPlayer().
-    // Ben's turn: startTurn, nextPlayer() — Ben acts and ends the round → round 1.
-    // Rounds 2–10: Ada startTurn + nextPlayer(), Ben startTurn + nextPlayer() each round.
-    //   The final nextPlayer() (Ben in round 9 → wraps to round 10) is timed-out.
+    // Turn 1 (Ada's turn, round 0):
+    //   startTurn
+    //   go South  (Start→Cellar, dark room → cues: [visibility{lit:false}, action{move}])
+    //   go North  (Cellar→Start, lit room  → cues: [action{move}])
+    //   go East   (wall → "You can't go that way." mechanic cue)
+    //   nextPlayer()  → advance to Ben (still round 0)
+    //
+    // Ben's turn (round 0):
+    //   startTurn
+    //   nextPlayer()  → endRound → round 1
+    //
+    // Rounds 1–9: both Ada and Ben each do startTurn + nextPlayer() per turn.
+    // The 20th nextPlayer() (Ben in round 9 → wraps to round 10) is timed-out.
     // -------------------------------------------------------------------------
     type Command =
       | { kind: "startTurn" }
@@ -112,9 +162,9 @@ describe("generate turn-movement golden", () => {
     const commands: Command[] = [
       // Round 0, Ada's turn
       { kind: "startTurn" },
-      { kind: "go", dir: Directions.North }, // Start → Next (action cue)
-      { kind: "go", dir: Directions.South }, // Next → Start (action cue)
-      { kind: "go", dir: Directions.East }, // wall → "You can't go that way." mechanic cue
+      { kind: "go", dir: Directions.South }, // Start → Cellar (dark! → visibility{lit:false} + action)
+      { kind: "go", dir: Directions.North }, // Cellar → Start (lit → action only)
+      { kind: "go", dir: Directions.East },  // wall → "You can't go that way." mechanic cue
       { kind: "nextPlayer" }, // Ada done → advance to Ben (still round 0)
 
       // Round 0, Ben's turn
@@ -231,6 +281,23 @@ describe("generate turn-movement golden", () => {
     if (campaign.round !== campaign.maxRounds) {
       throw new Error(
         `Expected round ${campaign.maxRounds} after timeout, got ${campaign.round}`,
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // Verify dark-room coverage: at least one step must have a visibility cue
+    // with lit:false (proves the Cellar entry was captured in the golden).
+    // -------------------------------------------------------------------------
+    const hasVisibilityDark = steps.some((step) =>
+      step.cues.some(
+        (c) => c.kind === "visibility" && !c.lit,
+      ),
+    );
+    if (!hasVisibilityDark) {
+      throw new Error(
+        'Expected at least one step with a {kind:"visibility", lit:false} cue ' +
+        "(dark-room coverage). Check that the Cellar room has dark:true and " +
+        "the South exit from Start reaches it.",
       );
     }
 
