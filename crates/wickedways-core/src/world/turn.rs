@@ -18,8 +18,41 @@ impl World {
     }
 
     pub fn start_turn(&mut self, actor: &CharacterId) {
-        if let Some(c) = self.characters.get_mut(actor) { c.actions_this_round = 0; }
-        // character events + afflictions + mechanic turn-start: no-ops this sub-plan.
+        if let Some(c) = self.characters.get_mut(actor) {
+            c.actions_this_round = 0;
+            // Replicate TS `Afflictions.onTurnStart` for the turnsActive counters.
+            // For each clearable status (panic/fear/confused): if the status is active,
+            // increment turnsActive; otherwise (the character is healthy), call the
+            // equivalent of #clearEpisode which sets the counter to 0.
+            // This mirrors afflictions.ts:#clearEpisode / onTurnStart (:132-145).
+            if let Some(aff) = c.afflictions.as_object_mut() {
+                let active_map = aff
+                    .get("active")
+                    .and_then(|v| v.as_object())
+                    .cloned()
+                    .unwrap_or_default();
+                let turns = aff
+                    .entry("turnsActive")
+                    .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+                if let Some(t) = turns.as_object_mut() {
+                    for status in ["panic", "fear", "confused"] {
+                        let is_active = active_map
+                            .get(status)
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                        if is_active {
+                            // Increment (mirrors onTurnStart :139-140).
+                            let prev = t.get(status).and_then(|v| v.as_i64()).unwrap_or(0);
+                            t.insert(status.into(), serde_json::Value::Number((prev + 1).into()));
+                        } else {
+                            // Clear episode (mirrors #clearEpisode :83): set to 0.
+                            t.insert(status.into(), serde_json::Value::Number(0.into()));
+                        }
+                    }
+                }
+            }
+        }
+        // character events + mechanic turn-start: no-ops this sub-plan.
     }
 
     pub fn end_turn(&mut self, _actor: &CharacterId) {

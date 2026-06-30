@@ -30,3 +30,9 @@ function sortKeys(value: unknown, keyHint?: string): unknown {
 export function canonical(value: unknown): string {
   return JSON.stringify(sortKeys(value));
 }
+
+/** Like `canonical` but returns the sorted value rather than a JSON string.
+ *  Use with vitest's `.toEqual()` for per-field deep comparison. */
+export function canonicalize(value: unknown): unknown {
+  return sortKeys(value);
+}

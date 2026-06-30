@@ -129,6 +129,63 @@ impl World {
             });
         }
 
+        // After a successful move, replicate PlayerCharacter.move side-effects
+        // (player-character.ts :169-178): maybeSpawn (encounter table visited) and
+        // RECORD_ENCOUNTER for the room (codex).  Both apply only to player characters.
+        let is_player = self
+            .characters
+            .get(actor)
+            .map(|c| matches!(c.kind, crate::world::snapshot::CharacterKind::Player))
+            .unwrap_or(false);
+
+        if is_player {
+            // 1. maybeSpawn: mark the destination room as visited in the encounter table.
+            //    Mirrors encounter-table.ts maybeSpawn (:83-84) — first visit wins.
+            let room_str = serde_json::Value::String(room.0.clone());
+            if let Some(visited) = self.campaign.encounter_table
+                .get_mut("visited")
+                .and_then(|v| v.as_array_mut())
+            {
+                if !visited.contains(&room_str) {
+                    visited.push(room_str);
+                }
+            }
+
+            // 2. RECORD_ENCOUNTER({kind:"room", room}): add a codex entry for the room
+            //    (first-write-wins, keyed by room id). Mirrors codex.ts record() and
+            //    PlayerCharacter.move :176.
+            let room_id_str = room.0.clone();
+            let already_in_codex = if let Some(arr) = self.codex.as_array() {
+                arr.iter().any(|e| {
+                    e.get("kind").and_then(|v| v.as_str()) == Some("room")
+                        && e.get("key").and_then(|v| v.as_str()) == Some(&room_id_str)
+                })
+            } else {
+                false
+            };
+
+            if !already_in_codex {
+                let (room_name_str, room_desc) = self.rooms.get(&room)
+                    .map(|r| (r.name.clone(), r.description.clone()))
+                    .unwrap_or_default();
+                let actor_id_str = actor.0.clone();
+                let round = self.campaign.round;
+                let entry = serde_json::json!({
+                    "kind": "room",
+                    "key": room_id_str,
+                    "snapshot": { "name": room_name_str, "description": room_desc },
+                    "firstSeen": {
+                        "round": round,
+                        "characterId": actor_id_str,
+                        "roomId": room_id_str
+                    }
+                });
+                if let Some(arr) = self.codex.as_array_mut() {
+                    arr.push(entry);
+                }
+            }
+        }
+
         // record_action(move): tick budget, append history, emit action cue.
         // Budget tick mirrors TS `recordAction` (:530-532): `actions_this_round += 1`.
         // `endTurn` is not modelled in sub-plan 2 — the conformance stream stays

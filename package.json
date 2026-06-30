@@ -26,7 +26,8 @@
     "test:conformance": "pnpm run wasm:build && vitest run --config conformance/vitest.config.ts",
     "fixtures:gen": "vitest run --config conformance/fixtures/vitest.config.ts",
     "checks:phase0": "cargo build -p wickedways-core --no-default-features && cargo test --workspace && pnpm run bindings:check && pnpm run test:conformance",
-    "checks:phase1": "pnpm run checks:phase0"
+    "checks:phase1": "pnpm run checks:phase0",
+    "checks:phase2": "cargo build -p wickedways-core --no-default-features && cargo test --workspace && pnpm run bindings:check && pnpm run test:conformance"
   },
   "dependencies": {
     "uuid": "14.0.0"
