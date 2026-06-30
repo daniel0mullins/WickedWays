@@ -115,8 +115,17 @@ Over **behavior-free exits only** (no `behaviorKey`):
 
 **Action budget:** `go` and `move` are budgeted (`actions_per_round`, `actions_this_round`). Mirror
 the TS `attemptAction`/`recordAction` reserve-then-commit semantics precisely — `actions_this_round`
-is a snapshot field, so it must match the oracle byte-for-byte. The plan task transcribes the exact
-gating/recording from `character.ts`.
+is a snapshot field, so it must match the oracle byte-for-byte. The wall and (future) fail cases
+reserve but **do not** commit, so `actions_this_round` increments only on a successful move. The plan
+task transcribes the exact gating/recording tick points from `character.ts`.
+
+**History typing.** `record_action` appends an `ActionHistoryEntry` to the character's `history`,
+which is a serialized snapshot field — so sub-plan 2 **promotes `history` from inert `Value`
+(sub-plan 1) to a typed `Vec<ActionHistoryEntry>`**, a `kind`-tagged enum mirroring
+`src/lib/character/history.ts` (all eight variants — `attack|move|pickUp|drop|escape|takeDamage|
+fumble|mechanicAction` — transcribed once as pure data; only `move` is *produced* this sub-plan, the
+rest are produced in 3/4 but must round-trip from genesis, which is empty). The `move` append
+(`{ kind: "move", round, room: { id, name } }`) must match the oracle's entry byte-for-byte.
 
 ### Lighting (mirrors `src/lib/room.ts` `isLit`)
 
@@ -216,13 +225,15 @@ regenerates it — the self-referential-gate bug caught in sub-plan 1 must not r
 
 ## Carried notes (from sub-plan 1 review) to honor here
 
-- **Set-semantic fields switch from `Vec` to `BTreeSet`.** `occupant_ids` becomes set-semantic this
-  sub-plan (`Room.occupants` is the one serialized set movement mutates; `acted_this_round` is
-  runtime-only and never serialized, so it carries no comparator concern). When `occupant_ids`
-  switches, **revisit the canonical comparator's order-preserving-vs-id-sorted partition** in
-  `conformance/canonical-json.ts`: a `BTreeSet` emits sorted, so the comparator must sort the
-  `occupantIds` snapshot arrays (or the TS oracle must emit them sorted) to diff clean. Resolve this
-  explicitly in the plan.
+- **Set-semantic serialized arrays — keep `Vec`, mutate in TS-matching order.** `occupant_ids` and
+  `acted_this_round` are both serialized arrays (sub-plan 1 implemented them as `Vec<CharacterId>`,
+  empty at genesis); the design table's `BTreeSet` was aspirational and is **not** how the snapshot
+  structs are built. `party_ids` is **order-significant** (turn order) and must never be sorted.
+  Primary approach: leave all three as `Vec` and mutate `occupant_ids`/`acted_this_round` in the same
+  insertion order the TS engine uses (enter pushes; `next_player` appends the actor as it acts) — the
+  deterministic, identical command stream then yields identical order on both sides, byte-for-byte,
+  with **no comparator change**. Only if the gate reveals an order divergence, add field-specific
+  sorting for `occupantIds`/`actedThisRound` (never `partyIds`) to `conformance/canonical-json.ts`.
 - **Comparator number-normalization.** The JS comparator's `JSON.parse` normalizes `50.0`→`50`,
   which masked a byte-divergence in sub-plan 1. The new command-stream gate introduces integer
   counters (`round`, `actions_this_round`) — keep them integer-typed (`i64`/`u32`) so no fractional
