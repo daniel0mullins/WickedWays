@@ -864,7 +864,9 @@ mod tests {
     }
 
     #[test]
-    fn view_key_in_inventory_not_equippable_not_usable_not_droppable() {
+    fn view_key_in_inventory_not_equippable_not_usable_droppable_true() {
+        // TS `createKey` omits `droppable` (undefined); resolve_item sets droppable: None;
+        // item_scope_entity computes None != Some(false) = true, so droppable = Some(true).
         let w = build_world_for_view();
         let cat = build_catalog();
         let v = w.view(&cat, &BTreeSet::new()).unwrap();
@@ -874,7 +876,7 @@ mod tests {
         assert_eq!(key.kind, "item");
         assert_eq!(key.equippable, Some(false));
         assert_eq!(key.usable, Some(false));
-        assert_eq!(key.droppable, Some(false));
+        assert_eq!(key.droppable, Some(true));
     }
 
     #[test]

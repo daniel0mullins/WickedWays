@@ -72,6 +72,10 @@ pub fn resolve_item(snap: &ItemSnapshot, cat: &Catalog) -> Result<ResolvedItem, 
         ItemSnapshot::Key { id, name, key_code, .. } => {
             // Keys don't live in the catalog; all identity is in the snapshot.
             // `stat` defaults to Health — mirrors TS `createKey` which uses StatType.Health.
+            // NOTE: TS `createKey` sets `properties` with no `droppable` field (undefined),
+            // so `droppable` must be `None` here — NOT `Some(false)`.  `None != Some(false)`
+            // evaluates to `true` in the view projection, matching the TS oracle result of
+            // `undefined !== false` = true (keys ARE droppable unless explicitly marked).
             Ok(ResolvedItem {
                 id: id.0.clone(),
                 name: name.clone(),
@@ -83,7 +87,7 @@ pub fn resolve_item(snap: &ItemSnapshot, cat: &Catalog) -> Result<ResolvedItem, 
                     equipped: false,
                     destroyable: false,
                     usable: false,
-                    droppable: Some(false),
+                    droppable: None,
                 },
                 slot: None,
                 durability: None,
@@ -343,7 +347,9 @@ mod tests {
         assert!(!p.equipped);
         assert!(!p.destroyable);
         assert!(!p.usable);
-        assert_eq!(p.droppable, Some(false));
+        // Keys have no explicit droppable flag in TS (createKey omits it → undefined).
+        // None here mirrors that: None != Some(false) → true in the view projection.
+        assert_eq!(p.droppable, None);
     }
 
     #[test]
