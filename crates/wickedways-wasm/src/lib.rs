@@ -15,5 +15,6 @@ pub fn mitigator(stat: &str) -> Result<String, JsValue> {
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
     let out = serde_json::to_value(parsed.mitigator())
         .map_err(|e| JsValue::from_str(&e.to_string()))?;
-    Ok(out.as_str().unwrap().to_string())
+    let s = out.as_str().ok_or_else(|| JsValue::from_str("expected string stat"))?;
+    Ok(s.to_string())
 }
