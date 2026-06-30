@@ -143,6 +143,63 @@ pub struct CharacterSnapshot {
     pub npc_behavior_key: Option<String>,
 }
 
+pub const SCHEMA_VERSION: i64 = 6;
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MechanicSnapshot {
+    pub key: String,
+    pub state: Value,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CampaignCoreSnapshot {
+    pub id: String,
+    pub title: String,
+    pub max_rounds: i64,
+    pub round: i64,
+    pub started: bool,
+    pub outcome: String, // CampaignOutcome string enum
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub outcome_reason: Option<String>,
+    /// Inert here — { key, narration? }[]; passthrough.
+    pub win_conditions: Value,
+    pub lose_conditions: Value,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout_narration: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ended_narration: Option<Value>,
+    pub active_character_index: i64,
+    pub party_ids: Vec<CharacterId>,
+    pub acted_this_round: Vec<CharacterId>,
+    pub gm_id: Option<CharacterId>, // present but nullable -> keep null
+    pub materials: Value,           // MaterialMap, inert
+    pub claims: Vec<String>,
+    pub encountered: Vec<String>,
+    pub known_recipes: Vec<String>,
+    pub archetypes: Value, // Archetype[], inert
+    pub action_sounds: Value,
+    pub encounter_table: Value,
+    pub chat_policy: Value,
+    pub av_policy: Value,
+    pub mechanics: Vec<MechanicSnapshot>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CampaignSnapshot {
+    pub schema_version: i64,
+    pub campaign: CampaignCoreSnapshot,
+    pub rooms: Vec<RoomSnapshot>,
+    pub exits: Vec<ExitSnapshot>,
+    pub characters: Vec<CharacterSnapshot>,
+    pub items: Vec<ItemSnapshot>,
+    pub loot: Vec<LootSnapshot>,
+    pub material_caches: Vec<MaterialCacheSnapshot>,
+    pub codex: Value, // CodexEntry[], inert
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -206,5 +263,31 @@ mod tests {
             "exits":{"north":"e1"},"dark":false,"spawnModifier":0,
             "occupantIds":["c1"],"lootIds":[],"materialCacheIds":[],"lightSourceIds":[],"scenes":[]
         }"#);
+    }
+
+    #[test]
+    fn full_campaign_snapshot_roundtrips() {
+        let json = r#"{
+          "schemaVersion":6,
+          "campaign":{
+            "id":"camp1","title":"Hollow House","maxRounds":20,"round":0,"started":false,
+            "outcome":"ongoing","winConditions":[],"loseConditions":[],
+            "activeCharacterIndex":0,"partyIds":["c1"],"actedThisRound":[],"gmId":null,
+            "materials":{},"claims":[],"encountered":[],"knownRecipes":[],"archetypes":[],
+            "actionSounds":{},"encounterTable":{"baseChance":0,"visited":[],"formations":[]},
+            "chatPolicy":{},"avPolicy":{},"mechanics":[{"key":"dread","state":{}}]
+          },
+          "rooms":[{"id":"r1","name":"Foyer","description":"Dusty.","exits":{},"dark":false,
+            "spawnModifier":0,"occupantIds":["c1"],"lootIds":[],"materialCacheIds":[],
+            "lightSourceIds":[],"scenes":[]}],
+          "exits":[],
+          "characters":[{"kind":"player","id":"c1","name":"Heir",
+            "stats":{"energy":5,"sanity":7,"health":10},"actionsPerRound":2,"actionsThisRound":0,
+            "currentRoomId":"r1","inventory":{"slots":6,"itemIds":[],"keyIds":[]},"equipment":{},
+            "history":[],"archetypeImmunities":[],
+            "afflictions":{"active":{},"turnsActive":{},"shakenOff":[],"immunity":{}}}],
+          "items":[],"loot":[],"materialCaches":[],"codex":[]
+        }"#;
+        roundtrip::<CampaignSnapshot>(json);
     }
 }
