@@ -54,8 +54,12 @@ Each sub-plan is its own spec→plan→execute cycle and ends at a working, diff
 subset. Gate = feed identical `(seed, command sequence)` to the TS oracle and the Rust `World`, diff
 cues + snapshot byte-for-byte.
 
-1. **World Foundation** *(this document)* — stores, entity structs, serde save/snapshot, genesis
-   load, `ViewModel` projection. Gate: snapshot round-trip + `ViewModel` parity for static campaigns.
+1. **World Foundation** *(this document)* — stores, entity structs, serde save/snapshot, single-pass
+   genesis load. Gate: snapshot round-trip identity. The `ViewModel` projection is **not** built here:
+   it depends on the behavior/registry layer (item display data resolved by `behaviorKey`, exit
+   `canPass`) and on computed `effectiveStat`/status — none derivable from the snapshot alone — so it
+   is **grown incrementally** in sub-plans 2–4 as those inputs land (a widening parity gate, not one
+   up-front gate).
 2. **Turn loop + movement/exits/visibility** — round/turn advance, startup cues, `go`, occupancy,
    exits, locked-door visibility, lighting.
 3. **Items** — take/drop/equip/unequip/use, capability enforcement, durability + repair, keys,
@@ -76,8 +80,8 @@ conformance corpus — the precondition for Phase 2 (cutover).
 
 ## Sub-plan 1: World Foundation — detailed design
 
-This sub-plan adds **structure, load, and projection only** — no mutations, commands, turn loop, or
-cues (those begin in sub-plan 2). It is the substrate every later sub-plan mutates.
+This sub-plan adds **structure and load only** — no mutations, commands, turn loop, cues, or
+`ViewModel` projection (those begin in sub-plan 2). It is the substrate every later sub-plan mutates.
 
 ### The `World`
 
@@ -133,48 +137,45 @@ into the Rust `World`, and `to_snapshot()` must re-serialize to JSON that diffs 
 snapshot. (After Phase 2 cutover, Rust owns the format outright.) This is invariant 1 operating in
 the migration direction: the new core conforms to the one existing format until it replaces it.
 
-### `ViewModel` projection
+### `ViewModel` projection — deferred (not in this sub-plan)
 
-```rust
-impl World {
-    pub fn view(&self) -> ViewModel;
-}
-```
-
-A pure read over the active character's room: room description + lighting, exits, locked doors,
-occupants/loot/items as `ScopeEntity`s, inventory, and the status block — mirroring the TS
-`ViewModel` projection in `packages/play-runtime/src/viewmodel.ts`. `ViewModel`/`ScopeEntity` join
-the ts-rs-generated boundary types (invariant 1).
+`World::view()` is **not** built here. The TS `ViewModel` (`packages/play-runtime/src/viewmodel.ts`)
+is not a pure function of the snapshot: item `name`/`properties`/`lore`/`presentation`/`aliases` are
+resolved from the item's **behavior via `behaviorKey`** (the snapshot stores only the key); occupant
+`health` is the computed `effectiveStat(Health)` and `defeated` is the derived `status.includes(KO)`;
+and exit classification into `exits` vs `lockedDoors` calls `exit.canPass(pc)` (exit behavior). Those
+inputs are introduced in sub-plans 2 (room/exits/`canPass`), 3 (item behavior catalog), and 4
+(`effectiveStat`/status), so the projection — and its parity gate — grows there.
 
 ### Conformance gate for this sub-plan
 
-Behavior isn't exercised yet, so the gate is **load + project + round-trip parity** over real
-campaign snapshots (not generated command streams):
+Behavior isn't exercised yet, so the gate is **snapshot round-trip identity** over real campaign
+snapshots (not generated command streams):
 
 1. **Fixtures (TS side):** a small TS harness serializes representative campaigns at genesis —
-   Hollow House and the seed world — to `CampaignSnapshot` JSON, and records each one's
-   `GameSession.view()` `ViewModel` JSON.
+   Hollow House and the seed world — to `CampaignSnapshot` JSON.
 2. **Snapshot round-trip:** Rust `from_snapshot(json)` → `to_snapshot()` → JSON must equal the input
-   snapshot JSON (`Object.is`-grade structural equality after canonical ordering).
-3. **ViewModel parity:** Rust `World::from_snapshot(json).view()` must equal the recorded TS
-   `ViewModel` JSON for each fixture.
+   snapshot JSON under **canonical (key-sorted) comparison** on both sides. This alone proves the
+   full data model, the id-keyed representation, serde, and byte-compatibility with the existing TS
+   snapshot format.
 
-These fixtures extend the existing `conformance/` suite and the `checks:phase0`-style gate (renamed
-or supplemented for Phase 1).
+These fixtures extend the existing `conformance/` suite and the Phase 0 gate (supplemented for
+Phase 1).
 
 ### Testing
 
-- **Rust unit tests:** store construction, id newtype round-trips, `HeldBy`/enum serde, a hand-built
-  `World` → `view()` smoke test.
+- **Rust unit tests:** store construction, id newtype serde round-trips, `HeldBy`/tagged-enum serde,
+  a hand-built `World` → `to_snapshot()` smoke test.
 - **serde round-trip property test (`proptest`):** `to_snapshot(from_snapshot(s)) == s` for generated
   snapshots over the Rust types (structural identity).
-- **Differential conformance:** the load/round-trip/ViewModel-parity fixtures above.
-- Continue asserting exact equality (`Object.is`/canonical-JSON), per invariant 3.
+- **Differential conformance:** the load/round-trip fixtures above.
+- Continue asserting exact equality (canonical-JSON), per invariant 3.
 
 ## Non-goals (this sub-plan)
 
-- **No mutations, commands, turn loop, cues, or combat** — structure/load/projection only. The
-  `World` is read and projected, never advanced. (Sub-plan 2 onward.)
+- **No mutations, commands, turn loop, cues, combat, or `ViewModel` projection** — structure and
+  load only. The `World` is built from a snapshot and re-serialized, never advanced or projected.
+  (Sub-plan 2 onward; `ViewModel` grows across sub-plans 2–4.)
 - **No authority/delta/sync** (sub-plan 8).
 - **No new save format** — Rust conforms to the existing TS snapshot JSON during Phase 1.
 - **No WASM cutover** — `GameSession`/consumers still run the TS engine (Phase 2).
@@ -188,8 +189,9 @@ or supplemented for Phase 1).
 - **Canonical JSON for diffing.** `BTreeMap` gives deterministic Rust output, but the TS snapshot may
   emit object keys in insertion order; the conformance comparison must canonicalize (sort keys) on
   both sides before diffing. Decide the canonicalization helper in the plan.
-- **`ViewModel` projection completeness.** The TS `ViewModel` carries fields populated from runtime
-  state (e.g. `image` asset refs added recently); confirm all are derivable from the snapshot alone.
+- **`ViewModel` projection is deferred (resolved).** Confirmed *not* derivable from the snapshot
+  alone — it needs the behavior/registry layer, `effectiveStat`, and status derivation — so it moves
+  to sub-plans 2–4 (see "ViewModel projection — deferred" above). No action this sub-plan.
 - **Character-kind modeling.** Struct-with-kind-enum vs separate structs per kind — resolve against
   the actual `CharacterSnapshot` discriminator shape in the plan.
 - **`CampaignState` catalog data.** Recipes/archetypes/mechanic instances are carried as plain data
