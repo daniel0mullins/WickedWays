@@ -5,6 +5,7 @@ pub mod ids;
 pub mod snapshot;
 mod movement;
 mod turn;
+pub mod view;
 
 #[cfg(test)]
 pub mod test_support;

@@ -63,5 +63,11 @@ mod ts_export {
         ExitId::export_all().expect("export ExitId");
         // Task 4: movement + direction
         Direction::export_all().expect("export Direction");
+        // Task 5: thin ViewModel slice
+        use crate::world::view::{ThinRoom, ThinOccupant, ThinStatus, ThinViewModel};
+        ThinRoom::export_all().expect("export ThinRoom");
+        ThinOccupant::export_all().expect("export ThinOccupant");
+        ThinStatus::export_all().expect("export ThinStatus");
+        ThinViewModel::export_all().expect("export ThinViewModel");
     }
 }
