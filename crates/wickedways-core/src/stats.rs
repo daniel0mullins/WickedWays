@@ -64,11 +64,14 @@ mod ts_export {
         // Task 4: movement + direction
         Direction::export_all().expect("export Direction");
         // Task 1 (sub-plan 3a): item descriptor primitives
-        use crate::world::descriptor::{ItemType, SlotKind, ItemProperties, Presentation};
+        use crate::world::descriptor::{ItemType, SlotKind, ItemProperties, Presentation, ItemDescriptor, Catalog};
         ItemType::export_all().expect("export ItemType");
         SlotKind::export_all().expect("export SlotKind");
         ItemProperties::export_all().expect("export ItemProperties");
         Presentation::export_all().expect("export Presentation");
+        // Task 2 (sub-plan 3a): descriptor-data catalog
+        ItemDescriptor::export_all().expect("export ItemDescriptor");
+        Catalog::export_all().expect("export Catalog");
         // Task 5: thin ViewModel slice
         use crate::world::view::{ThinRoom, ThinOccupant, ThinStatus, ThinViewModel};
         ThinRoom::export_all().expect("export ThinRoom");

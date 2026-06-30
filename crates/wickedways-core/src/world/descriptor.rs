@@ -1,9 +1,11 @@
 //! Item descriptor primitives — the data half of an item's identity, sourced
 //! from the campaign's registry (the catalog), not the per-instance snapshot.
 //! JSON byte-compatible with `src/lib/inventory.ts` + `src/lib/equipment.ts`.
+use alloc::{collections::BTreeMap, string::String, vec::Vec};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "ts")]
 use ts_rs::TS;
+use crate::stats::StatType;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
@@ -55,9 +57,90 @@ pub struct Presentation {
     pub sound: Option<crate::presentation::AssetRef>,
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct ItemDescriptor {
+    pub name: String,
+    pub r#type: ItemType,
+    pub stat: StatType,
+    pub modifier: i64,
+    pub properties: ItemProperties,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub slot: Option<SlotKind>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub two_handed: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub emits_light: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub max_durability: Option<i64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub lore: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub presentation: Option<Presentation>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub key_code: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub consume_on_use: Option<bool>,
+    // inert until 3b/4/5 — typed when their subsystem lands:
+    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
+    pub recipe: serde_json::Value,
+    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
+    pub teaches: serde_json::Value,
+    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
+    pub immunities: serde_json::Value,
+    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
+    pub grants_immunity: serde_json::Value,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+pub struct Catalog {
+    pub items: BTreeMap<String, ItemDescriptor>,
+    pub aliases: BTreeMap<String, Vec<String>>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn item_descriptor_roundtrips_with_inert_value_fields() {
+        let json = serde_json::json!({
+            "name": "Iron Poker", "type": "weapon", "stat": "health", "modifier": 5,
+            "properties": { "equippable": true, "equipped": false, "destroyable": true, "usable": false },
+            "slot": "hand", "maxDurability": 8,
+            "recipe": { "metal": 1 }, "teaches": null, "immunities": [], "grantsImmunity": null
+        });
+        let d: ItemDescriptor = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(d.name, "Iron Poker");
+        assert_eq!(d.r#type, ItemType::Weapon);
+        assert_eq!(d.max_durability, Some(8));
+        assert_eq!(d.recipe, serde_json::json!({ "metal": 1 })); // inert passthrough
+        assert_eq!(serde_json::to_value(&d).unwrap(), json);     // byte round-trip
+    }
+
+    #[test]
+    fn catalog_loads_and_resolves_key() {
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": { "items/poker": { "name": "Iron Poker", "type": "weapon", "stat": "health",
+                "modifier": 5, "properties": {"equippable":true,"equipped":false,"destroyable":true,"usable":false},
+                "recipe": {}, "teaches": null, "immunities": [], "grantsImmunity": null } },
+            "aliases": { "items/poker": ["poker", "iron"] }
+        })).unwrap();
+        assert_eq!(cat.items.get("items/poker").unwrap().name, "Iron Poker");
+        assert_eq!(cat.aliases.get("items/poker").unwrap(), &vec!["poker".to_string(), "iron".to_string()]);
+    }
+
+    // existing tests below
 
     #[test]
     fn item_type_serializes_lowercase() {
