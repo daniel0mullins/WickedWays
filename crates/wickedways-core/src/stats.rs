@@ -33,6 +33,7 @@ mod ts_export {
         ActionKind, CampaignOutcome, EntityRef, MechanicCue, OutcomeNarration, PresentationCue,
         StatusField,
     };
+    use crate::world::direction::Direction;
     use crate::world::history::{ActionHistoryEntry, ItemRef, RoomRef, TargetRef};
     use crate::world::ids::{CharacterId, ExitId, ItemId, LootId, MaterialCacheId, RoomId};
     use ts_rs::TS;
@@ -60,5 +61,7 @@ mod ts_export {
         LootId::export_all().expect("export LootId");
         MaterialCacheId::export_all().expect("export MaterialCacheId");
         ExitId::export_all().expect("export ExitId");
+        // Task 4: movement + direction
+        Direction::export_all().expect("export Direction");
     }
 }
