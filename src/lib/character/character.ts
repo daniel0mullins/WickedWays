@@ -24,18 +24,11 @@ import type { CharacterSnapshot } from "../serialization/types";
 import type { HydrateContext } from "../serialization/context";
 import { ADJUST_STAT, DISPATCH_TURN, DISPATCH_ACTION, TRANSFORM_DAMAGE, INVOKE_MECHANIC_ACTION } from "../mechanics/symbols";
 import type { IPlayerCharacter } from "./player-character";
+import { computeMitigatedDamage } from "./damage";
+export { LIGHT_VULNERABILITY } from "./damage";
 
 /** Unique identifier for a {@link Character}. */
 export type CharacterId = Brand<string, "CharacterId">;
-
-// Damage mitigation: a mitigating stat of MAX_STAT fully absorbs the hit, while
-// a mitigator of 0 doubles it. Each point of the mitigating stat removes
-// MITIGATION_PER_POINT of the incoming damage multiplier.
-const MAX_STAT = 10;
-const MITIGATION_PER_POINT = 0.2;
-
-/** Damage multiplier applied to a light-averse creature while its room is lit. */
-export const LIGHT_VULNERABILITY = 1.5;
 
 /**
  * Any callable, used purely as an identity key in the action-tracking maps.
@@ -945,13 +938,13 @@ export class Character implements ICharacter {
         item.stat === attackStat,
     );
     const armorSum = armor.reduce((sum, piece) => sum + piece.modifier, 0);
-    const mitigatedStrength = Math.max(0, attackStrength - armorSum);
-
-    const mitigator = this.effectiveStat(MitigatorStatType[attackStat]);
-    const damageMultiplier = Math.max(0, MAX_STAT - mitigator) * MITIGATION_PER_POINT;
-    const lightMultiplier =
-      this.lightAverse && this.#currentRoom?.isLit ? LIGHT_VULNERABILITY : 1;
-    const finalAttackStrength = mitigatedStrength * damageMultiplier * lightMultiplier;
+    const finalAttackStrength = computeMitigatedDamage({
+      attackStrength,
+      armorSum,
+      mitigator: this.effectiveStat(MitigatorStatType[attackStat]),
+      lightAverse: this.lightAverse,
+      roomLit: this.#currentRoom?.isLit ?? false,
+    });
 
     const dealt = this.campaign[TRANSFORM_DAMAGE]({
       amount: finalAttackStrength,
