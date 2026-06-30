@@ -39,6 +39,7 @@ pub struct ItemProperties {
     pub destroyable: bool,
     pub usable: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
     pub droppable: Option<bool>,
 }
 
@@ -47,11 +48,11 @@ pub struct ItemProperties {
 #[serde(rename_all = "camelCase")]
 pub struct Presentation {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
-    pub image: Option<serde_json::Value>,
+    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
+    pub image: Option<crate::presentation::AssetRef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
-    pub sound: Option<serde_json::Value>,
+    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
+    pub sound: Option<crate::presentation::AssetRef>,
 }
 
 #[cfg(test)]
