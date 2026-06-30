@@ -2,14 +2,17 @@
 //!
 //! Mirrors `hydrateItem` (inventory.ts:723-734), `[HYDRATE]` (inventory.ts:443-448),
 //! and `isBroken` (inventory.ts:403-405).
-use alloc::{format, string::String};
+//! Also provides `World::effective_stat`, mirroring `character.ts:903-913`.
+use alloc::{collections::BTreeSet, format, string::String};
 
 use crate::{
     error::ProceduralViolation,
     stats::StatType,
     world::{
         descriptor::{Catalog, ItemProperties, ItemType, Presentation, SlotKind},
+        ids::CharacterId,
         snapshot::ItemSnapshot,
+        World,
     },
 };
 
@@ -91,6 +94,48 @@ pub fn resolve_item(snap: &ItemSnapshot, cat: &Catalog) -> Result<ResolvedItem, 
                 key_code: Some(key_code.clone()),
             })
         }
+    }
+}
+
+impl World {
+    /// Mirrors `character.ts:903-913` (`effectiveStat`):
+    /// returns `base_stat + Σ modifier` for each **equipped** accessory whose
+    /// `stat` matches the requested `stat`.
+    ///
+    /// Equipped-ness is derived from `CharacterSnapshot.equipment` (the slot map),
+    /// not from `properties.equipped` (which is not serialized).
+    ///
+    /// Item ids that appear in multiple slots (two-handed weapons) are counted
+    /// once via de-duplication — accessories are never two-handed but we mirror
+    /// the TS invariant for safety.
+    ///
+    /// Returns `0` if the character id is not found.
+    /// Silently skips equipped item ids whose `ItemSnapshot` is absent in
+    /// `World.items` or whose catalog lookup fails — the non-panicking choice.
+    pub fn effective_stat(&self, character: &CharacterId, stat: StatType, cat: &Catalog) -> i64 {
+        let Some(ch) = self.characters.get(character) else {
+            return 0;
+        };
+
+        let base = match stat {
+            StatType::Energy => ch.stats.energy,
+            StatType::Sanity => ch.stats.sanity,
+            StatType::Health => ch.stats.health,
+        };
+
+        // De-duplicate: a two-handed item occupies two slot-map entries.
+        let equipped_ids: BTreeSet<&crate::world::ids::ItemId> =
+            ch.equipment.values().collect();
+
+        let bonus: i64 = equipped_ids
+            .into_iter()
+            .filter_map(|item_id| self.items.get(item_id))
+            .filter_map(|snap| resolve_item(snap, cat).ok())
+            .filter(|resolved| resolved.r#type == ItemType::Accessory && resolved.stat == stat)
+            .map(|resolved| resolved.modifier)
+            .sum();
+
+        base + bonus
     }
 }
 
@@ -312,5 +357,261 @@ mod tests {
         let resolved = resolve_item(&snap, &Catalog::default()).unwrap();
         assert!(resolved.lore.is_none());
         assert!(resolved.presentation.is_none());
+    }
+
+    // ── effective_stat ───────────────────────────────────────────────────────
+
+    use crate::world::{
+        ids::CharacterId,
+        snapshot::{CharacterKind, CharacterSnapshot, InventorySnapshot, Stats},
+        World,
+    };
+    use serde_json::Value;
+
+    /// Build a minimal descriptor for an accessory or weapon.
+    fn accessory_descriptor(stat: StatType, modifier: i64) -> ItemDescriptor {
+        ItemDescriptor {
+            name: "Test Ring".to_string(),
+            r#type: ItemType::Accessory,
+            stat,
+            modifier,
+            properties: ItemProperties {
+                equippable: true,
+                equipped: false,
+                destroyable: false,
+                usable: false,
+                droppable: None,
+            },
+            slot: Some(SlotKind::Finger),
+            two_handed: None,
+            emits_light: None,
+            max_durability: None,
+            lore: None,
+            presentation: None,
+            key_code: None,
+            consume_on_use: None,
+            recipe: json!({}),
+            teaches: json!(null),
+            immunities: json!([]),
+            grants_immunity: json!(null),
+        }
+    }
+
+    fn weapon_descriptor(stat: StatType, modifier: i64) -> ItemDescriptor {
+        ItemDescriptor {
+            name: "Test Sword".to_string(),
+            r#type: ItemType::Weapon,
+            stat,
+            modifier,
+            properties: ItemProperties {
+                equippable: true,
+                equipped: false,
+                destroyable: true,
+                usable: false,
+                droppable: None,
+            },
+            slot: Some(SlotKind::Hand),
+            two_handed: None,
+            emits_light: None,
+            max_durability: Some(5),
+            lore: None,
+            presentation: None,
+            key_code: None,
+            consume_on_use: None,
+            recipe: json!({}),
+            teaches: json!(null),
+            immunities: json!([]),
+            grants_immunity: json!(null),
+        }
+    }
+
+    /// Build a minimal World with one player character, no items.
+    fn minimal_world(char_id: &str, stats: Stats) -> World {
+        let cid = CharacterId(char_id.to_string());
+        let snap = CharacterSnapshot {
+            kind: CharacterKind::Player,
+            id: cid.clone(),
+            name: char_id.to_string(),
+            stats,
+            actions_per_round: 2,
+            actions_this_round: 0,
+            current_room_id: None,
+            inventory: InventorySnapshot { slots: 6, item_ids: alloc::vec![], key_ids: alloc::vec![] },
+            equipment: BTreeMap::new(),
+            history: alloc::vec![],
+            archetype_immunities: Value::Array(alloc::vec![]),
+            afflictions: serde_json::json!({
+                "active": {}, "turnsActive": {}, "shakenOff": [], "immunity": {}
+            }),
+            archetype_id: None,
+            origin: None,
+            base_escape_chance: None,
+            material_drops: None,
+            light_averse: None,
+            natural_attack: None,
+            npc_behavior_key: None,
+        };
+        let mut characters = BTreeMap::new();
+        characters.insert(cid, snap);
+        World {
+            characters,
+            rooms: BTreeMap::new(),
+            items: BTreeMap::new(),
+            loot: BTreeMap::new(),
+            material_caches: BTreeMap::new(),
+            exits: BTreeMap::new(),
+            campaign: crate::world::snapshot::CampaignCoreSnapshot {
+                id: "t".to_string(),
+                title: "T".to_string(),
+                max_rounds: 10,
+                round: 0,
+                started: true,
+                outcome: crate::presentation::CampaignOutcome::Ongoing,
+                outcome_reason: None,
+                win_conditions: Value::Array(alloc::vec![]),
+                lose_conditions: Value::Array(alloc::vec![]),
+                timeout_narration: None,
+                ended_narration: None,
+                active_character_index: 0,
+                party_ids: alloc::vec![],
+                acted_this_round: alloc::vec![],
+                gm_id: None,
+                materials: serde_json::json!({}),
+                claims: alloc::vec![],
+                encountered: alloc::vec![],
+                known_recipes: alloc::vec![],
+                archetypes: Value::Array(alloc::vec![]),
+                action_sounds: serde_json::json!({}),
+                encounter_table: serde_json::json!({"baseChance":0,"visited":[],"formations":[]}),
+                chat_policy: serde_json::json!({}),
+                av_policy: serde_json::json!({}),
+                mechanics: alloc::vec![],
+            },
+            codex: Value::Array(alloc::vec![]),
+        }
+    }
+
+    #[test]
+    fn effective_stat_base_only_no_equipment() {
+        let world = minimal_world("c1", Stats { energy: 5, sanity: 7, health: 10 });
+        let cid = CharacterId("c1".to_string());
+        let cat = Catalog::default();
+        // No equipment → returns base stat
+        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 5);
+        assert_eq!(world.effective_stat(&cid, StatType::Sanity, &cat), 7);
+        assert_eq!(world.effective_stat(&cid, StatType::Health, &cat), 10);
+    }
+
+    #[test]
+    fn effective_stat_equipped_accessory_matching_stat_adds_modifier() {
+        let mut world = minimal_world("c1", Stats { energy: 5, sanity: 7, health: 10 });
+        let cid = CharacterId("c1".to_string());
+        let ring_id = item_id("ring-1");
+
+        // Catalog: ring that boosts energy by 3
+        let mut items = BTreeMap::new();
+        items.insert("items/ring".to_string(), accessory_descriptor(StatType::Energy, 3));
+        let cat = Catalog { items, aliases: BTreeMap::new() };
+
+        // Item in World.items
+        world.items.insert(
+            ring_id.clone(),
+            ItemSnapshot::Item {
+                id: ring_id.clone(),
+                behavior_key: "items/ring".to_string(),
+                durability: None,
+                modifier: 3,
+            },
+        );
+
+        // Put ring in character's equipment map
+        let ch = world.characters.get_mut(&cid).unwrap();
+        ch.equipment.insert("finger".to_string(), ring_id);
+
+        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 8); // 5 + 3
+        assert_eq!(world.effective_stat(&cid, StatType::Sanity, &cat), 7); // unaffected
+    }
+
+    #[test]
+    fn effective_stat_equipped_weapon_does_not_contribute() {
+        let mut world = minimal_world("c1", Stats { energy: 5, sanity: 7, health: 10 });
+        let cid = CharacterId("c1".to_string());
+        let sword_id = item_id("sword-1");
+
+        // Catalog: weapon targeting energy
+        let mut items = BTreeMap::new();
+        items.insert("items/sword".to_string(), weapon_descriptor(StatType::Energy, 4));
+        let cat = Catalog { items, aliases: BTreeMap::new() };
+
+        world.items.insert(
+            sword_id.clone(),
+            ItemSnapshot::Item {
+                id: sword_id.clone(),
+                behavior_key: "items/sword".to_string(),
+                durability: Some(5),
+                modifier: 4,
+            },
+        );
+        let ch = world.characters.get_mut(&cid).unwrap();
+        ch.equipment.insert("hand".to_string(), sword_id);
+
+        // Weapon is not an accessory — does NOT contribute
+        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 5);
+    }
+
+    #[test]
+    fn effective_stat_accessory_in_inventory_but_not_equipped_does_not_contribute() {
+        let mut world = minimal_world("c1", Stats { energy: 5, sanity: 7, health: 10 });
+        let cid = CharacterId("c1".to_string());
+        let ring_id = item_id("ring-2");
+
+        let mut items = BTreeMap::new();
+        items.insert("items/ring".to_string(), accessory_descriptor(StatType::Energy, 3));
+        let cat = Catalog { items, aliases: BTreeMap::new() };
+
+        // Item exists in World.items (in inventory) but NOT in equipment map
+        world.items.insert(
+            ring_id.clone(),
+            ItemSnapshot::Item {
+                id: ring_id.clone(),
+                behavior_key: "items/ring".to_string(),
+                durability: None,
+                modifier: 3,
+            },
+        );
+        let ch = world.characters.get_mut(&cid).unwrap();
+        ch.inventory.item_ids.push(ring_id); // in inventory, not equipped
+
+        // Should NOT contribute — equipment map is empty
+        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 5);
+    }
+
+    #[test]
+    fn effective_stat_accessory_with_different_stat_does_not_contribute() {
+        let mut world = minimal_world("c1", Stats { energy: 5, sanity: 7, health: 10 });
+        let cid = CharacterId("c1".to_string());
+        let ring_id = item_id("ring-3");
+
+        // Accessory boosts SANITY, not ENERGY
+        let mut items = BTreeMap::new();
+        items.insert("items/ring-san".to_string(), accessory_descriptor(StatType::Sanity, 2));
+        let cat = Catalog { items, aliases: BTreeMap::new() };
+
+        world.items.insert(
+            ring_id.clone(),
+            ItemSnapshot::Item {
+                id: ring_id.clone(),
+                behavior_key: "items/ring-san".to_string(),
+                durability: None,
+                modifier: 2,
+            },
+        );
+        let ch = world.characters.get_mut(&cid).unwrap();
+        ch.equipment.insert("finger".to_string(), ring_id);
+
+        // Equipped but different stat — does NOT add to energy
+        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 5);
+        // But does add to sanity
+        assert_eq!(world.effective_stat(&cid, StatType::Sanity, &cat), 9); // 7 + 2
     }
 }
