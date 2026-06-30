@@ -162,7 +162,7 @@ pub struct CampaignCoreSnapshot {
     pub max_rounds: i64,
     pub round: i64,
     pub started: bool,
-    pub outcome: String, // CampaignOutcome string enum
+    pub outcome: crate::presentation::CampaignOutcome,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outcome_reason: Option<String>,
     /// Inert here — { key, narration? }[]; passthrough.

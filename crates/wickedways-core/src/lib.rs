@@ -13,5 +13,11 @@ pub use stats::StatType;
 pub mod damage;
 pub use damage::{compute_mitigated_damage, DamageInput, LIGHT_VULNERABILITY, MAX_STAT, MITIGATION_PER_POINT};
 
+pub mod presentation;
+pub use presentation::{
+    ActionKind, AssetRef, CampaignOutcome, EntityRef, MechanicCue, OutcomeNarration,
+    PresentationCue, StatusField,
+};
+
 pub mod world;
 pub use world::{World, snapshot::CampaignSnapshot};

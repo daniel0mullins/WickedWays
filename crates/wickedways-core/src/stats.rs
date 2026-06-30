@@ -29,11 +29,22 @@ impl StatType {
 mod ts_export {
     use super::StatType;
     use crate::damage::DamageInput;
+    use crate::presentation::{
+        ActionKind, CampaignOutcome, EntityRef, MechanicCue, OutcomeNarration, PresentationCue,
+        StatusField,
+    };
     use ts_rs::TS;
 
     #[test]
     fn export_typescript_bindings() {
         StatType::export_all().expect("export StatType bindings");
         DamageInput::export_all().expect("export DamageInput");
+        EntityRef::export_all().expect("export EntityRef");
+        StatusField::export_all().expect("export StatusField");
+        MechanicCue::export_all().expect("export MechanicCue");
+        OutcomeNarration::export_all().expect("export OutcomeNarration");
+        CampaignOutcome::export_all().expect("export CampaignOutcome");
+        ActionKind::export_all().expect("export ActionKind");
+        PresentationCue::export_all().expect("export PresentationCue");
     }
 }
