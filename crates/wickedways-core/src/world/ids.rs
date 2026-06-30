@@ -1,6 +1,5 @@
 //! Branded entity-id newtypes. Serialize as a bare string (transparent) to
 //! preserve the existing string-id snapshot format.
-extern crate alloc;
 use alloc::string::String;
 use serde::{Deserialize, Serialize};
 
