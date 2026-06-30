@@ -19,7 +19,8 @@
     "docs:api": "typedoc",
     "docs:dev": "pnpm run docs:api && vitepress dev docs-site",
     "docs:build": "pnpm run docs:api && vitepress build docs-site",
-    "docs:preview": "vitepress preview docs-site"
+    "docs:preview": "vitepress preview docs-site",
+    "wasm:build": "wasm-pack build crates/wickedways-wasm --target nodejs --out-dir pkg"
   },
   "dependencies": {
     "uuid": "14.0.0"

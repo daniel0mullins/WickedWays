@@ -16,3 +16,8 @@ test-results/
 playwright-report/
 # Superpowers scratch (brainstorm mockups, SDD ledgers)
 .superpowers/
+
+# Rust / WASM build artifacts
+/target
+/crates/**/target
+/crates/wickedways-wasm/pkg
