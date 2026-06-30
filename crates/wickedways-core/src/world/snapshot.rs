@@ -130,9 +130,11 @@ pub struct CharacterSnapshot {
     pub archetype_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<Value>,
-    /// TS `baseEscapeChance?: number` — typed f64 because TS `number` can be fractional.
+    /// TS `baseEscapeChance?: number` — integer-valued in practice (e.g. 50); typed i64 for
+    /// byte-faithful round-trip. Serde will error loudly on a fractional value rather than
+    /// silently normalising it (unlike f64, which re-serialises 50 as 50.0).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub base_escape_chance: Option<f64>,
+    pub base_escape_chance: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub material_drops: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -254,6 +256,28 @@ mod tests {
             "afflictions":{"active":{},"turnsActive":{},"shakenOff":[],"immunity":{}},
             "origin":{"some":"data"},"lightAverse":true,"naturalAttack":{"stat":"sanity","power":2}
         }"#);
+    }
+
+    #[test]
+    fn mob_with_base_escape_chance_roundtrips_as_integer() {
+        // baseEscapeChance is integer-valued (e.g. 50 from the Hollow House genesis fixture).
+        // With Option<f64>, serde would re-serialise 50 as 50.0, causing a byte-diff.
+        // With Option<i64>, the value round-trips as exactly 50 — no JSON.parse normalisation needed.
+        let json = r#"{
+            "kind":"mob","id":"m2","name":"Shade",
+            "stats":{"energy":2,"sanity":0,"health":3},
+            "actionsPerRound":1,"actionsThisRound":0,"currentRoomId":null,
+            "inventory":{"slots":0,"itemIds":[],"keyIds":[]},
+            "equipment":{},
+            "history":[],"archetypeImmunities":[],
+            "afflictions":{"active":{},"turnsActive":{},"shakenOff":[],"immunity":{}},
+            "baseEscapeChance":50
+        }"#;
+        let snap: CharacterSnapshot = serde_json::from_str(json).unwrap();
+        assert_eq!(snap.base_escape_chance, Some(50i64));
+        let out = serde_json::to_value(&snap).unwrap();
+        let expected: Value = serde_json::from_str(json).unwrap();
+        assert_eq!(out, expected, "baseEscapeChance 50 must round-trip as integer 50, not 50.0");
     }
 
     #[test]
