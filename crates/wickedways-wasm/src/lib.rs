@@ -42,3 +42,32 @@ pub fn roundtrip_snapshot(json: &str) -> Result<String, JsValue> {
     let out = World::from_snapshot(snap).to_snapshot();
     serde_json::to_string(&out).map_err(|e| JsValue::from_str(&e.to_string()))
 }
+
+/// Replay a sequence of commands against a starting snapshot, returning a JSON
+/// array of `{ command, cues, snapshot, viewThin }` — one entry per command.
+/// Used by the conformance harness (sub-plan 2) to validate Rust command dispatch.
+#[wasm_bindgen]
+pub fn replay_commands(start_snapshot_json: &str, commands_json: &str) -> Result<String, JsValue> {
+    use wickedways_core::presentation::PresentationCue;
+    use wickedways_core::world::command::{apply_command, Command};
+    use wickedways_core::world::World;
+    let snap: CampaignSnapshot =
+        serde_json::from_str(start_snapshot_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let mut world = World::from_snapshot(snap);
+    let commands: Vec<Command> =
+        serde_json::from_str(commands_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let mut steps = Vec::new();
+    for cmd in commands {
+        let mut cues: Vec<PresentationCue> = Vec::new();
+        apply_command(&mut world, cmd.clone(), &mut cues)
+            .map_err(|e| JsValue::from_str(&e.0))?;
+        let view = world.view_thin().map_err(|e| JsValue::from_str(&e.0))?;
+        steps.push(serde_json::json!({
+            "command": cmd,
+            "cues": cues,
+            "snapshot": world.to_snapshot(),
+            "viewThin": view,
+        }));
+    }
+    serde_json::to_string(&steps).map_err(|e| JsValue::from_str(&e.to_string()))
+}
