@@ -2,10 +2,13 @@
 //! preserve the existing string-id snapshot format.
 use alloc::string::String;
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "ts")]
+use ts_rs::TS;
 
 macro_rules! branded_id {
     ($name:ident) => {
         #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+        #[cfg_attr(feature = "ts", derive(TS), ts(export))]
         #[serde(transparent)]
         pub struct $name(pub String);
     };

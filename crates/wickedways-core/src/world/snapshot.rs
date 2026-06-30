@@ -120,8 +120,7 @@ pub struct CharacterSnapshot {
     pub inventory: InventorySnapshot,
     /// EquipmentSlot -> itemId.
     pub equipment: BTreeMap<String, ItemId>,
-    /// Inert here (ActionHistoryEntry[]) — passthrough.
-    pub history: Value,
+    pub history: Vec<crate::world::history::ActionHistoryEntry>,
     /// Inert here (Status[]) — passthrough.
     pub archetype_immunities: Value,
     /// Inert here (AfflictionsSnapshot) — passthrough.

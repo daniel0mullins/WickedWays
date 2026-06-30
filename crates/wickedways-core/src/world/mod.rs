@@ -1,4 +1,5 @@
 //! The id-keyed runtime world model (Phase 1).
+pub mod history;
 pub mod ids;
 pub mod snapshot;
 

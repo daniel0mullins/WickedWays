@@ -33,6 +33,8 @@ mod ts_export {
         ActionKind, CampaignOutcome, EntityRef, MechanicCue, OutcomeNarration, PresentationCue,
         StatusField,
     };
+    use crate::world::history::{ActionHistoryEntry, ItemRef, RoomRef, TargetRef};
+    use crate::world::ids::{CharacterId, ExitId, ItemId, LootId, MaterialCacheId, RoomId};
     use ts_rs::TS;
 
     #[test]
@@ -46,5 +48,17 @@ mod ts_export {
         CampaignOutcome::export_all().expect("export CampaignOutcome");
         ActionKind::export_all().expect("export ActionKind");
         PresentationCue::export_all().expect("export PresentationCue");
+        // Task 2: typed action history
+        ActionHistoryEntry::export_all().expect("export ActionHistoryEntry");
+        RoomRef::export_all().expect("export RoomRef");
+        TargetRef::export_all().expect("export TargetRef");
+        ItemRef::export_all().expect("export ItemRef");
+        // branded ids
+        CharacterId::export_all().expect("export CharacterId");
+        RoomId::export_all().expect("export RoomId");
+        ItemId::export_all().expect("export ItemId");
+        LootId::export_all().expect("export LootId");
+        MaterialCacheId::export_all().expect("export MaterialCacheId");
+        ExitId::export_all().expect("export ExitId");
     }
 }
