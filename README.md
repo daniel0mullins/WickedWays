@@ -1579,3 +1579,13 @@ have `avPolicy.enabled: true` (the demo genesis uses `DEFAULT_AV_POLICY`).
 
 **Symmetric-NAT note.** If two tabs on the same machine don't connect (rare but
 possible in some corp VPN setups), adding a TURN entry to `iceServers` resolves it.
+
+### Rust core (Phase 0, in progress)
+
+The engine is being re-authored as a Rust core (`crates/wickedways-core`) compiled to
+WASM (`crates/wickedways-wasm`) per `docs/superpowers/specs/2026-06-30-rust-engine-core-design.md`.
+Phase 0 ports pure-leaf math (`roll`, the stat-mitigator cycle, the damage-mitigation
+formula) and proves the toolchain. Boundary types are defined in Rust and generated to
+`generated/bindings/` via ts-rs (do not hand-edit). Run the Phase 0 gate with:
+
+    pnpm run checks:phase0
