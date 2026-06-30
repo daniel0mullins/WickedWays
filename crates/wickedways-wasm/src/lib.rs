@@ -1,5 +1,7 @@
+use std::collections::BTreeSet;
 use wasm_bindgen::prelude::*;
 use wickedways_core::{compute_mitigated_damage, CampaignSnapshot, DamageInput, StatType, World};
+use wickedways_core::world::descriptor::Catalog;
 
 /// Toolchain smoke test: proves Rust→WASM→Node loading works end-to-end.
 #[wasm_bindgen]
@@ -41,6 +43,33 @@ pub fn roundtrip_snapshot(json: &str) -> Result<String, JsValue> {
         serde_json::from_str(json).map_err(|e| JsValue::from_str(&e.to_string()))?;
     let out = World::from_snapshot(snap).to_snapshot();
     serde_json::to_string(&out).map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// Build the widened ViewModel from a snapshot, a catalog, and the set of opened
+/// loot container IDs.  Mirrors the `view()` call in `play-runtime`.
+///
+/// - `snapshot_json`    — JSON-serialized `CampaignSnapshot`
+/// - `catalog_json`     — JSON object `{ items: {...}, aliases: {...} }` (the `Catalog`)
+/// - `opened_loot_json` — JSON array of loot-container ID strings currently opened
+#[wasm_bindgen]
+pub fn view_model(
+    snapshot_json: &str,
+    catalog_json: &str,
+    opened_loot_json: &str,
+) -> Result<String, JsValue> {
+    let snap: CampaignSnapshot =
+        serde_json::from_str(snapshot_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let world = World::from_snapshot(snap);
+
+    let catalog: Catalog =
+        serde_json::from_str(catalog_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let opened_vec: Vec<String> =
+        serde_json::from_str(opened_loot_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let opened_loot: BTreeSet<String> = opened_vec.into_iter().collect();
+
+    let vm = world.view(&catalog, &opened_loot).map_err(|e| JsValue::from_str(&e.0))?;
+    serde_json::to_string(&vm).map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
 /// Replay a sequence of commands against a starting snapshot, returning a JSON
