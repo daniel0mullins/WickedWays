@@ -157,13 +157,15 @@ pub struct ViewModel {
 /// the lowercased name.
 fn aliases_for(behavior_key: Option<&str>, name: &str, catalog: &Catalog) -> Vec<String> {
     let name_lc = name.to_lowercase();
-    let mut out: Vec<String> = alloc::vec![name_lc.clone()];
+    let mut out: Vec<String> = alloc::vec![name_lc];
     if let Some(key) = behavior_key {
         if let Some(table_aliases) = catalog.aliases.get(key) {
             for a in table_aliases {
-                let lc = a.to_lowercase();
-                if !out.contains(&lc) {
-                    out.push(lc);
+                // Catalog alias entries are pushed verbatim (NOT lowercased) —
+                // mirrors TS `[...new Set([name.toLowerCase(), ...fromTable])]`
+                // where fromTable is spread as-is.
+                if !out.contains(a) {
+                    out.push(a.clone());
                 }
             }
         }
@@ -362,14 +364,12 @@ impl World {
             .filter_map(|snap| item_scope_entity(snap, cat).ok())
             .collect();
 
-        // ── equipped_names (BTreeMap order, dedup preserving first) ────────────
+        // ── equipped_names (BTreeMap order, no dedup — matches TS straight map) ─
         let mut equipped_names: Vec<String> = Vec::new();
         for item_id in active_char.equipment.values() {
             if let Some(snap) = self.items.get(item_id) {
                 if let Ok(resolved) = resolve_item(snap, cat) {
-                    if !equipped_names.contains(&resolved.name) {
-                        equipped_names.push(resolved.name);
-                    }
+                    equipped_names.push(resolved.name);
                 }
             }
         }
@@ -802,18 +802,34 @@ mod tests {
     }
 
     #[test]
-    fn view_inventory_item_scope_entity_equippable_usable_lore_droppable() {
+    fn view_inventory_potion_scope_entity_equippable_usable_lore_droppable() {
         let w = build_world_for_view();
         let cat = build_catalog();
         let v = w.view(&cat, &BTreeSet::new()).unwrap();
 
-        // sword is equippable, not usable, has lore, droppable (droppable:None => true)
-        let sword = v.inventory.items.iter().find(|i| i.name == "Healing Potion").unwrap();
+        // Healing Potion: not equippable, usable, no lore, droppable:Some(false) => false
+        let potion = v.inventory.items.iter().find(|i| i.name == "Healing Potion").unwrap();
+        assert_eq!(potion.kind, "item");
+        assert_eq!(potion.equippable, Some(false));
+        assert_eq!(potion.usable, Some(true));
+        assert_eq!(potion.has_lore, Some(false));
+        assert_eq!(potion.droppable, Some(false)); // droppable: Some(false) => false
+    }
+
+    #[test]
+    fn view_loot_sword_scope_entity_equippable_has_lore_droppable_none_is_true() {
+        let w = build_world_for_view();
+        let cat = build_catalog();
+        let v = w.view(&cat, &BTreeSet::new()).unwrap();
+
+        // Iron Sword in loot chest: droppable:None => true (None != Some(false)),
+        // equippable:true, usable:false, has_lore:true (lore is Some("A trusty blade."))
+        let sword = v.loot[0].contents.iter().find(|i| i.name == "Iron Sword").unwrap();
         assert_eq!(sword.kind, "item");
-        assert_eq!(sword.equippable, Some(false));
-        assert_eq!(sword.usable, Some(true));
-        assert_eq!(sword.has_lore, Some(false));
-        assert_eq!(sword.droppable, Some(false)); // droppable: Some(false) => false
+        assert_eq!(sword.equippable, Some(true));
+        assert_eq!(sword.usable, Some(false));
+        assert_eq!(sword.has_lore, Some(true));
+        assert_eq!(sword.droppable, Some(true)); // droppable: None != Some(false) => true
     }
 
     #[test]
