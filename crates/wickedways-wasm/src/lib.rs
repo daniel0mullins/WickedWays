@@ -18,3 +18,9 @@ pub fn mitigator(stat: &str) -> Result<String, JsValue> {
     let s = out.as_str().ok_or_else(|| JsValue::from_str("expected string stat"))?;
     Ok(s.to_string())
 }
+
+/// Pure dice roll from a pre-drawn uniform `unit` in `[0, 1)`.
+#[wasm_bindgen]
+pub fn roll(sides: u32, unit: f64) -> u32 {
+    wickedways_core::roll(sides, unit)
+}

@@ -2,5 +2,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 // modules are wired up as they are implemented in Tasks 2–5
 
+pub mod dice;
+pub use dice::roll;
+
 pub mod stats;
 pub use stats::StatType;
