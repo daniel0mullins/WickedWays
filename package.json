@@ -20,7 +20,10 @@
     "docs:dev": "pnpm run docs:api && vitepress dev docs-site",
     "docs:build": "pnpm run docs:api && vitepress build docs-site",
     "docs:preview": "vitepress preview docs-site",
-    "wasm:build": "wasm-pack build crates/wickedways-wasm --target nodejs --out-dir pkg"
+    "wasm:build": "wasm-pack build crates/wickedways-wasm --target nodejs --out-dir pkg",
+    "bindings:gen": "cd crates/wickedways-core && TS_RS_EXPORT_DIR=../../generated/bindings cargo test --features ts export_typescript_bindings",
+    "bindings:check": "pnpm run bindings:gen && git diff --exit-code generated/bindings",
+    "test:conformance": "pnpm run wasm:build && vitest run --config conformance/vitest.config.ts"
   },
   "dependencies": {
     "uuid": "14.0.0"
