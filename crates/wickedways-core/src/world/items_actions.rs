@@ -172,13 +172,13 @@ impl World {
         &mut self,
         actor: &CharacterId,
         item: &ItemId,
-        cat: &Catalog,
+        _cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
         let actor_room = self.characters.get(actor).and_then(|c| c.current_room_id.clone());
         let was_lit = actor_room.as_ref().map(|r| self.is_lit(r)).unwrap_or(true);
 
-        // Validate: item held AND equipped
+        // Validate: item held AND equipped (mirrors character.ts:756-773 — no catalog lookup)
         {
             let ch = self.characters.get(actor).ok_or_else(|| {
                 ProceduralViolation("Actor not found.".into())
@@ -192,12 +192,6 @@ impl World {
                 return Err(ProceduralViolation("Item is not equipped.".into()));
             }
         }
-
-        // Validate item exists in catalog (resolve_item is used for consistency)
-        let item_snap = self.items.get(item).ok_or_else(|| {
-            ProceduralViolation("Item snapshot not found.".into())
-        })?;
-        let _ = resolve_item(item_snap, cat)?; // validates catalog entry
 
         self.unequip_inner(actor, item)?;
 
@@ -377,10 +371,12 @@ mod tests {
         world.equip(&char_id, &item, &cat, &mut cues).unwrap();
 
         let ch = &world.characters[&char_id];
-        // Item appears in equipment under a hand slot
-        let equipped_in_hand = ch.equipment.iter()
-            .any(|(k, v)| (k == "leftHand" || k == "rightHand") && v == &item);
-        assert!(equipped_in_hand, "sword should be in a hand slot; equipment = {:?}", ch.equipment);
+        // First eligible hand slot in canonical DEFAULT_EQUIPMENT_SLOTS order is leftHand
+        assert_eq!(
+            ch.equipment.get("leftHand"),
+            Some(&item),
+            "sword should land in leftHand (first eligible in canonical order); equipment = {:?}", ch.equipment
+        );
 
         // Free: no budget tick, no history
         assert_eq!(ch.actions_this_round, 0, "equip should not tick budget");
@@ -408,14 +404,17 @@ mod tests {
         world.equip(&char_id, &ring2, &cat, &mut cues).unwrap();
 
         let ch = &world.characters[&char_id];
-        let finger_slots: Vec<_> = ch.equipment.iter()
-            .filter(|(k, _)| k.contains("Finger"))
-            .collect();
-        assert_eq!(finger_slots.len(), 2, "both rings should occupy distinct finger slots");
-
-        // Verify they are different slots
-        let slot_keys: Vec<_> = finger_slots.iter().map(|(k, _)| (*k).clone()).collect();
-        assert_ne!(slot_keys[0], slot_keys[1], "rings should be in different slots");
+        // Canonical DEFAULT_EQUIPMENT_SLOTS finger order: leftIndexFinger before leftRingFinger
+        assert_eq!(
+            ch.equipment.get("leftIndexFinger"),
+            Some(&ring1),
+            "first ring should land in leftIndexFinger (canonical order); equipment = {:?}", ch.equipment
+        );
+        assert_eq!(
+            ch.equipment.get("leftRingFinger"),
+            Some(&ring2),
+            "second ring should land in leftRingFinger (canonical order); equipment = {:?}", ch.equipment
+        );
     }
 
     #[test]
@@ -499,14 +498,17 @@ mod tests {
         world.equip(&char_id, &sword3, &cat, &mut cues).unwrap();
 
         let ch = &world.characters[&char_id];
-        // sword3 should be equipped
-        let sword3_equipped = ch.equipment.values().any(|v| v == &sword3);
-        assert!(sword3_equipped, "sword3 should be equipped");
-
-        // The displaced sword should still be in inventory
-        let evicted_still_in_inventory = ch.inventory.item_ids.contains(&sword1)
-            || ch.inventory.item_ids.contains(&sword2);
-        assert!(evicted_still_in_inventory, "displaced sword should stay in inventory");
+        // sword3 displaces eligible[0] = leftHand (canonical DEFAULT_EQUIPMENT_SLOTS order)
+        assert_eq!(
+            ch.equipment.get("leftHand"),
+            Some(&sword3),
+            "sword3 should be in leftHand (eligible[0]); equipment = {:?}", ch.equipment
+        );
+        // sword1 was in leftHand (first equipped), so it is the evicted item
+        assert!(
+            ch.inventory.item_ids.contains(&sword1),
+            "sword1 (evicted from leftHand) should still be in inventory"
+        );
     }
 
     #[test]
