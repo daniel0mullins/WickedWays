@@ -39,7 +39,7 @@ pub fn apply_command(
 ) -> Result<(), ProceduralViolation> {
     let actor = world.active_character_id()?;
     match cmd {
-        Command::StartTurn => { world.start_turn(&actor); Ok(()) }
+        Command::StartTurn => { world.start_turn(&actor, cat); Ok(()) }
         Command::EndTurn => { world.end_turn(&actor); Ok(()) }
         Command::Go { dir } => world.go(&actor, dir, cues),
         Command::NextPlayer => world.next_player(cues),

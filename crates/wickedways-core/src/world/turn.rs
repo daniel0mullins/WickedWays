@@ -1,8 +1,13 @@
+use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::vec::Vec;
 use crate::error::ProceduralViolation;
 use crate::presentation::{CampaignOutcome, PresentationCue};
+use crate::stats::StatType;
+use crate::world::afflictions::{default_affliction_config, Status};
+use crate::world::descriptor::Catalog;
 use crate::world::ids::CharacterId;
+use crate::world::resolve::resolve_item;
 use crate::world::World;
 
 impl World {
@@ -17,28 +22,62 @@ impl World {
         // onRoundStart mechanic dispatch is a no-op until sub-plan 6 (empty registry).
     }
 
-    pub fn start_turn(&mut self, actor: &CharacterId) {
-        if let Some(c) = self.characters.get_mut(actor) {
-            c.actions_this_round = 0;
-            // Replicate TS `Afflictions.onTurnStart` for the turnsActive counters.
-            // For each clearable status (panic/fear/confused): if the status is active,
-            // increment turnsActive; otherwise (the character is healthy), call the
-            // equivalent of #clearEpisode which sets the counter to 0.
-            // This mirrors afflictions.ts:#clearEpisode / onTurnStart (:132-145).
-            // Full lifecycle (RNG clear rolls, applyFromStats) is implemented in Task 3.
-            use crate::world::afflictions::CLEARABLE;
-            for &status in &CLEARABLE {
-                if c.afflictions.is_active(status) {
-                    // Increment turnsActive (mirrors onTurnStart :139-140).
-                    let prev = *c.afflictions.turns_active.get(&status).unwrap_or(&0);
-                    c.afflictions.turns_active.insert(status, prev + 1);
-                } else {
-                    // Clear episode (mirrors #clearEpisode :83): set to 0.
-                    c.afflictions.turns_active.insert(status, 0);
+    /// Statuses immunized by equipped, non-broken gear or the selected archetype.
+    /// Mirrors `character.ts:#passiveImmunities` (character.ts:320-328): for each
+    /// equipped item, skip if broken or lacking immunities, else union its
+    /// `immunities`; then union the character's `archetype_immunities`.
+    ///
+    /// Equipped-ness is derived from `CharacterSnapshot.equipment` (the slot map),
+    /// matching `effective_stat`. `immunities` is an inert `Value` on the catalog
+    /// descriptor (not on `ResolvedItem`), so it is read via `cat.items`.
+    pub fn passive_immune(&self, actor: &CharacterId, cat: &Catalog) -> BTreeSet<Status> {
+        let mut set: BTreeSet<Status> = BTreeSet::new();
+        if let Some(ch) = self.characters.get(actor) {
+            // De-duplicate: a two-handed item occupies two slot-map entries.
+            let equipped_ids: BTreeSet<&crate::world::ids::ItemId> =
+                ch.equipment.values().collect();
+            for item_id in equipped_ids {
+                let Some(snap) = self.items.get(item_id) else { continue };
+                let Ok(resolved) = resolve_item(snap, cat) else { continue };
+                if resolved.is_broken {
+                    continue;
+                }
+                // Only catalog-backed items carry immunities; keys never do.
+                let crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } = snap else {
+                    continue;
+                };
+                let Some(desc) = cat.items.get(behavior_key) else { continue };
+                if let Ok(list) =
+                    serde_json::from_value::<Vec<Status>>(desc.immunities.clone())
+                {
+                    for s in list {
+                        set.insert(s);
+                    }
                 }
             }
+            for s in &ch.archetype_immunities {
+                set.insert(*s);
+            }
         }
-        // character events + mechanic turn-start: no-ops this sub-plan.
+        set
+    }
+
+    pub fn start_turn(&mut self, actor: &CharacterId, cat: &Catalog) {
+        // Effective stats + passive immunities computed first (immutable borrows).
+        let health = self.effective_stat(actor, StatType::Health, cat);
+        let sanity = self.effective_stat(actor, StatType::Sanity, cat);
+        let energy = self.effective_stat(actor, StatType::Energy, cat);
+        let passive = self.passive_immune(actor, cat);
+        let config = default_affliction_config();
+        // Disjoint mutable borrows of self.rng and self.characters (different
+        // fields of self, borrowed directly to satisfy the borrow checker).
+        let rng = &mut self.rng;
+        if let Some(c) = self.characters.get_mut(actor) {
+            c.actions_this_round = 0;
+            c.afflictions
+                .on_turn_start(health, sanity, energy, &passive, &config, rng);
+        }
+        // character events + DISPATCH_TURN("start"): no-ops until sub-plan 6.
     }
 
     pub fn end_turn(&mut self, _actor: &CharacterId) {
@@ -138,9 +177,43 @@ mod tests {
 
     #[test]
     fn start_turn_resets_action_budget() {
+        use crate::world::descriptor::Catalog;
         let mut w = world_with_party(&["pc"], 10);
         if let Some(c) = w.characters.get_mut(&cid("pc")) { c.actions_this_round = 2; }
-        w.start_turn(&cid("pc"));
+        w.start_turn(&cid("pc"), &Catalog::default());
         assert_eq!(w.characters.get(&cid("pc")).unwrap().actions_this_round, 0);
+    }
+
+    #[test]
+    fn start_turn_runs_affliction_tick_and_ticks_active_status() {
+        use crate::world::descriptor::Catalog;
+        use crate::world::afflictions::Status;
+        // Healthy party member (energy 5 / sanity 7 / health 10 from world_with_party),
+        // but drive sanity to 0 so Panic is below-threshold: seed Panic active and
+        // confirm on_turn_start ticks its counter (no manual increment in turn.rs).
+        let mut w = world_with_party(&["pc"], 10);
+        if let Some(c) = w.characters.get_mut(&cid("pc")) {
+            c.stats.sanity = 0;
+            c.afflictions.set_active(Status::Panic, true);
+        }
+        w.start_turn(&cid("pc"), &Catalog::default());
+        let ch = w.characters.get(&cid("pc")).unwrap();
+        assert_eq!(ch.afflictions.turns_active.get(&Status::Panic).copied().unwrap_or(0), 1);
+        assert!(ch.afflictions.is_active(Status::Panic)); // still below threshold
+    }
+
+    #[test]
+    fn start_turn_ko_when_health_le_zero_clears_clearables() {
+        use crate::world::descriptor::Catalog;
+        use crate::world::afflictions::Status;
+        let mut w = world_with_party(&["pc"], 10);
+        if let Some(c) = w.characters.get_mut(&cid("pc")) {
+            c.stats.health = 0;
+            c.afflictions.set_active(Status::Fear, true);
+        }
+        w.start_turn(&cid("pc"), &Catalog::default());
+        let ch = w.characters.get(&cid("pc")).unwrap();
+        assert!(ch.afflictions.is_active(Status::Ko));
+        assert!(!ch.afflictions.is_active(Status::Fear));
     }
 }
