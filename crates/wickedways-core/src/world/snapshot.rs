@@ -121,10 +121,8 @@ pub struct CharacterSnapshot {
     /// EquipmentSlot -> itemId.
     pub equipment: BTreeMap<String, ItemId>,
     pub history: Vec<crate::world::history::ActionHistoryEntry>,
-    /// Inert here (Status[]) — passthrough.
-    pub archetype_immunities: Value,
-    /// Inert here (AfflictionsSnapshot) — passthrough.
-    pub afflictions: Value,
+    pub archetype_immunities: Vec<crate::world::afflictions::Status>,
+    pub afflictions: crate::world::afflictions::Afflictions,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub archetype_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

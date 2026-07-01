@@ -25,30 +25,16 @@ impl World {
             // increment turnsActive; otherwise (the character is healthy), call the
             // equivalent of #clearEpisode which sets the counter to 0.
             // This mirrors afflictions.ts:#clearEpisode / onTurnStart (:132-145).
-            if let Some(aff) = c.afflictions.as_object_mut() {
-                let active_map = aff
-                    .get("active")
-                    .and_then(|v| v.as_object())
-                    .cloned()
-                    .unwrap_or_default();
-                let turns = aff
-                    .entry("turnsActive")
-                    .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
-                if let Some(t) = turns.as_object_mut() {
-                    for status in ["panic", "fear", "confused"] {
-                        let is_active = active_map
-                            .get(status)
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false);
-                        if is_active {
-                            // Increment (mirrors onTurnStart :139-140).
-                            let prev = t.get(status).and_then(|v| v.as_i64()).unwrap_or(0);
-                            t.insert(status.into(), serde_json::Value::Number((prev + 1).into()));
-                        } else {
-                            // Clear episode (mirrors #clearEpisode :83): set to 0.
-                            t.insert(status.into(), serde_json::Value::Number(0.into()));
-                        }
-                    }
+            // Full lifecycle (RNG clear rolls, applyFromStats) is implemented in Task 3.
+            use crate::world::afflictions::CLEARABLE;
+            for &status in &CLEARABLE {
+                if c.afflictions.is_active(status) {
+                    // Increment turnsActive (mirrors onTurnStart :139-140).
+                    let prev = *c.afflictions.turns_active.get(&status).unwrap_or(&0);
+                    c.afflictions.turns_active.insert(status, prev + 1);
+                } else {
+                    // Clear episode (mirrors #clearEpisode :83): set to 0.
+                    c.afflictions.turns_active.insert(status, 0);
                 }
             }
         }

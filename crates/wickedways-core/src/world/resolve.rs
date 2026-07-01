@@ -445,10 +445,8 @@ mod tests {
             inventory: InventorySnapshot { slots: 6, item_ids: alloc::vec![], key_ids: alloc::vec![] },
             equipment: BTreeMap::new(),
             history: alloc::vec![],
-            archetype_immunities: Value::Array(alloc::vec![]),
-            afflictions: serde_json::json!({
-                "active": {}, "turnsActive": {}, "shakenOff": [], "immunity": {}
-            }),
+            archetype_immunities: alloc::vec![],
+            afflictions: crate::world::afflictions::Afflictions::default(),
             archetype_id: None,
             origin: None,
             base_escape_chance: None,

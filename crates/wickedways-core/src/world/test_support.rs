@@ -2,6 +2,7 @@
 //! Extended by later tasks (Task 4+) as needed.
 use alloc::{collections::BTreeMap, string::String, vec, vec::Vec};
 use serde_json::Value;
+use crate::world::afflictions::Afflictions;
 
 use crate::presentation::CampaignOutcome;
 use crate::world::ids::{CharacterId, ExitId, RoomId};
@@ -36,10 +37,8 @@ pub fn world_with_party(ids: &[&str], max_rounds: i64) -> World {
                 },
                 equipment: BTreeMap::new(),
                 history: vec![],
-                archetype_immunities: Value::Array(vec![]),
-                afflictions: serde_json::json!({
-                    "active": {}, "turnsActive": {}, "shakenOff": [], "immunity": {}
-                }),
+                archetype_immunities: Vec::new(),
+                afflictions: Afflictions::default(),
                 archetype_id: None,
                 origin: None,
                 base_escape_chance: None,
@@ -121,10 +120,8 @@ pub fn world_two_rooms(next_dark: bool) -> World {
         inventory: InventorySnapshot { slots: 6, item_ids: vec![], key_ids: vec![] },
         equipment: BTreeMap::new(),
         history: vec![],
-        archetype_immunities: Value::Array(vec![]),
-        afflictions: serde_json::json!({
-            "active": {}, "turnsActive": {}, "shakenOff": [], "immunity": {}
-        }),
+        archetype_immunities: Vec::new(),
+        afflictions: Afflictions::default(),
         archetype_id: None,
         origin: None,
         base_escape_chance: None,
