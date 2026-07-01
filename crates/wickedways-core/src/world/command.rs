@@ -6,7 +6,7 @@ use crate::error::ProceduralViolation;
 use crate::presentation::PresentationCue;
 use crate::world::descriptor::Catalog;
 use crate::world::direction::Direction;
-use crate::world::ids::ItemId;
+use crate::world::ids::{CharacterId, ItemId};
 use crate::world::World;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -28,6 +28,8 @@ pub enum Command {
     Unequip { target_id: String },
     #[serde(rename_all = "camelCase")]
     Use { target_id: String },
+    #[serde(rename_all = "camelCase")]
+    Attack { target_id: String },
 }
 
 pub fn apply_command(
@@ -64,6 +66,9 @@ pub fn apply_command(
         Command::Open { target_id } => {
             opened.insert(target_id);
             Ok(())
+        }
+        Command::Attack { target_id } => {
+            world.attack(&actor, &CharacterId(target_id), cat, cues)
         }
     }
 }

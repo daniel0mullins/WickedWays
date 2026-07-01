@@ -5,13 +5,16 @@
 //! `take_damage` is internal-only (never a Command — TS only calls it from `attack`).
 //! The sole rng draw in the combat path is the 4a Confused fizzle in `gate`.
 use alloc::collections::BTreeSet;
+use alloc::format;
 use alloc::vec::Vec;
 
 use crate::damage::{compute_mitigated_damage, DamageInput};
+use crate::error::ProceduralViolation;
 use crate::presentation::{ActionKind, PresentationCue};
 use crate::stats::StatType;
 use crate::world::descriptor::{Catalog, ItemType};
-use crate::world::history::ActionHistoryEntry;
+use crate::world::gate::GateVerdict;
+use crate::world::history::{ActionHistoryEntry, TargetRef};
 use crate::world::ids::{CharacterId, ItemId};
 use crate::world::resolve::{resolve_item, ResolvedItem};
 use crate::world::snapshot::ItemSnapshot;
@@ -87,6 +90,130 @@ impl World {
             .filter_map(|id| self.items.get(id))
             .filter_map(|snap| resolve_item(snap, cat).ok())
             .collect()
+    }
+
+    /// Throw if the actor cannot see (unlit room and not `sees_in_dark`).
+    /// Mirrors `character.ts` `requireVisibleTarget` (:266-271): checks only the
+    /// actor's own visibility, not the target's location.
+    fn require_visible_target(&self, actor: &CharacterId, verb: &str) -> Result<(), ProceduralViolation> {
+        if let Some(ch) = self.characters.get(actor) {
+            if let Some(room_id) = &ch.current_room_id {
+                if !self.is_lit(room_id) && !self.sees_in_dark(actor) {
+                    return Err(ProceduralViolation(format!("Cannot {verb} in the dark")));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// The actor's unarmed strike (stat + power). Default `{ Health, 1 }`, parsed
+    /// from the `natural_attack` snapshot field. Mirrors `combatant.ts` `naturalAttack`
+    /// (:37-39) / `DEFAULT_NATURAL_ATTACK` (:13). Mob overrides land in sub-plan 4c.
+    fn natural_attack(&self, actor: &CharacterId) -> (StatType, f64) {
+        #[derive(serde::Deserialize)]
+        struct NaturalAttackJson { stat: StatType, power: f64 }
+        let default = (StatType::Health, 1.0);
+        let Some(ch) = self.characters.get(actor) else { return default };
+        let Some(v) = &ch.natural_attack else { return default };
+        match serde_json::from_value::<NaturalAttackJson>(v.clone()) {
+            Ok(na) => (na.stat, na.power),
+            Err(_) => default,
+        }
+    }
+
+    /// Attack `target`. Gated (affliction) then dark-checked; each equipped
+    /// non-broken weapon adds its modifier to its stat (else a natural strike);
+    /// damage lands per stat in [Health, Energy, Sanity] order; weapons wear one
+    /// point; a budgeted `attack` is recorded. Byte-exact port of `combatant.ts`
+    /// `attack` (:49-93).
+    pub fn attack(
+        &mut self,
+        actor: &CharacterId,
+        target: &CharacterId,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
+        // 1. Affliction gate (attack is a non-move, budgeted action).
+        match self.gate(actor, false) {
+            GateVerdict::Block(reason) => return Err(ProceduralViolation(reason)),
+            GateVerdict::Fizzle => {
+                self.record_fumble(actor, "attack", true, cues);
+                return Ok(());
+            }
+            GateVerdict::Allow => {}
+        }
+        // 2. Dark check (after the gate, matching TS order).
+        self.require_visible_target(actor, "attack")?;
+
+        // 3. Equipped, non-broken weapons.
+        let equipped = self.equipped_resolved(actor, cat);
+        let weapons: Vec<&ResolvedItem> = equipped
+            .iter()
+            .filter(|r| r.r#type == ItemType::Weapon && !r.is_broken)
+            .collect();
+
+        // 4. Attack matrix in fixed order [Health, Energy, Sanity].
+        let mut matrix: [(StatType, f64); 3] = [
+            (StatType::Health, 0.0),
+            (StatType::Energy, 0.0),
+            (StatType::Sanity, 0.0),
+        ];
+        if weapons.is_empty() {
+            let (nstat, npow) = self.natural_attack(actor);
+            for e in matrix.iter_mut() {
+                if e.0 == nstat {
+                    e.1 += npow;
+                }
+            }
+        } else {
+            for w in &weapons {
+                for e in matrix.iter_mut() {
+                    if e.0 == w.stat {
+                        e.1 += w.modifier as f64;
+                    }
+                }
+            }
+        }
+
+        // Snapshot the weapon wear list (owned) before the &mut self calls below.
+        let worn: Vec<(ItemId, i64)> = weapons
+            .iter()
+            .filter(|r| r.max_durability.is_some())
+            .map(|r| (ItemId(r.id.clone()), r.durability.unwrap_or(0) - 1))
+            .collect();
+
+        // 5. Inflict damage per stat with strength > 0, in matrix order.
+        for (stat, strength) in matrix {
+            if strength > 0.0 {
+                self.take_damage(target, strength, stat, cat, cues);
+            }
+        }
+
+        // 6. Each weapon that swung wears one point (after damage).
+        for (id, val) in worn {
+            self.set_durability(&id, val);
+        }
+
+        // 7. Record the budgeted attack on the attacker.
+        let round = self.campaign.round;
+        let target_name = self
+            .characters
+            .get(target)
+            .map(|c| c.name.clone())
+            .unwrap_or_default();
+        if let Some(c) = self.characters.get_mut(actor) {
+            c.actions_this_round += 1;
+            c.history.push(ActionHistoryEntry::Attack {
+                round,
+                target: TargetRef { id: target.clone(), name: target_name },
+            });
+        }
+        cues.push(PresentationCue::Action {
+            action: ActionKind::Attack,
+            actor: self.entity_ref_char(actor),
+            sound: None,
+        });
+        Ok(())
     }
 
     /// Apply an incoming hit to `target`'s `attack_stat` after armor + mitigation,
@@ -225,8 +352,95 @@ mod tests {
     }
 
     use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType, SlotKind};
-    use alloc::collections::BTreeMap;
+    use alloc::collections::{BTreeMap, BTreeSet};
     use serde_json::json;
+
+    fn weapon_desc(stat: StatType, modifier: i64, max_dur: Option<i64>) -> ItemDescriptor {
+        ItemDescriptor {
+            name: "Test Weapon".into(), r#type: ItemType::Weapon, stat, modifier,
+            properties: ItemProperties { equippable: true, equipped: false, destroyable: true, usable: false, droppable: None },
+            slot: Some(SlotKind::Hand), two_handed: None, emits_light: None,
+            max_durability: max_dur, lore: None, presentation: None, key_code: None,
+            consume_on_use: None, recipe: json!({}), teaches: json!(null),
+            immunities: json!([]), grants_immunity: json!(null),
+        }
+    }
+
+    /// Two-PC world (ada attacks ben). Returns (world, empty catalog). Callers
+    /// rebind `w` as mutable. require_visible_target passes here: is_lit returns
+    /// true for a missing/None current room, so no dark block.
+    fn duel_world() -> (World, Catalog) {
+        let w = world_with_party(&["ada", "ben"], 10);
+        (w, Catalog::default())
+    }
+
+    #[test]
+    fn attack_with_weapon_deals_damage_wears_weapon_and_ticks_budget() {
+        // ada equips weapon(Health, modifier=5, max_dur=3). ben health 5.
+        // ben.takeDamage(5, Health): mitigator(Sanity)=5 → dealt=5*1.0=5 → ben health 0, KO.
+        let (mut w, _c) = duel_world();
+        let mut cues = Vec::new();
+        let wpn = ItemId("axe".into());
+        let mut items = BTreeMap::new();
+        items.insert("items/axe".to_string(), weapon_desc(StatType::Health, 5, Some(3)));
+        let cat = Catalog { items, aliases: BTreeMap::new() };
+        w.items.insert(wpn.clone(), ItemSnapshot::Item {
+            id: wpn.clone(), behavior_key: "items/axe".into(), durability: Some(3), modifier: 5,
+        });
+        w.characters.get_mut(&cid("ada")).unwrap().equipment.insert("hand".into(), wpn.clone());
+
+        w.attack(&cid("ada"), &cid("ben"), &cat, &mut cues).unwrap();
+
+        assert_eq!(w.characters[&cid("ben")].stats.health, 0.0);
+        assert!(w.characters[&cid("ben")].afflictions.is_active(Status::Ko));
+        // weapon wore 3 -> 2
+        match &w.items[&wpn] {
+            ItemSnapshot::Item { durability, .. } => assert_eq!(*durability, Some(2)),
+            _ => panic!(),
+        }
+        // attacker budget ticked; target's did not.
+        assert_eq!(w.characters[&cid("ada")].actions_this_round, 1);
+        assert_eq!(w.characters[&cid("ben")].actions_this_round, 0);
+        // attacker recorded an Attack; last cue is the attack cue on the attacker.
+        assert!(matches!(w.characters[&cid("ada")].history.last().unwrap(),
+            ActionHistoryEntry::Attack { .. }));
+        match cues.last().unwrap() {
+            PresentationCue::Action { action: ActionKind::Attack, actor, sound: None } =>
+                assert_eq!(actor.id, "ada"),
+            other => panic!("expected attack cue, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn attack_unarmed_uses_natural_attack_default_1_health() {
+        // No weapon → natural attack (Health, 1). ben health 5 → dealt=1*1.0=1 → 4.0.
+        let (mut w, cat) = duel_world();
+        let mut cues = Vec::new();
+        w.attack(&cid("ada"), &cid("ben"), &cat, &mut cues).unwrap();
+        assert_eq!(w.characters[&cid("ben")].stats.health, 4.0);
+    }
+
+    #[test]
+    fn attack_ko_actor_is_blocked() {
+        let (mut w, cat) = duel_world();
+        let mut cues = Vec::new();
+        w.characters.get_mut(&cid("ada")).unwrap().afflictions.set_active(Status::Ko, true);
+        let err = w.attack(&cid("ada"), &cid("ben"), &cat, &mut cues).unwrap_err();
+        assert_eq!(err.0, "Cannot act while KO'd.");
+        // blocked before any damage.
+        assert_eq!(w.characters[&cid("ben")].stats.health, 5.0);
+    }
+
+    #[test]
+    fn attack_command_dispatches() {
+        use crate::world::command::{apply_command, Command};
+        let (mut w, cat) = duel_world();
+        let mut opened = BTreeSet::new();
+        let mut cues = Vec::new();
+        // active character is index 0 = "ada".
+        apply_command(&mut w, Command::Attack { target_id: "ben".into() }, &cat, &mut opened, &mut cues).unwrap();
+        assert_eq!(w.characters[&cid("ben")].stats.health, 4.0); // unarmed natural 1
+    }
 
     fn armor_desc(stat: StatType, modifier: i64, max_dur: Option<i64>) -> ItemDescriptor {
         ItemDescriptor {
