@@ -1,0 +1,253 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "087f46cd-c602-4ac1-8a5a-947db5caa92b",
+    "title": "Item Actions (conformance)",
+    "maxRounds": 10,
+    "round": 0,
+    "started": true,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "437f7477-ea64-4161-8c18-2fb87ab621f3",
+      "eafd84b3-00c2-4d16-8acc-65fa49907b63"
+    ],
+    "actedThisRound": [],
+    "gmId": "437f7477-ea64-4161-8c18-2fb87ab621f3",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "delver",
+        "name": "Delver",
+        "baseStats": {
+          "health": 12,
+          "sanity": 10
+        },
+        "inventorySlots": 5
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 20,
+      "visited": [
+        "55296b8d-a951-42b6-a4ea-eda54d6bcc32"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+      "name": "Hall",
+      "description": "A stone hall.",
+      "exits": {
+        "south": "701a28ef-6515-401b-a453-54051b7e828c"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "437f7477-ea64-4161-8c18-2fb87ab621f3",
+        "eafd84b3-00c2-4d16-8acc-65fa49907b63"
+      ],
+      "lootIds": [
+        "47d32072-5ca3-410d-bd67-c1c802a713aa"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "07ea1032-872e-4217-a043-038044df1936",
+      "name": "Cellar",
+      "description": "A pitch-black cellar.",
+      "exits": {
+        "north": "701a28ef-6515-401b-a453-54051b7e828c"
+      },
+      "dark": true,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [
+        "4f58714d-1f5c-4123-ab20-8f2f4259819f"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [
+    {
+      "id": "701a28ef-6515-401b-a453-54051b7e828c",
+      "endpointIds": [
+        "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+        "07ea1032-872e-4217-a043-038044df1936"
+      ],
+      "state": {}
+    }
+  ],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "437f7477-ea64-4161-8c18-2fb87ab621f3",
+      "name": "Ada",
+      "stats": {
+        "health": 12,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+      "inventory": {
+        "slots": 10,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+            "name": "Hall"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "delver"
+    },
+    {
+      "kind": "player",
+      "id": "eafd84b3-00c2-4d16-8acc-65fa49907b63",
+      "name": "Ben",
+      "stats": {
+        "health": 12,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+      "inventory": {
+        "slots": 10,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+            "name": "Hall"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "delver"
+    }
+  ],
+  "items": [
+    {
+      "kind": "item",
+      "id": "889a962f-2744-4c78-99fb-a56f4b275646",
+      "behaviorKey": "items/iron-sword",
+      "durability": 10,
+      "modifier": 5
+    },
+    {
+      "kind": "item",
+      "id": "859b7053-0d5b-41a4-a8d2-724be4735a7d",
+      "behaviorKey": "items/silver-ring",
+      "modifier": 3
+    },
+    {
+      "kind": "item",
+      "id": "e24fd9bd-9fb9-4a87-85df-8ce2636677d7",
+      "behaviorKey": "items/healing-tonic",
+      "modifier": 4
+    },
+    {
+      "kind": "item",
+      "id": "443feba7-5eb7-4fc5-9997-bce1432a96bc",
+      "behaviorKey": "items/old-coin",
+      "modifier": 0
+    },
+    {
+      "kind": "item",
+      "id": "e3c7f705-1ca4-404f-b249-14e40231bced",
+      "behaviorKey": "items/dusty-relic",
+      "modifier": 0
+    }
+  ],
+  "loot": [
+    {
+      "id": "47d32072-5ca3-410d-bd67-c1c802a713aa",
+      "description": "An old chest.",
+      "capacity": 6,
+      "contentIds": [
+        "889a962f-2744-4c78-99fb-a56f4b275646",
+        "859b7053-0d5b-41a4-a8d2-724be4735a7d",
+        "e24fd9bd-9fb9-4a87-85df-8ce2636677d7",
+        "443feba7-5eb7-4fc5-9997-bce1432a96bc"
+      ]
+    },
+    {
+      "id": "4f58714d-1f5c-4123-ab20-8f2f4259819f",
+      "description": "A cobwebbed strongbox.",
+      "capacity": 3,
+      "contentIds": [
+        "e3c7f705-1ca4-404f-b249-14e40231bced"
+      ]
+    }
+  ],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+      "snapshot": {
+        "name": "Hall",
+        "description": "A stone hall."
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "437f7477-ea64-4161-8c18-2fb87ab621f3",
+        "roomId": "55296b8d-a951-42b6-a4ea-eda54d6bcc32"
+      }
+    }
+  ]
+}
