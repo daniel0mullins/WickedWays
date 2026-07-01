@@ -4,6 +4,7 @@ pub mod command;
 pub mod descriptor;
 pub mod direction;
 pub mod equipment;
+pub mod gate;
 pub mod history;
 pub mod ids;
 pub mod resolve;

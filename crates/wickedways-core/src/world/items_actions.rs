@@ -42,8 +42,9 @@ struct GrantsImmunity {
 impl World {
     /// Take `target` from a loot container in the actor's current room into
     /// their inventory. **Budgeted** — ticks `actions_this_round` and records
-    /// a `pickUp` history entry. Returns the `LootId` of the container taken from
-    /// (so `apply_command` can auto-add it to the `opened` set).
+    /// a `pickUp` history entry. Returns `Some(LootId)` of the container taken from
+    /// (so `apply_command` can auto-add it to the `opened` set), or `None` when a
+    /// Confused fizzle short-circuits the take (fumble recorded, no loot moved).
     ///
     /// Mirrors `player-character.ts:216-235` (takeFromLootBox) and
     /// `character.ts:547-573` (addToInventory / pickUp).
@@ -59,7 +60,19 @@ impl World {
         target: &ItemId,
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
-    ) -> Result<LootId, ProceduralViolation> {
+    ) -> Result<Option<LootId>, ProceduralViolation> {
+        // 0. Affliction gate (is_move = false, budgeted). Mirrors
+        //    attemptAction(this.takeFromLootBox, false). Fizzle → record fumble
+        //    (ticks budget), no loot taken → Ok(None).
+        match self.gate(actor, false) {
+            crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
+            crate::world::gate::GateVerdict::Fizzle => {
+                self.record_fumble(actor, "takeFromLootBox", true, cues);
+                return Ok(None);
+            }
+            crate::world::gate::GateVerdict::Allow => {}
+        }
+
         // 1. Resolve the actor's current room.
         let room_id = self
             .characters
@@ -254,7 +267,7 @@ impl World {
             sound: None,
         });
 
-        Ok(loot_id)
+        Ok(Some(loot_id))
     }
 
     /// Equip `item` on `actor`. Free — no budget tick, no history.
@@ -274,6 +287,18 @@ impl World {
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
+        // 0. Affliction gate (is_move = false, NOT budgeted). Mirrors
+        //    attemptAction(this.equip, false). Fizzle records a fumble but does
+        //    NOT tick the budget (equip is a free action).
+        match self.gate(actor, false) {
+            crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
+            crate::world::gate::GateVerdict::Fizzle => {
+                self.record_fumble(actor, "equip", false, cues);
+                return Ok(());
+            }
+            crate::world::gate::GateVerdict::Allow => {}
+        }
+
         // --- snapshot the actor's current room for visibility flip ---
         let actor_room = self.characters.get(actor).and_then(|c| c.current_room_id.clone());
         let was_lit = actor_room.as_ref().map(|r| self.is_lit(r)).unwrap_or(true);
@@ -408,6 +433,18 @@ impl World {
         _cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
+        // 0. Affliction gate (is_move = false, NOT budgeted). Mirrors
+        //    attemptAction(this.unequip, false). Fizzle records a fumble but does
+        //    NOT tick the budget (unequip is a free action).
+        match self.gate(actor, false) {
+            crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
+            crate::world::gate::GateVerdict::Fizzle => {
+                self.record_fumble(actor, "unequip", false, cues);
+                return Ok(());
+            }
+            crate::world::gate::GateVerdict::Allow => {}
+        }
+
         let actor_room = self.characters.get(actor).and_then(|c| c.current_room_id.clone());
         let was_lit = actor_room.as_ref().map(|r| self.is_lit(r)).unwrap_or(true);
 
@@ -521,6 +558,17 @@ impl World {
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
+        // 0. Affliction gate (is_move = false, budgeted). Mirrors
+        //    attemptAction(this.removeFromInventory, false).
+        match self.gate(actor, false) {
+            crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
+            crate::world::gate::GateVerdict::Fizzle => {
+                self.record_fumble(actor, "removeFromInventory", true, cues);
+                return Ok(());
+            }
+            crate::world::gate::GateVerdict::Allow => {}
+        }
+
         // 1. Must be held in item_ids.
         {
             let ch = self
@@ -596,7 +644,20 @@ impl World {
             ));
         }
 
-        // TODO(sub-plan 4): reject use while KO'd.
+        // 2b. Reject use while KO'd. `use` is the always-allowed escape hatch under
+        //     Panic/Fear/Confused, but a KO'd character can do nothing at all.
+        //     Mirrors inventory.ts:617-618 (after usable check, before grantsImmunity).
+        //     This is the ONLY affliction guard on `use`; the consume itself stays
+        //     gate-suppressed (no Panic/Fear/Confused fizzle gating on use).
+        {
+            let ch = self
+                .characters
+                .get(actor)
+                .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
+            if ch.afflictions.is_active(Status::Ko) {
+                return Err(ProceduralViolation("Cannot use items while KO'd.".into()));
+            }
+        }
 
         // 3. Grant immunity if the descriptor carries grantsImmunity (before consuming).
         // `grants_immunity` is json!(null) when absent — from_value fails cleanly → skip.
@@ -1097,7 +1158,7 @@ mod tests {
         let returned_loot_id = world.take(&pc_id, &item_id, &cat, &mut cues).unwrap();
 
         // Returns the correct loot container id
-        assert_eq!(returned_loot_id, lid("loot-1"));
+        assert_eq!(returned_loot_id, Some(lid("loot-1")));
 
         // Item is now in inventory
         let ch = &world.characters[&pc_id];
@@ -1694,5 +1755,115 @@ mod tests {
             "error should mention 'not holding', got: {}",
             err.0
         );
+    }
+
+    // ── affliction gating (block/fizzle) integration ────────────────────────────
+
+    /// Force a Confused fizzle by advancing the actor's rng until the next draw
+    /// yields `roll(100) <= confused_fail_chance`. Returns with the world's rng
+    /// primed so the very next `gate` draw fizzles.
+    fn prime_confused_fizzle(world: &mut World, actor: &CharacterId) {
+        use crate::world::afflictions::default_affliction_config;
+        world.characters.get_mut(actor).unwrap().afflictions.set_active(Status::Confused, true);
+        let fail = default_affliction_config().confused_fail_chance;
+        loop {
+            let mut peek = world.rng.clone();
+            let r = (crate::dice::roll(100, peek.next_f64()) as i64) <= fail;
+            if r { break; }
+            world.rng.next_f64(); // burn a non-fizzling draw
+        }
+    }
+
+    #[test]
+    fn panicked_take_is_blocked_with_err() {
+        let cat = simple_cat_with("items/coin", consumable_desc());
+        let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/6);
+        world.characters.get_mut(&pc_id).unwrap().afflictions.set_active(Status::Panic, true);
+        let item_id = iid("item-1");
+        let mut cues = Vec::new();
+
+        let result = world.take(&pc_id, &item_id, &cat, &mut cues);
+        assert!(result.is_err(), "panicked take (non-move) should be blocked");
+        assert_eq!(result.unwrap_err().0, "Panicked: can only move.");
+
+        // Block leaves NO side-effects: item not moved, no budget tick, no history, no cue.
+        let ch = &world.characters[&pc_id];
+        assert!(!ch.inventory.item_ids.contains(&item_id), "item must not move on block");
+        assert_eq!(ch.actions_this_round, 0, "block does not tick budget");
+        assert!(ch.history.is_empty(), "block records no history");
+        assert!(cues.is_empty(), "block emits no cue");
+        assert!(world.loot[&lid("loot-1")].content_ids.contains(&item_id), "item stays in loot");
+    }
+
+    #[test]
+    fn confused_take_fizzles_records_fumble_ticks_budget_item_not_moved() {
+        let cat = simple_cat_with("items/coin", consumable_desc());
+        let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/6);
+        prime_confused_fizzle(&mut world, &pc_id);
+        let item_id = iid("item-1");
+        let mut cues = Vec::new();
+
+        let result = world.take(&pc_id, &item_id, &cat, &mut cues).unwrap();
+        assert_eq!(result, None, "fizzled take returns None (no loot taken)");
+
+        let ch = &world.characters[&pc_id];
+        // Fumble recorded, budget ticked (take is budgeted).
+        assert_eq!(ch.actions_this_round, 1, "fizzled take ticks budget");
+        assert_eq!(ch.history.len(), 1);
+        match &ch.history[0] {
+            ActionHistoryEntry::Fumble { round: 0, action } => assert_eq!(action, "takeFromLootBox"),
+            other => panic!("expected Fumble history, got {:?}", other),
+        }
+        // Fumble cue emitted.
+        assert_eq!(cues.len(), 1);
+        assert!(matches!(&cues[0], PresentationCue::Action { action: ActionKind::Fumble, .. }));
+        // Item NOT moved.
+        assert!(!ch.inventory.item_ids.contains(&item_id), "item must not move on fizzle");
+        assert!(world.loot[&lid("loot-1")].content_ids.contains(&item_id), "item stays in loot");
+    }
+
+    #[test]
+    fn confused_equip_fizzles_records_fumble_but_does_not_tick_budget() {
+        let cat = simple_cat_with("items/sword", weapon_desc(SlotKind::Hand, None));
+        let (mut world, char_id) = world_with_items(&[("sword-1", "items/sword")], &cat);
+        prime_confused_fizzle(&mut world, &char_id);
+        let item = iid("sword-1");
+        let mut cues = Vec::new();
+
+        world.equip(&char_id, &item, &cat, &mut cues).unwrap();
+
+        let ch = &world.characters[&char_id];
+        // Fumble recorded but budget NOT ticked (equip is free).
+        assert_eq!(ch.actions_this_round, 0, "fizzled equip does NOT tick budget (free action)");
+        assert_eq!(ch.history.len(), 1);
+        match &ch.history[0] {
+            ActionHistoryEntry::Fumble { action, .. } => assert_eq!(action, "equip"),
+            other => panic!("expected Fumble history, got {:?}", other),
+        }
+        assert_eq!(cues.len(), 1);
+        assert!(matches!(&cues[0], PresentationCue::Action { action: ActionKind::Fumble, .. }));
+        // Item NOT equipped.
+        assert!(!ch.equipment.values().any(|v| v == &item), "item must not equip on fizzle");
+    }
+
+    #[test]
+    fn ko_use_item_returns_err_and_does_not_consume_or_grant() {
+        use crate::world::afflictions::Status;
+        let cat = simple_cat_with("items/tonic", usable_immunity_desc());
+        let (mut world, pc_id) = world_with_items(&[("tonic-1", "items/tonic")], &cat);
+        world.characters.get_mut(&pc_id).unwrap().afflictions.set_active(Status::Ko, true);
+        let item_id = iid("tonic-1");
+        let mut cues = Vec::new();
+
+        let result = world.use_item(&pc_id, &item_id, &cat, &mut cues);
+        assert!(result.is_err(), "KO'd use should return Err");
+        assert_eq!(result.unwrap_err().0, "Cannot use items while KO'd.");
+
+        let ch = &world.characters[&pc_id];
+        // Item NOT consumed, immunity NOT granted, no budget tick / history / cue.
+        assert!(ch.inventory.item_ids.contains(&item_id), "item must not be consumed while KO'd");
+        assert_eq!(ch.afflictions.immunity_of(Status::Panic), 0, "no immunity granted while KO'd");
+        assert_eq!(ch.actions_this_round, 0, "no budget tick");
+        assert!(cues.is_empty(), "no cue emitted");
     }
 }

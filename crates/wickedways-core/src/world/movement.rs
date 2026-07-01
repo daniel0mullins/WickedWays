@@ -44,6 +44,16 @@ impl World {
         dir: Direction,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
+        // Affliction gate (is_move = true, budgeted). Mirrors attemptAction(this.go, true).
+        match self.gate(actor, true) {
+            crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
+            crate::world::gate::GateVerdict::Fizzle => {
+                self.record_fumble(actor, "go", true, cues);
+                return Ok(());
+            }
+            crate::world::gate::GateVerdict::Allow => {}
+        }
+
         let here = self
             .characters
             .get(actor)

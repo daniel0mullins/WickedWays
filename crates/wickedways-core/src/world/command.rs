@@ -6,7 +6,7 @@ use crate::error::ProceduralViolation;
 use crate::presentation::PresentationCue;
 use crate::world::descriptor::Catalog;
 use crate::world::direction::Direction;
-use crate::world::ids::{ItemId, LootId};
+use crate::world::ids::ItemId;
 use crate::world::World;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -44,8 +44,9 @@ pub fn apply_command(
         Command::Go { dir } => world.go(&actor, dir, cues),
         Command::NextPlayer => world.next_player(cues),
         Command::Take { target_id } => {
-            let loot_id: LootId = world.take(&actor, &ItemId(target_id), cat, cues)?;
-            opened.insert(loot_id.0);
+            if let Some(loot_id) = world.take(&actor, &ItemId(target_id), cat, cues)? {
+                opened.insert(loot_id.0);
+            }
             Ok(())
         }
         Command::Drop { target_id } => {
