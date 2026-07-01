@@ -8,7 +8,7 @@ import { canonicalize } from "./canonical-json.ts";
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const wasm = require("../crates/wickedways-wasm/pkg/wickedways_wasm.js") as {
-  replay_commands: (start_snapshot_json: string, commands_json: string, catalog_json: string) => string;
+  replay_commands: (start_snapshot_json: string, commands_json: string, catalog_json: string, seed: number) => string;
 };
 
 const start = readFileSync(
@@ -34,7 +34,7 @@ const golden = JSON.parse(
 describe("items-actions differential conformance", () => {
   it("Rust replay matches the TS oracle per step (cues + snapshot + view)", () => {
     const out = JSON.parse(
-      wasm.replay_commands(start, JSON.stringify(golden.commands), catalogJson),
+      wasm.replay_commands(start, JSON.stringify(golden.commands), catalogJson, 0),
     ) as Array<{
       command: unknown;
       cues: unknown;

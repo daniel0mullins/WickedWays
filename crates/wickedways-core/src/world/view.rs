@@ -621,6 +621,7 @@ mod tests {
             exits: BTreeMap::new(),
             campaign,
             codex: Value::Array(alloc::vec![]),
+            rng: crate::world::rng::Rng::seeded(0),
         }
     }
 

@@ -91,6 +91,7 @@ pub fn world_with_party(ids: &[&str], max_rounds: i64) -> World {
         exits: BTreeMap::new(),
         campaign,
         codex: Value::Array(vec![]),
+        rng: crate::world::rng::Rng::seeded(0),
     }
 }
 
@@ -225,6 +226,7 @@ pub fn world_two_rooms(next_dark: bool) -> World {
         exits,
         campaign,
         codex: Value::Array(vec![]),
+        rng: crate::world::rng::Rng::seeded(0),
     }
 }
 

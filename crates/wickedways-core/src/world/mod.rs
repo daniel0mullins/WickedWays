@@ -6,6 +6,7 @@ pub mod equipment;
 pub mod history;
 pub mod ids;
 pub mod resolve;
+pub mod rng;
 pub mod snapshot;
 mod items_actions;
 mod movement;
@@ -20,6 +21,7 @@ pub use ids::{CharacterId, ExitId, ItemId, LootId, MaterialCacheId, RoomId};
 pub use snapshot::{ExitSnapshot, ItemSnapshot, LootSnapshot, MaterialCacheSnapshot, SceneSnapshot};
 
 use alloc::collections::BTreeMap;
+use rng::Rng;
 use serde_json::Value;
 use snapshot::{
     CampaignCoreSnapshot, CampaignSnapshot, CharacterSnapshot, RoomSnapshot, SCHEMA_VERSION,
@@ -35,6 +37,7 @@ pub struct World {
     pub exits: BTreeMap<ExitId, ExitSnapshot>,
     pub campaign: CampaignCoreSnapshot,
     pub codex: Value,
+    pub rng: Rng,
 }
 
 fn item_id(i: &ItemSnapshot) -> ItemId {
@@ -60,7 +63,13 @@ impl World {
             exits: s.exits.into_iter().map(|e| (e.id.clone(), e)).collect(),
             campaign: s.campaign,
             codex: s.codex,
+            rng: Rng::seeded(0),
         }
+    }
+
+    /// Re-seed the transient rng (conformance harness only; called after `from_snapshot`).
+    pub fn seed_rng(&mut self, seed: u32) {
+        self.rng = Rng::seeded(seed);
     }
 
     /// Emit each store as an array in id-sorted order (BTreeMap iterates sorted).

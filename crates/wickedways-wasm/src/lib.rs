@@ -81,6 +81,7 @@ pub fn replay_commands(
     start_snapshot_json: &str,
     commands_json: &str,
     catalog_json: &str,
+    seed: u32,
 ) -> Result<String, JsValue> {
     use wickedways_core::presentation::PresentationCue;
     use wickedways_core::world::command::{apply_command, Command};
@@ -88,6 +89,7 @@ pub fn replay_commands(
     let snap: CampaignSnapshot =
         serde_json::from_str(start_snapshot_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
     let mut world = World::from_snapshot(snap);
+    world.seed_rng(seed);
     let commands: Vec<Command> =
         serde_json::from_str(commands_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
     let cat: Catalog =
