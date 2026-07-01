@@ -63,6 +63,15 @@ impl World {
     }
 
     pub fn start_turn(&mut self, actor: &CharacterId, cat: &Catalog) {
+        // Mirror TS `#floorAndSnapshot` (character.ts:308-317): persistently clamp
+        // base stats to max(0, x) BEFORE computing effective stats.  This ensures
+        // a negative base (e.g. from future damage) never bleeds into effective
+        // values or affliction thresholds.
+        if let Some(c) = self.characters.get_mut(actor) {
+            c.stats.health = c.stats.health.max(0);
+            c.stats.sanity = c.stats.sanity.max(0);
+            c.stats.energy = c.stats.energy.max(0);
+        }
         // Effective stats + passive immunities computed first (immutable borrows).
         let health = self.effective_stat(actor, StatType::Health, cat);
         let sanity = self.effective_stat(actor, StatType::Sanity, cat);
@@ -215,5 +224,98 @@ mod tests {
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert!(ch.afflictions.is_active(Status::Ko));
         assert!(!ch.afflictions.is_active(Status::Fear));
+    }
+
+    // Regression: mirrors #floorAndSnapshot (character.ts:308-317).
+    // Base stats must be persistently clamped to max(0, x) BEFORE computing
+    // effective stats — so a negative base doesn't bleed into affliction thresholds.
+    #[test]
+    fn start_turn_floors_negative_base_stats_persistently() {
+        use crate::world::descriptor::{
+            Catalog, ItemDescriptor, ItemProperties, ItemType, SlotKind,
+        };
+        use crate::world::afflictions::Status;
+        use crate::world::ids::ItemId;
+        use crate::world::snapshot::ItemSnapshot;
+        use crate::stats::StatType;
+        use alloc::collections::BTreeMap;
+        use serde_json::json;
+
+        // ── case 1: plain negative base sanity, no bonus ──────────────────────
+        // base sanity = -3  → after floor: 0  → no Fear (0 is not > 0 && < 5)
+        let mut w1 = world_with_party(&["pc"], 10);
+        if let Some(c) = w1.characters.get_mut(&cid("pc")) {
+            c.stats.sanity = -3;
+        }
+        w1.start_turn(&cid("pc"), &Catalog::default());
+        let ch1 = w1.characters.get(&cid("pc")).unwrap();
+        // (a) base floored to 0 in the snapshot
+        assert_eq!(ch1.stats.sanity, 0,
+            "base sanity should be floored to 0 (was -3)");
+        // (b) no Fear — effective sanity is 0, not in (0, 5)
+        assert!(!ch1.afflictions.is_active(Status::Fear),
+            "sanity==0 should NOT trigger Fear (threshold is 0 < sanity < 5)");
+
+        // ── case 2: negative base sanity + accessory +5 ───────────────────────
+        // TS oracle: max(0,-3)=0, effective=0+5=5 → NOT Fear (5 < 5 is false)
+        // Rust bug:  -3+5=2 → Fear (2 > 0 && 2 < 5 is true)  ← this must not happen
+        let mut w2 = world_with_party(&["pc"], 10);
+        let ring_id = ItemId("ring-san".into());
+
+        // Catalog: accessory +5 sanity
+        let mut items = BTreeMap::new();
+        items.insert(
+            "items/ring-san".to_string(),
+            ItemDescriptor {
+                name: "Sanity Ring".to_string(),
+                r#type: ItemType::Accessory,
+                stat: StatType::Sanity,
+                modifier: 5,
+                properties: ItemProperties {
+                    equippable: true,
+                    equipped: false,
+                    destroyable: false,
+                    usable: false,
+                    droppable: None,
+                },
+                slot: Some(SlotKind::Finger),
+                two_handed: None,
+                emits_light: None,
+                max_durability: None,
+                lore: None,
+                presentation: None,
+                key_code: None,
+                consume_on_use: None,
+                recipe: json!({}),
+                teaches: json!(null),
+                immunities: json!([]),
+                grants_immunity: json!(null),
+            },
+        );
+        let cat2 = Catalog { items, aliases: BTreeMap::new() };
+
+        // Insert item into world and equip it
+        w2.items.insert(
+            ring_id.clone(),
+            ItemSnapshot::Item {
+                id: ring_id.clone(),
+                behavior_key: "items/ring-san".to_string(),
+                durability: None,
+                modifier: 5,
+            },
+        );
+        if let Some(c) = w2.characters.get_mut(&cid("pc")) {
+            c.stats.sanity = -3;
+            c.equipment.insert("finger".to_string(), ring_id);
+        }
+
+        w2.start_turn(&cid("pc"), &cat2);
+        let ch2 = w2.characters.get(&cid("pc")).unwrap();
+        // (a) base floored to 0 in the snapshot
+        assert_eq!(ch2.stats.sanity, 0,
+            "base sanity should be floored to 0 before accessory bonus");
+        // (b) effective sanity = floor(base) + bonus = 0 + 5 = 5 → NO Fear
+        assert!(!ch2.afflictions.is_active(Status::Fear),
+            "effective sanity 5 (=0+5) should NOT trigger Fear (5<5 is false)");
     }
 }
