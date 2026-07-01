@@ -175,7 +175,7 @@ impl World {
     ///   `contents` resolved to `ScopeEntity`.
     /// - `inventory`: player's `item_ids` + `key_ids` as `ScopeEntity`;
     ///   `equipped_names` = names of items in the equipment slot map (in
-    ///   BTreeMap iteration order, deduped preserving first occurrence);
+    ///   BTreeMap iteration order, no dedup — matches the TS straight `.map`);
     ///   `slots` from `inventory.slots`.
     /// - `scope` (order matches TS exactly):
     ///   occupants ++ loot-contents ++ inventory items ++ keys ++ loot containers.
