@@ -153,22 +153,35 @@ Rewrite `World::start_turn` to mirror `Afflictions.onTurnStart` **exactly**, in 
    draw during an action, only when Confused is active.
 5. else `allow`.
 
-**Block vs fizzle observable:** both mean the action does not occur. The plan MUST pin, against the
-TS `attemptAction` return path (`character.ts`), the exact observable for each: whether budget
-(`actions_this_round`) ticks, whether a cue is emitted, and whether it is a silent no-op vs a
-`ProceduralViolation`. The differential gate is the authority; the fixture exercises both.
+**Block vs fizzle observable** (pinned against `attemptAction`, `character.ts:421-434`):
+- **block** → `throw ProceduralViolation(reason)`. No history, no cue, no budget tick.
+- **fizzle** → `recordAction(callingFn, { kind: "fumble", action: <method-name> })` then the action
+  body is skipped. `recordAction` pushes a `{ kind:"fumble", action, round }` history entry and
+  emits an `{ kind:"action", action:"fumble", actor, sound }` cue **unconditionally**, and ticks
+  the budget **only if the method is budgeted** (`isActionMap`). So a fizzled `Take`/`Drop`/`Go`
+  ticks the budget; a fizzled `Equip`/`Unequip` records the fumble history+cue but does **not** tick
+  the budget. The differential gate is the authority; the fixture exercises both.
 
-**Command gate policy (preserves each method's budgeted/free identity):**
+Gating is **separate from budgeting**: a method can be gated-but-budget-free. Gating identity =
+"calls `attemptAction`"; budget identity = "registered in `isActionMap`".
 
-| Command | Gates? | `is_move` | Notes |
-|---|---|---|---|
-| `Go` | yes | `true` | Fear blocks; Panic allows |
-| `Take` | yes | `false` | Panic blocks; visibility gate too |
-| `Drop` | yes | `false` | Panic blocks |
-| `Use` | **no** | — | always-allowed escape hatch (immunity potion usable under any affliction) |
-| `Equip`/`Unequip`/`Open` | no | — | free (no budget, no gate) — unchanged from 3b |
-| `StartTurn`/`EndTurn`/`NextPlayer` | no | — | lifecycle, not actions |
-| `Attack` | (4b) | `false` | out of scope here |
+**Command gate policy (from the `attemptAction(this.X, isMove)` call sites in `character.ts` /
+`player-character.ts`):**
+
+| Command | Gates? | Budgeted? | `is_move` | Notes |
+|---|---|---|---|---|
+| `Go` | **yes** | yes | `true` | Fear blocks; Panic allows; fizzle ticks budget (`go`+`move` in `isActionMap`) |
+| `Take` | **yes** | yes | `false` | Panic blocks; visibility gate too; fizzle ticks budget |
+| `Drop` | **yes** | yes | `false` | Panic blocks; fizzle ticks budget |
+| `Equip` | **yes** | no | `false` | gated (`attemptAction(this.equip,false)`) but budget-free; fizzle records fumble, no budget tick |
+| `Unequip` | **yes** | no | `false` | gated but budget-free; fizzle records fumble, no budget tick |
+| `Use` | **no** | (budgeted via consume) | — | never gated — the consume path is `withGateSuppressed`; immunity potion usable under any affliction |
+| `Open` | no | no | — | `openLootBox` does not call `attemptAction` — ungated + free |
+| `StartTurn`/`EndTurn`/`NextPlayer` | no | — | — | lifecycle, not actions |
+| `Attack` | (4b) | yes | `false` | out of scope here |
+
+`withGateSuppressed` (`#suppressGate`) makes `attemptAction` return `true` immediately (no gate, no
+roll) — used by the `use`-path consume, and by 4c's encounter-spawn moves.
 
 ## seesInDark seam
 
@@ -185,10 +198,29 @@ is unchanged (room `dark` + placed light sources only).
 whether the PC's top-level `status` object also surfaces an active-status list; if so the view
 widens to match, otherwise per-entity `defeated` is the only view change.
 
+## Seeded RNG foundation (new — 4a introduces the first roll-consuming world mutation)
+
+No world mutation has rolled dice before 4a; the `World` and snapshot carry no rng, and prior
+fixtures used a constant `rng: () => 0.5` (never drawn in replay). 4a adds a **transient, seeded
+PRNG** to the `World`:
+
+- Port **mulberry32** (bit-exact to `conformance/seeded-rng.ts`) to a `world/rng.rs` `Rng { a: u32 }`
+  with `next_f64() -> f64`; all ops are `u32` `wrapping_*` / logical shifts (Math.imul ≡
+  `wrapping_mul`, `>>>` ≡ `>>`, `>>> 0` / `| 0` ≡ u32 truncation).
+- The `World` holds an `Rng` as a **transient runtime field** — **not** part of `CampaignSnapshot`
+  (mirrors TS, which re-injects `rng` on load and never serializes it). `from_snapshot` initializes
+  it (default seed 0); `to_snapshot` ignores it.
+- `replay_commands` gains a **`seed: u32`** parameter; it seeds the World's `Rng` after
+  `from_snapshot`. The two existing gates (`turn-movement`, `items-actions`) pass a seed and draw no
+  rng, so their goldens are unchanged. `roll(n, world.rng.next_f64())` reuses `dice.rs`.
+- Fixtures seed their TS campaign rng with `mulberry32(SEED)` (same `SEED` passed to
+  `replay_commands`); the golden records the seed. **No rng may be drawn before the start snapshot
+  is serialized** (in 4a nothing draws at boot — no encounters), so both sides' first draw aligns.
+
 ## Conformance
 
-A bespoke **afflictions** campaign (inline generator under the isolated fixtures config), seeded
-`rng` for deterministic d100 rolls:
+A bespoke **afflictions** campaign (inline generator under the isolated fixtures config), using
+`mulberry32(SEED)` for deterministic-but-varied d100 rolls:
 
 - A player seeded with effective stats below thresholds — e.g. `sanity=0` (→Panic), `energy=0`
   (→Confused) — so afflictions latch on the first `apply_from_stats`. A second player seeded at
