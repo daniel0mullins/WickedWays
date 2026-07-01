@@ -8,11 +8,15 @@ import { canonicalize } from "./canonical-json.ts";
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 const wasm = require("../crates/wickedways-wasm/pkg/wickedways_wasm.js") as {
-  replay_commands: (start_snapshot_json: string, commands_json: string) => string;
+  replay_commands: (start_snapshot_json: string, commands_json: string, catalog_json: string) => string;
 };
 
 const start = readFileSync(
   join(here, "fixtures/turn-movement.start.snapshot.json"),
+  "utf8",
+);
+const catalogJson = readFileSync(
+  join(here, "fixtures/turn-movement.catalog.json"),
   "utf8",
 );
 const golden = JSON.parse(
@@ -23,19 +27,19 @@ const golden = JSON.parse(
     command: unknown;
     cues: unknown;
     snapshot: unknown;
-    viewThin: unknown;
+    view: unknown;
   }>;
 };
 
 describe("turn-movement differential conformance", () => {
-  it("Rust replay matches the TS oracle per step (cues + snapshot + thin view)", () => {
+  it("Rust replay matches the TS oracle per step (cues + snapshot + view)", () => {
     const out = JSON.parse(
-      wasm.replay_commands(start, JSON.stringify(golden.commands)),
+      wasm.replay_commands(start, JSON.stringify(golden.commands), catalogJson),
     ) as Array<{
       command: unknown;
       cues: unknown;
       snapshot: unknown;
-      viewThin: unknown;
+      view: unknown;
     }>;
     expect(out.length).toBe(golden.steps.length);
     out.forEach((step, i) => {
@@ -46,8 +50,8 @@ describe("turn-movement differential conformance", () => {
       expect(canonicalize(step.snapshot), `step ${i} snapshot`).toEqual(
         canonicalize(want.snapshot),
       );
-      expect(canonicalize(step.viewThin), `step ${i} viewThin`).toEqual(
-        canonicalize(want.viewThin),
+      expect(canonicalize(step.view), `step ${i} view`).toEqual(
+        canonicalize(want.view),
       );
     });
   });

@@ -8,7 +8,7 @@
  *
  * Writes:
  *   - turn-movement.start.snapshot.json  (serialized booted state)
- *   - turn-movement.golden.json          (commands + per-step cues/snapshots/viewThin)
+ *   - turn-movement.golden.json          (commands + per-step cues/snapshots/view)
  *
  * Run via:
  *   pnpm run fixtures:gen
@@ -28,30 +28,69 @@ import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { Directions } from "wickedways/lib/room";
 import type { PresentationCue } from "wickedways/lib/presentation";
 import type { Campaign } from "wickedways/lib/campaign";
+import { view } from "../../packages/play-runtime/src/viewmodel.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
+// Empty catalog — the turn-movement campaign has no items.
+const EMPTY_ALIASES: Record<string, string[]> = {};
+const EMPTY_CATALOG = { items: {}, aliases: {} };
+
 /**
- * Thin-view projection mirroring the Rust ThinViewModel shape (Task 5):
- *   { room: {id,name,description,isLit}, occupants: [...], status: {turn,maxTurns}, outcome, finished }
- * Active character is excluded from occupants.
+ * Project the full TS ViewModel to the exact Rust 3a ViewModel subset.
+ *
+ * Remove:
+ *   - top-level `exits` and `lockedDoors`
+ *   - `status.locationName`
+ *   - `room.image`
+ *   - `defeated` from every ScopeEntity (occupants, scope, loot[].contents,
+ *      inventory.items, inventory.keys)
+ *
+ * Mirrors the `viewProjected` helper in items-projection.gen.test.ts.
  */
-function viewThin(campaign: Campaign) {
-  const pc = campaign.activeCharacter;
-  const room = pc.currentRoom;
+function projectScopeEntity(e: Record<string, unknown>): Record<string, unknown> {
+  const { defeated: _defeated, ...rest } = e as { defeated?: unknown; [k: string]: unknown };
+  return rest;
+}
+
+function viewProjected(campaign: Campaign) {
+  const full = view(campaign, EMPTY_ALIASES, new Set());
+
+  // Project room: remove image
+  const { image: _roomImage, ...roomRest } = full.room as { image?: unknown; [k: string]: unknown };
+
+  // Project status: remove locationName
+  const { locationName: _locName, ...statusRest } = full.status as { locationName?: unknown; [k: string]: unknown };
+
+  // Project occupants: remove defeated
+  const occupants = full.occupants.map((o) => projectScopeEntity(o as unknown as Record<string, unknown>));
+
+  // Project loot contents: remove defeated
+  const loot = full.loot.map((l) => ({
+    ...l,
+    contents: l.contents.map((c) => projectScopeEntity(c as unknown as Record<string, unknown>)),
+  }));
+
+  // Project inventory items/keys: remove defeated
+  const inventory = {
+    items: full.inventory.items.map((i) => projectScopeEntity(i as unknown as Record<string, unknown>)),
+    keys: full.inventory.keys.map((k) => projectScopeEntity(k as unknown as Record<string, unknown>)),
+    equippedNames: full.inventory.equippedNames,
+    slots: full.inventory.slots,
+  };
+
+  // Project scope: remove defeated from all entries
+  const scope = full.scope.map((s) => projectScopeEntity(s as unknown as Record<string, unknown>));
+
   return {
-    room: {
-      id: room.id,
-      name: room.name,
-      description: room.description,
-      isLit: room.isLit,
-    },
-    occupants: room.occupants
-      .filter((o) => o.id !== pc.id)
-      .map((o) => ({ id: o.id, name: o.name, kind: "occupant" as const })),
-    status: { turn: campaign.round, maxTurns: campaign.maxRounds },
-    outcome: campaign.outcome,
-    finished: campaign.finished,
+    room: roomRest,
+    occupants,
+    loot,
+    inventory,
+    scope,
+    status: statusRest,
+    outcome: full.outcome,
+    finished: full.finished,
   };
 }
 
@@ -256,7 +295,7 @@ describe("generate turn-movement golden", () => {
         command: cmd,
         cues: drain(),
         snapshot: serializeCampaign(campaign),
-        viewThin: viewThin(campaign),
+        view: viewProjected(campaign),
       };
     });
 
@@ -304,6 +343,10 @@ describe("generate turn-movement golden", () => {
     // -------------------------------------------------------------------------
     // Write the golden.
     // -------------------------------------------------------------------------
+    writeFileSync(
+      join(here, "turn-movement.catalog.json"),
+      JSON.stringify(EMPTY_CATALOG, null, 2) + "\n",
+    );
     writeFileSync(
       join(here, "turn-movement.golden.json"),
       JSON.stringify({ commands, steps }, null, 2) + "\n",

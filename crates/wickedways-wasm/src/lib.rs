@@ -73,10 +73,15 @@ pub fn view_model(
 }
 
 /// Replay a sequence of commands against a starting snapshot, returning a JSON
-/// array of `{ command, cues, snapshot, viewThin }` — one entry per command.
-/// Used by the conformance harness (sub-plan 2) to validate Rust command dispatch.
+/// array of `{ command, cues, snapshot, view }` — one entry per command.
+/// Used by the conformance harness (sub-plan 3b) to validate Rust command dispatch
+/// against the widened ViewModel.
 #[wasm_bindgen]
-pub fn replay_commands(start_snapshot_json: &str, commands_json: &str) -> Result<String, JsValue> {
+pub fn replay_commands(
+    start_snapshot_json: &str,
+    commands_json: &str,
+    catalog_json: &str,
+) -> Result<String, JsValue> {
     use wickedways_core::presentation::PresentationCue;
     use wickedways_core::world::command::{apply_command, Command};
     use wickedways_core::world::World;
@@ -85,17 +90,20 @@ pub fn replay_commands(start_snapshot_json: &str, commands_json: &str) -> Result
     let mut world = World::from_snapshot(snap);
     let commands: Vec<Command> =
         serde_json::from_str(commands_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let cat: Catalog =
+        serde_json::from_str(catalog_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let mut opened: BTreeSet<String> = BTreeSet::new();
     let mut steps = Vec::new();
     for cmd in commands {
         let mut cues: Vec<PresentationCue> = Vec::new();
-        apply_command(&mut world, cmd.clone(), &mut cues)
+        apply_command(&mut world, cmd.clone(), &cat, &mut opened, &mut cues)
             .map_err(|e| JsValue::from_str(&e.0))?;
-        let view = world.view_thin().map_err(|e| JsValue::from_str(&e.0))?;
+        let vm = world.view(&cat, &opened).map_err(|e| JsValue::from_str(&e.0))?;
         steps.push(serde_json::json!({
             "command": cmd,
             "cues": cues,
             "snapshot": world.to_snapshot(),
-            "viewThin": view,
+            "view": vm,
         }));
     }
     serde_json::to_string(&steps).map_err(|e| JsValue::from_str(&e.to_string()))

@@ -72,14 +72,9 @@ mod ts_export {
         // Task 2 (sub-plan 3a): descriptor-data catalog
         ItemDescriptor::export_all().expect("export ItemDescriptor");
         Catalog::export_all().expect("export Catalog");
-        // Task 5: thin ViewModel slice
-        use crate::world::view::{ThinRoom, ThinOccupant, ThinStatus, ThinViewModel};
-        ThinRoom::export_all().expect("export ThinRoom");
-        ThinOccupant::export_all().expect("export ThinOccupant");
-        ThinStatus::export_all().expect("export ThinStatus");
-        ThinViewModel::export_all().expect("export ThinViewModel");
         // Task 5 (sub-plan 3a): widened ViewModel
-        use crate::world::view::{ScopeEntity, LootView, Inventory, StatusView, ViewModel};
+        use crate::world::view::{ThinRoom, ScopeEntity, LootView, Inventory, StatusView, ViewModel};
+        ThinRoom::export_all().expect("export ThinRoom");
         ScopeEntity::export_all().expect("export ScopeEntity");
         LootView::export_all().expect("export LootView");
         Inventory::export_all().expect("export Inventory");
