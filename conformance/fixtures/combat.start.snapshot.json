@@ -1,0 +1,324 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "2676e5b9-f0ad-421e-b26b-fb81cf747a9c",
+    "title": "Combat (conformance)",
+    "maxRounds": 20,
+    "round": 0,
+    "started": true,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "3c4b8f35-d9dc-4fac-b5fd-b6945ec36299",
+      "8918bf29-36b8-4cf3-b110-67e26d50a2b3"
+    ],
+    "actedThisRound": [],
+    "gmId": "3c4b8f35-d9dc-4fac-b5fd-b6945ec36299",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "fighter",
+        "name": "Fighter",
+        "baseStats": {
+          "health": 10,
+          "sanity": 10,
+          "energy": 10
+        }
+      },
+      {
+        "id": "scout",
+        "name": "Scout",
+        "baseStats": {
+          "health": 6,
+          "sanity": 6,
+          "energy": 8
+        }
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 0,
+      "visited": [
+        "913c162e-2c45-4a36-9e21-53be81bb673a"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "913c162e-2c45-4a36-9e21-53be81bb673a",
+      "name": "Hall",
+      "description": "A stone hall.",
+      "exits": {},
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "3c4b8f35-d9dc-4fac-b5fd-b6945ec36299",
+        "8918bf29-36b8-4cf3-b110-67e26d50a2b3"
+      ],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "3c4b8f35-d9dc-4fac-b5fd-b6945ec36299",
+      "name": "Ada",
+      "stats": {
+        "health": 10,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 3,
+      "currentRoomId": "913c162e-2c45-4a36-9e21-53be81bb673a",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [
+          "629db1d7-9417-4f1b-873c-73f8c92ed166",
+          "b218133f-1fad-47c7-96bf-254051278e1b"
+        ],
+        "keyIds": []
+      },
+      "equipment": {
+        "leftHand": "629db1d7-9417-4f1b-873c-73f8c92ed166",
+        "rightHand": "b218133f-1fad-47c7-96bf-254051278e1b"
+      },
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "913c162e-2c45-4a36-9e21-53be81bb673a",
+            "name": "Hall"
+          },
+          "round": 0
+        },
+        {
+          "kind": "pickUp",
+          "items": [
+            {
+              "id": "629db1d7-9417-4f1b-873c-73f8c92ed166",
+              "name": "Hand Axe"
+            }
+          ],
+          "round": 0
+        },
+        {
+          "kind": "pickUp",
+          "items": [
+            {
+              "id": "b218133f-1fad-47c7-96bf-254051278e1b",
+              "name": "Meat Cleaver"
+            }
+          ],
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {
+          "panic": 0,
+          "fear": 0,
+          "confused": 0
+        },
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "fighter"
+    },
+    {
+      "kind": "player",
+      "id": "8918bf29-36b8-4cf3-b110-67e26d50a2b3",
+      "name": "Ben",
+      "stats": {
+        "health": 6,
+        "sanity": 6,
+        "energy": 8
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 3,
+      "currentRoomId": "913c162e-2c45-4a36-9e21-53be81bb673a",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [
+          "44496684-d417-4b11-a25d-8a6a4a4319cc",
+          "833b93e9-ade6-48aa-95c9-5955a26d665a"
+        ],
+        "keyIds": []
+      },
+      "equipment": {
+        "torso": "44496684-d417-4b11-a25d-8a6a4a4319cc",
+        "leftIndexFinger": "833b93e9-ade6-48aa-95c9-5955a26d665a"
+      },
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "913c162e-2c45-4a36-9e21-53be81bb673a",
+            "name": "Hall"
+          },
+          "round": 0
+        },
+        {
+          "kind": "pickUp",
+          "items": [
+            {
+              "id": "44496684-d417-4b11-a25d-8a6a4a4319cc",
+              "name": "Padded Vest"
+            }
+          ],
+          "round": 0
+        },
+        {
+          "kind": "pickUp",
+          "items": [
+            {
+              "id": "833b93e9-ade6-48aa-95c9-5955a26d665a",
+              "name": "Lucky Charm"
+            }
+          ],
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {
+          "panic": 0,
+          "fear": 0,
+          "confused": 0
+        },
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "scout"
+    }
+  ],
+  "items": [
+    {
+      "kind": "item",
+      "id": "629db1d7-9417-4f1b-873c-73f8c92ed166",
+      "behaviorKey": "items/axe",
+      "durability": 2,
+      "modifier": 3
+    },
+    {
+      "kind": "item",
+      "id": "b218133f-1fad-47c7-96bf-254051278e1b",
+      "behaviorKey": "items/cleaver",
+      "durability": 5,
+      "modifier": 4
+    },
+    {
+      "kind": "item",
+      "id": "44496684-d417-4b11-a25d-8a6a4a4319cc",
+      "behaviorKey": "items/vest",
+      "durability": 2,
+      "modifier": 1
+    },
+    {
+      "kind": "item",
+      "id": "833b93e9-ade6-48aa-95c9-5955a26d665a",
+      "behaviorKey": "items/charm",
+      "modifier": 2
+    }
+  ],
+  "loot": [],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "913c162e-2c45-4a36-9e21-53be81bb673a",
+      "snapshot": {
+        "name": "Hall",
+        "description": "A stone hall."
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "3c4b8f35-d9dc-4fac-b5fd-b6945ec36299",
+        "roomId": "913c162e-2c45-4a36-9e21-53be81bb673a"
+      }
+    },
+    {
+      "kind": "item",
+      "key": "weapon:Hand Axe",
+      "snapshot": {
+        "name": "Hand Axe",
+        "type": "weapon",
+        "slot": "hand"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "3c4b8f35-d9dc-4fac-b5fd-b6945ec36299",
+        "roomId": "913c162e-2c45-4a36-9e21-53be81bb673a"
+      }
+    },
+    {
+      "kind": "item",
+      "key": "weapon:Meat Cleaver",
+      "snapshot": {
+        "name": "Meat Cleaver",
+        "type": "weapon",
+        "slot": "hand"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "3c4b8f35-d9dc-4fac-b5fd-b6945ec36299",
+        "roomId": "913c162e-2c45-4a36-9e21-53be81bb673a"
+      }
+    },
+    {
+      "kind": "item",
+      "key": "armor:Padded Vest",
+      "snapshot": {
+        "name": "Padded Vest",
+        "type": "armor",
+        "slot": "torso"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "8918bf29-36b8-4cf3-b110-67e26d50a2b3",
+        "roomId": "913c162e-2c45-4a36-9e21-53be81bb673a"
+      }
+    },
+    {
+      "kind": "item",
+      "key": "accessory:Lucky Charm",
+      "snapshot": {
+        "name": "Lucky Charm",
+        "type": "accessory",
+        "slot": "finger"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "8918bf29-36b8-4cf3-b110-67e26d50a2b3",
+        "roomId": "913c162e-2c45-4a36-9e21-53be81bb673a"
+      }
+    }
+  ]
+}

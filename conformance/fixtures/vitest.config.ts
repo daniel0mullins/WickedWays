@@ -8,6 +8,7 @@ export default defineConfig({
       "conformance/fixtures/items-projection.gen.test.ts",
       "conformance/fixtures/items-actions.gen.test.ts",
       "conformance/fixtures/afflictions.gen.test.ts",
+      "conformance/fixtures/combat.gen.test.ts",
     ],
     environment: "node",
   },
