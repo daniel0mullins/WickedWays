@@ -351,6 +351,163 @@ impl World {
         ch.equipment.retain(|_, v| v != item);
         Ok(())
     }
+
+    /// Remove `target` from the actor's inventory (the item orphans in `World.items`
+    /// — no room mutation), tick the action budget, record a `drop` history entry,
+    /// and emit a `Drop` action cue.
+    ///
+    /// Shared tail used by both `drop_item` and `use_item` (which both produce a
+    /// `drop` history entry, mirroring `CONSUME_VIA_USE → removeFromInventory`).
+    fn consume_from_inventory(
+        &mut self,
+        actor: &CharacterId,
+        target: &ItemId,
+        item_name: &str,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
+        // Remove target from inventory.item_ids (orphans in World.items — no room pile mutation).
+        {
+            let ch = self
+                .characters
+                .get_mut(actor)
+                .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
+            ch.inventory.item_ids.retain(|id| id != target);
+        }
+
+        // Tick budget and record a Drop history entry.
+        let round = self.campaign.round;
+        let actor_name = self
+            .characters
+            .get(actor)
+            .map(|c| c.name.clone())
+            .unwrap_or_default();
+        {
+            let ch = self
+                .characters
+                .get_mut(actor)
+                .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
+            ch.actions_this_round += 1;
+            ch.history.push(ActionHistoryEntry::Drop {
+                round,
+                items: vec![ItemRef { id: target.clone(), name: item_name.to_string() }],
+            });
+        }
+
+        // Emit Drop action cue.
+        cues.push(PresentationCue::Action {
+            action: ActionKind::Drop,
+            actor: EntityRef { id: actor.0.clone(), name: actor_name },
+            sound: None,
+        });
+
+        Ok(())
+    }
+
+    /// Drop `target` from the actor's inventory. **Budgeted** — ticks
+    /// `actions_this_round` and records a `drop` history entry.
+    ///
+    /// Mirrors `character.ts:583-604` (`removeFromInventory`).
+    ///
+    /// The item **orphans** in `World.items` — the engine does NOT add it to a
+    /// room pile (`relinquishItem` only removes from inventory; `character.ts:466`).
+    ///
+    /// # Errors
+    /// - `target` is not in `inventory.item_ids` → `ProceduralViolation`.
+    /// - `target` resolves as a `Key` → `ProceduralViolation` (keys use `transferKey`).
+    /// - `resolved.properties.droppable == Some(false)` → `ProceduralViolation` (required item).
+    pub fn drop_item(
+        &mut self,
+        actor: &CharacterId,
+        target: &ItemId,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
+        // 1. Must be held in item_ids.
+        {
+            let ch = self
+                .characters
+                .get(actor)
+                .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
+            if !ch.inventory.item_ids.contains(target) {
+                return Err(ProceduralViolation(
+                    "Attempted to remove an item from inventory, but the item was not in the character's inventory!".into(),
+                ));
+            }
+        }
+
+        // 2. Resolve and check for key type.
+        let item_snap = self
+            .items
+            .get(target)
+            .ok_or_else(|| ProceduralViolation("Item snapshot not found.".into()))?
+            .clone();
+        let resolved = resolve_item(&item_snap, cat)?;
+        if resolved.r#type == ItemType::Key {
+            return Err(ProceduralViolation(
+                "Keys cannot be dropped; hand them over with transferKey instead.".into(),
+            ));
+        }
+
+        // 3. Required/quest item check: droppable == Some(false) → reject.
+        if resolved.properties.droppable == Some(false) {
+            return Err(ProceduralViolation(
+                "Required items cannot be dropped.".into(),
+            ));
+        }
+
+        // 4–6. Remove, tick budget, history, cue (shared tail).
+        self.consume_from_inventory(actor, target, &resolved.name.clone(), cues)
+    }
+
+    /// Use (consume) `target` from the actor's inventory. **Budgeted** — ticks
+    /// `actions_this_round` and records a `drop` history entry (mirroring
+    /// `CONSUME_VIA_USE → removeFromInventory`).
+    ///
+    /// Mirrors `inventory.ts:607-631` (the `Use` action wrapper) and
+    /// `character.ts:440-442` (`CONSUME_VIA_USE → removeFromInventory`).
+    ///
+    /// # Errors
+    /// - `target` is not in `inventory.item_ids` → `ProceduralViolation`.
+    /// - `resolved.properties.usable` is false → `ProceduralViolation`.
+    pub fn use_item(
+        &mut self,
+        actor: &CharacterId,
+        target: &ItemId,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
+        // 1. Must be held in item_ids.
+        {
+            let ch = self
+                .characters
+                .get(actor)
+                .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
+            if !ch.inventory.item_ids.contains(target) {
+                return Err(ProceduralViolation(
+                    "Attempted to use an item the character is not holding.".into(),
+                ));
+            }
+        }
+
+        // 2. Resolve and check usable.
+        let item_snap = self
+            .items
+            .get(target)
+            .ok_or_else(|| ProceduralViolation("Item snapshot not found.".into()))?
+            .clone();
+        let resolved = resolve_item(&item_snap, cat)?;
+        if !resolved.properties.usable {
+            return Err(ProceduralViolation(
+                alloc::format!("The {} isn't something you can use.", resolved.name),
+            ));
+        }
+
+        // TODO(sub-plan 4): reject use while KO'd.
+
+        // 3. Consume: remove, tick budget, history, cue (shared tail).
+        // Author use-behavior is noop; grantsImmunity deferred to sub-plan 4.
+        self.consume_from_inventory(actor, target, &resolved.name.clone(), cues)
+    }
 }
 
 #[cfg(test)]
@@ -1033,5 +1190,317 @@ mod tests {
         let mut cues = Vec::new();
         let result = world.take(&pc_id, &item_id, &cat, &mut cues);
         assert!(result.is_err(), "take with actor in no room should return Err");
+    }
+
+    // ── drop_item ──────────────────────────────────────────────────────────────
+
+    fn droppable_desc() -> ItemDescriptor {
+        ItemDescriptor {
+            name: "Rusty Dagger".into(),
+            r#type: ItemType::Weapon,
+            stat: crate::stats::StatType::Health,
+            modifier: 1,
+            properties: ItemProperties {
+                equippable: false,
+                equipped: false,
+                destroyable: true,
+                usable: false,
+                droppable: None, // None = freely droppable
+            },
+            slot: None,
+            two_handed: None,
+            emits_light: None,
+            max_durability: None,
+            lore: None,
+            presentation: None,
+            key_code: None,
+            consume_on_use: None,
+            recipe: json!({}),
+            teaches: json!(null),
+            immunities: json!([]),
+            grants_immunity: json!(null),
+        }
+    }
+
+    fn required_item_desc() -> ItemDescriptor {
+        ItemDescriptor {
+            name: "Ancient Relic".into(),
+            r#type: ItemType::Consumable,
+            stat: crate::stats::StatType::Health,
+            modifier: 0,
+            properties: ItemProperties {
+                equippable: false,
+                equipped: false,
+                destroyable: false,
+                usable: false,
+                droppable: Some(false), // required / quest item
+            },
+            slot: None,
+            two_handed: None,
+            emits_light: None,
+            max_durability: None,
+            lore: None,
+            presentation: None,
+            key_code: None,
+            consume_on_use: None,
+            recipe: json!({}),
+            teaches: json!(null),
+            immunities: json!([]),
+            grants_immunity: json!(null),
+        }
+    }
+
+    #[test]
+    fn drop_item_removes_from_inventory_ticks_budget_records_drop_history_emits_cue() {
+        let cat = simple_cat_with("items/dagger", droppable_desc());
+        let (mut world, pc_id) = world_with_items(&[("dagger-1", "items/dagger")], &cat);
+        let item_id = iid("dagger-1");
+        let mut cues = Vec::new();
+
+        world.drop_item(&pc_id, &item_id, &cat, &mut cues).unwrap();
+
+        let ch = &world.characters[&pc_id];
+
+        // Item removed from inventory
+        assert!(!ch.inventory.item_ids.contains(&item_id), "item should be removed from inventory");
+
+        // Item still orphaned in world.items (no room mutation)
+        assert!(world.items.contains_key(&item_id), "item should still exist in world.items (orphaned)");
+
+        // Budget ticked +1
+        assert_eq!(ch.actions_this_round, 1, "drop should tick budget");
+
+        // History has a Drop entry
+        assert_eq!(ch.history.len(), 1);
+        match &ch.history[0] {
+            ActionHistoryEntry::Drop { round: 0, items } => {
+                assert_eq!(items.len(), 1);
+                assert_eq!(items[0].id, item_id);
+                assert_eq!(items[0].name, "Rusty Dagger");
+            }
+            other => panic!("expected Drop history entry, got {:?}", other),
+        }
+
+        // Drop action cue emitted
+        assert_eq!(cues.len(), 1);
+        match &cues[0] {
+            PresentationCue::Action { action: ActionKind::Drop, actor, sound: None } => {
+                assert_eq!(actor.id, "pc");
+            }
+            other => panic!("expected Action(drop) cue, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn drop_item_key_returns_err() {
+        // A Key-type item cannot be dropped (even if someone shoved one into item_ids somehow).
+        let mut cat_items = alloc::collections::BTreeMap::new();
+        // Key type items are normally in ItemSnapshot::Key, but we fake a catalog entry
+        // with type=Key for the type-check path.
+        cat_items.insert("items/brass-key".to_string(), ItemDescriptor {
+            name: "Brass Key".into(),
+            r#type: ItemType::Key,
+            stat: crate::stats::StatType::Health,
+            modifier: 0,
+            properties: ItemProperties {
+                equippable: false,
+                equipped: false,
+                destroyable: false,
+                usable: false,
+                droppable: None,
+            },
+            slot: None,
+            two_handed: None,
+            emits_light: None,
+            max_durability: None,
+            lore: None,
+            presentation: None,
+            key_code: Some("door-east".into()),
+            consume_on_use: None,
+            recipe: json!({}),
+            teaches: json!(null),
+            immunities: json!([]),
+            grants_immunity: json!(null),
+        });
+        let cat = Catalog { items: cat_items, aliases: alloc::collections::BTreeMap::new() };
+
+        let (mut world, pc_id) = world_with_items(&[("key-x", "items/brass-key")], &cat);
+        let item_id = iid("key-x");
+        let mut cues = Vec::new();
+
+        let result = world.drop_item(&pc_id, &item_id, &cat, &mut cues);
+        assert!(result.is_err(), "dropping a Key-type item should return Err");
+        let err = result.unwrap_err();
+        assert!(err.0.contains("Keys cannot be dropped"), "error should mention keys, got: {}", err.0);
+    }
+
+    #[test]
+    fn drop_item_required_item_returns_err() {
+        let cat = simple_cat_with("items/relic", required_item_desc());
+        let (mut world, pc_id) = world_with_items(&[("relic-1", "items/relic")], &cat);
+        let item_id = iid("relic-1");
+        let mut cues = Vec::new();
+
+        let result = world.drop_item(&pc_id, &item_id, &cat, &mut cues);
+        assert!(result.is_err(), "dropping a required item (droppable:false) should return Err");
+    }
+
+    #[test]
+    fn drop_item_unheld_returns_err() {
+        let cat = simple_cat_with("items/dagger", droppable_desc());
+        let (mut world, pc_id) = world_with_items(&[], &cat); // empty inventory
+
+        let item_id = iid("dagger-ghost");
+        // Add snapshot to world but NOT to inventory
+        world.items.insert(
+            item_id.clone(),
+            ItemSnapshot::Item {
+                id: item_id.clone(),
+                behavior_key: "items/dagger".into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
+
+        let mut cues = Vec::new();
+        let result = world.drop_item(&pc_id, &item_id, &cat, &mut cues);
+        assert!(result.is_err(), "dropping unheld item should return Err");
+    }
+
+    // ── use_item ───────────────────────────────────────────────────────────────
+
+    fn usable_desc() -> ItemDescriptor {
+        ItemDescriptor {
+            name: "Health Potion".into(),
+            r#type: ItemType::Consumable,
+            stat: crate::stats::StatType::Health,
+            modifier: 3,
+            properties: ItemProperties {
+                equippable: false,
+                equipped: false,
+                destroyable: false,
+                usable: true, // usable
+                droppable: None,
+            },
+            slot: None,
+            two_handed: None,
+            emits_light: None,
+            max_durability: None,
+            lore: None,
+            presentation: None,
+            key_code: None,
+            consume_on_use: Some(true),
+            recipe: json!({}),
+            teaches: json!(null),
+            immunities: json!([]),
+            grants_immunity: json!(null),
+        }
+    }
+
+    fn non_usable_desc() -> ItemDescriptor {
+        ItemDescriptor {
+            name: "Old Journal".into(),
+            r#type: ItemType::Consumable,
+            stat: crate::stats::StatType::Health,
+            modifier: 0,
+            properties: ItemProperties {
+                equippable: false,
+                equipped: false,
+                destroyable: false,
+                usable: false, // NOT usable
+                droppable: None,
+            },
+            slot: None,
+            two_handed: None,
+            emits_light: None,
+            max_durability: None,
+            lore: None,
+            presentation: None,
+            key_code: None,
+            consume_on_use: None,
+            recipe: json!({}),
+            teaches: json!(null),
+            immunities: json!([]),
+            grants_immunity: json!(null),
+        }
+    }
+
+    #[test]
+    fn use_item_consumes_ticks_budget_records_drop_history_emits_drop_cue() {
+        let cat = simple_cat_with("items/potion", usable_desc());
+        let (mut world, pc_id) = world_with_items(&[("potion-1", "items/potion")], &cat);
+        let item_id = iid("potion-1");
+        let mut cues = Vec::new();
+
+        world.use_item(&pc_id, &item_id, &cat, &mut cues).unwrap();
+
+        let ch = &world.characters[&pc_id];
+
+        // Item consumed (removed from inventory)
+        assert!(!ch.inventory.item_ids.contains(&item_id), "item should be consumed (removed from inventory)");
+
+        // Item still orphaned in world.items (no room mutation)
+        assert!(world.items.contains_key(&item_id), "item should still exist in world.items (orphaned)");
+
+        // Budget ticked +1
+        assert_eq!(ch.actions_this_round, 1, "use should tick budget");
+
+        // History has a Drop entry (CONSUME_VIA_USE → removeFromInventory records drop)
+        assert_eq!(ch.history.len(), 1);
+        match &ch.history[0] {
+            ActionHistoryEntry::Drop { round: 0, items } => {
+                assert_eq!(items.len(), 1);
+                assert_eq!(items[0].id, item_id);
+                assert_eq!(items[0].name, "Health Potion");
+            }
+            other => panic!("expected Drop history entry for use, got {:?}", other),
+        }
+
+        // Drop action cue emitted (not PickUp — use records a drop cue)
+        assert_eq!(cues.len(), 1);
+        match &cues[0] {
+            PresentationCue::Action { action: ActionKind::Drop, actor, sound: None } => {
+                assert_eq!(actor.id, "pc");
+            }
+            other => panic!("expected Action(drop) cue for use, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn use_item_non_usable_returns_err() {
+        let cat = simple_cat_with("items/journal", non_usable_desc());
+        let (mut world, pc_id) = world_with_items(&[("journal-1", "items/journal")], &cat);
+        let item_id = iid("journal-1");
+        let mut cues = Vec::new();
+
+        let result = world.use_item(&pc_id, &item_id, &cat, &mut cues);
+        assert!(result.is_err(), "using a non-usable item should return Err");
+        let err = result.unwrap_err();
+        assert!(
+            err.0.contains("isn't something you can use"),
+            "error should mention 'isn't something you can use', got: {}",
+            err.0
+        );
+    }
+
+    #[test]
+    fn use_item_unheld_returns_err() {
+        let cat = simple_cat_with("items/potion", usable_desc());
+        let (mut world, pc_id) = world_with_items(&[], &cat); // empty inventory
+
+        let item_id = iid("potion-ghost");
+        world.items.insert(
+            item_id.clone(),
+            ItemSnapshot::Item {
+                id: item_id.clone(),
+                behavior_key: "items/potion".into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
+
+        let mut cues = Vec::new();
+        let result = world.use_item(&pc_id, &item_id, &cat, &mut cues);
+        assert!(result.is_err(), "using unheld item should return Err");
     }
 }
