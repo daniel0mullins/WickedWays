@@ -7,6 +7,7 @@ export default defineConfig({
       "conformance/fixtures/turn-movement.gen.test.ts",
       "conformance/fixtures/items-projection.gen.test.ts",
       "conformance/fixtures/items-actions.gen.test.ts",
+      "conformance/fixtures/afflictions.gen.test.ts",
     ],
     environment: "node",
   },

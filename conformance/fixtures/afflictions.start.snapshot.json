@@ -1,0 +1,205 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "726ab796-f676-4ab3-9646-1470fbc132dd",
+    "title": "Afflictions (conformance)",
+    "maxRounds": 20,
+    "round": 0,
+    "started": true,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "f8c4ff50-dc24-4a4c-a584-0a642b8cd586",
+      "232555cb-1cae-493f-a240-a09f3edda26b"
+    ],
+    "actedThisRound": [],
+    "gmId": "f8c4ff50-dc24-4a4c-a584-0a642b8cd586",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "haunted",
+        "name": "Haunted",
+        "baseStats": {
+          "health": 10,
+          "sanity": 0,
+          "energy": 0
+        }
+      },
+      {
+        "id": "doomed",
+        "name": "Doomed",
+        "baseStats": {
+          "health": 0,
+          "sanity": 10,
+          "energy": 10
+        }
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 0,
+      "visited": [
+        "29b42129-57f0-4342-9359-621db3075f55"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "29b42129-57f0-4342-9359-621db3075f55",
+      "name": "Hall",
+      "description": "A cold stone hall.",
+      "exits": {},
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "f8c4ff50-dc24-4a4c-a584-0a642b8cd586",
+        "232555cb-1cae-493f-a240-a09f3edda26b"
+      ],
+      "lootIds": [
+        "f85f3e52-5a7c-4030-9e78-49f2149a96db"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "f8c4ff50-dc24-4a4c-a584-0a642b8cd586",
+      "name": "Ada",
+      "stats": {
+        "health": 10,
+        "sanity": 0,
+        "energy": 0
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "29b42129-57f0-4342-9359-621db3075f55",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "29b42129-57f0-4342-9359-621db3075f55",
+            "name": "Hall"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "haunted"
+    },
+    {
+      "kind": "player",
+      "id": "232555cb-1cae-493f-a240-a09f3edda26b",
+      "name": "Ben",
+      "stats": {
+        "health": 0,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "29b42129-57f0-4342-9359-621db3075f55",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "29b42129-57f0-4342-9359-621db3075f55",
+            "name": "Hall"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "doomed"
+    }
+  ],
+  "items": [
+    {
+      "kind": "item",
+      "id": "986f93db-a1b0-42a2-b0b0-1a80b323e233",
+      "behaviorKey": "items/calming-talisman",
+      "modifier": 0
+    },
+    {
+      "kind": "item",
+      "id": "81fa80da-343b-4cfd-9bbd-f278f5245f2d",
+      "behaviorKey": "items/loose-trinket",
+      "modifier": 0
+    }
+  ],
+  "loot": [
+    {
+      "id": "f85f3e52-5a7c-4030-9e78-49f2149a96db",
+      "description": "A dusty shelf.",
+      "capacity": 4,
+      "contentIds": [
+        "986f93db-a1b0-42a2-b0b0-1a80b323e233",
+        "81fa80da-343b-4cfd-9bbd-f278f5245f2d"
+      ]
+    }
+  ],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "29b42129-57f0-4342-9359-621db3075f55",
+      "snapshot": {
+        "name": "Hall",
+        "description": "A cold stone hall."
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "f8c4ff50-dc24-4a4c-a584-0a642b8cd586",
+        "roomId": "29b42129-57f0-4342-9359-621db3075f55"
+      }
+    }
+  ]
+}
