@@ -365,33 +365,22 @@ impl World {
         item_name: &str,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
-        // Remove target from inventory.item_ids (orphans in World.items — no room pile mutation).
-        {
+        let round = self.campaign.round;
+
+        // Single borrow: retain item removal, tick budget, record history, clone name for cue.
+        let actor_name = {
             let ch = self
                 .characters
                 .get_mut(actor)
                 .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
             ch.inventory.item_ids.retain(|id| id != target);
-        }
-
-        // Tick budget and record a Drop history entry.
-        let round = self.campaign.round;
-        let actor_name = self
-            .characters
-            .get(actor)
-            .map(|c| c.name.clone())
-            .unwrap_or_default();
-        {
-            let ch = self
-                .characters
-                .get_mut(actor)
-                .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
             ch.actions_this_round += 1;
             ch.history.push(ActionHistoryEntry::Drop {
                 round,
                 items: vec![ItemRef { id: target.clone(), name: item_name.to_string() }],
             });
-        }
+            ch.name.clone()
+        };
 
         // Emit Drop action cue.
         cues.push(PresentationCue::Action {
@@ -406,7 +395,10 @@ impl World {
     /// Drop `target` from the actor's inventory. **Budgeted** — ticks
     /// `actions_this_round` and records a `drop` history entry.
     ///
-    /// Mirrors `character.ts:583-604` (`removeFromInventory`).
+    /// Mirrors `character.ts:583-604` (`removeFromInventory`) exactly:
+    /// the engine allows dropping any held non-key item regardless of `droppable`.
+    /// Required-item drop rejection (`droppable == Some(false)`) is enforced at
+    /// the session/authority layer (`session.ts:209`), not here.
     ///
     /// The item **orphans** in `World.items` — the engine does NOT add it to a
     /// room pile (`relinquishItem` only removes from inventory; `character.ts:466`).
@@ -414,7 +406,6 @@ impl World {
     /// # Errors
     /// - `target` is not in `inventory.item_ids` → `ProceduralViolation`.
     /// - `target` resolves as a `Key` → `ProceduralViolation` (keys use `transferKey`).
-    /// - `resolved.properties.droppable == Some(false)` → `ProceduralViolation` (required item).
     pub fn drop_item(
         &mut self,
         actor: &CharacterId,
@@ -436,6 +427,8 @@ impl World {
         }
 
         // 2. Resolve and check for key type.
+        // NOTE: droppable == Some(false) (required-item) is intentionally NOT checked here.
+        // That guard belongs to the session/authority layer (session.ts:209), not the engine.
         let item_snap = self
             .items
             .get(target)
@@ -448,14 +441,7 @@ impl World {
             ));
         }
 
-        // 3. Required/quest item check: droppable == Some(false) → reject.
-        if resolved.properties.droppable == Some(false) {
-            return Err(ProceduralViolation(
-                "Required items cannot be dropped.".into(),
-            ));
-        }
-
-        // 4–6. Remove, tick budget, history, cue (shared tail).
+        // 3. Remove, tick budget, history, cue (shared tail).
         self.consume_from_inventory(actor, target, &resolved.name.clone(), cues)
     }
 
@@ -1335,14 +1321,33 @@ mod tests {
     }
 
     #[test]
-    fn drop_item_required_item_returns_err() {
+    fn drop_item_required_item_succeeds_at_engine_layer() {
+        // The engine mirrors removeFromInventory (character.ts:583-604) which does NOT
+        // check `droppable`. Required-item drop rejection is enforced at the
+        // session/authority layer (session.ts:209), not here.
         let cat = simple_cat_with("items/relic", required_item_desc());
         let (mut world, pc_id) = world_with_items(&[("relic-1", "items/relic")], &cat);
         let item_id = iid("relic-1");
         let mut cues = Vec::new();
 
         let result = world.drop_item(&pc_id, &item_id, &cat, &mut cues);
-        assert!(result.is_err(), "dropping a required item (droppable:false) should return Err");
+        assert!(result.is_ok(), "engine should allow dropping required items (droppable:false); err={:?}", result.err());
+
+        let ch = &world.characters[&pc_id];
+        // Item removed from inventory
+        assert!(!ch.inventory.item_ids.contains(&item_id), "item should be removed from inventory");
+        // Budget ticked +1
+        assert_eq!(ch.actions_this_round, 1, "drop should tick budget");
+        // History has a Drop entry
+        assert_eq!(ch.history.len(), 1);
+        match &ch.history[0] {
+            ActionHistoryEntry::Drop { items, .. } => {
+                assert_eq!(items.len(), 1);
+                assert_eq!(items[0].id, item_id);
+                assert_eq!(items[0].name, "Ancient Relic");
+            }
+            other => panic!("expected Drop history entry, got {:?}", other),
+        }
     }
 
     #[test]
@@ -1365,6 +1370,12 @@ mod tests {
         let mut cues = Vec::new();
         let result = world.drop_item(&pc_id, &item_id, &cat, &mut cues);
         assert!(result.is_err(), "dropping unheld item should return Err");
+        let err = result.unwrap_err();
+        assert!(
+            err.0.contains("item was not in the character's inventory"),
+            "error should mention inventory, got: {}",
+            err.0
+        );
     }
 
     // ── use_item ───────────────────────────────────────────────────────────────
@@ -1502,5 +1513,11 @@ mod tests {
         let mut cues = Vec::new();
         let result = world.use_item(&pc_id, &item_id, &cat, &mut cues);
         assert!(result.is_err(), "using unheld item should return Err");
+        let err = result.unwrap_err();
+        assert!(
+            err.0.contains("not holding"),
+            "error should mention 'not holding', got: {}",
+            err.0
+        );
     }
 }
