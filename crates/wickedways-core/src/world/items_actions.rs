@@ -19,14 +19,25 @@ use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use serde::Deserialize;
+
 use crate::error::ProceduralViolation;
 use crate::presentation::{ActionKind, EntityRef, PresentationCue};
+use crate::world::afflictions::Status;
 use crate::world::descriptor::{Catalog, ItemType};
 use crate::world::equipment::{slot_kind_of, DEFAULT_EQUIPMENT_SLOTS, LEFT_HAND, RIGHT_HAND};
 use crate::world::history::{ActionHistoryEntry, ItemRef};
 use crate::world::ids::{CharacterId, ItemId, LootId};
 use crate::world::resolve::resolve_item;
 use crate::world::World;
+
+/// Parsed shape of the `grants_immunity` descriptor field.
+/// Mirrors TS `{ statuses: Status[], turns: number }` (inventory.ts:306).
+#[derive(Deserialize)]
+struct GrantsImmunity {
+    statuses: Vec<Status>,
+    turns: i64,
+}
 
 impl World {
     /// Take `target` from a loot container in the actor's current room into
@@ -587,8 +598,24 @@ impl World {
 
         // TODO(sub-plan 4): reject use while KO'd.
 
-        // 3. Consume: remove, tick budget, history, cue (shared tail).
-        // Author use-behavior is noop; grantsImmunity deferred to sub-plan 4.
+        // 3. Grant immunity if the descriptor carries grantsImmunity (before consuming).
+        // `grants_immunity` is json!(null) when absent — from_value fails cleanly → skip.
+        // Mirrors inventory.ts:622-626: [GRANT_IMMUNITY](statuses, turns) before consume.
+        if let Some(desc) = {
+            if let crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } = &item_snap {
+                cat.items.get(behavior_key)
+            } else {
+                None
+            }
+        } {
+            if let Ok(gi) = serde_json::from_value::<GrantsImmunity>(desc.grants_immunity.clone()) {
+                if let Some(ch) = self.characters.get_mut(actor) {
+                    ch.afflictions.grant_immunity(&gi.statuses, gi.turns);
+                }
+            }
+        }
+
+        // 4. Consume: remove, tick budget, history, cue (shared tail).
         self.consume_from_inventory(actor, target, &resolved.name.clone(), cues)
     }
 }
@@ -1477,6 +1504,34 @@ mod tests {
 
     // ── use_item ───────────────────────────────────────────────────────────────
 
+    fn usable_immunity_desc() -> ItemDescriptor {
+        ItemDescriptor {
+            name: "Panic Tonic".into(),
+            r#type: ItemType::Consumable,
+            stat: crate::stats::StatType::Health,
+            modifier: 0,
+            properties: ItemProperties {
+                equippable: false,
+                equipped: false,
+                destroyable: false,
+                usable: true,
+                droppable: None,
+            },
+            slot: None,
+            two_handed: None,
+            emits_light: None,
+            max_durability: None,
+            lore: None,
+            presentation: None,
+            key_code: None,
+            consume_on_use: Some(true),
+            recipe: json!({}),
+            teaches: json!(null),
+            immunities: json!([]),
+            grants_immunity: json!({ "statuses": ["panic"], "turns": 2 }),
+        }
+    }
+
     fn usable_desc() -> ItemDescriptor {
         ItemDescriptor {
             name: "Health Potion".into(),
@@ -1588,6 +1643,29 @@ mod tests {
             err.0.contains("isn't something you can use"),
             "error should mention 'isn't something you can use', got: {}",
             err.0
+        );
+    }
+
+    #[test]
+    fn use_item_with_grants_immunity_grants_then_consumes() {
+        use crate::world::afflictions::Status;
+        let cat = simple_cat_with("items/tonic", usable_immunity_desc());
+        let (mut world, pc_id) = world_with_items(&[("tonic-1", "items/tonic")], &cat);
+        let item_id = iid("tonic-1");
+        let mut cues = Vec::new();
+
+        world.use_item(&pc_id, &item_id, &cat, &mut cues).unwrap();
+
+        let ch = &world.characters[&pc_id];
+        // Immunity granted for Panic with 2 turns
+        assert_eq!(
+            ch.afflictions.immunity_of(Status::Panic), 2,
+            "use of tonic should grant 2 turns of Panic immunity"
+        );
+        // Item consumed (removed from inventory)
+        assert!(
+            !ch.inventory.item_ids.contains(&item_id),
+            "tonic should be consumed (removed from inventory)"
         );
     }
 

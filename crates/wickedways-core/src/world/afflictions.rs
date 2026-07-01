@@ -78,6 +78,23 @@ impl Afflictions {
         self.active.iter().filter(|(_, &on)| on).map(|(&s, _)| s).collect()
     }
 
+    /// Returns the current timed immunity turns remaining for `s` (0 if none).
+    pub fn immunity_of(&self, s: Status) -> i64 {
+        self.immunity.get(&s).copied().unwrap_or(0)
+    }
+
+    /// Grant timed immunity to each status in `statuses` for `turns` turns,
+    /// refreshing to max if already higher. KO is never immunizable.
+    /// Mirrors `afflictions.ts:182-192`.
+    pub fn grant_immunity(&mut self, statuses: &[Status], turns: i64) {
+        for &s in statuses {
+            if s == Status::Ko { continue; }
+            let cur = self.immunity.get(&s).copied().unwrap_or(0);
+            self.immunity.insert(s, cur.max(turns));
+            self.clear_episode(s);
+        }
+    }
+
     // -- lifecycle (mirrors afflictions.ts:75-152) --
 
     /// `passiveImmune.has(s) || (#immunity.get(s) ?? 0) > 0` (afflictions.ts:75-77).
@@ -454,5 +471,25 @@ mod tests {
         let mut rng = Rng::seeded(1);
         a.on_turn_start(10, 5, 5, &BTreeSet::new(), &cfg, &mut rng);
         assert!(!a.immunity.contains_key(&Status::Fear)); // 1 → removed
+    }
+
+    // -- grant_immunity tests (mirrors afflictions.ts:182-192) --
+
+    #[test]
+    fn grant_immunity_refreshes_to_max_and_resets_episode() {
+        let mut a = Afflictions::default();
+        a.set_active(Status::Panic, true);
+        a.grant_immunity(&[Status::Panic], 3);
+        assert_eq!(a.immunity_of(Status::Panic), 3);
+        assert!(!a.is_active(Status::Panic)); // episode reset
+        a.grant_immunity(&[Status::Panic], 1);
+        assert_eq!(a.immunity_of(Status::Panic), 3); // max(3,1)
+    }
+
+    #[test]
+    fn grant_immunity_ignores_ko() {
+        let mut a = Afflictions::default();
+        a.grant_immunity(&[Status::Ko], 5);
+        assert_eq!(a.immunity_of(Status::Ko), 0);
     }
 }
