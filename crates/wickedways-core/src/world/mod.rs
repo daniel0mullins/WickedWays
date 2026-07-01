@@ -65,14 +65,52 @@ impl World {
 
     /// Emit each store as an array in id-sorted order (BTreeMap iterates sorted).
     /// The conformance gate canonicalizes the TS side to the same ordering.
+    ///
+    /// `items` is **reachability-derived**, mirroring the TS serializer
+    /// (`serialization/serializer.ts:54-112` `addItem`): only items referenced
+    /// by a loot container's `content_ids`, a room's `light_source_ids`, or a
+    /// character's inventory `item_ids`/`key_ids`/`equipment` are emitted.
+    /// An item that has been dropped or consumed (removed from every inventory
+    /// and not placed anywhere) is no longer reachable and drops out of the
+    /// snapshot — matching the TS oracle, whose `items` array is built by
+    /// walking the reachable graph rather than a persistent item registry.
     pub fn to_snapshot(&self) -> CampaignSnapshot {
+        let mut reachable: alloc::collections::BTreeSet<ItemId> =
+            alloc::collections::BTreeSet::new();
+        for loot in self.loot.values() {
+            for id in &loot.content_ids {
+                reachable.insert(id.clone());
+            }
+        }
+        for room in self.rooms.values() {
+            for id in &room.light_source_ids {
+                reachable.insert(id.clone());
+            }
+        }
+        for ch in self.characters.values() {
+            for id in &ch.inventory.item_ids {
+                reachable.insert(id.clone());
+            }
+            for id in &ch.inventory.key_ids {
+                reachable.insert(id.clone());
+            }
+            for id in ch.equipment.values() {
+                reachable.insert(id.clone());
+            }
+        }
+
         CampaignSnapshot {
             schema_version: SCHEMA_VERSION,
             campaign: self.campaign.clone(),
             rooms: self.rooms.values().cloned().collect(),
             exits: self.exits.values().cloned().collect(),
             characters: self.characters.values().cloned().collect(),
-            items: self.items.values().cloned().collect(),
+            items: self
+                .items
+                .iter()
+                .filter(|(id, _)| reachable.contains(*id))
+                .map(|(_, snap)| snap.clone())
+                .collect(),
             loot: self.loot.values().cloned().collect(),
             material_caches: self.material_caches.values().cloned().collect(),
             codex: self.codex.clone(),

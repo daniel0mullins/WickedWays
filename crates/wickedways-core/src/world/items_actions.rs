@@ -14,6 +14,7 @@
 //! at which point the before/after check here will begin emitting cues when a
 //! light item is equipped/unequipped.
 
+use alloc::format;
 use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -119,6 +120,100 @@ impl World {
                 ch.inventory.key_ids.push(target.clone());
             } else {
                 ch.inventory.item_ids.push(target.clone());
+            }
+        }
+
+        // 6b. RECORD_ENCOUNTER({kind:"item", item}) — mirrors character.ts:567
+        //     (addToInventory records every picked-up item into the codex) and the
+        //     item/key entry construction in codex.ts buildEntry (:141-170).
+        //     First-write-wins by `${kind}::${key}`. `type` and `slot` serialize
+        //     lowercase (descriptor.rs enum rename); twoHanded/emitsLight/presentation
+        //     are read from the catalog descriptor and included only when present,
+        //     matching the TS `!== undefined` / truthy guards.
+        {
+            let round = self.campaign.round;
+            let actor_id_str = actor.0.clone();
+            let room_id_str = room_id.0.clone();
+            let first_seen = serde_json::json!({
+                "round": round,
+                "characterId": actor_id_str,
+                "roomId": room_id_str
+            });
+            // Pull the descriptor for twoHanded/emitsLight (not on ResolvedItem).
+            let (two_handed, emits_light) = match &item_snap {
+                crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } => cat
+                    .items
+                    .get(behavior_key)
+                    .map(|d| (d.two_handed, d.emits_light))
+                    .unwrap_or((None, None)),
+                crate::world::snapshot::ItemSnapshot::Key { .. } => (None, None),
+            };
+
+            let (kind, key, mut snapshot) = if is_key {
+                // codex.ts:143-154 — key entry.
+                let key_code = resolved.key_code.clone().unwrap_or_default();
+                let key = format!("{}:{}", key_code, resolved.name);
+                let consume_on_use = match &item_snap {
+                    crate::world::snapshot::ItemSnapshot::Key { consume_on_use, .. } => {
+                        *consume_on_use
+                    }
+                    _ => false,
+                };
+                let snapshot = serde_json::json!({
+                    "name": resolved.name.clone(),
+                    "keyCode": key_code,
+                    "consumeOnUse": consume_on_use,
+                });
+                ("key", key, snapshot)
+            } else {
+                // codex.ts:155-169 — item entry. `type` serializes lowercase.
+                let type_str = serde_json::to_value(resolved.r#type)
+                    .ok()
+                    .and_then(|v| v.as_str().map(alloc::string::ToString::to_string))
+                    .unwrap_or_default();
+                let key = format!("{}:{}", type_str, resolved.name);
+                let mut snapshot = serde_json::json!({
+                    "name": resolved.name.clone(),
+                    "type": type_str,
+                });
+                if let Some(slot) = resolved.slot {
+                    if let Ok(v) = serde_json::to_value(slot) {
+                        snapshot["slot"] = v;
+                    }
+                }
+                if let Some(th) = two_handed {
+                    snapshot["twoHanded"] = serde_json::Value::Bool(th);
+                }
+                if let Some(el) = emits_light {
+                    snapshot["emitsLight"] = serde_json::Value::Bool(el);
+                }
+                ("item", key, snapshot)
+            };
+            // presentation (truthy guard in codex.ts) — applies to both item and key.
+            if let Some(pres) = &resolved.presentation {
+                if let Ok(v) = serde_json::to_value(pres) {
+                    snapshot["presentation"] = v;
+                }
+            }
+
+            let already_in_codex = if let Some(arr) = self.codex.as_array() {
+                arr.iter().any(|e| {
+                    e.get("kind").and_then(|v| v.as_str()) == Some(kind)
+                        && e.get("key").and_then(|v| v.as_str()) == Some(key.as_str())
+                })
+            } else {
+                false
+            };
+            if !already_in_codex {
+                let entry = serde_json::json!({
+                    "kind": kind,
+                    "key": key,
+                    "snapshot": snapshot,
+                    "firstSeen": first_seen,
+                });
+                if let Some(arr) = self.codex.as_array_mut() {
+                    arr.push(entry);
+                }
             }
         }
 
@@ -400,8 +495,10 @@ impl World {
     /// Required-item drop rejection (`droppable == Some(false)`) is enforced at
     /// the session/authority layer (`session.ts:209`), not here.
     ///
-    /// The item **orphans** in `World.items` — the engine does NOT add it to a
-    /// room pile (`relinquishItem` only removes from inventory; `character.ts:466`).
+    /// The item is **not** placed into a room pile — `relinquishItem` only removes
+    /// it from the inventory (`character.ts:466`). It therefore becomes unreachable
+    /// and drops out of the emitted snapshot's `items` array (see `to_snapshot`'s
+    /// reachability filter, mirroring the TS serializer's reachable-graph walk).
     ///
     /// # Errors
     /// - `target` is not in `inventory.item_ids` → `ProceduralViolation`.
