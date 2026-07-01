@@ -953,4 +953,85 @@ mod tests {
         assert!(!ch.inventory.item_ids.contains(&key_id), "key should NOT be in item_ids");
         assert!(ch.inventory.item_ids.is_empty(), "item_ids still empty (slots=0 enforced)");
     }
+
+    #[test]
+    fn take_key_ticks_budget_and_records_pickup_history() {
+        // Reuse the key-take fixture from take_key_bypasses_slot_check.
+        // After a successful key take, actions_this_round must increment by exactly 1
+        // and history must gain a PickUp entry whose items[0] has the key's id and name.
+        let mut world = world_with_party(&["pc"], 10);
+        let pc_id = CharacterId("pc".into());
+        world.characters.get_mut(&pc_id).unwrap().current_room_id = Some(rid("room1"));
+        world.characters.get_mut(&pc_id).unwrap().inventory.slots = 0; // full — key bypasses this
+
+        let key_id = iid("key-1");
+        world.items.insert(
+            key_id.clone(),
+            ItemSnapshot::Key {
+                id: key_id.clone(),
+                name: "Brass Key".into(),
+                key_code: "door-east".into(),
+                consume_on_use: false,
+            },
+        );
+
+        let loot_id = lid("loot-key");
+        world.loot.insert(loot_id.clone(), LootSnapshot {
+            id: loot_id.clone(),
+            description: "Lockbox".into(),
+            capacity: 5,
+            content_ids: alloc::vec![key_id.clone()],
+        });
+
+        let room = RoomSnapshot {
+            id: rid("room1"),
+            name: "Room".into(),
+            description: String::new(),
+            exits: BTreeMap::new(),
+            dark: false,
+            spawn_modifier: 0,
+            occupant_ids: alloc::vec![pc_id.clone()],
+            loot_ids: alloc::vec![loot_id.clone()],
+            material_cache_ids: alloc::vec![],
+            light_source_ids: alloc::vec![],
+            scenes: alloc::vec![],
+        };
+        world.rooms.insert(rid("room1"), room);
+
+        let cat = Catalog::default();
+        let mut cues = Vec::new();
+        world.take(&pc_id, &key_id, &cat, &mut cues).unwrap();
+
+        let ch = &world.characters[&pc_id];
+
+        // Budget ticked exactly +1
+        assert_eq!(ch.actions_this_round, 1, "key take should tick budget by exactly 1");
+
+        // History gained a PickUp entry with the key's id and name
+        assert_eq!(ch.history.len(), 1, "key take should record exactly one history entry");
+        match &ch.history[0] {
+            ActionHistoryEntry::PickUp { items, .. } => {
+                assert_eq!(items.len(), 1, "PickUp entry should list exactly one item");
+                assert_eq!(items[0].id, key_id, "PickUp item id should match the key id");
+                assert_eq!(items[0].name, "Brass Key", "PickUp item name should match the key name");
+            }
+            other => panic!("expected PickUp history entry, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn take_with_actor_in_no_room_returns_err() {
+        // When the acting character's current_room_id is None, take() must return
+        // Err(ProceduralViolation) rather than panicking or succeeding.
+        let cat = simple_cat_with("items/coin", consumable_desc());
+        let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/6);
+
+        // Explicitly clear the actor's room assignment
+        world.characters.get_mut(&pc_id).unwrap().current_room_id = None;
+
+        let item_id = iid("item-1");
+        let mut cues = Vec::new();
+        let result = world.take(&pc_id, &item_id, &cat, &mut cues);
+        assert!(result.is_err(), "take with actor in no room should return Err");
+    }
 }
