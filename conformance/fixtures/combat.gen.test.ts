@@ -473,20 +473,27 @@ describe("generate combat golden", () => {
       );
       if (!bothWeaponsBrokenStep) continue;
 
-      // (d) On the both-weapons-broken step, a Health takeDamage appears in Ben's
-      // history — proving the natural attack fired (only axe targets Health, and
-      // axe was already broken; so the natural attack was the only Health-damage source).
-      const benCharOnNatural = (
-        bothWeaponsBrokenStep.snapshot.characters as Array<{
-          name: string;
-          history: Array<{ kind: string; stat?: string }>;
-        }>
-      ).find((c) => c.name === "Ben");
-      if (!benCharOnNatural) continue;
-      const hasHealthDamageAfterBothBroke = benCharOnNatural.history.some(
-        (h) => h.kind === "takeDamage" && h.stat === StatType.Health,
+      // (d) The NEXT attack after both weapons first reached 0 must produce a new
+      // Health takeDamage in Ben's history — proving the natural-attack fallback fired.
+      // The check is a per-step DELTA (count before vs after) so it cannot be
+      // satisfied by earlier axe attacks that happened while weapons were intact.
+      const bothBrokenIdx = steps.indexOf(bothWeaponsBrokenStep);
+      const naturalAttackStep = steps.slice(bothBrokenIdx + 1).find(
+        (s) => s.command.kind === "attack",
       );
-      if (!hasHealthDamageAfterBothBroke) continue;
+      if (!naturalAttackStep) continue;
+
+      type CharSnapshot = { name: string; history: Array<{ kind: string; stat?: string }> };
+      const countBenHealthDamage = (step: (typeof steps)[number]) =>
+        (step.snapshot.characters as CharSnapshot[])
+          .find((c) => c.name === "Ben")
+          ?.history.filter((h) => h.kind === "takeDamage" && h.stat === StatType.Health)
+          .length ?? 0;
+
+      const healthDamageCountBefore = countBenHealthDamage(bothWeaponsBrokenStep);
+      const healthDamageCountAfter = countBenHealthDamage(naturalAttackStep);
+      // Natural attack added exactly one new Health takeDamage entry.
+      if (healthDamageCountAfter <= healthDamageCountBefore) continue;
 
       // (e) Ben reaches KO (defeated: true in some step's view).
       const koSeen = steps.some((s) =>
