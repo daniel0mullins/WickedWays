@@ -26,7 +26,7 @@ impl World {
 
     /// Build an `EntityRef` for a character — safe to call even if the character
     /// has already been mutated (uses current snapshot state).
-    fn entity_ref_char(&self, id: &CharacterId) -> EntityRef {
+    pub(crate) fn entity_ref_char(&self, id: &CharacterId) -> EntityRef {
         let name = self.characters.get(id).map(|c| c.name.clone()).unwrap_or_default();
         EntityRef { id: id.0.clone(), name }
     }
