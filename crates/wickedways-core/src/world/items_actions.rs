@@ -61,13 +61,18 @@ impl World {
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<Option<LootId>, ProceduralViolation> {
-        // 0. Affliction gate (is_move = false, budgeted). Mirrors
-        //    attemptAction(this.takeFromLootBox, false). Fizzle → record fumble
-        //    (ticks budget), no loot taken → Ok(None).
+        // 0. Affliction gate (is_move = false, NOT budgeted). Mirrors
+        //    attemptAction(this.takeFromLootBox, false). `takeFromLootBox` is NOT
+        //    registered in `isActionMap` (player-character.ts:93-96 only registers
+        //    move/go; character.ts:501-503 addToInventory/removeFromInventory/
+        //    useMechanicAction), so on a Confused fizzle recordAction finds
+        //    `budgeted === false` and does NOT tick the budget (character.ts:530).
+        //    The successful take ticks the budget separately below via the internal
+        //    addToInventory/pickUp (which IS budgeted). Fizzle → fumble, no loot → Ok(None).
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
-                self.record_fumble(actor, "takeFromLootBox", true, cues);
+                self.record_fumble(actor, "takeFromLootBox", false, cues);
                 return Ok(None);
             }
             crate::world::gate::GateVerdict::Allow => {}
@@ -1796,7 +1801,7 @@ mod tests {
     }
 
     #[test]
-    fn confused_take_fizzles_records_fumble_ticks_budget_item_not_moved() {
+    fn confused_take_fizzles_records_fumble_does_not_tick_budget_item_not_moved() {
         let cat = simple_cat_with("items/coin", consumable_desc());
         let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/6);
         prime_confused_fizzle(&mut world, &pc_id);
@@ -1807,8 +1812,12 @@ mod tests {
         assert_eq!(result, None, "fizzled take returns None (no loot taken)");
 
         let ch = &world.characters[&pc_id];
-        // Fumble recorded, budget ticked (take is budgeted).
-        assert_eq!(ch.actions_this_round, 1, "fizzled take ticks budget");
+        // Fumble recorded but budget NOT ticked: the TS gate is on
+        // `takeFromLootBox` (player-character.ts:217), which is not registered in
+        // `isActionMap`, so recordAction finds `budgeted === false`
+        // (character.ts:530). Only a SUCCESSFUL take ticks, via the internal
+        // addToInventory/pickUp. Verified by the afflictions differential gate.
+        assert_eq!(ch.actions_this_round, 0, "fizzled take does NOT tick budget");
         assert_eq!(ch.history.len(), 1);
         match &ch.history[0] {
             ActionHistoryEntry::Fumble { round: 0, action } => assert_eq!(action, "takeFromLootBox"),
