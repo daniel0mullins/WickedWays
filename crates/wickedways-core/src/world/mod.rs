@@ -2,10 +2,12 @@
 pub mod command;
 pub mod descriptor;
 pub mod direction;
+pub mod equipment;
 pub mod history;
 pub mod ids;
 pub mod resolve;
 pub mod snapshot;
+mod items_actions;
 mod movement;
 mod turn;
 pub mod view;
