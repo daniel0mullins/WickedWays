@@ -1,7 +1,9 @@
 //! Equipment item actions: `equip` and `unequip` on `World`.
-//! Mirrors `character.ts` `:685-747` (equip) and `:756-773` (unequip).
+//! Also: `take` (loot container → inventory), mirrors `player-character.ts:216-235`
+//! (takeFromLootBox) and `character.ts:547-573` (addToInventory).
 //!
-//! Both operations are **free** — no budget tick, no history entry.
+//! `equip` and `unequip` are **free** — no budget tick, no history entry.
+//! `take` is **budgeted** — ticks `actions_this_round` and records a `pickUp` history entry.
 //!
 //! Visibility-flip note: we compute `is_lit` before/after and emit a
 //! `{ kind: "visibility", room, lit }` cue if it changes. In sub-plan 3b
@@ -13,17 +15,142 @@
 //! light item is equipped/unequipped.
 
 use alloc::string::ToString;
+use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::error::ProceduralViolation;
-use crate::presentation::{EntityRef, PresentationCue};
+use crate::presentation::{ActionKind, EntityRef, PresentationCue};
 use crate::world::descriptor::{Catalog, ItemType};
 use crate::world::equipment::{slot_kind_of, DEFAULT_EQUIPMENT_SLOTS, LEFT_HAND, RIGHT_HAND};
-use crate::world::ids::{CharacterId, ItemId};
+use crate::world::history::{ActionHistoryEntry, ItemRef};
+use crate::world::ids::{CharacterId, ItemId, LootId};
 use crate::world::resolve::resolve_item;
 use crate::world::World;
 
 impl World {
+    /// Take `target` from a loot container in the actor's current room into
+    /// their inventory. **Budgeted** — ticks `actions_this_round` and records
+    /// a `pickUp` history entry. Returns the `LootId` of the container taken from
+    /// (so `apply_command` can auto-add it to the `opened` set).
+    ///
+    /// Mirrors `player-character.ts:216-235` (takeFromLootBox) and
+    /// `character.ts:547-573` (addToInventory / pickUp).
+    ///
+    /// # Errors
+    /// - Actor has no `current_room_id` → `ProceduralViolation`.
+    /// - No loot container in that room has `target` in its `content_ids` → `ProceduralViolation`.
+    /// - Room is dark and actor cannot see in the dark → `ProceduralViolation`.
+    /// - Non-key item but inventory is full → `ProceduralViolation`.
+    pub fn take(
+        &mut self,
+        actor: &CharacterId,
+        target: &ItemId,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<LootId, ProceduralViolation> {
+        // 1. Resolve the actor's current room.
+        let room_id = self
+            .characters
+            .get(actor)
+            .and_then(|c| c.current_room_id.clone())
+            .ok_or_else(|| ProceduralViolation("Cannot take: actor is not in any room.".into()))?;
+
+        // 2. Find the loot container in this room whose content_ids contains target.
+        let loot_id: LootId = {
+            let room = self
+                .rooms
+                .get(&room_id)
+                .ok_or_else(|| ProceduralViolation("Current room not found.".into()))?;
+            room.loot_ids
+                .iter()
+                .find(|lid| {
+                    self.loot
+                        .get(*lid)
+                        .map(|l| l.content_ids.contains(target))
+                        .unwrap_or(false)
+                })
+                .cloned()
+                .ok_or_else(|| {
+                    ProceduralViolation("Item is not in any loot container in this room.".into())
+                })?
+        };
+
+        // 3. Visibility gate: !is_lit && !sees_in_dark(actor) → Err.
+        // TODO(sub-plan 4): mob seesInDark override.
+        let sees_in_dark = false;
+        if !self.is_lit(&room_id) && !sees_in_dark {
+            return Err(ProceduralViolation("Cannot loot in the dark".into()));
+        }
+
+        // 4. Resolve the item to determine if it is a key (keys bypass the slot check).
+        let item_snap = self
+            .items
+            .get(target)
+            .ok_or_else(|| ProceduralViolation("Item snapshot not found.".into()))?
+            .clone();
+        let resolved = resolve_item(&item_snap, cat)?;
+        let is_key = resolved.r#type == ItemType::Key;
+
+        // 5. Capacity check: non-key items require a free slot.
+        if !is_key {
+            let ch = self
+                .characters
+                .get(actor)
+                .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
+            let slots = ch.inventory.slots;
+            let used = ch.inventory.item_ids.len() as i64;
+            if used >= slots {
+                return Err(ProceduralViolation(
+                    "Attempted to add to inventory, but character doesn't have enough slots!".into(),
+                ));
+            }
+        }
+
+        // 6. Move target: remove from loot content_ids, add to actor's inventory.
+        if let Some(loot) = self.loot.get_mut(&loot_id) {
+            loot.content_ids.retain(|id| id != target);
+        }
+        {
+            let ch = self
+                .characters
+                .get_mut(actor)
+                .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
+            if is_key {
+                ch.inventory.key_ids.push(target.clone());
+            } else {
+                ch.inventory.item_ids.push(target.clone());
+            }
+        }
+
+        // 7. Tick budget and record pickUp history entry.
+        let round = self.campaign.round;
+        let actor_name = self
+            .characters
+            .get(actor)
+            .map(|c| c.name.clone())
+            .unwrap_or_default();
+        {
+            let ch = self
+                .characters
+                .get_mut(actor)
+                .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
+            ch.actions_this_round += 1;
+            ch.history.push(ActionHistoryEntry::PickUp {
+                round,
+                items: vec![ItemRef { id: target.clone(), name: resolved.name.clone() }],
+            });
+        }
+
+        // 8. Emit action cue.
+        cues.push(PresentationCue::Action {
+            action: ActionKind::PickUp,
+            actor: EntityRef { id: actor.0.clone(), name: actor_name },
+            sound: None,
+        });
+
+        Ok(loot_id)
+    }
+
     /// Equip `item` on `actor`. Free — no budget tick, no history.
     ///
     /// Logic mirrors `character.ts:685-747` exactly:
@@ -231,9 +358,7 @@ mod tests {
     use super::*;
     use crate::world::descriptor::{Catalog, ItemDescriptor, ItemProperties, ItemType, SlotKind};
     use crate::world::ids::ItemId;
-    use crate::world::snapshot::{
-        CharacterKind, CharacterSnapshot, InventorySnapshot, ItemSnapshot, Stats,
-    };
+    use crate::world::snapshot::ItemSnapshot;
     use crate::world::test_support::world_with_party;
     use alloc::collections::BTreeMap;
     use alloc::string::ToString;
@@ -608,5 +733,224 @@ mod tests {
             Some(&item),
             "first hand item should go to leftHand per canonical DEFAULT_EQUIPMENT_SLOTS order"
         );
+    }
+
+    // ── take (loot → inventory) ────────────────────────────────────────────────
+
+    use crate::world::ids::{LootId, RoomId};
+    use crate::world::snapshot::{LootSnapshot, RoomSnapshot};
+
+    fn consumable_desc() -> ItemDescriptor {
+        ItemDescriptor {
+            name: "Old Coin".into(),
+            r#type: ItemType::Consumable,
+            stat: crate::stats::StatType::Health,
+            modifier: 0,
+            properties: ItemProperties {
+                equippable: false,
+                equipped: false,
+                destroyable: false,
+                usable: true,
+                droppable: None,
+            },
+            slot: None,
+            two_handed: None,
+            emits_light: None,
+            max_durability: None,
+            lore: None,
+            presentation: None,
+            key_code: None,
+            consume_on_use: None,
+            recipe: json!({}),
+            teaches: json!(null),
+            immunities: json!([]),
+            grants_immunity: json!(null),
+        }
+    }
+
+    fn rid(s: &str) -> RoomId { RoomId(s.into()) }
+    fn lid(s: &str) -> LootId { LootId(s.into()) }
+
+    /// Build a world with one lit room, a loot container, an item, and the player in the room.
+    fn take_world(dark: bool, slots: i64) -> (World, CharacterId) {
+        let mut world = world_with_party(&["pc"], 10);
+        let pc_id = CharacterId("pc".into());
+
+        // Put player in "room1"
+        world.characters.get_mut(&pc_id).unwrap().current_room_id = Some(rid("room1"));
+        world.characters.get_mut(&pc_id).unwrap().inventory.slots = slots;
+
+        // Add the item to world.items
+        let item_id = iid("item-1");
+        world.items.insert(
+            item_id.clone(),
+            ItemSnapshot::Item {
+                id: item_id.clone(),
+                behavior_key: "items/coin".into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
+
+        // Add a loot container with that item
+        let loot_id = lid("loot-1");
+        world.loot.insert(loot_id.clone(), LootSnapshot {
+            id: loot_id.clone(),
+            description: "A chest".into(),
+            capacity: 10,
+            content_ids: alloc::vec![item_id],
+        });
+
+        // Add the room with the loot container
+        let room = RoomSnapshot {
+            id: rid("room1"),
+            name: "Test Room".into(),
+            description: String::new(),
+            exits: BTreeMap::new(),
+            dark,
+            spawn_modifier: 0,
+            occupant_ids: alloc::vec![pc_id.clone()],
+            loot_ids: alloc::vec![loot_id],
+            material_cache_ids: alloc::vec![],
+            light_source_ids: alloc::vec![],
+            scenes: alloc::vec![],
+        };
+        world.rooms.insert(rid("room1"), room);
+
+        (world, pc_id)
+    }
+
+    #[test]
+    fn take_moves_item_to_inventory_removes_from_loot_ticks_budget_records_history_emits_cue() {
+        let cat = simple_cat_with("items/coin", consumable_desc());
+        let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/6);
+        let item_id = iid("item-1");
+        let mut cues = Vec::new();
+
+        let returned_loot_id = world.take(&pc_id, &item_id, &cat, &mut cues).unwrap();
+
+        // Returns the correct loot container id
+        assert_eq!(returned_loot_id, lid("loot-1"));
+
+        // Item is now in inventory
+        let ch = &world.characters[&pc_id];
+        assert!(ch.inventory.item_ids.contains(&item_id), "item should be in inventory");
+
+        // Item is removed from loot content_ids
+        let loot = &world.loot[&lid("loot-1")];
+        assert!(!loot.content_ids.contains(&item_id), "item should be removed from loot");
+
+        // Budget ticked +1
+        assert_eq!(ch.actions_this_round, 1, "take should tick budget");
+
+        // History has a PickUp entry
+        assert_eq!(ch.history.len(), 1);
+        match &ch.history[0] {
+            ActionHistoryEntry::PickUp { round: 0, items } => {
+                assert_eq!(items.len(), 1);
+                assert_eq!(items[0].id, item_id);
+                assert_eq!(items[0].name, "Old Coin");
+            }
+            other => panic!("expected PickUp history entry, got {:?}", other),
+        }
+
+        // An action cue (pickUp) was emitted
+        assert_eq!(cues.len(), 1);
+        match &cues[0] {
+            PresentationCue::Action { action: ActionKind::PickUp, actor, sound: None } => {
+                assert_eq!(actor.id, "pc");
+            }
+            other => panic!("expected Action(pickUp) cue, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn take_in_dark_room_returns_err() {
+        let cat = simple_cat_with("items/coin", consumable_desc());
+        let (mut world, pc_id) = take_world(/*dark=*/true, /*slots=*/6);
+        let item_id = iid("item-1");
+        let mut cues = Vec::new();
+
+        let result = world.take(&pc_id, &item_id, &cat, &mut cues);
+        assert!(result.is_err(), "take in a dark room should return Err");
+        let err = result.unwrap_err();
+        assert!(err.0.contains("dark"), "error message should mention 'dark', got: {}", err.0);
+    }
+
+    #[test]
+    fn take_absent_item_returns_err() {
+        let cat = simple_cat_with("items/coin", consumable_desc());
+        let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/6);
+        // item-99 does not exist in any loot container
+        let missing = iid("item-99");
+        let mut cues = Vec::new();
+
+        let result = world.take(&pc_id, &missing, &cat, &mut cues);
+        assert!(result.is_err(), "take of absent item should return Err");
+    }
+
+    #[test]
+    fn take_when_inventory_full_returns_err() {
+        let cat = simple_cat_with("items/coin", consumable_desc());
+        // slots=0 → inventory full
+        let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/0);
+        let item_id = iid("item-1");
+        let mut cues = Vec::new();
+
+        let result = world.take(&pc_id, &item_id, &cat, &mut cues);
+        assert!(result.is_err(), "take with full inventory should return Err");
+    }
+
+    #[test]
+    fn take_key_bypasses_slot_check() {
+        // Even with slots=0, a key can be picked up (goes to key_ids, not item_ids)
+        let mut world = world_with_party(&["pc"], 10);
+        let pc_id = CharacterId("pc".into());
+        world.characters.get_mut(&pc_id).unwrap().current_room_id = Some(rid("room1"));
+        world.characters.get_mut(&pc_id).unwrap().inventory.slots = 0; // full
+
+        let key_id = iid("key-1");
+        world.items.insert(
+            key_id.clone(),
+            ItemSnapshot::Key {
+                id: key_id.clone(),
+                name: "Brass Key".into(),
+                key_code: "door-east".into(),
+                consume_on_use: false,
+            },
+        );
+
+        let loot_id = lid("loot-key");
+        world.loot.insert(loot_id.clone(), LootSnapshot {
+            id: loot_id.clone(),
+            description: "Lockbox".into(),
+            capacity: 5,
+            content_ids: alloc::vec![key_id.clone()],
+        });
+
+        let room = RoomSnapshot {
+            id: rid("room1"),
+            name: "Room".into(),
+            description: String::new(),
+            exits: BTreeMap::new(),
+            dark: false,
+            spawn_modifier: 0,
+            occupant_ids: alloc::vec![pc_id.clone()],
+            loot_ids: alloc::vec![loot_id.clone()],
+            material_cache_ids: alloc::vec![],
+            light_source_ids: alloc::vec![],
+            scenes: alloc::vec![],
+        };
+        world.rooms.insert(rid("room1"), room);
+
+        let cat = Catalog::default();
+        let mut cues = Vec::new();
+        let result = world.take(&pc_id, &key_id, &cat, &mut cues);
+        assert!(result.is_ok(), "key pickup should bypass slot check; err={:?}", result.err());
+
+        let ch = &world.characters[&pc_id];
+        assert!(ch.inventory.key_ids.contains(&key_id), "key should be in key_ids");
+        assert!(!ch.inventory.item_ids.contains(&key_id), "key should NOT be in item_ids");
+        assert!(ch.inventory.item_ids.is_empty(), "item_ids still empty (slots=0 enforced)");
     }
 }
