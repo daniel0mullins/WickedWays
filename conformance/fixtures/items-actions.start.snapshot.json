@@ -1,7 +1,7 @@
 {
   "schemaVersion": 6,
   "campaign": {
-    "id": "087f46cd-c602-4ac1-8a5a-947db5caa92b",
+    "id": "5b5804aa-0ea6-42c2-86fc-c22a287e4783",
     "title": "Item Actions (conformance)",
     "maxRounds": 10,
     "round": 0,
@@ -11,11 +11,11 @@
     "loseConditions": [],
     "activeCharacterIndex": 0,
     "partyIds": [
-      "437f7477-ea64-4161-8c18-2fb87ab621f3",
-      "eafd84b3-00c2-4d16-8acc-65fa49907b63"
+      "570faafe-e58f-43eb-b908-220f80b89bb2",
+      "3d73e88e-d4ec-46f7-9f04-f231182e23c5"
     ],
     "actedThisRound": [],
-    "gmId": "437f7477-ea64-4161-8c18-2fb87ab621f3",
+    "gmId": "570faafe-e58f-43eb-b908-220f80b89bb2",
     "materials": {},
     "claims": [],
     "encountered": [],
@@ -35,7 +35,7 @@
     "encounterTable": {
       "baseChance": 20,
       "visited": [
-        "55296b8d-a951-42b6-a4ea-eda54d6bcc32"
+        "cb088fd7-f000-4c89-a35a-a2765a137492"
       ],
       "formations": []
     },
@@ -57,37 +57,37 @@
   },
   "rooms": [
     {
-      "id": "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+      "id": "cb088fd7-f000-4c89-a35a-a2765a137492",
       "name": "Hall",
       "description": "A stone hall.",
       "exits": {
-        "south": "701a28ef-6515-401b-a453-54051b7e828c"
+        "south": "27733ba7-f7ad-4d21-9dc3-bb49bf518fcf"
       },
       "dark": false,
       "spawnModifier": 1,
       "occupantIds": [
-        "437f7477-ea64-4161-8c18-2fb87ab621f3",
-        "eafd84b3-00c2-4d16-8acc-65fa49907b63"
+        "570faafe-e58f-43eb-b908-220f80b89bb2",
+        "3d73e88e-d4ec-46f7-9f04-f231182e23c5"
       ],
       "lootIds": [
-        "47d32072-5ca3-410d-bd67-c1c802a713aa"
+        "1350afe9-528f-4017-908c-71e8d6fb8cfe"
       ],
       "materialCacheIds": [],
       "lightSourceIds": [],
       "scenes": []
     },
     {
-      "id": "07ea1032-872e-4217-a043-038044df1936",
+      "id": "7fd06f00-3770-4816-a0c6-c98d7ce6ce48",
       "name": "Cellar",
       "description": "A pitch-black cellar.",
       "exits": {
-        "north": "701a28ef-6515-401b-a453-54051b7e828c"
+        "north": "27733ba7-f7ad-4d21-9dc3-bb49bf518fcf"
       },
       "dark": true,
       "spawnModifier": 1,
       "occupantIds": [],
       "lootIds": [
-        "4f58714d-1f5c-4123-ab20-8f2f4259819f"
+        "1ed1d83b-e181-416a-9ab4-1bf7911705fa"
       ],
       "materialCacheIds": [],
       "lightSourceIds": [],
@@ -96,10 +96,10 @@
   ],
   "exits": [
     {
-      "id": "701a28ef-6515-401b-a453-54051b7e828c",
+      "id": "27733ba7-f7ad-4d21-9dc3-bb49bf518fcf",
       "endpointIds": [
-        "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
-        "07ea1032-872e-4217-a043-038044df1936"
+        "cb088fd7-f000-4c89-a35a-a2765a137492",
+        "7fd06f00-3770-4816-a0c6-c98d7ce6ce48"
       ],
       "state": {}
     }
@@ -107,7 +107,7 @@
   "characters": [
     {
       "kind": "player",
-      "id": "437f7477-ea64-4161-8c18-2fb87ab621f3",
+      "id": "570faafe-e58f-43eb-b908-220f80b89bb2",
       "name": "Ada",
       "stats": {
         "health": 12,
@@ -116,7 +116,7 @@
       },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+      "currentRoomId": "cb088fd7-f000-4c89-a35a-a2765a137492",
       "inventory": {
         "slots": 10,
         "itemIds": [],
@@ -127,7 +127,7 @@
         {
           "kind": "move",
           "room": {
-            "id": "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+            "id": "cb088fd7-f000-4c89-a35a-a2765a137492",
             "name": "Hall"
           },
           "round": 0
@@ -144,7 +144,7 @@
     },
     {
       "kind": "player",
-      "id": "eafd84b3-00c2-4d16-8acc-65fa49907b63",
+      "id": "3d73e88e-d4ec-46f7-9f04-f231182e23c5",
       "name": "Ben",
       "stats": {
         "health": 12,
@@ -153,7 +153,7 @@
       },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+      "currentRoomId": "cb088fd7-f000-4c89-a35a-a2765a137492",
       "inventory": {
         "slots": 10,
         "itemIds": [],
@@ -164,7 +164,7 @@
         {
           "kind": "move",
           "room": {
-            "id": "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+            "id": "cb088fd7-f000-4c89-a35a-a2765a137492",
             "name": "Hall"
           },
           "round": 0
@@ -183,54 +183,54 @@
   "items": [
     {
       "kind": "item",
-      "id": "889a962f-2744-4c78-99fb-a56f4b275646",
+      "id": "32ff0d28-21fa-4b5c-8c96-d8e1193aed5a",
       "behaviorKey": "items/iron-sword",
       "durability": 10,
       "modifier": 5
     },
     {
       "kind": "item",
-      "id": "859b7053-0d5b-41a4-a8d2-724be4735a7d",
+      "id": "910efc0a-6807-412a-af35-78b8f92a2501",
       "behaviorKey": "items/silver-ring",
       "modifier": 3
     },
     {
       "kind": "item",
-      "id": "e24fd9bd-9fb9-4a87-85df-8ce2636677d7",
+      "id": "db90ade5-95ba-4c35-bb94-b5de2fd1c65f",
       "behaviorKey": "items/healing-tonic",
       "modifier": 4
     },
     {
       "kind": "item",
-      "id": "443feba7-5eb7-4fc5-9997-bce1432a96bc",
+      "id": "3c7ef7c6-4052-4091-b857-1c52ed2ba505",
       "behaviorKey": "items/old-coin",
       "modifier": 0
     },
     {
       "kind": "item",
-      "id": "e3c7f705-1ca4-404f-b249-14e40231bced",
+      "id": "c8b0ffc8-093f-49c0-87dc-304c45b67468",
       "behaviorKey": "items/dusty-relic",
       "modifier": 0
     }
   ],
   "loot": [
     {
-      "id": "47d32072-5ca3-410d-bd67-c1c802a713aa",
+      "id": "1350afe9-528f-4017-908c-71e8d6fb8cfe",
       "description": "An old chest.",
       "capacity": 6,
       "contentIds": [
-        "889a962f-2744-4c78-99fb-a56f4b275646",
-        "859b7053-0d5b-41a4-a8d2-724be4735a7d",
-        "e24fd9bd-9fb9-4a87-85df-8ce2636677d7",
-        "443feba7-5eb7-4fc5-9997-bce1432a96bc"
+        "32ff0d28-21fa-4b5c-8c96-d8e1193aed5a",
+        "910efc0a-6807-412a-af35-78b8f92a2501",
+        "db90ade5-95ba-4c35-bb94-b5de2fd1c65f",
+        "3c7ef7c6-4052-4091-b857-1c52ed2ba505"
       ]
     },
     {
-      "id": "4f58714d-1f5c-4123-ab20-8f2f4259819f",
+      "id": "1ed1d83b-e181-416a-9ab4-1bf7911705fa",
       "description": "A cobwebbed strongbox.",
       "capacity": 3,
       "contentIds": [
-        "e3c7f705-1ca4-404f-b249-14e40231bced"
+        "c8b0ffc8-093f-49c0-87dc-304c45b67468"
       ]
     }
   ],
@@ -238,15 +238,15 @@
   "codex": [
     {
       "kind": "room",
-      "key": "55296b8d-a951-42b6-a4ea-eda54d6bcc32",
+      "key": "cb088fd7-f000-4c89-a35a-a2765a137492",
       "snapshot": {
         "name": "Hall",
         "description": "A stone hall."
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "437f7477-ea64-4161-8c18-2fb87ab621f3",
-        "roomId": "55296b8d-a951-42b6-a4ea-eda54d6bcc32"
+        "characterId": "570faafe-e58f-43eb-b908-220f80b89bb2",
+        "roomId": "cb088fd7-f000-4c89-a35a-a2765a137492"
       }
     }
   ]

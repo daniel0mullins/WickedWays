@@ -37,22 +37,17 @@ const EMPTY_ALIASES: Record<string, string[]> = {};
 const EMPTY_CATALOG = { items: {}, aliases: {} };
 
 /**
- * Project the full TS ViewModel to the exact Rust 3a ViewModel subset.
+ * Project the full TS ViewModel to the exact Rust 4a ViewModel subset.
  *
  * Remove:
  *   - top-level `exits` and `lockedDoors`
  *   - `status.locationName`
  *   - `room.image`
- *   - `defeated` from every ScopeEntity (occupants, scope, loot[].contents,
- *      inventory.items, inventory.keys)
+ *
+ * `defeated` is now kept (Rust 4a emits it on occupant/character entities).
  *
  * Mirrors the `viewProjected` helper in items-projection.gen.test.ts.
  */
-function projectScopeEntity(e: Record<string, unknown>): Record<string, unknown> {
-  const { defeated: _defeated, ...rest } = e as { defeated?: unknown; [k: string]: unknown };
-  return rest;
-}
-
 function viewProjected(campaign: Campaign) {
   const full = view(campaign, EMPTY_ALIASES, new Set());
 
@@ -62,32 +57,12 @@ function viewProjected(campaign: Campaign) {
   // Project status: remove locationName
   const { locationName: _locName, ...statusRest } = full.status as { locationName?: unknown; [k: string]: unknown };
 
-  // Project occupants: remove defeated
-  const occupants = full.occupants.map((o) => projectScopeEntity(o as unknown as Record<string, unknown>));
-
-  // Project loot contents: remove defeated
-  const loot = full.loot.map((l) => ({
-    ...l,
-    contents: l.contents.map((c) => projectScopeEntity(c as unknown as Record<string, unknown>)),
-  }));
-
-  // Project inventory items/keys: remove defeated
-  const inventory = {
-    items: full.inventory.items.map((i) => projectScopeEntity(i as unknown as Record<string, unknown>)),
-    keys: full.inventory.keys.map((k) => projectScopeEntity(k as unknown as Record<string, unknown>)),
-    equippedNames: full.inventory.equippedNames,
-    slots: full.inventory.slots,
-  };
-
-  // Project scope: remove defeated from all entries
-  const scope = full.scope.map((s) => projectScopeEntity(s as unknown as Record<string, unknown>));
-
   return {
     room: roomRest,
-    occupants,
-    loot,
-    inventory,
-    scope,
+    occupants: full.occupants,
+    loot: full.loot,
+    inventory: full.inventory,
+    scope: full.scope,
     status: statusRest,
     outcome: full.outcome,
     finished: full.finished,

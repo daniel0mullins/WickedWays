@@ -101,8 +101,8 @@ impl World {
         };
 
         // 3. Visibility gate: !is_lit && !sees_in_dark(actor) → Err.
-        // TODO(sub-plan 4): mob seesInDark override.
-        let sees_in_dark = false;
+        // Mob `lightAverse` override wired in sub-plan 4c; base always returns false.
+        let sees_in_dark = self.sees_in_dark(actor);
         if !self.is_lit(&room_id) && !sees_in_dark {
             return Err(ProceduralViolation("Cannot loot in the dark".into()));
         }

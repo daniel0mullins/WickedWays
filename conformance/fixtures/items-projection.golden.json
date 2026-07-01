@@ -1,30 +1,31 @@
 {
   "view": {
     "room": {
-      "id": "8efae5fd-83a5-4be8-8ecf-a02ea3958c74",
+      "id": "a4970ecc-c7d8-4244-b569-2ac81d3148bf",
       "name": "Hall",
       "description": "A stone hall.",
       "isLit": true
     },
     "occupants": [
       {
-        "id": "9740c88f-4045-46ef-9c90-f903c1cb8702",
+        "id": "660703a3-7055-480a-adca-f5872a612fea",
         "name": "Ben",
         "aliases": [
           "ben"
         ],
         "kind": "occupant",
-        "health": 12
+        "health": 12,
+        "defeated": false
       }
     ],
     "loot": [
       {
-        "id": "5d695217-4218-4532-a059-d1ce56c423ea",
+        "id": "d114fd04-8191-418a-9706-5c1f6f7c07ef",
         "description": "An old chest.",
         "opened": false,
         "contents": [
           {
-            "id": "3bcde3c6-1f6f-494b-b569-39f105cd532e",
+            "id": "3fc60c2c-6d9a-4689-94ea-19b979fe4e20",
             "name": "Old Coin",
             "aliases": [
               "old coin",
@@ -42,7 +43,7 @@
     "inventory": {
       "items": [
         {
-          "id": "5987ec71-22e0-4cf0-abd0-cb03eee32789",
+          "id": "76df020e-2b04-4541-8711-c81cb2d6bca7",
           "name": "Iron Sword",
           "aliases": [
             "iron sword",
@@ -56,7 +57,7 @@
           "droppable": true
         },
         {
-          "id": "4c18063b-bf44-484f-9add-c39384da9da5",
+          "id": "dc2b9253-d778-4913-ad81-a8097fc9b6c8",
           "name": "Silver Ring",
           "aliases": [
             "silver ring",
@@ -70,7 +71,7 @@
           "droppable": true
         },
         {
-          "id": "9a6a8cae-c152-431b-9f53-036e9a942883",
+          "id": "83ddba60-87fb-42de-8745-1f629ddd0ec0",
           "name": "Healing Tonic",
           "aliases": [
             "healing tonic",
@@ -86,7 +87,7 @@
       ],
       "keys": [
         {
-          "id": "453426b6-5577-4dfa-8d7c-e591b87e48f9",
+          "id": "e25ff2b5-a173-409c-bdd4-a10f8228b864",
           "name": "Old Key",
           "aliases": [
             "old key"
@@ -105,16 +106,17 @@
     },
     "scope": [
       {
-        "id": "9740c88f-4045-46ef-9c90-f903c1cb8702",
+        "id": "660703a3-7055-480a-adca-f5872a612fea",
         "name": "Ben",
         "aliases": [
           "ben"
         ],
         "kind": "occupant",
-        "health": 12
+        "health": 12,
+        "defeated": false
       },
       {
-        "id": "3bcde3c6-1f6f-494b-b569-39f105cd532e",
+        "id": "3fc60c2c-6d9a-4689-94ea-19b979fe4e20",
         "name": "Old Coin",
         "aliases": [
           "old coin",
@@ -127,7 +129,7 @@
         "droppable": true
       },
       {
-        "id": "5987ec71-22e0-4cf0-abd0-cb03eee32789",
+        "id": "76df020e-2b04-4541-8711-c81cb2d6bca7",
         "name": "Iron Sword",
         "aliases": [
           "iron sword",
@@ -141,7 +143,7 @@
         "droppable": true
       },
       {
-        "id": "4c18063b-bf44-484f-9add-c39384da9da5",
+        "id": "dc2b9253-d778-4913-ad81-a8097fc9b6c8",
         "name": "Silver Ring",
         "aliases": [
           "silver ring",
@@ -155,7 +157,7 @@
         "droppable": true
       },
       {
-        "id": "9a6a8cae-c152-431b-9f53-036e9a942883",
+        "id": "83ddba60-87fb-42de-8745-1f629ddd0ec0",
         "name": "Healing Tonic",
         "aliases": [
           "healing tonic",
@@ -169,7 +171,7 @@
         "droppable": true
       },
       {
-        "id": "453426b6-5577-4dfa-8d7c-e591b87e48f9",
+        "id": "e25ff2b5-a173-409c-bdd4-a10f8228b864",
         "name": "Old Key",
         "aliases": [
           "old key"
@@ -181,7 +183,7 @@
         "droppable": true
       },
       {
-        "id": "5d695217-4218-4532-a059-d1ce56c423ea",
+        "id": "d114fd04-8191-418a-9706-5c1f6f7c07ef",
         "name": "An old chest.",
         "aliases": [
           "chest",

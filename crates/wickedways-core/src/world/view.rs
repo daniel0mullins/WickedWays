@@ -60,6 +60,9 @@ pub struct ScopeEntity {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts", ts(optional))]
     pub droppable: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub defeated: Option<bool>,
 }
 
 /// A loot container with its resolved contents.
@@ -160,11 +163,26 @@ fn item_scope_entity(
         usable: Some(resolved.properties.usable),
         has_lore: Some(resolved.lore.is_some()),
         droppable: Some(resolved.properties.droppable != Some(false)),
+        defeated: None,
     })
 }
 
 
 impl World {
+    /// Returns `true` if the character is currently KO.
+    /// Mirrors `o.status.includes(Status.KO)` in `viewmodel.ts`.
+    pub fn is_ko(&self, id: &crate::world::ids::CharacterId) -> bool {
+        self.characters
+            .get(id)
+            .map(|c| c.afflictions.is_active(crate::world::afflictions::Status::Ko))
+            .unwrap_or(false)
+    }
+
+    /// Base characters never see in the dark. Mob `lightAverse` override → sub-plan 4c.
+    pub fn sees_in_dark(&self, _actor: &crate::world::ids::CharacterId) -> bool {
+        false
+    }
+
     /// Build the widened ViewModel (sub-plan 3a).
     ///
     /// Mirrors `view()` in `packages/play-runtime/src/viewmodel.ts:60-167`.
@@ -223,6 +241,7 @@ impl World {
                     usable: None,
                     has_lore: None,
                     droppable: None,
+                    defeated: Some(self.is_ko(id)),
                 }
             })
             .collect();
@@ -301,6 +320,7 @@ impl World {
                 usable: None,
                 has_lore: None,
                 droppable: None,
+                defeated: None,
             })
             .collect();
 
@@ -787,5 +807,38 @@ mod tests {
         assert_eq!(v.scope[4].kind, "loot");       // chest container
         assert_eq!(v.scope[4].name, "An old chest");
         assert_eq!(v.scope[4].aliases, alloc::vec!["chest", "box", "drawer", "container"]);
+    }
+
+    /// Task 6: `defeated` on occupant (character) entities, not on items.
+    ///
+    /// - A healthy occupant → `defeated == Some(false)`
+    /// - A KO occupant → `defeated == Some(true)`
+    /// - An item entity → `defeated == None`
+    #[test]
+    fn view_occupant_defeated_field() {
+        use crate::world::afflictions::Status;
+
+        let mut w = build_world_for_view();
+        let cat = build_catalog();
+
+        // Healthy NPC → defeated: Some(false)
+        {
+            let v = w.view(&cat, &BTreeSet::new()).unwrap();
+            let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
+            assert_eq!(wraith.defeated, Some(false), "healthy occupant should have defeated=Some(false)");
+
+            // item entity in scope → defeated: None
+            let potion = v.scope.iter().find(|e| e.name == "Healing Potion").unwrap();
+            assert_eq!(potion.defeated, None, "item entity should have defeated=None");
+        }
+
+        // KO the NPC → defeated: Some(true)
+        {
+            let npc_id = char_id("npc1");
+            w.characters.get_mut(&npc_id).unwrap().afflictions.set_active(Status::Ko, true);
+            let v = w.view(&cat, &BTreeSet::new()).unwrap();
+            let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
+            assert_eq!(wraith.defeated, Some(true), "KO occupant should have defeated=Some(true)");
+        }
     }
 }

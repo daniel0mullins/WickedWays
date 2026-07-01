@@ -4,4 +4,4 @@
  * A named entity that can appear in the scope (occupant, item, loot container).
  * Mirrors `ScopeEntity` in `viewmodel.ts`.
  */
-export type ScopeEntity = { id: string, name: string, aliases: Array<string>, kind: string, health?: bigint, image?: unknown, equippable?: boolean, usable?: boolean, hasLore?: boolean, droppable?: boolean, };
+export type ScopeEntity = { id: string, name: string, aliases: Array<string>, kind: string, health?: bigint, image?: unknown, equippable?: boolean, usable?: boolean, hasLore?: boolean, droppable?: boolean, defeated?: boolean, };
