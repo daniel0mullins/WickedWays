@@ -44,7 +44,7 @@ pub struct ScopeEntity {
     pub kind: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts", ts(optional))]
-    pub health: Option<i64>,
+    pub health: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub image: Option<AssetRef>,
@@ -94,14 +94,14 @@ pub struct Inventory {
 pub struct StatusView {
     pub turn: i64,
     pub max_turns: i64,
-    pub health: i64,
-    pub sanity: i64,
+    pub health: f64,
+    pub sanity: f64,
 }
 
 /// The widened ViewModel (sub-plan 3a).
 ///
 /// `exits` and `lockedDoors` are deferred to sub-plan 4/6.
-/// `defeated` on occupants is deferred to sub-plan 4.
+/// `defeated` on occupants shipped in sub-plan 4a.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -490,7 +490,7 @@ mod tests {
             kind: CharacterKind::Mob,
             id: npc_id.clone(),
             name: "Wraith".into(),
-            stats: Stats { energy: 2, sanity: 0, health: 3 },
+            stats: Stats { energy: 2.0, sanity: 0.0, health: 3.0 },
             actions_per_round: 1,
             actions_this_round: 0,
             current_room_id: Some(start_room.clone()),
@@ -516,7 +516,7 @@ mod tests {
             kind: CharacterKind::Player,
             id: pc_id.clone(),
             name: "Heir".into(),
-            stats: Stats { energy: 5, sanity: 7, health: 10 },
+            stats: Stats { energy: 5.0, sanity: 7.0, health: 10.0 },
             actions_per_round: 3,
             actions_this_round: 0,
             current_room_id: Some(start_room.clone()),
@@ -768,7 +768,7 @@ mod tests {
 
         // The npc "Wraith" (health=3, no equipment) should appear in occupants
         let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
-        assert_eq!(wraith.health, Some(3));
+        assert_eq!(wraith.health, Some(3.0));
         assert_eq!(wraith.kind, "occupant");
         assert_eq!(wraith.aliases, alloc::vec!["wraith"]);
     }
@@ -780,8 +780,8 @@ mod tests {
         let v = w.view(&cat, &BTreeSet::new()).unwrap();
 
         // PC: health=10, sanity=7, no health/sanity accessories
-        assert_eq!(v.status.health, 10);
-        assert_eq!(v.status.sanity, 7);
+        assert_eq!(v.status.health, 10.0);
+        assert_eq!(v.status.sanity, 7.0);
         assert_eq!(v.status.turn, 3);
         assert_eq!(v.status.max_turns, 20);
     }

@@ -68,9 +68,9 @@ impl World {
         // a negative base (e.g. from future damage) never bleeds into effective
         // values or affliction thresholds.
         if let Some(c) = self.characters.get_mut(actor) {
-            c.stats.health = c.stats.health.max(0);
-            c.stats.sanity = c.stats.sanity.max(0);
-            c.stats.energy = c.stats.energy.max(0);
+            c.stats.health = c.stats.health.max(0.0);
+            c.stats.sanity = c.stats.sanity.max(0.0);
+            c.stats.energy = c.stats.energy.max(0.0);
         }
         // Effective stats + passive immunities computed first (immutable borrows).
         let health = self.effective_stat(actor, StatType::Health, cat);
@@ -202,7 +202,7 @@ mod tests {
         // confirm on_turn_start ticks its counter (no manual increment in turn.rs).
         let mut w = world_with_party(&["pc"], 10);
         if let Some(c) = w.characters.get_mut(&cid("pc")) {
-            c.stats.sanity = 0;
+            c.stats.sanity = 0.0;
             c.afflictions.set_active(Status::Panic, true);
         }
         w.start_turn(&cid("pc"), &Catalog::default());
@@ -217,7 +217,7 @@ mod tests {
         use crate::world::afflictions::Status;
         let mut w = world_with_party(&["pc"], 10);
         if let Some(c) = w.characters.get_mut(&cid("pc")) {
-            c.stats.health = 0;
+            c.stats.health = 0.0;
             c.afflictions.set_active(Status::Fear, true);
         }
         w.start_turn(&cid("pc"), &Catalog::default());
@@ -245,12 +245,12 @@ mod tests {
         // base sanity = -3  → after floor: 0  → no Fear (0 is not > 0 && < 5)
         let mut w1 = world_with_party(&["pc"], 10);
         if let Some(c) = w1.characters.get_mut(&cid("pc")) {
-            c.stats.sanity = -3;
+            c.stats.sanity = -3.0;
         }
         w1.start_turn(&cid("pc"), &Catalog::default());
         let ch1 = w1.characters.get(&cid("pc")).unwrap();
         // (a) base floored to 0 in the snapshot
-        assert_eq!(ch1.stats.sanity, 0,
+        assert_eq!(ch1.stats.sanity, 0.0,
             "base sanity should be floored to 0 (was -3)");
         // (b) no Fear — effective sanity is 0, not in (0, 5)
         assert!(!ch1.afflictions.is_active(Status::Fear),
@@ -305,14 +305,14 @@ mod tests {
             },
         );
         if let Some(c) = w2.characters.get_mut(&cid("pc")) {
-            c.stats.sanity = -3;
+            c.stats.sanity = -3.0;
             c.equipment.insert("finger".to_string(), ring_id);
         }
 
         w2.start_turn(&cid("pc"), &cat2);
         let ch2 = w2.characters.get(&cid("pc")).unwrap();
         // (a) base floored to 0 in the snapshot
-        assert_eq!(ch2.stats.sanity, 0,
+        assert_eq!(ch2.stats.sanity, 0.0,
             "base sanity should be floored to 0 before accessory bonus");
         // (b) effective sanity = floor(base) + bonus = 0 + 5 = 5 → NO Fear
         assert!(!ch2.afflictions.is_active(Status::Fear),

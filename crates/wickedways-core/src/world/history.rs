@@ -28,7 +28,7 @@ pub enum ActionHistoryEntry {
     PickUp { round: i64, items: Vec<ItemRef> },
     Drop { round: i64, items: Vec<ItemRef> },
     Escape { round: i64, success: bool },
-    TakeDamage { round: i64, amount: i64, stat: StatType },
+    TakeDamage { round: i64, amount: f64, stat: StatType },
     Fumble { round: i64, action: String },
     MechanicAction { round: i64, mechanic: String, action: String },
 }
@@ -114,10 +114,10 @@ mod tests {
     #[test]
     fn take_damage_entry_roundtrips() {
         use crate::stats::StatType;
-        let e = ActionHistoryEntry::TakeDamage { round: 1, amount: 3, stat: StatType::Health };
+        let e = ActionHistoryEntry::TakeDamage { round: 1, amount: 3.0, stat: StatType::Health };
         let v = serde_json::to_value(&e).unwrap();
         assert_eq!(v["kind"], "takeDamage");
-        assert_eq!(v["amount"], 3);
+        assert_eq!(v["amount"], 3.0);
         assert_eq!(v["stat"], "health");
         let s = serde_json::to_string(&e).unwrap();
         let back: ActionHistoryEntry = serde_json::from_str(&s).unwrap();

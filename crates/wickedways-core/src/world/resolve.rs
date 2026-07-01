@@ -116,9 +116,9 @@ impl World {
     /// Returns `0` if the character id is not found.
     /// Silently skips equipped item ids whose `ItemSnapshot` is absent in
     /// `World.items` or whose catalog lookup fails — the non-panicking choice.
-    pub fn effective_stat(&self, character: &CharacterId, stat: StatType, cat: &Catalog) -> i64 {
+    pub fn effective_stat(&self, character: &CharacterId, stat: StatType, cat: &Catalog) -> f64 {
         let Some(ch) = self.characters.get(character) else {
-            return 0;
+            return 0.0;
         };
 
         let base = match stat {
@@ -139,7 +139,7 @@ impl World {
             .map(|resolved| resolved.modifier)
             .sum();
 
-        base + bonus
+        base + bonus as f64
     }
 }
 
@@ -498,18 +498,18 @@ mod tests {
 
     #[test]
     fn effective_stat_base_only_no_equipment() {
-        let world = minimal_world("c1", Stats { energy: 5, sanity: 7, health: 10 });
+        let world = minimal_world("c1", Stats { energy: 5.0, sanity: 7.0, health: 10.0 });
         let cid = CharacterId("c1".to_string());
         let cat = Catalog::default();
         // No equipment → returns base stat
-        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 5);
-        assert_eq!(world.effective_stat(&cid, StatType::Sanity, &cat), 7);
-        assert_eq!(world.effective_stat(&cid, StatType::Health, &cat), 10);
+        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 5.0);
+        assert_eq!(world.effective_stat(&cid, StatType::Sanity, &cat), 7.0);
+        assert_eq!(world.effective_stat(&cid, StatType::Health, &cat), 10.0);
     }
 
     #[test]
     fn effective_stat_equipped_accessory_matching_stat_adds_modifier() {
-        let mut world = minimal_world("c1", Stats { energy: 5, sanity: 7, health: 10 });
+        let mut world = minimal_world("c1", Stats { energy: 5.0, sanity: 7.0, health: 10.0 });
         let cid = CharacterId("c1".to_string());
         let ring_id = item_id("ring-1");
 
@@ -533,13 +533,13 @@ mod tests {
         let ch = world.characters.get_mut(&cid).unwrap();
         ch.equipment.insert("finger".to_string(), ring_id);
 
-        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 8); // 5 + 3
-        assert_eq!(world.effective_stat(&cid, StatType::Sanity, &cat), 7); // unaffected
+        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 8.0); // 5 + 3
+        assert_eq!(world.effective_stat(&cid, StatType::Sanity, &cat), 7.0); // unaffected
     }
 
     #[test]
     fn effective_stat_equipped_weapon_does_not_contribute() {
-        let mut world = minimal_world("c1", Stats { energy: 5, sanity: 7, health: 10 });
+        let mut world = minimal_world("c1", Stats { energy: 5.0, sanity: 7.0, health: 10.0 });
         let cid = CharacterId("c1".to_string());
         let sword_id = item_id("sword-1");
 
@@ -561,12 +561,12 @@ mod tests {
         ch.equipment.insert("hand".to_string(), sword_id);
 
         // Weapon is not an accessory — does NOT contribute
-        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 5);
+        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 5.0);
     }
 
     #[test]
     fn effective_stat_accessory_in_inventory_but_not_equipped_does_not_contribute() {
-        let mut world = minimal_world("c1", Stats { energy: 5, sanity: 7, health: 10 });
+        let mut world = minimal_world("c1", Stats { energy: 5.0, sanity: 7.0, health: 10.0 });
         let cid = CharacterId("c1".to_string());
         let ring_id = item_id("ring-2");
 
@@ -588,12 +588,12 @@ mod tests {
         ch.inventory.item_ids.push(ring_id); // in inventory, not equipped
 
         // Should NOT contribute — equipment map is empty
-        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 5);
+        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 5.0);
     }
 
     #[test]
     fn effective_stat_accessory_with_different_stat_does_not_contribute() {
-        let mut world = minimal_world("c1", Stats { energy: 5, sanity: 7, health: 10 });
+        let mut world = minimal_world("c1", Stats { energy: 5.0, sanity: 7.0, health: 10.0 });
         let cid = CharacterId("c1".to_string());
         let ring_id = item_id("ring-3");
 
@@ -615,8 +615,8 @@ mod tests {
         ch.equipment.insert("finger".to_string(), ring_id);
 
         // Equipped but different stat — does NOT add to energy
-        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 5);
+        assert_eq!(world.effective_stat(&cid, StatType::Energy, &cat), 5.0);
         // But does add to sanity
-        assert_eq!(world.effective_stat(&cid, StatType::Sanity, &cat), 9); // 7 + 2
+        assert_eq!(world.effective_stat(&cid, StatType::Sanity, &cat), 9.0); // 7 + 2
     }
 }

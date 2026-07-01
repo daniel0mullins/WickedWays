@@ -3,4 +3,4 @@
 /**
  * Full turn/health/sanity status for the widened ViewModel.
  */
-export type StatusView = { turn: bigint, maxTurns: bigint, health: bigint, sanity: bigint, };
+export type StatusView = { turn: bigint, maxTurns: bigint, health: number, sanity: number, };

@@ -10,7 +10,7 @@
 //! `is_lit = !dark || !light_source_ids.is_empty()` (sub-plan 3a definition)
 //! does NOT yet depend on occupant-carried or equipped light, so equipping a
 //! light-emitting item will NOT flip `is_lit` here.
-//! TODO(sub-plan 4): widen `is_lit` to include equipped/carried light sources,
+//! TODO(sub-plan 4c): widen `is_lit` to include equipped/carried light sources,
 //! at which point the before/after check here will begin emitting cues when a
 //! light item is equipped/unequipped.
 

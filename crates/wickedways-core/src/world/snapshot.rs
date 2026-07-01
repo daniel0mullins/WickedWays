@@ -68,9 +68,9 @@ pub struct ExitSnapshot {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Stats {
-    pub energy: i64,
-    pub sanity: i64,
-    pub health: i64,
+    pub energy: f64,
+    pub sanity: f64,
+    pub health: f64,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -231,7 +231,7 @@ mod tests {
     fn player_character_roundtrips() {
         roundtrip::<CharacterSnapshot>(r#"{
             "kind":"player","id":"c1","name":"Heir",
-            "stats":{"energy":5,"sanity":7,"health":10},
+            "stats":{"energy":5.0,"sanity":7.0,"health":10.0},
             "actionsPerRound":2,"actionsThisRound":0,"currentRoomId":"r1",
             "inventory":{"slots":6,"itemIds":["i1"],"keyIds":[]},
             "equipment":{"hand":"i1"},
@@ -245,7 +245,7 @@ mod tests {
     fn mob_character_roundtrips_with_null_room_and_omitted_player_fields() {
         roundtrip::<CharacterSnapshot>(r#"{
             "kind":"mob","id":"m1","name":"Wraith",
-            "stats":{"energy":3,"sanity":0,"health":4},
+            "stats":{"energy":3.0,"sanity":0.0,"health":4.0},
             "actionsPerRound":1,"actionsThisRound":0,"currentRoomId":null,
             "inventory":{"slots":0,"itemIds":[],"keyIds":[]},
             "equipment":{},
@@ -256,13 +256,27 @@ mod tests {
     }
 
     #[test]
+    fn stats_roundtrip_fractional_value() {
+        // Post-mitigation damage lands fractional bases (e.g. 7.5, 2.4). f64 must
+        // preserve them across serialize/deserialize.
+        let s = Stats { energy: 2.4, sanity: 0.5, health: 7.5 };
+        let json = serde_json::to_string(&s).unwrap();
+        let back: Stats = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, s);
+        // Integer-valued stats still (de)serialize; serde emits `10.0`, which the
+        // conformance comparator parses back to the JS number 10 (transparent).
+        let whole: Stats = serde_json::from_str(r#"{"energy":5,"sanity":7,"health":10}"#).unwrap();
+        assert_eq!(whole, Stats { energy: 5.0, sanity: 7.0, health: 10.0 });
+    }
+
+    #[test]
     fn mob_with_base_escape_chance_roundtrips_as_integer() {
         // baseEscapeChance is integer-valued (e.g. 50 from the Hollow House genesis fixture).
         // With Option<f64>, serde would re-serialise 50 as 50.0, causing a byte-diff.
         // With Option<i64>, the value round-trips as exactly 50 — no JSON.parse normalisation needed.
         let json = r#"{
             "kind":"mob","id":"m2","name":"Shade",
-            "stats":{"energy":2,"sanity":0,"health":3},
+            "stats":{"energy":2.0,"sanity":0.0,"health":3.0},
             "actionsPerRound":1,"actionsThisRound":0,"currentRoomId":null,
             "inventory":{"slots":0,"itemIds":[],"keyIds":[]},
             "equipment":{},
@@ -303,7 +317,7 @@ mod tests {
             "lightSourceIds":[],"scenes":[]}],
           "exits":[],
           "characters":[{"kind":"player","id":"c1","name":"Heir",
-            "stats":{"energy":5,"sanity":7,"health":10},"actionsPerRound":2,"actionsThisRound":0,
+            "stats":{"energy":5.0,"sanity":7.0,"health":10.0},"actionsPerRound":2,"actionsThisRound":0,
             "currentRoomId":"r1","inventory":{"slots":6,"itemIds":[],"keyIds":[]},"equipment":{},
             "history":[],"archetypeImmunities":[],
             "afflictions":{"active":{},"turnsActive":{},"shakenOff":[],"immunity":{}}}],

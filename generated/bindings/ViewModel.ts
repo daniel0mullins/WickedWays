@@ -10,6 +10,6 @@ import type { ThinRoom } from "./ThinRoom";
  * The widened ViewModel (sub-plan 3a).
  *
  * `exits` and `lockedDoors` are deferred to sub-plan 4/6.
- * `defeated` on occupants is deferred to sub-plan 4.
+ * `defeated` on occupants shipped in sub-plan 4a.
  */
 export type ViewModel = { room: ThinRoom, occupants: Array<ScopeEntity>, loot: Array<LootView>, inventory: Inventory, scope: Array<ScopeEntity>, status: StatusView, outcome: CampaignOutcome, finished: boolean, };

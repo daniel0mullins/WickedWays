@@ -124,12 +124,12 @@ impl Afflictions {
     /// Mirrors `applyFromStats` (afflictions.ts:99-128).
     pub fn apply_from_stats(
         &mut self,
-        health: i64,
-        sanity: i64,
-        energy: i64,
+        health: f64,
+        sanity: f64,
+        energy: f64,
         passive: &BTreeSet<Status>,
     ) {
-        if health <= 0 {
+        if health <= 0.0 {
             self.active.insert(Status::Ko, true);
             for s in CLEARABLE {
                 self.clear_episode(s);
@@ -138,13 +138,13 @@ impl Afflictions {
         }
         self.active.insert(Status::Ko, false);
 
-        self.resolve(Status::Panic, sanity <= 0, passive);
-        self.resolve(Status::Fear, sanity > 0 && sanity < 5, passive);
+        self.resolve(Status::Panic, sanity <= 0.0, passive);
+        self.resolve(Status::Fear, sanity > 0.0 && sanity < 5.0, passive);
 
         // Confused keeps a (0, 1] hold band so it doesn't flicker near the boundary.
-        if energy <= 0 {
+        if energy <= 0.0 {
             self.resolve(Status::Confused, true, passive);
-        } else if energy > 1 {
+        } else if energy > 1.0 {
             self.resolve(Status::Confused, false, passive);
         } else if self.immune(Status::Confused, passive) {
             // (0, 1] hold band + immunity hysteresis (afflictions.ts:119-127).
@@ -162,9 +162,9 @@ impl Afflictions {
     /// immunity decrement (no rng).
     pub fn on_turn_start(
         &mut self,
-        health: i64,
-        sanity: i64,
-        energy: i64,
+        health: f64,
+        sanity: f64,
+        energy: f64,
         passive: &BTreeSet<Status>,
         config: &AfflictionConfig,
         rng: &mut Rng,
@@ -353,7 +353,7 @@ mod tests {
     fn ko_when_health_le_zero_clears_clearables() {
         let mut a = Afflictions::default();
         a.set_active(Status::Panic, true);
-        a.apply_from_stats(0, 0, 0, &BTreeSet::new());
+        a.apply_from_stats(0.0, 0.0, 0.0, &BTreeSet::new());
         assert!(a.is_active(Status::Ko));
         assert!(!a.is_active(Status::Panic)); // cleared under KO
     }
@@ -361,19 +361,19 @@ mod tests {
     #[test]
     fn panic_when_sanity_le_zero_fear_in_band() {
         let mut a = Afflictions::default();
-        a.apply_from_stats(5, 0, 5, &BTreeSet::new());
+        a.apply_from_stats(5.0, 0.0, 5.0, &BTreeSet::new());
         assert!(a.is_active(Status::Panic));
         let mut b = Afflictions::default();
-        b.apply_from_stats(5, 3, 5, &BTreeSet::new()); // 0<sanity<5 → Fear
+        b.apply_from_stats(5.0, 3.0, 5.0, &BTreeSet::new()); // 0<sanity<5 → Fear
         assert!(b.is_active(Status::Fear) && !b.is_active(Status::Panic));
     }
 
     #[test]
     fn confused_energy_bands_and_immunity_hysteresis() {
         let mut a = Afflictions::default();
-        a.apply_from_stats(5, 5, 0, &BTreeSet::new()); // energy<=0 → Confused
+        a.apply_from_stats(5.0, 5.0, 0.0, &BTreeSet::new()); // energy<=0 → Confused
         assert!(a.is_active(Status::Confused));
-        a.apply_from_stats(5, 5, 2, &BTreeSet::new()); // energy>1 → clear
+        a.apply_from_stats(5.0, 5.0, 2.0, &BTreeSet::new()); // energy>1 → clear
         assert!(!a.is_active(Status::Confused));
     }
 
@@ -381,13 +381,13 @@ mod tests {
     fn confused_hold_band_clears_only_when_immune() {
         // energy in (0,1] with no immunity: Confused left as-is (stays active).
         let mut a = Afflictions::default();
-        a.apply_from_stats(5, 5, 0, &BTreeSet::new()); // becomes Confused
+        a.apply_from_stats(5.0, 5.0, 0.0, &BTreeSet::new()); // becomes Confused
         assert!(a.is_active(Status::Confused));
-        a.apply_from_stats(5, 5, 1, &BTreeSet::new()); // hold band, no immunity → unchanged
+        a.apply_from_stats(5.0, 5.0, 1.0, &BTreeSet::new()); // hold band, no immunity → unchanged
         assert!(a.is_active(Status::Confused));
         // Now with a passive immunity → clears the episode even in the hold band.
         let immune: BTreeSet<Status> = [Status::Confused].into_iter().collect();
-        a.apply_from_stats(5, 5, 1, &immune);
+        a.apply_from_stats(5.0, 5.0, 1.0, &immune);
         assert!(!a.is_active(Status::Confused));
     }
 
@@ -395,7 +395,7 @@ mod tests {
     fn passive_immunity_clears_episode() {
         let mut a = Afflictions::default();
         let immune: BTreeSet<Status> = [Status::Panic].into_iter().collect();
-        a.apply_from_stats(5, 0, 5, &immune); // sanity<=0 but immune → no Panic
+        a.apply_from_stats(5.0, 0.0, 5.0, &immune); // sanity<=0 but immune → no Panic
         assert!(!a.is_active(Status::Panic));
     }
 
@@ -423,7 +423,7 @@ mod tests {
         a.set_active(Status::Fear, true);
         let cfg = default_affliction_config();
         let mut rng = Rng::seeded(1);
-        a.on_turn_start(10, 0, 5, &BTreeSet::new(), &cfg, &mut rng);
+        a.on_turn_start(10.0, 0.0, 5.0, &BTreeSet::new(), &cfg, &mut rng);
         // Exactly two draws consumed, in order (Panic then Fear); Confused none.
         let mut expect = Rng::seeded(1);
         expect.next_f64();
@@ -447,7 +447,7 @@ mod tests {
         a.set_active(Status::Panic, true);
         let cfg = default_affliction_config();
         let mut rng_a = Rng::seeded(7);
-        a.on_turn_start(10, 0, 5, &BTreeSet::new(), &cfg, &mut rng_a);
+        a.on_turn_start(10.0, 0.0, 5.0, &BTreeSet::new(), &cfg, &mut rng_a);
         let mut rng_b = Rng::seeded(7);
         rng_b.next_f64(); // exactly one draw
         assert_eq!(rng_a, rng_b);
@@ -459,7 +459,7 @@ mod tests {
         a.immunity.insert(Status::Panic, 2); // grant_immunity lands in Task 4
         let cfg = default_affliction_config();
         let mut rng = Rng::seeded(1);
-        a.on_turn_start(10, 0, 5, &BTreeSet::new(), &cfg, &mut rng);
+        a.on_turn_start(10.0, 0.0, 5.0, &BTreeSet::new(), &cfg, &mut rng);
         assert_eq!(a.immunity.get(&Status::Panic).copied().unwrap_or(0), 1); // 2 → 1
     }
 
@@ -469,7 +469,7 @@ mod tests {
         a.immunity.insert(Status::Fear, 1);
         let cfg = default_affliction_config();
         let mut rng = Rng::seeded(1);
-        a.on_turn_start(10, 5, 5, &BTreeSet::new(), &cfg, &mut rng);
+        a.on_turn_start(10.0, 5.0, 5.0, &BTreeSet::new(), &cfg, &mut rng);
         assert!(!a.immunity.contains_key(&Status::Fear)); // 1 → removed
     }
 
