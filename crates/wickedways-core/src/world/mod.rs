@@ -10,6 +10,7 @@ pub mod ids;
 pub mod resolve;
 pub mod rng;
 pub mod snapshot;
+mod combat;
 mod items_actions;
 mod movement;
 mod turn;
