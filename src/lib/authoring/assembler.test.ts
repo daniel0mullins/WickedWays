@@ -84,6 +84,26 @@ describe("assemble", () => {
     expect(chest.contents.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("assigns content-derived ids, stable across builds", () => {
+    const desc = baseDesc({
+      mobs: [{ name: "goblin", stats: stats(), room: "next", drops: [] }],
+      caches: [{ name: "vein", room: "next", materials: {} }],
+      scenes: [],
+    });
+    const a = assemble(desc, registry);
+    expect(a.campaign.id).toBe("campaign:Crypt");
+    expect(a.rooms.get("start")!.id).toBe("room:start");
+    expect(a.rooms.get("next")!.id).toBe("room:next");
+    expect(a.rooms.get("next")!.occupants[0]!.id).toBe("mob:goblin");
+    expect([...a.rooms.get("next")!.materials.values()][0]!.id).toBe("cache:vein");
+    const exit = a.rooms.get("start")!.exits.get(Directions.North)!;
+    expect(exit.id).toBe("exit:next|start"); // author names, sorted
+    // Stable across a second, independent build (no shared counter).
+    const b = assemble(desc, registry);
+    expect(b.rooms.get("start")!.id).toBe("room:start");
+    expect(b.rooms.get("next")!.occupants[0]!.id).toBe("mob:goblin");
+  });
+
   it("collects ALL validation problems into one AuthoringError", () => {
     let err: AuthoringError | null = null;
     try {

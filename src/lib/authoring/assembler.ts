@@ -10,6 +10,12 @@ import { AuthoringError } from "./errors";
 import type { CampaignRegistry } from "../serialization/registry";
 import type { Direction } from "../room";
 import type { CampaignTemplateDescription } from "./description";
+import type { CampaignId } from "../campaign";
+import type { RoomId } from "../room";
+import type { CharacterId } from "../character/character";
+import type { MaterialCacheId } from "../material-cache";
+import type { ExitId } from "../exit";
+import type { SceneId } from "../scene";
 
 /** Empty exits object; individual exits are wired in via {@link Room.addExit} after construction. */
 const NO_EXITS = {} as Record<Direction, never>;
@@ -185,6 +191,7 @@ export function assemble(
     chatPolicy: desc.chat,
     avPolicy: desc.av,
   });
+  campaign.id = `campaign:${desc.title}` as CampaignId;
 
   for (const a of desc.archetypes) {
     campaign.registerArchetype({
@@ -198,7 +205,9 @@ export function assemble(
 
   const caches = new Map<string, MaterialCache>();
   for (const c of desc.caches) {
-    caches.set(c.name, new MaterialCache({ contents: c.materials }));
+    const cache = new MaterialCache({ contents: c.materials });
+    cache.id = `cache:${c.name}` as MaterialCacheId;
+    caches.set(c.name, cache);
   }
 
   const loot = new Map<string, Loot>();
@@ -208,10 +217,9 @@ export function assemble(
 
   const mobs = new Map<string, Mob>();
   for (const m of desc.mobs) {
-    mobs.set(
-      m.name,
-      new Mob({ campaign, name: m.name, stats: m.stats, inventorySlots: m.inventorySlots ?? 2, actionsPerRound: m.actionsPerRound ?? 2, drops: (m.drops ?? []).map((k) => registry.item(k)()), baseEscapeChance: m.baseEscapeChance, materialDrops: m.materialDrops, lightAverse: m.lightAverse, naturalAttack: m.naturalAttack }),
-    );
+    const mob = new Mob({ campaign, name: m.name, stats: m.stats, inventorySlots: m.inventorySlots ?? 2, actionsPerRound: m.actionsPerRound ?? 2, drops: (m.drops ?? []).map((k) => registry.item(k)()), baseEscapeChance: m.baseEscapeChance, materialDrops: m.materialDrops, lightAverse: m.lightAverse, naturalAttack: m.naturalAttack });
+    mob.id = `mob:${m.name}` as CharacterId;
+    mobs.set(m.name, mob);
   }
 
   const rooms = new Map<string, Room>();
@@ -219,19 +227,18 @@ export function assemble(
     const roomLoot = desc.loot.filter((l) => l.room === r.name).map((l) => loot.get(l.name)!);
     const roomCaches = desc.caches.filter((c) => c.room === r.name).map((c) => caches.get(c.name)!);
     const lights = (r.lights ?? []).map((k) => registry.item(k)());
-    rooms.set(
-      r.name,
-      new Room({
-        name: r.name,
-        description: r.description,
-        loot: roomLoot,
-        exits: NO_EXITS,
-        materials: roomCaches,
-        spawnModifier: r.spawnModifier ?? 1,
-        dark: r.dark ?? false,
-        lightSources: lights,
-      }),
-    );
+    const room = new Room({
+      name: r.name,
+      description: r.description,
+      loot: roomLoot,
+      exits: NO_EXITS,
+      materials: roomCaches,
+      spawnModifier: r.spawnModifier ?? 1,
+      dark: r.dark ?? false,
+      lightSources: lights,
+    });
+    room.id = `room:${r.name}` as RoomId;
+    rooms.set(r.name, room);
   }
 
   // Wire mobs into their rooms
@@ -253,6 +260,7 @@ export function assemble(
       dialogueBlocks: behavior.dialogue,
       behaviorKey: n.behavior,
     });
+    npc.id = `npc:${n.name}` as CharacterId;
     if (n.room !== undefined) {
       npc[PLACE](rooms.get(n.room)!);
     }
@@ -286,20 +294,22 @@ export function assemble(
     } else {
       from.addExit(e.direction, to, { name: e.name, oneWay: e.oneWay }); // auto-reverse places exit in `to` too
     }
+    const exit = from.exits.get(e.direction)!;
+    exit.id = `exit:${[e.from, e.to].sort().join("|")}` as ExitId;
   }
 
   // Attach scenes (mirrors hydrateScene: behavior + key, default phase "enter").
   for (const s of desc.scenes) {
     const behavior = registry.scene(s.key);
-    rooms.get(s.room)!.registerScene(
-      new Scene<never>({
-        phase: s.phase ?? "enter",
-        preconditions: behavior.preconditions,
-        script: behavior.script,
-        initialState: (s.initialState ?? {}) as never,
-        behaviorKey: s.key,
-      }),
-    );
+    const scene = new Scene<never>({
+      phase: s.phase ?? "enter",
+      preconditions: behavior.preconditions,
+      script: behavior.script,
+      initialState: (s.initialState ?? {}) as never,
+      behaviorKey: s.key,
+    });
+    scene.id = `scene:${s.room}:${s.key}:${s.phase ?? "enter"}` as SceneId;
+    rooms.get(s.room)!.registerScene(scene);
   }
 
   // Register recipes
