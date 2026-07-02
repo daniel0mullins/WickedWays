@@ -277,13 +277,16 @@ from the incoming strength (floored at 0); the remainder is then scaled by the *
 (max value 10):
 
 ```
-mitigated   = max(0, attackStrength − armorModifiers)
-finalDamage = mitigated × (10 − mitigator) × 0.2
+mitigated      = max(0, attackStrength − armorModifiers)
+lightMultiplier = lightAverse && roomLit ? 1.5 : 1
+finalDamage    = mitigated × max(0, 10 − mitigator) × 0.2 × lightMultiplier
 ```
 
-So a fully-rested mitigator (10) absorbs all damage, while a depleted one (0) doubles it. Each
+So a fully-rested mitigator (10) absorbs all damage, while a depleted one (0) doubles it.
+A `lightAverse` defender (a character or mob trait) in a lit room takes 1.5× damage. Each
 armor piece that absorbs a hit loses 1 durability and stops mitigating once it breaks (see
-Durability below).
+Durability below). A broken armor piece (durability = 0) is excluded from the `armorModifiers`
+sum — it contributes nothing and wears no further.
 
 ### Status effects
 
@@ -355,14 +358,27 @@ Both fields are plain declarative `Item` descriptor fields — no factory or sub
 
 ### Combat
 
-`Combatant.attack(target)` collects the attacker's *equipped weapons*, sums each weapon's
-modifier onto the stat it targets, and applies the result to the defender via `takeDamage`
-(which runs the mitigation above). With no equipped weapon, an attack falls back to the
-combatant's **natural attack** — `naturalAttack: { stat, power }`, defaulting to a 1-point
-Health jab. `Mob` exposes this as an authorable trait (`.mob(name, { …, naturalAttack })`),
-so a resident horror can claw Sanity, batter Health, etc.; it is serialized with the mob.
-Because weapons occupy hand slots (see Equipment below), an attacker fields at most two
-one-handed weapons — or one two-handed — so the summed modifier is naturally bounded.
+`Combatant.attack(target)` collects the attacker's *equipped, non-broken weapons*, sums each
+weapon's modifier onto the stat it targets, and applies the result to the defender via `takeDamage`
+(which runs the mitigation above). Broken weapons (durability = 0) are silently excluded — they
+neither contribute to the attack matrix nor wear further. With no non-broken equipped weapon an
+attack falls back to the combatant's **natural attack** — `naturalAttack: { stat, power }`,
+defaulting to a 1-point Health jab. `Mob` exposes this as an authorable trait
+(`.mob(name, { …, naturalAttack })`), so a resident horror can claw Sanity, batter Health, etc.;
+it is serialized with the mob. Because weapons occupy hand slots (see Equipment below), an attacker
+fields at most two one-handed weapons — or one two-handed — so the summed modifier is naturally
+bounded.
+
+Durability wear happens in two places:
+
+- **Weapons wear on attack**: every non-broken weapon that contributed to the swing loses 1 durability
+  after all `takeDamage` calls resolve.
+- **Armor wears on `takeDamage`**: each piece of non-broken armor that soaked incoming strength loses
+  1 durability at the end of that `takeDamage` call.
+
+When the defender's Health drops to ≤ 0 as a result of damage, `reconcile` fires and — if this is a
+false→true KO transition — calls `onKnockOut` exactly once. For mobs this drops loot (see
+Drop-on-defeat above); for player characters the base implementation is a no-op.
 
 Note the mitigation interaction: a defender whose *mitigator* stat for the attacked stat is
 ≥ the cap fully absorbs the hit (multiplier `max(0, MAX_STAT − mitigator) × …` → 0). So a

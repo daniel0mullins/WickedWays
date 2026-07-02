@@ -1,7 +1,7 @@
 {
   "schemaVersion": 6,
   "campaign": {
-    "id": "e3851295-7896-4d1f-bf75-acadcceecca7",
+    "id": "d45e4e85-9eb0-488b-a288-72be85d0f269",
     "title": "Combat (conformance)",
     "maxRounds": 20,
     "round": 0,
@@ -11,11 +11,11 @@
     "loseConditions": [],
     "activeCharacterIndex": 0,
     "partyIds": [
-      "777d9eab-4438-4887-8a32-16acb48d2929",
-      "1375285e-bbd3-4d67-aecb-fc2269ebf11a"
+      "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
+      "87d92d99-b0b0-4d18-92eb-5765438bb0a7"
     ],
     "actedThisRound": [],
-    "gmId": "777d9eab-4438-4887-8a32-16acb48d2929",
+    "gmId": "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
     "materials": {},
     "claims": [],
     "encountered": [],
@@ -44,7 +44,7 @@
     "encounterTable": {
       "baseChance": 0,
       "visited": [
-        "b199ccc5-4efa-4656-a819-85107d4371e1"
+        "9caa66b0-9250-4260-adac-052cfe738c04"
       ],
       "formations": []
     },
@@ -66,15 +66,15 @@
   },
   "rooms": [
     {
-      "id": "b199ccc5-4efa-4656-a819-85107d4371e1",
+      "id": "9caa66b0-9250-4260-adac-052cfe738c04",
       "name": "Hall",
       "description": "A stone hall.",
       "exits": {},
       "dark": false,
       "spawnModifier": 1,
       "occupantIds": [
-        "777d9eab-4438-4887-8a32-16acb48d2929",
-        "1375285e-bbd3-4d67-aecb-fc2269ebf11a"
+        "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
+        "87d92d99-b0b0-4d18-92eb-5765438bb0a7"
       ],
       "lootIds": [],
       "materialCacheIds": [],
@@ -86,7 +86,7 @@
   "characters": [
     {
       "kind": "player",
-      "id": "777d9eab-4438-4887-8a32-16acb48d2929",
+      "id": "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
       "name": "Ada",
       "stats": {
         "health": 10,
@@ -95,24 +95,24 @@
       },
       "actionsPerRound": 3,
       "actionsThisRound": 3,
-      "currentRoomId": "b199ccc5-4efa-4656-a819-85107d4371e1",
+      "currentRoomId": "9caa66b0-9250-4260-adac-052cfe738c04",
       "inventory": {
         "slots": 5,
         "itemIds": [
-          "924c46c1-7d33-4b44-801c-1e2e3f751bc5",
-          "bd5d95c3-7615-45bf-aa53-cbf20f00393b"
+          "de29ba3b-78d4-4424-a9de-54b5512e5892",
+          "01dfb43c-13a7-4cb0-aea7-7f328939682d"
         ],
         "keyIds": []
       },
       "equipment": {
-        "leftHand": "924c46c1-7d33-4b44-801c-1e2e3f751bc5",
-        "rightHand": "bd5d95c3-7615-45bf-aa53-cbf20f00393b"
+        "leftHand": "de29ba3b-78d4-4424-a9de-54b5512e5892",
+        "rightHand": "01dfb43c-13a7-4cb0-aea7-7f328939682d"
       },
       "history": [
         {
           "kind": "move",
           "room": {
-            "id": "b199ccc5-4efa-4656-a819-85107d4371e1",
+            "id": "9caa66b0-9250-4260-adac-052cfe738c04",
             "name": "Hall"
           },
           "round": 0
@@ -121,7 +121,7 @@
           "kind": "pickUp",
           "items": [
             {
-              "id": "924c46c1-7d33-4b44-801c-1e2e3f751bc5",
+              "id": "de29ba3b-78d4-4424-a9de-54b5512e5892",
               "name": "Hand Axe"
             }
           ],
@@ -131,7 +131,7 @@
           "kind": "pickUp",
           "items": [
             {
-              "id": "bd5d95c3-7615-45bf-aa53-cbf20f00393b",
+              "id": "01dfb43c-13a7-4cb0-aea7-7f328939682d",
               "name": "Meat Cleaver"
             }
           ],
@@ -153,7 +153,7 @@
     },
     {
       "kind": "player",
-      "id": "1375285e-bbd3-4d67-aecb-fc2269ebf11a",
+      "id": "87d92d99-b0b0-4d18-92eb-5765438bb0a7",
       "name": "Ben",
       "stats": {
         "health": 6,
@@ -162,24 +162,24 @@
       },
       "actionsPerRound": 3,
       "actionsThisRound": 3,
-      "currentRoomId": "b199ccc5-4efa-4656-a819-85107d4371e1",
+      "currentRoomId": "9caa66b0-9250-4260-adac-052cfe738c04",
       "inventory": {
         "slots": 5,
         "itemIds": [
-          "d424036e-d358-47fc-9698-e1faa6c28f40",
-          "57a692c8-57c1-4bf9-92aa-53cac324a978"
+          "39e7ff45-6f0a-4ef8-ad7a-e1ce74bc6190",
+          "d8c2987b-42e4-4ee5-bf97-190af2175f03"
         ],
         "keyIds": []
       },
       "equipment": {
-        "torso": "d424036e-d358-47fc-9698-e1faa6c28f40",
-        "leftIndexFinger": "57a692c8-57c1-4bf9-92aa-53cac324a978"
+        "torso": "39e7ff45-6f0a-4ef8-ad7a-e1ce74bc6190",
+        "leftIndexFinger": "d8c2987b-42e4-4ee5-bf97-190af2175f03"
       },
       "history": [
         {
           "kind": "move",
           "room": {
-            "id": "b199ccc5-4efa-4656-a819-85107d4371e1",
+            "id": "9caa66b0-9250-4260-adac-052cfe738c04",
             "name": "Hall"
           },
           "round": 0
@@ -188,7 +188,7 @@
           "kind": "pickUp",
           "items": [
             {
-              "id": "d424036e-d358-47fc-9698-e1faa6c28f40",
+              "id": "39e7ff45-6f0a-4ef8-ad7a-e1ce74bc6190",
               "name": "Padded Vest"
             }
           ],
@@ -198,7 +198,7 @@
           "kind": "pickUp",
           "items": [
             {
-              "id": "57a692c8-57c1-4bf9-92aa-53cac324a978",
+              "id": "d8c2987b-42e4-4ee5-bf97-190af2175f03",
               "name": "Lucky Charm"
             }
           ],
@@ -216,34 +216,35 @@
         "shakenOff": [],
         "immunity": {}
       },
-      "archetypeId": "scout"
+      "archetypeId": "scout",
+      "lightAverse": true
     }
   ],
   "items": [
     {
       "kind": "item",
-      "id": "924c46c1-7d33-4b44-801c-1e2e3f751bc5",
+      "id": "de29ba3b-78d4-4424-a9de-54b5512e5892",
       "behaviorKey": "items/axe",
       "durability": 2,
       "modifier": 3
     },
     {
       "kind": "item",
-      "id": "bd5d95c3-7615-45bf-aa53-cbf20f00393b",
+      "id": "01dfb43c-13a7-4cb0-aea7-7f328939682d",
       "behaviorKey": "items/cleaver",
       "durability": 5,
       "modifier": 4
     },
     {
       "kind": "item",
-      "id": "d424036e-d358-47fc-9698-e1faa6c28f40",
+      "id": "39e7ff45-6f0a-4ef8-ad7a-e1ce74bc6190",
       "behaviorKey": "items/vest",
       "durability": 2,
       "modifier": 1
     },
     {
       "kind": "item",
-      "id": "57a692c8-57c1-4bf9-92aa-53cac324a978",
+      "id": "d8c2987b-42e4-4ee5-bf97-190af2175f03",
       "behaviorKey": "items/charm",
       "modifier": 2
     }
@@ -253,15 +254,15 @@
   "codex": [
     {
       "kind": "room",
-      "key": "b199ccc5-4efa-4656-a819-85107d4371e1",
+      "key": "9caa66b0-9250-4260-adac-052cfe738c04",
       "snapshot": {
         "name": "Hall",
         "description": "A stone hall."
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "777d9eab-4438-4887-8a32-16acb48d2929",
-        "roomId": "b199ccc5-4efa-4656-a819-85107d4371e1"
+        "characterId": "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
+        "roomId": "9caa66b0-9250-4260-adac-052cfe738c04"
       }
     },
     {
@@ -274,8 +275,8 @@
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "777d9eab-4438-4887-8a32-16acb48d2929",
-        "roomId": "b199ccc5-4efa-4656-a819-85107d4371e1"
+        "characterId": "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
+        "roomId": "9caa66b0-9250-4260-adac-052cfe738c04"
       }
     },
     {
@@ -288,8 +289,8 @@
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "777d9eab-4438-4887-8a32-16acb48d2929",
-        "roomId": "b199ccc5-4efa-4656-a819-85107d4371e1"
+        "characterId": "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
+        "roomId": "9caa66b0-9250-4260-adac-052cfe738c04"
       }
     },
     {
@@ -302,8 +303,8 @@
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "1375285e-bbd3-4d67-aecb-fc2269ebf11a",
-        "roomId": "b199ccc5-4efa-4656-a819-85107d4371e1"
+        "characterId": "87d92d99-b0b0-4d18-92eb-5765438bb0a7",
+        "roomId": "9caa66b0-9250-4260-adac-052cfe738c04"
       }
     },
     {
@@ -316,8 +317,8 @@
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "1375285e-bbd3-4d67-aecb-fc2269ebf11a",
-        "roomId": "b199ccc5-4efa-4656-a819-85107d4371e1"
+        "characterId": "87d92d99-b0b0-4d18-92eb-5765438bb0a7",
+        "roomId": "9caa66b0-9250-4260-adac-052cfe738c04"
       }
     }
   ]

@@ -43,6 +43,7 @@ import { StatType } from "wickedways/lib/character/stats";
 import { SlotKind, EquipmentSlot } from "wickedways/lib/equipment";
 import type { PresentationCue } from "wickedways/lib/presentation";
 import type { Campaign } from "wickedways/lib/campaign";
+import type { CharacterSnapshot } from "wickedways/lib/serialization/types";
 import { view } from "../../packages/play-runtime/src/viewmodel.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -68,6 +69,11 @@ const ALIASES: Record<string, string[]> = {
 class LightAversePlayer extends PlayerCharacter {
   protected override get lightAverse(): boolean {
     return true;
+  }
+
+  protected override serializeExtra(snap: CharacterSnapshot): void {
+    super.serializeExtra(snap);
+    snap.lightAverse = true;
   }
 }
 
