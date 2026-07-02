@@ -183,7 +183,7 @@ impl World {
         match self.gate(actor, false) {
             GateVerdict::Block(reason) => return Err(ProceduralViolation(reason)),
             GateVerdict::Fizzle => {
-                self.record_fumble(actor, "attack", true, cat, cues);
+                self.record_fumble(actor, "attack", true, cat, cues)?;
                 return Ok(());
             }
             GateVerdict::Allow => {}
@@ -258,7 +258,7 @@ impl World {
             actor: self.entity_ref_char(actor),
             sound: None,
         });
-        self.record_action(actor, true, cat, cues);
+        self.record_action(actor, true, cat, cues)?;
         Ok(())
     }
 

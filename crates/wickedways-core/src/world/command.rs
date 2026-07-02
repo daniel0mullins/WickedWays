@@ -41,10 +41,10 @@ pub fn apply_command(
 ) -> Result<(), ProceduralViolation> {
     let actor = world.active_character_id()?;
     match cmd {
-        Command::StartTurn => { world.start_turn(&actor, cat); Ok(()) }
-        Command::EndTurn => { world.end_turn(&actor, cat, cues); Ok(()) }
+        Command::StartTurn => world.start_turn(&actor, cat, cues),
+        Command::EndTurn => world.end_turn(&actor, cat, cues),
         Command::Go { dir } => world.go(&actor, dir, cat, cues),
-        Command::NextPlayer => world.next_player(cues),
+        Command::NextPlayer => world.next_player(cat, cues),
         Command::Take { target_id } => {
             if let Some(loot_id) = world.take(&actor, &ItemId(target_id), cat, cues)? {
                 opened.insert(loot_id.0);

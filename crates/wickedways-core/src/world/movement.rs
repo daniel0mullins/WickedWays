@@ -52,7 +52,7 @@ impl World {
         match self.gate(actor, true) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
-                self.record_fumble(actor, "go", true, cat, cues);
+                self.record_fumble(actor, "go", true, cat, cues)?;
                 return Ok(());
             }
             crate::world::gate::GateVerdict::Allow => {}
@@ -255,7 +255,7 @@ impl World {
         // the encounter cues: TS `PlayerCharacter.move` (player-character.ts:169-173)
         // calls `super.move(room)` — which runs `recordAction` to completion, including
         // any `endTurn`/reconcile — THEN emits NOTE_ENCOUNTERS.
-        self.record_action(actor, true, cat, cues);
+        self.record_action(actor, true, cat, cues)?;
         // Encounter cues (after the move action cue AND any turn-end cues, matching
         // TS super.move → NOTE_ENCOUNTERS).
         for r in encounter_refs {

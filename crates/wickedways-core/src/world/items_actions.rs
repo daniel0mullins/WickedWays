@@ -72,7 +72,7 @@ impl World {
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
-                self.record_fumble(actor, "takeFromLootBox", false, cat, cues);
+                self.record_fumble(actor, "takeFromLootBox", false, cat, cues)?;
                 return Ok(None);
             }
             crate::world::gate::GateVerdict::Allow => {}
@@ -271,7 +271,7 @@ impl World {
             sound: None,
         });
 
-        self.record_action(actor, true, cat, cues);
+        self.record_action(actor, true, cat, cues)?;
         Ok(Some(loot_id))
     }
 
@@ -298,7 +298,7 @@ impl World {
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
-                self.record_fumble(actor, "equip", false, cat, cues);
+                self.record_fumble(actor, "equip", false, cat, cues)?;
                 return Ok(());
             }
             crate::world::gate::GateVerdict::Allow => {}
@@ -444,7 +444,7 @@ impl World {
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
-                self.record_fumble(actor, "unequip", false, cat, cues);
+                self.record_fumble(actor, "unequip", false, cat, cues)?;
                 return Ok(());
             }
             crate::world::gate::GateVerdict::Allow => {}
@@ -537,7 +537,7 @@ impl World {
             sound: None,
         });
 
-        self.record_action(actor, true, cat, cues);
+        self.record_action(actor, true, cat, cues)?;
         Ok(())
     }
 
@@ -569,7 +569,7 @@ impl World {
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
-                self.record_fumble(actor, "removeFromInventory", true, cat, cues);
+                self.record_fumble(actor, "removeFromInventory", true, cat, cues)?;
                 return Ok(());
             }
             crate::world::gate::GateVerdict::Allow => {}

@@ -7,6 +7,7 @@ use crate::stats::StatType;
 use crate::world::afflictions::{default_affliction_config, Status};
 use crate::world::descriptor::Catalog;
 use crate::world::ids::CharacterId;
+use crate::world::mechanics::dispatch::{RoundPhase, TurnPhase};
 use crate::world::resolve::resolve_item;
 use crate::world::World;
 
@@ -17,9 +18,13 @@ impl World {
             .ok_or_else(|| ProceduralViolation(format!("no active character at index {i}")))
     }
 
-    pub fn begin_campaign(&mut self, _cues: &mut Vec<PresentationCue>) {
+    pub fn begin_campaign(
+        &mut self,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
         self.campaign.started = true;
-        // onRoundStart mechanic dispatch is a no-op until sub-plan 6 (empty registry).
+        self.dispatch_round(RoundPhase::Start, cat, cues)
     }
 
     /// Statuses immunized by equipped, non-broken gear or the selected archetype.
@@ -62,7 +67,12 @@ impl World {
         set
     }
 
-    pub fn start_turn(&mut self, actor: &CharacterId, cat: &Catalog) {
+    pub fn start_turn(
+        &mut self,
+        actor: &CharacterId,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
         // Mirror TS `#floorAndSnapshot` (character.ts:308-317): persistently clamp
         // base stats to max(0, x) BEFORE computing effective stats.  This ensures
         // a negative base (e.g. from future damage) never bleeds into effective
@@ -86,23 +96,30 @@ impl World {
             c.afflictions
                 .on_turn_start(health, sanity, energy, &passive, &config, rng);
         }
-        // character events + DISPATCH_TURN("start"): no-ops until sub-plan 6.
+        // Affliction tick first, THEN the mechanic hook (TS fire-point order).
+        self.dispatch_turn(TurnPhase::Start, actor, cat, cues)
     }
 
     /// End `actor`'s turn. Mirrors TS `Character.endTurn` (character.ts:1066-1070):
-    /// `events.onTurnEnd()` (sub-plan 6), `#reconcile()`, `DISPATCH_TURN("end")`
-    /// (sub-plan 6). Only the reconcile lands in sub-plan 5 — it floors base stats,
-    /// re-applies affliction flags from effective stats, and latches KO on the
-    /// rising edge. RNG-free.
-    pub fn end_turn(&mut self, actor: &CharacterId, cat: &Catalog, cues: &mut Vec<PresentationCue>) {
-        // character events (events.onTurnEnd): no-op until sub-plan 6.
+    /// `events.onTurnEnd()` (sub-plan 6b), `#reconcile()`, `DISPATCH_TURN("end")`.
+    /// The reconcile floors base stats, re-applies affliction flags from effective
+    /// stats, and latches KO on the rising edge; the mechanic hook fires AFTER it.
+    /// RNG-free when no mechanics are seeded.
+    pub fn end_turn(
+        &mut self,
+        actor: &CharacterId,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
+        // character events (events.onTurnEnd): no-op until sub-plan 6b.
+        // Reconcile THEN the mechanic hook (sub-plan 5's fixed ordering).
         self.reconcile(actor, cat, cues);
-        // mechanic DISPATCH_TURN("end"): no-op until sub-plan 6.
+        self.dispatch_turn(TurnPhase::End, actor, cat, cues)
     }
 
     /// Single seam mirroring the budget half of TS `Character.recordAction`
     /// (character.ts:530-537): when `budgeted`, increment `actions_this_round`
-    /// (DISPATCH_ACTION/onAction is deferred to sub-plan 6); then — regardless of
+    /// (DISPATCH_ACTION/onAction is wired in Task 6); then — regardless of
     /// `budgeted`, matching TS where the cap check sits OUTSIDE the budgeted block —
     /// auto-end the turn (which reconciles the actor) when the budget is exhausted.
     /// Call at the TAIL of each action, AFTER its cue is pushed.
@@ -112,12 +129,12 @@ impl World {
         budgeted: bool,
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
-    ) {
+    ) -> Result<(), ProceduralViolation> {
         if budgeted {
             if let Some(c) = self.characters.get_mut(actor) {
                 c.actions_this_round += 1;
             }
-            // DISPATCH_ACTION (mechanic onAction): no-op until sub-plan 6.
+            // DISPATCH_ACTION (mechanic onAction): wired in Task 6.
         }
         let at_cap = self
             .characters
@@ -125,11 +142,14 @@ impl World {
             .map(|c| c.actions_this_round == c.actions_per_round)
             .unwrap_or(false);
         if at_cap {
-            self.end_turn(actor, cat, cues);
+            self.end_turn(actor, cat, cues)?;
         }
+        Ok(())
     }
 
-    pub fn next_player(&mut self, cues: &mut Vec<PresentationCue>) -> Result<(), ProceduralViolation> {
+    pub fn next_player(&mut self, cat: &Catalog, cues: &mut Vec<PresentationCue>)
+        -> Result<(), ProceduralViolation>
+    {
         self.assert_running()?;
         let active = self.active_character_id()?;
         if !self.campaign.acted_this_round.contains(&active) {
@@ -138,14 +158,16 @@ impl World {
         let next = self.campaign.active_character_index + 1;
         if next as usize == self.campaign.party_ids.len() {
             self.campaign.active_character_index = 0;
-            self.end_round(cues)?;
+            self.end_round(cat, cues)?;
         } else {
             self.campaign.active_character_index = next;
         }
         Ok(())
     }
 
-    pub fn end_round(&mut self, cues: &mut Vec<PresentationCue>) -> Result<(), ProceduralViolation> {
+    pub fn end_round(&mut self, cat: &Catalog, cues: &mut Vec<PresentationCue>)
+        -> Result<(), ProceduralViolation>
+    {
         self.assert_running()?;
         let all_acted = self.campaign.party_ids.iter()
             .all(|id| self.campaign.acted_this_round.contains(id));
@@ -153,16 +175,17 @@ impl World {
             return Err(ProceduralViolation(
                 "Attempted to end round before all characters have acted".into()));
         }
-        // onRoundEnd dispatch: no-op (sub-plan 6).
+        // onRoundEnd fires BEFORE the round increment (TS fire-point order).
+        self.dispatch_round(RoundPhase::End, cat, cues)?;
         self.campaign.round += 1;
         self.campaign.acted_this_round.clear();
-        // Minimal resolver: timeout only. Win/lose -> sub-plan 7.
+        // Minimal resolver: timeout only. Win/lose -> sub-plan 7. The terminal
+        // path must NOT fire onRoundStart.
         if self.campaign.round >= self.campaign.max_rounds {
             self.finish(CampaignOutcome::TimedOut, None, cues);
             return Ok(());
         }
-        // onRoundStart dispatch: no-op (sub-plan 6).
-        Ok(())
+        self.dispatch_round(RoundPhase::Start, cat, cues)
     }
 
     fn finish(&mut self, outcome: CampaignOutcome, reason: Option<alloc::string::String>,
@@ -191,11 +214,120 @@ mod tests {
 
     fn cid(s: &str) -> CharacterId { CharacterId(s.into()) }
 
+    /// Seed the `conformance:dread` mechanic (registered under
+    /// `cfg(any(test, feature = "conformance"))`, so always present in `cargo test`).
+    fn with_dread(mut w: crate::world::World) -> crate::world::World {
+        w.campaign.mechanics.push(crate::world::snapshot::MechanicSnapshot {
+            key: "conformance:dread".into(),
+            state: serde_json::json!({ "ticks": 0 }),
+        });
+        w
+    }
+
+    /// Texts of all Mechanic cues, in emission order.
+    fn mechanic_texts(cues: &[PresentationCue]) -> Vec<alloc::string::String> {
+        cues.iter()
+            .filter_map(|c| match c {
+                PresentationCue::Mechanic { cue } => cue.text.clone(),
+                _ => None,
+            })
+            .collect()
+    }
+
+    // ── mechanic fire-points (sub-plan 6a, Task 5) ────────────────────────────
+
+    #[test]
+    fn begin_campaign_fires_on_round_start() {
+        let mut w = with_dread(world_with_party(&["pc"], 10));
+        w.campaign.started = false;
+        let mut cues = Vec::new();
+        w.begin_campaign(&Catalog::default(), &mut cues).unwrap();
+        assert!(w.campaign.started);
+        assert_eq!(mechanic_texts(&cues), vec!["Dread stirs."]);
+    }
+
+    #[test]
+    fn start_turn_fires_on_turn_start_after_affliction_tick() {
+        let mut w = with_dread(world_with_party(&["pc"], 10));
+        let mut cues = Vec::new();
+        if let Some(c) = w.characters.get_mut(&cid("pc")) { c.actions_this_round = 2; }
+        w.start_turn(&cid("pc"), &Catalog::default(), &mut cues).unwrap();
+        // Affliction tick still ran (budget reset), THEN the mechanic hook fired.
+        assert_eq!(w.characters.get(&cid("pc")).unwrap().actions_this_round, 0);
+        assert_eq!(mechanic_texts(&cues), vec!["The dread watches."]);
+    }
+
+    #[test]
+    fn end_turn_fires_on_turn_end_after_reconcile() {
+        use crate::world::afflictions::Status;
+        let mut w = with_dread(world_with_party(&["pc"], 10));
+        let mut cues = Vec::new();
+        if let Some(c) = w.characters.get_mut(&cid("pc")) { c.stats.health = -3.0; }
+        w.end_turn(&cid("pc"), &Catalog::default(), &mut cues).unwrap();
+        // Reconcile ran (floor + KO latch) AND the mechanic hook fired.
+        let ch = w.characters.get(&cid("pc")).unwrap();
+        assert_eq!(ch.stats.health, 0.0);
+        assert!(ch.afflictions.is_active(Status::Ko));
+        assert!(mechanic_texts(&cues).contains(&"The dread recedes.".into()));
+    }
+
+    #[test]
+    fn end_round_fires_on_round_end_before_increment() {
+        let mut w = with_dread(world_with_party(&["pc"], 10));
+        let mut cues = Vec::new();
+        w.campaign.acted_this_round = vec![cid("pc")]; // all acted
+        w.end_round(&Catalog::default(), &mut cues).unwrap();
+        // conformance:dread.on_round_end increments state.ticks and emits a Cue.
+        assert_eq!(w.campaign.mechanics[0].state["ticks"], serde_json::json!(1));
+        assert!(cues.iter().any(|c| matches!(c, PresentationCue::Mechanic { .. })));
+        // on_round_end also adjusts party[0]'s sanity by -1 (5.0 -> 4.0).
+        assert_eq!(w.characters.get(&cid("pc")).unwrap().stats.sanity, 4.0);
+        // Ongoing path: on_round_end fired, THEN round++, THEN on_round_start.
+        assert_eq!(w.campaign.round, 1);
+        assert_eq!(mechanic_texts(&cues), vec!["Dread deepens.", "Dread stirs."]);
+        assert!(w.campaign.acted_this_round.is_empty());
+    }
+
+    #[test]
+    fn end_round_terminal_timeout_fires_end_but_not_start() {
+        let mut w = with_dread(world_with_party(&["pc"], 1)); // round 0 -> 1 == max
+        let mut cues = Vec::new();
+        w.campaign.acted_this_round = vec![cid("pc")];
+        w.end_round(&Catalog::default(), &mut cues).unwrap();
+        assert_eq!(w.campaign.outcome, CampaignOutcome::TimedOut);
+        // on_round_end fired (ticks == 1), but the terminal path must NOT fire
+        // on_round_start ("Dread stirs." absent).
+        assert_eq!(w.campaign.mechanics[0].state["ticks"], serde_json::json!(1));
+        assert_eq!(mechanic_texts(&cues), vec!["Dread deepens."]);
+        assert!(cues.iter().any(|c| matches!(c, PresentationCue::Resolution { .. })));
+    }
+
+    #[test]
+    fn next_player_threads_cat_into_end_round_hooks() {
+        let mut w = with_dread(world_with_party(&["pc"], 10));
+        let mut cues = Vec::new();
+        w.next_player(&Catalog::default(), &mut cues).unwrap();
+        assert_eq!(w.campaign.round, 1);
+        assert_eq!(mechanic_texts(&cues), vec!["Dread deepens.", "Dread stirs."]);
+    }
+
+    #[test]
+    fn empty_mechanics_turn_loop_emits_no_mechanic_cues() {
+        // Existing conformance goldens have no mechanics; the whole loop must
+        // stay cue-silent (dispatch fast-paths on empty).
+        let mut w = world_with_party(&["pc"], 10);
+        let mut cues = Vec::new();
+        w.start_turn(&cid("pc"), &Catalog::default(), &mut cues).unwrap();
+        w.end_turn(&cid("pc"), &Catalog::default(), &mut cues).unwrap();
+        w.next_player(&Catalog::default(), &mut cues).unwrap();
+        assert!(cues.is_empty());
+    }
+
     #[test]
     fn next_player_single_member_wraps_and_advances_round() {
         let mut w = world_with_party(&["pc"], /*max_rounds*/ 10);
         let mut cues = Vec::new();
-        w.next_player(&mut cues).unwrap();
+        w.next_player(&Catalog::default(), &mut cues).unwrap();
         assert_eq!(w.campaign.round, 1);
         assert!(w.campaign.acted_this_round.is_empty()); // reset after end_round
         assert!(cues.is_empty()); // still ongoing, no resolution cue
@@ -207,14 +339,14 @@ mod tests {
         let mut cues = Vec::new();
         // only `a` acted
         w.campaign.acted_this_round = vec![cid("a")];
-        assert!(w.end_round(&mut cues).is_err());
+        assert!(w.end_round(&Catalog::default(), &mut cues).is_err());
     }
 
     #[test]
     fn timeout_at_max_rounds_finishes_and_emits_resolution() {
         let mut w = world_with_party(&["pc"], 1);
         let mut cues = Vec::new();
-        w.next_player(&mut cues).unwrap(); // round 0 -> 1 == max_rounds -> timed-out
+        w.next_player(&Catalog::default(), &mut cues).unwrap(); // round 0 -> 1 == max_rounds -> timed-out
         assert_eq!(w.campaign.outcome, CampaignOutcome::TimedOut);
         assert_eq!(cues, vec![PresentationCue::Resolution {
             outcome: CampaignOutcome::TimedOut, reason: None, narration: None }]);
@@ -225,7 +357,7 @@ mod tests {
         use crate::world::descriptor::Catalog;
         let mut w = world_with_party(&["pc"], 10);
         if let Some(c) = w.characters.get_mut(&cid("pc")) { c.actions_this_round = 2; }
-        w.start_turn(&cid("pc"), &Catalog::default());
+        w.start_turn(&cid("pc"), &Catalog::default(), &mut Vec::new()).unwrap();
         assert_eq!(w.characters.get(&cid("pc")).unwrap().actions_this_round, 0);
     }
 
@@ -241,7 +373,7 @@ mod tests {
             c.stats.sanity = 0.0;
             c.afflictions.set_active(Status::Panic, true);
         }
-        w.start_turn(&cid("pc"), &Catalog::default());
+        w.start_turn(&cid("pc"), &Catalog::default(), &mut Vec::new()).unwrap();
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.afflictions.turns_active.get(&Status::Panic).copied().unwrap_or(0), 1);
         assert!(ch.afflictions.is_active(Status::Panic)); // still below threshold
@@ -256,7 +388,7 @@ mod tests {
             c.stats.health = 0.0;
             c.afflictions.set_active(Status::Fear, true);
         }
-        w.start_turn(&cid("pc"), &Catalog::default());
+        w.start_turn(&cid("pc"), &Catalog::default(), &mut Vec::new()).unwrap();
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert!(ch.afflictions.is_active(Status::Ko));
         assert!(!ch.afflictions.is_active(Status::Fear));
@@ -283,7 +415,7 @@ mod tests {
         if let Some(c) = w1.characters.get_mut(&cid("pc")) {
             c.stats.sanity = -3.0;
         }
-        w1.start_turn(&cid("pc"), &Catalog::default());
+        w1.start_turn(&cid("pc"), &Catalog::default(), &mut Vec::new()).unwrap();
         let ch1 = w1.characters.get(&cid("pc")).unwrap();
         // (a) base floored to 0 in the snapshot
         assert_eq!(ch1.stats.sanity, 0.0,
@@ -345,7 +477,7 @@ mod tests {
             c.equipment.insert("finger".to_string(), ring_id);
         }
 
-        w2.start_turn(&cid("pc"), &cat2);
+        w2.start_turn(&cid("pc"), &cat2, &mut Vec::new()).unwrap();
         let ch2 = w2.characters.get(&cid("pc")).unwrap();
         // (a) base floored to 0 in the snapshot
         assert_eq!(ch2.stats.sanity, 0.0,
@@ -366,7 +498,7 @@ mod tests {
         if let Some(c) = w.characters.get_mut(&cid("pc")) {
             c.stats.health = -3.0;
         }
-        w.end_turn(&cid("pc"), &Catalog::default(), &mut cues);
+        w.end_turn(&cid("pc"), &Catalog::default(), &mut cues).unwrap();
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.stats.health, 0.0, "end_turn reconcile floors base health");
         assert!(ch.afflictions.is_active(Status::Ko), "end_turn reconcile latches KO");
@@ -382,7 +514,7 @@ mod tests {
             c.actions_this_round = 1; // one below cap
             c.stats.health = -3.0;    // reconcile will floor this iff it runs
         }
-        w.record_action(&cid("pc"), true, &Catalog::default(), &mut cues); // 1 -> 2 == cap
+        w.record_action(&cid("pc"), true, &Catalog::default(), &mut cues).unwrap(); // 1 -> 2 == cap
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.actions_this_round, 2);
         assert_eq!(ch.stats.health, 0.0, "cap reached -> end_turn -> reconcile floored base");
@@ -398,7 +530,7 @@ mod tests {
             c.actions_this_round = 0;
             c.stats.health = -3.0; // stays negative iff reconcile does NOT run
         }
-        w.record_action(&cid("pc"), true, &Catalog::default(), &mut cues); // 0 -> 1 < cap
+        w.record_action(&cid("pc"), true, &Catalog::default(), &mut cues).unwrap(); // 0 -> 1 < cap
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.actions_this_round, 1);
         assert_eq!(ch.stats.health, -3.0, "below cap: no reconcile, base untouched");
@@ -419,7 +551,7 @@ mod tests {
             c.actions_this_round = 2; // already at cap
             c.stats.health = -3.0;    // reconcile will floor this iff end_turn runs
         }
-        w.record_action(&cid("pc"), false, &Catalog::default(), &mut cues); // free call
+        w.record_action(&cid("pc"), false, &Catalog::default(), &mut cues).unwrap(); // free call
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.actions_this_round, 2, "free call must not increment the budget");
         assert_eq!(ch.stats.health, 0.0, "free call at cap -> end_turn -> reconcile floored base");

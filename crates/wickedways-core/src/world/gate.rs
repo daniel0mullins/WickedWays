@@ -75,7 +75,7 @@ impl World {
         budgeted: bool,
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
-    ) {
+    ) -> Result<(), crate::error::ProceduralViolation> {
         let round = self.campaign.round;
         let actor_name = self
             .characters
@@ -96,7 +96,7 @@ impl World {
         // Cap check runs UNCONDITIONALLY (matching TS `recordAction`, character.ts:
         // 530-537, where the cap check sits outside the budgeted block) — a free
         // fumble (`budgeted = false`) must still end the turn if already at cap.
-        self.record_action(actor, budgeted, cat, cues);
+        self.record_action(actor, budgeted, cat, cues)
     }
 }
 
@@ -201,7 +201,7 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let actor = cid("pc");
         let mut cues = Vec::new();
-        w.record_fumble(&actor, "takeFromLootBox", true, &Catalog::default(), &mut cues);
+        w.record_fumble(&actor, "takeFromLootBox", true, &Catalog::default(), &mut cues).unwrap();
 
         let ch = &w.characters[&actor];
         assert_eq!(ch.actions_this_round, 1, "budgeted fumble ticks budget");
@@ -226,7 +226,7 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let actor = cid("pc");
         let mut cues = Vec::new();
-        w.record_fumble(&actor, "equip", false, &Catalog::default(), &mut cues);
+        w.record_fumble(&actor, "equip", false, &Catalog::default(), &mut cues).unwrap();
 
         let ch = &w.characters[&actor];
         assert_eq!(ch.actions_this_round, 0, "free fumble does NOT tick budget");
