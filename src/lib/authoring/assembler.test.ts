@@ -217,6 +217,26 @@ describe("npc authoring (.npc)", () => {
   });
 });
 
+describe("content-derived item ids", () => {
+  it("assigns content-derived item ids incl. repeated keys", () => {
+    const { rooms } = assemble(baseDesc({
+      loot: [{ name: "chest", room: "next", items: ["coin-item", "coin-item"] }],
+      mobs: [{ name: "goblin", stats: stats(), room: "next", drops: ["coin-item"] }],
+      rooms: [{ name: "start", description: "e" }, { name: "next", description: "n", lights: ["coin-item"] }],
+      exits: [{ from: "start", direction: Directions.North, to: "next" }],
+    }), registry);
+    const next = rooms.get("next")!;
+    const chest = [...next.loot.values()][0]!;
+    expect(chest.contents.map((i) => i.id)).toEqual(["loot:chest:item#0", "loot:chest:item#1"]);
+    const goblin = next.occupants.find((o) => o.name === "goblin")!;
+    expect(goblin.inventory.items[0]!.id).toBe("mob:goblin:drop#0");
+    expect([...next.lightSources.values()][0]!.id).toBe("room:next:light#0");
+    // all ids unique
+    const all = [...chest.contents.map((i) => i.id), goblin.inventory.items[0]!.id, [...next.lightSources.values()][0]!.id];
+    expect(new Set(all).size).toBe(all.length);
+  });
+});
+
 describe("formation authoring (.formation)", () => {
   it("opts a registered roving formation into the campaign", () => {
     const reg = defineRegistry({

@@ -16,6 +16,8 @@ import type { CharacterId } from "../character/character";
 import type { MaterialCacheId } from "../material-cache";
 import type { ExitId } from "../exit";
 import type { SceneId } from "../scene";
+import type { ItemId } from "../inventory";
+import type { LootId } from "../loot";
 
 /** Empty exits object; individual exits are wired in via {@link Room.addExit} after construction. */
 const NO_EXITS = {} as Record<Direction, never>;
@@ -212,13 +214,27 @@ export function assemble(
 
   const loot = new Map<string, Loot>();
   for (const l of desc.loot) {
-    loot.set(l.name, new Loot({ description: l.description ?? l.name, contents: l.items.map((k) => registry.item(k)()) }));
+    const lootId = `loot:${l.name}`;
+    const contents = l.items.map((k, i) => {
+      const it = registry.item(k)();
+      it.id = `${lootId}:item#${i}` as ItemId;
+      return it;
+    });
+    const box = new Loot({ description: l.description ?? l.name, contents });
+    box.id = lootId as LootId;
+    loot.set(l.name, box);
   }
 
   const mobs = new Map<string, Mob>();
   for (const m of desc.mobs) {
-    const mob = new Mob({ campaign, name: m.name, stats: m.stats, inventorySlots: m.inventorySlots ?? 2, actionsPerRound: m.actionsPerRound ?? 2, drops: (m.drops ?? []).map((k) => registry.item(k)()), baseEscapeChance: m.baseEscapeChance, materialDrops: m.materialDrops, lightAverse: m.lightAverse, naturalAttack: m.naturalAttack });
-    mob.id = `mob:${m.name}` as CharacterId;
+    const mobId = `mob:${m.name}`;
+    const drops = (m.drops ?? []).map((k, i) => {
+      const it = registry.item(k)();
+      it.id = `${mobId}:drop#${i}` as ItemId;
+      return it;
+    });
+    const mob = new Mob({ campaign, name: m.name, stats: m.stats, inventorySlots: m.inventorySlots ?? 2, actionsPerRound: m.actionsPerRound ?? 2, drops, baseEscapeChance: m.baseEscapeChance, materialDrops: m.materialDrops, lightAverse: m.lightAverse, naturalAttack: m.naturalAttack });
+    mob.id = mobId as CharacterId;
     mobs.set(m.name, mob);
   }
 
@@ -226,7 +242,12 @@ export function assemble(
   for (const r of desc.rooms) {
     const roomLoot = desc.loot.filter((l) => l.room === r.name).map((l) => loot.get(l.name)!);
     const roomCaches = desc.caches.filter((c) => c.room === r.name).map((c) => caches.get(c.name)!);
-    const lights = (r.lights ?? []).map((k) => registry.item(k)());
+    const roomId = `room:${r.name}`;
+    const lights = (r.lights ?? []).map((k, i) => {
+      const it = registry.item(k)();
+      it.id = `${roomId}:light#${i}` as ItemId;
+      return it;
+    });
     const room = new Room({
       name: r.name,
       description: r.description,
@@ -237,7 +258,7 @@ export function assemble(
       dark: r.dark ?? false,
       lightSources: lights,
     });
-    room.id = `room:${r.name}` as RoomId;
+    room.id = roomId as RoomId;
     rooms.set(r.name, room);
   }
 
