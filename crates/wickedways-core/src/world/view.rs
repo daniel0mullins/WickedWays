@@ -178,9 +178,12 @@ impl World {
             .unwrap_or(false)
     }
 
-    /// Base characters never see in the dark. Mob `lightAverse` override → sub-plan 4c.
-    pub fn sees_in_dark(&self, _actor: &crate::world::ids::CharacterId) -> bool {
-        false
+    /// Mirrors `mob.ts:101-104` (`seesInDark === lightAverse`): a character sees in
+    /// the dark iff it is light-averse. Read only when the actor acts (attack/loot in
+    /// the dark); mobs don't act in Phase 1, so this is exercised by unit tests here
+    /// and by the differential gate in sub-plan 6 (mob turns).
+    pub fn sees_in_dark(&self, actor: &crate::world::ids::CharacterId) -> bool {
+        self.characters.get(actor).and_then(|c| c.light_averse).unwrap_or(false)
     }
 
     /// Build the widened ViewModel (sub-plan 3a).
@@ -840,5 +843,15 @@ mod tests {
             let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
             assert_eq!(wraith.defeated, Some(true), "KO occupant should have defeated=Some(true)");
         }
+    }
+
+    #[test]
+    fn sees_in_dark_follows_light_averse() {
+        use crate::world::test_support::world_with_party;
+        let mut w = world_with_party(&["pc", "mob"], 10);
+        // A light-averse mob sees in the dark; a plain PC does not.
+        w.characters.get_mut(&CharacterId("mob".into())).unwrap().light_averse = Some(true);
+        assert!(w.sees_in_dark(&CharacterId("mob".into())));
+        assert!(!w.sees_in_dark(&CharacterId("pc".into())));
     }
 }
