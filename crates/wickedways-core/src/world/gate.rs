@@ -93,9 +93,10 @@ impl World {
             actor: EntityRef { id: actor.0.clone(), name: actor_name },
             sound: None,
         });
-        if budgeted {
-            self.record_action(actor, cat, cues);
-        }
+        // Cap check runs UNCONDITIONALLY (matching TS `recordAction`, character.ts:
+        // 530-537, where the cap check sits outside the budgeted block) — a free
+        // fumble (`budgeted = false`) must still end the turn if already at cap.
+        self.record_action(actor, budgeted, cat, cues);
     }
 }
 

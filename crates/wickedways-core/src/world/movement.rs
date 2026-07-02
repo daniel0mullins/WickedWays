@@ -251,11 +251,16 @@ impl World {
             actor: self.entity_ref_char(actor),
             sound: None,
         });
-        // Encounter cues (after the move action cue, matching TS super.move → NOTE_ENCOUNTERS).
+        // record_action (budget tick + cap-triggered endTurn/reconcile) runs BEFORE
+        // the encounter cues: TS `PlayerCharacter.move` (player-character.ts:169-173)
+        // calls `super.move(room)` — which runs `recordAction` to completion, including
+        // any `endTurn`/reconcile — THEN emits NOTE_ENCOUNTERS.
+        self.record_action(actor, true, cat, cues);
+        // Encounter cues (after the move action cue AND any turn-end cues, matching
+        // TS super.move → NOTE_ENCOUNTERS).
         for r in encounter_refs {
             cues.push(PresentationCue::Encounter { mob: r, room: EntityRef { id: room.0.clone(), name: room_name.clone() }, sound: None });
         }
-        self.record_action(actor, cat, cues);
         Ok(())
     }
 }

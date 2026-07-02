@@ -100,19 +100,24 @@ impl World {
         // mechanic DISPATCH_TURN("end"): no-op until sub-plan 6.
     }
 
-    /// Single seam for a budgeted action's budget tick — the budget half of TS
-    /// `Character.recordAction` (character.ts:530-536): increment
-    /// `actions_this_round`, and when it reaches `actions_per_round`, auto-end the
-    /// turn (which reconciles the actor). Call at the TAIL of each budgeted action,
-    /// AFTER its `Action` cue is pushed, so any reconcile cues follow the action cue.
+    /// Single seam mirroring the budget half of TS `Character.recordAction`
+    /// (character.ts:530-537): when `budgeted`, increment `actions_this_round`
+    /// (DISPATCH_ACTION/onAction is deferred to sub-plan 6); then — regardless of
+    /// `budgeted`, matching TS where the cap check sits OUTSIDE the budgeted block —
+    /// auto-end the turn (which reconciles the actor) when the budget is exhausted.
+    /// Call at the TAIL of each action, AFTER its cue is pushed.
     pub(crate) fn record_action(
         &mut self,
         actor: &CharacterId,
+        budgeted: bool,
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) {
-        if let Some(c) = self.characters.get_mut(actor) {
-            c.actions_this_round += 1;
+        if budgeted {
+            if let Some(c) = self.characters.get_mut(actor) {
+                c.actions_this_round += 1;
+            }
+            // DISPATCH_ACTION (mechanic onAction): no-op until sub-plan 6.
         }
         let at_cap = self
             .characters
@@ -377,7 +382,7 @@ mod tests {
             c.actions_this_round = 1; // one below cap
             c.stats.health = -3.0;    // reconcile will floor this iff it runs
         }
-        w.record_action(&cid("pc"), &Catalog::default(), &mut cues); // 1 -> 2 == cap
+        w.record_action(&cid("pc"), true, &Catalog::default(), &mut cues); // 1 -> 2 == cap
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.actions_this_round, 2);
         assert_eq!(ch.stats.health, 0.0, "cap reached -> end_turn -> reconcile floored base");
@@ -393,9 +398,31 @@ mod tests {
             c.actions_this_round = 0;
             c.stats.health = -3.0; // stays negative iff reconcile does NOT run
         }
-        w.record_action(&cid("pc"), &Catalog::default(), &mut cues); // 0 -> 1 < cap
+        w.record_action(&cid("pc"), true, &Catalog::default(), &mut cues); // 0 -> 1 < cap
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.actions_this_round, 1);
         assert_eq!(ch.stats.health, -3.0, "below cap: no reconcile, base untouched");
+    }
+
+    // Fix 2 (final-review, sub-plan 5): TS `recordAction`'s cap check
+    // (character.ts:530-537) sits OUTSIDE the `budgeted` block, so it must fire
+    // even for a FREE call (budgeted = false) — e.g. a free fumble routed through
+    // `attemptAction`. This proves a free call at-cap still triggers `end_turn`
+    // (reconcile), and crucially does NOT increment `actions_this_round`.
+    #[test]
+    fn record_action_free_call_at_cap_still_ends_turn_but_does_not_increment() {
+        use crate::world::afflictions::Status;
+        use crate::world::descriptor::Catalog;
+        let mut w = world_with_party(&["pc"], 10); // actions_per_round = 2
+        let mut cues = Vec::new();
+        if let Some(c) = w.characters.get_mut(&cid("pc")) {
+            c.actions_this_round = 2; // already at cap
+            c.stats.health = -3.0;    // reconcile will floor this iff end_turn runs
+        }
+        w.record_action(&cid("pc"), false, &Catalog::default(), &mut cues); // free call
+        let ch = w.characters.get(&cid("pc")).unwrap();
+        assert_eq!(ch.actions_this_round, 2, "free call must not increment the budget");
+        assert_eq!(ch.stats.health, 0.0, "free call at cap -> end_turn -> reconcile floored base");
+        assert!(ch.afflictions.is_active(Status::Ko), "free call at cap -> end_turn latches KO");
     }
 }

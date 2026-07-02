@@ -265,7 +265,7 @@ impl World {
             actor: self.entity_ref_char(actor),
             sound: None,
         });
-        self.record_action(actor, cat, cues);
+        self.record_action(actor, true, cat, cues);
         Ok(())
     }
 

@@ -271,7 +271,7 @@ impl World {
             sound: None,
         });
 
-        self.record_action(actor, cat, cues);
+        self.record_action(actor, true, cat, cues);
         Ok(Some(loot_id))
     }
 
@@ -537,7 +537,7 @@ impl World {
             sound: None,
         });
 
-        self.record_action(actor, cat, cues);
+        self.record_action(actor, true, cat, cues);
         Ok(())
     }
 
