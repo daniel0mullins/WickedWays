@@ -89,6 +89,7 @@ pub fn replay_commands(
     let snap: CampaignSnapshot =
         serde_json::from_str(start_snapshot_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
     let mut world = World::from_snapshot(snap);
+    world.validate_mechanics().map_err(|e| JsValue::from_str(&e.0))?;
     world.seed_rng(seed);
     let commands: Vec<Command> =
         serde_json::from_str(commands_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
