@@ -31,13 +31,6 @@ impl World {
         }
     }
 
-    /// Custom-mechanics damage transform (TS `campaign[TRANSFORM_DAMAGE]`).
-    /// Phase 1 has no mechanics → identity passthrough. Sub-plan 6 wires the
-    /// mechanic registry here.
-    pub fn transform_damage(&self, amount: f64, _target: &CharacterId, _stat: StatType) -> f64 {
-        amount
-    }
-
     /// Floor base stats, recompute afflictions from effective stats, and fire
     /// `on_knock_out` exactly once on a false→true KO transition. Byte-exact port
     /// of `character.ts` `#reconcile` (:330-340) + `#floorAndSnapshot` (:308-317).
@@ -357,7 +350,16 @@ impl World {
             light_averse,
             room_lit,
         });
-        let dealt = self.transform_damage(final_strength, target, attack_stat);
+        let dealt = self.run_damage_transformers(
+            crate::world::mechanics::DamageView {
+                amount: final_strength,
+                target: target.clone(),
+                stat: attack_stat,
+                source: None,
+            },
+            cues,
+            cat,
+        );
 
         // Subtract from the base stat (no clamp here — reconcile floors it).
         if let Some(c) = self.characters.get_mut(target) {
@@ -441,9 +443,14 @@ mod tests {
     }
 
     #[test]
-    fn transform_damage_is_identity() {
-        let w = world_with_party(&["pc"], 10);
-        assert_eq!(w.transform_damage(7.5, &cid("pc"), StatType::Health), 7.5);
+    fn damage_transform_is_identity_without_mechanics() {
+        let mut w = world_with_party(&["pc"], 10);
+        let mut cues = Vec::new();
+        let dv = crate::world::mechanics::DamageView {
+            amount: 7.5, target: cid("pc"), stat: StatType::Health, source: None,
+        };
+        assert_eq!(w.run_damage_transformers(dv, &mut cues, &Catalog::default()), 7.5);
+        assert!(cues.is_empty());
     }
 
     use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType, SlotKind};
