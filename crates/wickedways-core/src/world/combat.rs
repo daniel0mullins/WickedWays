@@ -272,7 +272,7 @@ impl World {
     /// Append a codex entry, first-write-wins per `(kind, key)`. Mirrors `codex.ts`
     /// `record()` (:226-232) + `buildEntry`. `firstSeen.characterId`/`roomId` are
     /// omitted when `by`/`room` are `None` (matching TS `by?.id` / `where?.id`).
-    fn record_codex(&mut self, kind: &str, key: &str, snapshot: Value, by: Option<&str>, room: Option<&str>) {
+    pub(crate) fn record_codex(&mut self, kind: &str, key: &str, snapshot: Value, by: Option<&str>, room: Option<&str>) {
         let exists = self.codex.as_array().map(|a| a.iter().any(|e| {
             e.get("kind").and_then(|v| v.as_str()) == Some(kind)
                 && e.get("key").and_then(|v| v.as_str()) == Some(key)

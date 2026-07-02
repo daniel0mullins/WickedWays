@@ -4,6 +4,8 @@
 //!
 //! Scenes are NOT fired (deferred to sub-plan 6). Keyed exits are OUT OF SCOPE
 //! and return `Err(ProceduralViolation)` until the registry lands in sub-plan 6.
+use alloc::collections::BTreeSet;
+use alloc::format;
 use alloc::vec::Vec;
 use crate::error::ProceduralViolation;
 use crate::presentation::{ActionKind, EntityRef, MechanicCue, PresentationCue};
@@ -148,6 +150,34 @@ impl World {
             .map(|c| matches!(c.kind, crate::world::snapshot::CharacterKind::Player))
             .unwrap_or(false);
 
+        // NOTE_ENCOUNTERS (campaign.ts:777-792): for each non-party, non-KO occupant of
+        // the entered room, deduped per `${mover}:${occupant}` in campaign.encountered,
+        // record a mob codex entry (BEFORE the room record) and (later) emit an encounter
+        // cue (AFTER the move action cue).
+        let mut encounter_refs: Vec<EntityRef> = Vec::new();
+        if is_player {
+            let party: BTreeSet<CharacterId> = self.campaign.party_ids.iter().cloned().collect();
+            let occupants: Vec<CharacterId> = self.rooms.get(&room)
+                .map(|r| r.occupant_ids.clone()).unwrap_or_default();
+            for occ in occupants {
+                if party.contains(&occ) { continue; }
+                if self.is_ko(&occ) { continue; }
+                let key = format!("{}:{}", actor.0, occ.0);
+                if self.campaign.encountered.iter().any(|k| k == &key) { continue; }
+                self.campaign.encountered.push(key);
+                // mob codex record (first-write-wins per mob::<name>), snapshot {name, stats}.
+                let (name, stats) = self.characters.get(&occ)
+                    .map(|c| (c.name.clone(), (c.stats.health, c.stats.sanity, c.stats.energy)))
+                    .unwrap_or_default();
+                self.record_codex(
+                    "mob", &name,
+                    serde_json::json!({ "name": name, "stats": { "health": stats.0, "sanity": stats.1, "energy": stats.2 } }),
+                    Some(&actor.0), Some(&room.0),
+                );
+                encounter_refs.push(self.entity_ref_char(&occ));
+            }
+        }
+
         if is_player {
             // 1. maybeSpawn: mark the destination room as visited in the encounter table.
             //    Mirrors encounter-table.ts maybeSpawn (:83-84) — first visit wins.
@@ -210,7 +240,7 @@ impl World {
             c.actions_this_round += 1;
             c.history.push(ActionHistoryEntry::Move {
                 round,
-                room: RoomRef { id: room.clone(), name: room_name },
+                room: RoomRef { id: room.clone(), name: room_name.clone() },
             });
         }
         // Action cue — emitted after the history push, matching TS order.
@@ -219,6 +249,10 @@ impl World {
             actor: self.entity_ref_char(actor),
             sound: None,
         });
+        // Encounter cues (after the move action cue, matching TS super.move → NOTE_ENCOUNTERS).
+        for r in encounter_refs {
+            cues.push(PresentationCue::Encounter { mob: r, room: EntityRef { id: room.0.clone(), name: room_name.clone() }, sound: None });
+        }
         Ok(())
     }
 }
@@ -233,6 +267,44 @@ mod tests {
 
     fn cid(s: &str) -> CharacterId { CharacterId(s.into()) }
     fn rid(s: &str) -> RoomId { RoomId(s.into()) }
+
+    /// Insert a minimal live Mob character `name` (id == name) into `room`, and push
+    /// its id into that room's `occupant_ids`. Mirrors the CharacterSnapshot pattern
+    /// used in `test_support.rs` for player characters.
+    fn seat_mob(w: &mut crate::world::World, name: &str, room: &str) {
+        use alloc::collections::BTreeMap;
+        use crate::world::afflictions::Afflictions;
+        use crate::world::snapshot::{CharacterKind, CharacterSnapshot, InventorySnapshot, Stats};
+        let id = CharacterId(name.into());
+        let room_id = RoomId(room.into());
+        let snap = CharacterSnapshot {
+            kind: CharacterKind::Mob,
+            id: id.clone(),
+            name: name.into(),
+            stats: Stats { health: 4.0, sanity: 0.0, energy: 3.0 },
+            actions_per_round: 1,
+            actions_this_round: 0,
+            current_room_id: Some(room_id.clone()),
+            inventory: InventorySnapshot { slots: 0, item_ids: alloc::vec![], key_ids: alloc::vec![] },
+            equipment: BTreeMap::new(),
+            history: alloc::vec![],
+            archetype_immunities: alloc::vec![],
+            afflictions: Afflictions::default(),
+            archetype_id: None,
+            origin: None,
+            base_escape_chance: None,
+            material_drops: None,
+            light_averse: None,
+            natural_attack: None,
+            npc_behavior_key: None,
+        };
+        w.characters.insert(id.clone(), snap);
+        if let Some(r) = w.rooms.get_mut(&room_id) {
+            if !r.occupant_ids.contains(&id) {
+                r.occupant_ids.push(id);
+            }
+        }
+    }
 
     #[test]
     fn go_over_behavior_free_exit_moves_updates_occupancy_and_emits_action_cue() {
@@ -300,5 +372,31 @@ mod tests {
         let w = world_two_rooms(true);
         assert!(w.is_lit(&rid("start")));   // not dark
         assert!(!w.is_lit(&rid("next")));   // dark, no light sources
+    }
+
+    #[test]
+    fn entering_a_room_with_a_live_mob_emits_encounter_cue_and_codex() {
+        let mut w = world_two_rooms(/*next_dark=*/false);
+        // Seat a live mob "grue" in the destination room "next".
+        seat_mob(&mut w, "grue", "next");
+        let mut cues = Vec::new();
+        w.go(&cid("pc"), Direction::North, &mut cues).unwrap();
+        // encounter cue present, after the move action cue
+        let move_idx = cues.iter().position(|c| matches!(c, PresentationCue::Action { action: ActionKind::Move, .. })).unwrap();
+        let enc_idx = cues.iter().position(|c| matches!(c, PresentationCue::Encounter { .. })).unwrap();
+        assert!(enc_idx > move_idx, "encounter cue comes after the move action cue");
+        match &cues[enc_idx] {
+            PresentationCue::Encounter { mob, room, sound: None } => {
+                assert_eq!(mob.id, "grue"); assert_eq!(room.id, "next");
+            }
+            other => panic!("expected Encounter cue, got {:?}", other),
+        }
+        // codex: mob record for grue exists AND precedes the room record for "next"
+        let codex = w.codex.as_array().unwrap();
+        let mob_idx = codex.iter().position(|e| e["kind"] == serde_json::json!("mob") && e["key"] == serde_json::json!("grue")).unwrap();
+        let room_idx = codex.iter().position(|e| e["kind"] == serde_json::json!("room") && e["key"] == serde_json::json!("next")).unwrap();
+        assert!(mob_idx < room_idx, "mob codex record precedes the room codex record");
+        // dedup: the composite key `${mover}:${occupant}` is recorded
+        assert!(w.campaign.encountered.iter().any(|k| k == "pc:grue"), "encountered key recorded for dedup");
     }
 }
