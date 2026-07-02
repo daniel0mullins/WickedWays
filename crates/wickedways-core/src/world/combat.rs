@@ -7,6 +7,7 @@
 use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::vec::Vec;
+use serde_json::{json, Value};
 
 use crate::damage::{compute_mitigated_damage, DamageInput};
 use crate::error::ProceduralViolation;
@@ -214,6 +215,48 @@ impl World {
             sound: None,
         });
         Ok(())
+    }
+
+    /// Append a codex entry, first-write-wins per `(kind, key)`. Mirrors `codex.ts`
+    /// `record()` (:226-232) + `buildEntry`. `firstSeen.characterId`/`roomId` are
+    /// omitted when `by`/`room` are `None` (matching TS `by?.id` / `where?.id`).
+    fn record_codex(&mut self, kind: &str, key: &str, snapshot: Value, by: Option<&str>, room: Option<&str>) {
+        let exists = self.codex.as_array().map(|a| a.iter().any(|e| {
+            e.get("kind").and_then(|v| v.as_str()) == Some(kind)
+                && e.get("key").and_then(|v| v.as_str()) == Some(key)
+        })).unwrap_or(false);
+        if exists { return; }
+        let round = self.campaign.round;
+        let mut first_seen = serde_json::Map::new();
+        first_seen.insert("round".into(), json!(round));
+        if let Some(b) = by { first_seen.insert("characterId".into(), json!(b)); }
+        if let Some(r) = room { first_seen.insert("roomId".into(), json!(r)); }
+        let entry = json!({ "kind": kind, "key": key, "snapshot": snapshot, "firstSeen": Value::Object(first_seen) });
+        if let Some(arr) = self.codex.as_array_mut() { arr.push(entry); }
+    }
+
+    /// Merge a `MaterialMap` additively into `campaign.materials`, then record one
+    /// `{kind:"material"}` codex entry per component. Port of `DEPOSIT_MATERIALS`
+    /// (`campaign.ts:580-587`) + the material `RECORD_ENCOUNTER` in `Mob.onKnockOut`.
+    pub fn deposit_materials(&mut self, materials: &Value, by: Option<&str>, room: Option<&str>) {
+        let Some(obj) = materials.as_object() else { return };
+        // Ensure the pool is an object.
+        if !self.campaign.materials.is_object() {
+            self.campaign.materials = json!({});
+        }
+        // 1. Additive merge.
+        if let Some(pool) = self.campaign.materials.as_object_mut() {
+            for (component, qty) in obj {
+                let add = qty.as_i64().unwrap_or(0);
+                let cur = pool.get(component).and_then(|v| v.as_i64()).unwrap_or(0);
+                pool.insert(component.clone(), json!(cur + add));
+            }
+        }
+        // 2. One codex record per component (deduped material::<component>).
+        let components: Vec<String> = obj.keys().cloned().collect();
+        for component in components {
+            self.record_codex("material", &component, json!({ "type": component }), by, room);
+        }
     }
 
     /// Apply an incoming hit to `target`'s `attack_stat` after armor + mitigation,
@@ -506,6 +549,29 @@ mod tests {
             ItemSnapshot::Item { durability, .. } => assert_eq!(*durability, Some(1), "armor wore 1"),
             _ => panic!(),
         }
+    }
+
+    #[test]
+    fn deposit_materials_merges_additively_and_records_codex() {
+        use serde_json::json;
+        let mut w = world_with_party(&["pc"], 10);
+        w.campaign.materials = json!({ "metal": 1 });
+        w.deposit_materials(&json!({ "metal": 2, "bone": 1 }), Some("pc"), Some("hall"));
+        // additive merge
+        assert_eq!(w.campaign.materials, json!({ "metal": 3, "bone": 1 }));
+        // one codex record per component, deduped by material::<component>
+        let codex = w.codex.as_array().unwrap();
+        let mats: Vec<_> = codex.iter().filter(|e| e["kind"] == json!("material")).collect();
+        assert_eq!(mats.len(), 2);
+        let metal = mats.iter().find(|e| e["key"] == json!("metal")).unwrap();
+        assert_eq!(metal["snapshot"], json!({ "type": "metal" }));
+        assert_eq!(metal["firstSeen"]["characterId"], json!("pc"));
+        assert_eq!(metal["firstSeen"]["roomId"], json!("hall"));
+        // re-deposit does not duplicate codex records (first-write-wins)
+        w.deposit_materials(&json!({ "metal": 5 }), Some("pc"), Some("hall"));
+        assert_eq!(w.campaign.materials["metal"], json!(8)); // pool still merges
+        let mats2: Vec<_> = w.codex.as_array().unwrap().iter().filter(|e| e["kind"] == json!("material")).collect();
+        assert_eq!(mats2.len(), 2); // no new material::metal record
     }
 
     #[test]
