@@ -45,6 +45,7 @@ import { defineRegistry } from "wickedways/lib/authoring/registry";
 import { authorTemplate } from "wickedways/lib/authoring/template-builder";
 import { assemble } from "wickedways/lib/authoring/assembler";
 import { PlayerCharacter } from "wickedways/lib/character/player-character";
+import type { CharacterId } from "wickedways/lib/character/character";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { Item, ItemType } from "wickedways/lib/inventory";
 import { StatType } from "wickedways/lib/character/stats";
@@ -251,11 +252,13 @@ function buildAfflictionsCampaign(rng: () => number) {
   // Construct the two PCs with the SHARED seeded rng, mirroring startSession's
   // join → selectArchetype → move sequence.
   const ada = new PlayerCharacter({ campaign, name: "Ada", rng });
+  ada.id = "player:Ada" as CharacterId;
   ada.joinCampaign();
   ada.selectArchetype("haunted" as never);
   ada.move(hall);
 
   const ben = new PlayerCharacter({ campaign, name: "Ben", rng });
+  ben.id = "player:Ben" as CharacterId;
   ben.joinCampaign();
   ben.selectArchetype("doomed" as never);
   ben.move(hall);

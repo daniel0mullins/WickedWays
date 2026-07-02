@@ -37,6 +37,7 @@ import { defineRegistry } from "wickedways/lib/authoring/registry";
 import { authorTemplate } from "wickedways/lib/authoring/template-builder";
 import { assemble } from "wickedways/lib/authoring/assembler";
 import { PlayerCharacter } from "wickedways/lib/character/player-character";
+import type { CharacterId } from "wickedways/lib/character/character";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { Item, ItemType } from "wickedways/lib/inventory";
 import { StatType } from "wickedways/lib/character/stats";
@@ -280,11 +281,13 @@ function buildCombatCampaign(rng: () => number) {
   const hall = rooms.get("Hall")!;
 
   const ada = new PlayerCharacter({ campaign, name: "Ada", rng });
+  ada.id = "player:Ada" as CharacterId;
   ada.joinCampaign();
   ada.selectArchetype("fighter" as never);
   ada.move(hall);
 
   const ben = new LightAversePlayer({ campaign, name: "Ben", rng });
+  ben.id = "player:Ben" as CharacterId;
   ben.joinCampaign();
   ben.selectArchetype("scout" as never);
   ben.move(hall);

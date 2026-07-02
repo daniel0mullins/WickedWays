@@ -71,4 +71,13 @@ describe("startSession", () => {
       }),
     ).toThrow(ProceduralViolation);
   });
+
+  it("assigns content-derived player ids distinct from a same-named mob", () => {
+    const reg = defineRegistry({ items: {} });
+    const builder = authorTemplate("T", reg)
+      .room("hall", { description: "a hall" })
+      .startRoom("hall");
+    const campaign = startSession(builder, { players: [{ name: "Ada" }], gm: 0 });
+    expect(campaign.party[0]!.id).toBe("player:Ada");
+  });
 });
