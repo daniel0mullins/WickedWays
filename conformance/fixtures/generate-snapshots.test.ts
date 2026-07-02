@@ -22,7 +22,7 @@ describe("fixture generation", () => {
     const snapshot = seedTemplate().toSnapshot();
     writeFileSync(
       join(here, "seed.snapshot.json"),
-      JSON.stringify(snapshot, null, 2),
+      JSON.stringify(snapshot, null, 2) + "\n",
     );
   });
 
@@ -30,7 +30,7 @@ describe("fixture generation", () => {
     const snapshot = hauntedHouseTemplate().toSnapshot();
     writeFileSync(
       join(here, "hollow-house.snapshot.json"),
-      JSON.stringify(snapshot, null, 2),
+      JSON.stringify(snapshot, null, 2) + "\n",
     );
   });
 });

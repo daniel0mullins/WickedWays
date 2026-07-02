@@ -949,6 +949,38 @@ const builder = authorTemplate("Escape", reg)
 registered in the registry (compile-time-checked by `TypedRegistry`). `.onTimeout(prose)` and
 `.onEnd(prose)` set the fallback prose for those two resolution paths.
 
+### Entity id scheme
+
+All authored entities carry **content-derived ids** — deterministic, human-readable strings that
+are stable across separate `assemble` calls and safe when multiple campaigns are live in the same
+process:
+
+| Entity | Id form | Example |
+|--------|---------|---------|
+| Campaign | `campaign:<title>` | `campaign:The Crypt` |
+| Room | `room:<name>` | `room:vault` |
+| Mob | `mob:<name>` | `mob:Goblin` |
+| NPC | `npc:<name>` | `npc:Innkeeper` |
+| Exit | `exit:<a>\|<b>` (endpoints sorted) | `exit:start\|vault` |
+| Loot cache | `loot:<name>` | `loot:supply crate` |
+| Material cache | `cache:<name>` | `cache:iron vein` |
+| Scene | `scene:<room>:<key>:<phase>` | `scene:vault:ambush:enter` |
+| Player character | `player:<name>` | `player:Ada` |
+| Item in loot | `loot:<cache>:item#<n>` | `loot:supply crate:item#0` |
+| Item as mob drop | `mob:<mob>:drop#<n>` | `mob:Goblin:drop#0` |
+| Room light source | `room:<room>:light#<n>` | `room:vault:light#0` |
+
+Multi-instance items (drops, loot contents, light sources) use `${parentId}:role#index` so
+repeated uses of the same item key remain unique within a parent but collide if the index
+shifts — authors should treat item order as stable within a template.
+
+The campaign id (`campaign:<title>`) is mutable: a multi-campaign host may call `instantiate`
+and override the id for global uniqueness without affecting any other entity id.
+
+Runtime-minted entities (status effects, transient spawn, etc. — sub-plan 4c-2 onward) derive
+their ids from mint context rather than authored names, keeping the scheme consistent while
+accommodating entities that have no authored description.
+
 ## Swappable campaigns & play surfaces
 
 The [`@wickedways/play`](packages/play/README.md) browser experience is built on three

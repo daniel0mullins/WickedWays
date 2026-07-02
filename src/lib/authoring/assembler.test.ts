@@ -104,6 +104,30 @@ describe("assemble", () => {
     expect(b.rooms.get("next")!.occupants[0]!.id).toBe("mob:goblin");
   });
 
+  it("assigns npc:<name> and scene:<room>:<key>:enter id forms", () => {
+    const reg = defineRegistry({
+      items: {},
+      npcs: {
+        keeper: { initialDialogue: "Hello.", dialogue: [] },
+      },
+      scenes: {
+        intro: { preconditions: [], script: () => {} },
+      },
+    });
+    const desc = baseDesc({
+      npcs: [{ name: "Keeper", stats: stats(), room: "start", behavior: "keeper" }],
+      scenes: [{ room: "start", key: "intro" }],
+    });
+    const a = assemble(desc, reg);
+    // NPC ids use "npc:<name>" form
+    const keeper = a.rooms.get("start")!.occupants.find((o) => o.name === "Keeper");
+    expect(keeper?.id).toBe("npc:Keeper");
+    // Scene ids use "scene:<room>:<key>:<phase>" — default phase is "enter"; check via snapshot
+    const snapshot = serializeCampaign(a.campaign, { rootRooms: a.rooms.values() });
+    const startRoom = snapshot.rooms.find((r) => r.name === "start");
+    expect(startRoom?.scenes.find((s) => s.id === "scene:start:intro:enter")).toBeDefined();
+  });
+
   it("collects ALL validation problems into one AuthoringError", () => {
     let err: AuthoringError | null = null;
     try {
@@ -265,5 +289,21 @@ describe("formation authoring (.formation)", () => {
       .formation("missing");
 
     expect(() => builder.build()).toThrow(AuthoringError);
+  });
+});
+
+describe("multi-campaign id determinism", () => {
+  it("derives independent, non-interfering ids across campaigns in one process", () => {
+    const d1 = baseDesc({ mobs: [{ name: "goblin", stats: stats(), room: "next", drops: [] }] });
+    const d2 = baseDesc({ title: "Other", rooms: [{ name: "cell", description: "c" }], startRoom: "cell", exits: [] });
+    const a1 = assemble(d1, registry);
+    const a2 = assemble(d2, registry);           // second campaign built after the first
+    const a1again = assemble(d1, registry);      // rebuild the first, later still
+    expect(a1.rooms.get("next")!.occupants[0]!.id).toBe("mob:goblin");
+    expect(a2.campaign.id).toBe("campaign:Other");
+    expect(a2.rooms.get("cell")!.id).toBe("room:cell");
+    // First campaign's ids are identical no matter how many campaigns were built in between.
+    expect(a1again.rooms.get("start")!.id).toBe("room:start");
+    expect(a1again.rooms.get("next")!.occupants[0]!.id).toBe("mob:goblin");
   });
 });

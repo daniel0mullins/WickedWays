@@ -25,6 +25,7 @@
     "bindings:check": "pnpm run bindings:gen && git diff --exit-code generated/bindings",
     "test:conformance": "pnpm run wasm:build && vitest run --config conformance/vitest.config.ts",
     "fixtures:gen": "vitest run --config conformance/fixtures/vitest.config.ts",
+    "fixtures:stable": "pnpm run fixtures:gen && git diff --exit-code -- conformance/fixtures",
     "checks:phase0": "cargo build -p wickedways-core --no-default-features && cargo test --workspace && pnpm run bindings:check && pnpm run test:conformance",
     "checks:phase1": "pnpm run checks:phase0",
     "checks:phase2": "cargo build -p wickedways-core --no-default-features && cargo test --workspace && pnpm run bindings:check && pnpm run test:conformance",
