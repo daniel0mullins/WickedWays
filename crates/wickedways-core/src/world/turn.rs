@@ -100,6 +100,30 @@ impl World {
         // mechanic DISPATCH_TURN("end"): no-op until sub-plan 6.
     }
 
+    /// Single seam for a budgeted action's budget tick — the budget half of TS
+    /// `Character.recordAction` (character.ts:530-536): increment
+    /// `actions_this_round`, and when it reaches `actions_per_round`, auto-end the
+    /// turn (which reconciles the actor). Call at the TAIL of each budgeted action,
+    /// AFTER its `Action` cue is pushed, so any reconcile cues follow the action cue.
+    pub(crate) fn record_action(
+        &mut self,
+        actor: &CharacterId,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) {
+        if let Some(c) = self.characters.get_mut(actor) {
+            c.actions_this_round += 1;
+        }
+        let at_cap = self
+            .characters
+            .get(actor)
+            .map(|c| c.actions_this_round == c.actions_per_round)
+            .unwrap_or(false);
+        if at_cap {
+            self.end_turn(actor, cat, cues);
+        }
+    }
+
     pub fn next_player(&mut self, cues: &mut Vec<PresentationCue>) -> Result<(), ProceduralViolation> {
         self.assert_running()?;
         let active = self.active_character_id()?;
@@ -341,5 +365,37 @@ mod tests {
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.stats.health, 0.0, "end_turn reconcile floors base health");
         assert!(ch.afflictions.is_active(Status::Ko), "end_turn reconcile latches KO");
+    }
+
+    #[test]
+    fn record_action_auto_ends_turn_at_cap() {
+        use crate::world::afflictions::Status;
+        use crate::world::descriptor::Catalog;
+        let mut w = world_with_party(&["pc"], 10); // actions_per_round = 2
+        let mut cues = Vec::new();
+        if let Some(c) = w.characters.get_mut(&cid("pc")) {
+            c.actions_this_round = 1; // one below cap
+            c.stats.health = -3.0;    // reconcile will floor this iff it runs
+        }
+        w.record_action(&cid("pc"), &Catalog::default(), &mut cues); // 1 -> 2 == cap
+        let ch = w.characters.get(&cid("pc")).unwrap();
+        assert_eq!(ch.actions_this_round, 2);
+        assert_eq!(ch.stats.health, 0.0, "cap reached -> end_turn -> reconcile floored base");
+        assert!(ch.afflictions.is_active(Status::Ko));
+    }
+
+    #[test]
+    fn record_action_below_cap_does_not_end_turn() {
+        use crate::world::descriptor::Catalog;
+        let mut w = world_with_party(&["pc"], 10); // actions_per_round = 2
+        let mut cues = Vec::new();
+        if let Some(c) = w.characters.get_mut(&cid("pc")) {
+            c.actions_this_round = 0;
+            c.stats.health = -3.0; // stays negative iff reconcile does NOT run
+        }
+        w.record_action(&cid("pc"), &Catalog::default(), &mut cues); // 0 -> 1 < cap
+        let ch = w.characters.get(&cid("pc")).unwrap();
+        assert_eq!(ch.actions_this_round, 1);
+        assert_eq!(ch.stats.health, -3.0, "below cap: no reconcile, base untouched");
     }
 }

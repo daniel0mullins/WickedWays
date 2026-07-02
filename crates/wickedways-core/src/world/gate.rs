@@ -18,6 +18,7 @@ use alloc::vec::Vec;
 use crate::dice::roll;
 use crate::presentation::{ActionKind, EntityRef, PresentationCue};
 use crate::world::afflictions::{default_affliction_config, Status};
+use crate::world::descriptor::Catalog;
 use crate::world::history::ActionHistoryEntry;
 use crate::world::ids::CharacterId;
 use crate::world::World;
@@ -72,6 +73,7 @@ impl World {
         actor: &CharacterId,
         action: &str,
         budgeted: bool,
+        cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) {
         let round = self.campaign.round;
@@ -85,15 +87,15 @@ impl World {
                 round,
                 action: action.into(),
             });
-            if budgeted {
-                c.actions_this_round += 1;
-            }
         }
         cues.push(PresentationCue::Action {
             action: ActionKind::Fumble,
             actor: EntityRef { id: actor.0.clone(), name: actor_name },
             sound: None,
         });
+        if budgeted {
+            self.record_action(actor, cat, cues);
+        }
     }
 }
 
@@ -198,7 +200,7 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let actor = cid("pc");
         let mut cues = Vec::new();
-        w.record_fumble(&actor, "takeFromLootBox", true, &mut cues);
+        w.record_fumble(&actor, "takeFromLootBox", true, &Catalog::default(), &mut cues);
 
         let ch = &w.characters[&actor];
         assert_eq!(ch.actions_this_round, 1, "budgeted fumble ticks budget");
@@ -223,7 +225,7 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let actor = cid("pc");
         let mut cues = Vec::new();
-        w.record_fumble(&actor, "equip", false, &mut cues);
+        w.record_fumble(&actor, "equip", false, &Catalog::default(), &mut cues);
 
         let ch = &w.characters[&actor];
         assert_eq!(ch.actions_this_round, 0, "free fumble does NOT tick budget");

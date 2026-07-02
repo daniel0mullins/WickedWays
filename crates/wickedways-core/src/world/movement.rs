@@ -9,6 +9,7 @@ use alloc::format;
 use alloc::vec::Vec;
 use crate::error::ProceduralViolation;
 use crate::presentation::{ActionKind, EntityRef, MechanicCue, PresentationCue};
+use crate::world::descriptor::Catalog;
 use crate::world::direction::Direction;
 use crate::world::history::{ActionHistoryEntry, RoomRef};
 use crate::world::ids::{CharacterId, RoomId};
@@ -44,13 +45,14 @@ impl World {
         &mut self,
         actor: &CharacterId,
         dir: Direction,
+        cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
         // Affliction gate (is_move = true, budgeted). Mirrors attemptAction(this.go, true).
         match self.gate(actor, true) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
-                self.record_fumble(actor, "go", true, cues);
+                self.record_fumble(actor, "go", true, cat, cues);
                 return Ok(());
             }
             crate::world::gate::GateVerdict::Allow => {}
@@ -92,7 +94,7 @@ impl World {
         let b = exit.endpoint_ids[1].clone();
         let dest = if a == here { b } else { a };
 
-        self.move_to(actor, dest, cues)
+        self.move_to(actor, dest, cat, cues)
     }
 
     /// Move `actor` to `room`, updating occupancy in both rooms, emitting a
@@ -106,6 +108,7 @@ impl World {
         &mut self,
         actor: &CharacterId,
         room: RoomId,
+        cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
         // Exit old room — retain all occupants that are not the actor.
@@ -237,7 +240,6 @@ impl World {
             .map(|r| r.name.clone())
             .unwrap_or_default();
         if let Some(c) = self.characters.get_mut(actor) {
-            c.actions_this_round += 1;
             c.history.push(ActionHistoryEntry::Move {
                 round,
                 room: RoomRef { id: room.clone(), name: room_name.clone() },
@@ -253,6 +255,7 @@ impl World {
         for r in encounter_refs {
             cues.push(PresentationCue::Encounter { mob: r, room: EntityRef { id: room.0.clone(), name: room_name.clone() }, sound: None });
         }
+        self.record_action(actor, cat, cues);
         Ok(())
     }
 }
@@ -310,7 +313,7 @@ mod tests {
     fn go_over_behavior_free_exit_moves_updates_occupancy_and_emits_action_cue() {
         let mut w = world_two_rooms(/*next_dark=*/false);
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
         assert_eq!(w.characters[&cid("pc")].current_room_id, Some(rid("next")));
         assert!(!w.rooms[&rid("start")].occupant_ids.contains(&cid("pc")));
         assert!(w.rooms[&rid("next")].occupant_ids.contains(&cid("pc")));
@@ -333,7 +336,7 @@ mod tests {
     fn entering_a_dark_room_emits_visibility_lit_false() {
         let mut w = world_two_rooms(/*next_dark=*/true);
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
         assert_eq!(cues, vec![
             PresentationCue::Visibility {
                 room: EntityRef { id: "next".into(), name: "Next".into() },
@@ -351,7 +354,7 @@ mod tests {
     fn go_at_a_wall_emits_cant_go_that_way_and_does_not_move_or_tick_budget() {
         let mut w = world_two_rooms(false);
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::East, &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::East, &Catalog::default(), &mut cues).unwrap();
         assert_eq!(w.characters[&cid("pc")].current_room_id, Some(rid("start")));
         assert_eq!(w.characters[&cid("pc")].actions_this_round, 0);
         assert_eq!(cues, vec![PresentationCue::Mechanic {
@@ -364,7 +367,7 @@ mod tests {
         let mut w = world_two_rooms(false);
         w.make_north_exit_keyed("study-door");
         let mut cues = Vec::new();
-        assert!(w.go(&cid("pc"), Direction::North, &mut cues).is_err());
+        assert!(w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).is_err());
     }
 
     #[test]
@@ -380,7 +383,7 @@ mod tests {
         // Seat a live mob "grue" in the destination room "next".
         seat_mob(&mut w, "grue", "next");
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
         // encounter cue present, after the move action cue
         let move_idx = cues.iter().position(|c| matches!(c, PresentationCue::Action { action: ActionKind::Move, .. })).unwrap();
         let enc_idx = cues.iter().position(|c| matches!(c, PresentationCue::Encounter { .. })).unwrap();
@@ -398,5 +401,22 @@ mod tests {
         assert!(mob_idx < room_idx, "mob codex record precedes the room codex record");
         // dedup: the composite key `${mover}:${occupant}` is recorded
         assert!(w.campaign.encountered.iter().any(|k| k == "pc:grue"), "encountered key recorded for dedup");
+    }
+
+    #[test]
+    fn budgeted_go_at_cap_triggers_turn_end_reconcile() {
+        use crate::world::afflictions::Status;
+        use crate::world::descriptor::Catalog;
+        let mut w = world_two_rooms(false);
+        let mut cues = Vec::new();
+        if let Some(c) = w.characters.get_mut(&cid("pc")) {
+            c.actions_per_round = 1; // next action exhausts the budget
+            c.stats.health = -3.0;   // reconcile floors this iff turn-end runs
+        }
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        let ch = w.characters.get(&cid("pc")).unwrap();
+        assert_eq!(ch.actions_this_round, 1);
+        assert_eq!(ch.stats.health, 0.0, "cap-reaching move auto-ends turn -> reconcile floored base");
+        assert!(ch.afflictions.is_active(Status::Ko));
     }
 }

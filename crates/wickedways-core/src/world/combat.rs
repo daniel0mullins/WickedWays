@@ -190,7 +190,7 @@ impl World {
         match self.gate(actor, false) {
             GateVerdict::Block(reason) => return Err(ProceduralViolation(reason)),
             GateVerdict::Fizzle => {
-                self.record_fumble(actor, "attack", true, cues);
+                self.record_fumble(actor, "attack", true, cat, cues);
                 return Ok(());
             }
             GateVerdict::Allow => {}
@@ -255,7 +255,6 @@ impl World {
             .map(|c| c.name.clone())
             .unwrap_or_default();
         if let Some(c) = self.characters.get_mut(actor) {
-            c.actions_this_round += 1;
             c.history.push(ActionHistoryEntry::Attack {
                 round,
                 target: TargetRef { id: target.clone(), name: target_name },
@@ -266,6 +265,7 @@ impl World {
             actor: self.entity_ref_char(actor),
             sound: None,
         });
+        self.record_action(actor, cat, cues);
         Ok(())
     }
 

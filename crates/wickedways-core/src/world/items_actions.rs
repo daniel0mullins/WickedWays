@@ -72,7 +72,7 @@ impl World {
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
-                self.record_fumble(actor, "takeFromLootBox", false, cues);
+                self.record_fumble(actor, "takeFromLootBox", false, cat, cues);
                 return Ok(None);
             }
             crate::world::gate::GateVerdict::Allow => {}
@@ -258,7 +258,6 @@ impl World {
                 .characters
                 .get_mut(actor)
                 .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
-            ch.actions_this_round += 1;
             ch.history.push(ActionHistoryEntry::PickUp {
                 round,
                 items: vec![ItemRef { id: target.clone(), name: resolved.name.clone() }],
@@ -272,6 +271,7 @@ impl World {
             sound: None,
         });
 
+        self.record_action(actor, cat, cues);
         Ok(Some(loot_id))
     }
 
@@ -298,7 +298,7 @@ impl World {
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
-                self.record_fumble(actor, "equip", false, cues);
+                self.record_fumble(actor, "equip", false, cat, cues);
                 return Ok(());
             }
             crate::world::gate::GateVerdict::Allow => {}
@@ -435,7 +435,7 @@ impl World {
         &mut self,
         actor: &CharacterId,
         item: &ItemId,
-        _cat: &Catalog,
+        cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
         // 0. Affliction gate (is_move = false, NOT budgeted). Mirrors
@@ -444,7 +444,7 @@ impl World {
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
-                self.record_fumble(actor, "unequip", false, cues);
+                self.record_fumble(actor, "unequip", false, cat, cues);
                 return Ok(());
             }
             crate::world::gate::GateVerdict::Allow => {}
@@ -511,18 +511,18 @@ impl World {
         actor: &CharacterId,
         target: &ItemId,
         item_name: &str,
+        cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
         let round = self.campaign.round;
 
-        // Single borrow: retain item removal, tick budget, record history, clone name for cue.
+        // Single borrow: retain item removal, record history, clone name for cue.
         let actor_name = {
             let ch = self
                 .characters
                 .get_mut(actor)
                 .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
             ch.inventory.item_ids.retain(|id| id != target);
-            ch.actions_this_round += 1;
             ch.history.push(ActionHistoryEntry::Drop {
                 round,
                 items: vec![ItemRef { id: target.clone(), name: item_name.to_string() }],
@@ -537,6 +537,7 @@ impl World {
             sound: None,
         });
 
+        self.record_action(actor, cat, cues);
         Ok(())
     }
 
@@ -568,7 +569,7 @@ impl World {
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
-                self.record_fumble(actor, "removeFromInventory", true, cues);
+                self.record_fumble(actor, "removeFromInventory", true, cat, cues);
                 return Ok(());
             }
             crate::world::gate::GateVerdict::Allow => {}
@@ -603,7 +604,7 @@ impl World {
         }
 
         // 3. Remove, tick budget, history, cue (shared tail).
-        self.consume_from_inventory(actor, target, &resolved.name.clone(), cues)
+        self.consume_from_inventory(actor, target, &resolved.name.clone(), cat, cues)
     }
 
     /// Use (consume) `target` from the actor's inventory. **Budgeted** — ticks
@@ -682,7 +683,7 @@ impl World {
         }
 
         // 4. Consume: remove, tick budget, history, cue (shared tail).
-        self.consume_from_inventory(actor, target, &resolved.name.clone(), cues)
+        self.consume_from_inventory(actor, target, &resolved.name.clone(), cat, cues)
     }
 }
 
