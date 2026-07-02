@@ -1,7 +1,7 @@
 {
   "schemaVersion": 6,
   "campaign": {
-    "id": "983f1936-6794-4a56-9f41-29bfbd68553c",
+    "id": "campaign:Item Test (conformance)",
     "title": "Item Test (conformance)",
     "maxRounds": 5,
     "round": 0,
@@ -11,11 +11,11 @@
     "loseConditions": [],
     "activeCharacterIndex": 0,
     "partyIds": [
-      "25b7bb77-4cb4-4d22-a443-a9fe1d6431fd",
-      "660703a3-7055-480a-adca-f5872a612fea"
+      "player:Ada",
+      "player:Ben"
     ],
     "actedThisRound": [],
-    "gmId": "25b7bb77-4cb4-4d22-a443-a9fe1d6431fd",
+    "gmId": "player:Ada",
     "materials": {},
     "claims": [],
     "encountered": [],
@@ -35,7 +35,7 @@
     "encounterTable": {
       "baseChance": 20,
       "visited": [
-        "a4970ecc-c7d8-4244-b569-2ac81d3148bf"
+        "room:Hall"
       ],
       "formations": []
     },
@@ -57,18 +57,18 @@
   },
   "rooms": [
     {
-      "id": "a4970ecc-c7d8-4244-b569-2ac81d3148bf",
+      "id": "room:Hall",
       "name": "Hall",
       "description": "A stone hall.",
       "exits": {},
       "dark": false,
       "spawnModifier": 1,
       "occupantIds": [
-        "25b7bb77-4cb4-4d22-a443-a9fe1d6431fd",
-        "660703a3-7055-480a-adca-f5872a612fea"
+        "player:Ada",
+        "player:Ben"
       ],
       "lootIds": [
-        "d114fd04-8191-418a-9706-5c1f6f7c07ef"
+        "loot:chest"
       ],
       "materialCacheIds": [],
       "lightSourceIds": [],
@@ -79,7 +79,7 @@
   "characters": [
     {
       "kind": "player",
-      "id": "25b7bb77-4cb4-4d22-a443-a9fe1d6431fd",
+      "id": "player:Ada",
       "name": "Ada",
       "stats": {
         "health": 12,
@@ -88,26 +88,26 @@
       },
       "actionsPerRound": 3,
       "actionsThisRound": 2,
-      "currentRoomId": "a4970ecc-c7d8-4244-b569-2ac81d3148bf",
+      "currentRoomId": "room:Hall",
       "inventory": {
         "slots": 6,
         "itemIds": [
-          "76df020e-2b04-4541-8711-c81cb2d6bca7",
-          "dc2b9253-d778-4913-ad81-a8097fc9b6c8",
-          "83ddba60-87fb-42de-8745-1f629ddd0ec0"
+          "player:Ada:item#items/iron-sword",
+          "player:Ada:item#items/silver-ring",
+          "player:Ada:item#items/healing-tonic"
         ],
         "keyIds": [
-          "e25ff2b5-a173-409c-bdd4-a10f8228b864"
+          "player:Ada:item#key:old"
         ]
       },
       "equipment": {
-        "leftIndexFinger": "dc2b9253-d778-4913-ad81-a8097fc9b6c8"
+        "leftIndexFinger": "player:Ada:item#items/silver-ring"
       },
       "history": [
         {
           "kind": "move",
           "room": {
-            "id": "a4970ecc-c7d8-4244-b569-2ac81d3148bf",
+            "id": "room:Hall",
             "name": "Hall"
           },
           "round": 0
@@ -116,15 +116,15 @@
           "kind": "pickUp",
           "items": [
             {
-              "id": "76df020e-2b04-4541-8711-c81cb2d6bca7",
+              "id": "player:Ada:item#items/iron-sword",
               "name": "Iron Sword"
             },
             {
-              "id": "dc2b9253-d778-4913-ad81-a8097fc9b6c8",
+              "id": "player:Ada:item#items/silver-ring",
               "name": "Silver Ring"
             },
             {
-              "id": "83ddba60-87fb-42de-8745-1f629ddd0ec0",
+              "id": "player:Ada:item#items/healing-tonic",
               "name": "Healing Tonic"
             }
           ],
@@ -134,7 +134,7 @@
           "kind": "pickUp",
           "items": [
             {
-              "id": "e25ff2b5-a173-409c-bdd4-a10f8228b864",
+              "id": "player:Ada:item#key:old",
               "name": "Old Key"
             }
           ],
@@ -156,7 +156,7 @@
     },
     {
       "kind": "player",
-      "id": "660703a3-7055-480a-adca-f5872a612fea",
+      "id": "player:Ben",
       "name": "Ben",
       "stats": {
         "health": 12,
@@ -165,7 +165,7 @@
       },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "a4970ecc-c7d8-4244-b569-2ac81d3148bf",
+      "currentRoomId": "room:Hall",
       "inventory": {
         "slots": 6,
         "itemIds": [],
@@ -176,7 +176,7 @@
         {
           "kind": "move",
           "room": {
-            "id": "a4970ecc-c7d8-4244-b569-2ac81d3148bf",
+            "id": "room:Hall",
             "name": "Hall"
           },
           "round": 0
@@ -195,32 +195,32 @@
   "items": [
     {
       "kind": "item",
-      "id": "3fc60c2c-6d9a-4689-94ea-19b979fe4e20",
+      "id": "loot:chest:item#0",
       "behaviorKey": "items/old-coin",
       "modifier": 0
     },
     {
       "kind": "item",
-      "id": "76df020e-2b04-4541-8711-c81cb2d6bca7",
+      "id": "player:Ada:item#items/iron-sword",
       "behaviorKey": "items/iron-sword",
       "durability": 10,
       "modifier": 5
     },
     {
       "kind": "item",
-      "id": "dc2b9253-d778-4913-ad81-a8097fc9b6c8",
+      "id": "player:Ada:item#items/silver-ring",
       "behaviorKey": "items/silver-ring",
       "modifier": 3
     },
     {
       "kind": "item",
-      "id": "83ddba60-87fb-42de-8745-1f629ddd0ec0",
+      "id": "player:Ada:item#items/healing-tonic",
       "behaviorKey": "items/healing-tonic",
       "modifier": 4
     },
     {
       "kind": "key",
-      "id": "e25ff2b5-a173-409c-bdd4-a10f8228b864",
+      "id": "player:Ada:item#key:old",
       "name": "Old Key",
       "keyCode": "old",
       "consumeOnUse": false
@@ -228,11 +228,11 @@
   ],
   "loot": [
     {
-      "id": "d114fd04-8191-418a-9706-5c1f6f7c07ef",
+      "id": "loot:chest",
       "description": "An old chest.",
       "capacity": 3,
       "contentIds": [
-        "3fc60c2c-6d9a-4689-94ea-19b979fe4e20"
+        "loot:chest:item#0"
       ]
     }
   ],
@@ -240,15 +240,15 @@
   "codex": [
     {
       "kind": "room",
-      "key": "a4970ecc-c7d8-4244-b569-2ac81d3148bf",
+      "key": "room:Hall",
       "snapshot": {
         "name": "Hall",
         "description": "A stone hall."
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "25b7bb77-4cb4-4d22-a443-a9fe1d6431fd",
-        "roomId": "a4970ecc-c7d8-4244-b569-2ac81d3148bf"
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
       }
     },
     {
@@ -261,8 +261,8 @@
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "25b7bb77-4cb4-4d22-a443-a9fe1d6431fd",
-        "roomId": "a4970ecc-c7d8-4244-b569-2ac81d3148bf"
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
       }
     },
     {
@@ -275,8 +275,8 @@
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "25b7bb77-4cb4-4d22-a443-a9fe1d6431fd",
-        "roomId": "a4970ecc-c7d8-4244-b569-2ac81d3148bf"
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
       }
     },
     {
@@ -288,8 +288,8 @@
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "25b7bb77-4cb4-4d22-a443-a9fe1d6431fd",
-        "roomId": "a4970ecc-c7d8-4244-b569-2ac81d3148bf"
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
       }
     },
     {
@@ -302,8 +302,8 @@
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "25b7bb77-4cb4-4d22-a443-a9fe1d6431fd",
-        "roomId": "a4970ecc-c7d8-4244-b569-2ac81d3148bf"
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
       }
     }
   ]

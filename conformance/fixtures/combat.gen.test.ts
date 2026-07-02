@@ -40,6 +40,7 @@ import { PlayerCharacter } from "wickedways/lib/character/player-character";
 import type { CharacterId } from "wickedways/lib/character/character";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { Item, ItemType } from "wickedways/lib/inventory";
+import type { ItemId } from "wickedways/lib/inventory";
 import { StatType } from "wickedways/lib/character/stats";
 import { SlotKind, EquipmentSlot } from "wickedways/lib/equipment";
 import type { PresentationCue } from "wickedways/lib/presentation";
@@ -330,15 +331,20 @@ describe("generate combat golden", () => {
 
       // ── Equip items ────────────────────────────────────────────────────────
       // Items are equipped during setup (no afflictions → gate allows).
+      // Content-derived ids: player:<name>:item#<behaviorKey> (stable across regen).
       const axeItem = registry.item(AXE_KEY)();
+      axeItem.id = `player:Ada:item#${AXE_KEY}` as ItemId;
       const cleaverItem = registry.item(CLEAVER_KEY)();
+      cleaverItem.id = `player:Ada:item#${CLEAVER_KEY}` as ItemId;
       ada.addToInventory(axeItem);
       ada.addToInventory(cleaverItem);
       ada.equip(axeItem, EquipmentSlot.LeftHand);
       ada.equip(cleaverItem, EquipmentSlot.RightHand);
 
       const vestItem = registry.item(VEST_KEY)();
+      vestItem.id = `player:Ben:item#${VEST_KEY}` as ItemId;
       const charmItem = registry.item(CHARM_KEY)();
+      charmItem.id = `player:Ben:item#${CHARM_KEY}` as ItemId;
       ben.addToInventory(vestItem);
       ben.addToInventory(charmItem);
       ben.equip(vestItem, EquipmentSlot.Torso);

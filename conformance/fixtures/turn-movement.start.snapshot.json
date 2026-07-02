@@ -1,7 +1,7 @@
 {
   "schemaVersion": 6,
   "campaign": {
-    "id": "4696deec-7a79-40a8-8524-2cc336c4b60e",
+    "id": "campaign:Crypt (conformance)",
     "title": "Crypt (conformance)",
     "maxRounds": 10,
     "round": 0,
@@ -11,11 +11,11 @@
     "loseConditions": [],
     "activeCharacterIndex": 0,
     "partyIds": [
-      "204b4c15-2bba-4af1-9748-06b3a327c3dd",
-      "50b31cbe-8e22-4060-8c41-c8c8c8cda267"
+      "player:Ada",
+      "player:Ben"
     ],
     "actedThisRound": [],
-    "gmId": "204b4c15-2bba-4af1-9748-06b3a327c3dd",
+    "gmId": "player:Ada",
     "materials": {},
     "claims": [],
     "encountered": [],
@@ -31,7 +31,7 @@
     "encounterTable": {
       "baseChance": 20,
       "visited": [
-        "59d1dddf-3a86-4adb-8a28-7797988b2bba"
+        "room:Start"
       ],
       "formations": []
     },
@@ -53,18 +53,18 @@
   },
   "rooms": [
     {
-      "id": "59d1dddf-3a86-4adb-8a28-7797988b2bba",
+      "id": "room:Start",
       "name": "Start",
       "description": "the entrance",
       "exits": {
-        "north": "0226ca15-4c1e-4bf8-af52-2bc89726946e",
-        "south": "c1f36d3a-2b48-4a2e-9b05-51ca92eee624"
+        "north": "exit:Next|Start",
+        "south": "exit:Cellar|Start"
       },
       "dark": false,
       "spawnModifier": 1,
       "occupantIds": [
-        "204b4c15-2bba-4af1-9748-06b3a327c3dd",
-        "50b31cbe-8e22-4060-8c41-c8c8c8cda267"
+        "player:Ada",
+        "player:Ben"
       ],
       "lootIds": [],
       "materialCacheIds": [],
@@ -72,11 +72,11 @@
       "scenes": []
     },
     {
-      "id": "e41ae50d-a335-45a3-a70c-9212ca1b6fde",
+      "id": "room:Next",
       "name": "Next",
       "description": "an adjoining chamber",
       "exits": {
-        "south": "0226ca15-4c1e-4bf8-af52-2bc89726946e"
+        "south": "exit:Next|Start"
       },
       "dark": false,
       "spawnModifier": 1,
@@ -87,11 +87,11 @@
       "scenes": []
     },
     {
-      "id": "3fae973c-59b4-435b-b9cb-1463dcaae80b",
+      "id": "room:Cellar",
       "name": "Cellar",
       "description": "a pitch-black cellar",
       "exits": {
-        "north": "c1f36d3a-2b48-4a2e-9b05-51ca92eee624"
+        "north": "exit:Cellar|Start"
       },
       "dark": true,
       "spawnModifier": 1,
@@ -104,18 +104,18 @@
   ],
   "exits": [
     {
-      "id": "0226ca15-4c1e-4bf8-af52-2bc89726946e",
+      "id": "exit:Next|Start",
       "endpointIds": [
-        "59d1dddf-3a86-4adb-8a28-7797988b2bba",
-        "e41ae50d-a335-45a3-a70c-9212ca1b6fde"
+        "room:Start",
+        "room:Next"
       ],
       "state": {}
     },
     {
-      "id": "c1f36d3a-2b48-4a2e-9b05-51ca92eee624",
+      "id": "exit:Cellar|Start",
       "endpointIds": [
-        "59d1dddf-3a86-4adb-8a28-7797988b2bba",
-        "3fae973c-59b4-435b-b9cb-1463dcaae80b"
+        "room:Start",
+        "room:Cellar"
       ],
       "state": {}
     }
@@ -123,7 +123,7 @@
   "characters": [
     {
       "kind": "player",
-      "id": "204b4c15-2bba-4af1-9748-06b3a327c3dd",
+      "id": "player:Ada",
       "name": "Ada",
       "stats": {
         "health": 10,
@@ -132,7 +132,7 @@
       },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "59d1dddf-3a86-4adb-8a28-7797988b2bba",
+      "currentRoomId": "room:Start",
       "inventory": {
         "slots": 5,
         "itemIds": [],
@@ -143,7 +143,7 @@
         {
           "kind": "move",
           "room": {
-            "id": "59d1dddf-3a86-4adb-8a28-7797988b2bba",
+            "id": "room:Start",
             "name": "Start"
           },
           "round": 0
@@ -160,7 +160,7 @@
     },
     {
       "kind": "player",
-      "id": "50b31cbe-8e22-4060-8c41-c8c8c8cda267",
+      "id": "player:Ben",
       "name": "Ben",
       "stats": {
         "health": 10,
@@ -169,7 +169,7 @@
       },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "59d1dddf-3a86-4adb-8a28-7797988b2bba",
+      "currentRoomId": "room:Start",
       "inventory": {
         "slots": 5,
         "itemIds": [],
@@ -180,7 +180,7 @@
         {
           "kind": "move",
           "room": {
-            "id": "59d1dddf-3a86-4adb-8a28-7797988b2bba",
+            "id": "room:Start",
             "name": "Start"
           },
           "round": 0
@@ -202,15 +202,15 @@
   "codex": [
     {
       "kind": "room",
-      "key": "59d1dddf-3a86-4adb-8a28-7797988b2bba",
+      "key": "room:Start",
       "snapshot": {
         "name": "Start",
         "description": "the entrance"
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "204b4c15-2bba-4af1-9748-06b3a327c3dd",
-        "roomId": "59d1dddf-3a86-4adb-8a28-7797988b2bba"
+        "characterId": "player:Ada",
+        "roomId": "room:Start"
       }
     }
   ]

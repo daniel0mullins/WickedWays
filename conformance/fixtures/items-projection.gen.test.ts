@@ -26,6 +26,7 @@ import { defineRegistry } from "wickedways/lib/authoring/registry";
 import { startSession } from "wickedways/lib/authoring/orchestration";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { Item, ItemType, createKey } from "wickedways/lib/inventory";
+import type { ItemId } from "wickedways/lib/inventory";
 import { StatType } from "wickedways/lib/character/stats";
 import { SlotKind } from "wickedways/lib/equipment";
 import { Directions } from "wickedways/lib/room";
@@ -287,11 +288,16 @@ describe("generate items-projection golden", () => {
     // We must startTurn first so action budget is open for addToInventory + equip.
     pc.startTurn();
 
-    // Create items
+    // Create items — assign content-derived ids (player:<name>:item#<behaviorKey>)
+    // so fixtures are stable across regeneration.
     const sword = makeIronSword();
+    sword.id = `player:Ada:item#${SWORD_KEY}` as ItemId;
     const ring = makeSilverRing();
+    ring.id = `player:Ada:item#${RING_KEY}` as ItemId;
     const tonic = makeHealingTonic();
+    tonic.id = `player:Ada:item#${TONIC_KEY}` as ItemId;
     const key = createKey({ name: "Old Key", keyCode: "old", consumeOnUse: false });
+    key.id = `player:Ada:item#key:old` as ItemId;
 
     // Add items (addToInventory records action but equip is also budgeted — use
     // withGateSuppressed-style: the real engine does startTurn once per turn;

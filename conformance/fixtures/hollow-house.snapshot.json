@@ -1,7 +1,7 @@
 {
   "schemaVersion": 6,
   "campaign": {
-    "id": "6422d57e-ffdd-45c0-9ceb-7090e3a70a69",
+    "id": "campaign:The Hollow House",
     "title": "The Hollow House",
     "maxRounds": 150,
     "round": 0,
@@ -94,34 +94,34 @@
   },
   "rooms": [
     {
-      "id": "d00d8566-b21c-48b8-b3da-aa6ad4ec7861",
+      "id": "room:Foyer",
       "name": "Foyer",
       "description": "The entrance hall of the Hollow House. Dust sheets shroud the furniture; the front door has locked itself behind you.",
       "exits": {
-        "north": "e119e0d8-afd9-44fb-8f3d-c6ab14faae0b",
-        "south": "1e0582d1-fc8c-4b26-ae8a-ccec0a48686b"
+        "north": "exit:Foyer|Hall",
+        "south": "exit:Cellar|Foyer"
       },
       "dark": false,
       "spawnModifier": 1,
       "occupantIds": [],
       "lootIds": [
-        "70b90225-401d-4eb9-b166-908b01433618"
+        "loot:foyer-table"
       ],
       "materialCacheIds": [],
       "lightSourceIds": [],
       "scenes": []
     },
     {
-      "id": "14d3b33f-7a4f-41ef-a8a3-27ed95866471",
+      "id": "room:Cellar",
       "name": "Cellar",
       "description": "A low brick cellar, black as a throat. Water seeps somewhere unseen.",
       "exits": {
-        "north": "1e0582d1-fc8c-4b26-ae8a-ccec0a48686b"
+        "north": "exit:Cellar|Foyer"
       },
       "dark": true,
       "spawnModifier": 1,
       "occupantIds": [
-        "fe232ea0-e6d3-4035-ae57-724c66d73643"
+        "mob:Revenant"
       ],
       "lootIds": [],
       "materialCacheIds": [],
@@ -129,48 +129,48 @@
       "scenes": []
     },
     {
-      "id": "f12e351f-4d1c-4997-9711-63dac642106c",
+      "id": "room:Hall",
       "name": "Hall",
       "description": "A long central hall. Portraits watch from the walls, their eyes scratched out.",
       "exits": {
-        "south": "e119e0d8-afd9-44fb-8f3d-c6ab14faae0b",
-        "west": "4cc3ac62-1683-48d2-a7de-3e9707e62e5d",
-        "east": "dd80501a-5a87-4433-970b-620fd8e0f1e6",
-        "north": "0c112605-0b13-41a2-be90-29bce11bf215"
+        "south": "exit:Foyer|Hall",
+        "west": "exit:Hall|Kitchen",
+        "east": "exit:Hall|Parlor",
+        "north": "exit:Hall|Landing"
       },
       "dark": false,
       "spawnModifier": 1,
       "occupantIds": [],
       "lootIds": [
-        "7e8a622d-acf6-4cfc-ade4-6960c02919f4"
+        "loot:hall-stand"
       ],
       "materialCacheIds": [],
       "lightSourceIds": [],
       "scenes": []
     },
     {
-      "id": "a2414996-2e68-4c6f-b7bf-0eae7f1c9886",
+      "id": "room:Kitchen",
       "name": "Kitchen",
       "description": "A cold scullery. Copper pots hang in rows; one still sways.",
       "exits": {
-        "east": "4cc3ac62-1683-48d2-a7de-3e9707e62e5d"
+        "east": "exit:Hall|Kitchen"
       },
       "dark": false,
       "spawnModifier": 1,
       "occupantIds": [],
       "lootIds": [
-        "cf220a22-808a-4b34-b86f-d59befc692c5"
+        "loot:kitchen-hook"
       ],
       "materialCacheIds": [],
       "lightSourceIds": [],
       "scenes": []
     },
     {
-      "id": "416252a1-f22a-4fb4-8a73-755239f537f7",
+      "id": "room:Parlor",
       "name": "Parlor",
       "description": "A receiving parlor gone to mildew. A piano sits with its lid nailed shut.",
       "exits": {
-        "west": "dd80501a-5a87-4433-970b-620fd8e0f1e6"
+        "west": "exit:Hall|Parlor"
       },
       "dark": false,
       "spawnModifier": 1,
@@ -181,14 +181,14 @@
       "scenes": []
     },
     {
-      "id": "78bd33f2-8731-4286-a07b-ac29f01cfc02",
+      "id": "room:Landing",
       "name": "Landing",
       "description": "The upstairs landing. Two doors face you — one to the west, one leading further up — and a nursery stands open to the east.",
       "exits": {
-        "south": "0c112605-0b13-41a2-be90-29bce11bf215",
-        "east": "9df04f2e-f3b4-45b6-a3ee-bf3b4f44eab0",
-        "west": "20b59dd8-12ad-41ea-91d0-0ebce5cd50c8",
-        "north": "b8bdaff2-3866-48df-9498-e249f0947e0d"
+        "south": "exit:Hall|Landing",
+        "east": "exit:Landing|Nursery",
+        "west": "exit:Landing|Study",
+        "north": "exit:Attic|Landing"
       },
       "dark": false,
       "spawnModifier": 1,
@@ -199,33 +199,33 @@
       "scenes": []
     },
     {
-      "id": "da100a75-1147-4b03-a0e2-d1dc214fba2f",
+      "id": "room:Study",
       "name": "Study",
       "description": "A cramped study, papers everywhere, as if someone left mid-sentence.",
       "exits": {
-        "east": "20b59dd8-12ad-41ea-91d0-0ebce5cd50c8"
+        "east": "exit:Landing|Study"
       },
       "dark": false,
       "spawnModifier": 1,
       "occupantIds": [],
       "lootIds": [
-        "b2c09a35-da5b-4e72-92eb-ab79931dfbe9"
+        "loot:study-desk"
       ],
       "materialCacheIds": [],
       "lightSourceIds": [],
       "scenes": []
     },
     {
-      "id": "f8f07118-7d09-48a1-a37b-bb4d9f53f837",
+      "id": "room:Nursery",
       "name": "Nursery",
       "description": "A child's nursery. A rocking horse moves, very slightly, on its own.",
       "exits": {
-        "west": "9df04f2e-f3b4-45b6-a3ee-bf3b4f44eab0"
+        "west": "exit:Landing|Nursery"
       },
       "dark": true,
       "spawnModifier": 1,
       "occupantIds": [
-        "edf39f6e-1f22-46ab-b198-e3d9818d174d"
+        "mob:Wraith"
       ],
       "lootIds": [],
       "materialCacheIds": [],
@@ -233,11 +233,11 @@
       "scenes": []
     },
     {
-      "id": "e53c401c-f8ce-4cb3-ae58-6fed586f1c7a",
+      "id": "room:Attic",
       "name": "Attic",
       "description": "The attic, under the bare ribs of the roof. This is where the journal ends.",
       "exits": {
-        "south": "b8bdaff2-3866-48df-9498-e249f0947e0d"
+        "south": "exit:Attic|Landing"
       },
       "dark": false,
       "spawnModifier": 1,
@@ -250,58 +250,58 @@
   ],
   "exits": [
     {
-      "id": "e119e0d8-afd9-44fb-8f3d-c6ab14faae0b",
+      "id": "exit:Foyer|Hall",
       "endpointIds": [
-        "d00d8566-b21c-48b8-b3da-aa6ad4ec7861",
-        "f12e351f-4d1c-4997-9711-63dac642106c"
+        "room:Foyer",
+        "room:Hall"
       ],
       "state": {}
     },
     {
-      "id": "1e0582d1-fc8c-4b26-ae8a-ccec0a48686b",
+      "id": "exit:Cellar|Foyer",
       "endpointIds": [
-        "d00d8566-b21c-48b8-b3da-aa6ad4ec7861",
-        "14d3b33f-7a4f-41ef-a8a3-27ed95866471"
+        "room:Foyer",
+        "room:Cellar"
       ],
       "state": {}
     },
     {
-      "id": "4cc3ac62-1683-48d2-a7de-3e9707e62e5d",
+      "id": "exit:Hall|Kitchen",
       "endpointIds": [
-        "f12e351f-4d1c-4997-9711-63dac642106c",
-        "a2414996-2e68-4c6f-b7bf-0eae7f1c9886"
+        "room:Hall",
+        "room:Kitchen"
       ],
       "state": {}
     },
     {
-      "id": "dd80501a-5a87-4433-970b-620fd8e0f1e6",
+      "id": "exit:Hall|Parlor",
       "endpointIds": [
-        "f12e351f-4d1c-4997-9711-63dac642106c",
-        "416252a1-f22a-4fb4-8a73-755239f537f7"
+        "room:Hall",
+        "room:Parlor"
       ],
       "state": {}
     },
     {
-      "id": "0c112605-0b13-41a2-be90-29bce11bf215",
+      "id": "exit:Hall|Landing",
       "endpointIds": [
-        "f12e351f-4d1c-4997-9711-63dac642106c",
-        "78bd33f2-8731-4286-a07b-ac29f01cfc02"
+        "room:Hall",
+        "room:Landing"
       ],
       "state": {}
     },
     {
-      "id": "9df04f2e-f3b4-45b6-a3ee-bf3b4f44eab0",
+      "id": "exit:Landing|Nursery",
       "endpointIds": [
-        "78bd33f2-8731-4286-a07b-ac29f01cfc02",
-        "f8f07118-7d09-48a1-a37b-bb4d9f53f837"
+        "room:Landing",
+        "room:Nursery"
       ],
       "state": {}
     },
     {
-      "id": "20b59dd8-12ad-41ea-91d0-0ebce5cd50c8",
+      "id": "exit:Landing|Study",
       "endpointIds": [
-        "78bd33f2-8731-4286-a07b-ac29f01cfc02",
-        "da100a75-1147-4b03-a0e2-d1dc214fba2f"
+        "room:Landing",
+        "room:Study"
       ],
       "behaviorKey": "study-door",
       "name": "study door",
@@ -310,10 +310,10 @@
       }
     },
     {
-      "id": "b8bdaff2-3866-48df-9498-e249f0947e0d",
+      "id": "exit:Attic|Landing",
       "endpointIds": [
-        "78bd33f2-8731-4286-a07b-ac29f01cfc02",
-        "e53c401c-f8ce-4cb3-ae58-6fed586f1c7a"
+        "room:Landing",
+        "room:Attic"
       ],
       "behaviorKey": "attic-door",
       "name": "attic door",
@@ -325,7 +325,7 @@
   "characters": [
     {
       "kind": "mob",
-      "id": "fe232ea0-e6d3-4035-ae57-724c66d73643",
+      "id": "mob:Revenant",
       "name": "Revenant",
       "stats": {
         "health": 10,
@@ -334,12 +334,12 @@
       },
       "actionsPerRound": 2,
       "actionsThisRound": 0,
-      "currentRoomId": "14d3b33f-7a4f-41ef-a8a3-27ed95866471",
+      "currentRoomId": "room:Cellar",
       "inventory": {
         "slots": 2,
         "itemIds": [],
         "keyIds": [
-          "4efa4d45-874c-487c-af22-7644458da3d9"
+          "mob:Revenant:drop#0"
         ]
       },
       "equipment": {},
@@ -362,7 +362,7 @@
     },
     {
       "kind": "mob",
-      "id": "edf39f6e-1f22-46ab-b198-e3d9818d174d",
+      "id": "mob:Wraith",
       "name": "Wraith",
       "stats": {
         "health": 6,
@@ -371,12 +371,12 @@
       },
       "actionsPerRound": 2,
       "actionsThisRound": 0,
-      "currentRoomId": "f8f07118-7d09-48a1-a37b-bb4d9f53f837",
+      "currentRoomId": "room:Nursery",
       "inventory": {
         "slots": 2,
         "itemIds": [],
         "keyIds": [
-          "6cc69c56-d56c-4422-b6f1-dab197a65dc4"
+          "mob:Wraith:drop#0"
         ]
       },
       "equipment": {},
@@ -401,39 +401,39 @@
   "items": [
     {
       "kind": "item",
-      "id": "4df50fec-5c7e-4fb7-a0c1-fb791e25c607",
+      "id": "loot:foyer-table:item#0",
       "behaviorKey": "journal",
       "modifier": 0
     },
     {
       "kind": "item",
-      "id": "246ecfa7-ce21-49f5-a26a-81ae4dacdfd4",
+      "id": "loot:hall-stand:item#0",
       "behaviorKey": "poker",
       "durability": 8,
       "modifier": 5
     },
     {
       "kind": "item",
-      "id": "3a46a47e-f5e1-4b5e-bd58-f8b0a91f6c7e",
+      "id": "loot:kitchen-hook:item#0",
       "behaviorKey": "lantern",
       "modifier": 0
     },
     {
       "kind": "item",
-      "id": "15712db1-29b2-4a0f-929f-fd3bae2b23ed",
+      "id": "loot:study-desk:item#0",
       "behaviorKey": "laudanum",
       "modifier": 6
     },
     {
       "kind": "key",
-      "id": "4efa4d45-874c-487c-af22-7644458da3d9",
+      "id": "mob:Revenant:drop#0",
       "name": "Iron Key",
       "keyCode": "iron",
       "consumeOnUse": false
     },
     {
       "kind": "key",
-      "id": "6cc69c56-d56c-4422-b6f1-dab197a65dc4",
+      "id": "mob:Wraith:drop#0",
       "name": "Brass Key",
       "keyCode": "brass",
       "consumeOnUse": false
@@ -441,35 +441,35 @@
   ],
   "loot": [
     {
-      "id": "70b90225-401d-4eb9-b166-908b01433618",
+      "id": "loot:foyer-table",
       "description": "A hall table with a single drawer.",
       "capacity": 3,
       "contentIds": [
-        "4df50fec-5c7e-4fb7-a0c1-fb791e25c607"
+        "loot:foyer-table:item#0"
       ]
     },
     {
-      "id": "7e8a622d-acf6-4cfc-ade4-6960c02919f4",
+      "id": "loot:hall-stand",
       "description": "A fireplace stand.",
       "capacity": 3,
       "contentIds": [
-        "246ecfa7-ce21-49f5-a26a-81ae4dacdfd4"
+        "loot:hall-stand:item#0"
       ]
     },
     {
-      "id": "cf220a22-808a-4b34-b86f-d59befc692c5",
+      "id": "loot:kitchen-hook",
       "description": "A lantern hangs from a hook.",
       "capacity": 3,
       "contentIds": [
-        "3a46a47e-f5e1-4b5e-bd58-f8b0a91f6c7e"
+        "loot:kitchen-hook:item#0"
       ]
     },
     {
-      "id": "b2c09a35-da5b-4e72-92eb-ab79931dfbe9",
+      "id": "loot:study-desk",
       "description": "A writing desk with a locked-open drawer.",
       "capacity": 3,
       "contentIds": [
-        "15712db1-29b2-4a0f-929f-fd3bae2b23ed"
+        "loot:study-desk:item#0"
       ]
     }
   ],

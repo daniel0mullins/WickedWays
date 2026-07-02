@@ -1,7 +1,7 @@
 {
   "schemaVersion": 6,
   "campaign": {
-    "id": "d45e4e85-9eb0-488b-a288-72be85d0f269",
+    "id": "campaign:Combat (conformance)",
     "title": "Combat (conformance)",
     "maxRounds": 20,
     "round": 0,
@@ -11,11 +11,11 @@
     "loseConditions": [],
     "activeCharacterIndex": 0,
     "partyIds": [
-      "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
-      "87d92d99-b0b0-4d18-92eb-5765438bb0a7"
+      "player:Ada",
+      "player:Ben"
     ],
     "actedThisRound": [],
-    "gmId": "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
+    "gmId": "player:Ada",
     "materials": {},
     "claims": [],
     "encountered": [],
@@ -44,7 +44,7 @@
     "encounterTable": {
       "baseChance": 0,
       "visited": [
-        "9caa66b0-9250-4260-adac-052cfe738c04"
+        "room:Hall"
       ],
       "formations": []
     },
@@ -66,15 +66,15 @@
   },
   "rooms": [
     {
-      "id": "9caa66b0-9250-4260-adac-052cfe738c04",
+      "id": "room:Hall",
       "name": "Hall",
       "description": "A stone hall.",
       "exits": {},
       "dark": false,
       "spawnModifier": 1,
       "occupantIds": [
-        "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
-        "87d92d99-b0b0-4d18-92eb-5765438bb0a7"
+        "player:Ada",
+        "player:Ben"
       ],
       "lootIds": [],
       "materialCacheIds": [],
@@ -86,7 +86,7 @@
   "characters": [
     {
       "kind": "player",
-      "id": "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
+      "id": "player:Ada",
       "name": "Ada",
       "stats": {
         "health": 10,
@@ -95,24 +95,24 @@
       },
       "actionsPerRound": 3,
       "actionsThisRound": 3,
-      "currentRoomId": "9caa66b0-9250-4260-adac-052cfe738c04",
+      "currentRoomId": "room:Hall",
       "inventory": {
         "slots": 5,
         "itemIds": [
-          "de29ba3b-78d4-4424-a9de-54b5512e5892",
-          "01dfb43c-13a7-4cb0-aea7-7f328939682d"
+          "player:Ada:item#items/axe",
+          "player:Ada:item#items/cleaver"
         ],
         "keyIds": []
       },
       "equipment": {
-        "leftHand": "de29ba3b-78d4-4424-a9de-54b5512e5892",
-        "rightHand": "01dfb43c-13a7-4cb0-aea7-7f328939682d"
+        "leftHand": "player:Ada:item#items/axe",
+        "rightHand": "player:Ada:item#items/cleaver"
       },
       "history": [
         {
           "kind": "move",
           "room": {
-            "id": "9caa66b0-9250-4260-adac-052cfe738c04",
+            "id": "room:Hall",
             "name": "Hall"
           },
           "round": 0
@@ -121,7 +121,7 @@
           "kind": "pickUp",
           "items": [
             {
-              "id": "de29ba3b-78d4-4424-a9de-54b5512e5892",
+              "id": "player:Ada:item#items/axe",
               "name": "Hand Axe"
             }
           ],
@@ -131,7 +131,7 @@
           "kind": "pickUp",
           "items": [
             {
-              "id": "01dfb43c-13a7-4cb0-aea7-7f328939682d",
+              "id": "player:Ada:item#items/cleaver",
               "name": "Meat Cleaver"
             }
           ],
@@ -153,7 +153,7 @@
     },
     {
       "kind": "player",
-      "id": "87d92d99-b0b0-4d18-92eb-5765438bb0a7",
+      "id": "player:Ben",
       "name": "Ben",
       "stats": {
         "health": 6,
@@ -162,24 +162,24 @@
       },
       "actionsPerRound": 3,
       "actionsThisRound": 3,
-      "currentRoomId": "9caa66b0-9250-4260-adac-052cfe738c04",
+      "currentRoomId": "room:Hall",
       "inventory": {
         "slots": 5,
         "itemIds": [
-          "39e7ff45-6f0a-4ef8-ad7a-e1ce74bc6190",
-          "d8c2987b-42e4-4ee5-bf97-190af2175f03"
+          "player:Ben:item#items/vest",
+          "player:Ben:item#items/charm"
         ],
         "keyIds": []
       },
       "equipment": {
-        "torso": "39e7ff45-6f0a-4ef8-ad7a-e1ce74bc6190",
-        "leftIndexFinger": "d8c2987b-42e4-4ee5-bf97-190af2175f03"
+        "torso": "player:Ben:item#items/vest",
+        "leftIndexFinger": "player:Ben:item#items/charm"
       },
       "history": [
         {
           "kind": "move",
           "room": {
-            "id": "9caa66b0-9250-4260-adac-052cfe738c04",
+            "id": "room:Hall",
             "name": "Hall"
           },
           "round": 0
@@ -188,7 +188,7 @@
           "kind": "pickUp",
           "items": [
             {
-              "id": "39e7ff45-6f0a-4ef8-ad7a-e1ce74bc6190",
+              "id": "player:Ben:item#items/vest",
               "name": "Padded Vest"
             }
           ],
@@ -198,7 +198,7 @@
           "kind": "pickUp",
           "items": [
             {
-              "id": "d8c2987b-42e4-4ee5-bf97-190af2175f03",
+              "id": "player:Ben:item#items/charm",
               "name": "Lucky Charm"
             }
           ],
@@ -223,28 +223,28 @@
   "items": [
     {
       "kind": "item",
-      "id": "de29ba3b-78d4-4424-a9de-54b5512e5892",
+      "id": "player:Ada:item#items/axe",
       "behaviorKey": "items/axe",
       "durability": 2,
       "modifier": 3
     },
     {
       "kind": "item",
-      "id": "01dfb43c-13a7-4cb0-aea7-7f328939682d",
+      "id": "player:Ada:item#items/cleaver",
       "behaviorKey": "items/cleaver",
       "durability": 5,
       "modifier": 4
     },
     {
       "kind": "item",
-      "id": "39e7ff45-6f0a-4ef8-ad7a-e1ce74bc6190",
+      "id": "player:Ben:item#items/vest",
       "behaviorKey": "items/vest",
       "durability": 2,
       "modifier": 1
     },
     {
       "kind": "item",
-      "id": "d8c2987b-42e4-4ee5-bf97-190af2175f03",
+      "id": "player:Ben:item#items/charm",
       "behaviorKey": "items/charm",
       "modifier": 2
     }
@@ -254,15 +254,15 @@
   "codex": [
     {
       "kind": "room",
-      "key": "9caa66b0-9250-4260-adac-052cfe738c04",
+      "key": "room:Hall",
       "snapshot": {
         "name": "Hall",
         "description": "A stone hall."
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
-        "roomId": "9caa66b0-9250-4260-adac-052cfe738c04"
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
       }
     },
     {
@@ -275,8 +275,8 @@
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
-        "roomId": "9caa66b0-9250-4260-adac-052cfe738c04"
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
       }
     },
     {
@@ -289,8 +289,8 @@
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "35741b30-18a0-4ed4-acb0-be1dc3d250f0",
-        "roomId": "9caa66b0-9250-4260-adac-052cfe738c04"
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
       }
     },
     {
@@ -303,8 +303,8 @@
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "87d92d99-b0b0-4d18-92eb-5765438bb0a7",
-        "roomId": "9caa66b0-9250-4260-adac-052cfe738c04"
+        "characterId": "player:Ben",
+        "roomId": "room:Hall"
       }
     },
     {
@@ -317,8 +317,8 @@
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "87d92d99-b0b0-4d18-92eb-5765438bb0a7",
-        "roomId": "9caa66b0-9250-4260-adac-052cfe738c04"
+        "characterId": "player:Ben",
+        "roomId": "room:Hall"
       }
     }
   ]

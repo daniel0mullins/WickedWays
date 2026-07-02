@@ -1,14 +1,14 @@
 {
   "view": {
     "room": {
-      "id": "a4970ecc-c7d8-4244-b569-2ac81d3148bf",
+      "id": "room:Hall",
       "name": "Hall",
       "description": "A stone hall.",
       "isLit": true
     },
     "occupants": [
       {
-        "id": "660703a3-7055-480a-adca-f5872a612fea",
+        "id": "player:Ben",
         "name": "Ben",
         "aliases": [
           "ben"
@@ -20,12 +20,12 @@
     ],
     "loot": [
       {
-        "id": "d114fd04-8191-418a-9706-5c1f6f7c07ef",
+        "id": "loot:chest",
         "description": "An old chest.",
         "opened": false,
         "contents": [
           {
-            "id": "3fc60c2c-6d9a-4689-94ea-19b979fe4e20",
+            "id": "loot:chest:item#0",
             "name": "Old Coin",
             "aliases": [
               "old coin",
@@ -43,7 +43,7 @@
     "inventory": {
       "items": [
         {
-          "id": "76df020e-2b04-4541-8711-c81cb2d6bca7",
+          "id": "player:Ada:item#items/iron-sword",
           "name": "Iron Sword",
           "aliases": [
             "iron sword",
@@ -57,7 +57,7 @@
           "droppable": true
         },
         {
-          "id": "dc2b9253-d778-4913-ad81-a8097fc9b6c8",
+          "id": "player:Ada:item#items/silver-ring",
           "name": "Silver Ring",
           "aliases": [
             "silver ring",
@@ -71,7 +71,7 @@
           "droppable": true
         },
         {
-          "id": "83ddba60-87fb-42de-8745-1f629ddd0ec0",
+          "id": "player:Ada:item#items/healing-tonic",
           "name": "Healing Tonic",
           "aliases": [
             "healing tonic",
@@ -87,7 +87,7 @@
       ],
       "keys": [
         {
-          "id": "e25ff2b5-a173-409c-bdd4-a10f8228b864",
+          "id": "player:Ada:item#key:old",
           "name": "Old Key",
           "aliases": [
             "old key"
@@ -106,7 +106,7 @@
     },
     "scope": [
       {
-        "id": "660703a3-7055-480a-adca-f5872a612fea",
+        "id": "player:Ben",
         "name": "Ben",
         "aliases": [
           "ben"
@@ -116,7 +116,7 @@
         "defeated": false
       },
       {
-        "id": "3fc60c2c-6d9a-4689-94ea-19b979fe4e20",
+        "id": "loot:chest:item#0",
         "name": "Old Coin",
         "aliases": [
           "old coin",
@@ -129,7 +129,7 @@
         "droppable": true
       },
       {
-        "id": "76df020e-2b04-4541-8711-c81cb2d6bca7",
+        "id": "player:Ada:item#items/iron-sword",
         "name": "Iron Sword",
         "aliases": [
           "iron sword",
@@ -143,7 +143,7 @@
         "droppable": true
       },
       {
-        "id": "dc2b9253-d778-4913-ad81-a8097fc9b6c8",
+        "id": "player:Ada:item#items/silver-ring",
         "name": "Silver Ring",
         "aliases": [
           "silver ring",
@@ -157,7 +157,7 @@
         "droppable": true
       },
       {
-        "id": "83ddba60-87fb-42de-8745-1f629ddd0ec0",
+        "id": "player:Ada:item#items/healing-tonic",
         "name": "Healing Tonic",
         "aliases": [
           "healing tonic",
@@ -171,7 +171,7 @@
         "droppable": true
       },
       {
-        "id": "e25ff2b5-a173-409c-bdd4-a10f8228b864",
+        "id": "player:Ada:item#key:old",
         "name": "Old Key",
         "aliases": [
           "old key"
@@ -183,7 +183,7 @@
         "droppable": true
       },
       {
-        "id": "d114fd04-8191-418a-9706-5c1f6f7c07ef",
+        "id": "loot:chest",
         "name": "An old chest.",
         "aliases": [
           "chest",

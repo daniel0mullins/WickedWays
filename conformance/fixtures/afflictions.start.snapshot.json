@@ -1,7 +1,7 @@
 {
   "schemaVersion": 6,
   "campaign": {
-    "id": "726ab796-f676-4ab3-9646-1470fbc132dd",
+    "id": "campaign:Afflictions (conformance)",
     "title": "Afflictions (conformance)",
     "maxRounds": 20,
     "round": 0,
@@ -11,11 +11,11 @@
     "loseConditions": [],
     "activeCharacterIndex": 0,
     "partyIds": [
-      "f8c4ff50-dc24-4a4c-a584-0a642b8cd586",
-      "232555cb-1cae-493f-a240-a09f3edda26b"
+      "player:Ada",
+      "player:Ben"
     ],
     "actedThisRound": [],
-    "gmId": "f8c4ff50-dc24-4a4c-a584-0a642b8cd586",
+    "gmId": "player:Ada",
     "materials": {},
     "claims": [],
     "encountered": [],
@@ -44,7 +44,7 @@
     "encounterTable": {
       "baseChance": 0,
       "visited": [
-        "29b42129-57f0-4342-9359-621db3075f55"
+        "room:Hall"
       ],
       "formations": []
     },
@@ -66,18 +66,18 @@
   },
   "rooms": [
     {
-      "id": "29b42129-57f0-4342-9359-621db3075f55",
+      "id": "room:Hall",
       "name": "Hall",
       "description": "A cold stone hall.",
       "exits": {},
       "dark": false,
       "spawnModifier": 1,
       "occupantIds": [
-        "f8c4ff50-dc24-4a4c-a584-0a642b8cd586",
-        "232555cb-1cae-493f-a240-a09f3edda26b"
+        "player:Ada",
+        "player:Ben"
       ],
       "lootIds": [
-        "f85f3e52-5a7c-4030-9e78-49f2149a96db"
+        "loot:shelf"
       ],
       "materialCacheIds": [],
       "lightSourceIds": [],
@@ -88,7 +88,7 @@
   "characters": [
     {
       "kind": "player",
-      "id": "f8c4ff50-dc24-4a4c-a584-0a642b8cd586",
+      "id": "player:Ada",
       "name": "Ada",
       "stats": {
         "health": 10,
@@ -97,7 +97,7 @@
       },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "29b42129-57f0-4342-9359-621db3075f55",
+      "currentRoomId": "room:Hall",
       "inventory": {
         "slots": 5,
         "itemIds": [],
@@ -108,7 +108,7 @@
         {
           "kind": "move",
           "room": {
-            "id": "29b42129-57f0-4342-9359-621db3075f55",
+            "id": "room:Hall",
             "name": "Hall"
           },
           "round": 0
@@ -125,7 +125,7 @@
     },
     {
       "kind": "player",
-      "id": "232555cb-1cae-493f-a240-a09f3edda26b",
+      "id": "player:Ben",
       "name": "Ben",
       "stats": {
         "health": 0,
@@ -134,7 +134,7 @@
       },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "29b42129-57f0-4342-9359-621db3075f55",
+      "currentRoomId": "room:Hall",
       "inventory": {
         "slots": 5,
         "itemIds": [],
@@ -145,7 +145,7 @@
         {
           "kind": "move",
           "room": {
-            "id": "29b42129-57f0-4342-9359-621db3075f55",
+            "id": "room:Hall",
             "name": "Hall"
           },
           "round": 0
@@ -164,25 +164,25 @@
   "items": [
     {
       "kind": "item",
-      "id": "986f93db-a1b0-42a2-b0b0-1a80b323e233",
+      "id": "loot:shelf:item#0",
       "behaviorKey": "items/calming-talisman",
       "modifier": 0
     },
     {
       "kind": "item",
-      "id": "81fa80da-343b-4cfd-9bbd-f278f5245f2d",
+      "id": "loot:shelf:item#1",
       "behaviorKey": "items/loose-trinket",
       "modifier": 0
     }
   ],
   "loot": [
     {
-      "id": "f85f3e52-5a7c-4030-9e78-49f2149a96db",
+      "id": "loot:shelf",
       "description": "A dusty shelf.",
       "capacity": 4,
       "contentIds": [
-        "986f93db-a1b0-42a2-b0b0-1a80b323e233",
-        "81fa80da-343b-4cfd-9bbd-f278f5245f2d"
+        "loot:shelf:item#0",
+        "loot:shelf:item#1"
       ]
     }
   ],
@@ -190,15 +190,15 @@
   "codex": [
     {
       "kind": "room",
-      "key": "29b42129-57f0-4342-9359-621db3075f55",
+      "key": "room:Hall",
       "snapshot": {
         "name": "Hall",
         "description": "A cold stone hall."
       },
       "firstSeen": {
         "round": 0,
-        "characterId": "f8c4ff50-dc24-4a4c-a584-0a642b8cd586",
-        "roomId": "29b42129-57f0-4342-9359-621db3075f55"
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
       }
     }
   ]

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 6,
   "campaign": {
-    "id": "efd34533-8450-4fa7-8d36-953fac367333",
+    "id": "campaign:Crypt",
     "title": "Crypt",
     "maxRounds": 10,
     "round": 0,
@@ -56,11 +56,11 @@
   },
   "rooms": [
     {
-      "id": "8c118630-a80a-438c-8ff6-1f3d0093586b",
+      "id": "room:Start",
       "name": "Start",
       "description": "the entrance",
       "exits": {
-        "north": "1443126d-32ca-4379-af97-e6d462d61511"
+        "north": "exit:Next|Start"
       },
       "dark": false,
       "spawnModifier": 1,
@@ -71,11 +71,11 @@
       "scenes": []
     },
     {
-      "id": "198bf608-399d-4f7b-a595-9bfe9aaafae0",
+      "id": "room:Next",
       "name": "Next",
       "description": "an adjoining chamber",
       "exits": {
-        "south": "1443126d-32ca-4379-af97-e6d462d61511"
+        "south": "exit:Next|Start"
       },
       "dark": false,
       "spawnModifier": 1,
@@ -88,10 +88,10 @@
   ],
   "exits": [
     {
-      "id": "1443126d-32ca-4379-af97-e6d462d61511",
+      "id": "exit:Next|Start",
       "endpointIds": [
-        "8c118630-a80a-438c-8ff6-1f3d0093586b",
-        "198bf608-399d-4f7b-a595-9bfe9aaafae0"
+        "room:Start",
+        "room:Next"
       ],
       "state": {}
     }
