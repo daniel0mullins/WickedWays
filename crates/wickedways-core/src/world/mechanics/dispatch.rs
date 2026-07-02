@@ -378,7 +378,7 @@ mod tests {
     }
 
     #[test]
-    fn dispatch_round_with_registered_op_runs_and_applies_nothing_for_defaults() {
+    fn dispatch_round_with_registered_dread_op_emits_cues_and_ticks_sanity() {
         let mut w = world_with_party(&["pc"], 10);
         w.campaign.mechanics.push(MechanicSnapshot {
             key: "conformance:dread".into(),
@@ -387,9 +387,12 @@ mod tests {
         let mut cues = Vec::new();
         w.dispatch_round(RoundPhase::Start, &Catalog::default(), &mut cues).unwrap();
         w.dispatch_round(RoundPhase::End, &Catalog::default(), &mut cues).unwrap();
-        // Placeholder DREAD hooks return no effects: nothing changes.
-        assert_eq!(w.characters[&cid("pc")].stats.health, 5.0);
-        assert!(cues.is_empty());
+        // on_round_start: "Dread stirs."; on_round_end: AdjustStat(Sanity,-1) then
+        // "Dread deepens." — health untouched, sanity ticks down, ticks persisted.
+        assert_eq!(w.characters[&cid("pc")].stats.health, 5.0, "dread never touches health");
+        assert_eq!(w.characters[&cid("pc")].stats.sanity, 4.0, "on_round_end ticks Sanity -1");
+        assert_eq!(cues.len(), 2, "\"Dread stirs.\" + \"Dread deepens.\"");
+        assert_eq!(w.campaign.mechanics[0].state, serde_json::json!({"ticks": 1}));
     }
 
     #[test]
@@ -420,11 +423,12 @@ mod tests {
             &Catalog::default(),
             &mut cues,
         ).unwrap();
-        assert!(cues.is_empty());
+        // "The dread watches." + "The dread recedes." + "The dread notices."
+        assert_eq!(cues.len(), 3);
     }
 
     #[test]
-    fn run_damage_transformers_identity_with_no_mechanics_and_default_op() {
+    fn run_damage_transformers_identity_with_no_mechanics_then_dread_caps_at_three() {
         let mut w = world_with_party(&["pc"], 10);
         let dv = crate::world::mechanics::DamageView {
             amount: 3.5,
@@ -434,13 +438,41 @@ mod tests {
         };
         let mut cues = Vec::new();
         assert_eq!(w.run_damage_transformers(dv.clone(), &mut cues, &Catalog::default()), 3.5);
-        // With the placeholder op (default modify_damage = passthrough) same result.
+        // Dread's modify_damage: amount(3.5) > 3.0 -> Final(3.0), short-circuits
+        // with a "{key} fixed damage at {value}." cue.
         w.campaign.mechanics.push(MechanicSnapshot {
             key: "conformance:dread".into(),
             state: serde_json::json!({"ticks": 0}),
         });
-        assert_eq!(w.run_damage_transformers(dv, &mut cues, &Catalog::default()), 3.5);
-        assert!(cues.is_empty());
+        assert_eq!(w.run_damage_transformers(dv, &mut cues, &Catalog::default()), 3.0);
+        assert_eq!(cues.len(), 1);
+        assert!(matches!(cues[0], PresentationCue::Mechanic { .. }));
+    }
+
+    // -- MAX_EFFECTS_PER_EVENT (64) cap --
+
+    #[test]
+    fn dispatch_round_at_cap_of_64_effects_is_ok() {
+        let mut w = world_with_party(&["pc"], 10);
+        w.campaign.mechanics.push(MechanicSnapshot {
+            key: "test:effect-count".into(),
+            state: serde_json::json!({"n": 64}),
+        });
+        let mut cues = Vec::new();
+        w.dispatch_round(RoundPhase::End, &Catalog::default(), &mut cues).unwrap();
+        assert_eq!(cues.len(), 64);
+    }
+
+    #[test]
+    fn dispatch_round_over_cap_of_65_effects_is_a_procedural_violation() {
+        let mut w = world_with_party(&["pc"], 10);
+        w.campaign.mechanics.push(MechanicSnapshot {
+            key: "test:effect-count".into(),
+            state: serde_json::json!({"n": 65}),
+        });
+        let mut cues = Vec::new();
+        let err = w.dispatch_round(RoundPhase::End, &Catalog::default(), &mut cues).unwrap_err();
+        assert!(err.0.contains("too many effects"));
     }
 
     #[test]

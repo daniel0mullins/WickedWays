@@ -101,6 +101,9 @@ pub fn mechanic_op(key: &str) -> Option<&'static dyn MechanicOp> {
     match key {
         #[cfg(any(test, feature = "conformance"))]
         "conformance:dread" => Some(&conformance::DREAD),
+        // Test-only op for the dispatch 64-effect-cap unit tests (dispatch.rs).
+        #[cfg(test)]
+        "test:effect-count" => Some(&conformance::EFFECT_COUNT),
         _ => None,
     }
 }
