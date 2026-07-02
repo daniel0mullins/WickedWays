@@ -263,6 +263,12 @@ themselves by identity (e.g. `move`, `attack`, `escape`, `addToInventory`,
 is spent, automatically calls `endTurn()`. Notably, `takeDamage` is **not** a recordable
 action — taking a hit never consumes your turn.
 
+A character's turn ends either explicitly (the `endTurn` command) or automatically the moment a
+budgeted action brings `actionsThisRound` up to `actionsPerRound`. Ending a turn reconciles the
+character — base stats are floored, affliction flags recomputed from effective stats, and
+knock-out latched — mirroring `Character.endTurn`. (Character `onTurnEnd` events and mechanic
+turn-end hooks arrive in a later sub-plan.)
+
 ### Stats and damage mitigation
 
 Characters have three stats — **Health**, **Sanity**, and **Energy** — and each is mitigated by

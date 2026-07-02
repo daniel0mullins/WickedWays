@@ -231,8 +231,8 @@ impl World {
 
         // record_action(move): tick budget, append history, emit action cue.
         // Budget tick mirrors TS `recordAction` (:530-532): `actions_this_round += 1`.
-        // `endTurn` is not modelled in sub-plan 2 — the conformance stream stays
-        // within budget, and turn-ending lands in sub-plan 5.
+        // The `record_action` call below also conditionally ends the turn (reconcile)
+        // once the budget is exhausted, mirroring TS `recordAction` → `endTurn()`.
         let round = self.campaign.round;
         let room_name = self
             .rooms
