@@ -181,8 +181,10 @@ draws an entity.
 
 Sounds are delivered as a push **cue stream**: subscribe with `Campaign.onCue(handler)` (and
 `offCue`). The engine emits an `action` cue for every recorded action (move, pickUp, attack, …),
-an `encounter` cue the first time a character meets a given mob (once per character/mob pair,
-covering both spawned and resident mobs), and a `visibility` cue (`{ room, lit }`) when a character
+an `encounter` cue each time a character enters a room containing a live, non-party occupant
+(deduped per viewer:mob pair — each character/mob combination fires at most once across the
+whole campaign, covering both spawned mobs and room-resident mobs), and a `visibility` cue
+(`{ room, lit }`) when a character
 enters an unlit room or a light action (`equip`/`unequip`/`placeLight`/`takeLight`) flips a dark
 room's lit state — the renderer uses it to reveal or conceal the room's contents (the data model is
 never hidden). The `action` and `encounter` cues carry a pre-resolved `sound`: the involved
@@ -588,10 +590,13 @@ A freshly constructed mob starts as `"unbound"` until the engine sets its origin
 When a mob's Health hits 0, its `onKnockOut` hook fires exactly once:
 
 1. **Material drops** — any `materialDrops` in the mob's options are deposited into the
-   campaign's shared material pool via `DEPOSIT_MATERIALS`.
+   campaign's shared material pool via `DEPOSIT_MATERIALS`, and each new material type is
+   also recorded in the Codex (attributed to the defeating character, or the party if no
+   defeater is resolvable).
 2. **Item loot box** — held items are relinquished and placed into a fresh `Loot` box
-   (named `"<mob>'s remains"`) which is added to the mob's current room. If the mob has
-   no items and no keys to drop, no box is created.
+   (human name `"<mob>'s remains"`, machine id `${mob.id}:remains`, capacity = initial items + 2)
+   which is added to the mob's current room. If the mob has no items and no keys to drop,
+   no box is created.
 3. **Key items** — if the mob is room-attached (`origin === "room"`), keys on its keyring
    are also stashed into the box via the `STASH_DROP` seam (past normal capacity, bypassing
    the key-exclusion guard on regular `stowItem`). Campaign-roving mobs never drop keys.
