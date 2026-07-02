@@ -89,8 +89,15 @@ impl World {
         // character events + DISPATCH_TURN("start"): no-ops until sub-plan 6.
     }
 
-    pub fn end_turn(&mut self, _actor: &CharacterId) {
-        // character events + reconcile + mechanic turn-end: no-ops this sub-plan.
+    /// End `actor`'s turn. Mirrors TS `Character.endTurn` (character.ts:1066-1070):
+    /// `events.onTurnEnd()` (sub-plan 6), `#reconcile()`, `DISPATCH_TURN("end")`
+    /// (sub-plan 6). Only the reconcile lands in sub-plan 5 — it floors base stats,
+    /// re-applies affliction flags from effective stats, and latches KO on the
+    /// rising edge. RNG-free.
+    pub fn end_turn(&mut self, actor: &CharacterId, cat: &Catalog, cues: &mut Vec<PresentationCue>) {
+        // character events (events.onTurnEnd): no-op until sub-plan 6.
+        self.reconcile(actor, cat, cues);
+        // mechanic DISPATCH_TURN("end"): no-op until sub-plan 6.
     }
 
     pub fn next_player(&mut self, cues: &mut Vec<PresentationCue>) -> Result<(), ProceduralViolation> {
@@ -317,5 +324,22 @@ mod tests {
         // (b) effective sanity = floor(base) + bonus = 0 + 5 = 5 → NO Fear
         assert!(!ch2.afflictions.is_active(Status::Fear),
             "effective sanity 5 (=0+5) should NOT trigger Fear (5<5 is false)");
+    }
+
+    #[test]
+    fn end_turn_runs_reconcile_floors_and_latches_ko() {
+        use crate::world::afflictions::Status;
+        use crate::world::descriptor::Catalog;
+        let mut w = world_with_party(&["pc"], 10);
+        let mut cues = Vec::new();
+        // Drive base health negative WITHOUT start_turn's floor, so we can prove
+        // end_turn's reconcile floors it and latches KO.
+        if let Some(c) = w.characters.get_mut(&cid("pc")) {
+            c.stats.health = -3.0;
+        }
+        w.end_turn(&cid("pc"), &Catalog::default(), &mut cues);
+        let ch = w.characters.get(&cid("pc")).unwrap();
+        assert_eq!(ch.stats.health, 0.0, "end_turn reconcile floors base health");
+        assert!(ch.afflictions.is_active(Status::Ko), "end_turn reconcile latches KO");
     }
 }

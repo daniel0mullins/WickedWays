@@ -42,7 +42,7 @@ pub fn apply_command(
     let actor = world.active_character_id()?;
     match cmd {
         Command::StartTurn => { world.start_turn(&actor, cat); Ok(()) }
-        Command::EndTurn => { world.end_turn(&actor); Ok(()) }
+        Command::EndTurn => { world.end_turn(&actor, cat, cues); Ok(()) }
         Command::Go { dir } => world.go(&actor, dir, cues),
         Command::NextPlayer => world.next_player(cues),
         Command::Take { target_id } => {
