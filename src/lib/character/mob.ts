@@ -6,7 +6,7 @@ import {
   SET_ORIGIN,
   STASH_DROP,
 } from "../inventory";
-import { Loot } from "../loot";
+import { Loot, type LootId } from "../loot";
 import { roll } from "../dice";
 import { clamp, typedEntries } from "../util";
 import { RECORD_ENCOUNTER } from "../codex";
@@ -205,6 +205,7 @@ export class Mob extends Combatant implements IMob {
       this.relinquishItem(item);
     }
     const box = new Loot({ description: `${this.name}'s remains`, contents: items });
+    box.id = `${this.id}:remains` as LootId;
 
     for (const key of keys) {
       this.relinquishItem(key);

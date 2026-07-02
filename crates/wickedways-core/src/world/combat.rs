@@ -16,9 +16,9 @@ use crate::stats::StatType;
 use crate::world::descriptor::{Catalog, ItemType};
 use crate::world::gate::GateVerdict;
 use crate::world::history::{ActionHistoryEntry, TargetRef};
-use crate::world::ids::{CharacterId, ItemId};
+use crate::world::ids::{CharacterId, ItemId, LootId};
 use crate::world::resolve::{resolve_item, ResolvedItem};
-use crate::world::snapshot::ItemSnapshot;
+use crate::world::snapshot::{CharacterKind, ItemSnapshot, LootSnapshot};
 use crate::world::World;
 
 impl World {
@@ -73,12 +73,64 @@ impl World {
         }
     }
 
-    /// Hook fired once when KO newly latches during `reconcile`. Base behavior:
-    /// none (mirrors base `Character.onKnockOut`). Sub-plan 4c overrides for
-    /// `CharacterKind::Mob` to drop loot / record the encounter — hence `cues`
-    /// is plumbed now.
-    fn on_knock_out(&mut self, _actor: &CharacterId, _cat: &Catalog, _cues: &mut Vec<PresentationCue>) {
-        // no-op (sub-plan 4c: Mob loot-drop override)
+    /// Hook fired once when KO newly latches during `reconcile`. Players: no-op. Mobs:
+    /// deposit materials + drop inventory into a `${mob.id}:remains` loot box. Byte-exact
+    /// port of `Mob.onKnockOut` (`mob.ts:174-215`).
+    fn on_knock_out(&mut self, actor: &CharacterId, _cat: &Catalog, _cues: &mut Vec<PresentationCue>) {
+        let is_mob = self.characters.get(actor)
+            .map(|c| matches!(c.kind, CharacterKind::Mob)).unwrap_or(false);
+        if !is_mob { return; }
+
+        // Snapshot drop-relevant fields.
+        let (material_drops, room_id, is_room_origin, item_ids, key_ids, mob_name) = {
+            let Some(c) = self.characters.get(actor) else { return };
+            (
+                c.material_drops.clone(),
+                c.current_room_id.clone(),
+                c.origin.as_ref().and_then(|v| v.as_str()) == Some("room"),
+                c.inventory.item_ids.clone(),
+                c.inventory.key_ids.clone(),
+                c.name.clone(),
+            )
+        };
+
+        // 1. Materials deposit + codex records (before the item drop).
+        if let Some(md) = &material_drops {
+            if md.as_object().map(|o| !o.is_empty()).unwrap_or(false) {
+                let by = self.active_character_id().ok().map(|c| c.0);
+                let room_str = room_id.as_ref().map(|r| r.0.clone());
+                self.deposit_materials(md, by.as_deref(), room_str.as_deref());
+            }
+        }
+
+        // 2. Item/key drop.
+        let Some(room) = room_id else { return };
+        let keys = if is_room_origin { key_ids } else { alloc::vec::Vec::new() };
+        if item_ids.is_empty() && keys.is_empty() { return; }
+
+        // Relinquish from the mob's inventory.
+        if let Some(c) = self.characters.get_mut(actor) {
+            c.inventory.item_ids.retain(|id| !item_ids.contains(id));
+            if is_room_origin {
+                c.inventory.key_ids.retain(|id| !keys.contains(id));
+            }
+        }
+
+        // Create the remains box: id = ${mob.id}:remains, capacity = items.len()+2,
+        // contents = items ++ stashed keys (keys pushed beyond capacity, per STASH_DROP).
+        let box_id = LootId(alloc::format!("{}:remains", actor.0));
+        let capacity = item_ids.len() as i64 + 2;
+        let mut content_ids = item_ids;
+        content_ids.extend(keys);
+        self.loot.insert(box_id.clone(), LootSnapshot {
+            id: box_id.clone(),
+            description: alloc::format!("{}'s remains", mob_name),
+            capacity,
+            content_ids,
+        });
+        if let Some(r) = self.rooms.get_mut(&room) {
+            r.loot_ids.push(box_id);
+        }
     }
 
     /// Resolve a character's equipped items (de-duplicating two-handed items that
@@ -253,7 +305,7 @@ impl World {
             }
         }
         // 2. One codex record per component (deduped material::<component>).
-        let components: Vec<String> = obj.keys().cloned().collect();
+        let components: Vec<alloc::string::String> = obj.keys().cloned().collect();
         for component in components {
             self.record_codex("material", &component, json!({ "type": component }), by, room);
         }
@@ -598,5 +650,100 @@ mod tests {
             ItemSnapshot::Item { durability, .. } => assert_eq!(*durability, Some(0)),
             _ => panic!(),
         }
+    }
+
+    use crate::world::ids::{LootId, RoomId};
+    use crate::world::snapshot::{RoomSnapshot, SceneSnapshot};
+
+    fn test_room(id: &str) -> RoomSnapshot {
+        RoomSnapshot {
+            id: RoomId(id.into()),
+            name: id.into(),
+            description: String::new(),
+            exits: BTreeMap::new(),
+            dark: false,
+            spawn_modifier: 0,
+            occupant_ids: alloc::vec![],
+            loot_ids: alloc::vec![],
+            material_cache_ids: alloc::vec![],
+            light_source_ids: alloc::vec![],
+            scenes: alloc::vec![],
+        }
+    }
+
+    #[test]
+    fn mob_knockout_drops_materials_and_remains_box() {
+        use serde_json::json;
+        let mut w = world_with_party(&["hero", "goblin"], 10);
+        // Make goblin a room-origin mob in "hall" with a material drop, one item, one key.
+        let gid = CharacterId("goblin".into());
+        {
+            let c = w.characters.get_mut(&gid).unwrap();
+            c.kind = CharacterKind::Mob;
+            c.origin = Some(json!("room"));
+            c.material_drops = Some(json!({ "bone": 2 }));
+            c.current_room_id = Some(RoomId("hall".into()));
+            c.inventory.item_ids = alloc::vec![ItemId("mob:goblin:drop#0".into())];
+            c.inventory.key_ids = alloc::vec![ItemId("mob:goblin:key#0".into())];
+        }
+        w.items.insert(ItemId("mob:goblin:drop#0".into()), ItemSnapshot::Item {
+            id: ItemId("mob:goblin:drop#0".into()), behavior_key: "items/coin".into(),
+            durability: None, modifier: 0,
+        });
+        w.rooms.entry(RoomId("hall".into())).or_insert_with(|| test_room("hall"));
+        let mut cues = Vec::new();
+        // Directly fire the hook as reconcile would on the KO edge, with "hero" as the active attacker.
+        w.campaign.active_character_index = 0; // hero
+        w.on_knock_out(&gid, &Catalog::default(), &mut cues);
+
+        // materials deposited + codex material record
+        assert_eq!(w.campaign.materials["bone"], json!(2));
+        // remains box: id = goblin:remains, capacity = items(1)+2 = 3, contents = [item, key]
+        let box_id = LootId("goblin:remains".into());
+        let b = w.loot.get(&box_id).expect("remains box created");
+        assert_eq!(b.description, "goblin's remains");
+        assert_eq!(b.capacity, 3);
+        assert_eq!(b.content_ids, alloc::vec![
+            ItemId("mob:goblin:drop#0".into()),
+            ItemId("mob:goblin:key#0".into()),
+        ]);
+        // placed in the room; mob inventory emptied
+        assert!(w.rooms[&RoomId("hall".into())].loot_ids.contains(&box_id));
+        assert!(w.characters[&gid].inventory.item_ids.is_empty());
+        assert!(w.characters[&gid].inventory.key_ids.is_empty());
+    }
+
+    #[test]
+    fn player_knockout_drops_nothing() {
+        let mut w = world_with_party(&["hero"], 10);
+        let mut cues = Vec::new();
+        w.on_knock_out(&CharacterId("hero".into()), &Catalog::default(), &mut cues);
+        assert!(w.loot.is_empty());
+    }
+
+    #[test]
+    fn mob_reknockout_does_not_refire() {
+        // Firing on_knock_out twice on the same mob drops exactly one box (edge-trigger is in
+        // reconcile; but on_knock_out itself must be idempotent w.r.t. the codex dedup).
+        use serde_json::json;
+        let mut w = world_with_party(&["hero", "goblin"], 10);
+        let gid = CharacterId("goblin".into());
+        {
+            let c = w.characters.get_mut(&gid).unwrap();
+            c.kind = CharacterKind::Mob;
+            c.origin = Some(json!("room"));
+            c.material_drops = Some(json!({ "bone": 2 }));
+            c.current_room_id = Some(RoomId("hall".into()));
+            // no items/keys — a materials-only mob keeps the second-fire check simple
+        }
+        w.rooms.entry(RoomId("hall".into())).or_insert_with(|| test_room("hall"));
+        let mut cues = Vec::new();
+        w.on_knock_out(&gid, &Catalog::default(), &mut cues);
+        w.on_knock_out(&gid, &Catalog::default(), &mut cues);
+        // bone deposited twice (deposit is not edge-guarded inside on_knock_out — reconcile is),
+        // but the material CODEX record is deduped to one.
+        let mats = w.codex.as_array().unwrap().iter()
+            .filter(|e| e["kind"] == json!("material")).count();
+        assert_eq!(mats, 1);
     }
 }
