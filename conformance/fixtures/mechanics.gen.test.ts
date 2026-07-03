@@ -64,7 +64,7 @@ import { StatType } from "wickedways/lib/character/stats";
 import { SlotKind, EquipmentSlot } from "wickedways/lib/equipment";
 import type { PresentationCue } from "wickedways/lib/presentation";
 import type { Campaign } from "wickedways/lib/campaign";
-import type { Effect, Mechanic } from "wickedways/lib/mechanics/mechanic";
+import { DREAD_KEY, dreadShadow } from "./dread-shadow.ts";
 import { view } from "../../packages/play-runtime/src/viewmodel.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -82,30 +82,8 @@ const ALIASES: Record<string, string[]> = {
 
 // ─── TS shadow of the Rust `conformance:dread` op ─────────────────────────────
 //
-// MUST match crates/wickedways-core/src/world/mechanics/conformance.rs
-// byte-for-byte: same cue texts, same effect ORDER in onRoundEnd (AdjustStat
-// BEFORE Cue), same integer damage cap (3, so both sides render "3").
-
-const DREAD_KEY = "conformance:dread";
-
-const dread: Mechanic<{ ticks: number }> = {
-  initialState: () => ({ ticks: 0 }),
-  onRoundStart: () => [{ kind: "cue", cue: { text: "Dread stirs." } }],
-  onTurnStart: () => [{ kind: "cue", cue: { text: "The dread watches." } }],
-  onTurnEnd: () => [{ kind: "cue", cue: { text: "The dread recedes." } }],
-  onAction: () => [{ kind: "cue", cue: { text: "The dread notices." } }],
-  onRoundEnd: (h) => {
-    h.state.ticks += 1;
-    const target = h.view.party[0]?.id;
-    const effects: Effect[] = [];
-    if (target !== undefined) {
-      effects.push({ kind: "adjustStat", target, stat: "sanity", delta: -1 });
-    }
-    effects.push({ kind: "cue", cue: { text: "Dread deepens." } });
-    return effects;
-  },
-  modifyDamage: (d) => (d.amount > 3 ? { value: 3, final: true } : d.amount),
-};
+// Shared across all mechanics fixtures — see dread-shadow.ts. MUST match
+// crates/wickedways-core/src/world/mechanics/conformance.rs byte-for-byte.
 
 // ─── Item factories ───────────────────────────────────────────────────────────
 
@@ -138,7 +116,7 @@ function buildFixtureRegistry() {
       [DAGGER_KEY]: makeDagger,
     },
     mechanics: {
-      [DREAD_KEY]: dread,
+      [DREAD_KEY]: dreadShadow,
     },
   });
 }
