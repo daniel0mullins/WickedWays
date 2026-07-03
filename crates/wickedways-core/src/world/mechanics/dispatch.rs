@@ -22,6 +22,19 @@ pub enum RoundPhase { Start, End }
 pub enum TurnPhase { Start, End }
 
 impl World {
+    /// TS `campaign[FIND_CHARACTER]` (campaign.ts:753-757): effects resolve against
+    /// the PARTY only and throw when the target is absent. Error text is not
+    /// gate-observable (a ProceduralViolation aborts replay before comparison).
+    fn require_party_member(&self, target: &CharacterId) -> Result<(), ProceduralViolation> {
+        if self.campaign.party_ids.iter().any(|id| id == target) {
+            Ok(())
+        } else {
+            Err(ProceduralViolation(format!(
+                "Effect target '{}' is not in the party.", target.0
+            )))
+        }
+    }
+
     /// TS `[ADJUST_STAT]` (character.ts:359-362): `stats[stat] = max(0, stats[stat]+delta)`
     /// then reconcile. The sole mechanic-facing stat mutator.
     pub fn adjust_stat(
@@ -31,7 +44,8 @@ impl World {
         delta: f64,
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
-    ) {
+    ) -> Result<(), ProceduralViolation> {
+        self.require_party_member(actor)?;
         if let Some(c) = self.characters.get_mut(actor) {
             let cur = match stat {
                 StatType::Health => &mut c.stats.health,
@@ -41,11 +55,16 @@ impl World {
             *cur = (*cur + delta).max(0.0);
         }
         self.reconcile(actor, cat, cues);
+        Ok(())
     }
 
     /// Route one effect to state (TS `applyEffect`). Damage/Heal/AdjustStat reconcile
-    /// (via `adjust_stat`); GrantImmunity/Cue/Status do not.
-    pub fn apply_effect(&mut self, e: Effect, cat: &Catalog, cues: &mut Vec<PresentationCue>) {
+    /// (via `adjust_stat`); GrantImmunity/Cue/Status do not. Damage/Heal/AdjustStat/
+    /// GrantImmunity are party-only (see `require_party_member`); Cue/Status do not
+    /// target a character.
+    pub fn apply_effect(&mut self, e: Effect, cat: &Catalog, cues: &mut Vec<PresentationCue>)
+        -> Result<(), ProceduralViolation>
+    {
         match e {
             Effect::Damage { target, amount } => {
                 self.adjust_stat(&target, StatType::Health, -amount.max(0.0), cat, cues)
@@ -57,6 +76,7 @@ impl World {
                 self.adjust_stat(&target, stat, delta, cat, cues)
             }
             Effect::GrantImmunity { target, turns } => {
+                self.require_party_member(&target)?;
                 // TS `Math.max(0, Math.trunc(turns))`; `as i64` truncates toward
                 // zero, so after the 0-floor the cast IS the trunc (core-only —
                 // `f64::trunc` needs std).
@@ -64,17 +84,21 @@ impl World {
                 if let Some(c) = self.characters.get_mut(&target) {
                     c.afflictions.grant_immunity(&ALL_STATUSES, t);
                 }
+                Ok(())
             }
-            Effect::Cue { cue } => cues.push(PresentationCue::Mechanic { cue }),
-            Effect::Status { fields } => cues.push(PresentationCue::Status { fields }),
+            Effect::Cue { cue } => { cues.push(PresentationCue::Mechanic { cue }); Ok(()) }
+            Effect::Status { fields } => { cues.push(PresentationCue::Status { fields }); Ok(()) }
         }
     }
 
     /// Apply a queued effect batch in order (collect-then-apply tail).
-    fn apply_all(&mut self, effects: Vec<Effect>, cat: &Catalog, cues: &mut Vec<PresentationCue>) {
+    fn apply_all(&mut self, effects: Vec<Effect>, cat: &Catalog, cues: &mut Vec<PresentationCue>)
+        -> Result<(), ProceduralViolation>
+    {
         for e in effects {
-            self.apply_effect(e, cat, cues);
+            self.apply_effect(e, cat, cues)?;
         }
+        Ok(())
     }
 
     /// Dispatch a round hook to every live mechanic (collect-then-apply, opt-in order,
@@ -111,7 +135,7 @@ impl World {
                 queued.extend(effects);
             }
         }
-        self.apply_all(queued, cat, cues);
+        self.apply_all(queued, cat, cues)?;
         Ok(())
     }
 
@@ -155,7 +179,7 @@ impl World {
                 queued.extend(effects);
             }
         }
-        self.apply_all(queued, cat, cues);
+        self.apply_all(queued, cat, cues)?;
         Ok(())
     }
 
@@ -195,7 +219,7 @@ impl World {
                 queued.extend(effects);
             }
         }
-        self.apply_all(queued, cat, cues);
+        self.apply_all(queued, cat, cues)?;
         Ok(())
     }
 
@@ -275,7 +299,7 @@ mod tests {
         w.apply_effect(
             Effect::Damage { target: cid("pc"), amount: 3.0 },
             &Catalog::default(), &mut cues,
-        );
+        ).unwrap();
         assert_eq!(w.characters[&cid("pc")].stats.health, 2.0);
     }
 
@@ -286,7 +310,7 @@ mod tests {
         w.apply_effect(
             Effect::Damage { target: cid("pc"), amount: -5.0 }, // max(0,-5)=0
             &Catalog::default(), &mut cues,
-        );
+        ).unwrap();
         assert_eq!(w.characters[&cid("pc")].stats.health, 5.0);
     }
 
@@ -297,12 +321,12 @@ mod tests {
         w.apply_effect(
             Effect::Heal { target: cid("pc"), amount: -4.0 }, // max(0,-4)=0
             &Catalog::default(), &mut cues,
-        );
+        ).unwrap();
         assert_eq!(w.characters[&cid("pc")].stats.health, 5.0);
         w.apply_effect(
             Effect::Heal { target: cid("pc"), amount: 2.5 },
             &Catalog::default(), &mut cues,
-        );
+        ).unwrap();
         assert_eq!(w.characters[&cid("pc")].stats.health, 7.5);
     }
 
@@ -313,7 +337,7 @@ mod tests {
         w.apply_effect(
             Effect::AdjustStat { target: cid("pc"), stat: StatType::Sanity, delta: -9.0 },
             &Catalog::default(), &mut cues,
-        );
+        ).unwrap();
         assert_eq!(w.characters[&cid("pc")].stats.sanity, 0.0, "delta unclamped, result floored");
         // Sanity 0 → reconcile latches Panic (proves adjust_stat reconciled).
         assert!(w.characters[&cid("pc")].afflictions.is_active(Status::Panic));
@@ -329,7 +353,7 @@ mod tests {
         w.apply_effect(
             Effect::GrantImmunity { target: cid("pc"), turns: 2.9 }, // trunc -> 2
             &Catalog::default(), &mut cues,
-        );
+        ).unwrap();
         let a = &w.characters[&cid("pc")].afflictions;
         assert_eq!(a.immunity_of(Status::Panic), 2);
         assert_eq!(a.immunity_of(Status::Fear), 2);
@@ -346,7 +370,7 @@ mod tests {
         w.apply_effect(
             Effect::GrantImmunity { target: cid("pc"), turns: -3.7 }, // max(0,trunc(-3.7))=0
             &Catalog::default(), &mut cues,
-        );
+        ).unwrap();
         assert_eq!(w.characters[&cid("pc")].afflictions.immunity_of(Status::Panic), 0);
     }
 
@@ -357,12 +381,42 @@ mod tests {
         w.apply_effect(
             Effect::Cue { cue: MechanicCue { text: Some("boo".into()), sound: None } },
             &Catalog::default(), &mut cues,
-        );
+        ).unwrap();
         assert_eq!(cues.len(), 1);
         assert!(matches!(cues[0], PresentationCue::Mechanic { .. }));
         assert_eq!(w.characters[&cid("pc")].stats.health, 5.0);
         assert_eq!(w.characters[&cid("pc")].stats.sanity, 5.0);
         assert_eq!(w.characters[&cid("pc")].stats.energy, 5.0);
+    }
+
+    #[test]
+    fn apply_effect_rejects_non_party_target() {
+        use crate::world::mechanics::Effect;
+        let mut w = world_with_party(&["pc"], 10); // party = [pc]
+        let mut cues = Vec::new();
+        // A Damage effect at a non-party id must error (TS FIND_CHARACTER is party-only + throws).
+        let r = w.apply_effect(
+            Effect::Damage { target: cid("nobody"), amount: 1.0 },
+            &Catalog::default(), &mut cues,
+        );
+        assert!(r.is_err(), "effect targeting a non-party id must be a ProceduralViolation");
+        // A party target succeeds.
+        assert!(w.apply_effect(
+            Effect::Heal { target: cid("pc"), amount: 1.0 },
+            &Catalog::default(), &mut cues,
+        ).is_ok());
+    }
+
+    #[test]
+    fn apply_grant_immunity_rejects_non_party_target() {
+        use crate::world::mechanics::Effect;
+        let mut w = world_with_party(&["pc"], 10);
+        let mut cues = Vec::new();
+        let r = w.apply_effect(
+            Effect::GrantImmunity { target: cid("nobody"), turns: 1.0 },
+            &Catalog::default(), &mut cues,
+        );
+        assert!(r.is_err());
     }
 
     // -- dispatch + validate --
