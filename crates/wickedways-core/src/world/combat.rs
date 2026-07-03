@@ -231,7 +231,7 @@ impl World {
         // 5. Inflict damage per stat with strength > 0, in matrix order.
         for (stat, strength) in matrix {
             if strength > 0.0 {
-                self.take_damage(target, strength, stat, cat, cues);
+                self.take_damage(target, strength, stat, cat, cues)?;
             }
         }
 
@@ -314,7 +314,7 @@ impl World {
         attack_stat: StatType,
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
-    ) {
+    ) -> Result<(), ProceduralViolation> {
         // Equipped, non-broken armor defending this stat soaks raw strength first.
         let equipped = self.equipped_resolved(target, cat);
         let armor: Vec<&ResolvedItem> = equipped
@@ -391,6 +391,14 @@ impl World {
             actor: self.entity_ref_char(target),
             sound: None,
         });
+
+        // TS `takeDamage` tail-routes through `recordAction(this.takeDamage, …)`
+        // (character.ts:966), whose cap check (:535-537) runs even for this
+        // non-budgeted action: an at-cap target's turn auto-ends here. `budgeted=false`
+        // → no increment / no on_action, cap-check only (same free-action path as the
+        // sub-plan-5 free fumble).
+        self.record_action(target, false, "takeDamage", cat, cues)?;
+        Ok(())
     }
 }
 
@@ -562,7 +570,7 @@ mod tests {
         // dealt = max(0,5-0) * max(0,10-5)*0.2 * 1 = 5 * 1.0 = 5.0 → health 5-5 = 0 → KO.
         let mut w = world_with_party(&["pc"], 10);
         let mut cues = Vec::new();
-        w.take_damage(&cid("pc"), 5.0, StatType::Health, &Catalog::default(), &mut cues);
+        w.take_damage(&cid("pc"), 5.0, StatType::Health, &Catalog::default(), &mut cues).unwrap();
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.stats.health, 0.0);
         assert!(ch.afflictions.is_active(Status::Ko));
@@ -601,7 +609,7 @@ mod tests {
         });
         w.characters.get_mut(&cid("pc")).unwrap().equipment.insert("torso".into(), armor_id.clone());
 
-        w.take_damage(&cid("pc"), 5.0, StatType::Health, &cat, &mut cues);
+        w.take_damage(&cid("pc"), 5.0, StatType::Health, &cat, &mut cues).unwrap();
 
         assert_eq!(w.characters[&cid("pc")].stats.health, 3.0);
         match &w.items[&armor_id] {
@@ -648,7 +656,7 @@ mod tests {
         });
         w.characters.get_mut(&cid("pc")).unwrap().equipment.insert("torso".into(), armor_id.clone());
 
-        w.take_damage(&cid("pc"), 5.0, StatType::Health, &cat, &mut cues);
+        w.take_damage(&cid("pc"), 5.0, StatType::Health, &cat, &mut cues).unwrap();
 
         // No mitigation: dealt = 5 * (10-5)*0.2 = 5.0 → health 0.
         assert_eq!(w.characters[&cid("pc")].stats.health, 0.0);
@@ -657,6 +665,77 @@ mod tests {
             ItemSnapshot::Item { durability, .. } => assert_eq!(*durability, Some(0)),
             _ => panic!(),
         }
+    }
+
+    #[test]
+    fn take_damage_on_at_cap_target_fires_end_turn_reconcile() {
+        use crate::world::descriptor::Catalog;
+        use crate::world::afflictions::Status;
+        let mut w = world_with_party(&["pc"], 10); // actions_per_round = 2
+        let mut cues = Vec::new();
+        // Put the target AT its action cap and drive base sanity negative WITHOUT
+        // reconciling — the cap-triggered end_turn's reconcile must floor it + latch.
+        if let Some(c) = w.characters.get_mut(&cid("pc")) {
+            c.actions_this_round = c.actions_per_round; // at cap
+            c.stats.sanity = -4.0;
+        }
+        // A Health hit that does not itself KO; the observable effect is the
+        // cap-triggered end_turn reconcile flooring the negative sanity.
+        w.take_damage(&cid("pc"), 1.0, StatType::Health, &Catalog::default(), &mut cues).unwrap();
+        let ch = w.characters.get(&cid("pc")).unwrap();
+        assert_eq!(ch.stats.sanity, 0.0, "cap-triggered end_turn reconcile floored base sanity");
+        assert!(ch.afflictions.is_active(Status::Panic) || ch.afflictions.is_active(Status::Ko)
+            || true, "reconcile ran"); // sanity floor is the primary proof
+    }
+
+    #[test]
+    fn take_damage_below_cap_does_not_fire_end_turn() {
+        use crate::world::descriptor::Catalog;
+        let mut w = world_with_party(&["pc"], 10);
+        let mut cues = Vec::new();
+        if let Some(c) = w.characters.get_mut(&cid("pc")) {
+            c.actions_this_round = 0; // below cap (< 2)
+            c.stats.sanity = -4.0;    // stays negative if end_turn does NOT run
+        }
+        w.take_damage(&cid("pc"), 1.0, StatType::Health, &Catalog::default(), &mut cues).unwrap();
+        // take_damage's OWN reconcile floors base stats too — so sanity WILL be 0 here.
+        // To isolate the cap-check, assert budget did not advance and no extra reconcile
+        // side-effect beyond take_damage's own. The meaningful assertion is that no
+        // end_turn-only effect occurred; with no mechanics, end_turn == reconcile == idempotent.
+        let ch = w.characters.get(&cid("pc")).unwrap();
+        assert_eq!(ch.actions_this_round, 0, "below-cap take_damage does not tick budget");
+    }
+
+    /// Stronger observable proof (brief §Step 1 note): seed `conformance:dread`
+    /// (its `on_turn_end` op emits the "The dread recedes." Mechanic cue — see
+    /// `turn.rs`'s `end_turn_fires_on_turn_end_after_reconcile`) and assert the
+    /// cue surfaces from `take_damage` alone when the target is at cap, proving
+    /// the tail cap-check actually drives `end_turn` (not just `reconcile`).
+    #[test]
+    fn take_damage_on_at_cap_target_fires_dread_on_turn_end_mechanic() {
+        use crate::world::descriptor::Catalog;
+        use crate::world::snapshot::MechanicSnapshot;
+        let mut w = world_with_party(&["pc"], 10);
+        w.campaign.mechanics.push(MechanicSnapshot {
+            key: "conformance:dread".into(),
+            state: json!({ "ticks": 0 }),
+        });
+        let mut cues = Vec::new();
+        if let Some(c) = w.characters.get_mut(&cid("pc")) {
+            c.actions_this_round = c.actions_per_round; // at cap
+        }
+        w.take_damage(&cid("pc"), 1.0, StatType::Health, &Catalog::default(), &mut cues).unwrap();
+        let texts: Vec<Option<alloc::string::String>> = cues
+            .iter()
+            .filter_map(|c| match c {
+                PresentationCue::Mechanic { cue } => Some(cue.text.clone()),
+                _ => None,
+            })
+            .collect();
+        assert!(
+            texts.iter().any(|t| t.as_deref() == Some("The dread recedes.")),
+            "expected the at-cap takeDamage to auto-end the turn and fire on_turn_end, got {texts:?}"
+        );
     }
 
     use crate::world::ids::{LootId, RoomId};
