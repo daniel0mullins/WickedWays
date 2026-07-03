@@ -30,6 +30,8 @@ pub enum Command {
     Use { target_id: String },
     #[serde(rename_all = "camelCase")]
     Attack { target_id: String },
+    #[serde(rename_all = "camelCase")]
+    MechanicAction { mechanic_key: String, action_key: String },
 }
 
 pub fn apply_command(
@@ -70,6 +72,8 @@ pub fn apply_command(
         Command::Attack { target_id } => {
             world.attack(&actor, &CharacterId(target_id), cat, cues)
         }
+        Command::MechanicAction { mechanic_key, action_key } =>
+            world.use_mechanic_action(&actor, &mechanic_key, &action_key, cat, cues),
     }
 }
 

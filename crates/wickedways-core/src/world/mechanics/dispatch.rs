@@ -4,13 +4,15 @@ use alloc::format;
 use alloc::vec::Vec;
 
 use crate::error::ProceduralViolation;
-use crate::presentation::PresentationCue;
+use crate::presentation::{ActionKind, PresentationCue};
 use crate::stats::StatType;
 use crate::world::descriptor::Catalog;
+use crate::world::gate::GateVerdict;
+use crate::world::history::ActionHistoryEntry;
 use crate::world::ids::CharacterId;
 use crate::world::mechanics::{
-    mechanic_op, ActionView, DamageView, Effect, HookCtx, TransformResult, ALL_STATUSES,
-    MAX_EFFECTS_PER_EVENT,
+    mechanic_op, ActionCtx, ActionView, DamageView, Effect, HookCtx, TransformResult,
+    ALL_STATUSES, MAX_EFFECTS_PER_EVENT,
 };
 use crate::world::World;
 
@@ -275,6 +277,82 @@ impl World {
             }
         }
         Ok(())
+    }
+
+    /// Invoke a mechanic's custom action (TS `useMechanicAction` + `INVOKE_MECHANIC_ACTION`).
+    /// Budgeted: gate → run the op's action → apply effects → record the `mechanicAction`
+    /// (tick + `on_action` + cap-check → end_turn).
+    pub fn use_mechanic_action(
+        &mut self,
+        actor: &CharacterId,
+        mechanic_key: &str,
+        action_key: &str,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
+        // 1. Gate (is_move = false, budgeted). Fizzle → budgeted fumble; block → err.
+        match self.gate(actor, false) {
+            GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
+            GateVerdict::Fizzle => {
+                self.record_fumble(actor, "useMechanicAction", true, cat, cues)?;
+                return Ok(());
+            }
+            GateVerdict::Allow => {}
+        }
+
+        // 2. Invoke the action (INVOKE_MECHANIC_ACTION).
+        let idx = self
+            .campaign
+            .mechanics
+            .iter()
+            .position(|m| m.key == mechanic_key)
+            .ok_or_else(|| ProceduralViolation(format!(
+                "Mechanic '{}' is not enabled.", mechanic_key
+            )))?;
+        let op = mechanic_op(mechanic_key).ok_or_else(|| ProceduralViolation(format!(
+            "Mechanic '{}' is not registered.", mechanic_key
+        )))?;
+        let view = self.build_campaign_view(cat);
+        let actor_view = self.character_view(actor, cat).ok_or_else(|| ProceduralViolation(format!(
+            "Actor '{}' not found.", actor.0
+        )))?;
+        let effects = {
+            let rng = &mut self.rng;
+            let m = &mut self.campaign.mechanics[idx];
+            let mut cx = ActionCtx {
+                base: HookCtx { state: &mut m.state, view: &view, rng },
+                actor: actor_view,
+                action: ActionView { kind: "mechanicAction".into() },
+            };
+            match op.run_action(action_key, &mut cx) {
+                Some(e) => e,
+                None => return Err(ProceduralViolation(format!(
+                    "Mechanic '{}' has no action '{}'.", mechanic_key, action_key
+                ))),
+            }
+        };
+        if effects.len() > MAX_EFFECTS_PER_EVENT {
+            return Err(ProceduralViolation(format!(
+                "Mechanic '{}' emitted too many effects.", mechanic_key
+            )));
+        }
+        self.apply_all(effects, cat, cues)?;
+
+        // 3. Record the budgeted mechanicAction (history + cue, then tick + on_action + cap-check).
+        let round = self.campaign.round;
+        if let Some(c) = self.characters.get_mut(actor) {
+            c.history.push(ActionHistoryEntry::MechanicAction {
+                round,
+                mechanic: mechanic_key.into(),
+                action: action_key.into(),
+            });
+        }
+        cues.push(PresentationCue::Action {
+            action: ActionKind::MechanicAction,
+            actor: self.entity_ref_char(actor),
+            sound: None,
+        });
+        self.record_action(actor, true, "mechanicAction", cat, cues)
     }
 }
 
@@ -596,6 +674,86 @@ mod tests {
         let mut cues = Vec::new();
         let err = w.dispatch_round(RoundPhase::End, &Catalog::default(), &mut cues).unwrap_err();
         assert!(err.0.contains("too many effects"));
+    }
+
+    // -- use_mechanic_action --
+
+    /// Force a Confused fizzle by advancing the actor's rng until the next draw
+    /// yields `roll(100) <= confused_fail_chance`. Mirrors `items_actions.rs`'s
+    /// `prime_confused_fizzle` helper.
+    fn prime_confused_fizzle(world: &mut crate::world::World, actor: &CharacterId) {
+        use crate::world::afflictions::{default_affliction_config, Status};
+        world.characters.get_mut(actor).unwrap().afflictions.set_active(Status::Confused, true);
+        let fail = default_affliction_config().confused_fail_chance;
+        loop {
+            let mut peek = world.rng.clone();
+            let r = (crate::dice::roll(100, peek.next_f64()) as i64) <= fail;
+            if r { break; }
+            world.rng.next_f64(); // burn a non-fizzling draw
+        }
+    }
+
+    #[test]
+    fn use_mechanic_action_gate_fizzle_records_budgeted_fumble() {
+        use crate::world::history::ActionHistoryEntry;
+        let mut w = with_dread(world_with_party(&["pc"], 10));
+        prime_confused_fizzle(&mut w, &cid("pc"));
+        let mut cues = Vec::new();
+        w.use_mechanic_action(&cid("pc"), "conformance:dread", "brace", &Catalog::default(), &mut cues).unwrap();
+
+        let ch = &w.characters[&cid("pc")];
+        // useMechanicAction IS budgeted, so a fizzle still ticks the budget.
+        assert_eq!(ch.actions_this_round, 1, "budgeted fizzle ticks budget");
+        assert_eq!(ch.stats.sanity, 5.0, "brace's effects must NOT apply on fizzle");
+        assert_eq!(ch.history.len(), 1);
+        match &ch.history[0] {
+            ActionHistoryEntry::Fumble { round: 0, action } => assert_eq!(action, "useMechanicAction"),
+            other => panic!("expected Fumble history, got {:?}", other),
+        }
+        assert!(cues.iter().any(|c| matches!(c,
+            PresentationCue::Action { action: crate::presentation::ActionKind::Fumble, .. })));
+    }
+
+    #[test]
+    fn use_mechanic_action_not_enabled_errors() {
+        let mut w = world_with_party(&["pc"], 10); // no mechanics
+        let mut cues = Vec::new();
+        let r = w.use_mechanic_action(&cid("pc"), "conformance:dread", "brace", &Catalog::default(), &mut cues);
+        assert!(r.is_err(), "invoking an action on a non-enabled mechanic must error");
+    }
+
+    #[test]
+    fn use_mechanic_action_missing_action_errors() {
+        let mut w = with_dread(world_with_party(&["pc"], 10));
+        let mut cues = Vec::new();
+        let r = w.use_mechanic_action(&cid("pc"), "conformance:dread", "nope", &Catalog::default(), &mut cues);
+        assert!(r.is_err(), "invoking an undefined action key must error");
+    }
+
+    #[test]
+    fn use_mechanic_action_brace_applies_effects_records_and_dispatches_on_action() {
+        use crate::world::history::ActionHistoryEntry;
+        let mut w = with_dread(world_with_party(&["pc"], 10)); // sanity 5, actions_per_round 2
+        let mut cues = Vec::new();
+        w.use_mechanic_action(&cid("pc"), "conformance:dread", "brace", &Catalog::default(), &mut cues).unwrap();
+        let ch = w.characters.get(&cid("pc")).unwrap();
+        // brace healed sanity +1
+        assert_eq!(ch.stats.sanity, 6.0);
+        // budgeted: one action ticked
+        assert_eq!(ch.actions_this_round, 1);
+        // MechanicAction history entry recorded
+        assert!(ch.history.iter().any(|e| matches!(e,
+            ActionHistoryEntry::MechanicAction { mechanic, action, .. }
+            if mechanic == "conformance:dread" && action == "brace")));
+        // cue order: brace mechanic cue, then the mechanicAction Action cue, then on_action
+        let texts: Vec<Option<&str>> = cues.iter().map(|c| match c {
+            PresentationCue::Mechanic { cue } => cue.text.as_deref(),
+            _ => None,
+        }).collect();
+        assert!(texts.contains(&Some("You brace against the dread.")));
+        assert!(texts.contains(&Some("The dread notices.")), "on_action fired for the budgeted mechanicAction");
+        assert!(cues.iter().any(|c| matches!(c,
+            PresentationCue::Action { action: crate::presentation::ActionKind::MechanicAction, .. })));
     }
 
     #[test]
