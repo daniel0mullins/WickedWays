@@ -736,7 +736,7 @@ mod tests {
     }
 
     use crate::world::ids::{LootId, RoomId};
-    use crate::world::snapshot::{RoomSnapshot, SceneSnapshot};
+    use crate::world::snapshot::RoomSnapshot;
 
     fn test_room(id: &str) -> RoomSnapshot {
         RoomSnapshot {

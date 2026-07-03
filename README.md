@@ -1689,6 +1689,12 @@ at {value}."` cue, and short-circuits the remaining chain. `combat::take_damage`
 this chain between built-in mitigation and the stat subtract — the order is **mitigate →
 transform → subtract**, matching `Character.takeDamage` in the TS oracle.
 
-Custom mechanic actions (`useMechanicAction`/`INVOKE_MECHANIC_ACTION`) and scripted
-(Rhai-driven) mechanics are explicitly out of scope for 6a and arrive in sub-plans 6a-2
-and 6b respectively; until then every op is native, first-party Rust.
+An op may also expose named custom actions via `MechanicOp::run_action(action_key, cx)
+-> Option<Vec<Effect>>` (`None` means the key is unrecognized). A player invokes one
+through the `Command::MechanicAction { mechanic_key, action_key }` command / the
+`use_mechanic_action` method — mirroring TS's `useMechanicAction`/
+`INVOKE_MECHANIC_ACTION` — which is a **budgeted** action: it gates, runs the action's
+effects through `apply_all`, records an `ActionHistoryEntry::MechanicAction`, then
+ticks the budget and dispatches `on_action` via the shared `record_action` path (same
+signature as every other budgeted action). Scripted (Rhai-driven) mechanics remain out
+of scope and arrive in sub-plan 6b; until then every op is native, first-party Rust.

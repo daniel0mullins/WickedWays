@@ -123,7 +123,6 @@ const ALL_STATUSES_LOCAL: [Status; 4] =
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::world::descriptor::Catalog;
     use crate::world::ids::CharacterId;
     use crate::world::test_support::world_with_party;
