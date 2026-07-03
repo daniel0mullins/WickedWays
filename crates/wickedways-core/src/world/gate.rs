@@ -67,7 +67,9 @@ impl World {
     /// Record a Confused fizzle: push a `{kind:"fumble", action, round}` history entry,
     /// emit an `{kind:"action", action:"fumble", actor, sound}` cue UNCONDITIONALLY, and
     /// tick the budget ONLY IF `budgeted`. Mirrors `character.ts` `recordAction` (:515-538)
-    /// for the `{kind:"fumble"}` detail.
+    /// for the `{kind:"fumble"}` detail. Returns `Result` because it delegates to
+    /// `record_action`, which can propagate a dispatch error from the cap-triggered
+    /// `end_turn`.
     pub fn record_fumble(
         &mut self,
         actor: &CharacterId,
@@ -96,7 +98,7 @@ impl World {
         // Cap check runs UNCONDITIONALLY (matching TS `recordAction`, character.ts:
         // 530-537, where the cap check sits outside the budgeted block) — a free
         // fumble (`budgeted = false`) must still end the turn if already at cap.
-        self.record_action(actor, budgeted, cat, cues)
+        self.record_action(actor, budgeted, "fumble", cat, cues)
     }
 }
 

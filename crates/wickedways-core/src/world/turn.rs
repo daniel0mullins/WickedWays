@@ -119,14 +119,16 @@ impl World {
 
     /// Single seam mirroring the budget half of TS `Character.recordAction`
     /// (character.ts:530-537): when `budgeted`, increment `actions_this_round`
-    /// (DISPATCH_ACTION/onAction is wired in Task 6); then — regardless of
-    /// `budgeted`, matching TS where the cap check sits OUTSIDE the budgeted block —
-    /// auto-end the turn (which reconciles the actor) when the budget is exhausted.
+    /// and dispatch `on_action` (DISPATCH_ACTION) with an `ActionView` built from
+    /// `action_kind`; then — regardless of `budgeted`, matching TS where the cap
+    /// check sits OUTSIDE the budgeted block — auto-end the turn (which reconciles
+    /// the actor) when the budget is exhausted.
     /// Call at the TAIL of each action, AFTER its cue is pushed.
     pub(crate) fn record_action(
         &mut self,
         actor: &CharacterId,
         budgeted: bool,
+        action_kind: &str,
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
@@ -134,7 +136,11 @@ impl World {
             if let Some(c) = self.characters.get_mut(actor) {
                 c.actions_this_round += 1;
             }
-            // DISPATCH_ACTION (mechanic onAction): wired in Task 6.
+            self.dispatch_action(
+                actor,
+                crate::world::mechanics::ActionView { kind: action_kind.into() },
+                cat, cues,
+            )?;
         }
         let at_cap = self
             .characters
@@ -309,6 +315,18 @@ mod tests {
         w.next_player(&Catalog::default(), &mut cues).unwrap();
         assert_eq!(w.campaign.round, 1);
         assert_eq!(mechanic_texts(&cues), vec!["Dread deepens.", "Dread stirs."]);
+    }
+
+    #[test]
+    fn budgeted_record_action_dispatches_on_action() {
+        use crate::world::descriptor::Catalog;
+        let mut w = with_dread(world_with_party(&["pc"], 10)); // actions_per_round 2
+        let mut cues = Vec::new();
+        // one budgeted action, below cap -> onAction fires, no end_turn
+        w.record_action(&cid("pc"), true, "attack", &Catalog::default(), &mut cues).unwrap();
+        // conformance:dread.on_action emits a Cue
+        assert!(cues.iter().any(|c| matches!(c, crate::presentation::PresentationCue::Mechanic { .. })));
+        assert_eq!(w.characters[&cid("pc")].actions_this_round, 1);
     }
 
     #[test]
@@ -514,7 +532,7 @@ mod tests {
             c.actions_this_round = 1; // one below cap
             c.stats.health = -3.0;    // reconcile will floor this iff it runs
         }
-        w.record_action(&cid("pc"), true, &Catalog::default(), &mut cues).unwrap(); // 1 -> 2 == cap
+        w.record_action(&cid("pc"), true, "attack", &Catalog::default(), &mut cues).unwrap(); // 1 -> 2 == cap
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.actions_this_round, 2);
         assert_eq!(ch.stats.health, 0.0, "cap reached -> end_turn -> reconcile floored base");
@@ -530,7 +548,7 @@ mod tests {
             c.actions_this_round = 0;
             c.stats.health = -3.0; // stays negative iff reconcile does NOT run
         }
-        w.record_action(&cid("pc"), true, &Catalog::default(), &mut cues).unwrap(); // 0 -> 1 < cap
+        w.record_action(&cid("pc"), true, "attack", &Catalog::default(), &mut cues).unwrap(); // 0 -> 1 < cap
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.actions_this_round, 1);
         assert_eq!(ch.stats.health, -3.0, "below cap: no reconcile, base untouched");
@@ -551,7 +569,7 @@ mod tests {
             c.actions_this_round = 2; // already at cap
             c.stats.health = -3.0;    // reconcile will floor this iff end_turn runs
         }
-        w.record_action(&cid("pc"), false, &Catalog::default(), &mut cues).unwrap(); // free call
+        w.record_action(&cid("pc"), false, "attack", &Catalog::default(), &mut cues).unwrap(); // free call
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.actions_this_round, 2, "free call must not increment the budget");
         assert_eq!(ch.stats.health, 0.0, "free call at cap -> end_turn -> reconcile floored base");
