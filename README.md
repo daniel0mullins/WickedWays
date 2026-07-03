@@ -1648,3 +1648,39 @@ formula) and proves the toolchain. Boundary types are defined in Rust and genera
 `generated/bindings/` via ts-rs (do not hand-edit). Run the Phase 0 gate with:
 
     pnpm run checks:phase0
+
+#### Mechanics: the op-registry (`crates/wickedways-core/src/world/mechanics/`)
+
+Sub-plan 6a ports the campaign mechanics system's extension points. On the Rust side,
+mechanics are still **data** — a campaign's `{ key, state }` list (`campaign.mechanics`)
+— but instead of rebinding an author-registered TS closure, each `key` resolves to a
+compiled-in, stateless `impl MechanicOp` via the static lookup `mechanic_op(key)`; an
+unrecognized key is a `ProceduralViolation` (`validate_mechanics`), mirroring the TS
+registry throw at hydrate.
+
+`MechanicOp` exposes the same hook set as the TS `Mechanic` interface —
+`on_round_start`/`on_round_end`, `on_turn_start`/`on_turn_end`, `on_action`, and the
+damage transformer `modify_damage` — each defaulted to a no-op so an op only implements
+the hooks it needs. Hooks return the same closed, six-variant `Effect` enum as the TS
+union — `Damage`, `Heal`, `AdjustStat`, `GrantImmunity`, `Cue`, `Status` — routed through
+`apply_effect`/`adjust_stat` exactly as `apply.ts` does (Damage/Heal/AdjustStat reconcile
+the target; GrantImmunity/Cue/Status do not).
+
+`dispatch_round`/`dispatch_turn`/`dispatch_action` fire at the same points as the TS
+turn loop (round start/end, turn start/end, and budgeted actions) and preserve
+**collect-then-apply**: every enabled mechanic's reducer runs against a read-only
+`CampaignView`/`CharacterView` projection first, and only after all reducers have run
+are the collected effects applied in order — a mechanic can't observe another's effects
+mid-event. A per-mechanic-per-event cap of `MAX_EFFECTS_PER_EVENT = 64` throws a
+`ProceduralViolation` if exceeded, matching the TS guardrail.
+
+`run_damage_transformers` folds post-mitigation damage through each enabled mechanic's
+`modify_damage` in opt-in order, clamping the running value to `>= 0` after every step; a
+`TransformResult::Final` result locks the value, emits a diagnostic `"{key} fixed damage
+at {value}."` cue, and short-circuits the remaining chain. `combat::take_damage` slots
+this chain between built-in mitigation and the stat subtract — the order is **mitigate →
+transform → subtract**, matching `Character.takeDamage` in the TS oracle.
+
+Custom mechanic actions (`useMechanicAction`/`INVOKE_MECHANIC_ACTION`) and scripted
+(Rhai-driven) mechanics are explicitly out of scope for 6a and arrive in sub-plans 6a-2
+and 6b respectively; until then every op is native, first-party Rust.
