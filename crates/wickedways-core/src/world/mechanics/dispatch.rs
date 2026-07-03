@@ -156,8 +156,11 @@ impl World {
         // TS builds `#characterView(actor)` from the actor directly — PC or mob — so a
         // non-party actor (e.g. an at-cap mob whose end_turn the takeDamage cap-check
         // fires) still dispatches its turn hooks. Absent only for a genuinely
-        // nonexistent actor id, in which case there is nothing to dispatch.
-        let Some(actor_view) = self.character_view(actor, cat) else { return Ok(()); };
+        // nonexistent actor id, in which case there is nothing to dispatch for THAT
+        // mechanic — but the registration check below must still run for every
+        // mechanic regardless of actor presence (mirrors dispatch_round/pre-hoist
+        // behavior), so this is computed once but NOT used as an early return.
+        let actor_view = self.character_view(actor, cat);
         let mut queued: Vec<Effect> = Vec::new();
         {
             let rng = &mut self.rng;
@@ -167,8 +170,9 @@ impl World {
                         "Mechanic '{}' is not registered.", m.key
                     )));
                 };
+                let Some(av) = actor_view.clone() else { continue };
                 let base = HookCtx { state: &mut m.state, view: &view, rng: &mut *rng };
-                let mut cx = crate::world::mechanics::TurnCtx { base, actor: actor_view.clone() };
+                let mut cx = crate::world::mechanics::TurnCtx { base, actor: av };
                 let effects = match phase {
                     TurnPhase::Start => op.on_turn_start(&mut cx),
                     TurnPhase::End => op.on_turn_end(&mut cx),
@@ -200,8 +204,11 @@ impl World {
         // TS builds `#characterView(actor)` from the actor directly — PC or mob — so a
         // non-party actor (e.g. an at-cap mob whose end_turn the takeDamage cap-check
         // fires) still dispatches `on_action`. Absent only for a genuinely nonexistent
-        // actor id, in which case there is nothing to dispatch.
-        let Some(actor_view) = self.character_view(actor, cat) else { return Ok(()); };
+        // actor id, in which case there is nothing to dispatch for THAT mechanic — but
+        // the registration check below must still run for every mechanic regardless of
+        // actor presence (mirrors dispatch_round/pre-hoist behavior), so this is
+        // computed once but NOT used as an early return.
+        let actor_view = self.character_view(actor, cat);
         let mut queued: Vec<Effect> = Vec::new();
         {
             let rng = &mut self.rng;
@@ -211,9 +218,10 @@ impl World {
                         "Mechanic '{}' is not registered.", m.key
                     )));
                 };
+                let Some(av) = actor_view.clone() else { continue };
                 let base = HookCtx { state: &mut m.state, view: &view, rng: &mut *rng };
                 let mut cx = crate::world::mechanics::ActionCtx {
-                    base, actor: actor_view.clone(), action: action.clone(),
+                    base, actor: av, action: action.clone(),
                 };
                 let effects = op.on_action(&mut cx);
                 if effects.len() > MAX_EFFECTS_PER_EVENT {
