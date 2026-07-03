@@ -151,7 +151,10 @@ impl World {
             return Ok(());
         }
         let view = self.build_campaign_view(cat);
-        let actor_view = view.party.iter().find(|c| &c.id == actor).cloned();
+        // TS builds `#characterView(actor)` from the actor directly — PC or mob — so a
+        // non-party actor (e.g. an at-cap mob whose end_turn the takeDamage cap-check
+        // fires) still dispatches its turn hooks.
+        let actor_view = self.character_view(actor, cat);
         let mut queued: Vec<Effect> = Vec::new();
         {
             let rng = &mut self.rng;
@@ -161,9 +164,7 @@ impl World {
                         "Mechanic '{}' is not registered.", m.key
                     )));
                 };
-                // actor_view is required by TurnCtx; if the actor isn't a party member
-                // there is nothing to project — skip (mirrors TS where turn hooks always
-                // have the acting PlayerCharacter).
+                // actor_view is only absent for a genuinely nonexistent actor id.
                 let Some(av) = actor_view.clone() else { continue };
                 let base = HookCtx { state: &mut m.state, view: &view, rng: &mut *rng };
                 let mut cx = crate::world::mechanics::TurnCtx { base, actor: av };
@@ -195,7 +196,10 @@ impl World {
             return Ok(());
         }
         let view = self.build_campaign_view(cat);
-        let actor_view = view.party.iter().find(|c| &c.id == actor).cloned();
+        // TS builds `#characterView(actor)` from the actor directly — PC or mob — so a
+        // non-party actor (e.g. an at-cap mob whose end_turn the takeDamage cap-check
+        // fires) still dispatches its turn hooks.
+        let actor_view = self.character_view(actor, cat);
         let mut queued: Vec<Effect> = Vec::new();
         {
             let rng = &mut self.rng;
@@ -205,6 +209,7 @@ impl World {
                         "Mechanic '{}' is not registered.", m.key
                     )));
                 };
+                // actor_view is only absent for a genuinely nonexistent actor id.
                 let Some(av) = actor_view.clone() else { continue };
                 let base = HookCtx { state: &mut m.state, view: &view, rng: &mut *rng };
                 let mut cx = crate::world::mechanics::ActionCtx {
@@ -291,6 +296,50 @@ mod tests {
     // world_with_party gives every character uniform stats:
     // health 5.0 / sanity 5.0 / energy 5.0 (test_support.rs); the second
     // argument is max_rounds, not a stat.
+
+    /// Seed the `conformance:dread` mechanic (registered under
+    /// `cfg(any(test, feature = "conformance"))`, so always present in `cargo test`).
+    /// Mirrors `turn.rs`'s `with_dread`.
+    fn with_dread(mut w: crate::world::World) -> crate::world::World {
+        w.campaign.mechanics.push(MechanicSnapshot {
+            key: "conformance:dread".into(),
+            state: serde_json::json!({ "ticks": 0 }),
+        });
+        w
+    }
+
+    /// Insert a minimal live Mob character `name` into `w.characters`, deliberately
+    /// NOT added to `campaign.party_ids` — mirrors the CharacterSnapshot pattern used by
+    /// `movement.rs`'s `seat_mob` / the mob-defeat combat tests, minus the room seating
+    /// (not needed for turn-hook dispatch).
+    fn seed_mob(w: &mut crate::world::World, name: &str) {
+        use alloc::collections::BTreeMap;
+        use crate::world::afflictions::Afflictions;
+        use crate::world::snapshot::{CharacterKind, CharacterSnapshot, InventorySnapshot, Stats};
+        let id = CharacterId(name.into());
+        let snap = CharacterSnapshot {
+            kind: CharacterKind::Mob,
+            id: id.clone(),
+            name: name.into(),
+            stats: Stats { health: 4.0, sanity: 0.0, energy: 3.0 },
+            actions_per_round: 1,
+            actions_this_round: 0,
+            current_room_id: None,
+            inventory: InventorySnapshot { slots: 0, item_ids: Vec::new(), key_ids: Vec::new() },
+            equipment: BTreeMap::new(),
+            history: Vec::new(),
+            archetype_immunities: Vec::new(),
+            afflictions: Afflictions::default(),
+            archetype_id: None,
+            origin: None,
+            base_escape_chance: None,
+            material_drops: None,
+            light_averse: None,
+            natural_attack: None,
+            npc_behavior_key: None,
+        };
+        w.characters.insert(id, snap);
+    }
 
     #[test]
     fn apply_damage_reduces_health_and_reconciles() {
@@ -479,6 +528,26 @@ mod tests {
         ).unwrap();
         // "The dread watches." + "The dread recedes." + "The dread notices."
         assert_eq!(cues.len(), 3);
+    }
+
+    #[test]
+    fn dispatch_turn_end_dispatches_for_a_mob_actor() {
+        // A mob is a character NOT in party_ids. Its end_turn must still dispatch
+        // on_turn_end (TS endTurn fires DISPATCH_TURN("end", this) for any character).
+        let mut w = with_dread(world_with_party(&["pc"], 10));
+        // Seed a mob "ghoul" into w.characters, NOT added to party_ids — mirror how
+        // the mob-defeat combat tests / test_support build a mob CharacterSnapshot.
+        seed_mob(&mut w, "ghoul");
+        let mut cues = Vec::new();
+        w.dispatch_turn(
+            crate::world::mechanics::dispatch::TurnPhase::End,
+            &cid("ghoul"), &Catalog::default(), &mut cues,
+        ).unwrap();
+        assert!(
+            cues.iter().any(|c| matches!(c,
+                PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The dread recedes."))),
+            "on_turn_end must dispatch for a non-party mob actor"
+        );
     }
 
     #[test]

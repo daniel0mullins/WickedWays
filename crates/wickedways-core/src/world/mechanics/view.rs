@@ -75,7 +75,7 @@ impl World {
         }
     }
 
-    fn character_view(&self, id: &CharacterId, cat: &Catalog) -> Option<CharacterView> {
+    pub(crate) fn character_view(&self, id: &CharacterId, cat: &Catalog) -> Option<CharacterView> {
         let c = self.characters.get(id)?;
         let status = ALL_STATUSES_LOCAL
             .iter()
