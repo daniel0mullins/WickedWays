@@ -424,7 +424,7 @@ short-circuit in v1; reducer pre-emption is deferred.
 
 #### The `Effect` vocabulary (guardrail A)
 
-Mechanics communicate intent through a **closed union** of five effect kinds — they
+Mechanics communicate intent through a **closed union** of six effect kinds — they
 cannot reach raw setters:
 
 | Kind | What it does |
@@ -434,6 +434,7 @@ cannot reach raw setters:
 | `{ kind: "adjustStat"; target; stat: "sanity"\|"energy"; delta }` | Sanity or Energy ±delta via `ADJUST_STAT` |
 | `{ kind: "grantImmunity"; target; turns }` | Grant all-status immunity for `turns` rounds (floored at 0) |
 | `{ kind: "cue"; cue }` | Emit a `{ kind: "mechanic", cue }` presentation cue |
+| `{ kind: "status"; fields }` | Emit a `{ kind: "status", fields }` presentation cue |
 
 All magnitude arguments are floored at 0 before being applied; `adjustStat` passes
 the delta sign through unchanged (the stat accumulator floors separately).
@@ -1639,7 +1640,7 @@ have `avPolicy.enabled: true` (the demo genesis uses `DEFAULT_AV_POLICY`).
 **Symmetric-NAT note.** If two tabs on the same machine don't connect (rare but
 possible in some corp VPN setups), adding a TURN entry to `iceServers` resolves it.
 
-### Rust core (Phase 0, in progress)
+### Rust core (Phase 1, in progress)
 
 The engine is being re-authored as a Rust core (`crates/wickedways-core`) compiled to
 WASM (`crates/wickedways-wasm`) per `docs/superpowers/specs/2026-06-30-rust-engine-core-design.md`.
