@@ -2,10 +2,12 @@
 //! Mirrors `src/lib/character/character.ts` `go` (:1047-1063) and `move`/`#enterRoom`
 //! (:1018-1032) plus `src/lib/room.ts` `isLit` (:113-211).
 //!
-//! Scenes are NOT fired (deferred to sub-plan 6). Keyed exits are OUT OF SCOPE
-//! and return `Err(ProceduralViolation)` until the registry lands in sub-plan 6.
+//! Scenes are NOT fired (deferred to sub-plan 6). Keyed exits are evaluated via
+//! the `ExitBehavior` registry (`crate::world::exits::exit_behavior`, sub-plan 6c-1);
+//! an unregistered `behavior_key` surfaces as `Err(ProceduralViolation)`.
 use alloc::collections::BTreeSet;
 use alloc::format;
+use alloc::string::ToString;
 use alloc::vec::Vec;
 use crate::error::ProceduralViolation;
 use crate::presentation::{ActionKind, EntityRef, MechanicCue, PresentationCue};
@@ -39,7 +41,11 @@ impl World {
     ///
     /// - No exit in that direction → emits "You can't go that way." mechanic cue,
     ///   returns `Ok(())`, does NOT tick the budget.
-    /// - Behavior-keyed exit → `Err(ProceduralViolation)` (registry deferred to sub-plan 6).
+    /// - Behavior-keyed exit → resolves `exit_behavior(key)` (unregistered key →
+    ///   `Err(ProceduralViolation)`), evaluates `can_pass`; on failure emits the
+    ///   behavior's `fail_message` (if any) as a `Mechanic` cue and returns without
+    ///   moving; on success runs `run_script` (falling back to `pass_message`),
+    ///   emits that line as a `Mechanic` cue (if any), then delegates to `move_to`.
     /// - Behavior-free exit → delegates to `move_to`.
     pub fn go(
         &mut self,
@@ -81,11 +87,41 @@ impl World {
             .get(&exit_id)
             .ok_or_else(|| ProceduralViolation("exit missing".into()))?;
 
-        // A behavior-keyed exit needs the registry (sub-plan 6) to evaluate canPass.
-        if exit.behavior_key.is_some() {
-            return Err(ProceduralViolation(
-                "keyed-exit traversal is out of scope until sub-plan 6".into(),
-            ));
+        // A behavior-keyed exit: resolve the registry (sub-plan 6) and evaluate
+        // canPass / runScript-or-passMessage before moving. Mirrors TS `go` (:4-6).
+        if let Some(key) = exit.behavior_key.clone() {
+            let behavior = crate::world::exits::exit_behavior(&key).ok_or_else(|| {
+                ProceduralViolation(format!("Exit behavior '{key}' is not registered."))
+            })?;
+            let actor_view = self
+                .character_view(actor, cat)
+                .ok_or_else(|| ProceduralViolation("actor not found".into()))?;
+            // endpoints (compute now; immutable read before the get_mut below)
+            let a = exit.endpoint_ids[0].clone();
+            let b = exit.endpoint_ids[1].clone();
+            let dest = if a == here { b } else { a };
+
+            // canPass
+            if !behavior.can_pass(&actor_view, &exit.state) {
+                if let Some(fail) = behavior.fail_message() {
+                    cues.push(PresentationCue::Mechanic {
+                        cue: MechanicCue { text: Some(fail.into()), sound: None },
+                    });
+                }
+                return Ok(()); // blocked — no move
+            }
+            // runScript(state) ?? passMessage
+            let line = {
+                let ex = self.exits.get_mut(&exit_id).expect("exit present");
+                behavior.run_script(&actor_view, &mut ex.state)
+            }
+            .or_else(|| behavior.pass_message().map(|s| s.to_string()));
+            if let Some(l) = line {
+                cues.push(PresentationCue::Mechanic {
+                    cue: MechanicCue { text: Some(l), sound: None },
+                });
+            }
+            return self.move_to(actor, dest, cat, cues);
         }
 
         // Behavior-free exit: always passable; determine the far endpoint.
@@ -368,7 +404,7 @@ mod tests {
     }
 
     #[test]
-    fn go_through_a_keyed_exit_is_out_of_scope_and_errors() {
+    fn go_through_a_keyed_exit_with_unregistered_behavior_key_errors() {
         let mut w = world_two_rooms(false);
         w.make_north_exit_keyed("study-door");
         let mut cues = Vec::new();
@@ -423,5 +459,71 @@ mod tests {
         assert_eq!(ch.actions_this_round, 1);
         assert_eq!(ch.stats.health, 0.0, "cap-reaching move auto-ends turn -> reconcile floored base");
         assert!(ch.afflictions.is_active(Status::Ko));
+    }
+
+    /// Insert an `ItemSnapshot::Item` with the given `behavior_key` into `world.items`
+    /// and push its id onto `char_id`'s `inventory.item_ids`. Mirrors how the real game
+    /// seeds a held item; used to satisfy `CharacterView::has_item` for keyed-exit tests.
+    fn seed_held_item(w: &mut crate::world::World, char_id: &str, behavior_key: &str) {
+        use crate::world::ids::ItemId;
+        use crate::world::snapshot::ItemSnapshot;
+        let item_id = ItemId(alloc::format!("{char_id}-{behavior_key}-item"));
+        w.items.insert(
+            item_id.clone(),
+            ItemSnapshot::Item {
+                id: item_id.clone(),
+                behavior_key: behavior_key.into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
+        if let Some(c) = w.characters.get_mut(&cid(char_id)) {
+            c.inventory.item_ids.push(item_id);
+        }
+    }
+
+    #[test]
+    fn keyed_exit_blocked_without_key_emits_fail_and_does_not_move() {
+        use crate::world::descriptor::Catalog;
+        let mut w = world_two_rooms(false);
+        w.make_north_exit_keyed("conformance:keyed-door"); // marks the north exit keyed
+        // set locked initial state on that exit
+        for ex in w.exits.values_mut() { if ex.behavior_key.is_some() { ex.state = serde_json::json!({ "unlocked": false }); } }
+        let start_room = w.characters[&cid("pc")].current_room_id.clone();
+        let mut cues = Vec::new();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        // did not move
+        assert_eq!(w.characters[&cid("pc")].current_room_id, start_room);
+        // fail message emitted
+        assert!(cues.iter().any(|c| matches!(c,
+            PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The door is locked."))));
+    }
+
+    #[test]
+    fn keyed_exit_with_key_unlocks_moves_and_persists_state() {
+        use crate::world::descriptor::Catalog;
+        let mut w = world_two_rooms(false);
+        w.make_north_exit_keyed("conformance:keyed-door");
+        for ex in w.exits.values_mut() { if ex.behavior_key.is_some() { ex.state = serde_json::json!({ "unlocked": false }); } }
+        seed_held_item(&mut w, "pc", "brass-key"); // helper: item with behavior_key "brass-key" in pc inventory
+        let start_room = w.characters[&cid("pc")].current_room_id.clone();
+        let mut cues = Vec::new();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        // moved to the far room
+        assert_ne!(w.characters[&cid("pc")].current_room_id, start_room);
+        // unlock narration emitted
+        assert!(cues.iter().any(|c| matches!(c,
+            PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The door unlocks."))));
+        // state persisted
+        assert!(w.exits.values().any(|ex| ex.state.get("unlocked") == Some(&serde_json::json!(true))));
+    }
+
+    #[test]
+    fn keyed_exit_unregistered_key_errors() {
+        use crate::world::descriptor::Catalog;
+        let mut w = world_two_rooms(false);
+        w.make_north_exit_keyed("nope:not-registered");
+        let mut cues = Vec::new();
+        assert!(w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).is_err());
     }
 }
