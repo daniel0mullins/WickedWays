@@ -670,7 +670,6 @@ mod tests {
     #[test]
     fn take_damage_on_at_cap_target_fires_end_turn_reconcile() {
         use crate::world::descriptor::Catalog;
-        use crate::world::afflictions::Status;
         let mut w = world_with_party(&["pc"], 10); // actions_per_round = 2
         let mut cues = Vec::new();
         // Put the target AT its action cap and drive base sanity negative WITHOUT
@@ -684,8 +683,6 @@ mod tests {
         w.take_damage(&cid("pc"), 1.0, StatType::Health, &Catalog::default(), &mut cues).unwrap();
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.stats.sanity, 0.0, "cap-triggered end_turn reconcile floored base sanity");
-        assert!(ch.afflictions.is_active(Status::Panic) || ch.afflictions.is_active(Status::Ko)
-            || true, "reconcile ran"); // sanity floor is the primary proof
     }
 
     #[test]

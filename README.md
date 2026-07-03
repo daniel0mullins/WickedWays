@@ -261,13 +261,17 @@ Only methods registered in the character's `isActionMap` count against it — me
 themselves by identity (e.g. `move`, `attack`, `escape`, `addToInventory`,
 `removeFromInventory`). `recordAction(fn)` ignores unregistered functions and, once the budget
 is spent, automatically calls `endTurn()`. Notably, `takeDamage` is **not** a recordable
-action — taking a hit never consumes your turn.
+action — taking a hit never consumes your turn. It still tail-routes through the same cap
+check, though: attacking a target whose `actionsThisRound` is already at its cap auto-ends
+*that target's* turn (reconcile + `onTurnEnd`/mechanic `on_turn_end`), even though the hit
+itself never advances the budget.
 
 A character's turn ends either explicitly (the `endTurn` command) or automatically the moment a
 budgeted action brings `actionsThisRound` up to `actionsPerRound`. Ending a turn reconciles the
 character — base stats are floored, affliction flags recomputed from effective stats, and
-knock-out latched — mirroring `Character.endTurn`. (Character `onTurnEnd` events and mechanic
-turn-end hooks arrive in a later sub-plan.)
+knock-out latched — mirroring `Character.endTurn`. Mechanic turn-end hooks fire for whichever
+character's turn just ended, whether they're a party member or a mob/NPC actor. (Character
+`onTurnEnd` events are a separate, still-unported hook.)
 
 ### Stats and damage mitigation
 
@@ -1665,7 +1669,10 @@ damage transformer `modify_damage` — each defaulted to a no-op so an op only i
 the hooks it needs. Hooks return the same closed, six-variant `Effect` enum as the TS
 union — `Damage`, `Heal`, `AdjustStat`, `GrantImmunity`, `Cue`, `Status` — routed through
 `apply_effect`/`adjust_stat` exactly as `apply.ts` does (Damage/Heal/AdjustStat reconcile
-the target; GrantImmunity/Cue/Status do not).
+the target; GrantImmunity/Cue/Status do not). Damage/Heal/AdjustStat/GrantImmunity may only
+target a **party member** — mirroring TS's `campaign[FIND_CHARACTER]` lookup — so a mechanic
+that resolves an effect against a non-party character (e.g. a mob) throws a
+`ProceduralViolation` rather than silently no-op'ing.
 
 `dispatch_round`/`dispatch_turn`/`dispatch_action` fire at the same points as the TS
 turn loop (round start/end, turn start/end, and budgeted actions) and preserve
