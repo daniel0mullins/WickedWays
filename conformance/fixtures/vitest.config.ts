@@ -13,6 +13,7 @@ export default defineConfig({
       "conformance/fixtures/mechanics.gen.test.ts",
       "conformance/fixtures/mechanics-turnend.gen.test.ts",
       "conformance/fixtures/mechanics-action.gen.test.ts",
+      "conformance/fixtures/keyed-exit.gen.test.ts",
     ],
     environment: "node",
   },

@@ -1,0 +1,2052 @@
+{
+  "seed": 1,
+  "commands": [
+    {
+      "kind": "startTurn"
+    },
+    {
+      "kind": "go",
+      "dir": "north"
+    },
+    {
+      "kind": "take",
+      "targetId": "loot:chest:item#0"
+    },
+    {
+      "kind": "go",
+      "dir": "north"
+    },
+    {
+      "kind": "nextPlayer"
+    },
+    {
+      "kind": "startTurn"
+    },
+    {
+      "kind": "go",
+      "dir": "south"
+    }
+  ],
+  "steps": [
+    {
+      "command": {
+        "kind": "startTurn"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Keyed Exit (conformance)",
+          "title": "Keyed Exit (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "The vault.",
+            "exits": {
+              "south": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Hall|Vault",
+            "endpointIds": [
+              "room:Hall",
+              "room:Vault"
+            ],
+            "behaviorKey": "conformance:keyed-door",
+            "state": {
+              "unlocked": false
+            }
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "brass-key",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "A small chest.",
+            "capacity": 3,
+            "contentIds": [
+              "loot:chest:item#0"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "A small chest.",
+            "opened": false,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Brass Key",
+                "aliases": [
+                  "brass key",
+                  "key"
+                ],
+                "kind": "item",
+                "equippable": false,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "loot:chest:item#0",
+            "name": "Brass Key",
+            "aliases": [
+              "brass key",
+              "key"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest",
+            "name": "A small chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "north"
+      },
+      "cues": [
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The door is locked."
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Keyed Exit (conformance)",
+          "title": "Keyed Exit (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "The vault.",
+            "exits": {
+              "south": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Hall|Vault",
+            "endpointIds": [
+              "room:Hall",
+              "room:Vault"
+            ],
+            "behaviorKey": "conformance:keyed-door",
+            "state": {
+              "unlocked": false
+            }
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "brass-key",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "A small chest.",
+            "capacity": 3,
+            "contentIds": [
+              "loot:chest:item#0"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "A small chest.",
+            "opened": false,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Brass Key",
+                "aliases": [
+                  "brass key",
+                  "key"
+                ],
+                "kind": "item",
+                "equippable": false,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "loot:chest:item#0",
+            "name": "Brass Key",
+            "aliases": [
+              "brass key",
+              "key"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest",
+            "name": "A small chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "take",
+        "targetId": "loot:chest:item#0"
+      },
+      "cues": [
+        {
+          "kind": "action",
+          "action": "pickUp",
+          "actor": {
+            "id": "player:Ada",
+            "name": "Ada"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Keyed Exit (conformance)",
+          "title": "Keyed Exit (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "The vault.",
+            "exits": {
+              "south": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Hall|Vault",
+            "endpointIds": [
+              "room:Hall",
+              "room:Vault"
+            ],
+            "behaviorKey": "conformance:keyed-door",
+            "state": {
+              "unlocked": false
+            }
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "loot:chest:item#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "loot:chest:item#0",
+                    "name": "Brass Key"
+                  }
+                ],
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "brass-key",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "A small chest.",
+            "capacity": 3,
+            "contentIds": []
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "consumable:Brass Key",
+            "snapshot": {
+              "name": "Brass Key",
+              "type": "consumable"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "A small chest.",
+            "opened": true,
+            "contents": []
+          }
+        ],
+        "inventory": {
+          "items": [
+            {
+              "id": "loot:chest:item#0",
+              "name": "Brass Key",
+              "aliases": [
+                "brass key",
+                "key"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": false,
+              "droppable": true
+            }
+          ],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "loot:chest:item#0",
+            "name": "Brass Key",
+            "aliases": [
+              "brass key",
+              "key"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest",
+            "name": "A small chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "north"
+      },
+      "cues": [
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The door unlocks."
+          }
+        },
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Ada",
+            "name": "Ada"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Keyed Exit (conformance)",
+          "title": "Keyed Exit (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall",
+              "room:Vault"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "The vault.",
+            "exits": {
+              "south": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Hall|Vault",
+            "endpointIds": [
+              "room:Hall",
+              "room:Vault"
+            ],
+            "behaviorKey": "conformance:keyed-door",
+            "state": {
+              "unlocked": true
+            }
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 2,
+            "currentRoomId": "room:Vault",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "loot:chest:item#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "loot:chest:item#0",
+                    "name": "Brass Key"
+                  }
+                ],
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "brass-key",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "A small chest.",
+            "capacity": 3,
+            "contentIds": []
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "consumable:Brass Key",
+            "snapshot": {
+              "name": "Brass Key",
+              "type": "consumable"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Vault",
+            "snapshot": {
+              "name": "Vault",
+              "description": "The vault."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Vault",
+          "name": "Vault",
+          "description": "The vault.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [
+            {
+              "id": "loot:chest:item#0",
+              "name": "Brass Key",
+              "aliases": [
+                "brass key",
+                "key"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": false,
+              "droppable": true
+            }
+          ],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "loot:chest:item#0",
+            "name": "Brass Key",
+            "aliases": [
+              "brass key",
+              "key"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          }
+        ],
+        "status": {
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "nextPlayer"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Keyed Exit (conformance)",
+          "title": "Keyed Exit (conformance)",
+          "maxRounds": 10,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall",
+              "room:Vault"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "The vault.",
+            "exits": {
+              "south": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Hall|Vault",
+            "endpointIds": [
+              "room:Hall",
+              "room:Vault"
+            ],
+            "behaviorKey": "conformance:keyed-door",
+            "state": {
+              "unlocked": true
+            }
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 2,
+            "currentRoomId": "room:Vault",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "loot:chest:item#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "loot:chest:item#0",
+                    "name": "Brass Key"
+                  }
+                ],
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "brass-key",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "A small chest.",
+            "capacity": 3,
+            "contentIds": []
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "consumable:Brass Key",
+            "snapshot": {
+              "name": "Brass Key",
+              "type": "consumable"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Vault",
+            "snapshot": {
+              "name": "Vault",
+              "description": "The vault."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Vault",
+          "name": "Vault",
+          "description": "The vault.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [
+            {
+              "id": "loot:chest:item#0",
+              "name": "Brass Key",
+              "aliases": [
+                "brass key",
+                "key"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": false,
+              "droppable": true
+            }
+          ],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "loot:chest:item#0",
+            "name": "Brass Key",
+            "aliases": [
+              "brass key",
+              "key"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          }
+        ],
+        "status": {
+          "turn": 1,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "startTurn"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Keyed Exit (conformance)",
+          "title": "Keyed Exit (conformance)",
+          "maxRounds": 10,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall",
+              "room:Vault"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "The vault.",
+            "exits": {
+              "south": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Hall|Vault",
+            "endpointIds": [
+              "room:Hall",
+              "room:Vault"
+            ],
+            "behaviorKey": "conformance:keyed-door",
+            "state": {
+              "unlocked": true
+            }
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Vault",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "loot:chest:item#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "loot:chest:item#0",
+                    "name": "Brass Key"
+                  }
+                ],
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "brass-key",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "A small chest.",
+            "capacity": 3,
+            "contentIds": []
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "consumable:Brass Key",
+            "snapshot": {
+              "name": "Brass Key",
+              "type": "consumable"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Vault",
+            "snapshot": {
+              "name": "Vault",
+              "description": "The vault."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Vault",
+          "name": "Vault",
+          "description": "The vault.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [
+            {
+              "id": "loot:chest:item#0",
+              "name": "Brass Key",
+              "aliases": [
+                "brass key",
+                "key"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": false,
+              "droppable": true
+            }
+          ],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "loot:chest:item#0",
+            "name": "Brass Key",
+            "aliases": [
+              "brass key",
+              "key"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          }
+        ],
+        "status": {
+          "turn": 1,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "south"
+      },
+      "cues": [
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "You pass through."
+          }
+        },
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Ada",
+            "name": "Ada"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Keyed Exit (conformance)",
+          "title": "Keyed Exit (conformance)",
+          "maxRounds": 10,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall",
+              "room:Vault"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "The vault.",
+            "exits": {
+              "south": "exit:Hall|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Hall|Vault",
+            "endpointIds": [
+              "room:Hall",
+              "room:Vault"
+            ],
+            "behaviorKey": "conformance:keyed-door",
+            "state": {
+              "unlocked": true
+            }
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "loot:chest:item#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "loot:chest:item#0",
+                    "name": "Brass Key"
+                  }
+                ],
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 1
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "brass-key",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "A small chest.",
+            "capacity": 3,
+            "contentIds": []
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "consumable:Brass Key",
+            "snapshot": {
+              "name": "Brass Key",
+              "type": "consumable"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Vault",
+            "snapshot": {
+              "name": "Vault",
+              "description": "The vault."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "A small chest.",
+            "opened": true,
+            "contents": []
+          }
+        ],
+        "inventory": {
+          "items": [
+            {
+              "id": "loot:chest:item#0",
+              "name": "Brass Key",
+              "aliases": [
+                "brass key",
+                "key"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": false,
+              "droppable": true
+            }
+          ],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "loot:chest:item#0",
+            "name": "Brass Key",
+            "aliases": [
+              "brass key",
+              "key"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest",
+            "name": "A small chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "turn": 1,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    }
+  ]
+}
