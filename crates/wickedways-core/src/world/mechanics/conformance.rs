@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 
 use crate::presentation::MechanicCue;
 use crate::stats::StatType;
+use crate::world::ids::CharacterId;
 use crate::world::mechanics::{
     ActionCtx, DamageView, Effect, HookCtx, MechanicOp, TransformResult, TurnCtx,
 };
@@ -22,6 +23,16 @@ fn cue(text: &str) -> Effect {
 /// unit-testable directly without constructing a `HookCtx`.
 fn cap(amount: f64) -> TransformResult {
     if amount > 3.0 { TransformResult::Final(3.0) } else { TransformResult::Value(amount) }
+}
+
+/// Effects for the `conformance:dread` "brace" custom action: a cue plus a small
+/// sanity heal on the bracing actor (a party member, so the party-only effect-target
+/// check passes). Extracted as a free fn for direct unit testing.
+fn brace_effects(actor: &CharacterId) -> Vec<Effect> {
+    vec![
+        cue("You brace against the dread."),
+        Effect::AdjustStat { target: actor.clone(), stat: StatType::Sanity, delta: 1.0 },
+    ]
 }
 
 impl MechanicOp for Dread {
@@ -55,6 +66,12 @@ impl MechanicOp for Dread {
     }
     fn modify_damage(&self, d: &DamageView, _cx: &mut HookCtx) -> TransformResult {
         cap(d.amount)
+    }
+    fn run_action(&self, action_key: &str, cx: &mut ActionCtx) -> Option<Vec<Effect>> {
+        match action_key {
+            "brace" => Some(brace_effects(&cx.actor.id)),
+            _ => None,
+        }
     }
 }
 
@@ -99,5 +116,16 @@ mod tests {
     fn cap_finalizes_above_threshold() {
         assert_eq!(cap(3.5), TransformResult::Final(3.0));
         assert_eq!(cap(9.0), TransformResult::Final(3.0));
+    }
+
+    #[test]
+    fn brace_effects_heal_actor_sanity_with_cue() {
+        use crate::world::ids::CharacterId;
+        let fx = brace_effects(&CharacterId("pc".into()));
+        assert_eq!(fx.len(), 2);
+        assert!(matches!(&fx[0], Effect::Cue { cue } if cue.text.as_deref() == Some("You brace against the dread.")));
+        assert!(matches!(&fx[1],
+            Effect::AdjustStat { target, stat: StatType::Sanity, delta }
+            if target == &CharacterId("pc".into()) && *delta == 1.0));
     }
 }

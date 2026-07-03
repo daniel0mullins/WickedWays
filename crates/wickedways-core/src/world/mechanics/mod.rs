@@ -92,6 +92,10 @@ pub trait MechanicOp: Sync {
     fn modify_damage(&self, d: &DamageView, _cx: &mut HookCtx) -> TransformResult {
         TransformResult::Value(d.amount)
     }
+    /// Run a named custom action (TS `CustomAction.run`). `None` = this op has no
+    /// action under `action_key` (→ a `ProceduralViolation` at the invoke site,
+    /// mirroring TS's "has no action" throw). `cost` is v1-inert (every action costs 1).
+    fn run_action(&self, _action_key: &str, _cx: &mut ActionCtx) -> Option<Vec<Effect>> { None }
 }
 
 /// Resolve a first-party op by key. The compiled-in registry; the snapshot's
