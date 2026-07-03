@@ -11,6 +11,7 @@ export default defineConfig({
       "conformance/fixtures/combat.gen.test.ts",
       "conformance/fixtures/mob-defeat.gen.test.ts",
       "conformance/fixtures/mechanics.gen.test.ts",
+      "conformance/fixtures/mechanics-turnend.gen.test.ts",
     ],
     environment: "node",
   },
