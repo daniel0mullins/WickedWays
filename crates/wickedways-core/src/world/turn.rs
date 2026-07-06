@@ -1,8 +1,11 @@
 use alloc::collections::BTreeSet;
 use alloc::format;
+use alloc::string::String;
 use alloc::vec::Vec;
 use crate::error::ProceduralViolation;
-use crate::presentation::{CampaignOutcome, PresentationCue};
+use crate::presentation::{CampaignOutcome, OutcomeNarration, PresentationCue};
+use crate::world::snapshot::VictoryConditionSnapshot;
+use crate::world::victory::victory_behavior;
 use crate::stats::StatType;
 use crate::world::afflictions::{default_affliction_config, Status};
 use crate::world::descriptor::Catalog;
@@ -185,20 +188,76 @@ impl World {
         self.dispatch_round(RoundPhase::End, cat, cues)?;
         self.campaign.round += 1;
         self.campaign.acted_this_round.clear();
-        // Minimal resolver: timeout only. Win/lose -> sub-plan 7. The terminal
-        // path must NOT fire onRoundStart.
-        if self.campaign.round >= self.campaign.max_rounds {
-            self.finish(CampaignOutcome::TimedOut, None, cues);
+        // Full resolver (TS resolveOutcome): loss list → win list → timeout.
+        // The terminal path must NOT fire onRoundStart.
+        let (outcome, reason) = self.resolve_outcome(cat)?;
+        if outcome != CampaignOutcome::Ongoing {
+            self.finish(outcome, reason, cues);
             return Ok(());
         }
         self.dispatch_round(RoundPhase::Start, cat, cues)
     }
 
-    fn finish(&mut self, outcome: CampaignOutcome, reason: Option<alloc::string::String>,
+    /// Byte-exact port of TS `resolveOutcome` (victory.ts:46-63). Runs AFTER the
+    /// round increment, so `campaign.round` is current. Order: loss list, then
+    /// win list, then the `round >= max_rounds` ceiling, then ongoing.
+    fn resolve_outcome(
+        &self,
+        cat: &Catalog,
+    ) -> Result<(CampaignOutcome, Option<String>), ProceduralViolation> {
+        let view = self.build_campaign_view(cat);
+        for c in &self.campaign.lose_conditions {
+            let b = victory_behavior(&c.key).ok_or_else(|| {
+                ProceduralViolation(format!("No condition registered for key '{}'.", c.key))
+            })?;
+            if b.test(&view) {
+                return Ok((CampaignOutcome::Lost, Some(c.key.clone())));
+            }
+        }
+        for c in &self.campaign.win_conditions {
+            let b = victory_behavior(&c.key).ok_or_else(|| {
+                ProceduralViolation(format!("No condition registered for key '{}'.", c.key))
+            })?;
+            if b.test(&view) {
+                return Ok((CampaignOutcome::Won, Some(c.key.clone())));
+            }
+        }
+        if self.campaign.round >= self.campaign.max_rounds {
+            return Ok((CampaignOutcome::TimedOut, None));
+        }
+        Ok((CampaignOutcome::Ongoing, None))
+    }
+
+    fn finish(&mut self, outcome: CampaignOutcome, reason: Option<String>,
               cues: &mut Vec<PresentationCue>) {
         self.campaign.outcome = outcome;
         self.campaign.outcome_reason = reason.clone();
-        cues.push(PresentationCue::Resolution { outcome, reason, narration: None });
+        let narration = self.outcome_narration();
+        cues.push(PresentationCue::Resolution { outcome, reason, narration });
+    }
+
+    /// TS `Campaign.outcomeNarration` getter (campaign.ts:275-289): derived from
+    /// the just-set `outcome`/`outcome_reason`.
+    fn outcome_narration(&self) -> Option<OutcomeNarration> {
+        match self.campaign.outcome {
+            CampaignOutcome::TimedOut => self.campaign.timeout_narration.clone(),
+            CampaignOutcome::Ended => self.campaign.ended_narration.clone(),
+            CampaignOutcome::Won => {
+                Self::narration_for(&self.campaign.win_conditions,
+                                    self.campaign.outcome_reason.as_deref())
+            }
+            CampaignOutcome::Lost => {
+                Self::narration_for(&self.campaign.lose_conditions,
+                                    self.campaign.outcome_reason.as_deref())
+            }
+            CampaignOutcome::Ongoing => None,
+        }
+    }
+
+    fn narration_for(list: &[VictoryConditionSnapshot], reason: Option<&str>)
+        -> Option<OutcomeNarration> {
+        let reason = reason?;
+        list.iter().find(|c| c.key.as_str() == reason).and_then(|c| c.narration.clone())
     }
 
     fn assert_running(&self) -> Result<(), ProceduralViolation> {
@@ -292,6 +351,74 @@ mod tests {
         assert_eq!(w.campaign.round, 1);
         assert_eq!(mechanic_texts(&cues), vec!["Dread deepens.", "Dread stirs."]);
         assert!(w.campaign.acted_this_round.is_empty());
+    }
+
+    fn vc(key: &str, text: Option<&str>) -> VictoryConditionSnapshot {
+        VictoryConditionSnapshot {
+            key: key.into(),
+            narration: text.map(|t| OutcomeNarration { text: Some(t.into()), sound: None }),
+        }
+    }
+
+    #[test]
+    fn end_round_resolves_won_with_narration() {
+        let mut w = world_with_party(&["pc"], 10);
+        w.campaign.round = 1; // → increments to 2, threshold met, ceiling far
+        w.campaign.acted_this_round = vec![cid("pc")];
+        w.campaign.win_conditions.push(vc("conformance:round-reached", Some("You win.")));
+        let mut cues = Vec::new();
+        w.end_round(&Catalog::default(), &mut cues).unwrap();
+        assert_eq!(w.campaign.outcome, CampaignOutcome::Won);
+        assert_eq!(w.campaign.outcome_reason.as_deref(), Some("conformance:round-reached"));
+        assert_eq!(cues, vec![PresentationCue::Resolution {
+            outcome: CampaignOutcome::Won,
+            reason: Some("conformance:round-reached".into()),
+            narration: Some(OutcomeNarration { text: Some("You win.".into()), sound: None }),
+        }]);
+    }
+
+    #[test]
+    fn end_round_lose_precedes_win() {
+        let mut w = world_with_party(&["pc"], 10);
+        w.campaign.round = 1;
+        w.campaign.acted_this_round = vec![cid("pc")];
+        w.campaign.win_conditions.push(vc("conformance:round-reached", Some("win")));
+        w.campaign.lose_conditions.push(vc("conformance:round-reached", Some("lose")));
+        let mut cues = Vec::new();
+        w.end_round(&Catalog::default(), &mut cues).unwrap();
+        assert_eq!(w.campaign.outcome, CampaignOutcome::Lost);
+        assert_eq!(cues, vec![PresentationCue::Resolution {
+            outcome: CampaignOutcome::Lost,
+            reason: Some("conformance:round-reached".into()),
+            narration: Some(OutcomeNarration { text: Some("lose".into()), sound: None }),
+        }]);
+    }
+
+    #[test]
+    fn win_on_final_round_beats_timeout() {
+        let mut w = world_with_party(&["pc"], 2); // ceiling 2
+        w.campaign.round = 1; // → 2 == max_rounds
+        w.campaign.acted_this_round = vec![cid("pc")];
+        w.campaign.win_conditions.push(vc("conformance:round-reached", None));
+        let mut cues = Vec::new();
+        w.end_round(&Catalog::default(), &mut cues).unwrap();
+        // 2 >= max_rounds would time out, but the win list is checked first.
+        assert_eq!(w.campaign.outcome, CampaignOutcome::Won);
+    }
+
+    #[test]
+    fn timeout_derives_timeout_narration() {
+        let mut w = world_with_party(&["pc"], 1); // round 0 → 1 == max
+        w.campaign.timeout_narration =
+            Some(OutcomeNarration { text: Some("Time's up.".into()), sound: None });
+        w.campaign.acted_this_round = vec![cid("pc")];
+        let mut cues = Vec::new();
+        w.end_round(&Catalog::default(), &mut cues).unwrap();
+        assert_eq!(cues, vec![PresentationCue::Resolution {
+            outcome: CampaignOutcome::TimedOut,
+            reason: None,
+            narration: Some(OutcomeNarration { text: Some("Time's up.".into()), sound: None }),
+        }]);
     }
 
     #[test]
