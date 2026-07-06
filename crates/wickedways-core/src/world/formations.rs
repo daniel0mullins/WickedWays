@@ -147,8 +147,16 @@ impl World {
         if already {
             return Ok(Vec::new());
         }
-        if let Some(arr) = self.campaign.encounter_table.get_mut("visited").and_then(|v| v.as_array_mut()) {
-            arr.push(serde_json::Value::String(room.0.clone()));
+        // Mark visited, creating the array if a hydrated table lacked the key
+        // (serialized snapshots always carry `visited`; this is defensive parity
+        // with TS's always-present `Set`).
+        if let Some(obj) = self.campaign.encounter_table.as_object_mut() {
+            let arr = obj
+                .entry("visited")
+                .or_insert_with(|| serde_json::Value::Array(alloc::vec::Vec::new()));
+            if let Some(a) = arr.as_array_mut() {
+                a.push(serde_json::Value::String(room.0.clone()));
+            }
         }
 
         // 3. suppressed if any active (non-KO) non-party occupant present.
@@ -331,5 +339,17 @@ mod spawn_tests {
         let spawned = w.maybe_spawn(&rid("next"), &Catalog::default()).unwrap();
         assert!(spawned.is_empty());
         assert!(!w.characters.contains_key(&CharacterId("campaign-mob:wraith".into())));
+    }
+
+    #[test]
+    fn maybe_spawn_marks_visited_even_when_visited_key_absent() {
+        let mut w = world_two_rooms(false);
+        // encounter table with NO "visited" key at all
+        w.campaign.encounter_table = serde_json::json!({ "baseChance": 0, "formations": [] });
+        let _ = w.maybe_spawn(&rid("next"), &Catalog::default()).unwrap();
+        // the mark must still land: "visited" now exists and contains "next"
+        let visited = w.campaign.encounter_table.get("visited").and_then(|v| v.as_array());
+        assert!(visited.is_some(), "visited array should be created when absent");
+        assert!(visited.unwrap().iter().any(|v| v.as_str() == Some("next")));
     }
 }

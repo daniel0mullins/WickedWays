@@ -20,11 +20,12 @@ pub trait SceneBehavior: Sync {
 /// Resolve a first-party scene behavior by key. `None` for an unregistered key
 /// (surfaced as a `ProceduralViolation` at the fire site).
 pub fn scene_behavior(key: &str) -> Option<&'static dyn SceneBehavior> {
-    match key {
-        #[cfg(any(test, feature = "conformance"))]
-        "conformance:visit-counter" => Some(&conformance::VISIT_COUNTER),
-        _ => None,
+    #[cfg(any(test, feature = "conformance"))]
+    if key == "conformance:visit-counter" {
+        return Some(&conformance::VISIT_COUNTER);
     }
+    let _ = key;
+    None
 }
 
 #[cfg(any(test, feature = "conformance"))]

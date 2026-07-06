@@ -169,6 +169,11 @@ impl World {
             .rooms
             .get_mut(room_id)
             .ok_or_else(|| ProceduralViolation("scene room missing".into()))?;
+        // Collect cues into a local buffer and push after the loop. Intentional:
+        // on the unregistered-key `Err` path this drops earlier scenes' cues, but
+        // the whole move aborts (`?`) so the cue stream is discarded anyway — a
+        // direct-push would be a behavior change, not a cleanup. (Unreachable via
+        // the gate: TS resolves a scene behaviorKey at hydrate, not at fire.)
         let mut emitted: Vec<MechanicCue> = Vec::new();
         for scene in room.scenes.iter_mut() {
             if scene.phase != phase {
