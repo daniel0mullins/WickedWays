@@ -20,11 +20,12 @@ pub trait ExitBehavior: Sync {
 /// Resolve a first-party exit behavior by key. `None` for an unregistered key
 /// (surfaced as a `ProceduralViolation` at the `go` call site).
 pub fn exit_behavior(key: &str) -> Option<&'static dyn ExitBehavior> {
-    match key {
-        #[cfg(any(test, feature = "conformance"))]
-        "conformance:keyed-door" => Some(&conformance::KEYED_DOOR),
-        _ => None,
+    #[cfg(any(test, feature = "conformance"))]
+    if key == "conformance:keyed-door" {
+        return Some(&conformance::KEYED_DOOR);
     }
+    let _ = key;
+    None
 }
 
 #[cfg(any(test, feature = "conformance"))]

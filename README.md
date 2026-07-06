@@ -1711,13 +1711,43 @@ one-time narration line, and optional `pass_message`/`fail_message` strings — 
 the TS `Exit`'s `preconditions`/`script`/`passMessage`/`failMessage` contract.
 
 `World::go` evaluates a keyed exit before moving: a blocked exit (`can_pass` fails)
-emits its `fail_message` as a `Mechanic` cue and does **not** move; a passable exit runs
-`run_script` — falling back to `pass_message` when the script yields no narration —
-emits that line as a cue, then delegates to `move_to`. A behavior-free exit (no
-`behavior_key`) is always passable and skips straight to `move_to`. The reference
+emits its `fail_message` (if any) as a `Mechanic` cue and does **not** move; a passable
+exit runs `run_script` — falling back to `pass_message` when the script yields no
+narration — emits that line as a cue, then delegates to `move_to`. A behavior-free exit
+(no `behavior_key`) is always passable and skips straight to `move_to`. The reference
 behavior, `conformance:keyed-door`, gates on `state.unlocked` or the actor holding a
 `"brass-key"`-keyed item, and flips `state.unlocked = true` (once, with narration) the
 first time a keyed actor passes.
 
 The `ViewModel`'s `exits`/`lockedDoors` fields remain deferred — the registry drives
 traversal, but nothing yet projects exit/lock state out to a renderer.
+
+#### Scenes: the `SceneBehavior` registry (`crates/wickedways-core/src/world/scenes.rs`)
+
+Sub-plan 6c-2 ports room-attached scene hooks the same way keyed exits were ported: a
+scene's `behavior_key` resolves to a compiled-in, stateless `impl SceneBehavior` via the
+static lookup `scene_behavior(key)`; an unrecognized key surfaces as a
+`ProceduralViolation` at the firing site. `SceneBehavior` exposes `can_play(room, state)`
+(read-only over a `RoomView` and the scene's own persisted `state`) and
+`run_script(room, state)`, which may mutate that `state` and returns the mechanic cues to
+emit (`Vec<MechanicCue>`, empty meaning none) — mirroring the TS `Scene`'s
+`preconditions`/`script` contract, extended so the script can emit cues (the TS `script`
+was previously `void`-returning).
+
+`World::move_to` fires scenes at two points per move, matching TS `Room.exitRoom`/
+`Room.enterRoom`/`#enterRoom`:
+- **Exit-phase scenes** of the departed room fire first, while the mover is **still** an
+  occupant of that room (so `can_play`/`run_script` observe it in the room's `RoomView`),
+  and only then is the mover removed from that room's occupancy.
+- **Enter-phase scenes** of the destination room fire after the mover has **already**
+  joined that room's occupancy, and before the destination's visibility cue.
+
+Each matching-phase scene on a room fires in snapshot order; an unregistered
+`behavior_key` on a matching-phase scene aborts the move with a `ProceduralViolation`.
+Every emitted mechanic cue is pushed as a `Mechanic` cue on the shared `cues` buffer
+**before** the destination's visibility cue, which in turn precedes the move's `Action`
+cue — so one `go` that crosses a lit boundary can emit, in order: old-room exit-scene
+cues, new-room enter-scene cues, a visibility cue (dark destination only), then the move
+action cue. The reference behavior, `conformance:visit-counter`, fires while
+`state.count < 3` and the room is occupied, incrementing `state.count` and emitting a
+cue naming the room and the new visit count.

@@ -54,6 +54,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { describe, it } from "vitest";
 import { mulberry32 } from "../seeded-rng.ts";
+import { structuralClone } from "./gen-helpers.ts";
 import { authorTemplate } from "wickedways/lib/authoring/template-builder";
 import { defineRegistry } from "wickedways/lib/authoring/registry";
 import { startSession } from "wickedways/lib/authoring/orchestration";
@@ -340,9 +341,7 @@ describe("generate keyed-exit golden", () => {
     // ── Genesis snapshot (pre-command state) ─────────────────────────────────
     // Deep-copy: Exit[SERIALIZE] returns `state` by live reference, and this
     // snapshot is written to disk AFTER the command stream unlocks the door.
-    const start = JSON.parse(
-      JSON.stringify(serializeCampaign(campaign)),
-    ) as ReturnType<typeof serializeCampaign>;
+    const start = structuralClone(serializeCampaign(campaign));
     const startExit = start.exits.find((e) => e.behaviorKey === DOOR_BEHAVIOR_KEY);
     if (!startExit) {
       throw new Error("Start snapshot carries no exit with the keyed-door behaviorKey.");
@@ -436,12 +435,8 @@ describe("generate keyed-exit golden", () => {
       return {
         command: cmd,
         cues: drain(),
-        snapshot: JSON.parse(
-          JSON.stringify(serializeCampaign(campaign)),
-        ) as ReturnType<typeof serializeCampaign>,
-        view: JSON.parse(
-          JSON.stringify(viewProjected(campaign, ALIASES, opened)),
-        ) as ReturnType<typeof viewProjected>,
+        snapshot: structuralClone(serializeCampaign(campaign)),
+        view: structuralClone(viewProjected(campaign, ALIASES, opened)),
       };
     });
 

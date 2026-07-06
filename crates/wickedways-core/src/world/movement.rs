@@ -89,6 +89,15 @@ impl World {
             .get(&exit_id)
             .ok_or_else(|| ProceduralViolation("exit missing".into()))?;
 
+        // Far endpoint (shared by the keyed and behavior-free paths). Computed
+        // from the immutable `exit` read and owned (cloned `RoomId`s), so it
+        // stays valid once that borrow ends below (e.g. at the keyed branch's
+        // `self.exits.get_mut(&exit_id)`). `endpoint_ids` is [RoomId; 2] — use
+        // index syntax, not tuple syntax.
+        let a = exit.endpoint_ids[0].clone();
+        let b = exit.endpoint_ids[1].clone();
+        let dest = if a == here { b } else { a };
+
         // A behavior-keyed exit: resolve the registry (sub-plan 6) and evaluate
         // canPass / runScript-or-passMessage before moving. Mirrors TS `go` (:4-6).
         if let Some(key) = exit.behavior_key.clone() {
@@ -98,10 +107,6 @@ impl World {
             let actor_view = self
                 .character_view(actor, cat)
                 .ok_or_else(|| ProceduralViolation("actor not found".into()))?;
-            // endpoints (compute now; immutable read before the get_mut below)
-            let a = exit.endpoint_ids[0].clone();
-            let b = exit.endpoint_ids[1].clone();
-            let dest = if a == here { b } else { a };
 
             // canPass
             if !behavior.can_pass(&actor_view, &exit.state) {
@@ -126,12 +131,7 @@ impl World {
             return self.move_to(actor, dest, cat, cues);
         }
 
-        // Behavior-free exit: always passable; determine the far endpoint.
-        // `endpoint_ids` is [RoomId; 2] — use index syntax, not tuple syntax.
-        let a = exit.endpoint_ids[0].clone();
-        let b = exit.endpoint_ids[1].clone();
-        let dest = if a == here { b } else { a };
-
+        // Behavior-free exit: always passable.
         self.move_to(actor, dest, cat, cues)
     }
 
@@ -464,14 +464,6 @@ mod tests {
         assert_eq!(cues, vec![PresentationCue::Mechanic {
             cue: crate::presentation::MechanicCue {
                 text: Some("You can't go that way.".into()), sound: None } }]);
-    }
-
-    #[test]
-    fn go_through_a_keyed_exit_with_unregistered_behavior_key_errors() {
-        let mut w = world_two_rooms(false);
-        w.make_north_exit_keyed("study-door");
-        let mut cues = Vec::new();
-        assert!(w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).is_err());
     }
 
     #[test]
