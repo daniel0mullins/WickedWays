@@ -8,6 +8,7 @@ use crate::stats::StatType;
 use crate::world::afflictions::Status;
 use crate::world::descriptor::Catalog;
 use crate::world::ids::CharacterId;
+use crate::world::ids::RoomId;
 use crate::world::snapshot::ItemSnapshot;
 use crate::world::World;
 
@@ -46,6 +47,8 @@ pub struct RoomView {
     pub name: String,
     pub lit: bool,
     pub occupant_ids: Vec<String>,
+    /// Occupants as views (TS `room.occupants`), projected in `occupant_ids` order.
+    pub occupants: Vec<CharacterView>,
 }
 
 /// TS `DamageView` — `source` is always `None` at the one call site.
@@ -73,6 +76,26 @@ impl World {
             party,
             rooms: Vec::new(),
         }
+    }
+
+    /// Owned projection of a single room for scene hooks (TS `room` handed to
+    /// scene preconditions/scripts). `occupants` are projected in `occupant_ids`
+    /// order via `character_view`. `None` if the room is absent.
+    pub fn room_view(&self, room_id: &RoomId, cat: &Catalog) -> Option<RoomView> {
+        let r = self.rooms.get(room_id)?;
+        let occupant_ids: Vec<String> = r.occupant_ids.iter().map(|id| id.0.clone()).collect();
+        let occupants: Vec<CharacterView> = r
+            .occupant_ids
+            .iter()
+            .filter_map(|id| self.character_view(id, cat))
+            .collect();
+        Some(RoomView {
+            id: room_id.0.clone(),
+            name: r.name.clone(),
+            lit: self.is_lit(room_id),
+            occupant_ids,
+            occupants,
+        })
     }
 
     pub(crate) fn character_view(&self, id: &CharacterId, cat: &Catalog) -> Option<CharacterView> {
@@ -148,5 +171,25 @@ mod tests {
         assert!(v.rooms.is_empty(), "rooms stays empty in v1 (matches TS)");
         assert!(!pc.has_equipped("anything"));
         assert!(!pc.has_item("anything"));
+    }
+
+    #[test]
+    fn room_view_projects_lit_and_occupants() {
+        use crate::world::ids::RoomId;
+        // world_two_rooms seats "pc" (Heir) in "start" (lit); "next" may be dark.
+        let w = crate::world::test_support::world_two_rooms(/*next_dark=*/true);
+        let cat = Catalog::default();
+        let start = w.room_view(&RoomId("start".into()), &cat).expect("start room");
+        assert_eq!(start.id, "start");
+        assert!(start.lit);
+        assert_eq!(start.occupant_ids, alloc::vec!["pc".to_string()]);
+        assert_eq!(start.occupants.len(), 1);
+        assert_eq!(start.occupants[0].id, cid("pc"));
+
+        let next = w.room_view(&RoomId("next".into()), &cat).expect("next room");
+        assert!(!next.lit); // dark, no light sources
+        assert!(next.occupants.is_empty());
+
+        assert!(w.room_view(&RoomId("nope".into()), &cat).is_none());
     }
 }
