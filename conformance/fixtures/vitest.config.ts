@@ -15,6 +15,7 @@ export default defineConfig({
       "conformance/fixtures/mechanics-action.gen.test.ts",
       "conformance/fixtures/keyed-exit.gen.test.ts",
       "conformance/fixtures/scene.gen.test.ts",
+      "conformance/fixtures/spawn.gen.test.ts",
     ],
     environment: "node",
   },

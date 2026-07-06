@@ -45,7 +45,11 @@ pub mod conformance {
 
     /// Build the fixed conformance mob. `origin`/`current_room_id` are left `None`
     /// here — `World::maybe_spawn` sets `origin = "campaign"` and the room. Modeled
-    /// on the mob shape the `mob-defeat` fixture round-trips.
+    /// on the mob shape the `mob-defeat` fixture round-trips: the TS `Mob`
+    /// serializer (`Mob.serializeExtra`) ALWAYS emits `baseEscapeChance` (default
+    /// 50), `materialDrops` (default `{}`), `lightAverse` (default `false`), and
+    /// `naturalAttack` (default `{stat:"health",power:1}`), so a byte-faithful
+    /// spawned snapshot must carry them too.
     pub fn build_wraith() -> CharacterSnapshot {
         CharacterSnapshot {
             kind: CharacterKind::Mob,
@@ -62,10 +66,10 @@ pub mod conformance {
             afflictions: Afflictions::default(),
             archetype_id: None,
             origin: None,
-            base_escape_chance: None,
-            material_drops: None,
-            light_averse: None,
-            natural_attack: None,
+            base_escape_chance: Some(50),
+            material_drops: Some(serde_json::json!({})),
+            light_averse: Some(false),
+            natural_attack: Some(serde_json::json!({ "stat": "health", "power": 1 })),
             npc_behavior_key: None,
         }
     }
