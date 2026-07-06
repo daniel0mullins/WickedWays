@@ -1698,3 +1698,26 @@ effects through `apply_all`, records an `ActionHistoryEntry::MechanicAction`, th
 ticks the budget and dispatches `on_action` via the shared `record_action` path (same
 signature as every other budgeted action). Scripted (Rhai-driven) mechanics remain out
 of scope and arrive in sub-plan 6b; until then every op is native, first-party Rust.
+
+#### Keyed exits: the `ExitBehavior` registry (`crates/wickedways-core/src/world/exits.rs`)
+
+Sub-plan 6c-1 ports keyed-door traversal the same way sub-plan 6a ported mechanics: an
+exit's `behavior_key` resolves to a compiled-in, stateless `impl ExitBehavior` via the
+static lookup `exit_behavior(key)`, rather than rebinding an author-registered TS
+closure; an unrecognized key surfaces as a `ProceduralViolation` at the `go` call site.
+`ExitBehavior` exposes `can_pass(actor, state)` (read-only), an optional
+`run_script(actor, state)` that may mutate the exit's persisted `state` and return a
+one-time narration line, and optional `pass_message`/`fail_message` strings — mirroring
+the TS `Exit`'s `preconditions`/`script`/`passMessage`/`failMessage` contract.
+
+`World::go` evaluates a keyed exit before moving: a blocked exit (`can_pass` fails)
+emits its `fail_message` as a `Mechanic` cue and does **not** move; a passable exit runs
+`run_script` — falling back to `pass_message` when the script yields no narration —
+emits that line as a cue, then delegates to `move_to`. A behavior-free exit (no
+`behavior_key`) is always passable and skips straight to `move_to`. The reference
+behavior, `conformance:keyed-door`, gates on `state.unlocked` or the actor holding a
+`"brass-key"`-keyed item, and flips `state.unlocked = true` (once, with narration) the
+first time a keyed actor passes.
+
+The `ViewModel`'s `exits`/`lockedDoors` fields remain deferred — the registry drives
+traversal, but nothing yet projects exit/lock state out to a renderer.
