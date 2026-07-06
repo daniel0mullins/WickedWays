@@ -96,7 +96,13 @@ every condition is author-supplied.
 - `world/mechanics/view.rs`: `CampaignView { round, max_rounds, party: Vec<CharacterView>, rooms:
   Vec<RoomView> }` built by `World::build_campaign_view(cat)`; `CharacterView { id, name, health, sanity,
   energy, status, room_id: Option<String>, … }`; `RoomView { id, name, lit, occupant_ids, occupants }`. This
-  is the projection a victory `test` reads — **no view extension required.**
+  is the projection a victory `test` reads — **no view extension required.** **Constraint:**
+  `build_campaign_view` hard-codes `rooms: Vec::new()` ("Always empty in v1 (TS `#campaignView` returns
+  `rooms: []`)"), so a victory `test` handed a `CampaignView` **cannot read room state** — it sees only
+  `round`, `max_rounds`, and `party`. (This is faithful: the TS *mechanic* `CampaignView` is also
+  roomless. The TS *victory* `test` receives the full `ICampaign` and *could* read rooms, but the Rust
+  projection deliberately does not — so the conformance predicate is chosen to read only fields present in
+  both, see Decision 2.)
 
 ## Architecture
 
@@ -111,7 +117,7 @@ pub trait VictoryConditionBehavior: Sync {
 
 pub fn victory_behavior(key: &str) -> Option<&'static dyn VictoryConditionBehavior> {
     #[cfg(any(test, feature = "conformance"))]
-    if key == "conformance:reached-goal" { return Some(&conformance::REACHED_GOAL); }
+    if key == "conformance:round-reached" { return Some(&conformance::ROUND_REACHED); }
     let _ = key;
     None
 }
@@ -119,23 +125,19 @@ pub fn victory_behavior(key: &str) -> Option<&'static dyn VictoryConditionBehavi
 #[cfg(any(test, feature = "conformance"))]
 pub mod conformance {
     use super::*;
-    /// True iff a party member is located in the room named "Goal".
-    fn reached_goal(campaign: &CampaignView) -> bool {
-        let goal_id = campaign.rooms.iter().find(|r| r.name == "Goal").map(|r| r.id.clone());
-        match goal_id {
-            Some(id) => campaign.party.iter().any(|c| c.room_id.as_deref() == Some(id.as_str())),
-            None => false,
-        }
-    }
-    pub struct ReachedGoal;
-    pub static REACHED_GOAL: ReachedGoal = ReachedGoal;
-    impl VictoryConditionBehavior for ReachedGoal {
-        fn test(&self, campaign: &CampaignView) -> bool { reached_goal(campaign) }
+    /// The round at (or after) which `conformance:round-reached` fires.
+    pub const THRESHOLD: i64 = 2;
+    /// True iff the (post-increment) round has reached THRESHOLD.
+    fn round_reached(campaign: &CampaignView) -> bool { campaign.round >= THRESHOLD }
+    pub struct RoundReached;
+    pub static ROUND_REACHED: RoundReached = RoundReached;
+    impl VictoryConditionBehavior for RoundReached {
+        fn test(&self, campaign: &CampaignView) -> bool { round_reached(campaign) }
     }
 }
 
 #[cfg(test)]
-mod tests { /* victory_behavior("conformance:reached-goal").is_some(); ("nope").is_none() */ }
+mod tests { /* victory_behavior("conformance:round-reached").is_some(); ("nope").is_none() */ }
 ```
 
 **Decision 1 — resolve at eval, not hydrate.** The `test` predicate is resolved by key **at round-end**
@@ -144,9 +146,15 @@ at deserialize. Unknown key → `ProceduralViolation` at the round-end evaluatio
 unobservable through the gate (a fixture never registers an unknown key) and matches every Rust sibling
 registry.
 
-**Decision 2 — room-occupancy conformance predicate.** `conformance:reached-goal` reads real game state
-(a party member's location) rather than a degenerate `round >= N` (which would overlap timeout semantics).
-Its matched TS shadow computes the identical boolean.
+**Decision 2 — round-threshold conformance predicate.** `conformance:round-reached` tests
+`campaign.round >= 2`, reading only `round` — the sole non-`party` scalar present on **both** the Rust
+`CampaignView` (roomless in v1) and the TS `ICampaign`, so the native impl and its TS shadow compute a
+byte-identical boolean with no room/name/id coupling. A room-occupancy predicate was rejected because the
+Rust `CampaignView.rooms` is empty in v1 (see Current Rust state). Round-threshold is **not** degenerate
+with timeout: the won/lost fixtures set `maxRounds: 10`, so the condition fires at round 2 — far below the
+ceiling — genuinely exercising the win/lose branches (and their `resolveOutcome` precedence order)
+distinctly from the `round >= maxRounds` timeout branch. The evaluation runs after the round increment, so
+both sides read the post-increment round.
 
 ### `world/turn.rs` changes
 
@@ -246,17 +254,21 @@ Each authors conditions/narration via the template builder and registers the mat
 predicate(s), logic-matched to the native Rust `test`:
 
 ```ts
-// victory-shadow.ts — matches conformance::reached_goal
-export const reachedGoal = (campaign: ICampaign): boolean =>
-  campaign.party.some((c) => c.currentRoom?.name === "Goal");
+// victory-shadow.ts — matches conformance::round_reached (THRESHOLD = 2)
+import type { ICampaign } from "wickedways/lib/campaign";
+export const ROUND_REACHED_KEY = "conformance:round-reached";
+export const roundReached = (campaign: ICampaign): boolean => campaign.round >= 2;
 ```
+
+Each generator is a **single-player** bespoke campaign (`startSession` with one player), so one `nextPlayer`
+wraps → `end_round` → `round += 1`. From round 0: `[nextPlayer, nextPlayer]` reaches round 2.
 
 | Fixture | Setup / commands | Asserts (per-step, byte-exact) |
 |---|---|---|
-| `victory-won` | win `conformance:reached-goal` (+narration), `maxRounds` high; PC moves to "Goal"; `nextPlayer` calls wrap → `end_round` | `resolution` cue `outcome:"won"`, `reason:"conformance:reached-goal"`, the condition's `narration`; snapshot `outcome`/`outcomeReason` |
-| `victory-lost` | reference the **same** registry key `conformance:reached-goal` in **both** the win list and the lose list (distinct per-list narration — narration is list-entry content, not registry-bound); PC reaches "Goal" so both fire the same round | `outcome:"lost"` — **proves lose-before-win precedence** — + the **lose** list entry's narration (found by `outcomeReason` in `loseConditions`) |
-| `victory-timeout` | no conditions, `maxRounds:2`, `onTimeout` narration set; drive `nextPlayer` to the ceiling | `outcome:"timed-out"`, `reason` absent, `timeoutNarration` on the cue |
-| `victory-ended` | `endCampaign` command issued mid-play | `outcome:"ended"`, `reason` absent, `endedNarration` on the cue |
+| `victory-won` | register `conformance:round-reached`; `.winWhen("conformance:round-reached", {text:"You win."})`, `maxRounds:10`; commands `[nextPlayer, nextPlayer]` (round 0→1 ongoing, 1→2 → win fires below the ceiling) | step 1 no resolution cue; step 2 `resolution` cue `outcome:"won"`, `reason:"conformance:round-reached"`, `narration:{text:"You win."}`; snapshot `outcome:"won"`/`outcomeReason` |
+| `victory-lost` | register `conformance:round-reached`; put the **same key** in **both** lists — `.winWhen(key,{text:"win"})` **and** `.loseWhen(key,{text:"lose"})` (distinct per-list narration); `maxRounds:10`; commands `[nextPlayer, nextPlayer]` | step 2 `outcome:"lost"` — **proves lose-before-win precedence** — `reason:"conformance:round-reached"`, `narration:{text:"lose"}` (the **lose** list entry's, found by `outcomeReason` in `loseConditions`) |
+| `victory-timeout` | no conditions, `maxRounds:2`, `.onTimeout({text:"Time's up."})`; commands `[nextPlayer, nextPlayer]` (round 2 == maxRounds, no condition → timeout) | step 2 `outcome:"timed-out"`, `reason` absent, `narration:{text:"Time's up."}` |
+| `victory-ended` | `.onEnd({text:"You leave."})`; commands `[endCampaign]` at round 0 | step 1 `outcome:"ended"`, `reason` absent, `narration:{text:"You leave."}` |
 
 The existing `turn-movement` fixture (20 `nextPlayer` → round 10 → plain, narration-less `timed-out`)
 already exercises the timeout path and **must stay green** — the snapshot-typing change must not churn it.
