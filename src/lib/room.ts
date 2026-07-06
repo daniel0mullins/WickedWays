@@ -282,7 +282,8 @@ export class Room implements IRoom {
   }
 
   /**
-   * Adds `character` to the room's occupants and plays every `"enter"` scene.
+   * Adds `character` to the room's occupants and plays every `"enter"` scene,
+   * returning the mechanic cues those scenes emitted (in registration order).
    * @param character - The character entering the room.
    */
   enterRoom(character: ICharacter): MechanicCue[] {
@@ -291,7 +292,8 @@ export class Room implements IRoom {
   }
 
   /**
-   * Plays every `"exit"` scene and then removes `character` from the occupants.
+   * Plays every `"exit"` scene (returning the mechanic cues they emitted, in
+   * registration order) and then removes `character` from the occupants.
    * @param character - The character leaving the room.
    */
   exitRoom(character: ICharacter): MechanicCue[] {

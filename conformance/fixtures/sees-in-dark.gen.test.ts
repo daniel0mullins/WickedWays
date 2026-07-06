@@ -12,7 +12,7 @@
  * ATTACKER CHOICE: mobs do not act through the Phase-1 replay command surface
  * (commands drive `campaign.activeCharacter`, always a PC — see the note on
  * `sees_in_dark` in view.rs). So the light-averse seesInDark attacker here is a
- * PLAYER-controlled character: `LightAversePlayer` overrides BOTH `lightAverse`
+ * PLAYER-controlled character: `SeesInDarkPlayer` overrides BOTH `lightAverse`
  * and `seesInDark`, mirroring the Mob contract (`mob.ts:102-108`, where
  * `seesInDark === lightAverse`) — which is exactly the model Rust applies to
  * every character (`sees_in_dark` reads the snapshot's `lightAverse` flag).
@@ -363,7 +363,7 @@ describe("generate sees-in-dark golden", () => {
       }
       return {
         command: cmd,
-        cues: structuralClone(drain()),
+        cues: drain(),
         snapshot: structuralClone(serializeCampaign(campaign)),
         view: structuralClone(viewProjected(campaign, ALIASES, opened)),
       };
