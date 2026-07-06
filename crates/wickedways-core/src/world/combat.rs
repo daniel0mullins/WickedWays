@@ -292,8 +292,11 @@ impl World {
         // 1. Additive merge.
         if let Some(pool) = self.campaign.materials.as_object_mut() {
             for (component, qty) in obj {
-                let add = qty.as_i64().unwrap_or(0);
-                let cur = pool.get(component).and_then(|v| v.as_i64()).unwrap_or(0);
+                // TS `#materials[c] = (#materials[c] ?? 0) + qty` adds the raw number,
+                // fractional or not — read both sides as f64 (matching MaterialMap's
+                // `number` values). `as_i64` would silently drop a fractional qty to 0.
+                let add = qty.as_f64().unwrap_or(0.0);
+                let cur = pool.get(component).and_then(|v| v.as_f64()).unwrap_or(0.0);
                 pool.insert(component.clone(), json!(cur + add));
             }
         }
@@ -619,13 +622,28 @@ mod tests {
     }
 
     #[test]
+    fn deposit_materials_accumulates_fractional_quantities() {
+        use serde_json::json;
+        let mut w = world_with_party(&["pc"], 10);
+        // first deposit: a fractional qty
+        w.deposit_materials(&json!({ "ectoplasm": 2.5 }), None, None);
+        assert_eq!(w.campaign.materials["ectoplasm"], json!(2.5));
+        // second deposit accumulates as a float
+        w.deposit_materials(&json!({ "ectoplasm": 1.25 }), None, None);
+        assert_eq!(w.campaign.materials["ectoplasm"], json!(3.75));
+        // whole-number deposits still work (mixed pool)
+        w.deposit_materials(&json!({ "bone": 2 }), None, None);
+        assert_eq!(w.campaign.materials["bone"], json!(2.0));
+    }
+
+    #[test]
     fn deposit_materials_merges_additively_and_records_codex() {
         use serde_json::json;
         let mut w = world_with_party(&["pc"], 10);
-        w.campaign.materials = json!({ "metal": 1 });
+        w.campaign.materials = json!({ "metal": 1.0 });
         w.deposit_materials(&json!({ "metal": 2, "bone": 1 }), Some("pc"), Some("hall"));
         // additive merge
-        assert_eq!(w.campaign.materials, json!({ "metal": 3, "bone": 1 }));
+        assert_eq!(w.campaign.materials, json!({ "metal": 3.0, "bone": 1.0 }));
         // one codex record per component, deduped by material::<component>
         let codex = w.codex.as_array().unwrap();
         let mats: Vec<_> = codex.iter().filter(|e| e["kind"] == json!("material")).collect();
@@ -636,7 +654,7 @@ mod tests {
         assert_eq!(metal["firstSeen"]["roomId"], json!("hall"));
         // re-deposit does not duplicate codex records (first-write-wins)
         w.deposit_materials(&json!({ "metal": 5 }), Some("pc"), Some("hall"));
-        assert_eq!(w.campaign.materials["metal"], json!(8)); // pool still merges
+        assert_eq!(w.campaign.materials["metal"], json!(8.0)); // pool still merges
         let mats2: Vec<_> = w.codex.as_array().unwrap().iter().filter(|e| e["kind"] == json!("material")).collect();
         assert_eq!(mats2.len(), 2); // no new material::metal record
     }
@@ -780,7 +798,7 @@ mod tests {
         w.on_knock_out(&gid, &Catalog::default(), &mut cues);
 
         // materials deposited + codex material record
-        assert_eq!(w.campaign.materials["bone"], json!(2));
+        assert_eq!(w.campaign.materials["bone"], json!(2.0));
         // remains box: id = goblin:remains, capacity = items(1)+2 = 3, contents = [item, key]
         let box_id = LootId("goblin:remains".into());
         let b = w.loot.get(&box_id).expect("remains box created");
