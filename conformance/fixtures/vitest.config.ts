@@ -17,6 +17,7 @@ export default defineConfig({
       "conformance/fixtures/keyed-exit.gen.test.ts",
       "conformance/fixtures/scene.gen.test.ts",
       "conformance/fixtures/spawn.gen.test.ts",
+      "conformance/fixtures/sees-in-dark.gen.test.ts",
     ],
     environment: "node",
   },
