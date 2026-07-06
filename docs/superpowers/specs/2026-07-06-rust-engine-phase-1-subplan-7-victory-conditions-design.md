@@ -260,14 +260,18 @@ export const ROUND_REACHED_KEY = "conformance:round-reached";
 export const roundReached = (campaign: ICampaign): boolean => campaign.round >= 2;
 ```
 
-Each generator is a **single-player** bespoke campaign (`startSession` with one player), so one `nextPlayer`
-wraps → `end_round` → `round += 1`. From round 0: `[nextPlayer, nextPlayer]` reaches round 2.
+Each generator is a **two-player** bespoke campaign (Ada + Ben, `gm: 0`) — matching the proven
+`turn-movement` setup so `startSession` validation is satisfied — so one round takes **two** `nextPlayer`
+calls (`end_round` → `round += 1` fires on the wrap of the last party member). From round 0,
+`[nextPlayer × 4]` reaches round 2. (An earlier draft used a single-player campaign / 2 commands; the
+plan switched to two-player and the fixtures follow the plan — the round reached and behavior exercised
+are identical.)
 
 | Fixture | Setup / commands | Asserts (per-step, byte-exact) |
 |---|---|---|
-| `victory-won` | register `conformance:round-reached`; `.winWhen("conformance:round-reached", {text:"You win."})`, `maxRounds:10`; commands `[nextPlayer, nextPlayer]` (round 0→1 ongoing, 1→2 → win fires below the ceiling) | step 1 no resolution cue; step 2 `resolution` cue `outcome:"won"`, `reason:"conformance:round-reached"`, `narration:{text:"You win."}`; snapshot `outcome:"won"`/`outcomeReason` |
-| `victory-lost` | register `conformance:round-reached`; put the **same key** in **both** lists — `.winWhen(key,{text:"win"})` **and** `.loseWhen(key,{text:"lose"})` (distinct per-list narration); `maxRounds:10`; commands `[nextPlayer, nextPlayer]` | step 2 `outcome:"lost"` — **proves lose-before-win precedence** — `reason:"conformance:round-reached"`, `narration:{text:"lose"}` (the **lose** list entry's, found by `outcomeReason` in `loseConditions`) |
-| `victory-timeout` | no conditions, `maxRounds:2`, `.onTimeout({text:"Time's up."})`; commands `[nextPlayer, nextPlayer]` (round 2 == maxRounds, no condition → timeout) | step 2 `outcome:"timed-out"`, `reason` absent, `narration:{text:"Time's up."}` |
+| `victory-won` | register `conformance:round-reached`; `.winWhen("conformance:round-reached", {text:"You win."})`, `maxRounds:10`; commands `[nextPlayer × 4]` (→ round 1 ongoing, → round 2 → win fires below the ceiling) | pre-final steps no resolution cue; final step `resolution` cue `outcome:"won"`, `reason:"conformance:round-reached"`, `narration:{text:"You win."}`; snapshot `outcome:"won"`/`outcomeReason` |
+| `victory-lost` | register `conformance:round-reached`; put the **same key** in **both** lists — `.winWhen(key,{text:"win"})` **and** `.loseWhen(key,{text:"lose"})` (distinct per-list narration); `maxRounds:10`; commands `[nextPlayer × 4]` | final step `outcome:"lost"` — **proves lose-before-win precedence** — `reason:"conformance:round-reached"`, `narration:{text:"lose"}` (the **lose** list entry's, found by `outcomeReason` in `loseConditions`) |
+| `victory-timeout` | no conditions, `maxRounds:2`, `.onTimeout({text:"Time's up."})`; commands `[nextPlayer × 4]` (round 2 == maxRounds, no condition → timeout) | final step `outcome:"timed-out"`, `reason` absent, `narration:{text:"Time's up."}` |
 | `victory-ended` | `.onEnd({text:"You leave."})`; commands `[endCampaign]` at round 0 | step 1 `outcome:"ended"`, `reason` absent, `narration:{text:"You leave."}` |
 
 The existing `turn-movement` fixture (20 `nextPlayer` → round 10 → plain, narration-less `timed-out`)
