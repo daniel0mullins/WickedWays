@@ -11,6 +11,7 @@ import { Room } from "./room";
 import { Scene, type IScene } from "./scene";
 import { ProceduralViolation } from "./util";
 import type { Presentation } from "./presentation";
+import type { MechanicCue } from "./mechanics/mechanic";
 
 import { makeCampaign, makeStats } from "../test-utils";
 
@@ -248,6 +249,24 @@ describe("Room", () => {
       room.exitRoom(character);
 
       expect(scene.playScene).toHaveBeenCalledWith("exit", room);
+    });
+
+    it("enterRoom collects enter-scene cues in registration order; exitRoom collects exit-scene cues", () => {
+      const room = makeRoom();
+      const character = makeCharacter();
+      const mkScene = (phase: "enter" | "exit", text: string) =>
+        new Scene({
+          phase,
+          preconditions: [],
+          script: (): MechanicCue[] => [{ text }],
+          behaviorKey: `test/${text}`,
+        });
+      room.registerScene(mkScene("enter", "a"));
+      room.registerScene(mkScene("exit", "x"));
+      room.registerScene(mkScene("enter", "b"));
+
+      expect(room.enterRoom(character)).toEqual([{ text: "a" }, { text: "b" }]);
+      expect(room.exitRoom(character)).toEqual([{ text: "x" }]);
     });
   });
 

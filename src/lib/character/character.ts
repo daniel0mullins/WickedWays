@@ -12,6 +12,7 @@ import { Status } from "../status";
 import { Afflictions, AfflictionConfig, DEFAULT_AFFLICTION_CONFIG } from "./afflictions";
 import { EMIT_CUE } from "../presentation";
 import type { AssetRef, Presentation } from "../presentation";
+import type { MechanicCue } from "../mechanics/mechanic.js";
 import { RECORD_ENCOUNTER } from "../codex";
 
 import { generateId, ProceduralViolation, typedEntries } from "../util";
@@ -988,12 +989,14 @@ export class Character implements ICharacter {
    * gameplay navigation path only ({@link Character.move}), not the ungated
    * placement seam ({@link PLACE}) used to seat resident/spawned mobs.
    */
-  #enterRoom(room: IRoom) {
+  #enterRoom(room: IRoom): MechanicCue[] {
+    const cues: MechanicCue[] = [];
     if (this.#currentRoom) {
-      this.#currentRoom.exitRoom(this);
+      cues.push(...this.#currentRoom.exitRoom(this));
     }
     this.#currentRoom = room;
-    room.enterRoom(this);
+    cues.push(...room.enterRoom(this));
+    return cues;
   }
 
   /** Emits a visibility cue if a dark room's lit state changed across a light action. */
@@ -1017,7 +1020,10 @@ export class Character implements ICharacter {
    */
   move(room: IRoom) {
     if (!this.attemptAction(this.move, true)) return;
-    this.#enterRoom(room);
+    const sceneCues = this.#enterRoom(room);
+    for (const cue of sceneCues) {
+      this.campaign[EMIT_CUE]({ kind: "mechanic", cue });
+    }
     if (!room.isLit) {
       this.campaign[EMIT_CUE]({
         kind: "visibility",

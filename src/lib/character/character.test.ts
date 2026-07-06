@@ -73,8 +73,8 @@ function makeRoom(): IRoom {
   return {
     id: "room-1" as RoomId,
     name: "Test Room",
-    enterRoom: vi.fn(),
-    exitRoom: vi.fn(),
+    enterRoom: vi.fn(() => []),
+    exitRoom: vi.fn(() => []),
   } as unknown as IRoom;
 }
 
@@ -2033,7 +2033,7 @@ describe("Character", () => {
       const seen: PresentationCue[] = [];
       campaign.onCue((cue) => seen.push(cue));
 
-      character.move({ id: "r1", name: "Hall", enterRoom: () => {}, exitRoom: () => {} } as unknown as IRoom);
+      character.move({ id: "r1", name: "Hall", enterRoom: () => [], exitRoom: () => [] } as unknown as IRoom);
 
       expect(seen).toContainEqual(
         expect.objectContaining({ kind: "action", action: "move", sound: "mira.ogg" }),
@@ -2049,7 +2049,7 @@ describe("Character", () => {
       const seen: PresentationCue[] = [];
       campaign.onCue((cue) => seen.push(cue));
 
-      character.move({ id: "r1", name: "Hall", enterRoom: () => {}, exitRoom: () => {} } as unknown as IRoom);
+      character.move({ id: "r1", name: "Hall", enterRoom: () => [], exitRoom: () => [] } as unknown as IRoom);
 
       expect(seen).toContainEqual(
         expect.objectContaining({ kind: "action", action: "move", sound: "marching.ogg" }),

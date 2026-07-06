@@ -146,8 +146,8 @@ function makeRoomWith(box: Loot): IRoom {
   return {
     loot: new Map([[box.id, box]]),
     isLit: true,
-    enterRoom: vi.fn(),
-    exitRoom: vi.fn(),
+    enterRoom: vi.fn(() => []),
+    exitRoom: vi.fn(() => []),
   } as unknown as IRoom;
 }
 

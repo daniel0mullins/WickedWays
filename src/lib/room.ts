@@ -11,6 +11,7 @@ import { SERIALIZE, HYDRATE } from "./serialization/symbols";
 import type { RoomSnapshot } from "./serialization/types";
 import type { HydrateContext } from "./serialization/context";
 import { Exit, SET_ENDPOINTS, type ExitPrecondition, type ExitScript } from "./exit";
+import type { MechanicCue } from "./mechanics/mechanic.js";
 
 /** Unique identifier for a {@link Room}. */
 export type RoomId = Brand<string, "RoomId">;
@@ -88,10 +89,10 @@ export interface IRoom {
   /** Characters currently in the room. */
   get occupants(): ICharacter[];
 
-  /** Records a character as present and plays any `"enter"` scenes. */
-  enterRoom: (character: ICharacter) => void;
-  /** Plays any `"exit"` scenes and removes the character from the room. */
-  exitRoom: (character: ICharacter) => void;
+  /** Records a character as present and plays any `"enter"` scenes; returns their cues. */
+  enterRoom: (character: ICharacter) => MechanicCue[];
+  /** Plays any `"exit"` scenes (returning their cues) then removes the character. */
+  exitRoom: (character: ICharacter) => MechanicCue[];
   /**
    * Builds one shared {@link Exit} connecting this room to `to` in `direction`,
    * and (unless `opts.oneWay`) places the same exit in `to` under the reverse direction.
@@ -284,18 +285,19 @@ export class Room implements IRoom {
    * Adds `character` to the room's occupants and plays every `"enter"` scene.
    * @param character - The character entering the room.
    */
-  enterRoom(character: ICharacter) {
+  enterRoom(character: ICharacter): MechanicCue[] {
     this.#occupants.set(character.id, character);
-    this.#scenes.forEach((scene) => scene.playScene("enter", this));
+    return this.#scenes.flatMap((scene) => scene.playScene("enter", this));
   }
 
   /**
    * Plays every `"exit"` scene and then removes `character` from the occupants.
    * @param character - The character leaving the room.
    */
-  exitRoom(character: ICharacter) {
-    this.#scenes.forEach((scene) => scene.playScene("exit", this));
+  exitRoom(character: ICharacter): MechanicCue[] {
+    const cues = this.#scenes.flatMap((scene) => scene.playScene("exit", this));
     this.#occupants.delete(character.id);
+    return cues;
   }
 
   /**
