@@ -153,6 +153,14 @@ pub struct MechanicSnapshot {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct VictoryConditionSnapshot {
+    pub key: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub narration: Option<crate::presentation::OutcomeNarration>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CampaignCoreSnapshot {
     pub id: String,
     pub title: String,
@@ -162,13 +170,12 @@ pub struct CampaignCoreSnapshot {
     pub outcome: crate::presentation::CampaignOutcome,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub outcome_reason: Option<String>,
-    /// Inert here — { key, narration? }[]; passthrough.
-    pub win_conditions: Value,
-    pub lose_conditions: Value,
+    pub win_conditions: Vec<VictoryConditionSnapshot>,
+    pub lose_conditions: Vec<VictoryConditionSnapshot>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timeout_narration: Option<Value>,
+    pub timeout_narration: Option<crate::presentation::OutcomeNarration>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ended_narration: Option<Value>,
+    pub ended_narration: Option<crate::presentation::OutcomeNarration>,
     pub active_character_index: i64,
     pub party_ids: Vec<CharacterId>,
     pub acted_this_round: Vec<CharacterId>,
@@ -298,6 +305,15 @@ mod tests {
             "exits":{"north":"e1"},"dark":false,"spawnModifier":0,
             "occupantIds":["c1"],"lootIds":[],"materialCacheIds":[],"lightSourceIds":[],"scenes":[]
         }"#);
+    }
+
+    #[test]
+    fn victory_condition_snapshot_roundtrips() {
+        roundtrip::<VictoryConditionSnapshot>(
+            r#"{"key":"conformance:round-reached","narration":{"text":"You win."}}"#,
+        );
+        // narration omitted when absent (skip_serializing_if)
+        roundtrip::<VictoryConditionSnapshot>(r#"{"key":"party-wiped"}"#);
     }
 
     #[test]
