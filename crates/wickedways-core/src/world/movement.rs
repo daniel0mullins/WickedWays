@@ -142,7 +142,11 @@ impl World {
     ///
     /// An unregistered `behavior_key` on a matching-phase scene →
     /// `Err(ProceduralViolation)` (mirrors TS `registry.scene()`'s `#require`).
-    fn fire_scenes(
+    ///
+    /// `pub(crate)` (rather than private) so `World::maybe_spawn`
+    /// (`world/formations.rs`, sub-plan 6c-3) can fire enter-scenes silently for
+    /// freshly-placed mobs.
+    pub(crate) fn fire_scenes(
         &mut self,
         room_id: &RoomId,
         phase: &str,
