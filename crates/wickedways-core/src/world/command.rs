@@ -16,6 +16,7 @@ pub enum Command {
     EndTurn,
     Go { dir: Direction },
     NextPlayer,
+    EndCampaign,
     #[serde(rename_all = "camelCase")]
     Take { target_id: String },
     #[serde(rename_all = "camelCase")]
@@ -47,6 +48,7 @@ pub fn apply_command(
         Command::EndTurn => world.end_turn(&actor, cat, cues),
         Command::Go { dir } => world.go(&actor, dir, cat, cues),
         Command::NextPlayer => world.next_player(cat, cues),
+        Command::EndCampaign => world.end_campaign(cues),
         Command::Take { target_id } => {
             if let Some(loot_id) = world.take(&actor, &ItemId(target_id), cat, cues)? {
                 opened.insert(loot_id.0);
@@ -294,6 +296,14 @@ mod tests {
             serde_json::json!({ "kind": "use", "targetId": "herb-3" })
         ).unwrap();
         assert!(matches!(c, Command::Use { target_id } if target_id == "herb-3"));
+    }
+
+    #[test]
+    fn end_campaign_deserializes_from_json() {
+        let c: Command = serde_json::from_value(
+            serde_json::json!({ "kind": "endCampaign" })
+        ).unwrap();
+        assert!(matches!(c, Command::EndCampaign));
     }
 
     // ── existing tests (updated to new signature) ─────────────────────────────

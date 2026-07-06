@@ -266,6 +266,15 @@ impl World {
         }
         Ok(())
     }
+
+    /// TS `Campaign.endCampaign` (campaign.ts:466-469): the manual, GM-neutral
+    /// end. Produces the `ended` outcome (no firing condition → `ended_narration`).
+    pub fn end_campaign(&mut self, cues: &mut Vec<PresentationCue>)
+        -> Result<(), ProceduralViolation> {
+        self.assert_running()?;
+        self.finish(CampaignOutcome::Ended, None, cues);
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -701,5 +710,29 @@ mod tests {
         assert_eq!(ch.actions_this_round, 2, "free call must not increment the budget");
         assert_eq!(ch.stats.health, 0.0, "free call at cap -> end_turn -> reconcile floored base");
         assert!(ch.afflictions.is_active(Status::Ko), "free call at cap -> end_turn latches KO");
+    }
+
+    #[test]
+    fn end_campaign_finishes_ended_with_narration() {
+        let mut w = world_with_party(&["pc"], 10);
+        w.campaign.ended_narration =
+            Some(OutcomeNarration { text: Some("You leave.".into()), sound: None });
+        let mut cues = Vec::new();
+        w.end_campaign(&mut cues).unwrap();
+        assert_eq!(w.campaign.outcome, CampaignOutcome::Ended);
+        assert_eq!(w.campaign.outcome_reason, None);
+        assert_eq!(cues, vec![PresentationCue::Resolution {
+            outcome: CampaignOutcome::Ended,
+            reason: None,
+            narration: Some(OutcomeNarration { text: Some("You leave.".into()), sound: None }),
+        }]);
+    }
+
+    #[test]
+    fn end_campaign_twice_is_a_violation() {
+        let mut w = world_with_party(&["pc"], 10);
+        let mut cues = Vec::new();
+        w.end_campaign(&mut cues).unwrap();
+        assert!(w.end_campaign(&mut cues).is_err()); // assert_running blocks once ended
     }
 }
