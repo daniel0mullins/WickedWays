@@ -56,9 +56,8 @@ import type { CharacterId } from "wickedways/lib/character/character";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { StatType } from "wickedways/lib/character/stats";
 import type { PresentationCue } from "wickedways/lib/presentation";
-import type { Campaign } from "wickedways/lib/campaign";
 import { DREAD_KEY, dreadShadow } from "./dread-shadow.ts";
-import { view } from "../../packages/play-runtime/src/viewmodel.ts";
+import { viewProjected } from "./gen-helpers.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -82,30 +81,6 @@ function buildFixtureRegistry() {
       [DREAD_KEY]: dreadShadow,
     },
   });
-}
-
-// ─── ViewModel projection helper (verbatim from mechanics.gen.test.ts) ────────
-
-function viewProjected(
-  campaign: Campaign,
-  aliases: Record<string, string[]>,
-  opened: ReadonlySet<string>,
-) {
-  const full = view(campaign, aliases, opened);
-
-  const { image: _roomImage, ...roomRest } = full.room as { image?: unknown; [k: string]: unknown };
-  const { locationName: _locName, ...statusRest } = full.status as { locationName?: unknown; [k: string]: unknown };
-
-  return {
-    room: roomRest,
-    occupants: full.occupants,
-    loot: full.loot,
-    inventory: full.inventory,
-    scope: full.scope,
-    status: statusRest,
-    outcome: full.outcome,
-    finished: full.finished,
-  };
 }
 
 // ─── Bespoke campaign builder ─────────────────────────────────────────────────

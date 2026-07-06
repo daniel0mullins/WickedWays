@@ -79,12 +79,10 @@ import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { StatType } from "wickedways/lib/character/stats";
 import { Directions } from "wickedways/lib/room";
 import type { PresentationCue } from "wickedways/lib/presentation";
-import type { Campaign } from "wickedways/lib/campaign";
 import type { CharacterSnapshot } from "wickedways/lib/serialization/types";
-import { view } from "../../packages/play-runtime/src/viewmodel.ts";
 import { visitCounterShadow, VISIT_COUNTER_KEY } from "./scene-shadow.ts";
 import { wraithFormationShadow, WRAITH_KEY, WRAITH_ID } from "./formation-shadow.ts";
-import { structuralClone } from "./gen-helpers.ts";
+import { structuralClone, viewProjected } from "./gen-helpers.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -93,42 +91,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 // This fixture registers NO items, so the catalog is empty on both sides
 // (the Rust `Catalog` deserializes an empty `items` map — `Catalog::default()`
 // is empty).
-const EMPTY_ALIASES: Record<string, string[]> = {};
 const EMPTY_CATALOG = { items: {}, aliases: {} };
-
-// ─── ViewModel projection helper (verbatim from scene.gen.test.ts) ───────────
-
-/**
- * Project the full TS ViewModel to the exact Rust ViewModel subset.
- *
- * Remove:
- *   - top-level `exits` and `lockedDoors`
- *   - `status.locationName`
- *   - `room.image`
- *
- * `defeated` is kept (Rust emits it on occupant/character entities). No take
- * commands in this stream → the `opened` set stays empty.
- */
-function viewProjected(campaign: Campaign) {
-  const full = view(campaign, EMPTY_ALIASES, new Set());
-
-  // Project room: remove image
-  const { image: _roomImage, ...roomRest } = full.room as { image?: unknown; [k: string]: unknown };
-
-  // Project status: remove locationName
-  const { locationName: _locName, ...statusRest } = full.status as { locationName?: unknown; [k: string]: unknown };
-
-  return {
-    room: roomRest,
-    occupants: full.occupants,
-    loot: full.loot,
-    inventory: full.inventory,
-    scope: full.scope,
-    status: statusRest,
-    outcome: full.outcome,
-    finished: full.finished,
-  };
-}
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
 

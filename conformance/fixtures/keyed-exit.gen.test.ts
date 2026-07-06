@@ -54,7 +54,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { describe, it } from "vitest";
 import { mulberry32 } from "../seeded-rng.ts";
-import { structuralClone } from "./gen-helpers.ts";
+import { structuralClone, viewProjected } from "./gen-helpers.ts";
 import { authorTemplate } from "wickedways/lib/authoring/template-builder";
 import { defineRegistry } from "wickedways/lib/authoring/registry";
 import { startSession } from "wickedways/lib/authoring/orchestration";
@@ -65,10 +65,8 @@ import { Directions } from "wickedways/lib/room";
 import type { ExitBehavior } from "wickedways/lib/exit";
 import type { ICharacter } from "wickedways/lib/character/character";
 import type { PresentationCue } from "wickedways/lib/presentation";
-import type { Campaign } from "wickedways/lib/campaign";
 import type { IItem } from "wickedways/lib/inventory";
 import type { ILoot } from "wickedways/lib/loot";
-import { view } from "../../packages/play-runtime/src/viewmodel.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -203,44 +201,6 @@ function buildCatalog(
     items[key] = itemToCatalogEntry(instance);
   }
   return { items, aliases };
-}
-
-// ─── ViewModel projection helper (verbatim from items-actions.gen.test.ts) ────
-
-/**
- * Project the full TS ViewModel to the exact Rust ViewModel subset.
- *
- * Remove:
- *   - top-level `exits` and `lockedDoors`
- *   - `status.locationName`
- *   - `room.image`
- *
- * `defeated` is kept (Rust emits it on occupant/character entities). The live
- * session-managed `opened` set is passed through to view() per step.
- */
-function viewProjected(
-  campaign: Campaign,
-  aliases: Record<string, string[]>,
-  opened: ReadonlySet<string>,
-) {
-  const full = view(campaign, aliases, opened);
-
-  // Project room: remove image
-  const { image: _roomImage, ...roomRest } = full.room as { image?: unknown; [k: string]: unknown };
-
-  // Project status: remove locationName
-  const { locationName: _locName, ...statusRest } = full.status as { locationName?: unknown; [k: string]: unknown };
-
-  return {
-    room: roomRest,
-    occupants: full.occupants,
-    loot: full.loot,
-    inventory: full.inventory,
-    scope: full.scope,
-    status: statusRest,
-    outcome: full.outcome,
-    finished: full.finished,
-  };
 }
 
 // ─── Bespoke campaign builder ─────────────────────────────────────────────────

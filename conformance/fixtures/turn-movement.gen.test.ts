@@ -27,47 +27,12 @@ import { startSession } from "wickedways/lib/authoring/orchestration";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { Directions } from "wickedways/lib/room";
 import type { PresentationCue } from "wickedways/lib/presentation";
-import type { Campaign } from "wickedways/lib/campaign";
-import { view } from "../../packages/play-runtime/src/viewmodel.ts";
+import { viewProjected } from "./gen-helpers.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
 // Empty catalog — the turn-movement campaign has no items.
-const EMPTY_ALIASES: Record<string, string[]> = {};
 const EMPTY_CATALOG = { items: {}, aliases: {} };
-
-/**
- * Project the full TS ViewModel to the exact Rust 4a ViewModel subset.
- *
- * Remove:
- *   - top-level `exits` and `lockedDoors`
- *   - `status.locationName`
- *   - `room.image`
- *
- * `defeated` is now kept (Rust 4a emits it on occupant/character entities).
- *
- * Mirrors the `viewProjected` helper in items-projection.gen.test.ts.
- */
-function viewProjected(campaign: Campaign) {
-  const full = view(campaign, EMPTY_ALIASES, new Set());
-
-  // Project room: remove image
-  const { image: _roomImage, ...roomRest } = full.room as { image?: unknown; [k: string]: unknown };
-
-  // Project status: remove locationName
-  const { locationName: _locName, ...statusRest } = full.status as { locationName?: unknown; [k: string]: unknown };
-
-  return {
-    room: roomRest,
-    occupants: full.occupants,
-    loot: full.loot,
-    inventory: full.inventory,
-    scope: full.scope,
-    status: statusRest,
-    outcome: full.outcome,
-    finished: full.finished,
-  };
-}
 
 /**
  * Bespoke campaign for the differential conformance gate.

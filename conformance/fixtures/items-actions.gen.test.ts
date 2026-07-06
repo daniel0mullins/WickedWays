@@ -41,10 +41,9 @@ import { StatType } from "wickedways/lib/character/stats";
 import { SlotKind } from "wickedways/lib/equipment";
 import { Directions } from "wickedways/lib/room";
 import type { PresentationCue } from "wickedways/lib/presentation";
-import type { Campaign } from "wickedways/lib/campaign";
 import type { IItem } from "wickedways/lib/inventory";
 import type { ILoot } from "wickedways/lib/loot";
-import { view } from "../../packages/play-runtime/src/viewmodel.ts";
+import { viewProjected } from "./gen-helpers.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -230,47 +229,6 @@ function buildCatalog(
     items[key] = itemToCatalogEntry(instance);
   }
   return { items, aliases };
-}
-
-// ─── 3a ViewModel projection helper (verbatim from items-projection.gen.test.ts,
-//     with the live `opened` set threaded through to view()) ──────────────────
-
-/**
- * Project the full TS ViewModel to the exact Rust 3a ViewModel subset.
- *
- * Remove:
- *   - top-level `exits` and `lockedDoors`
- *   - `status.locationName`
- *   - `room.image`
- *
- * `defeated` is now kept (Rust 4a emits it on occupant/character entities).
- *
- * The widened Rust view reads `opened` for `loot[].opened`, so the live
- * session-managed `opened` set is passed through to view() per step.
- */
-function viewProjected(
-  campaign: Campaign,
-  aliases: Record<string, string[]>,
-  opened: ReadonlySet<string>,
-) {
-  const full = view(campaign, aliases, opened);
-
-  // Project room: remove image
-  const { image: _roomImage, ...roomRest } = full.room as { image?: unknown; [k: string]: unknown };
-
-  // Project status: remove locationName
-  const { locationName: _locName, ...statusRest } = full.status as { locationName?: unknown; [k: string]: unknown };
-
-  return {
-    room: roomRest,
-    occupants: full.occupants,
-    loot: full.loot,
-    inventory: full.inventory,
-    scope: full.scope,
-    status: statusRest,
-    outcome: full.outcome,
-    finished: full.finished,
-  };
 }
 
 // ─── Bespoke campaign builder ─────────────────────────────────────────────────
