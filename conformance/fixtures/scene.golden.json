@@ -1,0 +1,4820 @@
+{
+  "seed": 1,
+  "commands": [
+    {
+      "kind": "startTurn"
+    },
+    {
+      "kind": "go",
+      "dir": "north"
+    },
+    {
+      "kind": "go",
+      "dir": "north"
+    },
+    {
+      "kind": "nextPlayer"
+    },
+    {
+      "kind": "startTurn"
+    },
+    {
+      "kind": "go",
+      "dir": "south"
+    },
+    {
+      "kind": "go",
+      "dir": "north"
+    },
+    {
+      "kind": "nextPlayer"
+    },
+    {
+      "kind": "startTurn"
+    },
+    {
+      "kind": "go",
+      "dir": "south"
+    },
+    {
+      "kind": "go",
+      "dir": "north"
+    },
+    {
+      "kind": "nextPlayer"
+    },
+    {
+      "kind": "startTurn"
+    },
+    {
+      "kind": "go",
+      "dir": "south"
+    },
+    {
+      "kind": "go",
+      "dir": "north"
+    }
+  ],
+  "steps": [
+    {
+      "command": {
+        "kind": "startTurn"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 0
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 0
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 0
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 0
+                }
+              }
+            ]
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Foyer",
+          "name": "Foyer",
+          "description": "A dusty foyer.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "north"
+      },
+      "cues": [
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The Chamber stirs (visit 1)."
+          }
+        },
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Mara",
+            "name": "Mara"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 1
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 0
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 0
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 0
+                }
+              }
+            ]
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Chamber",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Chamber",
+          "name": "Chamber",
+          "description": "A cold chamber.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "north"
+      },
+      "cues": [
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The Chamber stirs (visit 1)."
+          }
+        },
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The Crypt stirs (visit 1)."
+          }
+        },
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Mara",
+            "name": "Mara"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 1
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 0
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 1
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 1
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 2,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Crypt",
+          "name": "Crypt",
+          "description": "A silent crypt.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "nextPlayer"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 1
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 0
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 1
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 1
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 2,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Crypt",
+          "name": "Crypt",
+          "description": "A silent crypt.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 1,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "startTurn"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 1
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 0
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 1
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 1
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Crypt",
+          "name": "Crypt",
+          "description": "A silent crypt.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 1,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "south"
+      },
+      "cues": [
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The Crypt stirs (visit 1)."
+          }
+        },
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The Chamber stirs (visit 2)."
+          }
+        },
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Mara",
+            "name": "Mara"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 1
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 1
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 1
+                }
+              }
+            ]
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Chamber",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 1
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Chamber",
+          "name": "Chamber",
+          "description": "A cold chamber.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 1,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "north"
+      },
+      "cues": [
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The Chamber stirs (visit 2)."
+          }
+        },
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The Crypt stirs (visit 2)."
+          }
+        },
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Mara",
+            "name": "Mara"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 1
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 2
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 2,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 1
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Crypt",
+          "name": "Crypt",
+          "description": "A silent crypt.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 1,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "nextPlayer"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 2,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 1
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 2
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 2,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 1
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Crypt",
+          "name": "Crypt",
+          "description": "A silent crypt.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 2,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "startTurn"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 2,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 1
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 2
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 1
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Crypt",
+          "name": "Crypt",
+          "description": "A silent crypt.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 2,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "south"
+      },
+      "cues": [
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The Crypt stirs (visit 2)."
+          }
+        },
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The Chamber stirs (visit 3)."
+          }
+        },
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Mara",
+            "name": "Mara"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 2,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 3
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 2
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 2
+                }
+              }
+            ]
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Chamber",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 2
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Chamber",
+          "name": "Chamber",
+          "description": "A cold chamber.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 2,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "north"
+      },
+      "cues": [
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The Chamber stirs (visit 3)."
+          }
+        },
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The Crypt stirs (visit 3)."
+          }
+        },
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Mara",
+            "name": "Mara"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 2,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 3
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 2
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 3
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 3
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 2,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 2
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 2
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Crypt",
+          "name": "Crypt",
+          "description": "A silent crypt.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 2,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "nextPlayer"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 3,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 3
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 2
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 3
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 3
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 2,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 2
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 2
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Crypt",
+          "name": "Crypt",
+          "description": "A silent crypt.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 3,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "startTurn"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 3,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 3
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 2
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 3
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 3
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 2
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 2
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Crypt",
+          "name": "Crypt",
+          "description": "A silent crypt.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 3,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "south"
+      },
+      "cues": [
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The Crypt stirs (visit 3)."
+          }
+        },
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Mara",
+            "name": "Mara"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 3,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 3
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 3
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 3
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 3
+                }
+              }
+            ]
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Chamber",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 2
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 2
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 3
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Chamber",
+          "name": "Chamber",
+          "description": "A cold chamber.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 3,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "north"
+      },
+      "cues": [
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Mara",
+            "name": "Mara"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scene (conformance)",
+          "title": "Scene (conformance)",
+          "maxRounds": 10,
+          "round": 3,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 3
+                }
+              },
+              {
+                "id": "scene:Crypt:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 3
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Chamber",
+            "name": "Chamber",
+            "description": "A cold chamber.",
+            "exits": {
+              "south": "exit:Chamber|Foyer",
+              "north": "exit:Chamber|Crypt"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Chamber:conformance:visit-counter:enter",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "enter",
+                "state": {
+                  "count": 3
+                }
+              },
+              {
+                "id": "scene:Chamber:conformance:visit-counter:exit",
+                "behaviorKey": "conformance:visit-counter",
+                "phase": "exit",
+                "state": {
+                  "count": 3
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Chamber|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Chamber|Crypt",
+            "endpointIds": [
+              "room:Chamber",
+              "room:Crypt"
+            ],
+            "state": {}
+          },
+          {
+            "id": "exit:Chamber|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Chamber"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 2,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 2
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 2
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Chamber",
+                  "name": "Chamber"
+                },
+                "round": 3
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 3
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Chamber",
+            "snapshot": {
+              "name": "Chamber",
+              "description": "A cold chamber."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Chamber"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Crypt",
+          "name": "Crypt",
+          "description": "A silent crypt.",
+          "isLit": true
+        },
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "turn": 3,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    }
+  ]
+}
