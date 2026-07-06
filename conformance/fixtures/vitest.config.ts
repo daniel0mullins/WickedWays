@@ -21,6 +21,8 @@ export default defineConfig({
       "conformance/fixtures/sees-in-dark.gen.test.ts",
       "conformance/fixtures/victory-won.gen.test.ts",
       "conformance/fixtures/victory-lost.gen.test.ts",
+      "conformance/fixtures/victory-timeout.gen.test.ts",
+      "conformance/fixtures/victory-ended.gen.test.ts",
     ],
     environment: "node",
   },

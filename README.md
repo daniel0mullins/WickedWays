@@ -940,6 +940,11 @@ prose alongside the condition and surfaces it in two ways so every play surface 
 The timeout and manual-end paths have their own prose slots: `.onTimeout(narration)` and
 `.onEnd(narration)` on the builder.
 
+The Rust engine core (`crates/wickedways-core`) mirrors this: round-end evaluation resolves
+`won` / `lost` / `timed-out` (loss conditions before win, then the `maxRounds` ceiling) and the
+manual `endCampaign()` resolves `ended`, each emitting the same `resolution` cue with the
+authored outcome narration.
+
 **Authoring.** On the `TemplateBuilder` returned by `authorTemplate`:
 
 ```ts
