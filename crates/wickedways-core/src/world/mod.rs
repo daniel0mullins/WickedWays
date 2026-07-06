@@ -11,6 +11,7 @@ pub mod ids;
 pub mod mechanics;
 pub mod resolve;
 pub mod rng;
+pub mod scenes;
 pub mod snapshot;
 mod combat;
 mod items_actions;
