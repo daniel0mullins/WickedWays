@@ -1751,3 +1751,48 @@ cues, new-room enter-scene cues, a visibility cue (dark destination only), then 
 action cue. The reference behavior, `conformance:visit-counter`, fires while
 `state.count < 3` and the room is occupied, incrementing `state.count` and emitting a
 cue naming the room and the new visit count.
+
+#### Encounter spawning: the `FormationBehavior` registry (`crates/wickedways-core/src/world/formations.rs`)
+
+Sub-plan 6c-3 ports the roving-encounter table the same way keyed exits and scenes were
+ported: a registered formation's `behaviorKey` resolves to a compiled-in, stateless
+`impl FormationBehavior` via the static lookup `formation(key)`, rather than rebinding an
+author-registered TS factory. `FormationBehavior` exposes a single method,
+`build(&self, &CampaignView) -> Vec<CharacterSnapshot>`, and each mob it returns MUST
+carry a deterministic id — unlike ordinary character creation, spawned mob ids are not
+auto-derived. The reference behavior, `conformance:wraith`, always builds one fixed
+`"campaign-mob:wraith"` snapshot.
+
+`World::maybe_spawn(room, cat)` is the port of TS `EncounterTable.maybeSpawn` and runs
+the same gate sequence:
+
+1. **First-visit-only.** The room is marked visited **unconditionally** on first visit —
+   before any other check — so a suppressed spawn still consumes the room's one shot.
+   An already-visited room short-circuits immediately.
+2. **Active-occupant guard.** Suppressed if the room already holds an active (non-KO)
+   non-party occupant.
+3. **No-formations guard.** Suppressed if the encounter table has no registered
+   formations.
+4. **Threshold roll.** `threshold = clamp(baseChance * spawnModifier, 0, 100)`; a
+   `roll(100)` above the threshold suppresses the spawn.
+5. **Weighted select.** A second `roll(totalWeight)` picks one formation by cumulative
+   weight, exactly as the TS table does.
+
+If all gates pass, the chosen behavior's `build` runs against a read-only
+`CampaignView`, and each returned mob is placed: `origin` is set to `"campaign"`, the
+mob is inserted into the character roster and pushed onto the room's `occupant_ids`,
+and the room's enter-phase scenes fire **silently** — same `fire_scenes` path scenes
+otherwise use, but the cues are discarded, matching the TS `[PLACE]` behavior of not
+narrating a spawn's own arrival. `maybe_spawn` itself emits no cues; only the spawn's
+subsequent detection (below) does.
+
+`PlayerCharacter.move`'s player-only tail runs its steps in this order, all **after**
+`record_action` (so any turn-end/reconcile from the budget-exhausting move happens
+first): `maybe_spawn` → `NOTE_ENCOUNTERS` → room codex. Because the spawn runs before
+the occupant scan, a freshly spawned mob is picked up by that same move's encounter
+detection and gets its own `Encounter` cue, staged after the move's `Action` cue and
+any turn-end cues.
+
+**v1 simplifications:** `build` is rng-free (the reference formation always returns the
+same fixed mob), and `spawnModifier` is modeled as an integer rather than a fractional
+multiplier.
