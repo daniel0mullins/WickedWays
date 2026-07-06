@@ -19,6 +19,7 @@ mod items_actions;
 mod movement;
 mod turn;
 pub mod view;
+pub mod victory;
 
 #[cfg(test)]
 pub mod test_support;
