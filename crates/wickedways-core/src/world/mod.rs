@@ -9,6 +9,7 @@ pub mod gate;
 pub mod history;
 pub mod ids;
 pub mod mechanics;
+pub mod formations;
 pub mod resolve;
 pub mod rng;
 pub mod scenes;
