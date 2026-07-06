@@ -2,9 +2,11 @@
 //! Mirrors `src/lib/character/character.ts` `go` (:1047-1063) and `move`/`#enterRoom`
 //! (:1018-1032) plus `src/lib/room.ts` `isLit` (:113-211).
 //!
-//! Scenes are NOT fired (deferred to sub-plan 6). Keyed exits are evaluated via
-//! the `ExitBehavior` registry (`crate::world::exits::exit_behavior`, sub-plan 6c-1);
-//! an unregistered `behavior_key` surfaces as `Err(ProceduralViolation)`.
+//! Scenes fire on room enter/exit via the `SceneBehavior` registry
+//! (`crate::world::scenes::scene_behavior`, sub-plan 6c-2): exit-phase scenes of
+//! the departed room fire before the occupant is removed, enter-phase scenes of
+//! the entered room fire after the occupant is added and before the visibility
+//! cue. An unregistered scene `behavior_key` surfaces as `Err(ProceduralViolation)`.
 use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::string::ToString;
@@ -133,6 +135,59 @@ impl World {
         self.move_to(actor, dest, cat, cues)
     }
 
+    /// Fire every scene of the given `phase` registered on `room_id`, in snapshot
+    /// order. Each firing may mutate its own `state` and returns mechanic cues,
+    /// pushed onto `cues` as `PresentationCue::Mechanic`. Mirrors TS
+    /// `Room.enterRoom`/`exitRoom` → `scene.playScene(phase, room)`.
+    ///
+    /// An unregistered `behavior_key` on a matching-phase scene →
+    /// `Err(ProceduralViolation)` (mirrors TS `registry.scene()`'s `#require`).
+    fn fire_scenes(
+        &mut self,
+        room_id: &RoomId,
+        phase: &str,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
+        // Skip the view build for the common scene-less / no-matching-phase case.
+        let has_match = self
+            .rooms
+            .get(room_id)
+            .map(|r| r.scenes.iter().any(|s| s.phase == phase))
+            .unwrap_or(false);
+        if !has_match {
+            return Ok(());
+        }
+        let view = self
+            .room_view(room_id, cat)
+            .ok_or_else(|| ProceduralViolation("scene room missing".into()))?;
+        let room = self
+            .rooms
+            .get_mut(room_id)
+            .ok_or_else(|| ProceduralViolation("scene room missing".into()))?;
+        let mut emitted: Vec<MechanicCue> = Vec::new();
+        for scene in room.scenes.iter_mut() {
+            if scene.phase != phase {
+                continue;
+            }
+            let behavior = crate::world::scenes::scene_behavior(&scene.behavior_key).ok_or_else(
+                || {
+                    ProceduralViolation(format!(
+                        "Scene behavior '{}' is not registered.",
+                        scene.behavior_key
+                    ))
+                },
+            )?;
+            if behavior.can_play(&view, &scene.state) {
+                emitted.extend(behavior.run_script(&view, &mut scene.state));
+            }
+        }
+        for cue in emitted {
+            cues.push(PresentationCue::Mechanic { cue });
+        }
+        Ok(())
+    }
+
     /// Move `actor` to `room`, updating occupancy in both rooms, emitting a
     /// visibility cue if the destination is dark, then recording the action
     /// (budget tick + history + action cue). Mirrors TS `Character.move` (:1018-1032)
@@ -147,11 +202,13 @@ impl World {
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
-        // Exit old room — retain all occupants that are not the actor.
-        // Scene exit firing is deferred to sub-plan 6.
+        // Exit old room — fire exit-phase scenes first (mover still an occupant),
+        // then retain all occupants that are not the actor. Mirrors TS
+        // `Room.exitRoom` (play "exit" scenes → delete occupant).
         if let Some(prev) =
             self.characters.get(actor).and_then(|c| c.current_room_id.clone())
         {
+            self.fire_scenes(&prev, "exit", cat, cues)?;
             if let Some(r) = self.rooms.get_mut(&prev) {
                 r.occupant_ids.retain(|id| id != actor);
             }
@@ -166,6 +223,12 @@ impl World {
                 r.occupant_ids.push(actor.clone());
             }
         }
+
+        // Fire enter-phase scenes now that the actor is an occupant of `room`,
+        // BEFORE the visibility cue. Mirrors TS `Room.enterRoom` (add occupant →
+        // play "enter" scenes) inside `#enterRoom`, which runs before `move`'s
+        // visibility cue.
+        self.fire_scenes(&room, "enter", cat, cues)?;
 
         // Visibility cue when the destination is dark (mirrors TS `move` :1021-1027).
         if !self.is_lit(&room) {
@@ -523,6 +586,91 @@ mod tests {
         use crate::world::descriptor::Catalog;
         let mut w = world_two_rooms(false);
         w.make_north_exit_keyed("nope:not-registered");
+        let mut cues = Vec::new();
+        assert!(w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).is_err());
+    }
+
+    /// Attach a `conformance:visit-counter` scene to `room` with the given phase and
+    /// starting count. Mirrors how RoomSnapshot carries scenes.
+    fn attach_scene(w: &mut crate::world::World, room: &str, phase: &str, count: i64) {
+        use crate::world::snapshot::SceneSnapshot;
+        if let Some(r) = w.rooms.get_mut(&rid(room)) {
+            r.scenes.push(SceneSnapshot {
+                id: alloc::format!("{room}-{phase}-scene"),
+                behavior_key: "conformance:visit-counter".into(),
+                phase: phase.into(),
+                state: serde_json::json!({ "count": count }),
+            });
+        }
+    }
+
+    #[test]
+    fn enter_scene_fires_after_occupant_add_and_emits_cue_before_visibility() {
+        let mut w = world_two_rooms(/*next_dark=*/true); // dark → a visibility cue follows
+        attach_scene(&mut w, "next", "enter", 0);
+        let mut cues = Vec::new();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+
+        // scene mutated its own state (count 0 → 1), mover was an occupant when it fired
+        let scene = &w.rooms[&rid("next")].scenes[0];
+        assert_eq!(scene.state["count"], serde_json::json!(1));
+
+        // cue order: scene mechanic cue BEFORE the visibility cue BEFORE the move action cue
+        let mech = cues.iter().position(|c| matches!(c,
+            PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The Next stirs (visit 1)."))).unwrap();
+        let vis = cues.iter().position(|c| matches!(c, PresentationCue::Visibility { .. })).unwrap();
+        let mv = cues.iter().position(|c| matches!(c, PresentationCue::Action { action: ActionKind::Move, .. })).unwrap();
+        assert!(mech < vis && vis < mv, "scene cue precedes visibility precedes move; got {cues:?}");
+    }
+
+    #[test]
+    fn exit_scene_fires_before_occupant_removal() {
+        let mut w = world_two_rooms(false);
+        attach_scene(&mut w, "start", "exit", 0);
+        let mut cues = Vec::new();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        // exit scene on the departed room fired (count 0 → 1)
+        assert_eq!(w.rooms[&rid("start")].scenes[0].state["count"], serde_json::json!(1));
+        // its cue is the FIRST cue (before any enter/visibility/move cue for the new room)
+        assert!(matches!(&cues[0],
+            PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The Start stirs (visit 1).")));
+    }
+
+    #[test]
+    fn exit_scene_then_enter_scene_ordering_in_one_move() {
+        let mut w = world_two_rooms(false);
+        attach_scene(&mut w, "start", "exit", 0);
+        attach_scene(&mut w, "next", "enter", 0);
+        let mut cues = Vec::new();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        let exit_idx = cues.iter().position(|c| matches!(c,
+            PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The Start stirs (visit 1)."))).unwrap();
+        let enter_idx = cues.iter().position(|c| matches!(c,
+            PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The Next stirs (visit 1)."))).unwrap();
+        assert!(exit_idx < enter_idx, "old-room exit-scene cue precedes new-room enter-scene cue");
+    }
+
+    #[test]
+    fn scene_precondition_cap_stops_firing() {
+        let mut w = world_two_rooms(false);
+        attach_scene(&mut w, "next", "enter", 3); // already at the cap
+        let mut cues = Vec::new();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        // no mutation, no scene cue
+        assert_eq!(w.rooms[&rid("next")].scenes[0].state["count"], serde_json::json!(3));
+        assert!(!cues.iter().any(|c| matches!(c,
+            PresentationCue::Mechanic { cue } if cue.text.as_deref().map(|t| t.contains("stirs")).unwrap_or(false))));
+    }
+
+    #[test]
+    fn unregistered_scene_behavior_key_errors() {
+        let mut w = world_two_rooms(false);
+        if let Some(r) = w.rooms.get_mut(&rid("next")) {
+            r.scenes.push(crate::world::snapshot::SceneSnapshot {
+                id: "bad".into(), behavior_key: "nope:unregistered".into(),
+                phase: "enter".into(), state: serde_json::json!({}),
+            });
+        }
         let mut cues = Vec::new();
         assert!(w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).is_err());
     }
