@@ -256,82 +256,6 @@ impl World {
             .map(|c| matches!(c.kind, crate::world::snapshot::CharacterKind::Player))
             .unwrap_or(false);
 
-        // NOTE_ENCOUNTERS (campaign.ts:777-792): for each non-party, non-KO occupant of
-        // the entered room, deduped per `${mover}:${occupant}` in campaign.encountered,
-        // record a mob codex entry (BEFORE the room record) and (later) emit an encounter
-        // cue (AFTER the move action cue).
-        let mut encounter_refs: Vec<EntityRef> = Vec::new();
-        if is_player {
-            let party: BTreeSet<CharacterId> = self.campaign.party_ids.iter().cloned().collect();
-            let occupants: Vec<CharacterId> = self.rooms.get(&room)
-                .map(|r| r.occupant_ids.clone()).unwrap_or_default();
-            for occ in occupants {
-                if party.contains(&occ) { continue; }
-                if self.is_ko(&occ) { continue; }
-                let key = format!("{}:{}", actor.0, occ.0);
-                if self.campaign.encountered.iter().any(|k| k == &key) { continue; }
-                self.campaign.encountered.push(key);
-                // mob codex record (first-write-wins per mob::<name>), snapshot {name, stats}.
-                let (name, stats) = self.characters.get(&occ)
-                    .map(|c| (c.name.clone(), (c.stats.health, c.stats.sanity, c.stats.energy)))
-                    .unwrap_or_default();
-                self.record_codex(
-                    "mob", &name,
-                    serde_json::json!({ "name": name, "stats": { "health": stats.0, "sanity": stats.1, "energy": stats.2 } }),
-                    Some(&actor.0), Some(&room.0),
-                );
-                encounter_refs.push(self.entity_ref_char(&occ));
-            }
-        }
-
-        if is_player {
-            // 1. maybeSpawn: mark the destination room as visited in the encounter table.
-            //    Mirrors encounter-table.ts maybeSpawn (:83-84) — first visit wins.
-            let room_str = serde_json::Value::String(room.0.clone());
-            if let Some(visited) = self.campaign.encounter_table
-                .get_mut("visited")
-                .and_then(|v| v.as_array_mut())
-            {
-                if !visited.contains(&room_str) {
-                    visited.push(room_str);
-                }
-            }
-
-            // 2. RECORD_ENCOUNTER({kind:"room", room}): add a codex entry for the room
-            //    (first-write-wins, keyed by room id). Mirrors codex.ts record() and
-            //    PlayerCharacter.move :176.
-            let room_id_str = room.0.clone();
-            let already_in_codex = if let Some(arr) = self.codex.as_array() {
-                arr.iter().any(|e| {
-                    e.get("kind").and_then(|v| v.as_str()) == Some("room")
-                        && e.get("key").and_then(|v| v.as_str()) == Some(&room_id_str)
-                })
-            } else {
-                false
-            };
-
-            if !already_in_codex {
-                let (room_name_str, room_desc) = self.rooms.get(&room)
-                    .map(|r| (r.name.clone(), r.description.clone()))
-                    .unwrap_or_default();
-                let actor_id_str = actor.0.clone();
-                let round = self.campaign.round;
-                let entry = serde_json::json!({
-                    "kind": "room",
-                    "key": room_id_str,
-                    "snapshot": { "name": room_name_str, "description": room_desc },
-                    "firstSeen": {
-                        "round": round,
-                        "characterId": actor_id_str,
-                        "roomId": room_id_str
-                    }
-                });
-                if let Some(arr) = self.codex.as_array_mut() {
-                    arr.push(entry);
-                }
-            }
-        }
-
         // record_action(move): tick budget, append history, emit action cue.
         // Budget tick mirrors TS `recordAction` (:530-532): `actions_this_round += 1`.
         // The `record_action` call below also conditionally ends the turn (reconcile)
@@ -359,10 +283,63 @@ impl World {
         // calls `super.move(room)` — which runs `recordAction` to completion, including
         // any `endTurn`/reconcile — THEN emits NOTE_ENCOUNTERS.
         self.record_action(actor, true, "move", cat, cues)?;
-        // Encounter cues (after the move action cue AND any turn-end cues, matching
-        // TS super.move → NOTE_ENCOUNTERS).
-        for r in encounter_refs {
-            cues.push(PresentationCue::Encounter { mob: r, room: EntityRef { id: room.0.clone(), name: room_name.clone() }, sound: None });
+
+        // PlayerCharacter.move tail (player-character.ts:169-176), AFTER super.move's
+        // recordAction: maybeSpawn → NOTE_ENCOUNTERS → room codex. Spawned mobs land
+        // before the occupant scan; spawn rng falls after any turn-end rng.
+        if is_player {
+            // maybeSpawn: roll/select/build/place (marks visited; fires enter-scenes silently).
+            self.maybe_spawn(&room, cat)?;
+
+            // NOTE_ENCOUNTERS: scan occupants (now incl. spawned), skip party/KO, dedup on
+            // "{actor}:{occ}" in campaign.encountered; record mob codex; stage encounter cues.
+            let party: BTreeSet<CharacterId> = self.campaign.party_ids.iter().cloned().collect();
+            let occupants: Vec<CharacterId> =
+                self.rooms.get(&room).map(|r| r.occupant_ids.clone()).unwrap_or_default();
+            let mut encounter_refs: Vec<EntityRef> = Vec::new();
+            for occ in occupants {
+                if party.contains(&occ) { continue; }
+                if self.is_ko(&occ) { continue; }
+                let key = format!("{}:{}", actor.0, occ.0);
+                if self.campaign.encountered.iter().any(|k| k == &key) { continue; }
+                self.campaign.encountered.push(key);
+                let (name, stats) = self.characters.get(&occ)
+                    .map(|c| (c.name.clone(), (c.stats.health, c.stats.sanity, c.stats.energy)))
+                    .unwrap_or_default();
+                self.record_codex(
+                    "mob", &name,
+                    serde_json::json!({ "name": name, "stats": { "health": stats.0, "sanity": stats.1, "energy": stats.2 } }),
+                    Some(&actor.0), Some(&room.0),
+                );
+                encounter_refs.push(self.entity_ref_char(&occ));
+            }
+
+            // RECORD_ENCOUNTER({kind:"room"}): first-write-wins room codex entry.
+            let room_id_str = room.0.clone();
+            let already_in_codex = self.codex.as_array()
+                .map(|arr| arr.iter().any(|e|
+                    e.get("kind").and_then(|v| v.as_str()) == Some("room")
+                    && e.get("key").and_then(|v| v.as_str()) == Some(&room_id_str)))
+                .unwrap_or(false);
+            if !already_in_codex {
+                let (room_name_str, room_desc) = self.rooms.get(&room)
+                    .map(|r| (r.name.clone(), r.description.clone())).unwrap_or_default();
+                let entry = serde_json::json!({
+                    "kind": "room", "key": room_id_str,
+                    "snapshot": { "name": room_name_str, "description": room_desc },
+                    "firstSeen": { "round": self.campaign.round, "characterId": actor.0.clone(), "roomId": room_id_str }
+                });
+                if let Some(arr) = self.codex.as_array_mut() { arr.push(entry); }
+            }
+
+            // Encounter cues last (after the move action cue AND any turn-end cues).
+            for r in encounter_refs {
+                cues.push(PresentationCue::Encounter {
+                    mob: r,
+                    room: EntityRef { id: room.0.clone(), name: room_name.clone() },
+                    sound: None,
+                });
+            }
         }
         Ok(())
     }
@@ -501,6 +478,30 @@ mod tests {
         assert!(mob_idx < room_idx, "mob codex record precedes the room codex record");
         // dedup: the composite key `${mover}:${occupant}` is recorded
         assert!(w.campaign.encountered.iter().any(|k| k == "pc:grue"), "encountered key recorded for dedup");
+    }
+
+    #[test]
+    fn player_move_into_fresh_room_spawns_and_encounters() {
+        use crate::world::ids::CharacterId;
+        let mut w = world_two_rooms(false);
+        // arm the encounter table with a guaranteed spawn
+        w.campaign.encounter_table = serde_json::json!({
+            "baseChance": 100, "visited": [],
+            "formations": [ { "behaviorKey": "conformance:wraith", "weight": 1 } ]
+        });
+        if let Some(r) = w.rooms.get_mut(&rid("next")) { r.spawn_modifier = 1; }
+        let mut cues = Vec::new();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+
+        // wraith spawned into "next"
+        let wid = CharacterId("campaign-mob:wraith".into());
+        assert_eq!(w.characters[&wid].current_room_id, Some(rid("next")));
+        assert!(w.rooms[&rid("next")].occupant_ids.contains(&wid));
+
+        // encounter cue for the wraith comes AFTER the move action cue
+        let mv = cues.iter().position(|c| matches!(c, PresentationCue::Action { action: ActionKind::Move, .. })).unwrap();
+        let enc = cues.iter().position(|c| matches!(c, PresentationCue::Encounter { mob, .. } if mob.id == "campaign-mob:wraith")).unwrap();
+        assert!(enc > mv, "spawned-mob encounter cue comes after the move action cue");
     }
 
     #[test]
