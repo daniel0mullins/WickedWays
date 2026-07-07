@@ -6,7 +6,7 @@
 import * as s from "../scripted/builders.ts";
 import type { BehaviorScript, Expr, EffectTemplate } from "../scripted/builders.ts";
 import { LORE } from "./content.js";
-import { ExitBehaviors, Items, Mechanics } from "./ids.js";
+import { Conditions, ExitBehaviors, Items, Mechanics, Rooms } from "./ids.js";
 
 // ── dread (oracle: mechanics.ts:5-11) ────────────────────────────────────────
 // onTurnStart: hasEquipped(lantern) ? [] : [adjustStat(actor, sanity, -1)]
@@ -81,8 +81,30 @@ export function doorScript(keyCode: string, name: string, opened: string): Behav
   });
 }
 
-/** Every Hollow House behavior, keyed exactly as the engine resolves them.
- *  (Victory conditions join in plan Task 14.) */
+// ── victory conditions (oracle: index.ts:23-28) ──────────────────────────────
+// reached-attic-with-journal: pc?.currentRoom?.name === Attic && pc holds the journal.
+// party[0] missing / no room -> Null propagates -> false (mirrors `pc?.`).
+export const reachedAtticWithJournalScript: BehaviorScript = s.victory(
+  s.and(
+    s.eq(s.get(s.get(s.first(s.party), "room"), "name"), s.lit(Rooms.Attic)),
+    s.hasItem(s.first(s.party), Items.Journal),
+  ),
+);
+
+// sanity-zero: party.some(p => p.effectiveStat(Sanity) <= 0)
+export const sanityZeroScript: BehaviorScript = s.victory(
+  s.some(s.party, s.lte(s.get(s.element, "sanity"), s.lit(0))),
+);
+
+// party-down: party.length > 0 && party.every(p => p.status.includes(KO))
+export const partyDownScript: BehaviorScript = s.victory(
+  s.and(
+    s.gt(s.length(s.party), s.lit(0)),
+    s.every(s.party, s.includes(s.get(s.element, "status"), s.lit("ko"))),
+  ),
+);
+
+/** Every Hollow House behavior, keyed exactly as the engine resolves them. */
 export function hollowHouseBehaviors(): Record<string, BehaviorScript> {
   return {
     [Mechanics.Dread]: dreadScript,
@@ -92,5 +114,8 @@ export function hollowHouseBehaviors(): Record<string, BehaviorScript> {
       "The brass key turns; the study door swings open."),
     [ExitBehaviors.AtticDoor]: doorScript("iron", "attic door",
       "The iron key grinds in the lock; the attic stairs open above you."),
+    [Conditions.ReachedAtticWithJournal]: reachedAtticWithJournalScript,
+    [Conditions.SanityZero]: sanityZeroScript,
+    [Conditions.PartyDown]: partyDownScript,
   };
 }

@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "campaign:Scripted Victory Sanity (conformance)",
+    "title": "Scripted Victory Sanity (conformance)",
+    "maxRounds": 10,
+    "round": 0,
+    "started": true,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [
+      {
+        "key": "sanity-zero",
+        "narration": {
+          "text": "The dark gets in. Your thoughts come apart like wet paper, and the Hollow House keeps what is left of you."
+        }
+      }
+    ],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "player:Ada"
+    ],
+    "actedThisRound": [],
+    "gmId": "player:Ada",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "heir",
+        "name": "Heir",
+        "baseStats": {
+          "health": 12,
+          "sanity": 1,
+          "energy": 5
+        }
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 0,
+      "visited": [
+        "room:Foyer"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": [
+      {
+        "key": "dread",
+        "state": {}
+      }
+    ]
+  },
+  "rooms": [
+    {
+      "id": "room:Foyer",
+      "name": "Foyer",
+      "description": "The entrance hall.",
+      "exits": {},
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "player:Ada"
+      ],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "player:Ada",
+      "name": "Ada",
+      "stats": {
+        "health": 12,
+        "sanity": 1,
+        "energy": 5
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "room:Foyer",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Foyer",
+            "name": "Foyer"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "heir"
+    }
+  ],
+  "items": [],
+  "loot": [],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "room:Foyer",
+      "snapshot": {
+        "name": "Foyer",
+        "description": "The entrance hall."
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "room:Foyer"
+      }
+    }
+  ]
+}

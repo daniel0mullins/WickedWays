@@ -1,13 +1,17 @@
 //! Adapter ops: satisfy the existing Phase-1 traits by interpreting a stored AST.
+use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 use serde_json::Value as Json;
 
-use crate::script::ast::{ExitScript, MechanicScript, Stmt};
+use crate::script::ast::{ExitScript, MechanicScript, Stmt, VictoryScript};
 use crate::script::eval::{eval_damage, eval_effects, eval_predicate, eval_script, Ctx, CtxState, RoomSource};
+use crate::world::descriptor::Catalog;
 use crate::world::exits::ExitBehavior;
 use crate::world::mechanics::{
-    ActionCtx, CharacterView, DamageView, Effect, HookCtx, MechanicOp, TransformResult, TurnCtx,
+    ActionCtx, CampaignView, CharacterView, DamageView, Effect, HookCtx, MechanicOp,
+    TransformResult, TurnCtx,
 };
+use crate::world::World;
 
 /// A `MechanicOp` bound to a borrowed script (built per fire-point by
 /// `resolve_mechanic_op` — no cloning of the AST).
@@ -124,4 +128,30 @@ impl ExitBehavior for ScriptedExit<'_> {
     }
     fn pass_message(&self) -> Option<&str> { self.script.pass_message.as_deref() }
     fn fail_message(&self) -> Option<&str> { self.script.fail_message.as_deref() }
+}
+
+/// Victory adapter (see plan deviation note 2). NOT a `VictoryConditionBehavior`
+/// impl — the trait's `test(&CampaignView)` cannot carry the World access the
+/// lazy `character.room` resolver needs; the `resolve_outcome` seam calls this
+/// directly for the Scripted arm. Victory is the ONE context the TS oracle
+/// evaluates against the LIVE campaign (`pc.currentRoom`), so it gets the lazy,
+/// memoizing World-backed room resolver (mechanic/exit contexts stay `None`).
+pub struct ScriptedVictory<'a> {
+    pub script: &'a VictoryScript,
+}
+
+impl ScriptedVictory<'_> {
+    pub fn test(&self, view: &CampaignView, world: &World, cat: &Catalog) -> bool {
+        let mut cx = Ctx {
+            view: Some(view),
+            state: CtxState::None,
+            actor: None,
+            action: None,
+            damage: None,
+            element: None,
+            rng: None,
+            rooms: RoomSource::World { world, cat, cache: BTreeMap::new() },
+        };
+        eval_predicate(&self.script.test, &mut cx)
+    }
 }

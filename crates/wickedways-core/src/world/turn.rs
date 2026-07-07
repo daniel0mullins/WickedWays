@@ -5,7 +5,6 @@ use alloc::vec::Vec;
 use crate::error::ProceduralViolation;
 use crate::presentation::{CampaignOutcome, OutcomeNarration, PresentationCue};
 use crate::world::snapshot::VictoryConditionSnapshot;
-use crate::world::victory::victory_behavior;
 use crate::stats::StatType;
 use crate::world::afflictions::{default_affliction_config, Status};
 use crate::world::descriptor::Catalog;
@@ -203,19 +202,24 @@ impl World {
         cat: &Catalog,
     ) -> Result<(CampaignOutcome, Option<String>), ProceduralViolation> {
         let view = self.build_campaign_view(cat);
-        for c in &self.campaign.lose_conditions {
-            let b = victory_behavior(&c.key).ok_or_else(|| {
+        let fired = |c: &VictoryConditionSnapshot, this: &World|
+            -> Result<bool, ProceduralViolation> {
+            match crate::world::victory::resolve_victory(&c.key, cat).ok_or_else(|| {
                 ProceduralViolation(format!("No condition registered for key '{}'.", c.key))
-            })?;
-            if b.test(&view) {
+            })? {
+                crate::world::victory::ResolvedVictory::Native(b) => Ok(b.test(&view)),
+                crate::world::victory::ResolvedVictory::Scripted(script) => {
+                    Ok(crate::script::ops::ScriptedVictory { script }.test(&view, this, cat))
+                }
+            }
+        };
+        for c in &self.campaign.lose_conditions {
+            if fired(c, self)? {
                 return Ok((CampaignOutcome::Lost, Some(c.key.clone())));
             }
         }
         for c in &self.campaign.win_conditions {
-            let b = victory_behavior(&c.key).ok_or_else(|| {
-                ProceduralViolation(format!("No condition registered for key '{}'.", c.key))
-            })?;
-            if b.test(&view) {
+            if fired(c, self)? {
                 return Ok((CampaignOutcome::Won, Some(c.key.clone())));
             }
         }
@@ -716,6 +720,51 @@ mod tests {
         assert_eq!(ch.actions_this_round, 2, "free call must not increment the budget");
         assert_eq!(ch.stats.health, 0.0, "free call at cap -> end_turn -> reconcile floored base");
         assert!(ch.afflictions.is_active(Status::Ko), "free call at cap -> end_turn latches KO");
+    }
+
+    #[test]
+    fn end_round_resolves_a_scripted_victory_with_room_reads() {
+        use crate::world::snapshot::VictoryConditionSnapshot;
+        // reached-room shape: party[0].room.name == "Start" (true immediately)
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "behaviors": { "in-start": { "family": "victory", "script": {
+                "test": { "kind": "bin", "op": "eq",
+                    "left": { "kind": "get",
+                        "of": { "kind": "get",
+                            "of": { "kind": "first", "list": { "kind": "party" } },
+                            "field": "room" },
+                        "field": "name" },
+                    "right": { "kind": "lit", "value": "Start" } } } } }
+        })).unwrap();
+        let mut w = crate::world::test_support::world_two_rooms(false);
+        w.campaign.started = true;
+        w.campaign.win_conditions.push(VictoryConditionSnapshot {
+            key: "in-start".into(), narration: None,
+        });
+        // every party member has acted -> end_round may resolve
+        for id in w.campaign.party_ids.clone() {
+            w.campaign.acted_this_round.push(id);
+        }
+        let mut cues = Vec::new();
+        w.end_round(&cat, &mut cues).unwrap();
+        assert_eq!(w.campaign.outcome, crate::presentation::CampaignOutcome::Won);
+        assert_eq!(w.campaign.outcome_reason.as_deref(), Some("in-start"));
+        assert!(cues.iter().any(|c| matches!(c, PresentationCue::Resolution { .. })));
+    }
+
+    #[test]
+    fn resolve_outcome_unknown_victory_key_message_is_unchanged() {
+        use crate::world::snapshot::VictoryConditionSnapshot;
+        let mut w = world_with_party(&["pc"], 10);
+        w.campaign.started = true;
+        w.campaign.lose_conditions.push(VictoryConditionSnapshot {
+            key: "ghost".into(), narration: None,
+        });
+        w.campaign.acted_this_round.push(cid("pc"));
+        let mut cues = Vec::new();
+        let err = w.end_round(&Catalog::default(), &mut cues).unwrap_err();
+        assert!(err.0.contains("No condition registered for key 'ghost'."));
     }
 
     #[test]

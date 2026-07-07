@@ -308,6 +308,20 @@ impl World {
                 }
             }
         }
+        // Task 14: victory condition keys resolve native-first then catalog; a
+        // scripted (non-native) victory behavior is also shape-checked at load.
+        for c in self.campaign.lose_conditions.iter().chain(self.campaign.win_conditions.iter()) {
+            if crate::world::victory::resolve_victory(&c.key, cat).is_none() {
+                return Err(ProceduralViolation(format!(
+                    "No condition registered for key '{}'.", c.key
+                )));
+            }
+            if let Some(b) = cat.behaviors.get(&c.key) {
+                if crate::world::victory::victory_behavior(&c.key).is_none() {
+                    crate::script::validate_behavior(&c.key, b)?;
+                }
+            }
+        }
         Ok(())
     }
 
@@ -890,6 +904,17 @@ mod tests {
         w.exits.get_mut(&exit_id).unwrap().behavior_key = Some("ghost-door".into());
         let err = w.validate_mechanics(&Catalog::default()).unwrap_err();
         assert!(err.0.contains("Exit behavior 'ghost-door' is not registered."));
+    }
+
+    #[test]
+    fn validate_mechanics_rejects_an_unregistered_victory_key() {
+        use crate::world::snapshot::VictoryConditionSnapshot;
+        let mut w = world_with_party(&["pc"], 10);
+        w.campaign.win_conditions.push(VictoryConditionSnapshot {
+            key: "ghost-win".into(), narration: None,
+        });
+        let err = w.validate_mechanics(&Catalog::default()).unwrap_err();
+        assert!(err.0.contains("No condition registered for key 'ghost-win'."));
     }
 
     #[test]

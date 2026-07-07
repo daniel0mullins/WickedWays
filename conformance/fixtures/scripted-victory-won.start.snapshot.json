@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "campaign:Scripted Victory Won (conformance)",
+    "title": "Scripted Victory Won (conformance)",
+    "maxRounds": 10,
+    "round": 0,
+    "started": true,
+    "outcome": "ongoing",
+    "winConditions": [
+      {
+        "key": "reached-attic-with-journal",
+        "narration": {
+          "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
+        }
+      }
+    ],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "player:Ada"
+    ],
+    "actedThisRound": [],
+    "gmId": "player:Ada",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "heir",
+        "name": "Heir",
+        "baseStats": {
+          "health": 12,
+          "sanity": 16,
+          "energy": 5
+        }
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 0,
+      "visited": [
+        "room:Foyer"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "room:Foyer",
+      "name": "Foyer",
+      "description": "The entrance hall.",
+      "exits": {
+        "north": "exit:Foyer|Hall"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "player:Ada"
+      ],
+      "lootIds": [
+        "loot:foyer-table"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "room:Hall",
+      "name": "Hall",
+      "description": "A long central hall.",
+      "exits": {
+        "south": "exit:Foyer|Hall",
+        "north": "exit:Attic|Hall"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "room:Attic",
+      "name": "Attic",
+      "description": "The attic, under the bare ribs of the roof.",
+      "exits": {
+        "south": "exit:Attic|Hall"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [
+    {
+      "id": "exit:Foyer|Hall",
+      "endpointIds": [
+        "room:Foyer",
+        "room:Hall"
+      ],
+      "state": {}
+    },
+    {
+      "id": "exit:Attic|Hall",
+      "endpointIds": [
+        "room:Hall",
+        "room:Attic"
+      ],
+      "state": {}
+    }
+  ],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "player:Ada",
+      "name": "Ada",
+      "stats": {
+        "health": 12,
+        "sanity": 16,
+        "energy": 5
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "room:Foyer",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Foyer",
+            "name": "Foyer"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "heir"
+    }
+  ],
+  "items": [
+    {
+      "kind": "item",
+      "id": "loot:foyer-table:item#0",
+      "behaviorKey": "journal",
+      "modifier": 0
+    }
+  ],
+  "loot": [
+    {
+      "id": "loot:foyer-table",
+      "description": "A hall table.",
+      "capacity": 3,
+      "contentIds": [
+        "loot:foyer-table:item#0"
+      ]
+    }
+  ],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "room:Foyer",
+      "snapshot": {
+        "name": "Foyer",
+        "description": "The entrance hall."
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "room:Foyer"
+      }
+    }
+  ]
+}
