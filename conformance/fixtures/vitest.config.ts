@@ -13,6 +13,7 @@ export default defineConfig({
       "conformance/fixtures/mob-drop.gen.test.ts",
       "conformance/fixtures/material-drop.gen.test.ts",
       "conformance/fixtures/mechanics.gen.test.ts",
+      "conformance/fixtures/scripted-mechanics.gen.test.ts",
       "conformance/fixtures/mechanics-turnend.gen.test.ts",
       "conformance/fixtures/mechanics-action.gen.test.ts",
       "conformance/fixtures/keyed-exit.gen.test.ts",
