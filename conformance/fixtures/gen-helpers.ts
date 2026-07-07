@@ -1,5 +1,5 @@
 import type { Campaign } from "wickedways/lib/campaign";
-import { view } from "../../packages/play-runtime/src/viewmodel.ts";
+import { view } from "./oracle-view.ts";
 
 /**
  * Shared helpers for golden generators.

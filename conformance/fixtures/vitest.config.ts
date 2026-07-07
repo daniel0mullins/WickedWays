@@ -28,6 +28,8 @@ export default defineConfig({
       "conformance/fixtures/scripted-victory-won.gen.test.ts",
       "conformance/fixtures/scripted-victory-sanity.gen.test.ts",
       "conformance/fixtures/scripted-victory-partydown.gen.test.ts",
+      "conformance/fixtures/facade-mob-combat.gen.test.ts",
+      "conformance/fixtures/facade-free-vs-advancing.gen.test.ts",
     ],
     environment: "node",
   },
