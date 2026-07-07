@@ -1,0 +1,296 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "campaign:Scripted Doors (conformance)",
+    "title": "Scripted Doors (conformance)",
+    "maxRounds": 10,
+    "round": 0,
+    "started": true,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "player:Ada"
+    ],
+    "actedThisRound": [],
+    "gmId": "player:Ada",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "heir",
+        "name": "Heir",
+        "baseStats": {
+          "health": 10,
+          "sanity": 10,
+          "energy": 10
+        }
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 0,
+      "visited": [
+        "room:Landing"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "room:Landing",
+      "name": "Landing",
+      "description": "The upstairs landing.",
+      "exits": {
+        "west": "exit:Landing|Study",
+        "north": "exit:Attic|Landing",
+        "east": "exit:Landing|Nursery"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "player:Ada"
+      ],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "room:Study",
+      "name": "Study",
+      "description": "A book-lined study.",
+      "exits": {
+        "east": "exit:Landing|Study"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "room:Attic",
+      "name": "Attic",
+      "description": "A cramped attic.",
+      "exits": {
+        "south": "exit:Attic|Landing"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "room:Nursery",
+      "name": "Nursery",
+      "description": "A silent nursery.",
+      "exits": {
+        "west": "exit:Landing|Nursery"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "mob:Wraith"
+      ],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [
+    {
+      "id": "exit:Landing|Study",
+      "endpointIds": [
+        "room:Landing",
+        "room:Study"
+      ],
+      "behaviorKey": "study-door",
+      "name": "study door",
+      "state": {
+        "unlocked": false
+      }
+    },
+    {
+      "id": "exit:Attic|Landing",
+      "endpointIds": [
+        "room:Landing",
+        "room:Attic"
+      ],
+      "behaviorKey": "attic-door",
+      "name": "attic door",
+      "state": {
+        "unlocked": false
+      }
+    },
+    {
+      "id": "exit:Landing|Nursery",
+      "endpointIds": [
+        "room:Landing",
+        "room:Nursery"
+      ],
+      "state": {}
+    }
+  ],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "player:Ada",
+      "name": "Ada",
+      "stats": {
+        "health": 10,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 2,
+      "currentRoomId": "room:Landing",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [
+          "player:Ada:item#dagger"
+        ],
+        "keyIds": []
+      },
+      "equipment": {
+        "leftHand": "player:Ada:item#dagger"
+      },
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Landing",
+            "name": "Landing"
+          },
+          "round": 0
+        },
+        {
+          "kind": "pickUp",
+          "items": [
+            {
+              "id": "player:Ada:item#dagger",
+              "name": "Iron Dagger"
+            }
+          ],
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "heir"
+    },
+    {
+      "kind": "mob",
+      "id": "mob:Wraith",
+      "name": "Wraith",
+      "stats": {
+        "health": 2,
+        "sanity": 4,
+        "energy": 4
+      },
+      "actionsPerRound": 2,
+      "actionsThisRound": 0,
+      "currentRoomId": "room:Nursery",
+      "inventory": {
+        "slots": 2,
+        "itemIds": [],
+        "keyIds": [
+          "mob:Wraith:drop#0"
+        ]
+      },
+      "equipment": {},
+      "history": [],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "origin": "room",
+      "baseEscapeChance": 50,
+      "materialDrops": {},
+      "lightAverse": false,
+      "naturalAttack": {
+        "stat": "sanity",
+        "power": 1
+      }
+    }
+  ],
+  "items": [
+    {
+      "kind": "item",
+      "id": "player:Ada:item#dagger",
+      "behaviorKey": "items/dagger",
+      "durability": 5,
+      "modifier": 3
+    },
+    {
+      "kind": "key",
+      "id": "mob:Wraith:drop#0",
+      "name": "Brass Key",
+      "keyCode": "brass",
+      "consumeOnUse": false
+    }
+  ],
+  "loot": [],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "room:Landing",
+      "snapshot": {
+        "name": "Landing",
+        "description": "The upstairs landing."
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "room:Landing"
+      }
+    },
+    {
+      "kind": "item",
+      "key": "weapon:Iron Dagger",
+      "snapshot": {
+        "name": "Iron Dagger",
+        "type": "weapon",
+        "slot": "hand"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "room:Landing"
+      }
+    }
+  ]
+}

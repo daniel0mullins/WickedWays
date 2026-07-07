@@ -101,9 +101,10 @@ impl World {
         // A behavior-keyed exit: resolve the registry (sub-plan 6) and evaluate
         // canPass / runScript-or-passMessage before moving. Mirrors TS `go` (:4-6).
         if let Some(key) = exit.behavior_key.clone() {
-            let behavior = crate::world::exits::exit_behavior(&key).ok_or_else(|| {
+            let resolved = crate::world::exits::resolve_exit_behavior(&key, cat).ok_or_else(|| {
                 ProceduralViolation(format!("Exit behavior '{key}' is not registered."))
             })?;
+            let behavior = resolved.as_behavior();
             let actor_view = self
                 .character_view(actor, cat)
                 .ok_or_else(|| ProceduralViolation("actor not found".into()))?;
@@ -593,6 +594,54 @@ mod tests {
         w.make_north_exit_keyed("nope:not-registered");
         let mut cues = Vec::new();
         assert!(w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).is_err());
+    }
+
+    /// Put a true Key (kind:"key") with `key_code` into `char_id`'s keyring.
+    fn seed_held_key(w: &mut crate::world::World, char_id: &str, key_code: &str) {
+        use crate::world::snapshot::ItemSnapshot;
+        let item_id = crate::world::ids::ItemId(alloc::format!("key-{key_code}"));
+        w.items.insert(item_id.clone(), ItemSnapshot::Key {
+            id: item_id.clone(), name: alloc::format!("{key_code} key"),
+            key_code: key_code.into(), consume_on_use: false,
+        });
+        if let Some(c) = w.characters.get_mut(&cid(char_id)) {
+            c.inventory.key_ids.push(item_id);
+        }
+    }
+
+    #[test]
+    fn go_resolves_a_scripted_exit_from_the_catalog() {
+        // Same two-room world as the conformance:keyed-door tests, but the
+        // north exit resolves through Catalog.behaviors ("study-door").
+        let cat = crate::world::exits::tests_catalog_with_door("study-door");
+        let mut w = world_two_rooms(false);
+        w.make_north_exit_keyed("study-door");
+        for ex in w.exits.values_mut() {
+            if ex.behavior_key.is_some() { ex.state = serde_json::json!({ "unlocked": false }); }
+        }
+        let start_room = w.characters[&cid("pc")].current_room_id.clone();
+        let mut cues = Vec::new();
+
+        // 1. keyless: blocked, fail cue, no move
+        w.go(&cid("pc"), Direction::North, &cat, &mut cues).unwrap();
+        assert_eq!(w.characters[&cid("pc")].current_room_id, start_room);
+        assert!(cues.iter().any(|c| matches!(c, PresentationCue::Mechanic { cue }
+            if cue.text.as_deref() == Some("The study door won't budge — it's locked."))));
+
+        // 2. with the brass key: unlock narration + move + persisted state
+        seed_held_key(&mut w, "pc", "brass");
+        let mut cues = Vec::new();
+        w.go(&cid("pc"), Direction::North, &cat, &mut cues).unwrap();
+        assert_ne!(w.characters[&cid("pc")].current_room_id, start_room);
+        assert!(cues.iter().any(|c| matches!(c, PresentationCue::Mechanic { cue }
+            if cue.text.as_deref() == Some("The door unlocks."))));
+        assert!(w.exits.values().any(|ex| ex.state.get("unlocked") == Some(&serde_json::json!(true))));
+
+        // 3. re-pass back through the unlocked door: silent (no mechanic cue)
+        let mut cues = Vec::new();
+        w.go(&cid("pc"), Direction::South, &cat, &mut cues).unwrap();
+        assert!(!cues.iter().any(|c| matches!(c, PresentationCue::Mechanic { .. })),
+            "unlocked re-pass must be silent");
     }
 
     /// Attach a `conformance:visit-counter` scene to `room` with the given phase and

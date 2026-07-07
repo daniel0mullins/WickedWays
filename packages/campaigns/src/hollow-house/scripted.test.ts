@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dreadScript, hollowHouseBehaviors, storytellerScript } from "./scripted.ts";
+import { doorScript, dreadScript, hollowHouseBehaviors, storytellerScript } from "./scripted.ts";
 import { LORE } from "./content.js";
 import { Rooms } from "./ids.js";
 
@@ -33,8 +33,29 @@ describe("hollow-house scripted behaviors", () => {
     expect(hasGuard.cond.map.entries[Rooms.Parlor]).toBe(LORE[Rooms.Parlor]);
   });
 
-  it("registers all three mechanic keys", () => {
+  it("door scripts mirror doorBehavior", () => {
+    const door = doorScript("brass", "study door", "It opens.");
+    expect(door).toEqual({
+      family: "exit",
+      script: {
+        canPass: { kind: "bin", op: "or",
+          left: { kind: "stateGet", field: "unlocked", default: false },
+          right: { kind: "hasKey", of: { kind: "actor" }, keyCode: "brass" } },
+        runScript: [{ kind: "when",
+          cond: { kind: "not", expr: { kind: "stateGet", field: "unlocked", default: false } },
+          then: [
+            { kind: "setState", field: "unlocked", value: { kind: "lit", value: true } },
+            { kind: "pass", value: { kind: "lit", value: "It opens." } },
+          ] }],
+        failMessage: "The study door won't budge — it's locked.",
+      },
+    });
+    expect(Object.keys(hollowHouseBehaviors())).toContain("study-door");
+    expect(Object.keys(hollowHouseBehaviors())).toContain("attic-door");
+  });
+
+  it("registers all five behavior keys", () => {
     expect(Object.keys(hollowHouseBehaviors()).sort())
-      .toEqual(["dread", "status-bar", "storyteller"]);
+      .toEqual(["attic-door", "dread", "status-bar", "storyteller", "study-door"]);
   });
 });

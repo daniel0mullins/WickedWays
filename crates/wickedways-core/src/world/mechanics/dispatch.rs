@@ -292,6 +292,22 @@ impl World {
                 }
             }
         }
+        // Task 13: exit behavior keys resolve native-first then catalog; a
+        // scripted (non-native) exit behavior is also shape-checked at load.
+        for exit in self.exits.values() {
+            if let Some(key) = &exit.behavior_key {
+                if crate::world::exits::resolve_exit_behavior(key, cat).is_none() {
+                    return Err(ProceduralViolation(format!(
+                        "Exit behavior '{key}' is not registered."
+                    )));
+                }
+                if let Some(b) = cat.behaviors.get(key) {
+                    if crate::world::exits::exit_behavior(key).is_none() {
+                        crate::script::validate_behavior(key, b)?;
+                    }
+                }
+            }
+        }
         Ok(())
     }
 
@@ -864,6 +880,16 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         w.campaign.mechanics.push(MechanicSnapshot { key: "bad".into(), state: serde_json::json!({}) });
         assert!(w.validate_mechanics(&cat).is_err());
+    }
+
+    #[test]
+    fn validate_mechanics_rejects_an_unregistered_exit_behavior_key() {
+        let mut w = crate::world::test_support::world_two_rooms(false);
+        // stamp an unknown behavior key on the connecting exit
+        let exit_id = w.exits.keys().next().unwrap().clone();
+        w.exits.get_mut(&exit_id).unwrap().behavior_key = Some("ghost-door".into());
+        let err = w.validate_mechanics(&Catalog::default()).unwrap_err();
+        assert!(err.0.contains("Exit behavior 'ghost-door' is not registered."));
     }
 
     #[test]

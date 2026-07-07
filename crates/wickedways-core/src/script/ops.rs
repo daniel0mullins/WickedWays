@@ -2,10 +2,11 @@
 use alloc::vec::Vec;
 use serde_json::Value as Json;
 
-use crate::script::ast::{MechanicScript, Stmt};
-use crate::script::eval::{eval_damage, eval_effects, Ctx, CtxState, RoomSource};
+use crate::script::ast::{ExitScript, MechanicScript, Stmt};
+use crate::script::eval::{eval_damage, eval_effects, eval_predicate, eval_script, Ctx, CtxState, RoomSource};
+use crate::world::exits::ExitBehavior;
 use crate::world::mechanics::{
-    ActionCtx, DamageView, Effect, HookCtx, MechanicOp, TransformResult, TurnCtx,
+    ActionCtx, CharacterView, DamageView, Effect, HookCtx, MechanicOp, TransformResult, TurnCtx,
 };
 
 /// A `MechanicOp` bound to a borrowed script (built per fire-point by
@@ -84,4 +85,43 @@ impl MechanicOp for ScriptedMechanic<'_> {
         let action = cx.action.clone();
         Some(self.run_body(Some(body), &mut cx.base, Some(&actor), Some(&action)))
     }
+}
+
+/// An `ExitBehavior` bound to a borrowed script (built per fire-point by
+/// `resolve_exit_behavior` — no cloning of the AST). Exit contexts have no
+/// campaign view and no room resolver — matching the TS `ExitPrecondition(
+/// character, state)` contract (src/lib/exit.ts:12-14).
+pub struct ScriptedExit<'a> {
+    pub script: &'a ExitScript,
+}
+
+impl ExitBehavior for ScriptedExit<'_> {
+    fn can_pass(&self, actor: &CharacterView, state: &Json) -> bool {
+        let mut cx = Ctx {
+            view: None,
+            state: CtxState::Read(state),
+            actor: Some(actor),
+            action: None,
+            damage: None,
+            element: None,
+            rng: None,
+            rooms: RoomSource::None,
+        };
+        eval_predicate(&self.script.can_pass, &mut cx)
+    }
+    fn run_script(&self, actor: &CharacterView, state: &mut Json) -> Option<alloc::string::String> {
+        let mut cx = Ctx {
+            view: None,
+            state: CtxState::Write(state),
+            actor: Some(actor),
+            action: None,
+            damage: None,
+            element: None,
+            rng: None,
+            rooms: RoomSource::None,
+        };
+        eval_script(&self.script.run_script, &mut cx)
+    }
+    fn pass_message(&self) -> Option<&str> { self.script.pass_message.as_deref() }
+    fn fail_message(&self) -> Option<&str> { self.script.fail_message.as_deref() }
 }

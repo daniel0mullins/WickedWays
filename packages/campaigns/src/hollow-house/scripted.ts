@@ -6,7 +6,7 @@
 import * as s from "../scripted/builders.ts";
 import type { BehaviorScript, Expr, EffectTemplate } from "../scripted/builders.ts";
 import { LORE } from "./content.js";
-import { Items, Mechanics } from "./ids.js";
+import { ExitBehaviors, Items, Mechanics } from "./ids.js";
 
 // ── dread (oracle: mechanics.ts:5-11) ────────────────────────────────────────
 // onTurnStart: hasEquipped(lantern) ? [] : [adjustStat(actor, sanity, -1)]
@@ -65,12 +65,32 @@ export const statusBarScript: BehaviorScript = s.mechanic({
   },
 });
 
+// ── keyed doors (oracle: content.ts doorBehavior, content.ts:23-39) ──────────
+// canPass: state.unlocked || hasKey(keyCode); script: first pass sets unlocked
+// and returns the opened line; no passMessage -> silent re-pass.
+export function doorScript(keyCode: string, name: string, opened: string): BehaviorScript {
+  return s.exit({
+    canPass: s.or(s.stateGet("unlocked", false), s.hasKey(s.actor, keyCode)),
+    runScript: [
+      s.when(s.not(s.stateGet("unlocked", false)), [
+        s.setState("unlocked", s.lit(true)),
+        s.pass(s.lit(opened)),
+      ]),
+    ],
+    failMessage: `The ${name} won't budge — it's locked.`,
+  });
+}
+
 /** Every Hollow House behavior, keyed exactly as the engine resolves them.
- *  (Doors join in plan Task 13; victory conditions in Task 14.) */
+ *  (Victory conditions join in plan Task 14.) */
 export function hollowHouseBehaviors(): Record<string, BehaviorScript> {
   return {
     [Mechanics.Dread]: dreadScript,
     [Mechanics.Storyteller]: storytellerScript(LORE),
     [Mechanics.StatusBar]: statusBarScript,
+    [ExitBehaviors.StudyDoor]: doorScript("brass", "study door",
+      "The brass key turns; the study door swings open."),
+    [ExitBehaviors.AtticDoor]: doorScript("iron", "attic door",
+      "The iron key grinds in the lock; the attic stairs open above you."),
   };
 }

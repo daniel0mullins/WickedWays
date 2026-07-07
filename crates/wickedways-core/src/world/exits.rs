@@ -28,6 +28,41 @@ pub fn exit_behavior(key: &str) -> Option<&'static dyn ExitBehavior> {
     None
 }
 
+/// The resolved exit behavior for a key: a compiled-in native behavior, or a
+/// scripted behavior interpreted from `catalog.behaviors`. Mirrors
+/// `ResolvedMechanicOp` (Task 9), but for exits.
+pub enum ResolvedExitBehavior<'a> {
+    Native(&'static dyn ExitBehavior),
+    Scripted(crate::script::ops::ScriptedExit<'a>),
+}
+
+impl ResolvedExitBehavior<'_> {
+    pub fn as_behavior(&self) -> &dyn ExitBehavior {
+        match self {
+            ResolvedExitBehavior::Native(b) => *b,
+            ResolvedExitBehavior::Scripted(s) => s,
+        }
+    }
+}
+
+/// Resolve an exit behavior key: the native registry FIRST (so a
+/// `conformance:keyed-door` key always hits native), then `catalog.behaviors`
+/// (Exit family only). `None` for an unregistered key.
+pub fn resolve_exit_behavior<'a>(
+    key: &str,
+    cat: &'a crate::world::descriptor::Catalog,
+) -> Option<ResolvedExitBehavior<'a>> {
+    if let Some(b) = exit_behavior(key) {
+        return Some(ResolvedExitBehavior::Native(b));
+    }
+    match cat.behaviors.get(key) {
+        Some(crate::script::ast::BehaviorScript::Exit { script }) => {
+            Some(ResolvedExitBehavior::Scripted(crate::script::ops::ScriptedExit { script }))
+        }
+        _ => None,
+    }
+}
+
 #[cfg(any(test, feature = "conformance"))]
 pub mod conformance {
     use super::*;
@@ -67,8 +102,34 @@ pub mod conformance {
     }
 }
 
+/// A test-only Catalog carrying a scripted brass-keyed door under `key`,
+/// reproducing the HH `doorBehavior("brass", "study door", ...)` shape. Hoisted
+/// to the file (outside the `tests` module) so `movement.rs`'s scripted-exit
+/// test reuses one copy.
+#[cfg(test)]
+pub(crate) fn tests_catalog_with_door(key: &str) -> crate::world::descriptor::Catalog {
+    serde_json::from_value(serde_json::json!({
+        "items": {}, "aliases": {},
+        "behaviors": { key: { "family": "exit", "script": {
+            "canPass": { "kind": "bin", "op": "or",
+                "left": { "kind": "stateGet", "field": "unlocked", "default": false },
+                "right": { "kind": "hasKey", "of": { "kind": "actor" }, "keyCode": "brass" } },
+            "runScript": [ { "kind": "when",
+                "cond": { "kind": "not", "expr":
+                    { "kind": "stateGet", "field": "unlocked", "default": false } },
+                "then": [
+                    { "kind": "setState", "field": "unlocked",
+                      "value": { "kind": "lit", "value": true } },
+                    { "kind": "pass", "value": { "kind": "lit", "value": "The door unlocks." } }
+                ] } ],
+            "failMessage": "The study door won't budge — it's locked."
+        } } }
+    })).unwrap()
+}
+
 #[cfg(test)]
 mod tests {
+    use super::tests_catalog_with_door as cat_with_door;
     use super::*;
     use serde_json::json;
 
@@ -76,6 +137,51 @@ mod tests {
     fn registry_resolves_keyed_door_and_rejects_unknown() {
         assert!(exit_behavior("conformance:keyed-door").is_some());
         assert!(exit_behavior("nope").is_none());
+    }
+
+    #[test]
+    fn resolve_exit_behavior_native_first_then_scripted() {
+        let cat = cat_with_door("study-door");
+        assert!(matches!(resolve_exit_behavior("conformance:keyed-door", &cat),
+            Some(ResolvedExitBehavior::Native(_))));
+        assert!(matches!(resolve_exit_behavior("study-door", &cat),
+            Some(ResolvedExitBehavior::Scripted(_))));
+        assert!(resolve_exit_behavior("nope", &cat).is_none());
+    }
+
+    #[test]
+    fn scripted_door_matches_the_hh_door_contract() {
+        use crate::world::descriptor::Catalog;
+        use crate::world::ids::{CharacterId, ItemId};
+        use crate::world::snapshot::ItemSnapshot;
+        use crate::world::test_support::world_with_party;
+        let cat = cat_with_door("study-door");
+        let Some(ResolvedExitBehavior::Scripted(door)) = resolve_exit_behavior("study-door", &cat)
+            else { panic!("expected scripted") };
+        let b: &dyn ExitBehavior = &door;
+
+        // actor WITHOUT the brass key
+        let mut w = world_with_party(&["pc"], 10);
+        let no_key = w.character_view(&CharacterId("pc".into()), &Catalog::default()).unwrap();
+        let mut state = json!({ "unlocked": false });
+        assert!(!b.can_pass(&no_key, &state), "locked + keyless -> blocked");
+        assert_eq!(b.fail_message(), Some("The study door won't budge — it's locked."));
+        assert_eq!(b.pass_message(), None);
+
+        // actor WITH the brass key: passes, unlocks once, silent re-pass
+        w.items.insert(ItemId("k1".into()), ItemSnapshot::Key {
+            id: ItemId("k1".into()), name: "Brass Key".into(),
+            key_code: "brass".into(), consume_on_use: false,
+        });
+        w.characters.get_mut(&CharacterId("pc".into())).unwrap()
+            .inventory.key_ids.push(ItemId("k1".into()));
+        let with_key = w.character_view(&CharacterId("pc".into()), &Catalog::default()).unwrap();
+        assert!(b.can_pass(&with_key, &state));
+        assert_eq!(b.run_script(&with_key, &mut state).as_deref(), Some("The door unlocks."));
+        assert_eq!(state["unlocked"], json!(true));
+        assert_eq!(b.run_script(&with_key, &mut state), None, "already unlocked -> silent");
+        // and now even a keyless actor passes (state.unlocked)
+        assert!(b.can_pass(&no_key, &state));
     }
 
     #[test]
