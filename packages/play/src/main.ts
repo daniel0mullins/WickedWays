@@ -9,7 +9,7 @@ import { pncSurface } from "@wickedways/play-surface/pnc";
 
 const app = document.getElementById("app");
 if (app) {
-  bootLauncher(app, { campaigns: [hollowHouse, seed], surfaces: [crtSurface, pncSurface] }, {
+  await bootLauncher(app, { campaigns: [hollowHouse, seed], surfaces: [crtSurface, pncSurface] }, {
     saveStore: new LocalStorageSaveStore(),
     now: () => Date.now(),
   });

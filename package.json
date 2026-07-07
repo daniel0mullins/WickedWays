@@ -21,6 +21,7 @@
     "docs:build": "pnpm run docs:api && vitepress build docs-site",
     "docs:preview": "vitepress preview docs-site",
     "wasm:build": "wasm-pack build crates/wickedways-wasm --target nodejs --out-dir pkg-node",
+    "wasm:build:web": "wasm-pack build crates/wickedways-wasm --target bundler --out-dir pkg-web",
     "wasm:build:conformance": "wasm-pack build crates/wickedways-wasm --target nodejs --out-dir pkg -- --features conformance",
     "bindings:gen": "cd crates/wickedways-core && TS_RS_EXPORT_DIR=../../generated/bindings cargo test --features ts export_typescript_bindings",
     "bindings:check": "pnpm run bindings:gen && git diff --exit-code generated/bindings",

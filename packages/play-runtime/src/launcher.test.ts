@@ -1,6 +1,11 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, afterEach } from "vitest";
 
+vi.mock("#engine", () => ({
+  initEngine: async () => {},
+  engine: () => ({}),
+}));
+
 vi.mock("./session.js", () => ({
   GameSession: { start: vi.fn().mockReturnValue({}) },
 }));
@@ -38,13 +43,13 @@ describe("resolveCampaign", () => {
 });
 
 describe("bootLauncher menu path", () => {
-  it("renders <campaign-menu> with one entry per registered campaign when no ?campaign= is set", () => {
+  it("renders <campaign-menu> with one entry per registered campaign when no ?campaign= is set", async () => {
     const app = document.createElement("div");
     document.body.appendChild(app);
 
     const campaigns = [mk("hollow-house"), mk("seed")];
 
-    bootLauncher(
+    await bootLauncher(
       app,
       { campaigns, surfaces: [] },
       { saveStore, now: () => 0, locationSearch: "" },
@@ -69,7 +74,7 @@ describe("bootLauncher surface picker", () => {
     window.history.replaceState(null, "", "/");
   });
 
-  it("renders <surface-picker> populated with both surfaces when campaign has ≥2 surfaces and no ?surface=", () => {
+  it("renders <surface-picker> populated with both surfaces when campaign has ≥2 surfaces and no ?surface=", async () => {
     app = document.createElement("div");
     document.body.appendChild(app);
 
@@ -81,7 +86,7 @@ describe("bootLauncher surface picker", () => {
     };
 
     // ?campaign= is set but ?surface= is absent → chooseSurface → picker shown
-    bootLauncher(
+    await bootLauncher(
       app,
       { campaigns: [campaign], surfaces: [crt, pnc] },
       { saveStore, now: () => 0, locationSearch: "?campaign=hollow-house" },
@@ -100,7 +105,7 @@ describe("bootLauncher surface picker", () => {
     expect(pnc.mount).not.toHaveBeenCalled();
   });
 
-  it("deep-links: ?campaign=&surface= mounts the named surface directly without showing the picker", () => {
+  it("deep-links: ?campaign=&surface= mounts the named surface directly without showing the picker", async () => {
     app = document.createElement("div");
     document.body.appendChild(app);
 
@@ -111,7 +116,7 @@ describe("bootLauncher surface picker", () => {
       surfaces: [{ id: "crt-terminal" }, { id: "point-and-click" }],
     };
 
-    bootLauncher(
+    await bootLauncher(
       app,
       { campaigns: [campaign], surfaces: [crt, pnc] },
       { saveStore, now: () => 0, locationSearch: "?campaign=hollow-house&surface=point-and-click" },
@@ -123,7 +128,7 @@ describe("bootLauncher surface picker", () => {
     expect(window.location.search).toContain("surface=point-and-click");
   });
 
-  it("mounts the sole surface directly when campaign has fewer than 2 surfaces (no picker)", () => {
+  it("mounts the sole surface directly when campaign has fewer than 2 surfaces (no picker)", async () => {
     app = document.createElement("div");
     document.body.appendChild(app);
 
@@ -133,7 +138,7 @@ describe("bootLauncher surface picker", () => {
       surfaces: [{ id: "crt-terminal" }],
     };
 
-    bootLauncher(
+    await bootLauncher(
       app,
       { campaigns: [campaign], surfaces: [crt] },
       { saveStore, now: () => 0, locationSearch: "?campaign=seed" },
@@ -144,7 +149,7 @@ describe("bootLauncher surface picker", () => {
     expect(window.location.search).toContain("surface=crt-terminal");
   });
 
-  it("selecting a surface in the picker mounts the correct surface", () => {
+  it("selecting a surface in the picker mounts the correct surface", async () => {
     app = document.createElement("div");
     document.body.appendChild(app);
 
@@ -158,7 +163,7 @@ describe("bootLauncher surface picker", () => {
       ],
     };
 
-    bootLauncher(
+    await bootLauncher(
       app,
       { campaigns: [campaign], surfaces: [crt, pnc] },
       { saveStore, now: () => 0, locationSearch: "?campaign=hollow-house" },
@@ -176,7 +181,7 @@ describe("bootLauncher surface picker", () => {
     expect(args.themes).toEqual([{ id: "neon", label: "Neon" }]);
   });
 
-  it("passes initialThemeId from ?theme= to surface.mount", () => {
+  it("passes initialThemeId from ?theme= to surface.mount", async () => {
     app = document.createElement("div");
     document.body.appendChild(app);
 
@@ -186,7 +191,7 @@ describe("bootLauncher surface picker", () => {
       surfaces: [{ id: "crt-terminal", themes: [{ id: "dark", label: "Dark" }, { id: "light", label: "Light" }] }],
     };
 
-    bootLauncher(
+    await bootLauncher(
       app,
       { campaigns: [campaign], surfaces: [crt] },
       { saveStore, now: () => 0, locationSearch: "?campaign=seed&theme=dark" },
@@ -198,7 +203,7 @@ describe("bootLauncher surface picker", () => {
     expect(args.themes).toEqual([{ id: "dark", label: "Dark" }, { id: "light", label: "Light" }]);
   });
 
-  it("onThemeChange sets ?theme= in window.location.search", () => {
+  it("onThemeChange sets ?theme= in window.location.search", async () => {
     app = document.createElement("div");
     document.body.appendChild(app);
 
@@ -208,7 +213,7 @@ describe("bootLauncher surface picker", () => {
       surfaces: [{ id: "crt-terminal" }],
     };
 
-    bootLauncher(
+    await bootLauncher(
       app,
       { campaigns: [campaign], surfaces: [crt] },
       { saveStore, now: () => 0, locationSearch: "?campaign=seed" },
@@ -221,7 +226,7 @@ describe("bootLauncher surface picker", () => {
     expect(window.location.search).toContain("theme=haunted");
   });
 
-  it("picker 'back' clears ?campaign/?surface/?theme and re-shows the campaign menu", () => {
+  it("picker 'back' clears ?campaign/?surface/?theme and re-shows the campaign menu", async () => {
     app = document.createElement("div");
     document.body.appendChild(app);
 
@@ -235,7 +240,7 @@ describe("bootLauncher surface picker", () => {
       surfaces: [{ id: "crt-terminal" }, { id: "point-and-click" }],
     };
 
-    bootLauncher(
+    await bootLauncher(
       app,
       { campaigns: [campaign], surfaces: [crt, pnc] },
       // locationSearch shows the campaign but no surface → chooseSurface → picker
@@ -257,7 +262,7 @@ describe("bootLauncher surface picker", () => {
     expect(window.location.search).not.toContain("theme");
   });
 
-  it("surface onExit clears ?campaign/?surface/?theme and re-shows the campaign menu", () => {
+  it("surface onExit clears ?campaign/?surface/?theme and re-shows the campaign menu", async () => {
     app = document.createElement("div");
     document.body.appendChild(app);
 
@@ -269,7 +274,7 @@ describe("bootLauncher surface picker", () => {
       surfaces: [{ id: "crt-terminal" }],
     };
 
-    bootLauncher(
+    await bootLauncher(
       app,
       { campaigns: [campaign], surfaces: [crt] },
       { saveStore, now: () => 0, locationSearch: "?campaign=seed&surface=crt-terminal" },
