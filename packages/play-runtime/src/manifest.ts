@@ -3,6 +3,7 @@ import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
 import type { CampaignAudio } from "./audio/contracts.js";
 import type { Theme } from "./surface.js";
 import type { BehaviorScript } from "../../../generated/bindings/BehaviorScript.ts";
+import type { FormationDescriptor } from "../../../generated/bindings/FormationDescriptor.ts";
 
 export type AliasMap = Record<string, string[]>;
 
@@ -51,6 +52,13 @@ export interface CampaignManifest {
    * resolve every registered key. Omit for behavior-less campaigns (defaults to `{}`).
    */
   behaviors?: () => Record<string, BehaviorScript>;
+  /**
+   * Factory that returns the campaign's data-driven encounter formations, keyed
+   * by encounter `behaviorKey`. Threaded into the Rust Catalog so
+   * `World::maybe_spawn` can resolve descriptor-built formations. Omit for
+   * campaigns with no data-driven formations (defaults to `{}`).
+   */
+  formations?: () => Record<string, FormationDescriptor>;
   /** Verb/noun aliases used by the parser to resolve player input. */
   aliases: AliasMap;
   /** Display name of the player character (e.g. `"Heir"`). */

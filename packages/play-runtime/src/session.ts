@@ -13,6 +13,7 @@ import { isTimeAdvancing, type Intent } from "./intent.js";
 import type { ViewModel } from "./viewmodel.js";
 import type { SaveStore, SurfaceState } from "./savestore.js";
 import type { BehaviorScript } from "../../../generated/bindings/BehaviorScript.ts";
+import type { FormationDescriptor } from "../../../generated/bindings/FormationDescriptor.ts";
 
 // `MobAttack` mirrors the generated core binding (single source of truth,
 // invariant 1); it is structurally identical to the pre-cutover shape.
@@ -36,6 +37,11 @@ export interface SessionOptions {
    *  the Rust Catalog so `Authority::new`→`validate_mechanics` can resolve every
    *  registered mechanic/exit/victory key. `{}` for behavior-less campaigns. */
   behaviors?: Record<string, BehaviorScript>;
+  /** Campaign's data-driven encounter formations (from the CampaignManifest),
+   *  keyed by encounter `behaviorKey`; threaded into the Rust Catalog so
+   *  `World::maybe_spawn` can resolve descriptor formations. `{}` for campaigns
+   *  with no data-driven formations. */
+  formations?: Record<string, FormationDescriptor>;
   playerName: string;
   archetype?: string;
   saveStore: SaveStore;
@@ -91,7 +97,12 @@ export class GameSession {
     // POST-DSL: thread the campaign's scripted behaviors so validate_mechanics passes
     // (see the catalogFromRegistry reconciliation note). `{}` for behavior-less test campaigns.
     const catalog = JSON.stringify(
-      catalogFromRegistry(this.opts.registry, this.opts.aliases, this.opts.behaviors ?? {}),
+      catalogFromRegistry(
+        this.opts.registry,
+        this.opts.aliases,
+        this.opts.behaviors ?? {},
+        this.opts.formations ?? {},
+      ),
     );
     const seed = this.opts.seed ?? (Math.random() * 0x1_0000_0000) >>> 0;
     this.#authority?.free();

@@ -7,6 +7,7 @@
 import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
 import type { Item } from "wickedways/lib/inventory";
 import type { BehaviorScript } from "../../../generated/bindings/BehaviorScript.ts";
+import type { FormationDescriptor } from "../../../generated/bindings/FormationDescriptor.ts";
 
 export function itemToCatalogEntry(item: Item): Record<string, unknown> {
   return {
@@ -46,10 +47,16 @@ export function catalogFromRegistry(
   registry: CampaignRegistry,
   aliases: Record<string, string[]>,
   behaviors: Record<string, BehaviorScript> = {},
-): { items: Record<string, unknown>; aliases: Record<string, string[]>; behaviors: Record<string, BehaviorScript> } {
+  formations: Record<string, FormationDescriptor> = {},
+): {
+  items: Record<string, unknown>;
+  aliases: Record<string, string[]>;
+  behaviors: Record<string, BehaviorScript>;
+  formations: Record<string, FormationDescriptor>;
+} {
   const items: Record<string, unknown> = {};
   for (const key of registry.itemKeys) {
     items[key] = itemToCatalogEntry(registry.item(key)());
   }
-  return { items, aliases, behaviors };
+  return { items, aliases, behaviors, formations };
 }
