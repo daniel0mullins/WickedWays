@@ -1,6 +1,7 @@
 //! The interpreter. Pure and TOTAL: no panics, no clock, no io; missing/ill-typed
 //! reads resolve to `Null`/defaults. `alloc`-only.
 use super::ast::{BinOp, Expr};
+use super::value::coerce_str;
 use super::value::Value;
 
 /// Evaluation context. Task-1 placeholder — Task 3 replaces this with the real
@@ -17,6 +18,14 @@ pub fn eval_expr(e: &Expr, cx: &mut Ctx) -> Value {
             if eval_expr(cond, cx).truthy() { eval_expr(then, cx) } else { eval_expr(r#else, cx) }
         }
         Expr::Defined { expr } => Value::Bool(!matches!(eval_expr(expr, cx), Value::Null)),
+        Expr::Str { num } => Value::Str(coerce_str(&eval_expr(num, cx))),
+        Expr::Concat { parts } => {
+            let mut out = alloc::string::String::new();
+            for p in parts {
+                out.push_str(&coerce_str(&eval_expr(p, cx)));
+            }
+            Value::Str(out)
+        }
         Expr::Bin { op, left, right } => {
             let l = eval_expr(left, cx);
             let r = eval_expr(right, cx);
@@ -112,6 +121,18 @@ mod tests {
             left: lit(Value::Bool(false)), right: n(5.0) }), Value::Bool(true)); // 5 is truthy
         assert_eq!(ev(&Expr::Not { expr: lit(Value::Str(String::new())) }), Value::Bool(true)); // "" falsy
         assert_eq!(ev(&Expr::Not { expr: lit(Value::Null) }), Value::Bool(true));
+    }
+
+    #[test]
+    fn str_and_concat_build_js_strings() {
+        assert_eq!(ev(&Expr::Str { num: n(16.0) }), Value::Str("16".into()));
+        assert_eq!(ev(&Expr::Str { num: lit(Value::Str("x".into())) }), Value::Str("x".into()));
+        // `${round}/${maxRounds}` shape:
+        assert_eq!(ev(&Expr::Concat { parts: alloc::vec![
+            Expr::Str { num: n(3.0) },
+            Expr::Lit { value: Value::Str("/".into()) },
+            Expr::Str { num: n(150.0) },
+        ]}), Value::Str("3/150".into()));
     }
 
     #[test]

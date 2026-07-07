@@ -31,4 +31,7 @@ pub enum Expr {
     IfElse { cond: Box<Expr>, then: Box<Expr>, r#else: Box<Expr> },
     /// Non-null check (mirrors TS `!== undefined`).
     Defined { expr: Box<Expr> },
+    /// JS-`Number.prototype.toString`-faithful number-to-string (spec: strings).
+    Str { num: Box<Expr> },
+    Concat { parts: alloc::vec::Vec<Expr> },
 }
