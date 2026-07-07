@@ -236,7 +236,48 @@ impl World {
                 let view = self.build_campaign_view(cat);
                 b.build(&view)
             }
-            ResolvedFormation::Descriptor(d) => d.build(),
+            ResolvedFormation::Descriptor(d) => {
+                let mut built = d.build();
+                // Seed each MobSpec's drops. A dropped item id needs a matching
+                // `ItemSnapshot` in `World.items` (the snapshot serializer emits
+                // `items` by reachability — a dangling inventory id diverges the
+                // gate). `build` returns snapshots in `d.mobs` order, so zip aligns
+                // each built mob with its spec. Drop id scheme = `{mob.id}:drop#{i}`
+                // (mirrors authored mobs, assembler.ts:230-234). A freshly authored
+                // drop item serializes with `durability = descriptor.maxDurability`
+                // (omitted when absent) and `modifier = descriptor.modifier` — proven
+                // byte-for-byte by the `mob-drop` golden.
+                for (mob, spec) in built.iter_mut().zip(d.mobs.iter()) {
+                    for (drop_index, drop_key) in spec.drops.iter().enumerate() {
+                        let desc = cat.items.get(drop_key).ok_or_else(|| {
+                            ProceduralViolation(alloc::format!(
+                                "No item registered for drop key '{drop_key}'"
+                            ))
+                        })?;
+                        let item_id = crate::world::ids::ItemId(alloc::format!(
+                            "{}:drop#{drop_index}",
+                            mob.id.0
+                        ));
+                        self.items.insert(
+                            item_id.clone(),
+                            crate::world::snapshot::ItemSnapshot::Item {
+                                id: item_id.clone(),
+                                behavior_key: drop_key.clone(),
+                                durability: desc.max_durability,
+                                modifier: desc.modifier,
+                            },
+                        );
+                        mob.inventory.item_ids.push(item_id);
+                    }
+                    // TS `Mob` widens slots to hold its drops (`mob.ts:77`); a spawned
+                    // mob starts at 0 slots, so slots = max(current, drops.len()).
+                    let needed = spec.drops.len() as i64;
+                    if mob.inventory.slots < needed {
+                        mob.inventory.slots = needed;
+                    }
+                }
+                built
+            }
         };
 
         // 8. place each: origin "campaign", room set, insert, occupant push, silent enter-scenes.
@@ -409,6 +450,131 @@ mod spawn_tests {
         let spawned = w.maybe_spawn(&rid("next"), &Catalog::default()).unwrap();
         assert!(spawned.is_empty());
         assert!(!w.characters.contains_key(&CharacterId("campaign-mob:wraith".into())));
+    }
+
+    /// A rat-tail-like consumable item descriptor: NO `maxDurability` (so a fresh
+    /// snapshot omits `durability`), modifier 0 — matches the fresh-drop shape the
+    /// `mob-drop` golden proves (a no-maxDurability item serializes with only
+    /// `modifier`, no `durability`).
+    fn rat_tail_desc() -> crate::world::descriptor::ItemDescriptor {
+        use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType};
+        use crate::stats::StatType;
+        ItemDescriptor {
+            name: "Rat Tail".into(),
+            r#type: ItemType::Consumable,
+            stat: StatType::Health,
+            modifier: 0,
+            properties: ItemProperties {
+                equippable: false,
+                equipped: false,
+                destroyable: true,
+                usable: false,
+                droppable: None,
+            },
+            slot: None,
+            two_handed: None,
+            emits_light: None,
+            max_durability: None,
+            lore: None,
+            presentation: None,
+            key_code: None,
+            consume_on_use: None,
+            recipe: serde_json::json!({}),
+            teaches: serde_json::json!(null),
+            immunities: serde_json::json!(null),
+            grants_immunity: serde_json::json!(null),
+        }
+    }
+
+    /// Build a catalog with a `rat-single`/`rat-pair` descriptor formation whose
+    /// mob(s) drop `items/rat-tail`, plus the matching item descriptor.
+    fn rat_catalog(mob_count: usize) -> Catalog {
+        use crate::world::formation_descriptor::{FormationDescriptor, MobSpec, NaturalAttack};
+        use crate::world::snapshot::Stats;
+        use crate::stats::StatType;
+        use alloc::collections::BTreeMap;
+        let spec = MobSpec {
+            name: "Rat".into(),
+            stats: Stats { health: 2.0, sanity: 2.0, energy: 3.0 },
+            natural_attack: NaturalAttack { stat: StatType::Health, power: 1.0 },
+            drops: alloc::vec!["items/rat-tail".into()],
+            base_escape_chance: 50,
+            light_averse: false,
+            material_drops: serde_json::json!({}),
+            actions_per_round: 2,
+        };
+        let mobs: alloc::vec::Vec<MobSpec> = (0..mob_count).map(|_| spec.clone()).collect();
+        let mut formations = BTreeMap::new();
+        formations.insert("rat-formation".to_string(), FormationDescriptor { mobs });
+        let mut items = BTreeMap::new();
+        items.insert("items/rat-tail".to_string(), rat_tail_desc());
+        Catalog { formations, items, ..Default::default() }
+    }
+
+    fn arm_descriptor_table(w: &mut crate::world::World) {
+        w.campaign.encounter_table = serde_json::json!({
+            "baseChance": 100,
+            "visited": [],
+            "formations": [ { "behaviorKey": "rat-formation", "weight": 1 } ]
+        });
+        // threshold = clamp(100 * spawn_mod, 0, 100); ensure spawn_mod = 1 → always spawn
+        if let Some(r) = w.rooms.get_mut(&rid("next")) { r.spawn_modifier = 1; }
+    }
+
+    #[test]
+    fn descriptor_spawn_seeds_drop_item_and_inventory() {
+        use crate::world::snapshot::ItemSnapshot;
+        use crate::world::ids::ItemId;
+        let mut w = world_two_rooms(false);
+        arm_descriptor_table(&mut w);
+        let cat = rat_catalog(1);
+        let spawned = w.maybe_spawn(&rid("next"), &cat).unwrap();
+        assert_eq!(spawned, alloc::vec![CharacterId("campaign-mob:rat".into())]);
+
+        let m = &w.characters[&CharacterId("campaign-mob:rat".into())];
+        let drop_id = ItemId("campaign-mob:rat:drop#0".into());
+        // inventory carries the drop id + a slot for it
+        assert!(m.inventory.item_ids.contains(&drop_id), "drop id in inventory");
+        assert!(m.inventory.slots >= 1, "slots widened for the drop");
+
+        // World.items has the minted snapshot (fresh: no durability, modifier 0)
+        let snap = w.items.get(&drop_id).expect("drop snapshot in World.items");
+        match snap {
+            ItemSnapshot::Item { id, behavior_key, durability, modifier } => {
+                assert_eq!(id, &drop_id);
+                assert_eq!(behavior_key, "items/rat-tail");
+                assert_eq!(*durability, None, "no maxDurability → durability omitted");
+                assert_eq!(*modifier, 0, "fresh item takes descriptor modifier");
+            }
+            _ => panic!("expected an Item snapshot, got a Key"),
+        }
+    }
+
+    #[test]
+    fn descriptor_pair_spawn_seeds_second_rats_drop() {
+        use crate::world::snapshot::ItemSnapshot;
+        use crate::world::ids::ItemId;
+        let mut w = world_two_rooms(false);
+        arm_descriptor_table(&mut w);
+        let cat = rat_catalog(2);
+        let spawned = w.maybe_spawn(&rid("next"), &cat).unwrap();
+        assert_eq!(
+            spawned,
+            alloc::vec![
+                CharacterId("campaign-mob:rat".into()),
+                CharacterId("campaign-mob:rat#2".into())
+            ]
+        );
+
+        // 2nd rat's drop id derives from its own (indexed) mob id
+        let second = &w.characters[&CharacterId("campaign-mob:rat#2".into())];
+        let drop_id = ItemId("campaign-mob:rat#2:drop#0".into());
+        assert!(second.inventory.item_ids.contains(&drop_id));
+        assert!(second.inventory.slots >= 1);
+        assert!(matches!(
+            w.items.get(&drop_id),
+            Some(ItemSnapshot::Item { behavior_key, .. }) if behavior_key == "items/rat-tail"
+        ));
     }
 
     #[test]

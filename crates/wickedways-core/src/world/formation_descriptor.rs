@@ -74,12 +74,12 @@ impl FormationDescriptor {
     /// for the first mob, `…#{index+1}` for index ≥ 1 (a pair → `campaign-mob:rat`,
     /// `campaign-mob:rat#2`); the TS side mirrors this scheme.
     ///
-    /// NOTE: `MobSpec.drops` is intentionally NOT seeded here — see the
-    /// `rat-task-2-report.md` drops finding. Realizing descriptor drops requires an
-    /// `ItemSnapshot` in `World.items` (resolved from the item catalog) plus an id
-    /// in `inventory.item_ids`; `build`'s `Vec<CharacterSnapshot>` return type
-    /// (and its lack of `Catalog` access) cannot supply that world state, so drops
-    /// are deferred to a follow-up that widens this seam.
+    /// NOTE: `MobSpec.drops` is intentionally NOT seeded here. Realizing descriptor
+    /// drops requires an `ItemSnapshot` in `World.items` (resolved from the item
+    /// catalog) plus an id in `inventory.item_ids`; `build`'s `Vec<CharacterSnapshot>`
+    /// return type (and its lack of `Catalog` access) cannot supply that world state.
+    /// The drops are seeded by `World::maybe_spawn`'s descriptor arm (Task 2b), which
+    /// owns `&mut World` + `&Catalog`, right after this `build` runs.
     pub fn build(&self) -> Vec<CharacterSnapshot> {
         self.mobs
             .iter()
