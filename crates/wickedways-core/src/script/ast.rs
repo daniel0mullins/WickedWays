@@ -66,4 +66,17 @@ pub enum Expr {
     HasItem { of: Box<Expr>, item_key: String },
     /// `of` (a character) holds a key with this key code.
     HasKey { of: Box<Expr>, key_code: String },
+
+    // ── Script state reads + static tables (Task 5) ─────────────────────────
+    /// Read `state[field]`, or `default` when the field is missing / `null`
+    /// / the ctx has no state (mirrors TS `state.x ?? default`).
+    StateGet { field: String, default: Value },
+    /// Read `state[map_field][String(key)]`, with the same defaulting
+    /// (dynamic string-keyed maps — e.g. the storyteller's `seen[roomName]`).
+    StateGetIn { map_field: String, key: Box<Expr>, default: Value },
+    /// Value at `String(key)` in a static `MapLit`, else `Null`. Requires a
+    /// `MapLit` operand (enforced at load, Task 9); a non-`MapLit` yields `Null`.
+    Lookup { map: Box<Expr>, key: Box<Expr> },
+    /// Whether a static `MapLit` contains `String(key)`. Non-`MapLit` → `false`.
+    Has { map: Box<Expr>, key: Box<Expr> },
 }

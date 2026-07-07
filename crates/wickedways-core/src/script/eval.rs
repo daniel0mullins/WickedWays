@@ -6,6 +6,7 @@ use alloc::vec::Vec;
 
 use super::ast::{BinOp, Expr};
 use super::value::coerce_str;
+use super::value::json_to_value;
 use super::value::Value;
 
 use crate::world::descriptor::Catalog;
@@ -177,7 +178,71 @@ pub fn eval_expr(e: &Expr, cx: &mut Ctx) -> Ev {
             matches!(eval_expr(of, cx), Ev::Char(c) if c.has_item(item_key)))),
         Expr::HasKey { of, key_code } => Ev::Val(Value::Bool(
             matches!(eval_expr(of, cx), Ev::Char(c) if c.has_key(key_code)))),
+
+        Expr::StateGet { field, default } => {
+            let read = match &cx.state {
+                CtxState::Read(s) => s.get(field).cloned(),
+                CtxState::Write(s) => s.get(field).cloned(),
+                CtxState::None => None,
+            };
+            match read {
+                Some(j) if !j.is_null() => Ev::Val(json_to_value(&j)),
+                _ => Ev::Val(default.clone()),
+            }
+        }
+        Expr::StateGetIn { map_field, key, default } => {
+            let k = coerce_str(&eval_expr(key, cx).into_value());
+            let read = match &cx.state {
+                CtxState::Read(s) => s.get(map_field).and_then(|m| m.get(&k)).cloned(),
+                CtxState::Write(s) => s.get(map_field).and_then(|m| m.get(&k)).cloned(),
+                CtxState::None => None,
+            };
+            match read {
+                Some(j) if !j.is_null() => Ev::Val(json_to_value(&j)),
+                _ => Ev::Val(default.clone()),
+            }
+        }
+        Expr::Lookup { map, key } => {
+            let k = coerce_str(&eval_expr(key, cx).into_value());
+            match map.as_ref() {
+                Expr::MapLit { entries } => match entries.get(&k) {
+                    Some(v) => Ev::Val(v.clone()),
+                    None => Ev::Val(Value::Null),
+                },
+                _ => Ev::Val(Value::Null), // load-time-rejected shape; total anyway
+            }
+        }
+        Expr::Has { map, key } => {
+            let k = coerce_str(&eval_expr(key, cx).into_value());
+            match map.as_ref() {
+                Expr::MapLit { entries } => Ev::Val(Value::Bool(entries.contains_key(&k))),
+                _ => Ev::Val(Value::Bool(false)),
+            }
+        }
     }
+}
+
+/// `state[field] = v`, converting a non-object state to `{}` first (total).
+// Wired for `Stmt::SetState` (Task 7); no expression node calls it.
+#[allow(dead_code)]
+pub(crate) fn state_set(state: &mut serde_json::Value, field: &str, v: serde_json::Value) {
+    if !state.is_object() {
+        *state = serde_json::json!({});
+    }
+    state[field] = v;
+}
+
+/// `state[map_field][key] = v`, auto-vivifying the map (TS `??=`).
+// Wired for `Stmt::SetStateIn` (Task 7); no expression node calls it.
+#[allow(dead_code)]
+pub(crate) fn state_set_in(state: &mut serde_json::Value, map_field: &str, key: &str, v: serde_json::Value) {
+    if !state.is_object() {
+        *state = serde_json::json!({});
+    }
+    if !state.get(map_field).map(|m| m.is_object()).unwrap_or(false) {
+        state[map_field] = serde_json::json!({});
+    }
+    state[map_field][key] = v;
 }
 
 fn index_list(l: Ev, i: usize) -> Ev {
@@ -472,6 +537,57 @@ mod tests {
             RoomSource::World { cache, .. } => assert_eq!(cache.len(), 1),
             _ => panic!("expected World room source"),
         }
+    }
+
+    #[test]
+    fn state_reads_default_and_read_write_roundtrip() {
+        let mut state = serde_json::json!({ "unlocked": false, "seen": { "Parlor": true } });
+        {
+            let mut cx = Ctx { state: CtxState::Read(&state), ..Ctx::empty() };
+            let val = |e: &Expr, cx: &mut Ctx| eval_expr(e, cx).into_value();
+            assert_eq!(val(&Expr::StateGet { field: "unlocked".into(), default: Value::Bool(true) }, &mut cx),
+                       Value::Bool(false)); // present value wins over default
+            assert_eq!(val(&Expr::StateGet { field: "missing".into(), default: Value::Number(7.0) }, &mut cx),
+                       Value::Number(7.0)); // missing -> default
+            let key = |s: &str| Box::new(Expr::Lit { value: Value::Str(s.into()) });
+            assert_eq!(val(&Expr::StateGetIn { map_field: "seen".into(), key: key("Parlor"),
+                                               default: Value::Bool(false) }, &mut cx),
+                       Value::Bool(true));
+            assert_eq!(val(&Expr::StateGetIn { map_field: "seen".into(), key: key("Attic"),
+                                               default: Value::Bool(false) }, &mut cx),
+                       Value::Bool(false));
+            // no-state ctx -> default (total)
+            let mut none = Ctx::empty();
+            assert_eq!(eval_expr(&Expr::StateGet { field: "x".into(), default: Value::Null }, &mut none)
+                       .into_value(), Value::Null);
+        }
+        // write helpers: set + auto-vivify (the storyteller `??=` shape)
+        state_set(&mut state, "unlocked", serde_json::json!(true));
+        assert_eq!(state["unlocked"], serde_json::json!(true));
+        let mut fresh = serde_json::json!({});
+        state_set_in(&mut fresh, "seen", "Nursery", serde_json::json!(true));
+        assert_eq!(fresh, serde_json::json!({ "seen": { "Nursery": true } }));
+    }
+
+    #[test]
+    fn static_map_lookup_and_has() {
+        let mut entries = BTreeMap::new();
+        entries.insert(String::from("Parlor"), Value::Str("lilies".into()));
+        entries.insert(String::from("Study"), Value::Str("iron key".into()));
+        let lore = Box::new(Expr::MapLit { entries });
+        let key = |s: &str| Box::new(Expr::Lit { value: Value::Str(s.into()) });
+        let mut cx = Ctx::empty();
+        assert_eq!(eval_expr(&Expr::Lookup { map: lore.clone(), key: key("Parlor") }, &mut cx)
+                   .into_value(), Value::Str("lilies".into()));
+        assert_eq!(eval_expr(&Expr::Lookup { map: lore.clone(), key: key("Foyer") }, &mut cx)
+                   .into_value(), Value::Null);
+        assert_eq!(eval_expr(&Expr::Has { map: lore.clone(), key: key("Study") }, &mut cx)
+                   .into_value(), Value::Bool(true));
+        assert_eq!(eval_expr(&Expr::Has { map: lore.clone(), key: key("Foyer") }, &mut cx)
+                   .into_value(), Value::Bool(false));
+        // key coerces via JS String(): Has(map, Null) looks up "null" -> false
+        assert_eq!(eval_expr(&Expr::Has { map: lore, key: Box::new(Expr::Lit { value: Value::Null }) },
+                   &mut cx).into_value(), Value::Bool(false));
     }
 
     #[test]
