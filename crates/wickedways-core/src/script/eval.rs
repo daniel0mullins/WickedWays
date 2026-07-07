@@ -4,14 +4,19 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use super::ast::{BinOp, Expr};
+use super::ast::{BinOp, DamageBody, EffectTemplate, Expr, FieldTemplate, Stmt};
 use super::value::coerce_str;
 use super::value::json_to_value;
+use super::value::value_to_json;
 use super::value::Value;
 
+use crate::presentation::{MechanicCue, StatusField};
 use crate::world::descriptor::Catalog;
 use crate::world::history::RoomRef;
-use crate::world::mechanics::{ActionView, CampaignView, CharacterView, DamageView, RoomView};
+use crate::world::ids::CharacterId;
+use crate::world::mechanics::{
+    ActionView, CampaignView, CharacterView, DamageView, Effect, RoomView, TransformResult,
+};
 use crate::world::World;
 
 /// Runtime evaluation result: plain values, plus the read-model SUBJECTS
@@ -225,9 +230,143 @@ pub fn eval_expr(e: &Expr, cx: &mut Ctx) -> Ev {
     }
 }
 
+/// Truthiness of a predicate body's single result (predicate contexts).
+pub fn eval_predicate(e: &Expr, cx: &mut Ctx) -> bool {
+    eval_expr(e, cx).truthy()
+}
+
+/// Control flow through a statement body: a falsy `Guard` halts.
+enum Flow { Continue, Halt }
+
+/// Evaluate an effect body (mechanic hooks / actions) into an ordered effect list.
+pub fn eval_effects(body: &[Stmt], cx: &mut Ctx) -> Vec<Effect> {
+    let mut effects = Vec::new();
+    let mut pass = None;
+    let _ = exec_stmts(body, cx, &mut effects, &mut pass);
+    effects
+}
+
+/// Evaluate a `run_script` exit body into its optional narration (last `Pass` wins).
+pub fn eval_script(body: &[Stmt], cx: &mut Ctx) -> Option<String> {
+    let mut effects = Vec::new();
+    let mut pass = None;
+    let _ = exec_stmts(body, cx, &mut effects, &mut pass);
+    pass
+}
+
+fn exec_stmts(stmts: &[Stmt], cx: &mut Ctx, effects: &mut Vec<Effect>,
+              pass: &mut Option<String>) -> Flow {
+    for s in stmts {
+        match s {
+            Stmt::Guard { cond } => {
+                if !eval_expr(cond, cx).truthy() { return Flow::Halt; }
+            }
+            Stmt::When { cond, then } => {
+                if eval_expr(cond, cx).truthy() {
+                    if let Flow::Halt = exec_stmts(then, cx, effects, pass) {
+                        return Flow::Halt; // a nested Guard is an early return
+                    }
+                }
+            }
+            Stmt::SetState { field, value } => {
+                let v = value_to_json(&eval_expr(value, cx).into_value());
+                if let CtxState::Write(state) = &mut cx.state {
+                    state_set(state, field, v);
+                }
+            }
+            Stmt::SetStateIn { map_field, key, value } => {
+                let k = coerce_str(&eval_expr(key, cx).into_value());
+                let v = value_to_json(&eval_expr(value, cx).into_value());
+                if let CtxState::Write(state) = &mut cx.state {
+                    state_set_in(state, map_field, &k, v);
+                }
+            }
+            Stmt::Pass { value } => {
+                *pass = Some(coerce_str(&eval_expr(value, cx).into_value()));
+            }
+            Stmt::Emit { effect } => {
+                if let Some(e) = build_effect(effect, cx) {
+                    effects.push(e);
+                }
+            }
+        }
+    }
+    Flow::Continue
+}
+
+/// Resolve an effect-target expr to a `CharacterId` (a character subject or a
+/// string id). `None` skips the emit — the dread-shadow `if (target !== undefined)` shape.
+fn as_character_id(ev: Ev) -> Option<CharacterId> {
+    match ev {
+        Ev::Char(c) => Some(c.id),
+        Ev::Val(Value::Str(s)) => Some(CharacterId(s)),
+        _ => None,
+    }
+}
+
+/// Coerce an evaluated expr to a number, else `None` (skips the emit).
+fn as_number(ev: Ev) -> Option<f64> {
+    match ev.into_value() {
+        Value::Number(n) => Some(n),
+        _ => None,
+    }
+}
+
+/// Build one closed `Effect` from a template; `None` when target/amount are
+/// unresolvable (skips that emit, mirroring the TS `if (target !== undefined)` guard).
+fn build_effect(t: &EffectTemplate, cx: &mut Ctx) -> Option<Effect> {
+    match t {
+        EffectTemplate::Damage { target, amount } => Some(Effect::Damage {
+            target: as_character_id(eval_expr(target, cx))?,
+            amount: as_number(eval_expr(amount, cx))?,
+        }),
+        EffectTemplate::Heal { target, amount } => Some(Effect::Heal {
+            target: as_character_id(eval_expr(target, cx))?,
+            amount: as_number(eval_expr(amount, cx))?,
+        }),
+        EffectTemplate::AdjustStat { target, stat, delta } => Some(Effect::AdjustStat {
+            target: as_character_id(eval_expr(target, cx))?,
+            stat: *stat,
+            delta: as_number(eval_expr(delta, cx))?,
+        }),
+        EffectTemplate::GrantImmunity { target, turns } => Some(Effect::GrantImmunity {
+            target: as_character_id(eval_expr(target, cx))?,
+            turns: as_number(eval_expr(turns, cx))?,
+        }),
+        EffectTemplate::Cue { text } => Some(Effect::Cue {
+            cue: MechanicCue { text: Some(coerce_str(&eval_expr(text, cx).into_value())), sound: None },
+        }),
+        EffectTemplate::Status { fields } => Some(Effect::Status {
+            fields: fields.iter().map(|f: &FieldTemplate| StatusField {
+                label: f.label.clone(),
+                value: coerce_str(&eval_expr(&f.value, cx).into_value()),
+                emphasis: f.emphasis.as_ref()
+                    .map(|e| coerce_str(&eval_expr(e, cx).into_value())),
+            }).collect(),
+        }),
+    }
+}
+
+/// Evaluate a `modify_damage` body into a `TransformResult`. A non-number result
+/// falls back to `Value(d.amount)` (identity, total).
+pub fn eval_damage(body: &DamageBody, d: &DamageView, cx: &mut Ctx) -> TransformResult {
+    match body {
+        DamageBody::Value { expr } => match as_number(eval_expr(expr, cx)) {
+            Some(n) => TransformResult::Value(n),
+            None => TransformResult::Value(d.amount), // total: identity
+        },
+        DamageBody::Final { expr } => match as_number(eval_expr(expr, cx)) {
+            Some(n) => TransformResult::Final(n),
+            None => TransformResult::Value(d.amount),
+        },
+        DamageBody::IfElse { cond, then, r#else } => {
+            if eval_expr(cond, cx).truthy() { eval_damage(then, d, cx) }
+            else { eval_damage(r#else, d, cx) }
+        }
+    }
+}
+
 /// `state[field] = v`, converting a non-object state to `{}` first (total).
-// Wired for `Stmt::SetState` (Task 7); no expression node calls it.
-#[allow(dead_code)]
 pub(crate) fn state_set(state: &mut serde_json::Value, field: &str, v: serde_json::Value) {
     if !state.is_object() {
         *state = serde_json::json!({});
@@ -236,8 +375,6 @@ pub(crate) fn state_set(state: &mut serde_json::Value, field: &str, v: serde_jso
 }
 
 /// `state[map_field][key] = v`, auto-vivifying the map (TS `??=`).
-// Wired for `Stmt::SetStateIn` (Task 7); no expression node calls it.
-#[allow(dead_code)]
 pub(crate) fn state_set_in(state: &mut serde_json::Value, map_field: &str, key: &str, v: serde_json::Value) {
     if !state.is_object() {
         *state = serde_json::json!({});
@@ -382,12 +519,124 @@ mod tests {
     use crate::script::ast::{BinOp, Expr};
     use crate::script::value::Value;
 
+    use crate::presentation::StatusField;
     use crate::world::descriptor::Catalog;
     use crate::world::ids::{CharacterId, ItemId};
+    use crate::world::mechanics::{Effect, TransformResult};
     use crate::world::snapshot::ItemSnapshot;
     use crate::world::test_support::world_with_party;
 
     fn cid(s: &str) -> CharacterId { CharacterId(s.into()) }
+
+    fn s_lit(v: Value) -> Expr { Expr::Lit { value: v } }
+
+    #[test]
+    fn effect_body_guard_when_setstate_emit_preserves_order() {
+        let w = world_with_party(&["pc"], 10);
+        let view = w.build_campaign_view(&Catalog::default());
+        let actor = view.party[0].clone();
+        let mut state = serde_json::json!({});
+        // The dread-HH shape: guard(!hasEquipped) then emit adjustStat(actor)
+        let body = alloc::vec![
+            Stmt::Guard { cond: Expr::Not { expr: Box::new(Expr::HasEquipped {
+                of: Box::new(Expr::Actor), item_key: "lantern".into() }) } },
+            Stmt::SetState { field: "fired".into(), value: s_lit(Value::Bool(true)) },
+            Stmt::Emit { effect: EffectTemplate::AdjustStat {
+                target: Expr::Actor, stat: crate::stats::StatType::Sanity,
+                delta: s_lit(Value::Number(-1.0)) } },
+            Stmt::Emit { effect: EffectTemplate::Cue { text: s_lit(Value::Str("after".into())) } },
+        ];
+        let mut cx = Ctx { view: Some(&view), actor: Some(&actor),
+                           state: CtxState::Write(&mut state), ..Ctx::empty() };
+        let fx = eval_effects(&body, &mut cx);
+        assert_eq!(fx.len(), 2, "guard passed; both emits ran, in order");
+        assert!(matches!(&fx[0], Effect::AdjustStat { target, stat: crate::stats::StatType::Sanity, delta }
+            if target == &cid("pc") && *delta == -1.0));
+        assert!(matches!(&fx[1], Effect::Cue { cue } if cue.text.as_deref() == Some("after")));
+        assert_eq!(state, serde_json::json!({ "fired": true }));
+    }
+
+    #[test]
+    fn guard_false_stops_and_keeps_accumulated_effects() {
+        let body = alloc::vec![
+            Stmt::Emit { effect: EffectTemplate::Cue { text: s_lit(Value::Str("kept".into())) } },
+            Stmt::Guard { cond: s_lit(Value::Bool(false)) },
+            Stmt::Emit { effect: EffectTemplate::Cue { text: s_lit(Value::Str("dropped".into())) } },
+        ];
+        let fx = eval_effects(&body, &mut Ctx::empty());
+        assert_eq!(fx.len(), 1);
+        assert!(matches!(&fx[0], Effect::Cue { cue } if cue.text.as_deref() == Some("kept")));
+        // a Guard nested in When also halts the WHOLE body (early return)
+        let body2 = alloc::vec![
+            Stmt::When { cond: s_lit(Value::Bool(true)), then: alloc::vec![
+                Stmt::Guard { cond: s_lit(Value::Bool(false)) } ] },
+            Stmt::Emit { effect: EffectTemplate::Cue { text: s_lit(Value::Str("late".into())) } },
+        ];
+        assert!(eval_effects(&body2, &mut Ctx::empty()).is_empty());
+    }
+
+    #[test]
+    fn status_effect_template_builds_fields_with_optional_emphasis() {
+        let body = alloc::vec![Stmt::Emit { effect: EffectTemplate::Status { fields: alloc::vec![
+            FieldTemplate { label: "Sanity".into(),
+                value: Expr::Str { num: Box::new(s_lit(Value::Number(7.0))) },
+                emphasis: Some(s_lit(Value::Str("normal".into()))) },
+            FieldTemplate { label: "Round".into(),
+                value: Expr::Concat { parts: alloc::vec![
+                    Expr::Str { num: Box::new(s_lit(Value::Number(3.0))) },
+                    s_lit(Value::Str("/".into())),
+                    Expr::Str { num: Box::new(s_lit(Value::Number(150.0))) },
+                ] },
+                emphasis: None },
+        ] } }];
+        let fx = eval_effects(&body, &mut Ctx::empty());
+        assert_eq!(fx, alloc::vec![Effect::Status { fields: alloc::vec![
+            StatusField { label: "Sanity".into(), value: "7".into(), emphasis: Some("normal".into()) },
+            StatusField { label: "Round".into(), value: "3/150".into(), emphasis: None },
+        ] }]);
+    }
+
+    #[test]
+    fn script_body_pass_and_state_write() {
+        let mut state = serde_json::json!({ "unlocked": false });
+        // the door shape: when(!unlocked) { unlocked = true; pass(opened) }
+        let body = alloc::vec![Stmt::When {
+            cond: Expr::Not { expr: Box::new(Expr::StateGet {
+                field: "unlocked".into(), default: Value::Bool(false) }) },
+            then: alloc::vec![
+                Stmt::SetState { field: "unlocked".into(), value: s_lit(Value::Bool(true)) },
+                Stmt::Pass { value: s_lit(Value::Str("The door opens.".into())) },
+            ],
+        }];
+        let mut cx = Ctx { state: CtxState::Write(&mut state), ..Ctx::empty() };
+        assert_eq!(eval_script(&body, &mut cx), Some(alloc::string::String::from("The door opens.")));
+        assert_eq!(state["unlocked"], serde_json::json!(true));
+        // second run: unlocked -> no Pass -> None (the silent re-pass)
+        let mut cx2 = Ctx { state: CtxState::Write(&mut state), ..Ctx::empty() };
+        assert_eq!(eval_script(&body, &mut cx2), None);
+    }
+
+    #[test]
+    fn damage_body_value_and_final() {
+        let dv = crate::world::mechanics::DamageView {
+            amount: 3.5, target: cid("pc"),
+            stat: crate::stats::StatType::Health, source: None,
+        };
+        // the conformance-dread cap shape: amount > 3 ? Final(3) : Value(amount)
+        let body = DamageBody::IfElse {
+            cond: Expr::Bin { op: BinOp::Gt,
+                left: Box::new(Expr::Get { of: Box::new(Expr::Damage), field: "amount".into() }),
+                right: Box::new(s_lit(Value::Number(3.0))) },
+            then: Box::new(DamageBody::Final { expr: s_lit(Value::Number(3.0)) }),
+            r#else: Box::new(DamageBody::Value {
+                expr: Expr::Get { of: Box::new(Expr::Damage), field: "amount".into() } }),
+        };
+        let mut cx = Ctx { damage: Some(&dv), ..Ctx::empty() };
+        assert_eq!(eval_damage(&body, &dv, &mut cx), TransformResult::Final(3.0));
+        let dv2 = crate::world::mechanics::DamageView { amount: 2.0, ..dv.clone() };
+        let mut cx2 = Ctx { damage: Some(&dv2), ..Ctx::empty() };
+        assert_eq!(eval_damage(&body, &dv2, &mut cx2), TransformResult::Value(2.0));
+    }
 
     /// Seed a catalog-backed Item snapshot into the world (mirrors the
     /// items_actions.rs test helpers).

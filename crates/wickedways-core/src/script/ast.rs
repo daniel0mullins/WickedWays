@@ -3,11 +3,13 @@
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
+use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "ts")]
 use ts_rs::TS;
 
 use super::value::Value;
+use crate::stats::StatType;
 
 /// Binary operators — restricted to the IEEE-754 operations that are
 /// bit-identical between Rust and JS, plus comparisons and boolean logic.
@@ -87,4 +89,61 @@ pub enum Expr {
     Lookup { map: Box<Expr>, key: Box<Expr> },
     /// Whether a static `MapLit` contains `String(key)`. Non-`MapLit` → `false`.
     Has { map: Box<Expr>, key: Box<Expr> },
+}
+
+/// A statement in an effect/script body (Task 7). Tagged on `kind`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum Stmt {
+    /// Falsy `cond` halts the body, keeping the accumulated output (TS
+    /// `if (!cond) return [];` / `sequence` short-circuit).
+    Guard { cond: Expr },
+    /// Conditional block; a nested `Guard` still halts the whole body.
+    When { cond: Expr, then: Vec<Stmt> },
+    /// `state[field] = value` (own state only).
+    SetState { field: String, value: Expr },
+    /// `state[map_field][String(key)] = value` (own state only).
+    SetStateIn { map_field: String, key: Expr, value: Expr },
+    /// Emit an effect (effect bodies only).
+    Emit { effect: EffectTemplate },
+    /// Exit narration (script bodies only); the last `Pass` wins.
+    Pass { value: Expr },
+}
+
+/// A template producing one closed `Effect` (Task 7). Tagged on `kind`; mirrors
+/// the `Effect` set.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum EffectTemplate {
+    Damage { target: Expr, amount: Expr },
+    Heal { target: Expr, amount: Expr },
+    AdjustStat { target: Expr, stat: StatType, delta: Expr },
+    GrantImmunity { target: Expr, turns: Expr },
+    Cue { text: Expr },
+    Status { fields: Vec<FieldTemplate> },
+}
+
+/// One `StatusField` template (Task 7).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct FieldTemplate {
+    pub label: String,
+    pub value: Expr,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub emphasis: Option<Expr>,
+}
+
+/// The body of a `modify_damage` transform (Task 7). Tagged on `kind`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+pub enum DamageBody {
+    Value { expr: Expr },
+    /// Halts the fold (TS `{ value, final: true }`).
+    Final { expr: Expr },
+    IfElse { cond: Expr, then: Box<DamageBody>, r#else: Box<DamageBody> },
 }
