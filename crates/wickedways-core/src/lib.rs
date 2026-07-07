@@ -24,3 +24,5 @@ pub use error::ProceduralViolation;
 
 pub mod world;
 pub use world::{World, snapshot::CampaignSnapshot};
+
+pub mod script;
