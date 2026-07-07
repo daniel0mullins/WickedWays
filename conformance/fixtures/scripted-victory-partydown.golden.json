@@ -266,6 +266,8 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -325,6 +327,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 16,
@@ -587,6 +590,8 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -646,6 +651,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 16,
@@ -914,6 +920,8 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -973,6 +981,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 16,
@@ -1249,6 +1258,8 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -1308,6 +1319,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 16,

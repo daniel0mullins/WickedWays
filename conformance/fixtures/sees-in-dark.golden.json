@@ -250,6 +250,8 @@
           "description": "A pitch-black cellar.",
           "isLit": false
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -311,6 +313,7 @@
           }
         ],
         "status": {
+          "locationName": "Cellar",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 10,
@@ -598,6 +601,8 @@
           "description": "A pitch-black cellar.",
           "isLit": false
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -659,6 +664,7 @@
           }
         ],
         "status": {
+          "locationName": "Cellar",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 10,

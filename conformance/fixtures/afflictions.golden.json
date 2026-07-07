@@ -312,6 +312,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -417,6 +419,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 0,
@@ -650,6 +653,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -755,6 +760,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 10,
@@ -994,6 +1000,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -1099,6 +1107,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 10,
@@ -1336,6 +1345,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -1441,6 +1452,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 20,
           "sanity": 0,
@@ -1680,6 +1692,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -1785,6 +1799,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 20,
           "sanity": 0,
@@ -2026,6 +2041,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -2131,6 +2148,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 20,
           "sanity": 10,
@@ -2372,6 +2390,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -2477,6 +2497,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 20,
           "sanity": 10,
@@ -2716,6 +2737,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -2821,6 +2844,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 2,
           "maxTurns": 20,
           "sanity": 0,
@@ -3061,6 +3085,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -3166,6 +3192,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 2,
           "maxTurns": 20,
           "sanity": 0,
@@ -3408,6 +3435,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -3513,6 +3542,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 2,
           "maxTurns": 20,
           "sanity": 10,
@@ -3755,6 +3785,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -3860,6 +3892,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 2,
           "maxTurns": 20,
           "sanity": 10,
@@ -4100,6 +4133,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -4205,6 +4240,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 3,
           "maxTurns": 20,
           "sanity": 0,
@@ -4445,6 +4481,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -4550,6 +4588,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 3,
           "maxTurns": 20,
           "sanity": 0,
@@ -4792,6 +4831,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -4897,6 +4938,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 3,
           "maxTurns": 20,
           "sanity": 10,
@@ -5139,6 +5181,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -5244,6 +5288,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 3,
           "maxTurns": 20,
           "sanity": 10,
@@ -5484,6 +5529,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -5589,6 +5636,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 4,
           "maxTurns": 20,
           "sanity": 0,
@@ -5829,6 +5877,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -5934,6 +5984,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 4,
           "maxTurns": 20,
           "sanity": 0,
@@ -6208,6 +6259,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -6314,6 +6367,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 4,
           "maxTurns": 20,
           "sanity": 0,
@@ -6590,6 +6644,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -6667,6 +6723,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 4,
           "maxTurns": 20,
           "sanity": 0,
@@ -6935,6 +6992,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -7012,6 +7071,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 4,
           "maxTurns": 20,
           "sanity": 10,
@@ -7280,6 +7340,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -7357,6 +7419,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 4,
           "maxTurns": 20,
           "sanity": 10,
@@ -7623,6 +7686,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -7700,6 +7765,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 5,
           "maxTurns": 20,
           "sanity": 0,
@@ -7966,6 +8032,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -8043,6 +8111,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 5,
           "maxTurns": 20,
           "sanity": 0,
@@ -8324,6 +8393,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -8401,6 +8472,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 5,
           "maxTurns": 20,
           "sanity": 0,
@@ -8674,6 +8746,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -8751,6 +8825,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 5,
           "maxTurns": 20,
           "sanity": 10,
@@ -9024,6 +9099,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -9101,6 +9178,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 5,
           "maxTurns": 20,
           "sanity": 10,
@@ -9372,6 +9450,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -9449,6 +9529,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 6,
           "maxTurns": 20,
           "sanity": 0,
@@ -9718,6 +9799,8 @@
           "description": "A cold stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -9795,6 +9878,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 6,
           "maxTurns": 20,
           "sanity": 0,

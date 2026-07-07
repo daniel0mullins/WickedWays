@@ -205,6 +205,13 @@
           "description": "A dusty foyer.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Crypt"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -215,6 +222,7 @@
         },
         "scope": [],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -515,6 +523,13 @@
           "description": "A silent crypt.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "campaign-mob:wraith",
@@ -547,6 +562,7 @@
           }
         ],
         "status": {
+          "locationName": "Crypt",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -839,6 +855,13 @@
           "description": "A dusty foyer.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Crypt"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -849,6 +872,7 @@
         },
         "scope": [],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -1154,6 +1178,13 @@
           "description": "A silent crypt.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "campaign-mob:wraith",
@@ -1186,6 +1217,7 @@
           }
         ],
         "status": {
+          "locationName": "Crypt",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,

@@ -122,11 +122,19 @@ export function view(
     droppable: k.properties.droppable !== false,
   }));
 
-  const exits: ExitView[] = [...room.exits.entries()]
+  // Canonical presentation order (Phase-2 port decision): alphabetical by
+  // direction key — matches the Rust core's BTreeMap iteration so the
+  // differential gate compares exits order-stably. Listing order is
+  // presentation-only; classification is unchanged.
+  const exitEntries = [...room.exits.entries()].sort(([a], [b]) =>
+    a < b ? -1 : a > b ? 1 : 0,
+  );
+
+  const exits: ExitView[] = exitEntries
     .filter(([, exit]) => exit.canPass(pc))
     .map(([dir, exit]) => ({ dir, toName: exit.otherSide(room).name }));
 
-  const lockedDoors: LockedDoorView[] = [...room.exits.entries()]
+  const lockedDoors: LockedDoorView[] = exitEntries
     .filter(([, exit]) => !exit.canPass(pc))
     .map(([dir, exit]) => ({ name: exit.name ?? "door", dir }));
 

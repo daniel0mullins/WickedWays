@@ -192,6 +192,8 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -202,6 +204,7 @@
         },
         "scope": [],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 11,

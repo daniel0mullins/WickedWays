@@ -269,6 +269,8 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -330,6 +332,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 10,
@@ -635,6 +638,8 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -696,6 +701,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 10,
@@ -978,6 +984,8 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -1039,6 +1047,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 10,
@@ -1327,6 +1336,8 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -1388,6 +1399,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 20,
           "sanity": 9,

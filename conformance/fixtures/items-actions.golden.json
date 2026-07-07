@@ -347,6 +347,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -508,6 +515,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -821,6 +829,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -983,6 +998,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -1320,6 +1336,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -1482,6 +1505,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -1842,6 +1866,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -2004,6 +2035,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -2356,6 +2388,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -2433,6 +2472,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -2789,6 +2829,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -2866,6 +2913,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -3220,6 +3268,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -3382,6 +3437,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -3736,6 +3792,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -3898,6 +3961,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -4284,6 +4348,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -4445,6 +4516,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -4824,6 +4896,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -4987,6 +5066,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -5367,6 +5447,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -5531,6 +5618,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 13,
@@ -5910,6 +5998,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -6073,6 +6168,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -6464,6 +6560,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -6599,6 +6702,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -6993,6 +7097,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -7102,6 +7213,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -7488,6 +7600,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -7538,6 +7657,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -7924,6 +8044,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -7974,6 +8101,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -8358,6 +8486,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -8467,6 +8602,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -8851,6 +8987,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -8960,6 +9103,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -9345,6 +9489,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -9454,6 +9605,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -9840,6 +9992,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -9890,6 +10049,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -10276,6 +10436,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -10326,6 +10493,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -10710,6 +10878,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -10819,6 +10994,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 3,
           "maxTurns": 10,
           "sanity": 10,

@@ -5,6 +5,7 @@
 //!
 //! Mirrors `packages/play-runtime/src/viewmodel.ts:60-167`.
 use alloc::collections::BTreeSet;
+use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
@@ -28,6 +29,24 @@ pub struct ThinRoom {
     pub name: String,
     pub description: String,
     pub is_lit: bool,
+}
+
+/// A passable exit as the surface lists it. Mirrors `ExitView` (viewmodel.ts:27).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct ExitView {
+    pub dir: crate::world::direction::Direction,
+    pub to_name: String,
+}
+
+/// An impassable (locked) exit. Mirrors `LockedDoorView` (viewmodel.ts:28).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct LockedDoorView {
+    pub name: String,
+    pub dir: crate::world::direction::Direction,
 }
 
 // ─── sub-plan 3a: widened ViewModel ──────────────────────────────────────────
@@ -92,6 +111,7 @@ pub struct Inventory {
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct StatusView {
+    pub location_name: String,
     pub turn: i64,
     pub max_turns: i64,
     pub health: f64,
@@ -100,13 +120,15 @@ pub struct StatusView {
 
 /// The widened ViewModel (sub-plan 3a).
 ///
-/// `exits` and `lockedDoors` are deferred to sub-plan 4/6.
+/// `exits` / `lockedDoors` / `status.locationName` shipped in Phase-2 Task 6.
 /// `defeated` on occupants shipped in sub-plan 4a.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ViewModel {
     pub room: ThinRoom,
+    pub exits: Vec<ExitView>,
+    pub locked_doors: Vec<LockedDoorView>,
     pub occupants: Vec<ScopeEntity>,
     pub loot: Vec<LootView>,
     pub inventory: Inventory,
@@ -220,6 +242,52 @@ impl World {
             .ok_or_else(|| ProceduralViolation("current room not found in world".into()))?;
 
         let is_lit = self.is_lit(&room_id);
+
+        // ── exits / lockedDoors (Phase 2 parity) ───────────────────────────
+        // Canonical order: alphabetical by direction key (BTreeMap iteration);
+        // the TS oracle sorts identically (viewmodel.ts, Phase-2 ordering decision).
+        let actor_view = self
+            .character_view(&active_id, cat)
+            .ok_or_else(|| ProceduralViolation("active character not found".into()))?;
+        let mut exits: Vec<ExitView> = Vec::new();
+        let mut locked_doors: Vec<LockedDoorView> = Vec::new();
+        for (dir_key, exit_id) in &room_snap.exits {
+            let exit = self
+                .exits
+                .get(exit_id)
+                .ok_or_else(|| ProceduralViolation("exit missing".into()))?;
+            let dir: crate::world::direction::Direction =
+                serde_json::from_value(serde_json::Value::String(dir_key.clone()))
+                    .map_err(|_| ProceduralViolation(format!("unknown direction key '{dir_key}'")))?;
+            let passable = match &exit.behavior_key {
+                None => true,
+                Some(key) => {
+                    // Resolve native FIRST, then scripted catalog behaviors —
+                    // identical to the `go` path (movement.rs:104) so the view's
+                    // classification matches the TS oracle's `exit.canPass(pc)`
+                    // for both native and scripted (catalog) doors.
+                    let resolved = crate::world::exits::resolve_exit_behavior(key, cat)
+                        .ok_or_else(|| {
+                            ProceduralViolation(format!(
+                                "Exit behavior '{key}' is not registered."
+                            ))
+                        })?;
+                    resolved.as_behavior().can_pass(&actor_view, &exit.state)
+                }
+            };
+            if passable {
+                let a = exit.endpoint_ids[0].clone();
+                let b = exit.endpoint_ids[1].clone();
+                let dest = if a == room_id { b } else { a };
+                let to_name = self.rooms.get(&dest).map(|r| r.name.clone()).unwrap_or_default();
+                exits.push(ExitView { dir, to_name });
+            } else {
+                locked_doors.push(LockedDoorView {
+                    name: exit.name.clone().unwrap_or_else(|| String::from("door")),
+                    dir,
+                });
+            }
+        }
 
         // ── occupants ──────────────────────────────────────────────────────────
         let occupants: Vec<ScopeEntity> = room_snap
@@ -353,6 +421,8 @@ impl World {
                 description: room_snap.description.clone(),
                 is_lit,
             },
+            exits,
+            locked_doors,
             occupants,
             loot,
             inventory: Inventory {
@@ -363,6 +433,7 @@ impl World {
             },
             scope,
             status: StatusView {
+                location_name: room_snap.name.clone(),
                 turn: self.campaign.round,
                 max_turns: self.campaign.max_rounds,
                 health,
@@ -843,6 +914,87 @@ mod tests {
             let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
             assert_eq!(wraith.defeated, Some(true), "KO occupant should have defeated=Some(true)");
         }
+    }
+
+    /// Add a second room "crypt" named "Crypt" to the standard view world so
+    /// exits can point somewhere with a real destination name.
+    fn add_crypt(w: &mut crate::world::World) {
+        let crypt = crate::world::snapshot::RoomSnapshot {
+            id: room_id("crypt"),
+            name: "Crypt".into(),
+            description: "A cold vault.".into(),
+            exits: BTreeMap::new(),
+            dark: false,
+            spawn_modifier: 0,
+            occupant_ids: alloc::vec![],
+            loot_ids: alloc::vec![],
+            material_cache_ids: alloc::vec![],
+            light_source_ids: alloc::vec![],
+            scenes: alloc::vec![],
+        };
+        w.rooms.insert(room_id("crypt"), crypt);
+    }
+
+    #[test]
+    fn view_lists_passable_exits_alphabetically_with_destination_names() {
+        use crate::world::direction::Direction;
+        use crate::world::ids::ExitId;
+        use crate::world::snapshot::ExitSnapshot;
+        use crate::world::view::{ExitView, LockedDoorView};
+        // Behavior-free exit from "start" to "Crypt". Insertion order (south then
+        // north) is reversed vs. the emitted order to prove the BTreeMap ordering
+        // (alphabetical by direction key), not authoring order, is emitted.
+        let mut w = build_world_for_view();
+        add_crypt(&mut w);
+        w.exits.insert(ExitId("e1".into()), ExitSnapshot {
+            id: ExitId("e1".into()),
+            endpoint_ids: [room_id("start"), room_id("crypt")],
+            behavior_key: None,
+            name: None,
+            state: Value::Null,
+        });
+        let room = w.rooms.get_mut(&room_id("start")).unwrap();
+        room.exits.insert("south".into(), ExitId("e1".into()));
+        room.exits.insert("north".into(), ExitId("e1".into()));
+
+        let vm = w.view(&build_catalog(), &BTreeSet::new()).unwrap();
+        assert_eq!(vm.locked_doors, alloc::vec![] as Vec<LockedDoorView>);
+        assert_eq!(
+            vm.exits,
+            alloc::vec![
+                ExitView { dir: Direction::North, to_name: "Crypt".into() },
+                ExitView { dir: Direction::South, to_name: "Crypt".into() },
+            ],
+            "alphabetical by direction key"
+        );
+        assert_eq!(vm.status.location_name, vm.room.name);
+    }
+
+    #[test]
+    fn keyed_door_without_key_lists_as_locked_door_with_name_fallback() {
+        use crate::world::direction::Direction;
+        use crate::world::ids::ExitId;
+        use crate::world::snapshot::ExitSnapshot;
+        use crate::world::view::{ExitView, LockedDoorView};
+        // conformance:keyed-door is registered under cfg(test) (exits.rs:23-27);
+        // locked state + no matching key on the PC → can_pass false.
+        let mut w = build_world_for_view();
+        add_crypt(&mut w);
+        w.exits.insert(ExitId("door".into()), ExitSnapshot {
+            id: ExitId("door".into()),
+            endpoint_ids: [room_id("start"), room_id("crypt")],
+            behavior_key: Some("conformance:keyed-door".into()),
+            name: None, // → "door" fallback (viewmodel.ts:131 `exit.name ?? "door"`)
+            state: json!({ "unlocked": false }),
+        });
+        w.rooms.get_mut(&room_id("start")).unwrap()
+            .exits.insert("north".into(), ExitId("door".into()));
+
+        let vm = w.view(&build_catalog(), &BTreeSet::new()).unwrap();
+        assert_eq!(vm.exits, alloc::vec![] as Vec<ExitView>);
+        assert_eq!(vm.locked_doors, alloc::vec![
+            LockedDoorView { name: "door".into(), dir: Direction::North },
+        ]);
     }
 
     #[test]

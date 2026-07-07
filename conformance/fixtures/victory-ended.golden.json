@@ -196,6 +196,8 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -228,6 +230,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,

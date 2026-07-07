@@ -354,6 +354,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Crypt"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -394,6 +401,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 10,
@@ -815,6 +823,13 @@
           "description": "A dark crypt.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -896,6 +911,7 @@
           }
         ],
         "status": {
+          "locationName": "Crypt",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 10,
@@ -1323,6 +1339,13 @@
           "description": "A dark crypt.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -1404,6 +1427,7 @@
           }
         ],
         "status": {
+          "locationName": "Crypt",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 10,
@@ -1868,6 +1892,13 @@
           "description": "A dark crypt.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -2018,6 +2049,7 @@
           }
         ],
         "status": {
+          "locationName": "Crypt",
           "turn": 0,
           "maxTurns": 20,
           "sanity": 10,
@@ -2464,6 +2496,13 @@
           "description": "A dark crypt.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -2614,6 +2653,7 @@
           }
         ],
         "status": {
+          "locationName": "Crypt",
           "turn": 1,
           "maxTurns": 20,
           "sanity": 10,
@@ -3060,6 +3100,13 @@
           "description": "A dark crypt.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -3210,6 +3257,7 @@
           }
         ],
         "status": {
+          "locationName": "Crypt",
           "turn": 1,
           "maxTurns": 20,
           "sanity": 10,
@@ -3694,6 +3742,13 @@
           "description": "A dark crypt.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -3844,6 +3899,7 @@
           }
         ],
         "status": {
+          "locationName": "Crypt",
           "turn": 1,
           "maxTurns": 20,
           "sanity": 10,
@@ -4350,6 +4406,13 @@
           "description": "A dark crypt.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Ghoul",
@@ -4544,6 +4607,7 @@
           }
         ],
         "status": {
+          "locationName": "Crypt",
           "turn": 1,
           "maxTurns": 20,
           "sanity": 10,

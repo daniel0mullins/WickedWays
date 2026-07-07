@@ -80,6 +80,9 @@ mod ts_export {
         Inventory::export_all().expect("export Inventory");
         StatusView::export_all().expect("export StatusView");
         ViewModel::export_all().expect("export ViewModel");
+        use crate::world::view::{ExitView, LockedDoorView};
+        ExitView::export_all().expect("export ExitView");
+        LockedDoorView::export_all().expect("export LockedDoorView");
         // Task 2 (sub-plan 4a): typed afflictions + Status
         use crate::world::afflictions::{Status, Afflictions};
         Status::export_all().expect("export Status");

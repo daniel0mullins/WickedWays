@@ -367,6 +367,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -399,6 +410,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -682,6 +694,13 @@
           "description": "a pitch-black cellar",
           "isLit": false
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Start"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -692,6 +711,7 @@
         },
         "scope": [],
         "status": {
+          "locationName": "Cellar",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -974,6 +994,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -1006,6 +1037,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -1286,6 +1318,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -1318,6 +1361,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -1592,6 +1636,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -1624,6 +1679,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -1902,6 +1958,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -1934,6 +2001,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -2210,6 +2278,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -2242,6 +2321,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -2518,6 +2598,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -2550,6 +2641,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -2828,6 +2920,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -2860,6 +2963,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -3138,6 +3242,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -3170,6 +3285,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -3446,6 +3562,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -3478,6 +3605,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -3754,6 +3882,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -3786,6 +3925,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -4064,6 +4204,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -4096,6 +4247,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -4374,6 +4526,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -4406,6 +4569,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -4682,6 +4846,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -4714,6 +4889,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 3,
           "maxTurns": 10,
           "sanity": 10,
@@ -4990,6 +5166,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -5022,6 +5209,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 3,
           "maxTurns": 10,
           "sanity": 10,
@@ -5300,6 +5488,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -5332,6 +5531,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 3,
           "maxTurns": 10,
           "sanity": 10,
@@ -5610,6 +5810,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -5642,6 +5853,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 3,
           "maxTurns": 10,
           "sanity": 10,
@@ -5918,6 +6130,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -5950,6 +6173,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 4,
           "maxTurns": 10,
           "sanity": 10,
@@ -6226,6 +6450,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -6258,6 +6493,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 4,
           "maxTurns": 10,
           "sanity": 10,
@@ -6536,6 +6772,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -6568,6 +6815,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 4,
           "maxTurns": 10,
           "sanity": 10,
@@ -6846,6 +7094,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -6878,6 +7137,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 4,
           "maxTurns": 10,
           "sanity": 10,
@@ -7154,6 +7414,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -7186,6 +7457,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 5,
           "maxTurns": 10,
           "sanity": 10,
@@ -7462,6 +7734,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -7494,6 +7777,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 5,
           "maxTurns": 10,
           "sanity": 10,
@@ -7772,6 +8056,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -7804,6 +8099,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 5,
           "maxTurns": 10,
           "sanity": 10,
@@ -8082,6 +8378,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -8114,6 +8421,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 5,
           "maxTurns": 10,
           "sanity": 10,
@@ -8390,6 +8698,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -8422,6 +8741,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 6,
           "maxTurns": 10,
           "sanity": 10,
@@ -8698,6 +9018,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -8730,6 +9061,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 6,
           "maxTurns": 10,
           "sanity": 10,
@@ -9008,6 +9340,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -9040,6 +9383,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 6,
           "maxTurns": 10,
           "sanity": 10,
@@ -9318,6 +9662,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -9350,6 +9705,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 6,
           "maxTurns": 10,
           "sanity": 10,
@@ -9626,6 +9982,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -9658,6 +10025,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 7,
           "maxTurns": 10,
           "sanity": 10,
@@ -9934,6 +10302,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -9966,6 +10345,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 7,
           "maxTurns": 10,
           "sanity": 10,
@@ -10244,6 +10624,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -10276,6 +10667,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 7,
           "maxTurns": 10,
           "sanity": 10,
@@ -10554,6 +10946,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -10586,6 +10989,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 7,
           "maxTurns": 10,
           "sanity": 10,
@@ -10862,6 +11266,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -10894,6 +11309,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 8,
           "maxTurns": 10,
           "sanity": 10,
@@ -11170,6 +11586,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -11202,6 +11629,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 8,
           "maxTurns": 10,
           "sanity": 10,
@@ -11480,6 +11908,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -11512,6 +11951,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 8,
           "maxTurns": 10,
           "sanity": 10,
@@ -11790,6 +12230,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -11822,6 +12273,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 8,
           "maxTurns": 10,
           "sanity": 10,
@@ -12098,6 +12550,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -12130,6 +12593,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 9,
           "maxTurns": 10,
           "sanity": 10,
@@ -12406,6 +12870,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -12438,6 +12913,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 9,
           "maxTurns": 10,
           "sanity": 10,
@@ -12716,6 +13192,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -12748,6 +13235,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 9,
           "maxTurns": 10,
           "sanity": 10,
@@ -13026,6 +13514,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -13058,6 +13557,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 9,
           "maxTurns": 10,
           "sanity": 10,
@@ -13339,6 +13839,17 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Next"
+          },
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -13371,6 +13882,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 10,
           "maxTurns": 10,
           "sanity": 10,

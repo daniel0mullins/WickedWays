@@ -360,6 +360,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -459,6 +466,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 7,
@@ -773,6 +781,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -873,6 +888,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 7,
@@ -1211,6 +1227,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -1310,6 +1333,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 7,
@@ -1653,6 +1677,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -1752,6 +1783,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 7,
@@ -2082,6 +2114,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -2132,6 +2171,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 6,
@@ -2466,6 +2506,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -2516,6 +2563,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 5,
@@ -2883,6 +2931,13 @@
           "description": "A mildewed parlor.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -2893,6 +2948,7 @@
         },
         "scope": [],
         "status": {
+          "locationName": "Parlor",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 5,
@@ -3265,6 +3321,13 @@
           "description": "A mildewed parlor.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -3275,6 +3338,7 @@
         },
         "scope": [],
         "status": {
+          "locationName": "Parlor",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 5,
@@ -3645,6 +3709,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -3723,6 +3794,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 7,
@@ -4078,6 +4150,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -4156,6 +4235,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 6,
@@ -4514,6 +4594,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -4594,6 +4681,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 6,
@@ -4976,6 +5064,13 @@
           "description": "A mildewed parlor.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -5059,6 +5154,7 @@
           }
         ],
         "status": {
+          "locationName": "Parlor",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 6,
@@ -5444,6 +5540,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -5524,6 +5627,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 6,
@@ -5914,6 +6018,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -5994,6 +6105,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 6,
@@ -6371,6 +6483,13 @@
           "description": "A mildewed parlor.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -6381,6 +6500,7 @@
         },
         "scope": [],
         "status": {
+          "locationName": "Parlor",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 5,
@@ -6758,6 +6878,13 @@
           "description": "A mildewed parlor.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -6768,6 +6895,7 @@
         },
         "scope": [],
         "status": {
+          "locationName": "Parlor",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 4,
@@ -7160,6 +7288,13 @@
           "description": "A mildewed parlor.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -7170,6 +7305,7 @@
         },
         "scope": [],
         "status": {
+          "locationName": "Parlor",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 4,
@@ -7560,6 +7696,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -7640,6 +7783,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 6,
@@ -8015,6 +8159,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -8095,6 +8246,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 6,
@@ -8487,6 +8639,13 @@
           "description": "A mildewed parlor.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -8570,6 +8729,7 @@
           }
         ],
         "status": {
+          "locationName": "Parlor",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 6,
@@ -8971,6 +9131,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -9051,6 +9218,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 6,
@@ -9457,6 +9625,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -9537,6 +9712,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 6,
@@ -9930,6 +10106,13 @@
           "description": "A mildewed parlor.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -9940,6 +10123,7 @@
         },
         "scope": [],
         "status": {
+          "locationName": "Parlor",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 4,
@@ -10333,6 +10517,13 @@
           "description": "A mildewed parlor.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -10343,6 +10534,7 @@
         },
         "scope": [],
         "status": {
+          "locationName": "Parlor",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 3,
@@ -10751,6 +10943,13 @@
           "description": "A mildewed parlor.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -10761,6 +10960,7 @@
         },
         "scope": [],
         "status": {
+          "locationName": "Parlor",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 3,
@@ -11167,6 +11367,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Parlor"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -11247,6 +11454,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 3,
           "maxTurns": 10,
           "sanity": 6,

@@ -222,6 +222,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [
+          {
+            "name": "door",
+            "dir": "north"
+          }
+        ],
         "occupants": [],
         "loot": [
           {
@@ -278,6 +285,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -489,6 +497,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [
+          {
+            "name": "door",
+            "dir": "north"
+          }
+        ],
         "occupants": [],
         "loot": [
           {
@@ -545,6 +560,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -781,6 +797,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Vault"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -837,6 +860,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -1101,6 +1125,13 @@
           "description": "The vault.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -1139,6 +1170,7 @@
           }
         ],
         "status": {
+          "locationName": "Vault",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -1387,6 +1419,13 @@
           "description": "The vault.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -1425,6 +1464,7 @@
           }
         ],
         "status": {
+          "locationName": "Vault",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -1673,6 +1713,13 @@
           "description": "The vault.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -1711,6 +1758,7 @@
           }
         ],
         "status": {
+          "locationName": "Vault",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -1983,6 +2031,13 @@
           "description": "A stone hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Vault"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -2039,6 +2094,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,

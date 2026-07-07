@@ -374,6 +374,22 @@
           "description": "The upstairs landing.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Nursery"
+          }
+        ],
+        "lockedDoors": [
+          {
+            "name": "attic door",
+            "dir": "north"
+          },
+          {
+            "name": "study door",
+            "dir": "west"
+          }
+        ],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -412,6 +428,7 @@
           }
         ],
         "status": {
+          "locationName": "Landing",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -741,6 +758,22 @@
           "description": "The upstairs landing.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Nursery"
+          }
+        ],
+        "lockedDoors": [
+          {
+            "name": "attic door",
+            "dir": "north"
+          },
+          {
+            "name": "study door",
+            "dir": "west"
+          }
+        ],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -779,6 +812,7 @@
           }
         ],
         "status": {
+          "locationName": "Landing",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -1108,6 +1142,22 @@
           "description": "The upstairs landing.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Nursery"
+          }
+        ],
+        "lockedDoors": [
+          {
+            "name": "attic door",
+            "dir": "north"
+          },
+          {
+            "name": "study door",
+            "dir": "west"
+          }
+        ],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -1146,6 +1196,7 @@
           }
         ],
         "status": {
+          "locationName": "Landing",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -1528,6 +1579,13 @@
           "description": "A silent nursery.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Landing"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Wraith",
@@ -1587,6 +1645,7 @@
           }
         ],
         "status": {
+          "locationName": "Nursery",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -1996,6 +2055,13 @@
           "description": "A silent nursery.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Landing"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Wraith",
@@ -2098,6 +2164,7 @@
           }
         ],
         "status": {
+          "locationName": "Nursery",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -2489,6 +2556,13 @@
           "description": "A silent nursery.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Landing"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Wraith",
@@ -2591,6 +2665,7 @@
           }
         ],
         "status": {
+          "locationName": "Nursery",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -2982,6 +3057,13 @@
           "description": "A silent nursery.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Landing"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Wraith",
@@ -3084,6 +3166,7 @@
           }
         ],
         "status": {
+          "locationName": "Nursery",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -3475,6 +3558,13 @@
           "description": "A silent nursery.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Landing"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Wraith",
@@ -3577,6 +3667,7 @@
           }
         ],
         "status": {
+          "locationName": "Nursery",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -4002,6 +4093,13 @@
           "description": "A silent nursery.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Landing"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "mob:Wraith",
@@ -4104,6 +4202,7 @@
           }
         ],
         "status": {
+          "locationName": "Nursery",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -4538,6 +4637,22 @@
           "description": "The upstairs landing.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Nursery"
+          },
+          {
+            "dir": "west",
+            "toName": "Study"
+          }
+        ],
+        "lockedDoors": [
+          {
+            "name": "attic door",
+            "dir": "north"
+          }
+        ],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -4601,6 +4716,7 @@
           }
         ],
         "status": {
+          "locationName": "Landing",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -5025,6 +5141,22 @@
           "description": "The upstairs landing.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Nursery"
+          },
+          {
+            "dir": "west",
+            "toName": "Study"
+          }
+        ],
+        "lockedDoors": [
+          {
+            "name": "attic door",
+            "dir": "north"
+          }
+        ],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -5088,6 +5220,7 @@
           }
         ],
         "status": {
+          "locationName": "Landing",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -5512,6 +5645,22 @@
           "description": "The upstairs landing.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Nursery"
+          },
+          {
+            "dir": "west",
+            "toName": "Study"
+          }
+        ],
+        "lockedDoors": [
+          {
+            "name": "attic door",
+            "dir": "north"
+          }
+        ],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -5575,6 +5724,7 @@
           }
         ],
         "status": {
+          "locationName": "Landing",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -5999,6 +6149,22 @@
           "description": "The upstairs landing.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Nursery"
+          },
+          {
+            "dir": "west",
+            "toName": "Study"
+          }
+        ],
+        "lockedDoors": [
+          {
+            "name": "attic door",
+            "dir": "north"
+          }
+        ],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -6062,6 +6228,7 @@
           }
         ],
         "status": {
+          "locationName": "Landing",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -6524,6 +6691,13 @@
           "description": "A book-lined study.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Landing"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -6587,6 +6761,7 @@
           }
         ],
         "status": {
+          "locationName": "Study",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -7051,6 +7226,22 @@
           "description": "The upstairs landing.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Nursery"
+          },
+          {
+            "dir": "west",
+            "toName": "Study"
+          }
+        ],
+        "lockedDoors": [
+          {
+            "name": "attic door",
+            "dir": "north"
+          }
+        ],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -7114,6 +7305,7 @@
           }
         ],
         "status": {
+          "locationName": "Landing",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -7568,6 +7760,22 @@
           "description": "The upstairs landing.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Nursery"
+          },
+          {
+            "dir": "west",
+            "toName": "Study"
+          }
+        ],
+        "lockedDoors": [
+          {
+            "name": "attic door",
+            "dir": "north"
+          }
+        ],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -7631,6 +7839,7 @@
           }
         ],
         "status": {
+          "locationName": "Landing",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
@@ -8085,6 +8294,22 @@
           "description": "The upstairs landing.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "east",
+            "toName": "Nursery"
+          },
+          {
+            "dir": "west",
+            "toName": "Study"
+          }
+        ],
+        "lockedDoors": [
+          {
+            "name": "attic door",
+            "dir": "north"
+          }
+        ],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -8148,6 +8373,7 @@
           }
         ],
         "status": {
+          "locationName": "Landing",
           "turn": 3,
           "maxTurns": 10,
           "sanity": 10,

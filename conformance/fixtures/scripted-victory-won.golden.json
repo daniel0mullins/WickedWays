@@ -256,6 +256,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -310,6 +317,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 16,
@@ -575,6 +583,13 @@
           "description": "The entrance hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [
           {
@@ -629,6 +644,7 @@
           }
         ],
         "status": {
+          "locationName": "Foyer",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 16,
@@ -916,6 +932,17 @@
           "description": "A long central hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Attic"
+          },
+          {
+            "dir": "south",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -952,6 +979,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 16,
@@ -1229,6 +1257,17 @@
           "description": "A long central hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Attic"
+          },
+          {
+            "dir": "south",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -1265,6 +1304,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 16,
@@ -1542,6 +1582,17 @@
           "description": "A long central hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Attic"
+          },
+          {
+            "dir": "south",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -1578,6 +1629,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 16,
@@ -1855,6 +1907,17 @@
           "description": "A long central hall.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Attic"
+          },
+          {
+            "dir": "south",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -1891,6 +1954,7 @@
           }
         ],
         "status": {
+          "locationName": "Hall",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 16,
@@ -2200,6 +2264,13 @@
           "description": "The attic, under the bare ribs of the roof.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -2236,6 +2307,7 @@
           }
         ],
         "status": {
+          "locationName": "Attic",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 16,
@@ -2535,6 +2607,13 @@
           "description": "The attic, under the bare ribs of the roof.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -2571,6 +2650,7 @@
           }
         ],
         "status": {
+          "locationName": "Attic",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 16,
@@ -2880,6 +2960,13 @@
           "description": "The attic, under the bare ribs of the roof.",
           "isLit": true
         },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "lockedDoors": [],
         "occupants": [],
         "loot": [],
         "inventory": {
@@ -2916,6 +3003,7 @@
           }
         ],
         "status": {
+          "locationName": "Attic",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 16,

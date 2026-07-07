@@ -6,6 +6,8 @@
       "description": "A stone hall.",
       "isLit": true
     },
+    "exits": [],
+    "lockedDoors": [],
     "occupants": [
       {
         "id": "player:Ben",
@@ -195,6 +197,7 @@
       }
     ],
     "status": {
+      "locationName": "Hall",
       "turn": 0,
       "maxTurns": 5,
       "sanity": 13,

@@ -308,11 +308,11 @@ describe("generate items-projection golden", () => {
       throw new Error("Projected view inventory.items is empty — PC has no items.");
     }
 
-    // ── Validate no forbidden fields remain ───────────────────────────────────
-    if ("exits" in projectedView) throw new Error("Projected view still has 'exits' field.");
-    if ("lockedDoors" in projectedView) throw new Error("Projected view still has 'lockedDoors' field.");
-    if ("locationName" in (projectedView.status as object)) {
-      throw new Error("Projected view status still has 'locationName'.");
+    // ── Validate Phase-2 parity fields are emitted (now DIFFED) ───────────────
+    if (!("exits" in projectedView)) throw new Error("Projected view missing 'exits' field.");
+    if (!("lockedDoors" in projectedView)) throw new Error("Projected view missing 'lockedDoors' field.");
+    if (!("locationName" in (projectedView.status as object))) {
+      throw new Error("Projected view status missing 'locationName'.");
     }
 
     // ── Write files ───────────────────────────────────────────────────────────

@@ -203,6 +203,8 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -235,6 +237,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 0,
           "maxTurns": 10,
           "sanity": 10,
@@ -430,6 +433,8 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -462,6 +467,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -659,6 +665,8 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ada",
@@ -691,6 +699,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 1,
           "maxTurns": 10,
           "sanity": 10,
@@ -896,6 +905,8 @@
           "description": "the entrance",
           "isLit": true
         },
+        "exits": [],
+        "lockedDoors": [],
         "occupants": [
           {
             "id": "player:Ben",
@@ -928,6 +939,7 @@
           }
         ],
         "status": {
+          "locationName": "Start",
           "turn": 2,
           "maxTurns": 10,
           "sanity": 10,
