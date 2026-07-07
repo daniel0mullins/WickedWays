@@ -5,7 +5,20 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   // Generated output and dependencies are never linted.
   {
-    ignores: ["**/dist/", "**/coverage/", "**/node_modules/", "docs-site/", "**/pkg/", "generated/"],
+    ignores: [
+      "**/dist/",
+      "**/coverage/",
+      "**/node_modules/",
+      "docs-site/",
+      "**/pkg/",
+      // ts-rs stray output from a bare `cargo test` (gitignored; see .gitignore).
+      "crates/wickedways-core/bindings/",
+      // wasm-pack build artifacts (gitignored). `**/pkg/` does NOT match these.
+      "**/pkg-node/",
+      "**/pkg-web/",
+      // Generated TS bindings (already gitignore-adjacent; covers generated/bindings/).
+      "generated/",
+    ],
   },
 
   // Baseline JS rules apply to every file (including this config).
