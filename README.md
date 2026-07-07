@@ -587,6 +587,29 @@ hit is zeroed and no further transformer runs. After a serialize/hydrate cycle t
 doom counter is preserved (`snap.campaign.mechanics` contains `{ key: "doom", state:
 { doom: 2, doomAt: 3 } }`) and the mechanic continues firing from the restored state.
 
+### Scripted behaviors (the ops DSL)
+
+Alongside hand-written TS `Mechanic`/`ExitBehavior`/victory closures, first-party
+ops can be authored as **scripts**: a closed, loop-free, deterministic data-AST
+(values, expressions, statements) interpreted by the Rust core. Scripts are pure —
+they read a projection (`CampaignView`, the actor, the action, their own JSON
+state) and return effects / a boolean / an optional narration line; the engine
+applies the results through the same collect-then-apply pipeline as native ops.
+
+- **Authoring:** typed builders in `@wickedways/campaigns` (`packages/campaigns/src/scripted/builders.ts`)
+  emit the AST; the AST types are generated from Rust via ts-rs (`generated/bindings/`).
+- **Storage/resolution:** scripts ride in the campaign catalog under
+  `Catalog.behaviors[key]`; the engine resolves a behavior key against the native
+  registry first, then the catalog (`family: "mechanic" | "exit" | "victory"`).
+  Unknown keys and ill-shaped ASTs fail fast at load with `ProceduralViolation`.
+- **Determinism:** f64 arithmetic is restricted to `+ − × ÷` and comparisons,
+  iteration is ordered, string-from-number matches JS `Number.prototype.toString`
+  byte-for-byte, and randomness only comes from the injected rng.
+- **Hollow House** is the reference user: its dread/storyteller/status-bar
+  mechanics, both keyed doors, and all three victory conditions are re-authored in
+  `packages/campaigns/src/hollow-house/scripted.ts` and gated byte-for-byte against
+  the hand-written closures by the `conformance/scripted-*` differential fixtures.
+
 ### Mob encounters & loot
 
 #### Mob origin
