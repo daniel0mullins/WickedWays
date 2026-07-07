@@ -15,6 +15,7 @@ pub mod resolve;
 pub mod rng;
 pub mod scenes;
 pub mod snapshot;
+pub mod submit;
 mod combat;
 mod items_actions;
 mod movement;
