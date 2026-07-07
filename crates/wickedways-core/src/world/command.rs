@@ -30,6 +30,8 @@ pub enum Command {
     #[serde(rename_all = "camelCase")]
     Use { target_id: String },
     #[serde(rename_all = "camelCase")]
+    Read { target_id: String },
+    #[serde(rename_all = "camelCase")]
     Attack { target_id: String },
     #[serde(rename_all = "camelCase")]
     MechanicAction { mechanic_key: String, action_key: String },
@@ -60,6 +62,9 @@ pub fn apply_command(
         }
         Command::Use { target_id } => {
             world.use_item(&actor, &ItemId(target_id), cat, cues)
+        }
+        Command::Read { target_id } => {
+            world.read_item(&actor, &ItemId(target_id), cat, cues)
         }
         Command::Equip { target_id } => {
             world.equip(&actor, &ItemId(target_id), cat, cues)
@@ -296,6 +301,14 @@ mod tests {
             serde_json::json!({ "kind": "use", "targetId": "herb-3" })
         ).unwrap();
         assert!(matches!(c, Command::Use { target_id } if target_id == "herb-3"));
+    }
+
+    #[test]
+    fn read_command_deserializes() {
+        let c: Command = serde_json::from_value(serde_json::json!({
+            "kind": "read", "targetId": "item-note"
+        })).unwrap();
+        assert!(matches!(c, Command::Read { target_id } if target_id == "item-note"));
     }
 
     #[test]

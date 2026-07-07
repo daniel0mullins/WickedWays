@@ -326,12 +326,53 @@ impl World {
         if !held {
             return Ok(());
         }
+        // Capture behavior_key (for on_read) + resolve lore first, dropping the
+        // immutable snapshot borrow before we mutate self to apply effects.
+        let behavior_key = match self.items.get(item) {
+            Some(crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. }) => {
+                Some(behavior_key.clone())
+            }
+            _ => None,
+        };
         let snap = self
             .items
             .get(item)
             .ok_or_else(|| ProceduralViolation("Item snapshot not found.".into()))?;
         let resolved = resolve_item(snap, cat)?;
-        if let Some(lore) = resolved.lore.clone() {
+        let lore = resolved.lore.clone();
+
+        // Author read-behaviour (scripted onRead): runs BEFORE the lore cue
+        // (src/lib/character/character.ts:788-790 — run read closure, THEN emit
+        // lore). Absent script = no-op. Effects flow through the collect-then-apply
+        // pipeline, capped at MAX_EFFECTS_PER_EVENT (mirrors Task 3's use_item).
+        if let Some(key) = &behavior_key {
+            if let Some(crate::script::ast::BehaviorScript::Item { script }) =
+                cat.behaviors.get(key)
+            {
+                let view = self.build_campaign_view(cat);
+                if let Some(actor_view) = self.character_view(actor, cat) {
+                    let effects = {
+                        let rng = &mut self.rng;
+                        let mut state = serde_json::Value::Null; // no per-item script state (v1)
+                        let mut base = crate::world::mechanics::HookCtx {
+                            state: &mut state,
+                            view: &view,
+                            rng,
+                        };
+                        crate::script::ops::ScriptedItem { script }.run_read(&mut base, &actor_view)
+                    };
+                    if effects.len() > crate::world::mechanics::MAX_EFFECTS_PER_EVENT {
+                        return Err(ProceduralViolation(alloc::format!(
+                            "Item '{}' emitted too many effects.",
+                            key
+                        )));
+                    }
+                    self.apply_all(effects, cat, cues)?;
+                }
+            }
+        }
+
+        if let Some(lore) = lore {
             cues.push(PresentationCue::Mechanic {
                 cue: MechanicCue { text: Some(lore), sound: None },
             });
@@ -723,6 +764,37 @@ mod tests {
         }]);
         // free + non-consuming: still held, round unchanged by read itself
         assert!(w.characters[&cid("pc")].inventory.item_ids.contains(&iid("item-herb")));
+    }
+
+    #[test]
+    fn read_item_runs_scripted_on_read_before_lore_cue() {
+        use crate::script::ast::{BehaviorScript, EffectTemplate, Expr, ItemScript, Stmt};
+        use crate::script::value::Value;
+        let mut w = world_for_submit();
+        let pc = cid("pc");
+        w.characters.get_mut(&pc).unwrap().stats.sanity = 7.0;
+
+        // Build a catalog: the herb (has lore "Bitter leaves.") + an on_read script.
+        let mut cat = cat_with_items();
+        cat.behaviors.insert("items/herb".to_string(), BehaviorScript::Item {
+            script: ItemScript {
+                on_use: None,
+                on_read: Some(alloc::vec![Stmt::Emit { effect: EffectTemplate::AdjustStat {
+                    target: Expr::Actor, stat: StatType::Sanity, delta: Expr::Lit { value: Value::Number(-2.0) },
+                }}]),
+            },
+        });
+
+        // Move the herb into inventory, then read it.
+        let mut opened = BTreeSet::new();
+        w.submit(Intent::Take { target_id: "item-herb".into() }, &cat, &mut opened);
+        let mut cues = Vec::new();
+        w.read_item(&pc, &iid("item-herb"), &cat, &mut cues).unwrap();
+
+        assert_eq!(w.characters[&pc].stats.sanity, 5.0, "onRead drained 2 sanity");
+        // The lore cue is still emitted (and after the stat change).
+        assert!(cues.iter().any(|c| matches!(c,
+            PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("Bitter leaves."))));
     }
 
     #[test]
