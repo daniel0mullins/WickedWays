@@ -33,7 +33,7 @@ pub mod conformance {
     use super::*;
     use serde_json::json;
 
-    /// Behavior-logic-free helpers (testable without a `RoomView`).
+    // Behavior-logic-free helpers (testable without a `RoomView`).
 
     /// Fires while `state.count < 3` AND the room is occupied.
     pub fn visit_can_play(state: &Value, occupied: bool) -> bool {

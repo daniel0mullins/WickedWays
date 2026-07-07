@@ -350,25 +350,29 @@ impl World {
                 cat.behaviors.get(key)
             {
                 let view = self.build_campaign_view(cat);
-                if let Some(actor_view) = self.character_view(actor, cat) {
-                    let effects = {
-                        let rng = &mut self.rng;
-                        let mut state = serde_json::Value::Null; // no per-item script state (v1)
-                        let mut base = crate::world::mechanics::HookCtx {
-                            state: &mut state,
-                            view: &view,
-                            rng,
-                        };
-                        crate::script::ops::ScriptedItem { script }.run_read(&mut base, &actor_view)
+                // The held-check above guarantees the actor exists, so a missing view
+                // is a real inconsistency — surface it (matching use_mechanic_action's
+                // fail-loud stance) rather than silently dropping the scripted effects.
+                let actor_view = self.character_view(actor, cat).ok_or_else(|| {
+                    ProceduralViolation(alloc::format!("Actor '{}' not found.", actor.0))
+                })?;
+                let effects = {
+                    let rng = &mut self.rng;
+                    let mut state = serde_json::Value::Null; // no per-item script state (v1)
+                    let mut base = crate::world::mechanics::HookCtx {
+                        state: &mut state,
+                        view: &view,
+                        rng,
                     };
-                    if effects.len() > crate::world::mechanics::MAX_EFFECTS_PER_EVENT {
-                        return Err(ProceduralViolation(alloc::format!(
-                            "Item '{}' emitted too many effects.",
-                            key
-                        )));
-                    }
-                    self.apply_all(effects, cat, cues)?;
+                    crate::script::ops::ScriptedItem { script }.run_read(&mut base, &actor_view)
+                };
+                if effects.len() > crate::world::mechanics::MAX_EFFECTS_PER_EVENT {
+                    return Err(ProceduralViolation(alloc::format!(
+                        "Item '{}' emitted too many effects.",
+                        key
+                    )));
                 }
+                self.apply_all(effects, cat, cues)?;
             }
         }
 

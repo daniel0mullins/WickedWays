@@ -260,7 +260,6 @@ mod tests {
 
 #[cfg(test)]
 mod spawn_tests {
-    use super::*;
     use crate::world::descriptor::Catalog;
     use crate::world::ids::{CharacterId, RoomId};
     use crate::world::test_support::world_two_rooms;
