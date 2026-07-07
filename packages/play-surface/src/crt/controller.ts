@@ -119,8 +119,9 @@ export function mountTerminal(
     computeClickableNouns();
     // Persistent bottom HUD, driven from the viewmodel each turn (rendered inside <crt-hud>).
     game.setHud(vm);
-    // Drive the ambient drone from the live campaign each turn.
-    audio.update(session.campaign);
+    // Drive the ambient drone from the viewmodel each turn (DTO boundary —
+    // no live engine object crosses the surface seam).
+    audio.update(vm);
     mapModel.observe(vm);
   };
 
