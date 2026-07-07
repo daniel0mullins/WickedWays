@@ -122,6 +122,21 @@ seam**: resolve a key against the static native registry first; on `None`, look 
 referenced key resolves *and* every scripted AST passes a static type/shape check — **fail fast at
 load, never mid-turn.**
 
+**Resolution-seam shapes (pinned during planning against the real traits).** Two of the three seams
+can reuse the native trait for the scripted arm; victory cannot:
+
+- **Mechanic / exit** — the scripted adapter (`ScriptedMechanic` / `ScriptedExit`) implements the
+  existing `MechanicOp` / `ExitBehavior` trait, so the fire-points resolve to a `dyn Trait` either way.
+- **Victory** — `VictoryConditionBehavior::test(&self, &CampaignView)` cannot carry the `World`/`Catalog`
+  access the lazy `character.room` resolver needs. So `resolve_outcome` matches a `ResolvedVictory
+  { Native(&'static dyn VictoryConditionBehavior), Scripted(&VictoryScript) }`: the native arm calls the
+  trait unchanged; the scripted arm calls `ScriptedVictory::test(&view, world, cat)`. `ScriptedVictory`
+  therefore does **not** implement the trait.
+
+Because scripted resolution needs the `Catalog`, the wasm `replay_commands` entry point must parse the
+catalog **before** calling `validate_mechanics` (today it validates first, at `lib.rs:92`, then parses
+the catalog) — a reorder folded into the seam task.
+
 ## The language
 
 ### Value model
@@ -142,7 +157,10 @@ bit-identical between Rust and JS (`+ − × ÷`, `== != < <= > >=`); no transce
   `Get(char, "status")` → List of status strings; `Get(char, "roomId")` → Str|Null; `Get(char,
   "room")` → the resolved room subject (**lazy** — resolved from `room_id` on access, so nested
   `room.occupants[i].room` cannot build cyclic data); `HasEquipped(char, itemKey)`,
-  `HasItem(char, itemKey)`, `HasKey(char, keyCode)` → Bool.
+  `HasItem(char, itemKey)`, `HasKey(char, keyCode)` → Bool. (`HasKey` matches a key's `keyCode` —
+  e.g. `"brass"`/`"iron"`, as the doors gate — distinct from `HasItem`'s `behaviorKey` match;
+  `CharacterView` gains a `has_key(keyCode)` accessor over `inventory.key_ids`, which the current view,
+  with only `has_equipped`/`has_item`, lacks.)
 - **Room reads** (`of` = a room subject): `Get(room, "name"|"id")` → Str; `Get(room, "lit")` → Bool;
   `Get(room, "occupants")` → List of characters.
 - **Action reads:** `Get(Action, "kind")` → Str; `Get(Get(Action, "room"), "name")` → Str (the
