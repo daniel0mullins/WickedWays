@@ -1,0 +1,69 @@
+/**
+ * facade-talk golden — the talk no-op AND the startup-cues fixture.
+ *
+ * `talk` is time-advancing but has no NPCs, so dispatch throws
+ * "There's no one here to talk to." AFTER startTurn ran (dread's onTurnStart
+ * cue is in the returned cues) but BEFORE nextPlayer (round stays 0). The error
+ * path returns { cues, error } with NO mobAttacks key.
+ *
+ * The dread shadow is enabled so beginCampaign buffers a round-0 onRoundStart
+ * cue ("Dread stirs.") → golden.startupCues is non-empty → replayFacade proves
+ * take_startup_cues parity (the core-begins lifecycle, end-to-end).
+ */
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+import { describe, it } from "vitest";
+import { defineRegistry } from "wickedways/lib/authoring/registry";
+import { authorTemplate } from "wickedways/lib/authoring/template-builder";
+import { StatType } from "wickedways/lib/character/stats";
+import { mulberry32 } from "../seeded-rng.ts";
+import { DREAD_KEY, dreadShadow } from "./dread-shadow.ts";
+import { OracleSession } from "./oracle-session.ts";
+import { writeFacadeFixture, type FacadeOp } from "./facade-gen.ts";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const SEED = 0xfacade5;
+const EMPTY_CATALOG = { items: {}, aliases: {} };
+
+describe("generate facade-talk golden", () => {
+  it("writes genesis + catalog + per-op golden", () => {
+    const rng = mulberry32(SEED);
+    const registry = defineRegistry({ items: {}, mechanics: { [DREAD_KEY]: dreadShadow } });
+    const template = authorTemplate("Facade Talk (conformance)", registry, {
+      rng, maxRounds: 20, baseEncounterChance: 0,
+    })
+      .archetype({
+        id: "delver", name: "Delver",
+        baseStats: { [StatType.Health]: 10, [StatType.Sanity]: 8, [StatType.Energy]: 8 },
+      })
+      .room("Hall", { description: "A stone hall." })
+      .startRoom("Hall")
+      .useMechanic(DREAD_KEY);
+
+    const oracle = new OracleSession({
+      builder: template, registry, aliases: {}, playerName: "Ada", archetype: "delver", rng,
+    });
+
+    const ops: FacadeOp[] = [
+      { kind: "submit", intent: { kind: "talk", npcId: "anyone" } }, // advancing throw: startTurn ran, nextPlayer did not
+      { kind: "submit", intent: { kind: "wait" } },                   // advancing no-op: nextPlayer wraps round 0 → 1
+    ];
+    const steps = writeFacadeFixture(here, "facade-talk", SEED, oracle, EMPTY_CATALOG, ops);
+
+    // The boot must have buffered round-0 cues so take_startup_cues has parity to prove.
+    if (oracle.startupCues.length === 0) {
+      throw new Error("expected dread to buffer startup cues at boot");
+    }
+    const r0 = steps[0]!.result as { error?: string; mobAttacks?: unknown };
+    if (r0.error !== "There's no one here to talk to.") {
+      throw new Error(`step 0 expected talk error, got ${JSON.stringify(r0)}`);
+    }
+    if ("mobAttacks" in r0) throw new Error("error path must omit mobAttacks");
+    // talk is time-advancing: startTurn ran (dread onTurnStart cue present) but
+    // nextPlayer did NOT (round still 0); the following wait wraps to round 1.
+    const s0 = steps[0]!.snapshot as { campaign: { round: number } };
+    const s1 = steps[1]!.snapshot as { campaign: { round: number } };
+    if (s0.campaign.round !== 0) throw new Error(`step 0 round expected 0, got ${s0.campaign.round}`);
+    if (s1.campaign.round !== 1) throw new Error(`step 1 round expected 1, got ${s1.campaign.round}`);
+  });
+});

@@ -1,0 +1,52 @@
+{
+  "items": {
+    "items/facade-sword": {
+      "name": "Sword",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 3,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 5,
+      "recipe": {
+        "metal": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "items/facade-locket": {
+      "name": "Locket",
+      "type": "accessory",
+      "stat": "sanity",
+      "modifier": 0,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": false,
+        "usable": false,
+        "droppable": false
+      },
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    }
+  },
+  "aliases": {
+    "items/facade-sword": [
+      "sword",
+      "blade"
+    ],
+    "items/facade-locket": [
+      "locket"
+    ]
+  }
+}

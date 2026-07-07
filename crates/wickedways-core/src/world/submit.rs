@@ -213,24 +213,27 @@ impl World {
                 // gate/dark checks, throwing "You don't see that here.".
                 let room_id = self.current_room_id_of(actor)?;
                 let target = ItemId(target_id);
-                let visible = self
-                    .rooms
-                    .get(&room_id)
-                    .map(|r| {
-                        r.loot_ids.iter().any(|lid| {
+                let containing = self.rooms.get(&room_id).and_then(|r| {
+                    r.loot_ids
+                        .iter()
+                        .find(|lid| {
                             self.loot
                                 .get(lid)
                                 .map(|l| l.content_ids.contains(&target))
                                 .unwrap_or(false)
                         })
-                    })
-                    .unwrap_or(false);
-                if !visible {
+                        .cloned()
+                });
+                let Some(loot_id) = containing else {
                     return Err(ProceduralViolation("You don't see that here.".into()));
-                }
-                if let Some(loot_id) = self.take(actor, &target, cat, cues)? {
-                    opened.insert(loot_id.0); // auto-open (session.ts:198-201)
-                }
+                };
+                // TS dispatch marks the container opened BEFORE takeFromLootBox
+                // (session.ts:196-201) — NOT after, the way apply_command's take
+                // returns it. So a take that opens a fresh container then FAILS
+                // (e.g. requireVisibleTarget in a dark room) still leaves the
+                // container revealed. Insert before the take attempt.
+                opened.insert(loot_id.0.clone());
+                self.take(actor, &target, cat, cues)?;
                 Ok(())
             }
             Intent::Drop { target_id } => {
@@ -634,6 +637,20 @@ mod tests {
         assert!(opened.contains("loot-1"), "take auto-opens the container");
         assert!(w.characters[&cid("pc")].inventory.item_ids.contains(&iid("item-herb")));
         assert_eq!(w.campaign.round, 1);
+    }
+
+    #[test]
+    fn failed_after_open_take_still_marks_container_opened() {
+        // Carried-check A: TS dispatch marks `opened` BEFORE takeFromLootBox
+        // (session.ts:196-201). A dark room makes the take fail AFTER the open,
+        // so the container must remain revealed even though nothing was taken.
+        let mut w = world_for_submit();
+        w.rooms.get_mut(&rid("room1")).unwrap().dark = true;
+        let (r, opened) = submit_one(&mut w, Intent::Take { target_id: "item-herb".into() });
+        assert_eq!(r.error.as_deref(), Some("Cannot loot in the dark"));
+        assert!(opened.contains("loot-1"), "a failed-after-open take still reveals the container");
+        // The item never left the chest.
+        assert!(w.loot[&lid("loot-1")].content_ids.contains(&iid("item-herb")));
     }
 
     #[test]
