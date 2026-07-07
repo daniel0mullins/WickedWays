@@ -287,7 +287,10 @@ impl World {
         // the encounter cues: TS `PlayerCharacter.move` (player-character.ts:169-173)
         // calls `super.move(room)` — which runs `recordAction` to completion, including
         // any `endTurn`/reconcile — THEN emits NOTE_ENCOUNTERS.
-        self.record_action(actor, true, "move", cat, cues)?;
+        self.record_action(actor, true, crate::world::mechanics::ActionView {
+            kind: "move".into(),
+            room: Some(RoomRef { id: room.clone(), name: room_name.clone() }),
+        }, cat, cues)?;
 
         // PlayerCharacter.move tail (player-character.ts:169-176), AFTER super.move's
         // recordAction: maybeSpawn → NOTE_ENCOUNTERS → room codex. Spawned mobs land

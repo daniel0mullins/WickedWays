@@ -466,9 +466,17 @@ fn get_field(subject: Ev, field: &str, cx: &mut Ctx) -> Ev {
             "occupants" => Ev::Chars(r.occupants.clone()),
             _ => Ev::Val(Value::Null),
         },
-        // RoomRef / Action fields: Task 8.
         Ev::Action(a) => match field {
             "kind" => Ev::Val(Value::Str(a.kind.clone())),
+            "room" => match &a.room {
+                Some(r) => Ev::RoomRef(r.clone()),
+                None => Ev::Val(Value::Null),
+            },
+            _ => Ev::Val(Value::Null),
+        },
+        Ev::RoomRef(r) => match field {
+            "id" => Ev::Val(Value::Str(r.id.0.clone())),
+            "name" => Ev::Val(Value::Str(r.name.clone())),
             _ => Ev::Val(Value::Null),
         },
         _ => Ev::Val(Value::Null),
@@ -908,6 +916,32 @@ mod tests {
         });
         assert_eq!(eval_expr(&Expr::Every { list: Box::new(Expr::Party), pred }, &mut cx)
                    .into_value(), Value::Bool(true));
+    }
+
+    #[test]
+    fn action_reads_expose_kind_and_move_room_payload() {
+        use crate::world::history::RoomRef;
+        use crate::world::ids::RoomId;
+        let mv = crate::world::mechanics::ActionView {
+            kind: "move".into(),
+            room: Some(RoomRef { id: RoomId("parlor".into()), name: "Parlor".into() }),
+        };
+        let mut cx = Ctx { action: Some(&mv), ..Ctx::empty() };
+        let val = |e: &Expr, cx: &mut Ctx| eval_expr(e, cx).into_value();
+        assert_eq!(val(&Expr::Get { of: Box::new(Expr::Action), field: "kind".into() }, &mut cx),
+                   Value::Str("move".into()));
+        // the storyteller read: action.room.name
+        assert_eq!(val(&Expr::Get {
+            of: Box::new(Expr::Get { of: Box::new(Expr::Action), field: "room".into() }),
+            field: "name".into() }, &mut cx),
+            Value::Str("Parlor".into()));
+        // non-move: room -> Null, nested read stays total
+        let other = crate::world::mechanics::ActionView::of("pickUp");
+        let mut cx2 = Ctx { action: Some(&other), ..Ctx::empty() };
+        assert_eq!(val(&Expr::Get {
+            of: Box::new(Expr::Get { of: Box::new(Expr::Action), field: "room".into() }),
+            field: "name".into() }, &mut cx2),
+            Value::Null);
     }
 
     #[test]

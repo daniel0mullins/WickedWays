@@ -328,7 +328,7 @@ impl World {
             let mut cx = ActionCtx {
                 base: HookCtx { state: &mut m.state, view: &view, rng },
                 actor: actor_view,
-                action: ActionView { kind: "mechanicAction".into() },
+                action: ActionView::of("mechanicAction"),
             };
             match op.run_action(action_key, &mut cx) {
                 Some(e) => e,
@@ -358,7 +358,7 @@ impl World {
             actor: self.entity_ref_char(actor),
             sound: None,
         });
-        self.record_action(actor, true, "mechanicAction", cat, cues)
+        self.record_action(actor, true, ActionView::of("mechanicAction"), cat, cues)
     }
 }
 
@@ -606,7 +606,7 @@ mod tests {
         w.dispatch_turn(TurnPhase::End, &cid("pc"), &Catalog::default(), &mut cues).unwrap();
         w.dispatch_action(
             &cid("pc"),
-            crate::world::mechanics::ActionView { kind: "move".into() },
+            crate::world::mechanics::ActionView::of("move"),
             &Catalog::default(),
             &mut cues,
         ).unwrap();

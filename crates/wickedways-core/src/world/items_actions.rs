@@ -271,7 +271,7 @@ impl World {
             sound: None,
         });
 
-        self.record_action(actor, true, "pickUp", cat, cues)?;
+        self.record_action(actor, true, crate::world::mechanics::ActionView::of("pickUp"), cat, cues)?;
         Ok(Some(loot_id))
     }
 
@@ -537,7 +537,7 @@ impl World {
             sound: None,
         });
 
-        self.record_action(actor, true, "drop", cat, cues)?;
+        self.record_action(actor, true, crate::world::mechanics::ActionView::of("drop"), cat, cues)?;
         Ok(())
     }
 

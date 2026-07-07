@@ -98,7 +98,7 @@ impl World {
         // Cap check runs UNCONDITIONALLY (matching TS `recordAction`, character.ts:
         // 530-537, where the cap check sits outside the budgeted block) — a free
         // fumble (`budgeted = false`) must still end the turn if already at cap.
-        self.record_action(actor, budgeted, "fumble", cat, cues)
+        self.record_action(actor, budgeted, crate::world::mechanics::ActionView::of("fumble"), cat, cues)
     }
 }
 

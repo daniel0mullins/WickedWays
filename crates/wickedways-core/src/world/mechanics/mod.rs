@@ -77,6 +77,16 @@ pub struct ActionCtx<'a> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ActionView {
     pub kind: String,
+    /// Move payload — TS ActionDetail's "move" variant carries room {id,name}
+    /// (src/lib/character/history.ts:13). None for every other action kind.
+    pub room: Option<crate::world::history::RoomRef>,
+}
+
+impl ActionView {
+    /// A room-less action view (every non-move action).
+    pub fn of(kind: &str) -> ActionView {
+        ActionView { kind: kind.into(), room: None }
+    }
 }
 
 /// A first-party mechanic op. Stateless behavior; state lives in the snapshot and

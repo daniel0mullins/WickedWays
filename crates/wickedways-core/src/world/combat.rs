@@ -258,7 +258,7 @@ impl World {
             actor: self.entity_ref_char(actor),
             sound: None,
         });
-        self.record_action(actor, true, "attack", cat, cues)?;
+        self.record_action(actor, true, crate::world::mechanics::ActionView::of("attack"), cat, cues)?;
         Ok(())
     }
 
@@ -400,7 +400,7 @@ impl World {
         // non-budgeted action: an at-cap target's turn auto-ends here. `budgeted=false`
         // → no increment / no on_action, cap-check only (same free-action path as the
         // sub-plan-5 free fumble).
-        self.record_action(target, false, "takeDamage", cat, cues)?;
+        self.record_action(target, false, crate::world::mechanics::ActionView::of("takeDamage"), cat, cues)?;
         Ok(())
     }
 }
