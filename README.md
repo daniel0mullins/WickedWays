@@ -600,15 +600,33 @@ applies the results through the same collect-then-apply pipeline as native ops.
   emit the AST; the AST types are generated from Rust via ts-rs (`generated/bindings/`).
 - **Storage/resolution:** scripts ride in the campaign catalog under
   `Catalog.behaviors[key]`; the engine resolves a behavior key against the native
-  registry first, then the catalog (`family: "mechanic" | "exit" | "victory"`).
+  registry first, then the catalog (`family: "mechanic" | "exit" | "victory" | "item"`).
   Unknown keys and ill-shaped ASTs fail fast at load with `ProceduralViolation`.
+- **Item behaviors (`onUse` / `onRead`):** an item keyed to an `item`-family script
+  can drive its `use` and `read` side effects from the DSL instead of a hand-written
+  closure. The two hooks fire at the exact points the native paths do, so ordering is
+  observable and contract-bound:
+  - `onUse` runs **after** the usable/KO guards (a non-`usable` item or a KO'd holder
+    is still rejected before any script runs) and **before** `grantsImmunity` is
+    applied and the item is consumed — so the script sees the pre-consume state and
+    its emitted effects land ahead of immunity/consumption.
+  - `onRead` runs **before** the item's `lore` cue is emitted, matching
+    `Character.read` (free action, non-consuming) — the read-triggered effect precedes
+    the flavour line, so a cursed tome can drain Sanity and *then* narrate.
+
+  Items without an `item`-family script (or with an unset hook) are pure no-ops on that
+  path — no descriptor churn — so existing items are unaffected. **Laudanum** (Hollow
+  House) is the first dogfooded example: its `onUse` emits `+6 Sanity`, reproducing the
+  hand-written `laudanum` descriptor.
 - **Determinism:** f64 arithmetic is restricted to `+ − × ÷` and comparisons,
   iteration is ordered, string-from-number matches JS `Number.prototype.toString`
   byte-for-byte, and randomness only comes from the injected rng.
 - **Hollow House** is the reference user: its dread/storyteller/status-bar
-  mechanics, both keyed doors, and all three victory conditions are re-authored in
-  `packages/campaigns/src/hollow-house/scripted.ts` and gated byte-for-byte against
-  the hand-written closures by the `conformance/scripted-*` differential fixtures.
+  mechanics, both keyed doors, all three victory conditions, and laudanum's `onUse`
+  effect are re-authored in `packages/campaigns/src/hollow-house/scripted.ts` and
+  gated byte-for-byte against the hand-written closures by the `conformance/scripted-*`
+  differential fixtures. The closures remain the conformance oracle: each script must
+  reproduce its TS counterpart exactly.
 
 ### Mob encounters & loot
 

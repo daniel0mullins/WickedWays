@@ -114,6 +114,19 @@ export const victory = (test: Expr): BehaviorScript => ({
   script: { test },
 });
 
+/**
+ * `item`-family behavior: scripts an item's `use` / `read` side effects.
+ *
+ * - `onUse` fires **after** the usable/KO guards and **before** `grantsImmunity`
+ *   is applied and the item is consumed — so it observes the pre-consume state
+ *   and its effects land ahead of immunity/consumption.
+ * - `onRead` fires **before** the item's `lore` cue, matching the free,
+ *   non-consuming `Character.read` path.
+ *
+ * An unset hook is a no-op, so an item can script one path and leave the other
+ * native. The hand-written item descriptor (`use` / `read` closure) stays the
+ * differential-conformance oracle; the script must reproduce it byte-for-byte.
+ */
 export const item = (spec: {
   onUse?: Stmt[];
   onRead?: Stmt[];

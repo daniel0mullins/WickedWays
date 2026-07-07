@@ -65,10 +65,16 @@ export const statusBarScript: BehaviorScript = s.mechanic({
   },
 });
 
-// ── laudanum (oracle: items.ts:44) ───────────────────────────────────────────
-// use(holder) { holder[ADJUST_STAT](this.stat, this.modifier); }
-// The descriptor is stat: Sanity, modifier: 6 -> +6 Sanity on use. The closure
-// stays the gate oracle; this script reproduces it.
+/**
+ * Laudanum — the first dogfooded `item`-family script (oracle: `items.ts:44`).
+ *
+ * Hand-written closure: `use(holder) { holder[ADJUST_STAT](this.stat, this.modifier); }`
+ * with descriptor `stat: Sanity, modifier: 6` — i.e. `+6 Sanity` when used. The
+ * `onUse` hook fires after the usable/KO guards and before `grantsImmunity` +
+ * consume, so emitting the adjust here reproduces the closure exactly. That
+ * closure remains the differential-gate oracle; this script must match it
+ * byte-for-byte.
+ */
 export const laudanumScript: BehaviorScript = s.item({
   onUse: [s.emit(s.adjust(s.actor, "sanity", s.lit(6)))],
 });
