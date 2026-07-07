@@ -38,6 +38,15 @@ pub fn validate_behavior(key: &str, b: &BehaviorScript) -> Result<(), Procedural
                 .or_else(bad)
         }
         BehaviorScript::Victory { script } => check_expr(&script.test).or_else(bad),
+        BehaviorScript::Item { script } => {
+            if let Some(body) = &script.on_use {
+                check_stmts(body, /*allow_pass=*/false, /*allow_emit=*/true).or_else(bad)?;
+            }
+            if let Some(body) = &script.on_read {
+                check_stmts(body, /*allow_pass=*/false, /*allow_emit=*/true).or_else(bad)?;
+            }
+            Ok(())
+        }
     }
 }
 
@@ -106,5 +115,45 @@ fn check_expr(e: &Expr) -> Result<(), &'static str> {
         Expr::Lit { .. } | Expr::MapLit { .. } | Expr::Round | Expr::MaxRounds
         | Expr::Party | Expr::Actor | Expr::Action | Expr::Damage | Expr::Element
         | Expr::StateGet { .. } => Ok(()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::script::ast::{BehaviorScript, EffectTemplate, Expr, ItemScript, Stmt};
+    use crate::script::value::Value;
+    use crate::stats::StatType;
+
+    #[test]
+    fn validate_accepts_item_script_with_effect_bodies() {
+        let b = BehaviorScript::Item {
+            script: ItemScript {
+                on_use: Some(alloc::vec![Stmt::Emit {
+                    effect: EffectTemplate::AdjustStat {
+                        target: Expr::Actor,
+                        stat: StatType::Sanity,
+                        delta: Expr::Lit { value: Value::Number(6.0) },
+                    },
+                }]),
+                on_read: None,
+            },
+        };
+        assert!(validate_behavior("items/laudanum", &b).is_ok());
+    }
+
+    #[test]
+    fn validate_rejects_pass_in_item_body() {
+        // `Pass` is script-body-only (exit run_script); an item body is an effect
+        // body, so a Pass statement must be rejected at load (allow_pass = false).
+        let b = BehaviorScript::Item {
+            script: ItemScript {
+                on_use: Some(alloc::vec![Stmt::Pass {
+                    value: Expr::Lit { value: Value::Str("x".into()) },
+                }]),
+                on_read: None,
+            },
+        };
+        assert!(validate_behavior("items/bad", &b).is_err());
     }
 }

@@ -216,7 +216,22 @@ pub struct VictoryScript {
     pub test: Expr,
 }
 
-/// A scripted behavior, tagged on `family` (mechanic / exit / victory).
+/// An item's author-defined behavior: effect bodies fired when the item is
+/// used or read. Both are effect bodies (`Vec<Stmt>`, `allow_pass=false`),
+/// identical in shape to mechanic hook bodies. Absent hook = no-op.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct ItemScript {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub on_use: Option<Vec<Stmt>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub on_read: Option<Vec<Stmt>>,
+}
+
+/// A scripted behavior, tagged on `family` (mechanic / exit / victory / item).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(tag = "family", rename_all = "camelCase")]
@@ -224,4 +239,5 @@ pub enum BehaviorScript {
     Mechanic { script: MechanicScript },
     Exit { script: ExitScript },
     Victory { script: VictoryScript },
+    Item { script: ItemScript },
 }
