@@ -33,6 +33,7 @@ export default defineConfig({
       "conformance/fixtures/scripted-victory-sanity.gen.test.ts",
       "conformance/fixtures/scripted-victory-partydown.gen.test.ts",
       "conformance/fixtures/facade-mob-combat.gen.test.ts",
+      "conformance/fixtures/facade-lit-entry.gen.test.ts",
       "conformance/fixtures/facade-free-vs-advancing.gen.test.ts",
       "conformance/fixtures/facade-ko-piling.gen.test.ts",
       "conformance/fixtures/facade-afflicted-mob.gen.test.ts",
