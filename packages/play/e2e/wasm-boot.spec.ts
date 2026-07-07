@@ -7,6 +7,14 @@ import { test, expect, type Page } from "@playwright/test";
 // the Authority synchronously. If that path breaks we see the engine-web.ts throw
 // ("engine not initialized: await initEngine() before GameSession.start") or a
 // wasm/WebAssembly load error in the console — this spec fails on any of those.
+//
+// NOTE: the WASM_ERROR regex below only catches engine-init / wasm-load failures.
+// The other boot-fatal class — a validate_mechanics rejection such as
+// "Mechanic 'dread' is not registered." (a manifest that fails to thread its
+// scripted behaviors) — is NOT matched by this regex; it is caught by the
+// positive first-room render assertion (`toContainText(...)`), because a rejected
+// boot never projects a room. Do not broaden this regex assuming it covers
+// registration failures — the render assertion is the guard for those.
 
 const WASM_ERROR = /engine not initialized|wasm|WebAssembly/i;
 
