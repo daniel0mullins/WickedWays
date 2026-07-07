@@ -34,4 +34,36 @@ pub enum Expr {
     /// JS-`Number.prototype.toString`-faithful number-to-string (spec: strings).
     Str { num: Box<Expr> },
     Concat { parts: alloc::vec::Vec<Expr> },
+
+    // ── Read-model subjects (Task 3) ────────────────────────────────────────
+    /// Current campaign round (`Null` in exit contexts).
+    Round,
+    /// Campaign round limit (`Null` in exit contexts).
+    MaxRounds,
+    /// The party as a list of character subjects.
+    Party,
+    /// The bound actor subject (turn/action contexts).
+    Actor,
+    /// The action subject (action contexts).
+    Action,
+    /// The damage subject (`modify_damage` context).
+    Damage,
+    /// The bound quantifier element (Task 6).
+    Element,
+    /// List length (`Party`/`List`), else `Null`.
+    Length { list: Box<Expr> },
+    /// Element at `index` (trunc); OOB/ill-typed → `Null`.
+    Index { list: Box<Expr>, index: Box<Expr> },
+    /// Element at index 0.
+    First { list: Box<Expr> },
+    /// Membership over a `List` by strict equality; `false` otherwise.
+    Includes { list: Box<Expr>, value: Box<Expr> },
+    /// Field access on a subject; unknown field / non-subject → `Null`.
+    Get { of: Box<Expr>, field: String },
+    /// `of` (a character) has an item with this behavior key equipped.
+    HasEquipped { of: Box<Expr>, item_key: String },
+    /// `of` (a character) holds an item with this behavior key.
+    HasItem { of: Box<Expr>, item_key: String },
+    /// `of` (a character) holds a key with this key code.
+    HasKey { of: Box<Expr>, key_code: String },
 }

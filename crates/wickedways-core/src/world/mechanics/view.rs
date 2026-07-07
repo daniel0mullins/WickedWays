@@ -32,6 +32,7 @@ pub struct CharacterView {
     pub room_id: Option<String>,
     equipped_keys: BTreeSet<String>,
     held_keys: BTreeSet<String>,
+    key_codes: BTreeSet<String>,
 }
 
 impl CharacterView {
@@ -39,6 +40,9 @@ impl CharacterView {
     pub fn has_equipped(&self, key: &str) -> bool { self.equipped_keys.contains(key) }
     /// TS `CharacterView.hasItem(itemKey)` — matches held (inventory) item `behaviorKey`.
     pub fn has_item(&self, key: &str) -> bool { self.held_keys.contains(key) }
+    /// True if the character's keyring holds a key with this `keyCode`
+    /// (TS `c.inventory.keys.some((k) => k.keyCode === code)`).
+    pub fn has_key(&self, code: &str) -> bool { self.key_codes.contains(code) }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -117,6 +121,15 @@ impl World {
             .chain(c.inventory.key_ids.iter())
             .filter_map(|iid| self.behavior_key_of(iid))
             .collect();
+        let key_codes = c
+            .inventory
+            .key_ids
+            .iter()
+            .filter_map(|iid| match self.items.get(iid) {
+                Some(ItemSnapshot::Key { key_code, .. }) => Some(key_code.clone()),
+                _ => None,
+            })
+            .collect();
         Some(CharacterView {
             id: id.clone(),
             name: c.name.clone(),
@@ -127,6 +140,7 @@ impl World {
             room_id: c.current_room_id.as_ref().map(|r| r.0.clone()),
             equipped_keys,
             held_keys,
+            key_codes,
         })
     }
 
@@ -191,5 +205,20 @@ mod tests {
         assert!(next.occupants.is_empty());
 
         assert!(w.room_view(&RoomId("nope".into()), &cat).is_none());
+    }
+
+    #[test]
+    fn character_view_has_key_matches_inventory_key_code() {
+        use crate::world::ids::ItemId;
+        use crate::world::snapshot::ItemSnapshot;
+        let mut w = world_with_party(&["pc"], 10);
+        w.items.insert(ItemId("k1".into()), ItemSnapshot::Key {
+            id: ItemId("k1".into()), name: "Brass Key".into(),
+            key_code: "brass".into(), consume_on_use: false,
+        });
+        w.characters.get_mut(&cid("pc")).unwrap().inventory.key_ids.push(ItemId("k1".into()));
+        let v = w.character_view(&cid("pc"), &Catalog::default()).unwrap();
+        assert!(v.has_key("brass"));
+        assert!(!v.has_key("iron"));
     }
 }
