@@ -30,7 +30,7 @@
     "fixtures:stable": "pnpm run fixtures:gen && git diff --exit-code -- conformance/fixtures",
     "checks:phase0": "cargo build -p wickedways-core --no-default-features && cargo test --workspace && pnpm run bindings:check && pnpm run test:conformance",
     "checks:phase1": "pnpm run checks:phase0",
-    "checks:phase2": "cargo build -p wickedways-core --no-default-features && cargo test --workspace && pnpm run bindings:check && pnpm run wasm:build && node scripts/assert-no-conformance.mjs && pnpm run test:conformance",
+    "checks:phase2": "cargo build -p wickedways-core --no-default-features && cargo test --workspace && pnpm run bindings:check && pnpm run wasm:build && node scripts/assert-no-conformance.mjs && pnpm run wasm:build:web && pnpm run test:conformance && pnpm run typecheck && pnpm -r run typecheck && pnpm run test",
     "checks:phase3": "cargo build -p wickedways-core --no-default-features && cargo test --workspace && pnpm run bindings:check && pnpm run test:conformance"
   },
   "dependencies": {

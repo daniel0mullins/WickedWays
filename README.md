@@ -1036,7 +1036,7 @@ the full topology and per-surface documentation.
 
 | Package | Role |
 |---------|------|
-| `@wickedways/play-runtime` | Surface-independent runtime, audio engine, launcher, and **all contracts**: `CampaignManifest`, `PlaySurface`, `Theme`, `AudioDirector`, `SoundPack`, `CampaignAudio`. Zero Hollow-House / surface references. |
+| `@wickedways/play-runtime` | Surface-independent runtime, audio engine, launcher, and **all contracts**: `CampaignManifest`, `PlaySurface`, `Theme`, `AudioDirector`, `SoundPack`, `CampaignAudio`. Zero Hollow-House / surface references. Its `GameSession` now delegates every turn to the Rust WASM `Authority` (see *Single-player cutover (Phase 2)*); the old `session.campaign` live-object getter is gone — surfaces and audio read the JSON `ViewModel`. |
 | `@wickedways/play-surface` | Both play surfaces under one package, subpath-exported as `@wickedways/play-surface/crt` (CRT terminal) and `@wickedways/play-surface/pnc` (point-and-click). A `src/shared/` module (Narrator, map-view) is reused by both surfaces. |
 | `@wickedways/campaigns` | All player-facing campaigns under `src/<slug>/`; subpath-exported as `@wickedways/campaigns/hollow-house` and `@wickedways/campaigns/seed`. |
 | `@wickedways/play` | Thin deploy shell — registers campaigns + surfaces, calls `bootLauncher`. `Dockerfile` and `nginx.conf` ship from here. |
@@ -1672,7 +1672,7 @@ have `avPolicy.enabled: true` (the demo genesis uses `DEFAULT_AV_POLICY`).
 **Symmetric-NAT note.** If two tabs on the same machine don't connect (rare but
 possible in some corp VPN setups), adding a TURN entry to `iceServers` resolves it.
 
-### Rust core (Phase 1, in progress)
+### Rust core (migration)
 
 The engine is being re-authored as a Rust core (`crates/wickedways-core`) compiled to
 WASM (`crates/wickedways-wasm`) per `docs/superpowers/specs/2026-06-30-rust-engine-core-design.md`.
@@ -1681,6 +1681,10 @@ formula) and proves the toolchain. Boundary types are defined in Rust and genera
 `generated/bindings/` via ts-rs (do not hand-edit). Run the Phase 0 gate with:
 
     pnpm run checks:phase0
+
+**Phase 2 has landed:** the single-player runtime now executes in the Rust core via a
+stateful WASM `Authority` — see *Single-player cutover (Phase 2)* below. Its acceptance
+gate is `pnpm run checks:phase2`.
 
 #### Mechanics: the op-registry (`crates/wickedways-core/src/world/mechanics/`)
 
@@ -1824,3 +1828,51 @@ any turn-end cues.
 **v1 simplifications:** `build` is rng-free (the reference formation always returns the
 same fixed mob), and `spawnModifier` is modeled as an integer rather than a fractional
 multiplier.
+
+#### Single-player cutover (Phase 2): the stateful WASM `Authority`
+
+Phase 2 moves the **single-player runtime** onto the Rust core. `GameSession`
+(`packages/play-runtime/src/session.ts`) no longer runs the TypeScript engine directly — it
+delegates every turn to a stateful WASM handle, the Rust `Authority`
+(`crates/wickedways-wasm/src/authority.rs`; distinct from the multiplayer sync `Authority`
+in `src/lib/sync/`). TS authoring still assembles the campaign (builder + registry) and
+serializes a **pre-begin genesis snapshot**; the core owns `begin_campaign`, the round/turn
+wrap, and solo-GM mob reactions (`World::submit`, `crates/wickedways-core/src/world/submit.rs`).
+Undo is host-side: `GameSession` keeps the pre-intent snapshot and calls the core's `restore`.
+
+**JSON-only boundary.** Nothing but JSON crosses the WASM edge: an `Intent` goes in;
+`ExecuteResult { cues, mobAttacks?, error? }`, a `ViewModel`, and a `CampaignSnapshot` come
+out. The boundary TS types are ts-rs-generated into `generated/bindings/` and are never
+hand-edited — `pnpm run bindings:check` fails on drift. No surface holds a live engine
+object any longer: the `session.campaign` live-object getter is **retired**, and audio reads
+the view DTO (`AudioDirector.tension(view)`).
+
+**Build split.**
+- `pnpm run wasm:build` — the default, shipped nodejs build. It carries **no** `conformance:*`
+  ops; `scripts/assert-no-conformance.mjs` asserts the JS glue and the wasm binary are clean
+  and that the `Authority` class is present.
+- `pnpm run wasm:build:web` — the browser bundler target. The engine is initialized **once**,
+  asynchronously, during `bootLauncher` (via `initEngine`, a no-op await on node); so
+  `GameSession.start` stays synchronous.
+- `pnpm run wasm:build:conformance` — a gate-only build that exposes the conformance ops.
+
+**Differential gate over the facade.** Beyond the raw-engine fixtures, the gate now also
+drives the *facade*: seeded, frozen-oracle `GameSession` fixtures
+(`conformance/fixtures/facade-*.gen.test.ts`) replay a scripted intent stream and diff
+`{ result, snapshot, view }` per intent against the Rust `Authority.submit` — the first
+coverage of `runMobReactions` and the turn wrap. Regenerate with `pnpm run fixtures:gen`;
+the diff gate is `pnpm run test:conformance`; the full Phase-2 acceptance run is
+`pnpm run checks:phase2` (no_std core build → workspace Rust tests → `bindings:check` →
+default + web wasm builds → no-conformance assert → conformance suite → typechecks → the
+full vitest suite, which includes `session.test.ts` against the real wasm).
+
+The occupant-carried-light rule is ported: a party member carrying a lit source lights an
+otherwise-dark room in the Rust `is_lit` check (dark-room combat), matching the TS oracle.
+
+**Scope / known gaps.** Hollow House is winnable end-to-end on the Rust core (proven by the
+scripted-victory conformance fixture). Two carries remain open: the browser bundler path is
+**build-verified only** — the Playwright e2e boots hollow-house through the WASM `Authority`
+but is a tracked follow-up, not yet exercised at runtime in this gate — and item `onUse`
+consumable effects (e.g. laudanum restoring sanity) are **not yet ported** to the Rust
+catalog. That consumable path is a survival aid *off* the Hollow House win path, so this is
+deliberately not 100% item-action parity yet.
