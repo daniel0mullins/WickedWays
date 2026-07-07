@@ -89,6 +89,7 @@ export async function bootLauncher(
     const initialThemeId = new URLSearchParams(currentSearch()).get("theme") ?? undefined;
     const session = GameSession.start({
       builder: m.builder(), registry: m.registry(), aliases: m.aliases,
+      behaviors: m.behaviors?.() ?? {},
       playerName: m.playerName, archetype: m.archetype, saveStore: opts.saveStore, now: opts.now,
     });
     const audio = AudioRuntime.forCampaign(m.audio);

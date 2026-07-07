@@ -2,6 +2,7 @@ import type { TemplateBuilder } from "wickedways/lib/authoring/template-builder"
 import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
 import type { CampaignAudio } from "./audio/contracts.js";
 import type { Theme } from "./surface.js";
+import type { BehaviorScript } from "../../../generated/bindings/BehaviorScript.ts";
 
 export type AliasMap = Record<string, string[]>;
 
@@ -43,6 +44,13 @@ export interface CampaignManifest {
    * Called on every boot and restart alongside `builder`.
    */
   registry: () => CampaignRegistry;
+  /**
+   * Factory that returns the campaign's scripted behaviors (mechanics, scripted
+   * items, doors, victory conditions), keyed by mechanic/item/exit/victory key.
+   * Threaded into the Rust Catalog so `Authority::new`→`validate_mechanics` can
+   * resolve every registered key. Omit for behavior-less campaigns (defaults to `{}`).
+   */
+  behaviors?: () => Record<string, BehaviorScript>;
   /** Verb/noun aliases used by the parser to resolve player input. */
   aliases: AliasMap;
   /** Display name of the player character (e.g. `"Heir"`). */

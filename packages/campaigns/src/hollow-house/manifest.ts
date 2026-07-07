@@ -1,5 +1,5 @@
 import type { CampaignManifest } from "@wickedways/play-runtime";
-import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES, TITLE, INTRO } from "./index.js";
+import { hauntedHouseTemplate, buildHauntedHouseRegistry, hollowHouseBehaviors, ALIASES, TITLE, INTRO } from "./index.js";
 import { Archetypes } from "./ids.js";
 import { hollowHouseAudio } from "./audio.js";
 import { hollowHouseThemes } from "./themes.js";
@@ -13,6 +13,7 @@ export const hollowHouse: CampaignManifest = {
   buttonText: "Enter Hollow House",
   builder: hauntedHouseTemplate,
   registry: buildHauntedHouseRegistry,
+  behaviors: hollowHouseBehaviors,
   aliases: ALIASES,
   playerName: "Heir",
   archetype: Archetypes.Heir,
