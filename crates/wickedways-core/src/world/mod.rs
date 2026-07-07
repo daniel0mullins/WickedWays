@@ -5,6 +5,7 @@ pub mod descriptor;
 pub mod direction;
 pub mod equipment;
 pub mod exits;
+pub mod formation_descriptor;
 pub mod formations;
 pub mod gate;
 pub mod history;

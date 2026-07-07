@@ -627,7 +627,7 @@ mod tests {
             recipe: json!({}), teaches: json!(null),
             immunities: json!([]), grants_immunity: json!(null),
         });
-        Catalog { items, aliases: BTreeMap::new(), behaviors: BTreeMap::new() }
+        Catalog { items, aliases: BTreeMap::new(), behaviors: BTreeMap::new(), formations: Default::default() }
     }
 
     /// PC in room1 holding a sword (item-sword) and a locket (item-locket);

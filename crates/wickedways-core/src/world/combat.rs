@@ -496,7 +496,7 @@ mod tests {
         let wpn = ItemId("axe".into());
         let mut items = BTreeMap::new();
         items.insert("items/axe".to_string(), weapon_desc(StatType::Health, 5, Some(3)));
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default() };
+        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default() };
         w.items.insert(wpn.clone(), ItemSnapshot::Item {
             id: wpn.clone(), behavior_key: "items/axe".into(), durability: Some(3), modifier: 5,
         });
@@ -605,7 +605,7 @@ mod tests {
         let armor_id = ItemId("armor".into());
         let mut items = BTreeMap::new();
         items.insert("items/armor".to_string(), armor_desc(StatType::Health, 3, Some(2)));
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default() };
+        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default() };
         w.items.insert(armor_id.clone(), ItemSnapshot::Item {
             id: armor_id.clone(), behavior_key: "items/armor".into(),
             durability: Some(2), modifier: 3,
@@ -667,7 +667,7 @@ mod tests {
         let armor_id = ItemId("armor".into());
         let mut items = BTreeMap::new();
         items.insert("items/armor".to_string(), armor_desc(StatType::Health, 3, Some(2)));
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default() };
+        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default() };
         w.items.insert(armor_id.clone(), ItemSnapshot::Item {
             id: armor_id.clone(), behavior_key: "items/armor".into(),
             durability: Some(0), modifier: 3,

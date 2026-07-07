@@ -3,6 +3,8 @@
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+#[cfg(feature = "ts")]
+use ts_rs::TS;
 use super::ids::*;
 
 /// TS `ItemSnapshot` — a discriminated union on `kind`.
@@ -66,6 +68,7 @@ pub struct ExitSnapshot {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct Stats {
     pub energy: f64,

@@ -538,7 +538,7 @@ mod tests {
         items.insert("items/potion".into(), potion_descriptor());
         let mut aliases: BTreeMap<alloc::string::String, alloc::vec::Vec<alloc::string::String>> = BTreeMap::new();
         aliases.insert("items/sword".into(), alloc::vec!["sword".into(), "blade".into()]);
-        Catalog { items, aliases, behaviors: Default::default() }
+        Catalog { items, aliases, behaviors: Default::default(), formations: Default::default() }
     }
 
     /// Build a world that has:

@@ -624,7 +624,7 @@ mod tests {
                 grants_immunity: json!(null),
             },
         );
-        let cat2 = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default() };
+        let cat2 = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default() };
 
         // Insert item into world and equip it
         w2.items.insert(

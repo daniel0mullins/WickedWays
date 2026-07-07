@@ -110,6 +110,9 @@ pub struct Catalog {
     /// (mechanic key / exit behaviorKey / victory condition key).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub behaviors: BTreeMap<String, crate::script::ast::BehaviorScript>,
+    /// Campaign-authored formation descriptors, keyed by encounter `behaviorKey`.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub formations: BTreeMap<String, crate::world::formation_descriptor::FormationDescriptor>,
 }
 
 #[cfg(test)]
@@ -173,6 +176,41 @@ mod tests {
         })).unwrap();
         assert!(matches!(cat.behaviors.get("dread"),
             Some(crate::script::ast::BehaviorScript::Mechanic { .. })));
+    }
+
+    #[test]
+    fn catalog_without_formations_still_parses_and_roundtrips_empty() {
+        // Every committed fixture catalog lacks "formations" — must stay loadable.
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {}
+        }))
+        .unwrap();
+        assert!(cat.formations.is_empty());
+        // empty formations are omitted on serialize (fixture-catalog stability)
+        let out = serde_json::to_value(&cat).unwrap();
+        assert!(out.get("formations").is_none());
+    }
+
+    #[test]
+    fn catalog_parses_a_formation() {
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "formations": { "rats": { "mobs": [ {
+                "name": "Rat",
+                "stats": { "energy": 3, "sanity": 0, "health": 4 },
+                "naturalAttack": { "stat": "health", "power": 1 },
+                "baseEscapeChance": 50,
+                "actionsPerRound": 1
+            } ] } }
+        }))
+        .unwrap();
+        let f = cat.formations.get("rats").unwrap();
+        assert_eq!(f.mobs.len(), 1);
+        assert_eq!(f.mobs[0].name, "Rat");
+        // round-trips: the parsed catalog re-serializes with its formation intact
+        let back: Catalog =
+            serde_json::from_value(serde_json::to_value(&cat).unwrap()).unwrap();
+        assert_eq!(back, cat);
     }
 
     // existing tests below

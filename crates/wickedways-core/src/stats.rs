@@ -72,6 +72,13 @@ mod ts_export {
         // Task 2 (sub-plan 3a): descriptor-data catalog
         ItemDescriptor::export_all().expect("export ItemDescriptor");
         Catalog::export_all().expect("export Catalog");
+        // Data-driven formations: MobSpec / NaturalAttack / FormationDescriptor (+ Stats)
+        use crate::world::formation_descriptor::{FormationDescriptor, MobSpec, NaturalAttack};
+        use crate::world::snapshot::Stats;
+        Stats::export_all().expect("export Stats");
+        NaturalAttack::export_all().expect("export NaturalAttack");
+        MobSpec::export_all().expect("export MobSpec");
+        FormationDescriptor::export_all().expect("export FormationDescriptor");
         // Task 5 (sub-plan 3a): widened ViewModel
         use crate::world::view::{ThinRoom, ScopeEntity, LootView, Inventory, StatusView, ViewModel};
         ThinRoom::export_all().expect("export ThinRoom");
