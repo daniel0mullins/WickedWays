@@ -1889,9 +1889,11 @@ otherwise-dark room in the Rust `is_lit` check (dark-room combat), matching the 
 
 **Scope / known gaps.** Hollow House is winnable end-to-end on the Rust core (proven by the
 `capstone` full-winning-path test in `packages/play/src/core/capstone.test.ts`, which plays a
-complete run — including a save/undo round-trip — through the WASM `Authority`). Two carries remain open: the browser bundler path is
-**build-verified only** — the Playwright e2e boots hollow-house through the WASM `Authority`
-but is a tracked follow-up, not yet exercised at runtime in this gate — and item `onUse`
+complete run — including a save/undo round-trip — through the WASM `Authority`). One carry remains open: the browser bundler path is now **runtime-verified** — the Playwright
+e2e (`packages/play/e2e/`, run via `pnpm --filter @wickedways/play run test:e2e` and the
+dedicated `.github/workflows/e2e.yml` CI job) boots hollow-house through the WASM `Authority`
+in real chromium, and a `wasm-boot.spec.ts` smoke test asserts no `engine not initialized` /
+wasm-load errors during boot. The remaining gap is item `onUse`
 consumable effects (e.g. laudanum restoring sanity) are **not yet ported** to the Rust
 catalog. That consumable path is a survival aid *off* the Hollow House win path, so this is
 deliberately not 100% item-action parity yet.

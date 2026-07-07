@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test": "vitest run",
+    "test:e2e": "pnpm --filter @wickedways/play run test:e2e",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage --coverage.include='src/**'",
     "typecheck": "tsc --noEmit",
