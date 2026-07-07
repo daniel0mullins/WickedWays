@@ -84,5 +84,23 @@ mod ts_export {
         use crate::world::afflictions::{Status, Afflictions};
         Status::export_all().expect("export Status");
         Afflictions::export_all().expect("export Afflictions");
+        // Scripted-ops DSL AST (scripted-ops plan, Task 10)
+        use crate::script::ast::{
+            BehaviorScript, BinOp, DamageBody, EffectTemplate, Expr, ExitScript,
+            FieldTemplate, MechanicHooks, MechanicScript, Stmt, VictoryScript,
+        };
+        use crate::script::value::Value as ScriptValue;
+        ScriptValue::export_all().expect("export ScriptValue");
+        BinOp::export_all().expect("export BinOp");
+        Expr::export_all().expect("export Expr");
+        Stmt::export_all().expect("export Stmt");
+        EffectTemplate::export_all().expect("export EffectTemplate");
+        FieldTemplate::export_all().expect("export FieldTemplate");
+        DamageBody::export_all().expect("export DamageBody");
+        MechanicHooks::export_all().expect("export MechanicHooks");
+        MechanicScript::export_all().expect("export MechanicScript");
+        ExitScript::export_all().expect("export ExitScript");
+        VictoryScript::export_all().expect("export VictoryScript");
+        BehaviorScript::export_all().expect("export BehaviorScript");
     }
 }
