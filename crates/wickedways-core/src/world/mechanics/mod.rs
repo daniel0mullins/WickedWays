@@ -122,6 +122,38 @@ pub fn mechanic_op(key: &str) -> Option<&'static dyn MechanicOp> {
     }
 }
 
+use crate::world::descriptor::Catalog;
+
+/// A key resolved to an op: a compiled-in native, or an interpreter bound to a
+/// catalog-borrowed AST (no per-fire-point clone — spec risk note).
+pub enum ResolvedMechanicOp<'a> {
+    Native(&'static dyn MechanicOp),
+    Scripted(crate::script::ops::ScriptedMechanic<'a>),
+}
+
+impl ResolvedMechanicOp<'_> {
+    pub fn as_op(&self) -> &dyn MechanicOp {
+        match self {
+            ResolvedMechanicOp::Native(op) => *op,
+            ResolvedMechanicOp::Scripted(s) => s,
+        }
+    }
+}
+
+/// Native registry first; on `None`, look the key up in `catalog.behaviors`
+/// (Mechanic family only). `None` when both miss.
+pub fn resolve_mechanic_op<'a>(key: &str, cat: &'a Catalog) -> Option<ResolvedMechanicOp<'a>> {
+    if let Some(op) = mechanic_op(key) {
+        return Some(ResolvedMechanicOp::Native(op));
+    }
+    match cat.behaviors.get(key) {
+        Some(crate::script::ast::BehaviorScript::Mechanic { script }) => {
+            Some(ResolvedMechanicOp::Scripted(crate::script::ops::ScriptedMechanic { script }))
+        }
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

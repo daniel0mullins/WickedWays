@@ -106,6 +106,10 @@ pub struct ItemDescriptor {
 pub struct Catalog {
     pub items: BTreeMap<String, ItemDescriptor>,
     pub aliases: BTreeMap<String, Vec<String>>,
+    /// Campaign-authored scripted behaviors, keyed by behavior key
+    /// (mechanic key / exit behaviorKey / victory condition key).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub behaviors: BTreeMap<String, crate::script::ast::BehaviorScript>,
 }
 
 #[cfg(test)]
@@ -138,6 +142,37 @@ mod tests {
         })).unwrap();
         assert_eq!(cat.items.get("items/poker").unwrap().name, "Iron Poker");
         assert_eq!(cat.aliases.get("items/poker").unwrap(), &vec!["poker".to_string(), "iron".to_string()]);
+    }
+
+    #[test]
+    fn catalog_without_behaviors_still_parses_and_roundtrips_empty() {
+        // Every committed fixture catalog lacks "behaviors" — must stay loadable.
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {}
+        })).unwrap();
+        assert!(cat.behaviors.is_empty());
+        // empty behaviors are omitted on serialize (fixture-catalog stability)
+        let out = serde_json::to_value(&cat).unwrap();
+        assert!(out.get("behaviors").is_none());
+    }
+
+    #[test]
+    fn catalog_parses_a_mechanic_behavior() {
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "behaviors": { "dread": { "family": "mechanic", "script": {
+                "init": {},
+                "hooks": { "onTurnStart": [
+                    { "kind": "guard", "cond": { "kind": "not", "expr":
+                        { "kind": "hasEquipped", "of": { "kind": "actor" }, "itemKey": "lantern" } } },
+                    { "kind": "emit", "effect": { "kind": "adjustStat",
+                        "target": { "kind": "actor" }, "stat": "sanity",
+                        "delta": { "kind": "lit", "value": -1.0 } } }
+                ] }
+            } } }
+        })).unwrap();
+        assert!(matches!(cat.behaviors.get("dread"),
+            Some(crate::script::ast::BehaviorScript::Mechanic { .. })));
     }
 
     // existing tests below

@@ -188,7 +188,7 @@ mod tests {
     fn catalog_with_poker() -> Catalog {
         let mut items = BTreeMap::new();
         items.insert("items/poker".to_string(), poker_descriptor());
-        Catalog { items, aliases: BTreeMap::new() }
+        Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default() }
     }
 
     fn item_id(s: &str) -> ItemId {
@@ -280,7 +280,7 @@ mod tests {
             immunities: json!([]),
             grants_immunity: json!(null),
         });
-        let cat = Catalog { items, aliases: BTreeMap::new() };
+        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default() };
 
         let snap = ItemSnapshot::Item {
             id: item_id("itm-5"),
@@ -516,7 +516,7 @@ mod tests {
         // Catalog: ring that boosts energy by 3
         let mut items = BTreeMap::new();
         items.insert("items/ring".to_string(), accessory_descriptor(StatType::Energy, 3));
-        let cat = Catalog { items, aliases: BTreeMap::new() };
+        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default() };
 
         // Item in World.items
         world.items.insert(
@@ -546,7 +546,7 @@ mod tests {
         // Catalog: weapon targeting energy
         let mut items = BTreeMap::new();
         items.insert("items/sword".to_string(), weapon_descriptor(StatType::Energy, 4));
-        let cat = Catalog { items, aliases: BTreeMap::new() };
+        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default() };
 
         world.items.insert(
             sword_id.clone(),
@@ -572,7 +572,7 @@ mod tests {
 
         let mut items = BTreeMap::new();
         items.insert("items/ring".to_string(), accessory_descriptor(StatType::Energy, 3));
-        let cat = Catalog { items, aliases: BTreeMap::new() };
+        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default() };
 
         // Item exists in World.items (in inventory) but NOT in equipment map
         world.items.insert(
@@ -600,7 +600,7 @@ mod tests {
         // Accessory boosts SANITY, not ENERGY
         let mut items = BTreeMap::new();
         items.insert("items/ring-san".to_string(), accessory_descriptor(StatType::Sanity, 2));
-        let cat = Catalog { items, aliases: BTreeMap::new() };
+        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default() };
 
         world.items.insert(
             ring_id.clone(),

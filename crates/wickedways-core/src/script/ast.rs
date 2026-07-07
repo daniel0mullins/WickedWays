@@ -147,3 +147,81 @@ pub enum DamageBody {
     Final { expr: Expr },
     IfElse { cond: Expr, then: Box<DamageBody>, r#else: Box<DamageBody> },
 }
+
+/// The six mechanic hook bodies (Task 9). Each is optional; a missing hook is a
+/// no-op at dispatch. Mirrors the TS `Mechanic` optional hook methods.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct MechanicHooks {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub on_round_start: Option<Vec<Stmt>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub on_round_end: Option<Vec<Stmt>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub on_turn_start: Option<Vec<Stmt>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub on_turn_end: Option<Vec<Stmt>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub on_action: Option<Vec<Stmt>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub modify_damage: Option<DamageBody>,
+}
+
+/// A campaign-authored mechanic behavior (Task 9): a literal state seed, the six
+/// hooks, and custom actions keyed by action key. Mirrors the TS `Mechanic` shape.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct MechanicScript {
+    /// Literal JSON state seed (TS `initialState()` return value). Plain data,
+    /// NOT an Expr — see plan deviation note 1.
+    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
+    pub init: serde_json::Value,
+    #[serde(default)]
+    pub hooks: MechanicHooks,
+    /// Custom actions (TS `Mechanic.actions`), keyed by action key.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub actions: BTreeMap<String, Vec<Stmt>>,
+}
+
+/// A campaign-authored exit behavior (Task 9): a `can_pass` predicate plus an
+/// optional narration script and pass/fail messages.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct ExitScript {
+    pub can_pass: Expr,
+    #[serde(default)]
+    pub run_script: Vec<Stmt>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub pass_message: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub fail_message: Option<String>,
+}
+
+/// A campaign-authored victory condition (Task 9): a boolean `test` expression.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct VictoryScript {
+    pub test: Expr,
+}
+
+/// A scripted behavior, tagged on `family` (mechanic / exit / victory).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(tag = "family", rename_all = "camelCase")]
+pub enum BehaviorScript {
+    Mechanic { script: MechanicScript },
+    Exit { script: ExitScript },
+    Victory { script: VictoryScript },
+}

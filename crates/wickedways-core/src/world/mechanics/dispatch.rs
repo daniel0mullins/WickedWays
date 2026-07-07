@@ -11,7 +11,7 @@ use crate::world::gate::GateVerdict;
 use crate::world::history::ActionHistoryEntry;
 use crate::world::ids::CharacterId;
 use crate::world::mechanics::{
-    mechanic_op, ActionCtx, ActionView, DamageView, Effect, HookCtx, TransformResult,
+    ActionCtx, ActionView, DamageView, Effect, HookCtx, TransformResult,
     ALL_STATUSES, MAX_EFFECTS_PER_EVENT,
 };
 use crate::world::World;
@@ -119,11 +119,12 @@ impl World {
         {
             let rng = &mut self.rng;
             for m in self.campaign.mechanics.iter_mut() {
-                let Some(op) = mechanic_op(&m.key) else {
+                let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat) else {
                     return Err(ProceduralViolation(format!(
                         "Mechanic '{}' is not registered.", m.key
                     )));
                 };
+                let op = resolved.as_op();
                 let mut cx = HookCtx { state: &mut m.state, view: &view, rng: &mut *rng };
                 let effects = match phase {
                     RoundPhase::Start => op.on_round_start(&mut cx),
@@ -165,11 +166,12 @@ impl World {
         {
             let rng = &mut self.rng;
             for m in self.campaign.mechanics.iter_mut() {
-                let Some(op) = mechanic_op(&m.key) else {
+                let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat) else {
                     return Err(ProceduralViolation(format!(
                         "Mechanic '{}' is not registered.", m.key
                     )));
                 };
+                let op = resolved.as_op();
                 let Some(av) = actor_view.clone() else { continue };
                 let base = HookCtx { state: &mut m.state, view: &view, rng: &mut *rng };
                 let mut cx = crate::world::mechanics::TurnCtx { base, actor: av };
@@ -213,11 +215,12 @@ impl World {
         {
             let rng = &mut self.rng;
             for m in self.campaign.mechanics.iter_mut() {
-                let Some(op) = mechanic_op(&m.key) else {
+                let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat) else {
                     return Err(ProceduralViolation(format!(
                         "Mechanic '{}' is not registered.", m.key
                     )));
                 };
+                let op = resolved.as_op();
                 let Some(av) = actor_view.clone() else { continue };
                 let base = HookCtx { state: &mut m.state, view: &view, rng: &mut *rng };
                 let mut cx = crate::world::mechanics::ActionCtx {
@@ -252,7 +255,8 @@ impl World {
         let mut value = dv.amount;
         let rng = &mut self.rng;
         for m in self.campaign.mechanics.iter_mut() {
-            let Some(op) = mechanic_op(&m.key) else { continue };
+            let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat) else { continue };
+            let op = resolved.as_op();
             let stepped = DamageView { amount: value, ..dv.clone() };
             let mut cx = HookCtx { state: &mut m.state, view: &view, rng: &mut *rng };
             match op.modify_damage(&stepped, &mut cx) {
@@ -272,14 +276,20 @@ impl World {
         value
     }
 
-    /// Fail-fast on an unregistered mechanic key (TS registry throw at hydrate).
-    /// Call after building a `World` for replay.
-    pub fn validate_mechanics(&self) -> Result<(), ProceduralViolation> {
+    /// Fail-fast on an unresolvable mechanic key or an ill-shaped scripted AST
+    /// (TS registry throw at hydrate). Call after building a `World` for replay.
+    /// Tasks 13/14 extend this to exit behavior keys and victory condition keys.
+    pub fn validate_mechanics(&self, cat: &Catalog) -> Result<(), ProceduralViolation> {
         for m in &self.campaign.mechanics {
-            if mechanic_op(&m.key).is_none() {
+            if crate::world::mechanics::resolve_mechanic_op(&m.key, cat).is_none() {
                 return Err(ProceduralViolation(format!(
                     "Mechanic '{}' is not registered.", m.key
                 )));
+            }
+            if let Some(b) = cat.behaviors.get(&m.key) {
+                if crate::world::mechanics::mechanic_op(&m.key).is_none() {
+                    crate::script::validate_behavior(&m.key, b)?;
+                }
             }
         }
         Ok(())
@@ -315,9 +325,11 @@ impl World {
             .ok_or_else(|| ProceduralViolation(format!(
                 "Mechanic '{}' is not enabled.", mechanic_key
             )))?;
-        let op = mechanic_op(mechanic_key).ok_or_else(|| ProceduralViolation(format!(
-            "Mechanic '{}' is not registered.", mechanic_key
-        )))?;
+        let resolved = crate::world::mechanics::resolve_mechanic_op(mechanic_key, cat)
+            .ok_or_else(|| ProceduralViolation(format!(
+                "Mechanic '{}' is not registered.", mechanic_key
+            )))?;
+        let op = resolved.as_op();
         let view = self.build_campaign_view(cat);
         let actor_view = self.character_view(actor, cat).ok_or_else(|| ProceduralViolation(format!(
             "Actor '{}' not found.", actor.0
@@ -765,17 +777,126 @@ mod tests {
     #[test]
     fn validate_mechanics_rejects_unregistered_and_accepts_registered() {
         let mut w = world_with_party(&["pc"], 10);
-        assert!(w.validate_mechanics().is_ok(), "no mechanics is valid");
+        assert!(w.validate_mechanics(&Catalog::default()).is_ok(), "no mechanics is valid");
         w.campaign.mechanics.push(MechanicSnapshot {
             key: "conformance:dread".into(),
             state: serde_json::json!({}),
         });
-        assert!(w.validate_mechanics().is_ok());
+        assert!(w.validate_mechanics(&Catalog::default()).is_ok());
         w.campaign.mechanics.push(MechanicSnapshot {
             key: "dread".into(), // TS seed key, NOT registered in Rust
             state: serde_json::json!({}),
         });
-        let err = w.validate_mechanics().unwrap_err();
+        let err = w.validate_mechanics(&Catalog::default()).unwrap_err();
         assert!(err.0.contains("dread"));
+    }
+
+    // -- scripted mechanics (Task 9) --
+
+    /// A Catalog carrying the scripted HH-dread shape under key "dread".
+    fn cat_with_scripted_dread() -> Catalog {
+        serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "behaviors": { "dread": { "family": "mechanic", "script": {
+                "init": {},
+                "hooks": { "onTurnStart": [
+                    { "kind": "guard", "cond": { "kind": "not", "expr":
+                        { "kind": "hasEquipped", "of": { "kind": "actor" }, "itemKey": "lantern" } } },
+                    { "kind": "emit", "effect": { "kind": "adjustStat",
+                        "target": { "kind": "actor" }, "stat": "sanity",
+                        "delta": { "kind": "lit", "value": -1.0 } } }
+                ] }
+            } } }
+        })).unwrap()
+    }
+
+    #[test]
+    fn dispatch_turn_runs_a_scripted_mechanic_from_the_catalog() {
+        let mut w = world_with_party(&["pc"], 10); // sanity 5
+        w.campaign.mechanics.push(MechanicSnapshot {
+            key: "dread".into(), state: serde_json::json!({}),
+        });
+        let cat = cat_with_scripted_dread();
+        let mut cues = Vec::new();
+        w.dispatch_turn(TurnPhase::Start, &cid("pc"), &cat, &mut cues).unwrap();
+        assert_eq!(w.characters[&cid("pc")].stats.sanity, 4.0, "scripted AdjustStat applied");
+        // missing hooks are no-ops (defaulted trait behavior)
+        w.dispatch_round(RoundPhase::Start, &cat, &mut cues).unwrap();
+        assert_eq!(w.characters[&cid("pc")].stats.sanity, 4.0);
+        assert!(cues.is_empty(), "no cues from a cue-less script");
+    }
+
+    #[test]
+    fn native_registry_wins_over_a_same_key_behavior() {
+        // "conformance:dread" resolves NATIVE even if the catalog shadows the key.
+        let mut cat = cat_with_scripted_dread();
+        let script = cat.behaviors.remove("dread").unwrap();
+        cat.behaviors.insert("conformance:dread".into(), script);
+        match crate::world::mechanics::resolve_mechanic_op("conformance:dread", &cat) {
+            Some(crate::world::mechanics::ResolvedMechanicOp::Native(_)) => {}
+            other => panic!("expected native resolution, got {:?}", other.is_some()),
+        }
+    }
+
+    #[test]
+    fn validate_mechanics_accepts_scripted_and_rejects_unknown_with_cat() {
+        let mut w = world_with_party(&["pc"], 10);
+        let cat = cat_with_scripted_dread();
+        w.campaign.mechanics.push(MechanicSnapshot { key: "dread".into(), state: serde_json::json!({}) });
+        assert!(w.validate_mechanics(&cat).is_ok());
+        w.campaign.mechanics.push(MechanicSnapshot { key: "storyteller".into(), state: serde_json::json!({}) });
+        let err = w.validate_mechanics(&cat).unwrap_err();
+        assert!(err.0.contains("Mechanic 'storyteller' is not registered."));
+    }
+
+    #[test]
+    fn validate_mechanics_rejects_ill_shaped_scripts() {
+        // a Pass statement inside a mechanic hook (an effect body) is ill-shaped
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "behaviors": { "bad": { "family": "mechanic", "script": {
+                "init": {},
+                "hooks": { "onTurnStart": [
+                    { "kind": "pass", "value": { "kind": "lit", "value": "nope" } }
+                ] }
+            } } }
+        })).unwrap();
+        let mut w = world_with_party(&["pc"], 10);
+        w.campaign.mechanics.push(MechanicSnapshot { key: "bad".into(), state: serde_json::json!({}) });
+        assert!(w.validate_mechanics(&cat).is_err());
+    }
+
+    #[test]
+    fn scripted_run_action_resolves_and_missing_action_is_none() {
+        use crate::script::ast::BehaviorScript;
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "behaviors": { "m": { "family": "mechanic", "script": {
+                "init": {},
+                "hooks": {},
+                "actions": { "brace": [
+                    { "kind": "emit", "effect": { "kind": "cue",
+                        "text": { "kind": "lit", "value": "You brace." } } }
+                ] }
+            } } }
+        })).unwrap();
+        let Some(BehaviorScript::Mechanic { script }) = cat.behaviors.get("m") else { panic!() };
+        let op = crate::script::ops::ScriptedMechanic { script };
+        // init_state returns the literal seed and ignores config
+        assert_eq!(crate::world::mechanics::MechanicOp::init_state(&op, &serde_json::json!(null)),
+                   serde_json::json!({}));
+        let w = world_with_party(&["pc"], 10);
+        let view = w.build_campaign_view(&Catalog::default());
+        let actor = w.character_view(&cid("pc"), &Catalog::default()).unwrap();
+        let mut state = serde_json::json!({});
+        let mut rng = w.rng.clone();
+        let mut cx = crate::world::mechanics::ActionCtx {
+            base: crate::world::mechanics::HookCtx { state: &mut state, view: &view, rng: &mut rng },
+            actor,
+            action: crate::world::mechanics::ActionView::of("mechanicAction"),
+        };
+        let fx = crate::world::mechanics::MechanicOp::run_action(&op, "brace", &mut cx).unwrap();
+        assert_eq!(fx.len(), 1);
+        assert!(crate::world::mechanics::MechanicOp::run_action(&op, "nope", &mut cx).is_none());
     }
 }

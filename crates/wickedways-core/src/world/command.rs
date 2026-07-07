@@ -158,7 +158,7 @@ mod tests {
     fn simple_cat(key: &str, desc: ItemDescriptor) -> Catalog {
         let mut items = BTreeMap::new();
         items.insert(key.to_string(), desc);
-        Catalog { items, aliases: BTreeMap::new() }
+        Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default() }
     }
 
     /// Build a world with a player in "room1", a loot container "loot-1" holding

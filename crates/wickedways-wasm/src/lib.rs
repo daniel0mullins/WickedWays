@@ -89,12 +89,12 @@ pub fn replay_commands(
     let snap: CampaignSnapshot =
         serde_json::from_str(start_snapshot_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
     let mut world = World::from_snapshot(snap);
-    world.validate_mechanics().map_err(|e| JsValue::from_str(&e.0))?;
+    let cat: Catalog =
+        serde_json::from_str(catalog_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    world.validate_mechanics(&cat).map_err(|e| JsValue::from_str(&e.0))?;
     world.seed_rng(seed);
     let commands: Vec<Command> =
         serde_json::from_str(commands_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
-    let cat: Catalog =
-        serde_json::from_str(catalog_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
     let mut opened: BTreeSet<String> = BTreeSet::new();
     let mut steps = Vec::new();
     for cmd in commands {
