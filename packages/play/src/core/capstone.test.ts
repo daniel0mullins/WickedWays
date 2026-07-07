@@ -126,13 +126,10 @@ describe("capstone: full winning path with save/undo round-trip", () => {
     transcript = driver.transcript;
   });
 
-  // Skipped for the Rust-core cutover: the winning path fells the Revenant in the
-  // DARK Cellar, which needs the equipped Brass Lantern to light the room. The Rust
-  // core's is_lit (crates/wickedways-core/src/world/movement.rs) has not yet ported
-  // occupant-carried light (TODO(sub-plan 4c): "widen is_lit to include equipped/
-  // carried light sources"), so combat there returns "Cannot attack in the dark" and
-  // the iron key never drops. Re-enable once occupant-carried light lands.
-  it.skip("drives the full winning path: save/undo round-trip then iron-key attic win", async () => {
+  // The winning path fells the Revenant in the DARK Cellar, lit by the equipped
+  // Brass Lantern. The Rust core's is_lit (crates/wickedways-core/src/world/movement.rs)
+  // now folds in occupant-carried light, so combat there succeeds and the iron key drops.
+  it("drives the full winning path: save/undo round-trip then iron-key attic win", async () => {
     // ── 1. Foyer: get journal ─────────────────────────────────────────────────
     expect(session.view().room.name).toBe(Rooms.Foyer);
 

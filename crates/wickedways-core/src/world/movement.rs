@@ -20,15 +20,61 @@ use crate::world::ids::{CharacterId, RoomId};
 use crate::world::World;
 
 impl World {
-    /// A room is lit if it is not dark, or if it has at least one placed light
-    /// source. Broken-state and occupant-carried light fold in with item
-    /// behavior in sub-plan 3 — the corpus has empty `light_source_ids` for dark
-    /// rooms, so this predicate is sufficient for Phase 1.
-    pub fn is_lit(&self, room: &RoomId) -> bool {
+    /// Whether `room` is currently lit. Mirrors `src/lib/room.ts` `get isLit`
+    /// (:206-212): a non-dark room is always lit; a dark room is lit iff it holds
+    /// a non-broken placed light source, OR an occupant carries an equipped,
+    /// non-broken light. Needs `&Catalog` to read each item's `emits_light` and
+    /// `max_durability` (broken-state).
+    pub fn is_lit(&self, room: &RoomId, cat: &Catalog) -> bool {
         let Some(r) = self.rooms.get(room) else { return true };
         if !r.dark { return true; }
-        // TODO(sub-plan 3): also require !light.broken per source, plus occupant-carried light (occupant.has_light)
-        !r.light_source_ids.is_empty()
+        // Placed light sources: any non-broken source lights the room
+        // (TS `for (const light of #lightSources.values()) if (!light.isBroken)`).
+        for id in &r.light_source_ids {
+            if let Some(snap) = self.items.get(id) {
+                if !self.item_is_broken(snap, cat) {
+                    return true;
+                }
+            }
+        }
+        // Occupant-carried light (TS `occupants.some((o) => o.hasLight)`).
+        r.occupant_ids.iter().any(|occ| self.character_has_light(occ, cat))
+    }
+
+    /// True when `char_id` has an equipped, non-broken, light-emitting item in a
+    /// hand slot. Mirrors `character.ts` `get hasLight` (:275-281): iterate the
+    /// left/right hand slots; an item counts iff its descriptor `emitsLight` is
+    /// `true` and the instance is not broken.
+    pub fn character_has_light(&self, char_id: &CharacterId, cat: &Catalog) -> bool {
+        let Some(ch) = self.characters.get(char_id) else { return false };
+        for slot in ["leftHand", "rightHand"] {
+            let Some(item_id) = ch.equipment.get(slot) else { continue };
+            let Some(snap) = self.items.get(item_id) else { continue };
+            if let crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } = snap {
+                let emits = cat
+                    .items
+                    .get(behavior_key)
+                    .and_then(|d| d.emits_light)
+                    .unwrap_or(false);
+                if emits && !self.item_is_broken(snap, cat) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
+    /// Mirror of `Item.isBroken` (`inventory.ts:403-405`):
+    /// `maxDurability !== undefined && durability === 0`. `max_durability` lives on
+    /// the catalog descriptor; `durability` is the per-instance snapshot value.
+    fn item_is_broken(&self, snap: &crate::world::snapshot::ItemSnapshot, cat: &Catalog) -> bool {
+        match snap {
+            crate::world::snapshot::ItemSnapshot::Item { behavior_key, durability, .. } => {
+                cat.items.get(behavior_key).and_then(|d| d.max_durability).is_some()
+                    && *durability == Some(0)
+            }
+            crate::world::snapshot::ItemSnapshot::Key { .. } => false,
+        }
     }
 
     /// Build an `EntityRef` for a character — safe to call even if the character
@@ -241,7 +287,7 @@ impl World {
         self.fire_scenes(&room, "enter", cat, cues)?;
 
         // Visibility cue when the destination is dark (mirrors TS `move` :1021-1027).
-        if !self.is_lit(&room) {
+        if !self.is_lit(&room, cat) {
             let name = self
                 .rooms
                 .get(&room)
@@ -459,8 +505,113 @@ mod tests {
     #[test]
     fn is_lit_truth_table() {
         let w = world_two_rooms(true);
-        assert!(w.is_lit(&rid("start")));   // not dark
-        assert!(!w.is_lit(&rid("next")));   // dark, no light sources
+        let cat = Catalog::default();
+        assert!(w.is_lit(&rid("start"), &cat));   // not dark
+        assert!(!w.is_lit(&rid("next"), &cat));   // dark, no light sources
+    }
+
+    /// Build an Accessory descriptor that (maybe) emits light and (maybe) has a
+    /// max durability — enough to drive `character_has_light` / `is_lit`.
+    fn lantern_desc(emits: Option<bool>, max_dur: Option<i64>) -> crate::world::descriptor::ItemDescriptor {
+        use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType, SlotKind};
+        ItemDescriptor {
+            name: "Brass Lantern".into(),
+            r#type: ItemType::Accessory,
+            stat: crate::stats::StatType::Sanity,
+            modifier: 0,
+            properties: ItemProperties {
+                equippable: true, equipped: true, destroyable: false, usable: false, droppable: None,
+            },
+            slot: Some(SlotKind::Hand),
+            two_handed: None,
+            emits_light: emits,
+            max_durability: max_dur,
+            lore: None,
+            presentation: None,
+            key_code: None,
+            consume_on_use: None,
+            recipe: serde_json::Value::Null,
+            teaches: serde_json::Value::Null,
+            immunities: serde_json::Value::Null,
+            grants_immunity: serde_json::Value::Null,
+        }
+    }
+
+    /// A dark room is lit by an occupant's equipped, non-broken, light-emitting
+    /// hand item — and NOT lit if that item is broken or does not emit light.
+    /// Mirrors `room.ts` `isLit` → `character.ts` `hasLight` (occupant path).
+    #[test]
+    fn dark_room_lit_by_occupant_equipped_lantern() {
+        use crate::world::descriptor::Catalog;
+        use crate::world::ids::ItemId;
+        use crate::world::snapshot::ItemSnapshot;
+
+        let mut w = world_two_rooms(/*next_dark=*/true);
+        // Seat the pc as an occupant of the dark "next" room.
+        if let Some(r) = w.rooms.get_mut(&rid("next")) {
+            r.occupant_ids.push(cid("pc"));
+        }
+        let mut cat = Catalog::default();
+        cat.items.insert("lantern".into(), lantern_desc(Some(true), None));
+
+        // No equipped light yet → dark room stays unlit.
+        assert!(!w.character_has_light(&cid("pc"), &cat));
+        assert!(!w.is_lit(&rid("next"), &cat));
+
+        // Equip a non-broken lantern in the left hand → room is now lit.
+        let item_id = ItemId("lantern-1".into());
+        w.items.insert(item_id.clone(), ItemSnapshot::Item {
+            id: item_id.clone(), behavior_key: "lantern".into(), durability: None, modifier: 0,
+        });
+        w.characters.get_mut(&cid("pc")).unwrap().equipment.insert("leftHand".into(), item_id.clone());
+        assert!(w.character_has_light(&cid("pc"), &cat));
+        assert!(w.is_lit(&rid("next"), &cat));
+
+        // Broken lantern (maxDurability set + durability 0) → not a light.
+        cat.items.insert("lantern".into(), lantern_desc(Some(true), Some(3)));
+        if let Some(ItemSnapshot::Item { durability, .. }) = w.items.get_mut(&item_id) {
+            *durability = Some(0);
+        }
+        assert!(!w.character_has_light(&cid("pc"), &cat));
+        assert!(!w.is_lit(&rid("next"), &cat));
+
+        // Non-broken again but descriptor does not emit light → not a light.
+        cat.items.insert("lantern".into(), lantern_desc(None, None));
+        if let Some(ItemSnapshot::Item { durability, .. }) = w.items.get_mut(&item_id) {
+            *durability = None;
+        }
+        assert!(!w.character_has_light(&cid("pc"), &cat));
+        assert!(!w.is_lit(&rid("next"), &cat));
+    }
+
+    /// A dark room with a placed BROKEN light source is NOT lit (mirrors TS
+    /// `for (const light of #lightSources) if (!light.isBroken)`); a non-broken
+    /// placed source lights it.
+    #[test]
+    fn dark_room_placed_light_source_respects_broken_state() {
+        use crate::world::descriptor::Catalog;
+        use crate::world::ids::ItemId;
+        use crate::world::snapshot::ItemSnapshot;
+
+        let mut w = world_two_rooms(/*next_dark=*/true);
+        let mut cat = Catalog::default();
+        cat.items.insert("torch".into(), lantern_desc(Some(true), Some(2)));
+
+        let item_id = ItemId("torch-1".into());
+        w.items.insert(item_id.clone(), ItemSnapshot::Item {
+            id: item_id.clone(), behavior_key: "torch".into(), durability: Some(0), modifier: 0,
+        });
+        if let Some(r) = w.rooms.get_mut(&rid("next")) {
+            r.light_source_ids.push(item_id.clone());
+        }
+        // Placed but broken → still dark.
+        assert!(!w.is_lit(&rid("next"), &cat));
+
+        // Repair it (durability > 0) → lit.
+        if let Some(ItemSnapshot::Item { durability, .. }) = w.items.get_mut(&item_id) {
+            *durability = Some(2);
+        }
+        assert!(w.is_lit(&rid("next"), &cat));
     }
 
     #[test]

@@ -21,6 +21,7 @@ export default defineConfig({
       "conformance/fixtures/scene.gen.test.ts",
       "conformance/fixtures/spawn.gen.test.ts",
       "conformance/fixtures/sees-in-dark.gen.test.ts",
+      "conformance/fixtures/lantern-dark-combat.gen.test.ts",
       "conformance/fixtures/victory-won.gen.test.ts",
       "conformance/fixtures/victory-lost.gen.test.ts",
       "conformance/fixtures/victory-timeout.gen.test.ts",

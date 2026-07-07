@@ -141,10 +141,10 @@ impl World {
     /// Throw if the actor cannot see (unlit room and not `sees_in_dark`).
     /// Mirrors `character.ts` `requireVisibleTarget` (:266-271): checks only the
     /// actor's own visibility, not the target's location.
-    fn require_visible_target(&self, actor: &CharacterId, verb: &str) -> Result<(), ProceduralViolation> {
+    fn require_visible_target(&self, actor: &CharacterId, verb: &str, cat: &Catalog) -> Result<(), ProceduralViolation> {
         if let Some(ch) = self.characters.get(actor) {
             if let Some(room_id) = &ch.current_room_id {
-                if !self.is_lit(room_id) && !self.sees_in_dark(actor) {
+                if !self.is_lit(room_id, cat) && !self.sees_in_dark(actor) {
                     return Err(ProceduralViolation(format!("Cannot {verb} in the dark")));
                 }
             }
@@ -189,7 +189,7 @@ impl World {
             GateVerdict::Allow => {}
         }
         // 2. Dark check (after the gate, matching TS order).
-        self.require_visible_target(actor, "attack")?;
+        self.require_visible_target(actor, "attack", cat)?;
 
         // 3. Equipped, non-broken weapons.
         let equipped = self.equipped_resolved(actor, cat);
@@ -343,7 +343,7 @@ impl World {
             .characters
             .get(target)
             .and_then(|c| c.current_room_id.clone())
-            .map(|rid| self.is_lit(&rid))
+            .map(|rid| self.is_lit(&rid, cat))
             .unwrap_or(false);
 
         let final_strength = compute_mitigated_damage(DamageInput {

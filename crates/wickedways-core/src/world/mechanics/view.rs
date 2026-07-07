@@ -96,7 +96,7 @@ impl World {
         Some(RoomView {
             id: room_id.0.clone(),
             name: r.name.clone(),
-            lit: self.is_lit(room_id),
+            lit: self.is_lit(room_id, cat),
             occupant_ids,
             occupants,
         })

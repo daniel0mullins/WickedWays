@@ -41,12 +41,14 @@ function run(session: GameSession, line: string): void {
 }
 
 describe("laudanum", () => {
-  // Skipped for the Rust-core cutover: reaching the Study fells the Wraith in the
-  // DARK Nursery, which needs the equipped Brass Lantern to light the room. The Rust
-  // core's is_lit (crates/wickedways-core/src/world/movement.rs) has not yet ported
-  // occupant-carried light (TODO(sub-plan 4c): "widen is_lit to include equipped/
-  // carried light sources"), so combat there returns "Cannot attack in the dark" and
-  // the brass key never drops. Re-enable once occupant-carried light lands.
+  // Still skipped after the occupant-carried-light port: darkness is no longer the
+  // blocker (the Brass Lantern now lights the Nursery in the Rust core, so the Wraith
+  // is felled and the brass key drops), but this test has a SECOND, independent
+  // blocker — the Rust core's `use_item` (crates/wickedways-core/src/world/items_actions.rs)
+  // consumes a consumable but does NOT yet apply its restore effect (the vial's onUse
+  // heal), so `use vial` consumes the vial and heals nothing (sanity stays at 6 instead
+  // of +6). Consumable use-effects are TS action closures with no Rust-catalog
+  // representation yet; re-enable once they are ported (out of scope for the light fix).
   it.skip("restores 6 Sanity when used and consumes the vial", () => {
     const session = newSession();
 

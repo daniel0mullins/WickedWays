@@ -1,0 +1,54 @@
+{
+  "items": {
+    "items/dagger": {
+      "name": "Iron Dagger",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 3,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 5,
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "items/lantern": {
+      "name": "Brass Lantern",
+      "type": "accessory",
+      "stat": "sanity",
+      "modifier": 0,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": false,
+        "usable": false
+      },
+      "slot": "hand",
+      "emitsLight": true,
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    }
+  },
+  "aliases": {
+    "items/dagger": [
+      "dagger",
+      "iron dagger"
+    ],
+    "items/lantern": [
+      "lantern",
+      "brass lantern"
+    ]
+  }
+}

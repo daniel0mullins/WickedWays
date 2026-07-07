@@ -241,7 +241,7 @@ impl World {
             .get(&room_id)
             .ok_or_else(|| ProceduralViolation("current room not found in world".into()))?;
 
-        let is_lit = self.is_lit(&room_id);
+        let is_lit = self.is_lit(&room_id, cat);
 
         // ── exits / lockedDoors (Phase 2 parity) ───────────────────────────
         // Canonical order: alphabetical by direction key (BTreeMap iteration);

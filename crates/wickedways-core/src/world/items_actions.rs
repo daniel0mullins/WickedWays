@@ -6,13 +6,11 @@
 //! `take` is **budgeted** — ticks `actions_this_round` and records a `pickUp` history entry.
 //!
 //! Visibility-flip note: we compute `is_lit` before/after and emit a
-//! `{ kind: "visibility", room, lit }` cue if it changes. In sub-plan 3b
-//! `is_lit = !dark || !light_source_ids.is_empty()` (sub-plan 3a definition)
-//! does NOT yet depend on occupant-carried or equipped light, so equipping a
-//! light-emitting item will NOT flip `is_lit` here.
-//! TODO(sub-plan 4c): widen `is_lit` to include equipped/carried light sources,
-//! at which point the before/after check here will begin emitting cues when a
-//! light item is equipped/unequipped.
+//! `{ kind: "visibility", room, lit }` cue if it changes. `is_lit`
+//! (`movement.rs`) now folds in occupant-carried, equipped, non-broken light
+//! (mirroring `room.ts` `isLit` → `character.ts` `hasLight`), so equipping a
+//! light-emitting hand item in a dark room flips `is_lit` true and emits the
+//! net visibility cue here (and unequipping it flips back to dark).
 
 use alloc::format;
 use alloc::string::ToString;
@@ -108,7 +106,7 @@ impl World {
         // 3. Visibility gate: !is_lit && !sees_in_dark(actor) → Err.
         // Mob `lightAverse` override wired in sub-plan 4c; base always returns false.
         let sees_in_dark = self.sees_in_dark(actor);
-        if !self.is_lit(&room_id) && !sees_in_dark {
+        if !self.is_lit(&room_id, cat) && !sees_in_dark {
             return Err(ProceduralViolation("Cannot loot in the dark".into()));
         }
 
@@ -306,7 +304,7 @@ impl World {
 
         // --- snapshot the actor's current room for visibility flip ---
         let actor_room = self.characters.get(actor).and_then(|c| c.current_room_id.clone());
-        let was_lit = actor_room.as_ref().map(|r| self.is_lit(r)).unwrap_or(true);
+        let was_lit = actor_room.as_ref().map(|r| self.is_lit(r, cat)).unwrap_or(true);
 
         // 1. Item must be in actor's inventory.item_ids
         {
@@ -414,7 +412,7 @@ impl World {
 
         // Emit one net visibility cue if lit state changed
         if let Some(ref room_id) = actor_room {
-            let now_lit = self.is_lit(room_id);
+            let now_lit = self.is_lit(room_id, cat);
             if now_lit != was_lit {
                 let room_name = self.rooms.get(room_id).map(|r| r.name.clone()).unwrap_or_default();
                 cues.push(PresentationCue::Visibility {
@@ -451,7 +449,7 @@ impl World {
         }
 
         let actor_room = self.characters.get(actor).and_then(|c| c.current_room_id.clone());
-        let was_lit = actor_room.as_ref().map(|r| self.is_lit(r)).unwrap_or(true);
+        let was_lit = actor_room.as_ref().map(|r| self.is_lit(r, cat)).unwrap_or(true);
 
         // Validate: item held AND equipped (mirrors character.ts:756-773 — no catalog lookup)
         {
@@ -472,7 +470,7 @@ impl World {
 
         // Emit visibility cue if lit state changed
         if let Some(ref room_id) = actor_room {
-            let now_lit = self.is_lit(room_id);
+            let now_lit = self.is_lit(room_id, cat);
             if now_lit != was_lit {
                 let room_name = self.rooms.get(room_id).map(|r| r.name.clone()).unwrap_or_default();
                 cues.push(PresentationCue::Visibility {

@@ -94,14 +94,11 @@ describe("GameSession", () => {
     expect(result.cues.some((c) => c.kind === "mechanic" && "cue" in c && (c.cue.text ?? "").includes("won't budge"))).toBe(true);
   });
 
-  // NOTE (Rust-core cutover): the following four cases fell the Wraith in the DARK
-  // Nursery, which requires the equipped Brass Lantern to light the room. The Rust
-  // core's is_lit (crates/wickedways-core/src/world/movement.rs) has NOT yet ported
-  // occupant-carried light (explicit TODO(sub-plan 4c): "widen is_lit to include
-  // equipped/carried light sources"), so combat there returns "Cannot attack in the
-  // dark". Skipped until that port lands; the other 12 cases prove Hollow House boots
-  // and plays through the Authority.
-  it.skip("go into a locked door with the key opens it and moves through", () => {
+  // NOTE (Rust-core cutover): the following cases fell the Wraith in the DARK
+  // Nursery, lit by the equipped Brass Lantern. The Rust core's is_lit
+  // (crates/wickedways-core/src/world/movement.rs) now folds in occupant-carried
+  // light, so combat there succeeds and these play through the Authority.
+  it("go into a locked door with the key opens it and moves through", () => {
     const s = newSession();
     // Arm with poker + lantern (lantern needed for dark Nursery), fell the Wraith for brass key
     s.execute({ kind: "move", dir: Directions.North });   // Hall
@@ -134,7 +131,7 @@ describe("GameSession", () => {
     return s.view().occupants.find((o) => o.name === "Wraith")!;
   };
 
-  it.skip("exposes occupant health, and marks a felled mob defeated", () => {
+  it("exposes occupant health, and marks a felled mob defeated", () => {
     const s = newSession();
     const wraith = reachWraith(s);
     expect(typeof wraith.health).toBe("number");
@@ -147,7 +144,7 @@ describe("GameSession", () => {
     expect(s.view().occupants.find((o) => o.id === wraith.id)!.defeated).toBe(true);
   });
 
-  it.skip("a live mob in the room strikes back after a time-advancing action, hitting its stat", () => {
+  it("a live mob in the room strikes back after a time-advancing action, hitting its stat", () => {
     const s = newSession();
     const wraith = reachWraith(s);
     const sanityBefore = s.view().status.sanity;
@@ -168,7 +165,7 @@ describe("GameSession", () => {
     expect(s.view().status.sanity).toBe(sanityAfterKill);
   });
 
-  it.skip("rejects attacking an already-defeated mob", () => {
+  it("rejects attacking an already-defeated mob", () => {
     const s = newSession();
     const wraith = reachWraith(s);
     for (let i = 0; i < 11; i++) s.execute({ kind: "attack", targetId: wraith.id });
