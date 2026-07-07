@@ -84,6 +84,12 @@ mod ts_export {
         use crate::world::afflictions::{Status, Afflictions};
         Status::export_all().expect("export Status");
         Afflictions::export_all().expect("export Afflictions");
+        // Phase 2a: the Authority boundary types
+        use crate::world::intent::Intent;
+        use crate::world::submit::{ExecuteResult, MobAttack};
+        Intent::export_all().expect("export Intent");
+        MobAttack::export_all().expect("export MobAttack");
+        ExecuteResult::export_all().expect("export ExecuteResult");
         // Scripted-ops DSL AST (scripted-ops plan, Task 10)
         use crate::script::ast::{
             BehaviorScript, BinOp, DamageBody, EffectTemplate, Expr, ExitScript,
