@@ -168,6 +168,9 @@ pub fn eval_expr(e: &Expr, cx: &mut Ctx) -> Ev {
             }
         }
 
+        Expr::Some { list, pred } => Ev::Val(Value::Bool(quantify(list, pred, cx, /*every=*/false))),
+        Expr::Every { list, pred } => Ev::Val(Value::Bool(quantify(list, pred, cx, /*every=*/true))),
+
         Expr::Get { of, field } => {
             let subject = eval_expr(of, cx);
             get_field(subject, field, cx)
@@ -243,6 +246,27 @@ pub(crate) fn state_set_in(state: &mut serde_json::Value, map_field: &str, key: 
         state[map_field] = serde_json::json!({});
     }
     state[map_field][key] = v;
+}
+
+/// Bounded quantification. Binds `Ctx.element` per iteration (saving/restoring
+/// any outer binding, so nesting shadows correctly). `every([])` is vacuously
+/// true, `some([])` false — JS Array semantics.
+fn quantify(list: &Expr, pred: &Expr, cx: &mut Ctx, every: bool) -> bool {
+    let items: Vec<Ev> = match eval_expr(list, cx) {
+        Ev::Chars(cs) => cs.into_iter().map(Ev::Char).collect(),
+        Ev::Val(Value::List(vs)) => vs.into_iter().map(Ev::Val).collect(),
+        _ => Vec::new(),
+    };
+    let saved = cx.element.take();
+    let mut result = every;
+    for item in items {
+        cx.element = Some(item);
+        let hit = eval_expr(pred, cx).truthy();
+        if every && !hit { result = false; break; }
+        if !every && hit { result = true; break; }
+    }
+    cx.element = saved;
+    result
 }
 
 fn index_list(l: Ev, i: usize) -> Ev {
@@ -588,6 +612,53 @@ mod tests {
         // key coerces via JS String(): Has(map, Null) looks up "null" -> false
         assert_eq!(eval_expr(&Expr::Has { map: lore, key: Box::new(Expr::Lit { value: Value::Null }) },
                    &mut cx).into_value(), Value::Bool(false));
+    }
+
+    #[test]
+    fn some_and_every_bind_element_over_party() {
+        let mut w = world_with_party(&["a", "b"], 10); // sanity 5 each
+        w.characters.get_mut(&cid("b")).unwrap().stats.sanity = 0.0;
+        let view = w.build_campaign_view(&Catalog::default());
+        let mut cx = Ctx { view: Some(&view), ..Ctx::empty() };
+        let sanity_lte0 = Box::new(Expr::Bin {
+            op: BinOp::Lte,
+            left: Box::new(Expr::Get { of: Box::new(Expr::Element), field: "sanity".into() }),
+            right: Box::new(Expr::Lit { value: Value::Number(0.0) }),
+        });
+        // some(party, sanity <= 0): b qualifies -> true
+        assert_eq!(eval_expr(&Expr::Some { list: Box::new(Expr::Party), pred: sanity_lte0.clone() },
+                   &mut cx).into_value(), Value::Bool(true));
+        // every(party, sanity <= 0): a does not -> false
+        assert_eq!(eval_expr(&Expr::Every { list: Box::new(Expr::Party), pred: sanity_lte0.clone() },
+                   &mut cx).into_value(), Value::Bool(false));
+        // JS vacuous truth: every([]) -> true, some([]) -> false
+        let empty = Box::new(Expr::Lit { value: Value::List(alloc::vec![]) });
+        assert_eq!(eval_expr(&Expr::Every { list: empty.clone(), pred: sanity_lte0.clone() }, &mut cx)
+                   .into_value(), Value::Bool(true));
+        assert_eq!(eval_expr(&Expr::Some { list: empty, pred: sanity_lte0 }, &mut cx)
+                   .into_value(), Value::Bool(false));
+        // the binding is restored after the quantifier
+        assert!(cx.element.is_none());
+    }
+
+    #[test]
+    fn quantifiers_over_value_lists_and_status_includes() {
+        let mut w = world_with_party(&["a", "b"], 10);
+        // KO both: health 0 + reconcile latches KO via afflictions.set_active
+        for id in ["a", "b"] {
+            let c = w.characters.get_mut(&cid(id)).unwrap();
+            c.stats.health = 0.0;
+            c.afflictions.set_active(crate::world::afflictions::Status::Ko, true);
+        }
+        let view = w.build_campaign_view(&Catalog::default());
+        let mut cx = Ctx { view: Some(&view), ..Ctx::empty() };
+        // the party-down oracle shape: every(party, status.includes("ko"))
+        let pred = Box::new(Expr::Includes {
+            list: Box::new(Expr::Get { of: Box::new(Expr::Element), field: "status".into() }),
+            value: Box::new(Expr::Lit { value: Value::Str("ko".into()) }),
+        });
+        assert_eq!(eval_expr(&Expr::Every { list: Box::new(Expr::Party), pred }, &mut cx)
+                   .into_value(), Value::Bool(true));
     }
 
     #[test]

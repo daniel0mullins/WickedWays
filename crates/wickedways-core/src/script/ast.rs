@@ -58,6 +58,14 @@ pub enum Expr {
     First { list: Box<Expr> },
     /// Membership over a `List` by strict equality; `false` otherwise.
     Includes { list: Box<Expr>, value: Box<Expr> },
+    /// Bounded existential quantifier over a subject/value list: `true` iff
+    /// `pred` holds for at least one element. `some([])` is `false` (JS
+    /// `Array.prototype.some`). `pred` reads the current item via `Element`.
+    Some { list: Box<Expr>, pred: Box<Expr> },
+    /// Bounded universal quantifier over a subject/value list: `true` iff
+    /// `pred` holds for every element. `every([])` is vacuously `true` (JS
+    /// `Array.prototype.every`). `pred` reads the current item via `Element`.
+    Every { list: Box<Expr>, pred: Box<Expr> },
     /// Field access on a subject; unknown field / non-subject → `Null`.
     Get { of: Box<Expr>, field: String },
     /// `of` (a character) has an item with this behavior key equipped.
