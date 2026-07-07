@@ -322,6 +322,16 @@ impl World {
                 }
             }
         }
+        // Formation keys (encounter table is an untyped Value; read behaviorKey like maybe_spawn).
+        if let Some(arr) = self.campaign.encounter_table.get("formations").and_then(|v| v.as_array()) {
+            for f in arr {
+                if let Some(key) = f.get("behaviorKey").and_then(|v| v.as_str()) {
+                    if crate::world::formations::resolve_formation(key, cat).is_none() {
+                        return Err(ProceduralViolation(format!("Formation '{key}' is not registered.")));
+                    }
+                }
+            }
+        }
         Ok(())
     }
 
@@ -915,6 +925,37 @@ mod tests {
         });
         let err = w.validate_mechanics(&Catalog::default()).unwrap_err();
         assert!(err.0.contains("No condition registered for key 'ghost-win'."));
+    }
+
+    #[test]
+    fn validate_mechanics_validates_encounter_table_formation_keys() {
+        let mut w = world_with_party(&["pc"], 10);
+        // a world with no encounter formations is valid.
+        assert!(
+            w.validate_mechanics(&Catalog::default()).is_ok(),
+            "no encounter formations is valid"
+        );
+        // an encounter table naming an unregistered formation key fails fast.
+        w.campaign.encounter_table = serde_json::json!({
+            "formations": [ { "behaviorKey": "swarm", "weight": 1 } ]
+        });
+        let err = w.validate_mechanics(&Catalog::default()).unwrap_err();
+        assert_eq!(err.0, "Formation 'swarm' is not registered.");
+        // the same key registered as a catalog descriptor resolves and passes.
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "formations": { "swarm": { "mobs": [ {
+                "name": "Rat",
+                "stats": { "energy": 3, "sanity": 0, "health": 4 },
+                "naturalAttack": { "stat": "health", "power": 1 },
+                "baseEscapeChance": 50,
+                "actionsPerRound": 1
+            } ] } }
+        })).unwrap();
+        assert!(
+            w.validate_mechanics(&cat).is_ok(),
+            "a descriptor-registered formation key passes"
+        );
     }
 
     #[test]
