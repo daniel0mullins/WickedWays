@@ -31,6 +31,24 @@ pub fn formation(key: &str) -> Option<&'static dyn FormationBehavior> {
     None
 }
 
+/// The outcome of resolving an encounter `behaviorKey`: a compiled-in native
+/// formation, or a data-driven descriptor from the catalog.
+pub enum ResolvedFormation<'a> {
+    Native(&'static dyn FormationBehavior),
+    Descriptor(&'a crate::world::formation_descriptor::FormationDescriptor),
+}
+
+/// Resolve a formation `key`: native first (a first-party `FormationBehavior`),
+/// then a catalog `FormationDescriptor`. `None` if neither knows the key (surfaced
+/// as a `ProceduralViolation` at the spawn site). Formations are NOT a
+/// `BehaviorScript` family — descriptors live in `Catalog.formations`.
+pub fn resolve_formation<'a>(key: &str, cat: &'a Catalog) -> Option<ResolvedFormation<'a>> {
+    if let Some(op) = formation(key) {
+        return Some(ResolvedFormation::Native(op));
+    }
+    cat.formations.get(key).map(ResolvedFormation::Descriptor)
+}
+
 #[cfg(any(test, feature = "conformance"))]
 pub mod conformance {
     use super::*;
@@ -209,12 +227,17 @@ impl World {
             }
         }
         let key = chosen.unwrap_or(&formations[formations.len() - 1].0);
-        let behavior = formation(key)
-            .ok_or_else(|| ProceduralViolation(alloc::format!("Formation '{key}' is not registered.")))?;
 
-        // 7. build.
-        let view = self.build_campaign_view(cat);
-        let mobs = behavior.build(&view);
+        // 7. resolve (native first, then descriptor) + build.
+        let mobs = match resolve_formation(key, cat)
+            .ok_or_else(|| ProceduralViolation(alloc::format!("Formation '{key}' is not registered.")))?
+        {
+            ResolvedFormation::Native(b) => {
+                let view = self.build_campaign_view(cat);
+                b.build(&view)
+            }
+            ResolvedFormation::Descriptor(d) => d.build(),
+        };
 
         // 8. place each: origin "campaign", room set, insert, occupant push, silent enter-scenes.
         let mut spawned = Vec::new();
@@ -255,6 +278,54 @@ mod tests {
         assert!(matches!(m.kind, crate::world::snapshot::CharacterKind::Mob));
         assert_eq!(m.origin, None); // maybe_spawn sets origin
         assert_eq!(m.current_room_id, None); // maybe_spawn sets the room
+    }
+
+    #[test]
+    fn descriptor_build_produces_snapshots_with_deterministic_ids() {
+        use crate::stats::StatType;
+        use crate::world::formation_descriptor::{FormationDescriptor, MobSpec, NaturalAttack};
+        use crate::world::snapshot::Stats;
+        let spec = MobSpec {
+            name: "Rat".into(),
+            stats: Stats { health: 2.0, sanity: 2.0, energy: 3.0 },
+            natural_attack: NaturalAttack { stat: StatType::Health, power: 1.0 },
+            drops: alloc::vec!["items/rat-tail".into()],
+            base_escape_chance: 50,
+            light_averse: false,
+            material_drops: serde_json::json!({}),
+            actions_per_round: 2,
+        };
+        let desc = FormationDescriptor { mobs: alloc::vec![spec.clone(), spec] };
+        let built = desc.build();
+        assert_eq!(built.len(), 2);
+        assert_eq!(built[0].id.0, "campaign-mob:rat");
+        assert_eq!(built[1].id.0, "campaign-mob:rat#2"); // distinct, deterministic
+        assert_eq!(built[0].kind, crate::world::snapshot::CharacterKind::Mob);
+        assert_eq!(
+            built[0].natural_attack,
+            Some(serde_json::json!({ "stat": "health", "power": 1.0 }))
+        );
+        assert_eq!(built[0].base_escape_chance, Some(50));
+    }
+
+    #[test]
+    fn resolve_formation_prefers_native_then_descriptor() {
+        use crate::world::descriptor::Catalog;
+        use crate::world::formation_descriptor::FormationDescriptor;
+        use alloc::collections::BTreeMap;
+        let mut formations = BTreeMap::new();
+        formations.insert("rat-single".to_string(), FormationDescriptor { mobs: alloc::vec![] });
+        let cat = Catalog { formations, ..Default::default() };
+        assert!(matches!(
+            resolve_formation("rat-single", &cat),
+            Some(ResolvedFormation::Descriptor(_))
+        ));
+        assert!(resolve_formation("nope", &cat).is_none());
+        // conformance:wraith stays native (test build has the cfg arm)
+        assert!(matches!(
+            resolve_formation("conformance:wraith", &cat),
+            Some(ResolvedFormation::Native(_))
+        ));
     }
 }
 

@@ -1,6 +1,7 @@
 //! Data-driven formation descriptors: a serializable mob template + a named
 //! group of them. Interpreted by `resolve_formation`/`maybe_spawn` (both engines
 //! build byte-identical snapshots). See the roving-Rats spec.
+use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
@@ -9,7 +10,9 @@ use serde_json::Value;
 use ts_rs::TS;
 
 use crate::stats::StatType;
-use crate::world::snapshot::Stats;
+use crate::world::afflictions::Afflictions;
+use crate::world::ids::CharacterId;
+use crate::world::snapshot::{CharacterKind, CharacterSnapshot, InventorySnapshot, Stats};
 
 /// `materialDrops` default — JSON `{}`, not `null` (`Value::default()` is `Null`).
 /// A data-built mob must emit `materialDrops: {}` to match the native mob shape.
@@ -59,6 +62,57 @@ pub struct MobSpec {
 #[serde(rename_all = "camelCase")]
 pub struct FormationDescriptor {
     pub mobs: Vec<MobSpec>,
+}
+
+impl FormationDescriptor {
+    /// Build the mobs to spawn (rng-free, deterministic ids). `maybe_spawn` sets
+    /// each mob's `current_room_id` + `origin="campaign"` afterward.
+    ///
+    /// The emitted `CharacterSnapshot` field set is identical to the native
+    /// `build_wraith` (`formations.rs`), so a data-built mob is byte-faithful to a
+    /// native-built one. Deterministic id scheme: `campaign-mob:{name.lowercase}`
+    /// for the first mob, `…#{index+1}` for index ≥ 1 (a pair → `campaign-mob:rat`,
+    /// `campaign-mob:rat#2`); the TS side mirrors this scheme.
+    ///
+    /// NOTE: `MobSpec.drops` is intentionally NOT seeded here — see the
+    /// `rat-task-2-report.md` drops finding. Realizing descriptor drops requires an
+    /// `ItemSnapshot` in `World.items` (resolved from the item catalog) plus an id
+    /// in `inventory.item_ids`; `build`'s `Vec<CharacterSnapshot>` return type
+    /// (and its lack of `Catalog` access) cannot supply that world state, so drops
+    /// are deferred to a follow-up that widens this seam.
+    pub fn build(&self) -> Vec<CharacterSnapshot> {
+        self.mobs
+            .iter()
+            .enumerate()
+            .map(|(i, m)| {
+                let base = alloc::format!("campaign-mob:{}", m.name.to_lowercase());
+                let id = if i == 0 { base } else { alloc::format!("{base}#{}", i + 1) };
+                CharacterSnapshot {
+                    kind: CharacterKind::Mob,
+                    id: CharacterId(id),
+                    name: m.name.clone(),
+                    stats: m.stats.clone(),
+                    actions_per_round: m.actions_per_round,
+                    actions_this_round: 0,
+                    current_room_id: None,
+                    inventory: InventorySnapshot { slots: 0, item_ids: Vec::new(), key_ids: Vec::new() },
+                    equipment: BTreeMap::new(),
+                    history: Vec::new(),
+                    archetype_immunities: Vec::new(),
+                    afflictions: Afflictions::default(),
+                    archetype_id: None,
+                    origin: None,
+                    base_escape_chance: Some(m.base_escape_chance),
+                    material_drops: Some(m.material_drops.clone()),
+                    light_averse: Some(m.light_averse),
+                    natural_attack: Some(serde_json::json!({
+                        "stat": m.natural_attack.stat, "power": m.natural_attack.power
+                    })),
+                    npc_behavior_key: None,
+                }
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
