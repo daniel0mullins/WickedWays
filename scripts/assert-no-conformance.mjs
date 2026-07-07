@@ -19,4 +19,8 @@ if (wasm.includes(Buffer.from("conformance:"))) {
   console.error("FAIL: a 'conformance:' registry key is baked into the default wasm build");
   process.exit(1);
 }
+if (!js.includes("class Authority")) {
+  console.error("FAIL: Authority class missing from the default build");
+  process.exit(1);
+}
 console.log("OK: default build exposes no conformance symbols");

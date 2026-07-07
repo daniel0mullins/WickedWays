@@ -1,6 +1,9 @@
 use wasm_bindgen::prelude::*;
 use wickedways_core::{compute_mitigated_damage, DamageInput};
 
+mod authority;
+pub use authority::Authority;
+
 /// Toolchain smoke test: proves Rust→WASM→Node loading works end-to-end.
 #[wasm_bindgen]
 pub fn ping() -> i32 {
