@@ -135,6 +135,9 @@ importers:
       '@playwright/test':
         specifier: ^1.61.1
         version: 1.61.1
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.21
       vite:
         specifier: ^8.0.0
         version: 8.0.16(@types/node@22.19.21)(esbuild@0.28.1)(tsx@4.22.4)(yaml@2.9.0)
@@ -169,6 +172,10 @@ importers:
       wickedways:
         specifier: workspace:*
         version: link:../..
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.21
 
   packages/seed:
     dependencies:

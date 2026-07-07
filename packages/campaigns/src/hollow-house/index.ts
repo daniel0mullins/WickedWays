@@ -13,6 +13,7 @@ import { Rooms, Items, Keys, Mobs, Mechanics, Archetypes, Conditions, ExitBehavi
 
 export { LORE, ALIASES, TITLE, INTRO } from "./content.js";
 export { hollowHouse } from "./manifest.js";
+export { hollowHouseBehaviors } from "./scripted.js";
 export { Rooms, Archetypes } from "./ids.js";
 
 export function buildHauntedHouseRegistry(): CampaignRegistry {

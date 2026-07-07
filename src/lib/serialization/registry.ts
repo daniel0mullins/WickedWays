@@ -110,6 +110,15 @@ export class CampaignRegistry {
     this.#exits.set(key, behavior);
   }
 
+  /**
+   * Keys of every registered item factory, in registration order. Read-only
+   * enumeration used by the play-runtime to export the WASM item catalog;
+   * registration stays write-only.
+   */
+  get itemKeys(): readonly string[] {
+    return [...this.#items.keys()];
+  }
+
   scene(key: string): SceneBehavior {
     return this.#require(this.#scenes.get(key), "scene", key);
   }

@@ -5,6 +5,12 @@
   "type": "module",
   "main": "src/index.ts",
   "exports": { ".": "./src/index.ts" },
+  "imports": {
+    "#engine": {
+      "browser": "./src/engine-web.ts",
+      "default": "./src/engine-node.ts"
+    }
+  },
   "scripts": { "typecheck": "tsc --noEmit" },
   "dependencies": { "lit": "^3", "wickedways": "workspace:*" },
   "devDependencies": { "@types/node": "^22.10.0" }

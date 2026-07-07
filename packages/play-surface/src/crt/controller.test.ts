@@ -56,9 +56,6 @@ const makeSession = () => {
     save: vi.fn((): Promise<void> => Promise.resolve()),
     restore: vi.fn((): Promise<{ ok: boolean }> => Promise.resolve({ ok: false })),
     undo: vi.fn(() => false),
-    get campaign() {
-      return {};
-    },
     /** Test hook: flip the session into a finished state. */
     finish() {
       finished = true;

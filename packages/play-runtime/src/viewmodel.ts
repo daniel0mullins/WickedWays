@@ -1,175 +1,45 @@
-import type { Campaign } from "wickedways/lib/campaign";
-import type { Direction } from "wickedways/lib/room";
-import { StatType } from "wickedways/lib/character/stats";
-import { Status } from "wickedways/lib/status";
+/**
+ * ViewModel types over the GENERATED core bindings (single source of truth —
+ * master-design invariant 1). The core never emits presentation images for
+ * rooms/occupants (presentation is not serialized); GameSession.view() overlays
+ * them host-side, hence the widened `image?: string` fields here.
+ * The live-campaign view() implementation now lives in the Rust core
+ * (world/view.rs); its frozen TS oracle copy is conformance/fixtures/oracle-view.ts.
+ */
+import type { ViewModel as CoreViewModel } from "../../../generated/bindings/ViewModel.ts";
+import type { ScopeEntity as CoreScopeEntity } from "../../../generated/bindings/ScopeEntity.ts";
+import type { LootView as CoreLootView } from "../../../generated/bindings/LootView.ts";
+import type { ExitView } from "../../../generated/bindings/ExitView.ts";
+import type { LockedDoorView } from "../../../generated/bindings/LockedDoorView.ts";
+import type { Inventory as CoreInventory } from "../../../generated/bindings/Inventory.ts";
+import type { StatusView as CoreStatusView } from "../../../generated/bindings/StatusView.ts";
 
 export type ScopeKind = "occupant" | "item" | "loot";
-export interface ScopeEntity {
-  id: string;
-  name: string;
-  aliases: string[];
+
+/** Core ScopeEntity with the image narrowed to the string AssetRef surfaces use. */
+export type ScopeEntity = Omit<CoreScopeEntity, "image" | "kind"> & {
   kind: ScopeKind;
-  /** Occupants only: current effective Health, for combat-damage feedback. */
-  health?: number;
-  /** Occupants only: true once knocked out (a defeated mob the engine keeps in the room). */
-  defeated?: boolean;
-  /** Campaign-supplied image asset reference, if the entity carries one. */
   image?: string;
-  /** Items only: whether the item can be equipped. */
-  equippable?: boolean;
-  /** Items only: whether the item can be used (consumed on use). */
-  usable?: boolean;
-  /** Items only: whether the item carries lore text (readable). */
-  hasLore?: boolean;
-  /** Items only: whether the item may be dropped (false for required quest items). */
-  droppable?: boolean;
-}
-export interface ExitView { dir: Direction; toName: string; }
-export interface LockedDoorView { name: string; dir: Direction; }
-export interface LootView { id: string; description: string; opened: boolean; contents: ScopeEntity[]; }
-export interface ViewModel {
-  room: { id: string; name: string; description: string; isLit: boolean; image?: string };
-  exits: ExitView[];
-  lockedDoors: LockedDoorView[];
+};
+export type LootView = Omit<CoreLootView, "contents"> & { contents: ScopeEntity[] };
+
+/** Core StatusView with the JSON-boundary counters as plain `number` — ts-rs
+ *  types u64/usize as `bigint`, but `JSON.parse` yields JS numbers at runtime. */
+export type StatusView = Omit<CoreStatusView, "turn" | "maxTurns"> & { turn: number; maxTurns: number };
+/** Core Inventory widened to host scope entities; `slots` narrowed to `number`. */
+export type Inventory = Omit<CoreInventory, "items" | "keys" | "slots"> & {
+  items: ScopeEntity[];
+  keys: ScopeEntity[];
+  slots: number;
+};
+export type { ExitView, LockedDoorView };
+
+export type ViewModel = Omit<CoreViewModel, "room" | "occupants" | "loot" | "scope" | "inventory" | "status" | "outcome"> & {
+  room: CoreViewModel["room"] & { image?: string };
   occupants: ScopeEntity[];
   loot: LootView[];
-  inventory: { items: ScopeEntity[]; keys: ScopeEntity[]; equippedNames: string[]; slots: number };
   scope: ScopeEntity[];
-  status: { locationName: string; turn: number; maxTurns: number; sanity: number; health: number };
+  inventory: Inventory;
+  status: StatusView;
   outcome: string;
-  finished: boolean;
-}
-
-const aliasesFor = (behaviorKey: string | undefined, name: string, aliases: Record<string, string[]>): string[] => {
-  const fromTable = behaviorKey !== undefined ? aliases[behaviorKey] ?? [] : [];
-  return [...new Set([name.toLowerCase(), ...fromTable])];
 };
-
-/**
- * Derives a plain {@link ViewModel} from the live engine `Campaign`.
- *
- * Exits are classified by the active character's ability to pass them:
- * passable exits appear in `exits`; impassable ones appear in `lockedDoors`.
- *
- * The engine tracks no "opened loot" flag, so callers pass the session-managed
- * set of opened loot ids via `openedLootIds` (defaults to empty). Loot
- * contents are always in `scope` so items can be taken directly; the
- * `opened` flag on {@link LootView} is still set once explicitly opened or
- * auto-opened by a `take`.
- */
-export function view(
-  campaign: Campaign,
-  aliases: Record<string, string[]>,
-  openedLootIds: ReadonlySet<string> = new Set(),
-): ViewModel {
-  const pc = campaign.activeCharacter;
-  const room = pc.currentRoom!;
-  const roomName = room.name;
-
-  const occupants: ScopeEntity[] = room.occupants
-    .filter((o) => o.id !== pc.id)
-    .map((o) => ({
-      id: o.id,
-      name: o.name,
-      aliases: [o.name.toLowerCase()],
-      kind: "occupant" as const,
-      health: o.effectiveStat(StatType.Health),
-      defeated: o.status.includes(Status.KO),
-      image: o.presentation?.image,
-    }));
-
-  const loot: LootView[] = [...room.loot.values()].map((l) => {
-    const opened = openedLootIds.has(l.id);
-    return {
-      id: l.id,
-      description: l.description,
-      opened,
-      contents: l.contents.map((i) => ({
-        id: i.id,
-        name: i.name,
-        aliases: aliasesFor(i.behaviorKey, i.name, aliases),
-        kind: "item" as const,
-        image: i.presentation?.image,
-        equippable: i.properties.equippable,
-        usable: i.properties.usable,
-        hasLore: i.lore !== undefined,
-        droppable: i.properties.droppable !== false,
-      })),
-    };
-  });
-
-  const items: ScopeEntity[] = pc.inventory.items.map((i) => ({
-    id: i.id,
-    name: i.name,
-    aliases: aliasesFor(i.behaviorKey, i.name, aliases),
-    kind: "item" as const,
-    image: i.presentation?.image,
-    equippable: i.properties.equippable,
-    usable: i.properties.usable,
-    hasLore: i.lore !== undefined,
-    droppable: i.properties.droppable !== false,
-  }));
-
-  const keys: ScopeEntity[] = pc.inventory.keys.map((k) => ({
-    id: k.id,
-    name: k.name,
-    aliases: aliasesFor(k.behaviorKey, k.name, aliases),
-    kind: "item" as const,
-    image: k.presentation?.image,
-    equippable: k.properties.equippable,
-    usable: k.properties.usable,
-    hasLore: k.lore !== undefined,
-    droppable: k.properties.droppable !== false,
-  }));
-
-  // Canonical presentation order (Phase-2 port decision): alphabetical by
-  // direction key — matches the Rust core's BTreeMap iteration so the
-  // differential gate compares exits order-stably. Listing order is
-  // presentation-only; classification is unchanged.
-  const exitEntries = [...room.exits.entries()].sort(([a], [b]) =>
-    a < b ? -1 : a > b ? 1 : 0,
-  );
-
-  const exits: ExitView[] = exitEntries
-    .filter(([, exit]) => exit.canPass(pc))
-    .map(([dir, exit]) => ({ dir, toName: exit.otherSide(room).name }));
-
-  const lockedDoors: LockedDoorView[] = exitEntries
-    .filter(([, exit]) => !exit.canPass(pc))
-    .map(([dir, exit]) => ({ name: exit.name ?? "door", dir }));
-
-  // All container contents are in scope regardless of opened state; take auto-opens.
-  const lootContentScope = loot.flatMap((l) => l.contents);
-  const lootScope: ScopeEntity[] = loot.map((l) => ({
-    id: l.id,
-    name: l.description,
-    aliases: ["chest", "box", "drawer", "container"],
-    kind: "loot" as const,
-  }));
-
-  const scope: ScopeEntity[] = [...occupants, ...lootContentScope, ...items, ...keys, ...lootScope];
-
-  return {
-    room: { id: room.id, name: roomName, description: room.description, isLit: room.isLit, image: room.presentation?.image },
-    exits,
-    lockedDoors,
-    occupants,
-    loot,
-    inventory: {
-      items,
-      keys,
-      equippedNames: [...pc.equipment.values()].map((i) => i.name),
-      slots: pc.inventory.slots,
-    },
-    scope,
-    status: {
-      locationName: roomName,
-      turn: campaign.round,
-      maxTurns: campaign.maxRounds,
-      sanity: pc.effectiveStat(StatType.Sanity),
-      health: pc.effectiveStat(StatType.Health),
-    },
-    outcome: campaign.outcome,
-    finished: campaign.finished,
-  };
-}

@@ -1,45 +1,58 @@
 import { assemble } from "wickedways/lib/authoring/assembler";
 import { PlayerCharacter } from "wickedways/lib/character/player-character";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
-import { deserializeCampaign } from "wickedways/lib/serialization/deserializer";
-import { ProceduralViolation } from "wickedways/lib/util";
-import { Status } from "wickedways/lib/status";
-import { Mob } from "wickedways/lib/character/mob";
-import { StatType } from "wickedways/lib/character/stats";
-import type { Campaign } from "wickedways/lib/campaign";
 import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
 import type { PresentationCue } from "wickedways/lib/presentation";
 import type { TemplateBuilder } from "wickedways/lib/authoring/template-builder";
 import type { ArchetypeId } from "wickedways/lib/archetype";
-import type { ILoot } from "wickedways/lib/loot";
-import type { IItem } from "wickedways/lib/inventory";
+import { engine } from "#engine";
+import type { Authority } from "./engine-types.js";
+import { catalogFromRegistry } from "./catalog.js";
 import { isTimeAdvancing, type Intent } from "./intent.js";
-import { view, type ViewModel } from "./viewmodel.js";
+import type { ViewModel } from "./viewmodel.js";
 import type { SaveStore, SurfaceState } from "./savestore.js";
+import type { BehaviorScript } from "../../../generated/bindings/BehaviorScript.ts";
 
-/** A single mob-on-player strike, surfaced for typed combat feedback. */
-export interface MobAttack { name: string; stat: StatType; amount: number; }
+// `MobAttack` mirrors the generated core binding (single source of truth,
+// invariant 1); it is structurally identical to the pre-cutover shape.
+export type { MobAttack } from "../../../generated/bindings/MobAttack.ts";
+import type { MobAttack } from "../../../generated/bindings/MobAttack.ts";
 
-export interface ExecuteResult { cues: PresentationCue[]; error?: string; mobAttacks?: MobAttack[]; }
+/**
+ * The result of an {@link GameSession.execute}. Held at its exact pre-cutover
+ * public shape so host surfaces (audio/narrator consume the engine's TS
+ * {@link PresentationCue}) keep compiling. Runtime-identical to the generated
+ * `ExecuteResult` (conformance-verified byte parity) — the JSON the Authority
+ * returns is parsed straight into this shape.
+ */
+export interface ExecuteResult { cues: PresentationCue[]; mobAttacks?: MobAttack[]; error?: string; }
 
 export interface SessionOptions {
   builder: TemplateBuilder<string, string>;
   registry: CampaignRegistry;
   aliases: Record<string, string[]>;
+  /** Campaign's scripted behaviors (from the CampaignManifest); threaded into
+   *  the Rust Catalog so `Authority::new`→`validate_mechanics` can resolve every
+   *  registered mechanic/exit/victory key. `{}` for behavior-less campaigns. */
+  behaviors?: Record<string, BehaviorScript>;
   playerName: string;
   archetype?: string;
   saveStore: SaveStore;
   now: () => number;          // injected clock (no ambient Date.now)
-  rng?: () => number;
+  /** Authority rng seed; a fresh random seed per session when omitted. */
+  seed?: number;
 }
 
 export class GameSession {
-  #campaign!: Campaign;
-  get campaign(): Campaign { return this.#campaign; }
-  private readonly cueBuffer: PresentationCue[] = [];
-  private readonly opened = new Set<string>();
-  private undoSnapshot: CampaignSnapshot | null = null;
+  #authority!: Authority;
+  /** Host-side presentation overlay (invariant 6): captured at boot from the
+   *  assembled TS campaign — presentation is never serialized, so the core
+   *  cannot emit it. Mobs spawned post-boot have no image (as after a TS
+   *  restore today). */
+  readonly #roomImages = new Map<string, string>();
+  readonly #occupantImages = new Map<string, string>();
+  private undoSnapshot: string | null = null;
 
   private constructor(private readonly opts: SessionOptions) {}
 
@@ -50,8 +63,8 @@ export class GameSession {
   }
 
   private boot(builder: TemplateBuilder<string, string>): void {
+    // TS authoring stays: assemble + PC setup produce the PRE-begin genesis.
     const { campaign, rooms } = assemble(builder.description, builder.registry);
-    this.#campaign = campaign;
     const pc = new PlayerCharacter({ campaign, name: this.opts.playerName });
     pc.joinCampaign();
     if (this.opts.archetype !== undefined) {
@@ -59,224 +72,86 @@ export class GameSession {
     }
     pc.move(rooms.get(builder.description.startRoom!)!);
     campaign.gm = pc;
-    // Subscribe BEFORE beginCampaign: the round-start dispatch inside it emits the
-    // opening status readout synchronously, so a later subscription would miss it.
-    // The buffered cue is handed to the surface via takeStartupCues().
-    campaign.onCue((cue) => this.cueBuffer.push(cue));
-    campaign.beginCampaign();
+
+    // Presentation overlay capture (rooms + boot-time occupants, by id).
+    this.#roomImages.clear();
+    this.#occupantImages.clear();
+    for (const room of rooms.values()) {
+      const img = room.presentation?.image;
+      if (img !== undefined) this.#roomImages.set(room.id, img);
+      for (const occ of room.occupants) {
+        const oimg = occ.presentation?.image;
+        if (oimg !== undefined) this.#occupantImages.set(occ.id, oimg);
+      }
+    }
+
+    // Core-begins lifecycle: serialize BEFORE beginCampaign; the Authority runs
+    // begin_campaign itself and buffers the round-0 cues.
+    const genesis = JSON.stringify(serializeCampaign(campaign));
+    // POST-DSL: thread the campaign's scripted behaviors so validate_mechanics passes
+    // (see the catalogFromRegistry reconciliation note). `{}` for behavior-less test campaigns.
+    const catalog = JSON.stringify(
+      catalogFromRegistry(this.opts.registry, this.opts.aliases, this.opts.behaviors ?? {}),
+    );
+    const seed = this.opts.seed ?? (Math.random() * 0x1_0000_0000) >>> 0;
+    this.#authority?.free();
+    this.#authority = new (engine().Authority)(genesis, catalog, seed);
   }
 
-  /**
-   * Cues emitted during boot, before any player turn — currently the campaign's
-   * opening status readout (the status mechanic's `onRoundStart`). Returns and
-   * clears them so a surface can paint the initial HUD at game start. Empty after
-   * the first call, and after the first {@link execute} (which resets the buffer).
-   */
   takeStartupCues(): PresentationCue[] {
-    const cues = [...this.cueBuffer];
-    this.cueBuffer.length = 0;
-    return cues;
+    return JSON.parse(this.#authority.takeStartupCues()) as PresentationCue[];
   }
 
-  /**
-   * Restarts the campaign from scratch: re-boots a fresh world from the same
-   * builder (new campaign, PC at the start room, turn 0, full stats, empty
-   * inventory) and clears all session-local progress (opened loot, undo). Saved
-   * games are untouched. `assemble` rebuilds everything from the immutable
-   * description, so re-booting the stored builder is safe.
-   */
   restart(): void {
-    this.cueBuffer.length = 0;
-    this.opened.clear();
     this.undoSnapshot = null;
     this.boot(this.opts.builder);
   }
 
   view(): ViewModel {
-    return view(this.#campaign, this.opts.aliases, this.opened);
+    const vm = JSON.parse(this.#authority.view()) as ViewModel;
+    const roomImage = this.#roomImages.get(vm.room.id);
+    if (roomImage !== undefined) vm.room.image = roomImage;
+    for (const list of [vm.occupants, vm.scope]) {
+      for (const e of list) {
+        const img = this.#occupantImages.get(e.id);
+        if (img !== undefined) e.image = img;
+      }
+    }
+    return vm;
   }
 
-  /**
-   * Reads a held item, returning the cues its lore emits (empty when the item is
-   * not held or has no lore). Free and non-time-advancing — reading never spends
-   * a turn, consumes the item, or snapshots for undo. Used by `examine`/`read`.
-   */
   read(itemId: string): PresentationCue[] {
-    const pc = this.#campaign.activeCharacter;
-    const item = pc.inventory.items.find((i) => i.id === itemId);
-    if (!item) return [];
-    this.cueBuffer.length = 0;
-    pc.read(item);
-    return [...this.cueBuffer];
+    return JSON.parse(this.#authority.read(itemId)) as PresentationCue[];
   }
 
-  get finished(): boolean { return this.#campaign.finished; }
-  get outcome(): string { return this.#campaign.outcome; }
+  get finished(): boolean { return this.#authority.finished; }
+  get outcome(): string { return this.#authority.outcome; }
 
   execute(intent: Intent): ExecuteResult {
-    this.cueBuffer.length = 0;
     const advances = isTimeAdvancing(intent);
-    // No rootRooms needed: locked doors are now always-present shared Exits,
-    // so the room graph is fully connected and the party-rooted BFS reaches every room.
-    const pre = advances
-      ? serializeCampaign(this.#campaign)
-      : null;
-    try {
-      if (advances) this.#campaign.activeCharacter.startTurn();
-      this.dispatch(intent);
-      // Solo GM: after a time-advancing action, live mobs sharing the player's
-      // room strike back. Runs before nextPlayer so a fatal blow is caught by the
-      // round's outcome check, and within the `pre` snapshot so undo reverts it too.
-      const mobAttacks = advances ? this.runMobReactions() : [];
-      if (advances) this.#campaign.nextPlayer();
-      if (advances && pre !== null) this.undoSnapshot = pre;
-      return { cues: [...this.cueBuffer], mobAttacks };
-    } catch (e) {
-      if (e instanceof ProceduralViolation) {
-        return { cues: [...this.cueBuffer], error: e.message };
-      }
-      throw e;
-    }
-  }
-
-  /**
-   * Each live (non-KO) mob in the active player's current room attacks the player
-   * (the "aggro while sharing its room" rule). Returns the typed damage each dealt,
-   * derived from the player's effective-stat deltas. A mob that can't act (afflicted)
-   * simply doesn't strike; a downed player is not piled on.
-   */
-  private runMobReactions(): MobAttack[] {
-    const pc = this.#campaign.activeCharacter;
-    const room = pc.currentRoom;
-    const attacks: MobAttack[] = [];
-    if (!room || pc.status.includes(Status.KO)) return attacks;
-
-    const stats = (): Record<StatType, number> => ({
-      [StatType.Health]: pc.effectiveStat(StatType.Health),
-      [StatType.Sanity]: pc.effectiveStat(StatType.Sanity),
-      [StatType.Energy]: pc.effectiveStat(StatType.Energy),
-    });
-
-    for (const occ of [...room.occupants]) {
-      if (occ.id === pc.id || !(occ instanceof Mob) || occ.status.includes(Status.KO)) continue;
-      const before = stats();
-      try {
-        occ.attack(pc);
-      } catch (e) {
-        if (e instanceof ProceduralViolation) continue; // afflicted/blocked mob can't strike
-        throw e;
-      }
-      const after = stats();
-      for (const stat of [StatType.Health, StatType.Sanity, StatType.Energy]) {
-        const dealt = before[stat] - after[stat];
-        if (dealt > 0) attacks.push({ name: occ.name, stat, amount: dealt });
-      }
-      if (pc.status.includes(Status.KO)) break; // don't pile on a downed player
-    }
-    return attacks;
-  }
-
-  private dispatch(intent: Intent): void {
-    const pc = this.#campaign.activeCharacter;
-    const room = pc.currentRoom!;
-    switch (intent.kind) {
-      case "move": {
-        pc.go(intent.dir);
-        return;
-      }
-      case "wait":
-        return;
-      case "open": {
-        const loot = [...room.loot.values()].find((l) => l.id === intent.targetId);
-        if (!loot) throw new ProceduralViolation("There's nothing like that to open here.");
-        pc.openLootBox(loot);
-        this.opened.add(loot.id);
-        return;
-      }
-      case "take": {
-        const { loot, item } = this.findInLoot(intent.targetId);
-        if (!this.opened.has(loot.id)) {
-          pc.openLootBox(loot);
-          this.opened.add(loot.id);
-        }
-        pc.takeFromLootBox(loot, [item]);
-        return;
-      }
-      case "drop": {
-        const item = pc.inventory.items.find((i) => i.id === intent.targetId);
-        if (!item) throw new ProceduralViolation("You aren't carrying that.");
-        // Required quest items (droppable === false) can't be set down.
-        if (item.properties.droppable === false) {
-          throw new ProceduralViolation(`You can't bring yourself to part with the ${item.name}.`);
-        }
-        pc.removeFromInventory([item]);
-        return;
-      }
-      case "equip": {
-        const item = pc.inventory.items.find((i) => i.id === intent.targetId);
-        if (!item) throw new ProceduralViolation("You aren't carrying that.");
-        pc.equip(item);
-        return;
-      }
-      case "unequip": {
-        const item = [...pc.equipment.values()].find((i) => i.id === intent.targetId);
-        if (!item) throw new ProceduralViolation("That isn't equipped.");
-        pc.unequip(item);
-        return;
-      }
-      case "use": {
-        const item = pc.inventory.items.find((i) => i.id === intent.targetId);
-        if (!item) throw new ProceduralViolation("You aren't carrying that.");
-        item.actions.use(pc);
-        return;
-      }
-      case "attack": {
-        const target = room.occupants.find((o) => o.id === intent.targetId);
-        if (!target) throw new ProceduralViolation("There's nothing like that to attack here.");
-        if (target.status.includes(Status.KO)) {
-          throw new ProceduralViolation(`The ${target.name} is already dead.`);
-        }
-        pc.attack(target);
-        return;
-      }
-      case "talk": {
-        // No NPCs in this campaign; dialogue is reserved for future content.
-        throw new ProceduralViolation("There's no one here to talk to.");
-      }
-    }
-  }
-
-  private findInLoot(itemId: string): { loot: ILoot; item: IItem } {
-    const room = this.#campaign.activeCharacter.currentRoom!;
-    for (const loot of room.loot.values()) {
-      const item = loot.contents.find((i) => i.id === itemId);
-      if (item) return { loot, item };
-    }
-    throw new ProceduralViolation("You don't see that here.");
+    const pre = advances ? this.#authority.snapshot() : null;
+    const result = JSON.parse(this.#authority.submit(JSON.stringify(intent))) as ExecuteResult;
+    // TS semantics: the undo stash updates only on a SUCCESSFUL advancing action.
+    if (advances && result.error === undefined && pre !== null) this.undoSnapshot = pre;
+    return result;
   }
 
   async save(slot: string, surface?: SurfaceState): Promise<void> {
-    const snapshot = serializeCampaign(this.#campaign);
+    const snapshot = JSON.parse(this.#authority.snapshot()) as CampaignSnapshot;
     await this.opts.saveStore.save(slot, snapshot, this.opts.now(), surface);
   }
 
   async restore(slot: string): Promise<{ ok: boolean; surface?: SurfaceState }> {
     const loaded = await this.opts.saveStore.load(slot);
     if (!loaded) return { ok: false };
-    this.loadSnapshot(loaded.snapshot);
+    this.#authority.restore(JSON.stringify(loaded.snapshot));
     return { ok: true, surface: loaded.surface };
   }
 
   undo(): boolean {
     if (!this.undoSnapshot) return false;
-    this.loadSnapshot(this.undoSnapshot);
+    this.#authority.restore(this.undoSnapshot);
     this.undoSnapshot = null;
     return true;
-  }
-
-  private loadSnapshot(snapshot: CampaignSnapshot): void {
-    this.#campaign = deserializeCampaign(snapshot, { registry: this.opts.registry, rng: this.opts.rng });
-    this.#campaign.onCue((cue) => this.cueBuffer.push(cue));
-    this.opened.clear();
   }
 }
