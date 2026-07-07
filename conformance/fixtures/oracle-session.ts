@@ -95,7 +95,14 @@ export class OracleSession {
       // Solo GM: after a time-advancing action, live mobs sharing the player's
       // room strike back. Runs before nextPlayer so a fatal blow is caught by the
       // round's outcome check, and within the `pre` snapshot so undo reverts it too.
-      const mobAttacks = advances ? this.runMobReactions() : [];
+      // Light-tied initiative (v1): a time-advancing MOVE into a LIT room does not
+      // provoke a reaction — a player who can see gets the drop on entry. Mirrors
+      // the Rust World::submit gate (spec:
+      // docs/superpowers/specs/2026-07-07-light-tied-mob-initiative-design.md).
+      // dispatch() above has already moved the PC, so currentRoom is the destination.
+      const enteredLit =
+        intent.kind === "move" && (this.campaign.activeCharacter.currentRoom?.isLit ?? false);
+      const mobAttacks = advances && !enteredLit ? this.runMobReactions() : [];
       if (advances) this.campaign.nextPlayer();
       if (advances && pre !== null) this.undoSnapshot = pre;
       return { cues: [...this.cueBuffer], mobAttacks };
