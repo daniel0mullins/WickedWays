@@ -15,6 +15,7 @@ export default defineConfig({
       "conformance/fixtures/material-drop.gen.test.ts",
       "conformance/fixtures/mechanics.gen.test.ts",
       "conformance/fixtures/scripted-mechanics.gen.test.ts",
+      "conformance/fixtures/laudanum-use.gen.test.ts",
       "conformance/fixtures/scripted-doors.gen.test.ts",
       "conformance/fixtures/mechanics-turnend.gen.test.ts",
       "conformance/fixtures/mechanics-action.gen.test.ts",
