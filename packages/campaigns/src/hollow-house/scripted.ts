@@ -65,6 +65,14 @@ export const statusBarScript: BehaviorScript = s.mechanic({
   },
 });
 
+// ── laudanum (oracle: items.ts:44) ───────────────────────────────────────────
+// use(holder) { holder[ADJUST_STAT](this.stat, this.modifier); }
+// The descriptor is stat: Sanity, modifier: 6 -> +6 Sanity on use. The closure
+// stays the gate oracle; this script reproduces it.
+export const laudanumScript: BehaviorScript = s.item({
+  onUse: [s.emit(s.adjust(s.actor, "sanity", s.lit(6)))],
+});
+
 // ── keyed doors (oracle: content.ts doorBehavior, content.ts:23-39) ──────────
 // canPass: state.unlocked || hasKey(keyCode); script: first pass sets unlocked
 // and returns the opened line; no passMessage -> silent re-pass.
@@ -114,6 +122,7 @@ export function hollowHouseBehaviors(): Record<string, BehaviorScript> {
       "The brass key turns; the study door swings open."),
     [ExitBehaviors.AtticDoor]: doorScript("iron", "attic door",
       "The iron key grinds in the lock; the attic stairs open above you."),
+    [Items.Laudanum]: laudanumScript,
     [Conditions.ReachedAtticWithJournal]: reachedAtticWithJournalScript,
     [Conditions.SanityZero]: sanityZeroScript,
     [Conditions.PartyDown]: partyDownScript,

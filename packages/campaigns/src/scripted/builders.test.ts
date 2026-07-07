@@ -62,5 +62,13 @@ describe("scripted-ops builders", () => {
       family: "mechanic",
       script: { init: {}, hooks: { onTurnStart: [{ kind: "guard", cond: { kind: "lit", value: true } }] }, actions: {} },
     });
+    // item family: onUse/onRead effect bodies; absent hooks omitted entirely.
+    expect(s.item({ onUse: [s.emit(s.adjust(s.actor, "sanity", s.lit(6)))] })).toEqual({
+      family: "item",
+      script: {
+        onUse: [{ kind: "emit", effect: { kind: "adjustStat", target: { kind: "actor" }, stat: "sanity", delta: { kind: "lit", value: 6 } } }],
+      },
+    });
+    expect(s.item({})).toEqual({ family: "item", script: {} });
   });
 });

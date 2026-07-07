@@ -10,6 +10,7 @@ import type { EffectTemplate } from "../../../../generated/bindings/EffectTempla
 import type { FieldTemplate } from "../../../../generated/bindings/FieldTemplate.ts";
 import type { MechanicHooks } from "../../../../generated/bindings/MechanicHooks.ts";
 import type { BehaviorScript } from "../../../../generated/bindings/BehaviorScript.ts";
+import type { ItemScript } from "../../../../generated/bindings/ItemScript.ts";
 import type { ScriptValue } from "../../../../generated/bindings/ScriptValue.ts";
 import type { StatType } from "../../../../generated/bindings/StatType.ts";
 import type { BinOp } from "../../../../generated/bindings/BinOp.ts";
@@ -112,3 +113,13 @@ export const victory = (test: Expr): BehaviorScript => ({
   family: "victory",
   script: { test },
 });
+
+export const item = (spec: {
+  onUse?: Stmt[];
+  onRead?: Stmt[];
+}): BehaviorScript => {
+  const script: ItemScript = {};
+  if (spec.onUse !== undefined) script.onUse = spec.onUse;
+  if (spec.onRead !== undefined) script.onRead = spec.onRead;
+  return { family: "item", script };
+};
