@@ -47,6 +47,22 @@ export const laudanum = (): Item =>
     events: { onPickUp: noop },
   });
 
+export const ratTail = (): Item =>
+  new Item({
+    descriptor: { behaviorKey: Items.RatTail, name: "Rat Tail", type: ItemType.Consumable, recipe: { item: 1 }, modifier: 1, stat: StatType.Sanity },
+    // A grisly little tonic: usable consumable (NOT equippable, NOT a key), so it
+    // is a legal formation drop (the encounter-table key-drop guard passes). As
+    // with laudanum, the engine consumes the item but never auto-applies its
+    // modifier/stat, so the +1 Sanity heal lives in `use` (oracle for ratTailScript).
+    properties: { equippable: false, equipped: false, destroyable: true, usable: true },
+    actions: {
+      pickUp: noop, equip: noop, unequip: noop, transfer: noop,
+      use(holder) { holder[ADJUST_STAT](this.stat, this.modifier); },
+      destroy: () => null,
+    },
+    events: { onPickUp: noop },
+  });
+
 export const brassKey = (): Item => createKey({ name: "Brass Key", keyCode: "brass", consumeOnUse: false });
 export const ironKey = (): Item => createKey({ name: "Iron Key", keyCode: "iron", consumeOnUse: false });
 
@@ -55,6 +71,7 @@ export const ITEM_FACTORIES: Record<string, () => Item> = {
   [Items.Journal]: journal,
   [Items.Poker]: poker,
   [Items.Laudanum]: laudanum,
+  [Items.RatTail]: ratTail,
   [Keys.Brass]: brassKey,
   [Keys.Iron]: ironKey,
 };

@@ -79,6 +79,16 @@ export const laudanumScript: BehaviorScript = s.item({
   onUse: [s.emit(s.adjust(s.actor, "sanity", s.lit(6)))],
 });
 
+/**
+ * Rat-tail — a roving-Rat drop, usable for +1 Sanity (oracle: `items.ts` ratTail
+ * `use(holder) { holder[ADJUST_STAT](this.stat, this.modifier); }` with
+ * descriptor `stat: Sanity, modifier: 1`). Mirrors {@link laudanumScript}; the
+ * hand-written closure remains the differential-gate oracle and this must match it.
+ */
+export const ratTailScript: BehaviorScript = s.item({
+  onUse: [s.emit(s.adjust(s.actor, "sanity", s.lit(1)))],
+});
+
 // ── keyed doors (oracle: content.ts doorBehavior, content.ts:23-39) ──────────
 // canPass: state.unlocked || hasKey(keyCode); script: first pass sets unlocked
 // and returns the opened line; no passMessage -> silent re-pass.
@@ -129,6 +139,7 @@ export function hollowHouseBehaviors(): Record<string, BehaviorScript> {
     [ExitBehaviors.AtticDoor]: doorScript("iron", "attic door",
       "The iron key grinds in the lock; the attic stairs open above you."),
     [Items.Laudanum]: laudanumScript,
+    [Items.RatTail]: ratTailScript,
     [Conditions.ReachedAtticWithJournal]: reachedAtticWithJournalScript,
     [Conditions.SanityZero]: sanityZeroScript,
     [Conditions.PartyDown]: partyDownScript,

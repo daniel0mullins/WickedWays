@@ -6,7 +6,7 @@ import type { CampaignManifest } from "@wickedways/play-runtime";
 // silently left `behaviors` empty and broke boot (`Mechanic 'dread' is not
 // registered.`) under strict ESM loaders. The two hoisted functions below are
 // defined in index.ts and survive the cycle, so they stay barrel-sourced.
-import { hauntedHouseTemplate, buildHauntedHouseRegistry } from "./index.js";
+import { hauntedHouseTemplate, buildHauntedHouseRegistry, hollowHouseFormations } from "./index.js";
 import { hollowHouseBehaviors } from "./scripted.js";
 import { ALIASES, TITLE, INTRO } from "./content.js";
 import { Archetypes } from "./ids.js";
@@ -23,6 +23,7 @@ export const hollowHouse: CampaignManifest = {
   builder: hauntedHouseTemplate,
   registry: buildHauntedHouseRegistry,
   behaviors: hollowHouseBehaviors,
+  formations: hollowHouseFormations,
   aliases: ALIASES,
   playerName: "Heir",
   archetype: Archetypes.Heir,

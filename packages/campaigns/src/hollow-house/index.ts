@@ -9,15 +9,50 @@ import { ITEM_FACTORIES } from "./items.js";
 import { dread, makeStoryteller } from "./mechanics.js";
 import { statusBar } from "./status.js";
 import { LORE, doorBehavior } from "./content.js";
-import { Rooms, Items, Keys, Mobs, Mechanics, Archetypes, Conditions, ExitBehaviors } from "./ids.js";
+import { Rooms, Items, Keys, Mobs, Mechanics, Archetypes, Conditions, ExitBehaviors, Formations } from "./ids.js";
+// Relative import: the package export map (`"./*": "./src/*/index.ts"`) does NOT
+// resolve `@wickedways/campaigns/formations`, so reach the sibling module directly.
+import { descriptorToFormation } from "../formations.js";
+import type { FormationDescriptor } from "../../../../generated/bindings/FormationDescriptor.ts";
+import type { MobSpec } from "../../../../generated/bindings/MobSpec.ts";
 
 export { LORE, ALIASES, TITLE, INTRO } from "./content.js";
 export { hollowHouse } from "./manifest.js";
 export { hollowHouseBehaviors } from "./scripted.js";
 export { Rooms, Archetypes } from "./ids.js";
 
+// ── Roving Rats ──────────────────────────────────────────────────────────────
+// Data-driven encounter mob. Health 2 / Sanity 2 / Energy 3, a 1-power Health
+// bite, drops a rat-tail (usable +1 Sanity, NOT a key → legal formation drop),
+// escape 50, dark-agnostic, no material drops, mob-default 2 actions/round. The
+// numeric shapes (bigints, `stat: "health"`) mirror the ts-rs bindings so the
+// descriptor round-trips byte-faithfully to the Rust `Catalog.formations` side.
+const ratSpec: MobSpec = {
+  name: "Rat",
+  stats: { health: 2, sanity: 2, energy: 3 },
+  naturalAttack: { stat: "health", power: 1 },
+  drops: [Items.RatTail],
+  baseEscapeChance: 50n,
+  lightAverse: false,
+  materialDrops: {},
+  actionsPerRound: 2n,
+};
+
+const ratSingle: FormationDescriptor = { mobs: [ratSpec] };
+const ratPair: FormationDescriptor = { mobs: [ratSpec, ratSpec] };
+
+/**
+ * The campaign's data-driven encounter formations (raw {@link FormationDescriptor}s),
+ * threaded onto the manifest → `Catalog.formations` so the Rust `World::maybe_spawn`
+ * can resolve them. The TS-side `FormationBehavior`s live in the registry (see
+ * {@link buildHauntedHouseRegistry}); these are the serializable descriptors.
+ */
+export function hollowHouseFormations(): Record<string, FormationDescriptor> {
+  return { [Formations.RatSingle]: ratSingle, [Formations.RatPair]: ratPair };
+}
+
 export function buildHauntedHouseRegistry(): CampaignRegistry {
-  return defineRegistry({
+  const registry = defineRegistry({
     items: ITEM_FACTORIES,
     mechanics: { [Mechanics.Dread]: dread, [Mechanics.Storyteller]: makeStoryteller(LORE), [Mechanics.StatusBar]: statusBar },
     conditions: {
@@ -33,10 +68,19 @@ export function buildHauntedHouseRegistry(): CampaignRegistry {
       [ExitBehaviors.AtticDoor]: doorBehavior("iron", "attic door", "The iron key grinds in the lock; the attic stairs open above you."),
     },
   });
+  // Formation → FormationBehavior. `descriptorToFormation` needs the item registry
+  // to realize `MobSpec.drops`, but only dereferences it lazily inside `build()`
+  // (at spawn/assembly time) — so registering AFTER the registry object exists
+  // resolves the chicken-and-egg (a formation that references the registry that
+  // owns it) with a plain, already-live reference. rat-tail is not a key, so the
+  // encounter-table key-drop guard accepts these at assembly.
+  registry.registerFormation(Formations.RatSingle, descriptorToFormation(ratSingle, registry));
+  registry.registerFormation(Formations.RatPair, descriptorToFormation(ratPair, registry));
+  return registry;
 }
 
 export function hauntedHouseTemplate(): TemplateBuilder<string, string> {
-  return authorTemplate("The Hollow House", buildHauntedHouseRegistry(), { maxRounds: 150, baseEncounterChance: 0, rng: () => 0.5 })
+  return authorTemplate("The Hollow House", buildHauntedHouseRegistry(), { maxRounds: 150, baseEncounterChance: 20, rng: () => 0.5 })
     // Energy 5 makes the Sanity-damage multiplier exactly 1.0 (max(0,10-5)*0.2),
     // so a mob's Sanity `power` lands as whole points — the house preys on a frail will.
     // inventorySlots is a delta on the base capacity (default 5), so +1 → 6 total.
@@ -44,10 +88,12 @@ export function hauntedHouseTemplate(): TemplateBuilder<string, string> {
     // Rooms
     .room(Rooms.Foyer, { description: "The entrance hall of the Hollow House. Dust sheets shroud the furniture; the front door has locked itself behind you." })
     .room(Rooms.Cellar, { description: "A low brick cellar, black as a throat. Water seeps somewhere unseen.", dark: true })
-    .room(Rooms.Hall, { description: "A long central hall. Portraits watch from the walls, their eyes scratched out." })
-    .room(Rooms.Kitchen, { description: "A cold scullery. Copper pots hang in rows; one still sways." })
-    .room(Rooms.Parlor, { description: "A receiving parlor gone to mildew. A piano sits with its lid nailed shut." })
-    .room(Rooms.Landing, { description: "The upstairs landing. Two doors face you — one to the west, one leading further up — and a nursery stands open to the east." })
+    // spawnModifier bumps the roving-Rat encounter chance in the trafficked
+    // ground-floor rooms + the landing (Cellar/Nursery/Foyer keep the default 0).
+    .room(Rooms.Hall, { description: "A long central hall. Portraits watch from the walls, their eyes scratched out.", spawnModifier: 1 })
+    .room(Rooms.Kitchen, { description: "A cold scullery. Copper pots hang in rows; one still sways.", spawnModifier: 1 })
+    .room(Rooms.Parlor, { description: "A receiving parlor gone to mildew. A piano sits with its lid nailed shut.", spawnModifier: 1 })
+    .room(Rooms.Landing, { description: "The upstairs landing. Two doors face you — one to the west, one leading further up — and a nursery stands open to the east.", spawnModifier: 1 })
     .room(Rooms.Study, { description: "A cramped study, papers everywhere, as if someone left mid-sentence." })
     .room(Rooms.Nursery, { description: "A child's nursery. A rocking horse moves, very slightly, on its own.", dark: true })
     .room(Rooms.Attic, { description: "The attic, under the bare ribs of the roof. This is where the journal ends." })
@@ -79,6 +125,9 @@ export function hauntedHouseTemplate(): TemplateBuilder<string, string> {
     .useMechanic(Mechanics.Dread)
     .useMechanic(Mechanics.Storyteller)
     .useMechanic(Mechanics.StatusBar)
+    // Roving Rats — a single rat is three times as likely as a breeding pair.
+    .formation(Formations.RatSingle, { weight: 3 })
+    .formation(Formations.RatPair, { weight: 1 })
     .winWhen(Conditions.ReachedAtticWithJournal, { text: "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave." })
     .loseWhen(Conditions.SanityZero, { text: "The dark gets in. Your thoughts come apart like wet paper, and the Hollow House keeps what is left of you." })
     .loseWhen(Conditions.PartyDown, { text: "You fall, and do not rise. The house is patient. It has all the time there is." })
