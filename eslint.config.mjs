@@ -86,6 +86,15 @@ export default tseslint.config(
     },
   },
 
+  // Node CLI scripts run under js.configs.recommended, which declares no globals,
+  // so `console`/`process`/`Buffer` trip no-undef. Declare the Node globals for
+  // them. This only ADDS names — it never relaxes a rule, so real source is
+  // unaffected. (eslint.config.mjs itself needs no globals and is unchanged.)
+  {
+    files: ["scripts/**/*.{js,mjs,cjs}"],
+    languageOptions: { globals: { ...globals.node } },
+  },
+
   // The conformance harness casts raw strings to branded ids (`as ItemId`,
   // `as CharacterId`) and narrows `unknown` with `as Record<string, unknown>` as
   // an intentional pattern; the type-aware rule flags them as unnecessary. This
