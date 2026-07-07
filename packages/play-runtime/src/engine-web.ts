@@ -10,9 +10,9 @@ let mod: EngineModule | null = null;
 
 export async function initEngine(): Promise<void> {
   if (mod) return;
-  mod = (await import(
+  mod = await import(
     "../../../crates/wickedways-wasm/pkg-web/wickedways_wasm.js"
-  )) as unknown as EngineModule;
+  );
 }
 
 export function engine(): EngineModule {

@@ -1870,7 +1870,8 @@ The occupant-carried-light rule is ported: a party member carrying a lit source 
 otherwise-dark room in the Rust `is_lit` check (dark-room combat), matching the TS oracle.
 
 **Scope / known gaps.** Hollow House is winnable end-to-end on the Rust core (proven by the
-scripted-victory conformance fixture). Two carries remain open: the browser bundler path is
+`capstone` full-winning-path test in `packages/play/src/core/capstone.test.ts`, which plays a
+complete run — including a save/undo round-trip — through the WASM `Authority`). Two carries remain open: the browser bundler path is
 **build-verified only** — the Playwright e2e boots hollow-house through the WASM `Authority`
 but is a tracked follow-up, not yet exercised at runtime in this gate — and item `onUse`
 consumable effects (e.g. laudanum restoring sanity) are **not yet ported** to the Rust
