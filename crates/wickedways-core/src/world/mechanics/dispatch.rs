@@ -94,7 +94,7 @@ impl World {
     }
 
     /// Apply a queued effect batch in order (collect-then-apply tail).
-    fn apply_all(&mut self, effects: Vec<Effect>, cat: &Catalog, cues: &mut Vec<PresentationCue>)
+    pub(crate) fn apply_all(&mut self, effects: Vec<Effect>, cat: &Catalog, cues: &mut Vec<PresentationCue>)
         -> Result<(), ProceduralViolation>
     {
         for e in effects {

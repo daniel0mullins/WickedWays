@@ -663,6 +663,38 @@ impl World {
             }
         }
 
+        // 2c. Author use-behaviour (scripted onUse). In TS this is
+        //     `actions[Use].call(holder)` + the `onUse` event, which run AFTER the
+        //     usable/KO guards and BEFORE grantsImmunity + consume
+        //     (src/lib/inventory.ts:620-627). Absent script = no-op. Effects flow
+        //     through the collect-then-apply pipeline, capped at MAX_EFFECTS_PER_EVENT.
+        if let crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } = &item_snap {
+            if let Some(crate::script::ast::BehaviorScript::Item { script }) =
+                cat.behaviors.get(behavior_key)
+            {
+                let view = self.build_campaign_view(cat);
+                if let Some(actor_view) = self.character_view(actor, cat) {
+                    let effects = {
+                        let rng = &mut self.rng;
+                        let mut state = serde_json::Value::Null; // no per-item script state (v1)
+                        let mut base = crate::world::mechanics::HookCtx {
+                            state: &mut state,
+                            view: &view,
+                            rng,
+                        };
+                        crate::script::ops::ScriptedItem { script }.run_use(&mut base, &actor_view)
+                    };
+                    if effects.len() > crate::world::mechanics::MAX_EFFECTS_PER_EVENT {
+                        return Err(ProceduralViolation(alloc::format!(
+                            "Item '{}' emitted too many effects.",
+                            behavior_key
+                        )));
+                    }
+                    self.apply_all(effects, cat, cues)?;
+                }
+            }
+        }
+
         // 3. Grant immunity if the descriptor carries grantsImmunity (before consuming).
         // `grants_immunity` is json!(null) when absent — from_value fails cleanly → skip.
         // Mirrors inventory.ts:622-626: [GRANT_IMMUNITY](statuses, turns) before consume.
@@ -1731,6 +1763,51 @@ mod tests {
         assert!(
             !ch.inventory.item_ids.contains(&item_id),
             "tonic should be consumed (removed from inventory)"
+        );
+    }
+
+    #[test]
+    fn use_item_runs_scripted_on_use_before_consume() {
+        use crate::script::ast::{BehaviorScript, EffectTemplate, Expr, ItemScript, Stmt};
+        use crate::script::value::Value;
+
+        // Build a catalog whose usable "potion" carries an on_use script emitting
+        // AdjustStat(Actor, Sanity, +6).
+        let mut items = BTreeMap::new();
+        items.insert("items/potion".to_string(), usable_desc());
+        let mut behaviors = BTreeMap::new();
+        behaviors.insert(
+            "items/potion".to_string(),
+            BehaviorScript::Item {
+                script: ItemScript {
+                    on_use: Some(alloc::vec![Stmt::Emit {
+                        effect: EffectTemplate::AdjustStat {
+                            target: Expr::Actor,
+                            stat: crate::stats::StatType::Sanity,
+                            delta: Expr::Lit { value: Value::Number(6.0) },
+                        },
+                    }]),
+                    on_read: None,
+                },
+            },
+        );
+        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors };
+
+        let (mut world, pc_id) = world_with_items(&[("potion-1", "items/potion")], &cat);
+        // sanity 4 so +6 is observable and uncapped (world_with_party seeds 5.0).
+        world.characters.get_mut(&pc_id).unwrap().stats.sanity = 4.0;
+        let item_id = iid("potion-1");
+        let mut cues = Vec::new();
+
+        world.use_item(&pc_id, &item_id, &cat, &mut cues).unwrap();
+
+        assert_eq!(
+            world.characters[&pc_id].stats.sanity, 10.0,
+            "onUse restored +6 sanity (uncapped AdjustStat)"
+        );
+        assert!(
+            !world.characters[&pc_id].inventory.item_ids.contains(&item_id),
+            "the item was still consumed"
         );
     }
 
