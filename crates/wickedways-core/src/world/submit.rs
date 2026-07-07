@@ -147,16 +147,30 @@ impl World {
     ) -> ExecuteResult {
         let mut cues: Vec<PresentationCue> = Vec::new();
         let advances = is_time_advancing(&intent);
+        let is_move = matches!(intent, Intent::Move { .. });
         let outcome: Result<Option<Vec<MobAttack>>, ProceduralViolation> = (|| {
             let actor = self.active_character_id()?;
             if advances {
                 self.start_turn(&actor, cat, &mut cues)?;
             }
             self.dispatch_intent(&actor, intent, cat, opened, &mut cues)?;
+            // Light-tied initiative (v1): a time-advancing MOVE into a LIT room does
+            // not provoke mob reactions — a player who can see gets the drop on
+            // entry (spec: docs/superpowers/specs/2026-07-07-light-tied-mob-initiative-design.md).
+            // Entering a dark room still provokes (a light-averse mob ambushes; a
+            // normal mob can't see you either). All other advancing actions are
+            // unchanged.
+            let entered_lit = is_move
+                && self
+                    .characters
+                    .get(&actor)
+                    .and_then(|c| c.current_room_id.clone())
+                    .map(|rid| self.is_lit(&rid, cat))
+                    .unwrap_or(false);
             // Solo GM: after a time-advancing action, live mobs sharing the
             // player's room strike back. Runs before next_player so a fatal blow
             // is caught by the round's outcome check (session.ts:127-131).
-            let mob_attacks = if advances {
+            let mob_attacks = if advances && !entered_lit {
                 self.run_mob_reactions(&actor, cat, &mut cues)
             } else {
                 Vec::new()
@@ -696,6 +710,52 @@ mod tests {
         assert!(opened.contains("loot-1"), "a failed-after-open take still reveals the container");
         // The item never left the chest.
         assert!(w.loot[&lid("loot-1")].content_ids.contains(&iid("item-herb")));
+    }
+
+    #[test]
+    fn move_into_lit_room_with_mob_does_not_provoke_ambush() {
+        // Light-tied initiative: entering a LIT room with a live mob gives the
+        // player the drop — no entry swing. "start"→North→"next", both lit.
+        use crate::world::Direction;
+        let mut w = crate::world::test_support::world_two_rooms(/*next_dark=*/ false);
+        seat_test_mob(&mut w, "wraith", "next"); // mob waits in the destination
+        let (r, _) = submit_one(&mut w, Intent::Move { dir: Direction::North });
+        assert_eq!(r.error, None);
+        assert_eq!(
+            r.mob_attacks,
+            Some(Vec::new()),
+            "entering a lit room must not provoke a mob swing"
+        );
+        // The PC actually moved in and took no damage.
+        assert_eq!(w.characters[&cid("pc")].current_room_id, Some(rid("next")));
+        assert_eq!(w.characters[&cid("pc")].stats.health, 5.0);
+    }
+
+    #[test]
+    fn move_into_dark_room_with_light_averse_mob_still_ambushes() {
+        // Scope control: the skip is LIT-only. A light-averse mob in a dark room
+        // still gets its entry swing.
+        use crate::world::Direction;
+        let mut w = crate::world::test_support::world_two_rooms(/*next_dark=*/ true);
+        seat_test_mob(&mut w, "lurker", "next");
+        // Make the lurker see in the dark so it can actually strike.
+        w.characters.get_mut(&cid("lurker")).unwrap().light_averse = Some(true);
+        let (r, _) = submit_one(&mut w, Intent::Move { dir: Direction::North });
+        assert_eq!(r.error, None);
+        assert_eq!(
+            r.mob_attacks.as_ref().map(|v| v.len()),
+            Some(1),
+            "a light-averse mob still ambushes on a dark-room entry"
+        );
+    }
+
+    #[test]
+    fn wait_in_lit_room_with_mob_still_provokes() {
+        // Control: a NON-move advancing action still triggers reactions.
+        let mut w = crate::world::test_support::world_two_rooms(/*next_dark=*/ false);
+        seat_test_mob(&mut w, "wraith", "start"); // co-located with the PC
+        let (r, _) = submit_one(&mut w, Intent::Wait);
+        assert_eq!(r.mob_attacks.as_ref().map(|v| v.len()), Some(1));
     }
 
     #[test]
