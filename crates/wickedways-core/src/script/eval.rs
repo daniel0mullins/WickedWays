@@ -233,7 +233,14 @@ fn get_field(subject: Ev, field: &str, cx: &mut Ctx) -> Ev {
             },
             _ => Ev::Val(Value::Null),
         },
-        // Room / RoomRef / Action fields: Tasks 4 and 8.
+        Ev::Room(r) => match field {
+            "name" => Ev::Val(Value::Str(r.name.clone())),
+            "id" => Ev::Val(Value::Str(r.id.clone())),
+            "lit" => Ev::Val(Value::Bool(r.lit)),
+            "occupants" => Ev::Chars(r.occupants.clone()),
+            _ => Ev::Val(Value::Null),
+        },
+        // RoomRef / Action fields: Task 8.
         Ev::Action(a) => match field {
             "kind" => Ev::Val(Value::Str(a.kind.clone())),
             _ => Ev::Val(Value::Null),
@@ -282,6 +289,7 @@ fn vals_eq(l: &Value, r: &Value) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use alloc::collections::BTreeMap;
     use crate::script::ast::{BinOp, Expr};
     use crate::script::value::Value;
 
@@ -424,5 +432,58 @@ mod tests {
         assert_eq!(eval_expr(&Expr::Round, &mut bare).into_value(), Value::Null);
         assert_eq!(eval_expr(&Expr::Length { list: Box::new(Expr::Party) }, &mut bare).into_value(),
                    Value::Number(0.0));
+    }
+
+    #[test]
+    fn character_room_resolves_lazily_with_room_reads() {
+        // world_two_rooms seats "pc" in "start" (lit); "next" is dark.
+        let w = crate::world::test_support::world_two_rooms(/*next_dark=*/true);
+        let cat = Catalog::default();
+        let view = w.build_campaign_view(&cat);
+        let actor = view.party[0].clone();
+        let mut cx = Ctx {
+            view: Some(&view), actor: Some(&actor),
+            rooms: RoomSource::World { world: &w, cat: &cat, cache: BTreeMap::new() },
+            ..Ctx::empty()
+        };
+        let room = Expr::Get { of: Box::new(Expr::Actor), field: "room".into() };
+        let val = |e: &Expr, cx: &mut Ctx| eval_expr(e, cx).into_value();
+
+        assert_eq!(val(&Expr::Get { of: Box::new(room.clone()), field: "name".into() }, &mut cx),
+                   Value::Str("Start".into()));
+        assert_eq!(val(&Expr::Get { of: Box::new(room.clone()), field: "id".into() }, &mut cx),
+                   Value::Str("start".into()));
+        assert_eq!(val(&Expr::Get { of: Box::new(room.clone()), field: "lit".into() }, &mut cx),
+                   Value::Bool(true));
+        // occupants -> Chars; nested occupant.room resolves again by id —
+        // ID-indirection means NO cyclic data and NO infinite recursion.
+        let nested = Expr::Get {
+            of: Box::new(Expr::Get {
+                of: Box::new(Expr::First {
+                    list: Box::new(Expr::Get { of: Box::new(room.clone()), field: "occupants".into() }),
+                }),
+                field: "room".into(),
+            }),
+            field: "name".into(),
+        };
+        assert_eq!(val(&nested, &mut cx), Value::Str("Start".into()));
+        // memoization: the cache now holds "start" exactly once
+        match &cx.rooms {
+            RoomSource::World { cache, .. } => assert_eq!(cache.len(), 1),
+            _ => panic!("expected World room source"),
+        }
+    }
+
+    #[test]
+    fn room_reads_without_a_source_are_null() {
+        let w = world_with_party(&["pc"], 10);
+        let view = w.build_campaign_view(&Catalog::default());
+        let actor = view.party[0].clone();
+        let mut cx = Ctx { view: Some(&view), actor: Some(&actor), ..Ctx::empty() };
+        let e = Expr::Get {
+            of: Box::new(Expr::Get { of: Box::new(Expr::Actor), field: "room".into() }),
+            field: "name".into(),
+        };
+        assert_eq!(eval_expr(&e, &mut cx).into_value(), Value::Null);
     }
 }
