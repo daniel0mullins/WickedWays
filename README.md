@@ -164,6 +164,13 @@ throws.
   never blocks them, even in the pitch dark), but they take `LIGHT_VULNERABILITY` (×1.5) amplified
   damage while their room is lit. Lighting a dark room therefore both *enables* the party to target
   the mob and *punishes* the mob for being in the light.
+- **Combat initiative is light-tied.** In single-player, after a time-advancing action a live mob
+  sharing the player's room strikes back (the solo-GM reaction). Entering a **lit** room is the
+  exception: a player who can see gets the drop, so a move into a lit room draws **no** entry swing —
+  you choose whether to engage. A **dark** room still ambushes on entry — a `lightAverse` mob strikes
+  as you arrive (a normal mob can't see you either, so it's a mutual standoff until someone brings
+  light). Killing the mob or leaving the room before it acts also denies its swing; loitering
+  (wait/take/use) beside a live mob does not.
 - A `visibility` presentation cue (`{ room, lit }`) fires when a character enters an unlit room, and
   when a light action flips a dark room's lit state. See **Presentation assets & cues** below.
 - **Non-goals:** no torch fuel or burn-down (lights are permanent); exits are never hidden; there is
