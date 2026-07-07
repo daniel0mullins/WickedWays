@@ -29,7 +29,6 @@ import { Item, ItemType, createKey } from "wickedways/lib/inventory";
 import type { ItemId } from "wickedways/lib/inventory";
 import { StatType } from "wickedways/lib/character/stats";
 import { SlotKind } from "wickedways/lib/equipment";
-import { Directions } from "wickedways/lib/room";
 import { viewProjected } from "./gen-helpers.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
