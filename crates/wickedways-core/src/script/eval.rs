@@ -246,6 +246,14 @@ pub fn eval_effects(body: &[Stmt], cx: &mut Ctx) -> Vec<Effect> {
     effects
 }
 
+/// Build a plain effect list from a bare template list (NPC dialogue `effects`).
+/// Unlike `eval_effects` there is no `Stmt` control flow: every template is built
+/// unconditionally, in order, and an unresolvable target drops just that one
+/// (mirroring `build_effect`'s `if (target !== undefined)` guard).
+pub fn eval_effect_templates(templates: &[EffectTemplate], cx: &mut Ctx) -> Vec<Effect> {
+    templates.iter().filter_map(|t| build_effect(t, cx)).collect()
+}
+
 /// Evaluate a `run_script` exit body into its optional narration (last `Pass` wins).
 pub fn eval_script(body: &[Stmt], cx: &mut Ctx) -> Option<String> {
     let mut effects = Vec::new();

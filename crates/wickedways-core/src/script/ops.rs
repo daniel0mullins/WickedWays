@@ -1,10 +1,19 @@
 //! Adapter ops: satisfy the existing Phase-1 traits by interpreting a stored AST.
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use serde_json::Value as Json;
 
-use crate::script::ast::{ExitScript, ItemScript, MechanicScript, Stmt, VictoryScript};
-use crate::script::eval::{eval_damage, eval_effects, eval_predicate, eval_script, Ctx, CtxState, RoomSource};
+use crate::presentation::MechanicCue;
+use crate::script::ast::{
+    DialogueEntry, DialogueMatch, ExitScript, ItemScript, MechanicScript, NpcScript, Stmt,
+    VictoryScript,
+};
+use crate::script::eval::{
+    eval_damage, eval_effect_templates, eval_effects, eval_expr, eval_predicate, eval_script,
+    state_set_in, Ctx, CtxState, RoomSource,
+};
+use crate::script::value::coerce_str;
 use crate::world::descriptor::Catalog;
 use crate::world::exits::ExitBehavior;
 use crate::world::mechanics::{
@@ -195,6 +204,205 @@ impl ScriptedVictory<'_> {
     }
 }
 
+// ─── NPC dialogue matcher (NPC sub-plan 2) ──────────────────────────────────
+//
+// THE MATCHER ALGORITHM — this is the single source of truth. Task 3's TS oracle
+// and Task 4's fixture MUST mirror it byte-for-byte. It is a deliberate
+// improvement over the legacy TS `IDialogue` (which is OFF the conformance-gate
+// path and is NOT the reference); implement THIS, not the legacy code.
+//
+// NORMALIZE + TOKENIZE a prompt string (`tokenize`):
+//   1. Lowercase (`str::to_lowercase`).
+//   2. Split on whitespace (`split_whitespace`).
+//   3. For each piece, strip ASCII-punctuation from BOTH EDGES ONLY — repeatedly
+//      trim leading/trailing chars where `char::is_ascii_punctuation()` is true.
+//      That set is EXACTLY  ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~
+//      Internal punctuation is KEPT: `don't` stays `don't`; `cellar?` -> `cellar`;
+//      `...hi...` -> `hi`.
+//   4. Drop pieces that became empty.
+//   5. The ORDERED result (`Vec<String>`, order preserved, NOT deduped) is used
+//      for Exact; its deduped form (`BTreeSet<String>`) is used for Fuzzy.
+//
+// PER-ENTRY MATCH TEST:
+//   * Exact { text }: normalize `text` with the SAME `tokenize` procedure into an
+//     ordered `Vec<String>`; matches IFF the prompt's ordered token Vec EQUALS the
+//     trigger's ordered token Vec (whitespace- & edge-punct-insensitive, but
+//     full-phrase and order-exact).
+//   * Fuzzy { tokens }: normalize each trigger token atomically (lowercase +
+//     edge-punct-strip via `normalize_token`; NO whitespace split), drop any that
+//     become empty, and dedup; matches IFF EVERY normalized trigger token is in the
+//     prompt's token SET (subset; order-independent; extra prompt tokens are fine).
+//     `[].every(_)` is vacuously TRUE, so an all-punctuation trigger matches with
+//     SCORE 0. SCORE = the count of normalized-DEDUPED trigger tokens.
+//
+// SELECTION (choose EXACTLY ONE entry, or `default`):
+//   1. BARE prompt — `None`, OR it tokenizes to an EMPTY set — selects `default`.
+//   2. Else scan `dialogue` in AUTHORED order:
+//        a. If ANY Exact entry matches -> the FIRST-authored matching Exact
+//           (Exact always beats Fuzzy).
+//        b. Else if any Fuzzy matches -> the HIGHEST-score Fuzzy; on a score tie,
+//           the FIRST-authored among them.
+//        c. Else -> `default`.
+//   3. Only the SINGLE selected entry (or `default`) contributes response + effects.
+//
+// EMIT (`run_talk`):
+//   * The selected entry's `response` Expr is evaluated to a cue and ALWAYS emitted.
+//   * The selected entry's `effects` are returned HONORING `once`: a `once` entry
+//     yields effects only while its per-behavior latch is UNSET, and firing SETS the
+//     latch (a second talk re-emits the response but NO effects). A non-`once` entry
+//     yields its effects every time. Latch state lives in the NPC's per-behavior JSON
+//     state under `state["onceFired"][key]` (see `LATCH_FIELD`), keyed by the selected
+//     entry's identity (`"default"` for the default entry, else its decimal index in
+//     `dialogue`) — written through the same `SetState` seam mechanics use
+//     (`state_set_in`), so Task 3/4 must key the latch identically for byte-parity.
+
+/// State object field holding the per-entry `once` latch (`{ key: true }`).
+const LATCH_FIELD: &str = "onceFired";
+
+/// Full normalize+tokenize: lowercase, split on whitespace, strip ASCII-punctuation
+/// from both edges of each piece, drop emptied pieces. Order-preserving, NOT deduped.
+fn tokenize(s: &str) -> Vec<String> {
+    s.to_lowercase()
+        .split_whitespace()
+        .filter_map(|piece| {
+            let t = piece.trim_matches(|c: char| c.is_ascii_punctuation());
+            if t.is_empty() { None } else { Some(t.to_string()) }
+        })
+        .collect()
+}
+
+/// Atomic single-token normalize for a Fuzzy trigger token: lowercase + edge
+/// ASCII-punctuation strip only (NO whitespace split). May return empty.
+fn normalize_token(t: &str) -> String {
+    t.to_lowercase()
+        .trim_matches(|c: char| c.is_ascii_punctuation())
+        .to_string()
+}
+
+/// The single entry chosen by the matcher, paired with its latch key.
+struct Selection<'a> {
+    entry: &'a DialogueEntry,
+    /// Latch key: `"default"` for the default entry, else the decimal index.
+    key: String,
+}
+
+/// Run the selection algorithm (see module comment above). Pure: depends only on
+/// the script and the prompt.
+fn select_entry<'a>(script: &'a NpcScript, prompt: Option<&str>) -> Selection<'a> {
+    let default_sel = || Selection { entry: &script.default, key: "default".to_string() };
+
+    // 1. Bare prompt (None or empties to nothing) -> default.
+    let ordered = match prompt {
+        None => return default_sel(),
+        Some(p) => tokenize(p),
+    };
+    if ordered.is_empty() {
+        return default_sel();
+    }
+    let prompt_set: BTreeSet<String> = ordered.iter().cloned().collect();
+
+    // 2a. First-authored matching Exact wins outright.
+    for (i, entry) in script.dialogue.iter().enumerate() {
+        if let DialogueMatch::Exact { text } = &entry.match_ {
+            if tokenize(text) == ordered {
+                return Selection { entry, key: i.to_string() };
+            }
+        }
+    }
+
+    // 2b. Highest-score matching Fuzzy; first-authored breaks a score tie.
+    let mut best: Option<(usize, &DialogueEntry, usize)> = None; // (score, entry, index)
+    for (i, entry) in script.dialogue.iter().enumerate() {
+        if let DialogueMatch::Fuzzy { tokens } = &entry.match_ {
+            let trigger: BTreeSet<String> = tokens
+                .iter()
+                .map(|t| normalize_token(t))
+                .filter(|t| !t.is_empty())
+                .collect();
+            // `[].every()` is vacuously true, so an emptied trigger still matches
+            // (score 0) — mirror this in the oracle.
+            if trigger.is_subset(&prompt_set) {
+                let score = trigger.len();
+                // Strict `>` keeps the earlier-authored entry on a tie.
+                if best.is_none_or(|(bs, _, _)| score > bs) {
+                    best = Some((score, entry, i));
+                }
+            }
+        }
+    }
+    match best {
+        Some((_, entry, i)) => Selection { entry, key: i.to_string() },
+        // 2c. Nothing matched -> default.
+        None => default_sel(),
+    }
+}
+
+/// A data-driven NPC dialogue behavior bound to a borrowed `NpcScript` (mirrors
+/// `ScriptedMechanic`/`ScriptedItem` — no cloning of the AST). Talk context sees
+/// the actor, the campaign view, and the injected rng (like an item hook), plus
+/// the NPC's per-behavior JSON state (for the `once` latch); rooms are `None`.
+pub struct ScriptedNpc<'a> {
+    pub script: &'a NpcScript,
+}
+
+impl ScriptedNpc<'_> {
+    /// The NPC's `examine` blurb (TS `Npc.description`).
+    pub fn description(&self) -> &str {
+        &self.script.description
+    }
+
+    /// Match `prompt` to exactly one dialogue entry (or the default), evaluate its
+    /// `response` to a cue (ALWAYS emitted), and return its `effects` honoring
+    /// `once` against the per-behavior `state`. See the module comment for the full
+    /// algorithm. `prompt == None` is a bare `talk`.
+    pub fn run_talk(
+        &self,
+        prompt: Option<&str>,
+        base: &mut HookCtx,
+        actor: &CharacterView,
+    ) -> (Vec<MechanicCue>, Vec<Effect>) {
+        let sel = select_entry(self.script, prompt);
+
+        // Read the latch BEFORE the mutable state reborrow.
+        let already = base
+            .state
+            .get(LATCH_FIELD)
+            .and_then(|m| m.get(&sel.key))
+            .and_then(Json::as_bool)
+            .unwrap_or(false);
+        let once = sel.entry.once;
+
+        let mut cx = Ctx {
+            view: Some(base.view),
+            state: CtxState::Write(base.state),
+            actor: Some(actor),
+            action: None,
+            damage: None,
+            element: None,
+            rng: Some(base.rng),
+            rooms: RoomSource::None,
+        };
+        // Response is always emitted (same cue-build path as EffectTemplate::Cue).
+        let cue = MechanicCue {
+            text: Some(coerce_str(&eval_expr(&sel.entry.response, &mut cx).into_value())),
+            sound: None,
+        };
+        let effects = if once && already {
+            Vec::new()
+        } else {
+            eval_effect_templates(&sel.entry.effects, &mut cx)
+        };
+        drop(cx);
+
+        // A `once` entry sets its latch the first time it fires.
+        if once && !already {
+            state_set_in(base.state, LATCH_FIELD, &sel.key, Json::Bool(true));
+        }
+
+        (alloc::vec![cue], effects)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -305,5 +513,217 @@ mod tests {
         assert!(ScriptedItem { script: &script }
             .run_read(&mut base, &actor)
             .is_empty());
+    }
+
+    // ─── NPC dialogue matcher + ScriptedNpc (NPC sub-plan 2) ─────────────────
+
+    fn lit(s: &str) -> crate::script::ast::Expr {
+        crate::script::ast::Expr::Lit { value: crate::script::value::Value::Str(s.into()) }
+    }
+
+    fn entry(m: DialogueMatch, resp: &str) -> DialogueEntry {
+        DialogueEntry { match_: m, response: lit(resp), effects: Vec::new(), once: false }
+    }
+
+    fn exact(text: &str, resp: &str) -> DialogueEntry {
+        entry(DialogueMatch::Exact { text: text.into() }, resp)
+    }
+
+    fn fuzzy(tokens: &[&str], resp: &str) -> DialogueEntry {
+        entry(
+            DialogueMatch::Fuzzy { tokens: tokens.iter().map(|t| t.to_string()).collect() },
+            resp,
+        )
+    }
+
+    fn npc(dialogue: Vec<DialogueEntry>) -> NpcScript {
+        NpcScript {
+            description: "an npc".into(),
+            default: exact("", "DEFAULT"),
+            dialogue,
+        }
+    }
+
+    /// Run `talk` against a fresh world/actor, threading the caller's `state`.
+    fn talk(
+        script: &NpcScript,
+        prompt: Option<&str>,
+        state: &mut Json,
+    ) -> (Vec<MechanicCue>, Vec<Effect>) {
+        use crate::world::test_support::world_with_party;
+        let w = world_with_party(&["pc"], 10);
+        let cat = Catalog::default();
+        let view = w.build_campaign_view(&cat);
+        let actor = w
+            .character_view(&crate::world::ids::CharacterId("pc".into()), &cat)
+            .unwrap();
+        let mut rng = crate::world::rng::Rng::seeded(0);
+        let mut base = HookCtx { state, view: &view, rng: &mut rng };
+        ScriptedNpc { script }.run_talk(prompt, &mut base, &actor)
+    }
+
+    fn cue(cues: &[MechanicCue]) -> String {
+        cues[0].text.clone().expect("response cue has text")
+    }
+
+    #[test]
+    fn npc_description_returns_script_description() {
+        let script = npc(Vec::new());
+        assert_eq!(ScriptedNpc { script: &script }.description(), "an npc");
+    }
+
+    #[test]
+    fn exact_match_is_case_punct_and_edge_ws_insensitive() {
+        let script = npc(alloc::vec![exact("hello there", "GREET")]);
+        let mut state = Json::Null;
+        // Case, trailing/leading punctuation, and extra whitespace all normalize away.
+        let (cues, _) = talk(&script, Some("  Hello,   there!  "), &mut state);
+        assert_eq!(cue(&cues), "GREET");
+    }
+
+    #[test]
+    fn exact_requires_full_phrase_extra_token_is_no_match() {
+        let script = npc(alloc::vec![exact("hello there", "GREET")]);
+        let mut state = Json::Null;
+        let (cues, _) = talk(&script, Some("hello there friend"), &mut state);
+        assert_eq!(cue(&cues), "DEFAULT");
+    }
+
+    #[test]
+    fn exact_beats_fuzzy_even_when_authored_later() {
+        // Fuzzy["hello"] also subsets the prompt, but Exact wins outright.
+        let script = npc(alloc::vec![fuzzy(&["hello"], "FUZZY"), exact("hello there", "EXACT")]);
+        let mut state = Json::Null;
+        let (cues, _) = talk(&script, Some("hello there"), &mut state);
+        assert_eq!(cue(&cues), "EXACT");
+    }
+
+    #[test]
+    fn fuzzy_subset_matches_reordered_with_extra_tokens_and_trailing_punct() {
+        let script = npc(alloc::vec![fuzzy(&["open", "door"], "FZ")]);
+        let mut state = Json::Null;
+        let (cues, _) = talk(&script, Some("please Door, OPEN now?"), &mut state);
+        assert_eq!(cue(&cues), "FZ");
+    }
+
+    #[test]
+    fn fuzzy_missing_trigger_token_is_no_match() {
+        let script = npc(alloc::vec![fuzzy(&["open", "door"], "FZ")]);
+        let mut state = Json::Null;
+        let (cues, _) = talk(&script, Some("open the window"), &mut state);
+        assert_eq!(cue(&cues), "DEFAULT");
+    }
+
+    #[test]
+    fn fuzzy_highest_score_wins() {
+        let script = npc(alloc::vec![
+            fuzzy(&["cellar"], "ONE"),
+            fuzzy(&["cellar", "key"], "TWO"),
+        ]);
+        let mut state = Json::Null;
+        let (cues, _) = talk(&script, Some("the cellar key"), &mut state);
+        assert_eq!(cue(&cues), "TWO");
+    }
+
+    #[test]
+    fn fuzzy_score_tie_selects_first_authored() {
+        let script = npc(alloc::vec![fuzzy(&["cellar"], "FIRST"), fuzzy(&["key"], "SECOND")]);
+        let mut state = Json::Null;
+        let (cues, _) = talk(&script, Some("cellar key"), &mut state);
+        assert_eq!(cue(&cues), "FIRST");
+    }
+
+    #[test]
+    fn bare_none_prompt_selects_default() {
+        let script = npc(alloc::vec![fuzzy(&["hello"], "FZ")]);
+        let mut state = Json::Null;
+        let (cues, _) = talk(&script, None, &mut state);
+        assert_eq!(cue(&cues), "DEFAULT");
+    }
+
+    #[test]
+    fn all_punctuation_prompt_tokenizes_empty_and_selects_default() {
+        let script = npc(alloc::vec![fuzzy(&["hello"], "FZ")]);
+        let mut state = Json::Null;
+        // "!!!" strips to empty -> empty token set -> bare -> default.
+        let (cues, _) = talk(&script, Some("!!! ???"), &mut state);
+        assert_eq!(cue(&cues), "DEFAULT");
+    }
+
+    #[test]
+    fn unmatched_prompt_selects_default() {
+        let script = npc(alloc::vec![fuzzy(&["xyz"], "FZ")]);
+        let mut state = Json::Null;
+        let (cues, _) = talk(&script, Some("hello world"), &mut state);
+        assert_eq!(cue(&cues), "DEFAULT");
+    }
+
+    #[test]
+    fn fuzzy_trailing_question_mark_matches_and_internal_apostrophe_kept() {
+        // "cellar?" -> "cellar" (edge strip); "don't" keeps its internal apostrophe.
+        let script = npc(alloc::vec![fuzzy(&["cellar"], "C"), fuzzy(&["don't"], "D")]);
+        let mut s1 = Json::Null;
+        let (c1, _) = talk(&script, Some("cellar?"), &mut s1);
+        assert_eq!(cue(&c1), "C");
+        let mut s2 = Json::Null;
+        let (c2, _) = talk(&script, Some("Don't go"), &mut s2);
+        assert_eq!(cue(&c2), "D");
+    }
+
+    #[test]
+    fn once_entry_repeats_response_but_gates_effects() {
+        use crate::script::ast::EffectTemplate;
+        use crate::stats::StatType;
+
+        let give = DialogueEntry {
+            match_: DialogueMatch::Fuzzy { tokens: alloc::vec!["give".into()] },
+            response: lit("HERE"),
+            effects: alloc::vec![EffectTemplate::AdjustStat {
+                target: crate::script::ast::Expr::Actor,
+                stat: StatType::Sanity,
+                delta: lit_num(3.0),
+            }],
+            once: true,
+        };
+        let script = npc(alloc::vec![give]);
+
+        let mut state = Json::Null;
+        let (c1, fx1) = talk(&script, Some("give"), &mut state);
+        assert_eq!(cue(&c1), "HERE");
+        assert_eq!(fx1.len(), 1, "first talk fires effects");
+        // Latch is now set in the shared state.
+        assert_eq!(state["onceFired"]["0"], serde_json::json!(true));
+
+        let (c2, fx2) = talk(&script, Some("give"), &mut state);
+        assert_eq!(cue(&c2), "HERE", "response still emitted");
+        assert!(fx2.is_empty(), "effects suppressed on second talk");
+    }
+
+    #[test]
+    fn non_once_entry_re_returns_effects_every_call() {
+        use crate::script::ast::EffectTemplate;
+        use crate::stats::StatType;
+
+        let give = DialogueEntry {
+            match_: DialogueMatch::Fuzzy { tokens: alloc::vec!["give".into()] },
+            response: lit("HERE"),
+            effects: alloc::vec![EffectTemplate::AdjustStat {
+                target: crate::script::ast::Expr::Actor,
+                stat: StatType::Sanity,
+                delta: lit_num(3.0),
+            }],
+            once: false,
+        };
+        let script = npc(alloc::vec![give]);
+
+        let mut state = Json::Null;
+        let (_, fx1) = talk(&script, Some("give"), &mut state);
+        assert_eq!(fx1.len(), 1);
+        let (_, fx2) = talk(&script, Some("give"), &mut state);
+        assert_eq!(fx2.len(), 1, "non-once re-emits effects");
+    }
+
+    fn lit_num(n: f64) -> crate::script::ast::Expr {
+        crate::script::ast::Expr::Lit { value: crate::script::value::Value::Number(n) }
     }
 }
