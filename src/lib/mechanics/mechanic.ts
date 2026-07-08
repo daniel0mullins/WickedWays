@@ -1,4 +1,5 @@
 import type { CharacterId } from "../character/character";
+import type { ItemId } from "../inventory";
 import type { StatType } from "../character/stats";
 import type { Status } from "../status";
 import type { AssetRef, StatusField } from "../presentation";
@@ -105,6 +106,12 @@ export interface MechanicCue {
  * - `cue` — emits a `{ kind: "mechanic", cue }` {@link PresentationCue}.
  * - `status` — emits a `{ kind: "status", fields }` {@link PresentationCue}; the play surface
  *   renders the latest payload in its HUD status bar (campaign-defined readout).
+ * - `giveItem` — moves an item id from `from`'s inventory into `to`'s, routing by the source
+ *   list (a key stays a key, a non-key stays an item); the item object itself is untouched,
+ *   only its holder changes. Not party-restricted (an NPC may hand over an item). Throws a
+ *   {@link ProceduralViolation} if `from` does not hold the item or `to` cannot be resolved.
+ * - `setVisible` — flips `target`'s `visible` flag (reversibly); a missing target is a no-op.
+ *   Not party-restricted (a non-party NPC "disappears" by flipping this to `false`).
  */
 /** The discriminants of the {@link Effect} union. */
 export const EffectKind = {
@@ -114,6 +121,8 @@ export const EffectKind = {
   GrantImmunity: "grantImmunity",
   Cue: "cue",
   Status: "status",
+  GiveItem: "giveItem",
+  SetVisible: "setVisible",
 } as const;
 /** One of the {@link EffectKind} values. */
 export type EffectKind = (typeof EffectKind)[keyof typeof EffectKind];
@@ -124,7 +133,9 @@ export type Effect =
   | { kind: typeof EffectKind.AdjustStat; target: CharacterId; stat: "sanity" | "energy"; delta: number }
   | { kind: typeof EffectKind.GrantImmunity; target: CharacterId; turns: number }
   | { kind: typeof EffectKind.Cue; cue: MechanicCue }
-  | { kind: typeof EffectKind.Status; fields: readonly StatusField[] };
+  | { kind: typeof EffectKind.Status; fields: readonly StatusField[] }
+  | { kind: typeof EffectKind.GiveItem; from: CharacterId; to: CharacterId; item: ItemId }
+  | { kind: typeof EffectKind.SetVisible; target: CharacterId; visible: boolean };
 
 /**
  * A named action exposed by a mechanic and invoked via

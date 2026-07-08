@@ -13,7 +13,7 @@ import { Status } from "./status";
 import type { CharacterId, ICharacter } from "./character/character";
 import { Codex, RECORD_ENCOUNTER } from "./codex";
 import type { CodexEncounterEvent, CodexEntry, ICodex } from "./codex";
-import { FIND_CHARACTER, DISPATCH_TURN, DISPATCH_ACTION, TRANSFORM_DAMAGE, INVOKE_MECHANIC_ACTION } from "./mechanics/symbols";
+import { FIND_CHARACTER, FIND_ANY_CHARACTER, DISPATCH_TURN, DISPATCH_ACTION, TRANSFORM_DAMAGE, INVOKE_MECHANIC_ACTION } from "./mechanics/symbols";
 import { roll } from "./dice";
 import type { CampaignView, CharacterView, HookCtx, JsonObject, JsonValue, DamageView } from "./mechanics/mechanic";
 import { MAX_EFFECTS_PER_EVENT } from "./mechanics/mechanic";
@@ -754,6 +754,37 @@ export class Campaign implements ICampaign {
     const c = this.party.find((p) => p.id === id);
     if (!c) throw new ProceduralViolation(`No party character for id '${id}'.`);
     return c;
+  }
+
+  /**
+   * Mechanics seam: resolve ANY character by id — party members plus non-party
+   * occupants (NPCs, mobs) reachable from the party's rooms. Unlike
+   * {@link FIND_CHARACTER} (party-only, throwing), this reaches non-party
+   * characters and returns `undefined` when none matches, so callers decide
+   * whether an absence is an error. Mirrors the serializer's party+occupants BFS
+   * (the exact set the Rust core's flat `World.characters` holds); used by the
+   * `GiveItem`/`SetVisible` effects, which are not party-restricted. Unforgeable.
+   */
+  [FIND_ANY_CHARACTER](id: CharacterId): ICharacter | undefined {
+    const partyMember = this.party.find((p) => p.id === id);
+    if (partyMember) return partyMember;
+    // BFS over rooms reachable from any party member's current room, scanning
+    // each room's (raw, incl. invisible) occupants — matches serializer.ts.
+    const seenRooms = new Set<string>();
+    const queue: IRoom[] = [];
+    const enqueue = (r: IRoom) => {
+      if (!seenRooms.has(r.id)) {
+        seenRooms.add(r.id);
+        queue.push(r);
+      }
+    };
+    for (const p of this.party) if (p.currentRoom) enqueue(p.currentRoom);
+    while (queue.length) {
+      const r = queue.shift()!;
+      for (const occ of r.occupants) if (occ.id === id) return occ;
+      for (const [, exit] of r.exits) enqueue(exit.otherSide(r));
+    }
+    return undefined;
   }
 
   /**

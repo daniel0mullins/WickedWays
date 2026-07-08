@@ -261,6 +261,13 @@ export const ADD_LIGHT_SOURCE = Symbol("addLightSource");
 export const REMOVE_LIGHT_SOURCE = Symbol("removeLightSource");
 
 /**
+ * Symbol-keyed method that flips a character's `visible` flag (reversibly). Only
+ * the mechanics `SetVisible` effect (an NPC that "disappears") calls it, keeping
+ * visibility unforgeable by stray code — same discipline as the other seams.
+ */
+export const SET_VISIBLE = Symbol("setVisible");
+
+/**
  * A game item: a typed, craftable object that lives in a holder's inventory and
  * can be picked up, equipped, used, transferred, or destroyed via {@link IItem.actions}.
  */

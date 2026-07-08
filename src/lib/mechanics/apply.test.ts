@@ -9,6 +9,8 @@ import { defineRegistry } from "../authoring/registry.js";
 import { authorTemplate } from "../authoring/template-builder.js";
 import { assemble } from "../authoring/assembler.js";
 import { EffectKind } from "./mechanic.js";
+import { Item, createKey, HELD_BY, type ItemId } from "../inventory.js";
+import { ProceduralViolation } from "../util.js";
 import type { PresentationCue } from "../presentation.js";
 
 /** Build a started one-PC campaign containing a real PlayerCharacter. */
@@ -20,6 +22,33 @@ function makeStartedCampaign() {
   campaign.gm = player;
   campaign.beginCampaign();
   return { campaign, player };
+}
+
+/** Build a started two-PC campaign (a giver and a taker), both in the party. */
+function makeTwoPCCampaign() {
+  const campaign = new Campaign({ title: "Test" });
+  const giver = new PlayerCharacter({ campaign, name: "Giver" });
+  const taker = new PlayerCharacter({ campaign, name: "Taker" });
+  giver.joinCampaign();
+  taker.joinCampaign();
+  assignNeutralArchetype(campaign, giver);
+  assignNeutralArchetype(campaign, taker);
+  campaign.gm = giver;
+  campaign.beginCampaign();
+  return { campaign, giver, taker };
+}
+
+/** A minimal non-key item (occupies an inventory slot, unlike a key). */
+function makeSword() {
+  return new Item({
+    descriptor: { type: "weapon", recipe: { metal: 1 }, modifier: 2, stat: StatType.Health, name: "Sword" },
+    properties: { equippable: true, equipped: false, destroyable: true, usable: true },
+    actions: {
+      pickUp: () => {}, equip: () => {}, unequip: () => {},
+      transfer: () => {}, use: () => {}, destroy: () => null,
+    },
+    events: { onPickUp: () => {} },
+  });
 }
 
 describe("applyEffect", () => {
@@ -78,6 +107,52 @@ describe("applyEffect", () => {
     // endTurn reconciles afflictions while timed immunity is active — Panic must clear.
     player.endTurn();
     expect(player.isNormal).toBe(true);
+  });
+});
+
+describe("applyEffect — giveItem", () => {
+  it("routes by the source list (key→keyring, non-key→inventory) and re-homes the item object", () => {
+    const { campaign, giver, taker } = makeTwoPCCampaign();
+    const sword = makeSword();
+    const key = createKey({ name: "Brass Key", keyCode: "door", consumeOnUse: false });
+    giver.receiveItem(sword); // non-key → giver.inventory.items
+    giver.receiveItem(key); // key → giver.inventory.keys
+
+    applyEffect(campaign, { kind: EffectKind.GiveItem, from: giver.id, to: taker.id, item: sword.id });
+    applyEffect(campaign, { kind: EffectKind.GiveItem, from: giver.id, to: taker.id, item: key.id });
+
+    // Both leave the giver, each lands in the taker's type-matching list.
+    expect(giver.inventory.items).not.toContain(sword);
+    expect(giver.inventory.keys).not.toContain(key);
+    expect(taker.inventory.items).toContain(sword);
+    expect(taker.inventory.keys).toContain(key);
+    // No cross-routing: a non-key never lands in the keyring, a key never in items.
+    expect(taker.inventory.keys).not.toContain(sword);
+    expect(taker.inventory.items).not.toContain(key);
+    // The same item OBJECTS move (no re-creation); reachability follows the new
+    // holder — the heldBy back-reference now points at the taker (via CLAIM).
+    expect(sword[HELD_BY]).toBe(taker);
+    expect(key[HELD_BY]).toBe(taker);
+  });
+
+  it("throws when the giver does not hold the item (carrying guard)", () => {
+    const { campaign, giver, taker } = makeTwoPCCampaign();
+    expect(() =>
+      applyEffect(campaign, {
+        kind: EffectKind.GiveItem, from: giver.id, to: taker.id, item: "ghost" as ItemId,
+      }),
+    ).toThrow(ProceduralViolation);
+  });
+});
+
+describe("applyEffect — setVisible", () => {
+  it("flips the target's visible flag reversibly", () => {
+    const { campaign, taker } = makeTwoPCCampaign();
+    expect(taker.visible).toBe(true); // characters start visible
+    applyEffect(campaign, { kind: EffectKind.SetVisible, target: taker.id, visible: false });
+    expect(taker.visible).toBe(false);
+    applyEffect(campaign, { kind: EffectKind.SetVisible, target: taker.id, visible: true });
+    expect(taker.visible).toBe(true);
   });
 });
 

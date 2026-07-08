@@ -1,6 +1,6 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { ADD_LIGHT_SOURCE, CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, ItemAction, MaterialMap, PLACE, REMOVE_LIGHT_SOURCE, SET_DURABILITY, UNEQUIP } from "../inventory";
+import { ADD_LIGHT_SOURCE, CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, ItemAction, MaterialMap, PLACE, REMOVE_LIGHT_SOURCE, SET_DURABILITY, SET_VISIBLE, UNEQUIP } from "../inventory";
 import {
   DEFAULT_EQUIPMENT_SLOTS,
   EquipmentSlot,
@@ -189,6 +189,8 @@ export interface ICharacter extends IItemHolder {
   [ADJUST_STAT]: (stat: StatType, delta: number) => void;
   /** Grants timed status immunity; engine-internal (item Use path only). */
   [GRANT_IMMUNITY]: (statuses: Status[], turns: number) => void;
+  /** Sets the `visible` flag (reversibly); engine-internal (SetVisible effect only). */
+  [SET_VISIBLE]: (visible: boolean) => void;
   /** Consumes an item for the Use path, gating suppressed; engine-internal. */
   [CONSUME_VIA_USE]: (item: IItem) => void;
 
@@ -371,6 +373,14 @@ export class Character implements ICharacter {
   /** Grants timed status immunity. Engine-internal: only the item Use path calls it. */
   [GRANT_IMMUNITY](statuses: Status[], turns: number) {
     this.#afflictions.grantImmunity(statuses, turns);
+  }
+
+  /**
+   * Sets the `visible` flag (reversibly). Engine-internal: only the mechanics
+   * `SetVisible` effect calls it (an NPC that "disappears" flips it to `false`).
+   */
+  [SET_VISIBLE](visible: boolean) {
+    this.#visible = visible;
   }
 
   /**
