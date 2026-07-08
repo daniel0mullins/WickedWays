@@ -121,14 +121,16 @@ export class TemplateBuilder<ItemKey extends string, RecipeKey extends string, C
    * Place a non-player character in the world. Its dialogue comes from a
    * registered NPC behavior (keyed), so the NPC survives serialization. Players
    * talk to it by finding it among a room's occupants and calling
-   * `npc.dialogue(prompt)`.
+   * `npc.dialogue(prompt)`. `holds` seeds registry items into the NPC's inventory
+   * (keys route to the key compartment) so it has something to hand over.
    */
-  npc(name: string, opts: { stats: Stats; room?: string; behavior: NpcKey }): this {
+  npc(name: string, opts: { stats: Stats; room?: string; behavior: NpcKey; holds?: ItemKey[] }): this {
     this.description.npcs.push({
       name,
       stats: opts.stats,
       room: opts.room,
       behavior: opts.behavior,
+      holds: opts.holds,
     });
     return this;
   }

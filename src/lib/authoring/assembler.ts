@@ -89,6 +89,9 @@ export function assemble(
   for (const r of desc.rooms) {
     for (const k of r.lights ?? []) requireItemKey(k, `room '${r.name}' light`);
   }
+  for (const n of desc.npcs) {
+    for (const k of n.holds ?? []) requireItemKey(k, `npc '${n.name}' holds`);
+  }
   for (const k of desc.recipes) {
     try {
       registry.recipe(k);
@@ -282,6 +285,16 @@ export function assemble(
       behaviorKey: n.behavior,
     });
     npc.id = `npc:${n.name}` as CharacterId;
+    // Seed held items (mirrors the mob-drop path): build from the registry, assign
+    // a deterministic id, and load via receiveItem — which routes keys to the key
+    // compartment and everything else to the item slots. Reachability from the
+    // seated NPC captures each as an ItemSnapshot on serialization.
+    const npcId = `npc:${n.name}`;
+    (n.holds ?? []).forEach((k, i) => {
+      const it = registry.item(k)();
+      it.id = `${npcId}:item#${i}` as ItemId;
+      npc.receiveItem(it);
+    });
     if (n.room !== undefined) {
       npc[PLACE](rooms.get(n.room)!);
     }

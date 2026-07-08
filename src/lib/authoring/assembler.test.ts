@@ -9,7 +9,7 @@ import { Mob, type IMob } from "../character/mob";
 import type { ICampaign } from "../campaign";
 import { Directions } from "../room";
 import { StatType } from "../character/stats";
-import { Item } from "../inventory";
+import { Item, createKey } from "../inventory";
 import { serializeCampaign } from "../serialization/serializer";
 import { deserializeCampaign } from "../serialization/deserializer";
 import type { CampaignTemplateDescription } from "./description";
@@ -236,6 +236,63 @@ describe("npc authoring (.npc)", () => {
     const builder = authorTemplate("T", reg)
       .room("inn", { description: "an inn" })
       .npc("Ghost", { stats: stats(), room: "nowhere", behavior: "ghost" });
+
+    expect(() => builder.build()).toThrow(AuthoringError);
+  });
+
+  it("seeds a held key into the NPC key list with a deterministic id + a reachable ItemSnapshot", () => {
+    const makeCellarKey = () => createKey({ name: "Cellar Key", keyCode: "cellar", consumeOnUse: false });
+    const reg = defineRegistry({
+      items: { "cellar-key": makeCellarKey },
+      npcs: { keeper: { initialDialogue: "Take this.", dialogue: [] } },
+    });
+    const builder = authorTemplate("T", reg)
+      .room("cellar", { description: "a cellar" })
+      .startRoom("cellar")
+      .npc("Keeper", { stats: stats(), room: "cellar", behavior: "keeper", holds: ["cellar-key"] });
+
+    // Live campaign: the key lands in the NPC's key compartment (not items).
+    const { rooms } = assemble(builder.description, builder.registry);
+    const keeper = rooms.get("cellar")!.occupants.find((o) => o.name === "Keeper") as
+      | INonPlayerCharacter
+      | undefined;
+    expect(keeper).toBeDefined();
+    expect(keeper!.inventory.keys.map((k) => k.id)).toEqual(["npc:Keeper:item#0"]);
+    expect(keeper!.inventory.items).toHaveLength(0);
+
+    // Snapshot: the id is in the NPC's keyIds and a matching ItemSnapshot exists.
+    const snapshot = builder.toSnapshot();
+    const keeperSnap = snapshot.characters.find((c) => c.name === "Keeper");
+    expect(keeperSnap?.inventory.keyIds).toEqual(["npc:Keeper:item#0"]);
+    expect(keeperSnap?.inventory.itemIds).toEqual([]);
+    const itemSnap = snapshot.items.find((i) => i.id === "npc:Keeper:item#0");
+    expect(itemSnap).toBeDefined();
+    expect(itemSnap?.kind).toBe("key");
+  });
+
+  it("seeds a held non-key item into the NPC item list with a deterministic id", () => {
+    const reg = defineRegistry({
+      items: { "coin-item": makeCoin },
+      npcs: { keeper: { initialDialogue: "A gift.", dialogue: [] } },
+    });
+    const builder = authorTemplate("T", reg)
+      .room("cellar", { description: "a cellar" })
+      .startRoom("cellar")
+      .npc("Keeper", { stats: stats(), room: "cellar", behavior: "keeper", holds: ["coin-item"] });
+
+    const snapshot = builder.toSnapshot();
+    const keeperSnap = snapshot.characters.find((c) => c.name === "Keeper");
+    expect(keeperSnap?.inventory.itemIds).toEqual(["npc:Keeper:item#0"]);
+    expect(keeperSnap?.inventory.keyIds).toEqual([]);
+    const itemSnap = snapshot.items.find((i) => i.id === "npc:Keeper:item#0");
+    expect(itemSnap?.kind).toBe("item");
+  });
+
+  it("rejects an NPC holding an unregistered item key", () => {
+    const reg = defineRegistry({ items: {}, npcs: { keeper: { initialDialogue: "Hi.", dialogue: [] } } });
+    const builder = authorTemplate("T", reg)
+      .room("cellar", { description: "a cellar" })
+      .npc("Keeper", { stats: stats(), room: "cellar", behavior: "keeper", holds: ["missing-item"] as never });
 
     expect(() => builder.build()).toThrow(AuthoringError);
   });
