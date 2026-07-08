@@ -23,6 +23,8 @@ export default defineConfig({
       "conformance/fixtures/keyed-exit.gen.test.ts",
       "conformance/fixtures/scene.gen.test.ts",
       "conformance/fixtures/spawn.gen.test.ts",
+      "conformance/fixtures/formation-descriptor.gen.test.ts",
+      "conformance/fixtures/rat-tail.gen.test.ts",
       "conformance/fixtures/sees-in-dark.gen.test.ts",
       "conformance/fixtures/lantern-dark-combat.gen.test.ts",
       "conformance/fixtures/victory-won.gen.test.ts",

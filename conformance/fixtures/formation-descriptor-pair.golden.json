@@ -1,0 +1,1396 @@
+{
+  "seed": 7,
+  "commands": [
+    {
+      "kind": "startTurn"
+    },
+    {
+      "kind": "go",
+      "dir": "north"
+    },
+    {
+      "kind": "go",
+      "dir": "south"
+    },
+    {
+      "kind": "go",
+      "dir": "north"
+    }
+  ],
+  "steps": [
+    {
+      "command": {
+        "kind": "startTurn"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Formation Descriptor (conformance)",
+          "title": "Formation Descriptor (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 100,
+            "visited": [
+              "room:Foyer"
+            ],
+            "formations": [
+              {
+                "behaviorKey": "rat-pair",
+                "weight": 1
+              }
+            ]
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Crypt|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 0,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Crypt|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Crypt|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Crypt"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Foyer",
+          "name": "Foyer",
+          "description": "A dusty foyer.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Crypt"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "locationName": "Foyer",
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "north"
+      },
+      "cues": [
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Mara",
+            "name": "Mara"
+          }
+        },
+        {
+          "kind": "encounter",
+          "mob": {
+            "id": "campaign-mob:rat",
+            "name": "Rat"
+          },
+          "room": {
+            "id": "room:Crypt",
+            "name": "Crypt"
+          }
+        },
+        {
+          "kind": "encounter",
+          "mob": {
+            "id": "campaign-mob:rat#2",
+            "name": "Rat"
+          },
+          "room": {
+            "id": "room:Crypt",
+            "name": "Crypt"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Formation Descriptor (conformance)",
+          "title": "Formation Descriptor (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Mara:campaign-mob:rat",
+            "player:Mara:campaign-mob:rat#2"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 100,
+            "visited": [
+              "room:Foyer",
+              "room:Crypt"
+            ],
+            "formations": [
+              {
+                "behaviorKey": "rat-pair",
+                "weight": 1
+              }
+            ]
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Crypt|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Mara",
+              "campaign-mob:rat",
+              "campaign-mob:rat#2"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Crypt|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 0,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Crypt|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Crypt"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "campaign-mob:rat",
+            "name": "Rat",
+            "stats": {
+              "health": 2,
+              "sanity": 2,
+              "energy": 3
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 1,
+              "itemIds": [
+                "campaign-mob:rat:drop#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "campaign",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          },
+          {
+            "kind": "mob",
+            "id": "campaign-mob:rat#2",
+            "name": "Rat",
+            "stats": {
+              "health": 2,
+              "sanity": 2,
+              "energy": 3
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 1,
+              "itemIds": [
+                "campaign-mob:rat#2:drop#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "campaign",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "campaign-mob:rat:drop#0",
+            "behaviorKey": "rat-tail",
+            "modifier": 1
+          },
+          {
+            "kind": "item",
+            "id": "campaign-mob:rat#2:drop#0",
+            "behaviorKey": "rat-tail",
+            "modifier": 1
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "mob",
+            "key": "Rat",
+            "snapshot": {
+              "name": "Rat",
+              "stats": {
+                "health": 2,
+                "sanity": 2,
+                "energy": 3
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Crypt",
+          "name": "Crypt",
+          "description": "A silent crypt.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "campaign-mob:rat",
+            "name": "Rat",
+            "aliases": [
+              "rat"
+            ],
+            "kind": "occupant",
+            "health": 2,
+            "defeated": false
+          },
+          {
+            "id": "campaign-mob:rat#2",
+            "name": "Rat",
+            "aliases": [
+              "rat"
+            ],
+            "kind": "occupant",
+            "health": 2,
+            "defeated": false
+          }
+        ],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "campaign-mob:rat",
+            "name": "Rat",
+            "aliases": [
+              "rat"
+            ],
+            "kind": "occupant",
+            "health": 2,
+            "defeated": false
+          },
+          {
+            "id": "campaign-mob:rat#2",
+            "name": "Rat",
+            "aliases": [
+              "rat"
+            ],
+            "kind": "occupant",
+            "health": 2,
+            "defeated": false
+          }
+        ],
+        "status": {
+          "locationName": "Crypt",
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "south"
+      },
+      "cues": [
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Mara",
+            "name": "Mara"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Formation Descriptor (conformance)",
+          "title": "Formation Descriptor (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Mara:campaign-mob:rat",
+            "player:Mara:campaign-mob:rat#2"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 100,
+            "visited": [
+              "room:Foyer",
+              "room:Crypt"
+            ],
+            "formations": [
+              {
+                "behaviorKey": "rat-pair",
+                "weight": 1
+              }
+            ]
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Crypt|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 0,
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Crypt|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "campaign-mob:rat",
+              "campaign-mob:rat#2"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Crypt|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Crypt"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 2,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "campaign-mob:rat",
+            "name": "Rat",
+            "stats": {
+              "health": 2,
+              "sanity": 2,
+              "energy": 3
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 1,
+              "itemIds": [
+                "campaign-mob:rat:drop#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "campaign",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          },
+          {
+            "kind": "mob",
+            "id": "campaign-mob:rat#2",
+            "name": "Rat",
+            "stats": {
+              "health": 2,
+              "sanity": 2,
+              "energy": 3
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 1,
+              "itemIds": [
+                "campaign-mob:rat#2:drop#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "campaign",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "campaign-mob:rat:drop#0",
+            "behaviorKey": "rat-tail",
+            "modifier": 1
+          },
+          {
+            "kind": "item",
+            "id": "campaign-mob:rat#2:drop#0",
+            "behaviorKey": "rat-tail",
+            "modifier": 1
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "mob",
+            "key": "Rat",
+            "snapshot": {
+              "name": "Rat",
+              "stats": {
+                "health": 2,
+                "sanity": 2,
+                "energy": 3
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Foyer",
+          "name": "Foyer",
+          "description": "A dusty foyer.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Crypt"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "locationName": "Foyer",
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "go",
+        "dir": "north"
+      },
+      "cues": [
+        {
+          "kind": "action",
+          "action": "move",
+          "actor": {
+            "id": "player:Mara",
+            "name": "Mara"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Formation Descriptor (conformance)",
+          "title": "Formation Descriptor (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Mara"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Mara",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Mara:campaign-mob:rat",
+            "player:Mara:campaign-mob:rat#2"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 10
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 100,
+            "visited": [
+              "room:Foyer",
+              "room:Crypt"
+            ],
+            "formations": [
+              {
+                "behaviorKey": "rat-pair",
+                "weight": 1
+              }
+            ]
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Crypt",
+            "name": "Crypt",
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Crypt|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "campaign-mob:rat",
+              "campaign-mob:rat#2",
+              "player:Mara"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Crypt|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 0,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Crypt|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Crypt"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Mara",
+            "name": "Mara",
+            "stats": {
+              "health": 10,
+              "sanity": 10,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 3,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "campaign-mob:rat",
+            "name": "Rat",
+            "stats": {
+              "health": 2,
+              "sanity": 2,
+              "energy": 3
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 1,
+              "itemIds": [
+                "campaign-mob:rat:drop#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "campaign",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          },
+          {
+            "kind": "mob",
+            "id": "campaign-mob:rat#2",
+            "name": "Rat",
+            "stats": {
+              "health": 2,
+              "sanity": 2,
+              "energy": 3
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Crypt",
+            "inventory": {
+              "slots": 1,
+              "itemIds": [
+                "campaign-mob:rat#2:drop#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "campaign",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "campaign-mob:rat:drop#0",
+            "behaviorKey": "rat-tail",
+            "modifier": 1
+          },
+          {
+            "kind": "item",
+            "id": "campaign-mob:rat#2:drop#0",
+            "behaviorKey": "rat-tail",
+            "modifier": 1
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "A dusty foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "mob",
+            "key": "Rat",
+            "snapshot": {
+              "name": "Rat",
+              "stats": {
+                "health": 2,
+                "sanity": 2,
+                "energy": 3
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Crypt",
+            "snapshot": {
+              "name": "Crypt",
+              "description": "A silent crypt."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Crypt",
+          "name": "Crypt",
+          "description": "A silent crypt.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "campaign-mob:rat",
+            "name": "Rat",
+            "aliases": [
+              "rat"
+            ],
+            "kind": "occupant",
+            "health": 2,
+            "defeated": false
+          },
+          {
+            "id": "campaign-mob:rat#2",
+            "name": "Rat",
+            "aliases": [
+              "rat"
+            ],
+            "kind": "occupant",
+            "health": 2,
+            "defeated": false
+          }
+        ],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "campaign-mob:rat",
+            "name": "Rat",
+            "aliases": [
+              "rat"
+            ],
+            "kind": "occupant",
+            "health": 2,
+            "defeated": false
+          },
+          {
+            "id": "campaign-mob:rat#2",
+            "name": "Rat",
+            "aliases": [
+              "rat"
+            ],
+            "kind": "occupant",
+            "health": 2,
+            "defeated": false
+          }
+        ],
+        "status": {
+          "locationName": "Crypt",
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 10,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    }
+  ]
+}
