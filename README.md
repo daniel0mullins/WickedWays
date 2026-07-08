@@ -68,7 +68,14 @@ Character
   below). It also tracks an `origin` (`"room"` / `"campaign"` / `"unbound"`) that controls
   whether it drops key items on defeat.
 - [`NonPlayerCharacter`](src/lib/character/non-player-character.ts) stays on `Character`
-  directly and exposes `dialogue(prompt?)` over a list of dialogue blocks.
+  directly and exposes `dialogue(prompt?)` over a list of dialogue blocks. Authored NPCs may
+  start holding registry items via `.npc(name, { holds: [...] })`; each held item is seeded
+  into both the NPC's inventory and the campaign items map under a deterministic id
+  (`npc:{name}:item#{i}`).
+
+Every character carries a reversible `visible` flag (default `true`, flipped by the `setVisible`
+effect). An invisible character is filtered out of a room's `view.occupants` and `view.scope` — the
+way a hidden NPC "disappears" — and serializes only when `false` (omitted when `true`).
 
 ### Character archetypes
 
@@ -435,7 +442,7 @@ short-circuit in v1; reducer pre-emption is deferred.
 
 #### The `Effect` vocabulary (guardrail A)
 
-Mechanics communicate intent through a **closed union** of six effect kinds — they
+Mechanics communicate intent through a **closed union** of eight effect kinds — they
 cannot reach raw setters:
 
 | Kind | What it does |
@@ -446,9 +453,15 @@ cannot reach raw setters:
 | `{ kind: "grantImmunity"; target; turns }` | Grant all-status immunity for `turns` rounds (floored at 0) |
 | `{ kind: "cue"; cue }` | Emit a `{ kind: "mechanic", cue }` presentation cue |
 | `{ kind: "status"; fields }` | Emit a `{ kind: "status", fields }` presentation cue |
+| `{ kind: "giveItem"; from; to; item }` | Move an item id `from`→`to` (key→keyring, else inventory), leaving the item registry intact |
+| `{ kind: "setVisible"; target; visible }` | Flip `target`'s `visible` flag (reversibly) |
 
 All magnitude arguments are floored at 0 before being applied; `adjustStat` passes
-the delta sign through unchanged (the stat accumulator floors separately).
+the delta sign through unchanged (the stat accumulator floors separately). Unlike the
+target-oriented effects, `giveItem`/`setVisible` are **not** party-restricted: they
+act on any character (NPCs and mobs included). `giveItem` throws `ProceduralViolation`
+if `from` does not hold the item or `to` cannot be resolved; `setVisible` on a missing
+target is a no-op.
 
 #### Hook contexts
 
@@ -779,6 +792,13 @@ recipient). `Character.consumeKey(key)` spends a key — removing it from the ke
 dialogue block. Blocks match either **exactly** (case-insensitive whole-prompt match) or
 **fuzzily** (every word in the trigger set appears somewhere in the prompt), and each block may
 carry a `precondition(character)` gate. With no prompt it returns the NPC's initial line.
+
+The `talk` verb resolves a co-located **visible** `NonPlayerCharacter` occupant. It is a **free**
+interaction: it does **not** advance the round and does **not** provoke mob reactions. Talking to a
+missing, invisible, or non-NPC target fails with "There's no one here to talk to." The CRT parser
+accepts `talk`/`speak`/`ask` in a bare form (`talk to the keeper`) or with a quoted prompt
+(`talk to the keeper "how do I get out"`). (Dialogue **content** — what a resolved NPC actually
+says — lands in a later sub-plan; today a resolved NPC is a content-free no-op.)
 
 ### Serialization (save/load)
 
