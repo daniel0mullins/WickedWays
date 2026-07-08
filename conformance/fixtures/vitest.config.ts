@@ -44,6 +44,7 @@ export default defineConfig({
       "conformance/fixtures/facade-legality.gen.test.ts",
       "conformance/fixtures/facade-undo.gen.test.ts",
       "conformance/fixtures/facade-open-fail.gen.test.ts",
+      "conformance/fixtures/npc-foundation.gen.test.ts",
     ],
     environment: "node",
   },

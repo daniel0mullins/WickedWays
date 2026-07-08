@@ -1,0 +1,49 @@
+{
+  "items": {},
+  "aliases": {},
+  "behaviors": {
+    "conformance:npc-handoff": {
+      "family": "mechanic",
+      "script": {
+        "init": {},
+        "hooks": {
+          "onTurnStart": [
+            {
+              "kind": "emit",
+              "effect": {
+                "kind": "giveItem",
+                "from": {
+                  "kind": "lit",
+                  "value": "npc:Keeper"
+                },
+                "to": {
+                  "kind": "lit",
+                  "value": "player:Ada"
+                },
+                "item": {
+                  "kind": "lit",
+                  "value": "npc:Keeper:item#0"
+                }
+              }
+            },
+            {
+              "kind": "emit",
+              "effect": {
+                "kind": "setVisible",
+                "target": {
+                  "kind": "lit",
+                  "value": "npc:Keeper"
+                },
+                "visible": {
+                  "kind": "lit",
+                  "value": false
+                }
+              }
+            }
+          ]
+        },
+        "actions": {}
+      }
+    }
+  }
+}
