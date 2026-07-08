@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { GameSession, LocalStorageSaveStore } from "@wickedways/play-runtime";
-import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES } from "./index.js";
+import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES, hollowHouseFormations } from "./index.js";
 import { hollowHouseBehaviors } from "./scripted.js";
 import { Rooms, Archetypes } from "./ids.js";
 import { Directions } from "wickedways/lib/room";
@@ -24,6 +24,10 @@ function newSession() {
     saveStore: new LocalStorageSaveStore(new MemStorage() as unknown as Storage),
     now: () => 1234,
     behaviors: hollowHouseBehaviors(),
+    // Thread data-driven formations exactly as bootLauncher does; the HH
+    // encounter table references rat-single/rat-pair, so validate_mechanics
+    // rejects the boot ("Formation 'rat-single' is not registered.") without them.
+    formations: hollowHouseFormations(),
     seed: 0x5e551,
   });
 }

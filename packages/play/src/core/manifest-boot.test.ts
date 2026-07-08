@@ -47,6 +47,11 @@ function bootManifest(m: CampaignManifest, behaviorsOverride?: Behaviors): GameS
     registry: m.registry(),
     aliases: m.aliases,
     behaviors: behaviorsOverride ?? m.behaviors?.() ?? {},
+    // Thread formations exactly as bootLauncher does — this also guards the
+    // catalog stringify path against bigint i64 descriptor fields (a HH boot
+    // with data-driven formations threw "Do not know how to serialize a BigInt"
+    // before the session's BigInt→Number replacer was added).
+    formations: m.formations?.() ?? {},
     playerName: m.playerName,
     archetype: m.archetype,
     saveStore: new MemSaveStore(),

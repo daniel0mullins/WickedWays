@@ -7,7 +7,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { GameSession } from "@wickedways/play-runtime";
-import { hauntedHouseTemplate, buildHauntedHouseRegistry, hollowHouseBehaviors, ALIASES, Rooms, Archetypes } from "@wickedways/campaigns/hollow-house";
+import { hauntedHouseTemplate, buildHauntedHouseRegistry, hollowHouseBehaviors, hollowHouseFormations, ALIASES, Rooms, Archetypes } from "@wickedways/campaigns/hollow-house";
 import { parse } from "@wickedways/play-surface/crt";
 import type { SaveStore, SaveSlot, SurfaceState } from "@wickedways/play-runtime";
 import type { CampaignSnapshot } from "wickedways/lib/serialization/types";
@@ -30,6 +30,10 @@ function newSession(): GameSession {
     saveStore: new MemSaveStore(),
     now: () => 0,
     behaviors: hollowHouseBehaviors(),
+    // Thread data-driven formations exactly as bootLauncher does (HH's encounter
+    // table references rat-single/rat-pair; validate_mechanics rejects the boot
+    // without them). This test is skipped, but keep the boot correct.
+    formations: hollowHouseFormations(),
     seed: 0x5e551,
   });
 }

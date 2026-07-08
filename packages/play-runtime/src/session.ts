@@ -103,6 +103,11 @@ export class GameSession {
         this.opts.behaviors ?? {},
         this.opts.formations ?? {},
       ),
+      // Formation descriptors carry `i64` fields as `bigint` (baseEscapeChance,
+      // actionsPerRound); JSON.stringify throws on bigint. Coerce to Number so
+      // serde reads them as JSON integers — mirrors the conformance fixture's
+      // bigintReplacer, so the live catalog matches the golden byte-for-byte.
+      (_k, v: unknown) => (typeof v === "bigint" ? Number(v) : v),
     );
     const seed = this.opts.seed ?? (Math.random() * 0x1_0000_0000) >>> 0;
     this.#authority?.free();
