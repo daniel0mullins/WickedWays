@@ -11,11 +11,13 @@ import type { FieldTemplate } from "../../../../generated/bindings/FieldTemplate
 import type { MechanicHooks } from "../../../../generated/bindings/MechanicHooks.ts";
 import type { BehaviorScript } from "../../../../generated/bindings/BehaviorScript.ts";
 import type { ItemScript } from "../../../../generated/bindings/ItemScript.ts";
+import type { DialogueEntry } from "../../../../generated/bindings/DialogueEntry.ts";
+import type { DialogueMatch } from "../../../../generated/bindings/DialogueMatch.ts";
 import type { ScriptValue } from "../../../../generated/bindings/ScriptValue.ts";
 import type { StatType } from "../../../../generated/bindings/StatType.ts";
 import type { BinOp } from "../../../../generated/bindings/BinOp.ts";
 
-export type { BehaviorScript, Expr, Stmt, EffectTemplate, FieldTemplate };
+export type { BehaviorScript, Expr, Stmt, EffectTemplate, FieldTemplate, DialogueEntry, DialogueMatch };
 
 // ── expressions ───────────────────────────────────────────────────────────────
 export const lit = (value: string | number | boolean | null): Expr => ({ kind: "lit", value });
@@ -136,3 +138,39 @@ export const item = (spec: {
   if (spec.onRead !== undefined) script.onRead = spec.onRead;
   return { family: "item", script };
 };
+
+// ── npc dialogue ────────────────────────────────────────────────────────────────
+/** `Exact` match rule: full lowercased-string equality (`DialogueMatch::Exact`). */
+export const exact = (text: string): DialogueMatch => ({ kind: "exact", text });
+/** `Fuzzy` match rule: a token-subset trigger (`DialogueMatch::Fuzzy`). */
+export const fuzzy = (...tokens: string[]): DialogueMatch => ({ kind: "fuzzy", tokens });
+
+/** One prompt→response dialogue entry (`DialogueEntry`). `response` is a DSL Expr. */
+export const entry = (def: {
+  match: DialogueMatch;
+  response: Expr;
+  effects?: EffectTemplate[];
+  once?: boolean;
+}): DialogueEntry => ({
+  match: def.match,
+  response: def.response,
+  effects: def.effects ?? [],
+  once: def.once ?? false,
+});
+
+/**
+ * `npc`-family behavior (`BehaviorScript::Npc`): an NPC's `examine` description,
+ * a `default` dialogue entry (bare `talk`), and ordered prompt→response entries.
+ */
+export const npc = (def: {
+  description: string;
+  default: DialogueEntry;
+  dialogue?: DialogueEntry[];
+}): BehaviorScript => ({
+  family: "npc",
+  script: {
+    description: def.description,
+    default: def.default,
+    dialogue: def.dialogue ?? [],
+  },
+});

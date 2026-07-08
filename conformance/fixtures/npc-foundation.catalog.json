@@ -44,6 +44,25 @@
         },
         "actions": {}
       }
+    },
+    "npc/keeper": {
+      "family": "npc",
+      "script": {
+        "description": "A hooded keeper stands watch beside the gate.",
+        "default": {
+          "match": {
+            "kind": "exact",
+            "text": ""
+          },
+          "response": {
+            "kind": "lit",
+            "value": "The gate is yours to open."
+          },
+          "effects": [],
+          "once": false
+        },
+        "dialogue": []
+      }
     }
   }
 }

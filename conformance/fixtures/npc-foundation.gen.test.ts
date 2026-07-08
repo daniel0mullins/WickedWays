@@ -5,10 +5,12 @@
  * A visible NPC ("Keeper") holds a Gate Key and shares the Hall with the player.
  * The op stream proves the whole foundation under the authoritative gate:
  *
- *   op 0  talk(Keeper)  — FREE (non-advancing): the co-located VISIBLE NPC
- *                         resolves (placeholder no-op, no error) and the round
- *                         does NOT tick. Step-0 state == the boot state, so its
- *                         view also witnesses the START invariants: Keeper is IN
+ *   op 0  talk(Keeper)  — FREE (non-advancing): the co-located VISIBLE NPC's
+ *                         `npc/keeper` behavior resolves and RUNS — a bare talk
+ *                         selects the default entry and emits its response cue
+ *                         ("The gate is yours to open.") with no effects and no
+ *                         round tick. Step-0 state == the boot state, so its view
+ *                         also witnesses the START invariants: Keeper is IN
  *                         view.occupants and the player holds NO key.
  *   op 1  wait          — advancing: the PC's startTurn fires the dual-encoded
  *                         `conformance:npc-handoff` mechanic (onTurnStart), which
@@ -38,7 +40,7 @@ import type { ItemId } from "wickedways/lib/inventory";
 import { mulberry32 } from "../seeded-rng.ts";
 import { OracleSession } from "./oracle-session.ts";
 import { writeFacadeFixture, type FacadeOp } from "./facade-gen.ts";
-import { mechanic, emit, lit } from "../../packages/campaigns/src/scripted/builders.ts";
+import { mechanic, emit, lit, npc, entry, exact } from "../../packages/campaigns/src/scripted/builders.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SEED = 0xfacade7;
@@ -79,6 +81,22 @@ const handoffBehavior = mechanic({
   },
 });
 
+// ── the Keeper's dialogue behavior (catalog.behaviors[NPC_KEY]) ─────────────────
+// The dual encoding of the NPC's SPEECH: the same `npc/keeper` key the NPC
+// instance carries (seated via the TS authoring registry below) now also resolves
+// to a real `BehaviorScript::Npc` in the shared catalog. `talk` runs it on BOTH
+// engines: a bare talk selects `default`, whose `response` is a literal Expr that
+// evaluates to the legacy `initialDialogue` string byte-for-byte (Rust `eval_expr`
+// Lit + `coerce_str` == the oracle's `evalExpr`/`coerceStr`). No effects — the
+// key HAND-OFF is still driven solely by the separate `conformance:npc-handoff`
+// mechanic on `onTurnStart`, which this behavior does NOT touch.
+const KEEPER_LINE = "The gate is yours to open.";
+const keeperBehavior = npc({
+  description: "A hooded keeper stands watch beside the gate.",
+  default: entry({ match: exact(""), response: lit(KEEPER_LINE) }),
+  dialogue: [],
+});
+
 const makeGateKey = () => createKey({ name: "Gate Key", keyCode: "gate", consumeOnUse: false });
 
 describe("generate npc-foundation golden", () => {
@@ -107,8 +125,14 @@ describe("generate npc-foundation golden", () => {
       })
       .useMechanic(HANDOFF_KEY);
 
+    // The shared catalog handed to BOTH engines: the handoff MECHANIC and the
+    // Keeper's NPC dialogue behavior. The oracle resolves `talk`/`examine` through
+    // `behaviors`, so it must receive the SAME map the Rust replica loads.
+    const behaviors = { [HANDOFF_KEY]: handoffBehavior, [NPC_KEY]: keeperBehavior };
+    const catalog = { items: {}, aliases: {}, behaviors };
+
     const oracle = new OracleSession({
-      builder: template, registry, aliases: {}, playerName: "Ada", archetype: "delver", rng,
+      builder: template, registry, aliases: {}, playerName: "Ada", archetype: "delver", rng, behaviors,
     });
 
     // START invariants (pre-op): the VISIBLE Keeper is a co-located occupant, and
@@ -124,7 +148,6 @@ describe("generate npc-foundation golden", () => {
       { kind: "submit", intent: { kind: "talk", npcId: NPC_ID } }, // FREE: resolves, round stays 0
       { kind: "submit", intent: { kind: "wait" } },                 // advancing: fires the handoff mechanic
     ];
-    const catalog = { items: {}, aliases: {}, behaviors: { [HANDOFF_KEY]: handoffBehavior } };
     const steps = writeFacadeFixture(here, "npc-foundation", SEED, oracle, catalog, ops);
 
     type Vm = {
@@ -133,10 +156,15 @@ describe("generate npc-foundation golden", () => {
       inventory: { keys: { id: string }[] };
     };
     type Snap = { campaign: { round: number } };
+    type TalkRes = { error?: string; cues: { kind: string; cue?: { text?: string } }[] };
 
     // (a)+(b) talk is FREE: resolves without error and does NOT advance the round.
-    const talkResult = steps[0]!.result as { error?: string };
+    // It now RUNS the Keeper's dialogue (the `npc/keeper` behavior above resolves),
+    // so the bare talk emits the default response cue — the legacy line, verbatim.
+    const talkResult = steps[0]!.result as TalkRes;
     if (talkResult.error !== undefined) throw new Error(`talk must resolve, got error ${talkResult.error}`);
+    const spoke = talkResult.cues.some((c) => c.kind === "mechanic" && c.cue?.text === KEEPER_LINE);
+    if (!spoke) throw new Error(`step 0: talk must emit the Keeper's line "${KEEPER_LINE}"`);
     const s0 = steps[0]!.snapshot as Snap;
     if (s0.campaign.round !== 0) throw new Error(`step 0 round expected 0, got ${s0.campaign.round}`);
     // Step-0 view still shows the visible Keeper and no held key (state unchanged).

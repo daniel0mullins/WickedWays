@@ -26,7 +26,14 @@
         }
       },
       "result": {
-        "cues": [],
+        "cues": [
+          {
+            "kind": "mechanic",
+            "cue": {
+              "text": "The gate is yours to open."
+            }
+          }
+        ],
         "mobAttacks": []
       },
       "snapshot": {
