@@ -7,4 +7,4 @@ import type { StatType } from "./StatType";
  * A template producing one closed `Effect` (Task 7). Tagged on `kind`; mirrors
  * the `Effect` set.
  */
-export type EffectTemplate = { "kind": "damage", target: Expr, amount: Expr, } | { "kind": "heal", target: Expr, amount: Expr, } | { "kind": "adjustStat", target: Expr, stat: StatType, delta: Expr, } | { "kind": "grantImmunity", target: Expr, turns: Expr, } | { "kind": "cue", text: Expr, } | { "kind": "status", fields: Array<FieldTemplate>, };
+export type EffectTemplate = { "kind": "damage", target: Expr, amount: Expr, } | { "kind": "heal", target: Expr, amount: Expr, } | { "kind": "adjustStat", target: Expr, stat: StatType, delta: Expr, } | { "kind": "grantImmunity", target: Expr, turns: Expr, } | { "kind": "cue", text: Expr, } | { "kind": "status", fields: Array<FieldTemplate>, } | { "kind": "giveItem", from: Expr, to: Expr, item: Expr, } | { "kind": "setVisible", target: Expr, visible: Expr, };

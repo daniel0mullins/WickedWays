@@ -15,7 +15,7 @@ use serde_json::Value;
 use crate::presentation::{MechanicCue, StatusField};
 use crate::stats::StatType;
 use crate::world::afflictions::Status;
-use crate::world::ids::CharacterId;
+use crate::world::ids::{CharacterId, ItemId};
 
 pub use view::{CampaignView, CharacterView, DamageView, RoomView};
 
@@ -36,6 +36,14 @@ pub enum Effect {
     GrantImmunity { target: CharacterId, turns: f64 },
     Cue { cue: MechanicCue },
     Status { fields: Vec<StatusField> },
+    /// Hand item id `item` from `from`'s inventory to `to`'s. Routes by the source
+    /// list (a key stays a key, a non-key stays an item); `World.items` is never
+    /// touched — the `ItemSnapshot` persists and reachability follows the new
+    /// holder. Not party-restricted (an NPC — non-party — may hand over a key).
+    GiveItem { from: CharacterId, to: CharacterId, item: ItemId },
+    /// Flip `target`'s `visible` flag (reversibly). An NPC that "disappears" flips
+    /// this to `false`. Not party-restricted; a missing target is a no-op.
+    SetVisible { target: CharacterId, visible: bool },
 }
 
 /// Result of `modify_damage` (TS `number | { value; final: true }`).

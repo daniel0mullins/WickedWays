@@ -85,6 +85,8 @@ fn check_effect(t: &ast::EffectTemplate) -> Result<(), &'static str> {
             }
             Ok(())
         }
+        T::GiveItem { from, to, item } => { check_expr(from)?; check_expr(to)?; check_expr(item) }
+        T::SetVisible { target, visible } => { check_expr(target)?; check_expr(visible) }
     }
 }
 

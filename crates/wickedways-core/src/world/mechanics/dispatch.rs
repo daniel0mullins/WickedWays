@@ -63,7 +63,8 @@ impl World {
     /// Route one effect to state (TS `applyEffect`). Damage/Heal/AdjustStat reconcile
     /// (via `adjust_stat`); GrantImmunity/Cue/Status do not. Damage/Heal/AdjustStat/
     /// GrantImmunity are party-only (see `require_party_member`); Cue/Status do not
-    /// target a character.
+    /// target a character. GiveItem/SetVisible are NOT party-restricted (they act on
+    /// any character, e.g. a non-party NPC handing over a key and vanishing).
     pub fn apply_effect(&mut self, e: Effect, cat: &Catalog, cues: &mut Vec<PresentationCue>)
         -> Result<(), ProceduralViolation>
     {
@@ -90,6 +91,51 @@ impl World {
             }
             Effect::Cue { cue } => { cues.push(PresentationCue::Mechanic { cue }); Ok(()) }
             Effect::Status { fields } => { cues.push(PresentationCue::Status { fields }); Ok(()) }
+            Effect::GiveItem { from, to, item } => {
+                // Which of `from`'s two inventory lists holds `item` decides routing
+                // (mirrors take/drop's key_ids-vs-item_ids split): a key moves
+                // list→list as a key, a non-key as an item. `from` must actually
+                // hold it, else the carrying guard fires (error text not
+                // gate-observable; it aborts replay before comparison).
+                let held_as_key = self.characters.get(&from).and_then(|c| {
+                    if c.inventory.key_ids.contains(&item) { Some(true) }
+                    else if c.inventory.item_ids.contains(&item) { Some(false) }
+                    else { None }
+                });
+                let Some(is_key) = held_as_key else {
+                    return Err(ProceduralViolation(format!(
+                        "Cannot give item '{}': the character does not hold it.", item.0
+                    )));
+                };
+                // Recipient must exist before we move the id out of `from`.
+                if !self.characters.contains_key(&to) {
+                    return Err(ProceduralViolation(format!(
+                        "Give-item recipient '{}' not found.", to.0
+                    )));
+                }
+                // Remove from `from` (retain over both lists — an id is unique to one).
+                if let Some(c) = self.characters.get_mut(&from) {
+                    c.inventory.item_ids.retain(|id| id != &item);
+                    c.inventory.key_ids.retain(|id| id != &item);
+                }
+                // Add to `to`, preserving the key-vs-item routing. `World.items` is
+                // intentionally untouched (the ItemSnapshot stays — reachability
+                // follows the new holder).
+                if let Some(c) = self.characters.get_mut(&to) {
+                    if is_key { c.inventory.key_ids.push(item); }
+                    else { c.inventory.item_ids.push(item); }
+                }
+                Ok(())
+            }
+            Effect::SetVisible { target, visible } => {
+                // Direct field set (reversible). `visible` serializes with
+                // default_true/skip-if-true, so only `visible:false` appears in output.
+                // A missing target is a no-op (total).
+                if let Some(c) = self.characters.get_mut(&target) {
+                    c.visible = visible;
+                }
+                Ok(())
+            }
         }
     }
 
@@ -603,6 +649,79 @@ mod tests {
             &Catalog::default(), &mut cues,
         );
         assert!(r.is_err());
+    }
+
+    // -- GiveItem + SetVisible (NPC sub-plan 1) --
+
+    #[test]
+    fn apply_give_item_routes_by_source_list_and_leaves_world_items() {
+        use crate::world::ids::ItemId;
+        use crate::world::snapshot::ItemSnapshot;
+        // giver holds a non-key item (item_ids) and a key (key_ids); GiveItem moves
+        // each into `taker`'s matching list. World.items is untouched (reachability
+        // follows the new holder). Not party-restricted: routing is catalog-free.
+        let mut w = world_with_party(&["giver", "taker"], 10);
+        let item = ItemId("book-1".into());
+        let key = ItemId("key-1".into());
+        w.items.insert(item.clone(), ItemSnapshot::Item {
+            id: item.clone(), behavior_key: "items/book".into(), durability: None, modifier: 0,
+        });
+        w.items.insert(key.clone(), ItemSnapshot::Key {
+            id: key.clone(), name: "Brass Key".into(), key_code: "door".into(), consume_on_use: false,
+        });
+        w.characters.get_mut(&cid("giver")).unwrap().inventory.item_ids.push(item.clone());
+        w.characters.get_mut(&cid("giver")).unwrap().inventory.key_ids.push(key.clone());
+        let items_before = w.items.len();
+
+        let mut cues = Vec::new();
+        w.apply_effect(
+            Effect::GiveItem { from: cid("giver"), to: cid("taker"), item: item.clone() },
+            &Catalog::default(), &mut cues,
+        ).unwrap();
+        w.apply_effect(
+            Effect::GiveItem { from: cid("giver"), to: cid("taker"), item: key.clone() },
+            &Catalog::default(), &mut cues,
+        ).unwrap();
+
+        let giver = &w.characters[&cid("giver")];
+        let taker = &w.characters[&cid("taker")];
+        assert!(!giver.inventory.item_ids.contains(&item), "item left giver's item_ids");
+        assert!(!giver.inventory.key_ids.contains(&key), "key left giver's key_ids");
+        assert!(taker.inventory.item_ids.contains(&item), "non-key routes to taker's item_ids");
+        assert!(taker.inventory.key_ids.contains(&key), "key routes to taker's key_ids");
+        assert!(!taker.inventory.key_ids.contains(&item), "non-key must not land in key_ids");
+        assert!(!taker.inventory.item_ids.contains(&key), "key must not land in item_ids");
+        assert_eq!(w.items.len(), items_before, "World.items unchanged (snapshots stay)");
+    }
+
+    #[test]
+    fn apply_give_item_rejects_when_from_does_not_hold_item() {
+        use crate::world::ids::ItemId;
+        let mut w = world_with_party(&["giver", "taker"], 10);
+        let mut cues = Vec::new();
+        // giver holds nothing → carrying guard fires (ProceduralViolation).
+        let r = w.apply_effect(
+            Effect::GiveItem { from: cid("giver"), to: cid("taker"), item: ItemId("ghost".into()) },
+            &Catalog::default(), &mut cues,
+        );
+        assert!(r.is_err(), "giving an unheld item must be a ProceduralViolation");
+    }
+
+    #[test]
+    fn apply_set_visible_flips_target_flag() {
+        let mut w = world_with_party(&["pc"], 10);
+        assert!(w.characters[&cid("pc")].visible, "characters start visible");
+        let mut cues = Vec::new();
+        w.apply_effect(
+            Effect::SetVisible { target: cid("pc"), visible: false },
+            &Catalog::default(), &mut cues,
+        ).unwrap();
+        assert!(!w.characters[&cid("pc")].visible, "SetVisible(false) hides the character");
+        w.apply_effect(
+            Effect::SetVisible { target: cid("pc"), visible: true },
+            &Catalog::default(), &mut cues,
+        ).unwrap();
+        assert!(w.characters[&cid("pc")].visible, "SetVisible(true) reveals again (reversible)");
     }
 
     // -- dispatch + validate --

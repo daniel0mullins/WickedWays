@@ -13,7 +13,7 @@ use super::value::Value;
 use crate::presentation::{MechanicCue, StatusField};
 use crate::world::descriptor::Catalog;
 use crate::world::history::RoomRef;
-use crate::world::ids::CharacterId;
+use crate::world::ids::{CharacterId, ItemId};
 use crate::world::mechanics::{
     ActionView, CampaignView, CharacterView, DamageView, Effect, RoomView, TransformResult,
 };
@@ -304,6 +304,15 @@ fn as_character_id(ev: Ev) -> Option<CharacterId> {
     }
 }
 
+/// Resolve an effect item-target expr to an `ItemId` (a string id). `None` skips
+/// the emit — mirrors `as_character_id`'s undefined-guard for item-carrying effects.
+fn as_item_id(ev: Ev) -> Option<ItemId> {
+    match ev.into_value() {
+        Value::Str(s) => Some(ItemId(s)),
+        _ => None,
+    }
+}
+
 /// Coerce an evaluated expr to a number, else `None` (skips the emit).
 fn as_number(ev: Ev) -> Option<f64> {
     match ev.into_value() {
@@ -343,6 +352,15 @@ fn build_effect(t: &EffectTemplate, cx: &mut Ctx) -> Option<Effect> {
                 emphasis: f.emphasis.as_ref()
                     .map(|e| coerce_str(&eval_expr(e, cx).into_value())),
             }).collect(),
+        }),
+        EffectTemplate::GiveItem { from, to, item } => Some(Effect::GiveItem {
+            from: as_character_id(eval_expr(from, cx))?,
+            to: as_character_id(eval_expr(to, cx))?,
+            item: as_item_id(eval_expr(item, cx))?,
+        }),
+        EffectTemplate::SetVisible { target, visible } => Some(Effect::SetVisible {
+            target: as_character_id(eval_expr(target, cx))?,
+            visible: eval_expr(visible, cx).truthy(),
         }),
     }
 }
@@ -562,6 +580,39 @@ mod tests {
             if target == &cid("pc") && *delta == -1.0));
         assert!(matches!(&fx[1], Effect::Cue { cue } if cue.text.as_deref() == Some("after")));
         assert_eq!(state, serde_json::json!({ "fired": true }));
+    }
+
+    #[test]
+    fn give_item_and_set_visible_templates_build_effects() {
+        // GiveItem: from/to resolve via string ids (as_character_id), item via
+        // string id (as_item_id).
+        let body = alloc::vec![Stmt::Emit { effect: EffectTemplate::GiveItem {
+            from: s_lit(Value::Str("npc".into())),
+            to: s_lit(Value::Str("pc".into())),
+            item: s_lit(Value::Str("key-1".into())),
+        } }];
+        assert_eq!(eval_effects(&body, &mut Ctx::empty()), alloc::vec![Effect::GiveItem {
+            from: cid("npc"), to: cid("pc"), item: ItemId("key-1".into()),
+        }]);
+        // SetVisible: target string + a bool-eval'd `visible` (truthy).
+        let body2 = alloc::vec![Stmt::Emit { effect: EffectTemplate::SetVisible {
+            target: s_lit(Value::Str("npc".into())),
+            visible: s_lit(Value::Bool(false)),
+        } }];
+        assert_eq!(eval_effects(&body2, &mut Ctx::empty()),
+            alloc::vec![Effect::SetVisible { target: cid("npc"), visible: false }]);
+    }
+
+    #[test]
+    fn give_item_template_skips_when_item_id_unresolvable() {
+        // A non-string `item` (Null here) fails as_item_id → the emit is skipped,
+        // mirroring the target-undefined guard on the other templates.
+        let body = alloc::vec![Stmt::Emit { effect: EffectTemplate::GiveItem {
+            from: s_lit(Value::Str("npc".into())),
+            to: s_lit(Value::Str("pc".into())),
+            item: s_lit(Value::Null),
+        } }];
+        assert!(eval_effects(&body, &mut Ctx::empty()).is_empty());
     }
 
     #[test]

@@ -123,6 +123,12 @@ pub enum EffectTemplate {
     GrantImmunity { target: Expr, turns: Expr },
     Cue { text: Expr },
     Status { fields: Vec<FieldTemplate> },
+    /// Hand `item` from `from` to `to` (`Effect::GiveItem`). `from`/`to` resolve as
+    /// character ids, `item` as an item id.
+    GiveItem { from: Expr, to: Expr, item: Expr },
+    /// Flip `target`'s `visible` flag (`Effect::SetVisible`). `visible` is evaluated
+    /// for JS truthiness.
+    SetVisible { target: Expr, visible: Expr },
 }
 
 /// One `StatusField` template (Task 7).
