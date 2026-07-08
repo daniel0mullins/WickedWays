@@ -95,6 +95,13 @@ export interface CharacterSnapshot {
   lightAverse?: boolean;
   naturalAttack?: { stat: StatType; power: number }; // mob-only
   npcBehaviorKey?: string; // npc-only: registry key its dialogue re-binds from
+  /**
+   * Whether this character is present in the room's view/scope. Defaults to
+   * `true`; a hidden NPC (one that "disappears") flips it to `false`, reversibly.
+   * Omitted from the snapshot when `true` (only a hidden character emits the key),
+   * so pre-existing snapshots/goldens stay byte-stable and hydrate back to visible.
+   */
+  visible?: boolean;
 }
 
 export interface EncounterTableSnapshot {

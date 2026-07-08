@@ -89,6 +89,7 @@ pub mod conformance {
             light_averse: Some(false),
             natural_attack: Some(serde_json::json!({ "stat": "health", "power": 1 })),
             npc_behavior_key: None,
+            visible: true,
         }
     }
 
@@ -132,6 +133,7 @@ pub mod conformance {
             light_averse: None,
             natural_attack: None,
             npc_behavior_key: None,
+            visible: true,
         };
         w.characters.insert(id.clone(), snap);
         if let Some(r) = w.rooms.get_mut(&room_id) {

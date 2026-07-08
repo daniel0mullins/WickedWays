@@ -454,6 +454,7 @@ mod tests {
             light_averse: None,
             natural_attack: None,
             npc_behavior_key: None,
+            visible: true,
         };
         let mut characters = BTreeMap::new();
         characters.insert(cid, snap);

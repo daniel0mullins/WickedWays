@@ -86,6 +86,12 @@ export interface ICharacter extends IItemHolder {
   get presentation(): Presentation | undefined;
   /** The room the character currently occupies, or `null` if none. */
   get currentRoom(): IRoom | null;
+  /**
+   * Whether this character is present in the room's view/scope. Default `true`;
+   * a hidden NPC (one that "disappears") is `false`, reversibly. An invisible
+   * occupant is dropped from the view's `occupants`/`scope`.
+   */
+  get visible(): boolean;
   /** True when the character has an equipped, non-broken light source in a hand slot. */
   get hasLight(): boolean;
   /** Whether this actor can act (attack/loot/harvest) in an unlit room. */
@@ -219,6 +225,12 @@ export class Character implements ICharacter {
   // Private Properties
   #campaign: ICampaign;
   #currentRoom: IRoom | null = null;
+  /**
+   * Whether this character is present in the room's view/scope. Default `true`;
+   * a hidden NPC (one that "disappears") flips it to `false` (reversibly, via a
+   * later `SetVisible` effect). Restored from the snapshot; absent → `true`.
+   */
+  #visible = true;
   /** Injected randomness for all of this character's rolls (escape, etc.). */
   protected readonly rng: () => number;
   #history: ActionHistoryEntry[] = [];
@@ -246,6 +258,15 @@ export class Character implements ICharacter {
 
   get currentRoom() {
     return this.#currentRoom;
+  }
+
+  /**
+   * Whether this character is present in the room's view/scope. Default `true`;
+   * a hidden NPC is `false`. An invisible occupant is dropped from the view's
+   * `occupants`/`scope`.
+   */
+  get visible(): boolean {
+    return this.#visible;
   }
 
   /** Whether this actor can act (attack/loot/harvest) in an unlit room. Default false; light-averse mobs override. */
@@ -1132,6 +1153,10 @@ export class Character implements ICharacter {
       archetypeImmunities: [...this.archetypeImmunities],
       afflictions: this.#afflictions[SERIALIZE](),
     } as CharacterSnapshot;
+    // Omit `visible` when true so pre-existing snapshots/goldens stay byte-stable
+    // (mirrors the Rust `skip_serializing_if = is_true`); only a hidden character
+    // emits the key.
+    if (!this.#visible) base.visible = false;
     this.serializeExtra(base);
     return base;
   }
@@ -1158,6 +1183,7 @@ export class Character implements ICharacter {
     this.actionsThisRound = data.actionsThisRound;
     this.archetypeImmunities = [...data.archetypeImmunities];
     this.#currentRoom = data.currentRoomId ? ctx.room(data.currentRoomId) : null;
+    this.#visible = data.visible ?? true; // absent (pre-existing snapshots) → visible
     this.#inventory.slots = data.inventory.slots;
     this.#inventory.items.length = 0;
     for (const id of data.inventory.itemIds) {

@@ -143,6 +143,28 @@ pub struct CharacterSnapshot {
     pub natural_attack: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub npc_behavior_key: Option<String>,
+    /// Whether this character is present in the room's view/scope. Default `true`;
+    /// an NPC that "disappears" flips this to `false` (reversibly). Snapshots
+    /// written before this field existed lack the key and parse back to `true`
+    /// (`default_true`); the `true` case is omitted on serialize (`is_true`) so
+    /// pre-existing goldens stay byte-stable — only a hidden character emits the key.
+    #[serde(default = "default_true", skip_serializing_if = "is_true")]
+    pub visible: bool,
+}
+
+/// Serde value-default for `CharacterSnapshot::visible`: a character with no
+/// `visible` key in its JSON parses back as visible. (The other optional-tail
+/// fields default via `Option::is_none`; this one needs a value-default fn.)
+fn default_true() -> bool {
+    true
+}
+
+/// Serde `skip_serializing_if` for `CharacterSnapshot::visible`: omit the key
+/// when the character is visible (the default), so only a hidden character
+/// serialises a `visible: false`.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_true(b: &bool) -> bool {
+    *b
 }
 
 pub const SCHEMA_VERSION: i64 = 6;
@@ -299,6 +321,62 @@ mod tests {
         let out = serde_json::to_value(&snap).unwrap();
         let expected: Value = serde_json::from_str(json).unwrap();
         assert_eq!(out, expected, "baseEscapeChance 50 must round-trip as integer 50, not 50.0");
+    }
+
+    #[test]
+    fn character_without_visible_key_parses_to_true() {
+        // Backward-compat: a snapshot written before `visible` existed has no
+        // `visible` key and must hydrate as visible (default_true).
+        let json = r#"{
+            "kind":"player","id":"c1","name":"Heir",
+            "stats":{"energy":5.0,"sanity":7.0,"health":10.0},
+            "actionsPerRound":2,"actionsThisRound":0,"currentRoomId":"r1",
+            "inventory":{"slots":6,"itemIds":[],"keyIds":[]},
+            "equipment":{},
+            "history":[],"archetypeImmunities":[],
+            "afflictions":{"active":{},"turnsActive":{},"shakenOff":[],"immunity":{}}
+        }"#;
+        let snap: CharacterSnapshot = serde_json::from_str(json).unwrap();
+        assert!(snap.visible, "absent `visible` must parse to true");
+    }
+
+    #[test]
+    fn visible_true_is_omitted_from_serialization() {
+        // A visible character omits the `visible` key (skip_serializing_if = is_true)
+        // so pre-existing goldens (which never carried the key) stay byte-stable.
+        let json = r#"{
+            "kind":"player","id":"c1","name":"Heir",
+            "stats":{"energy":5.0,"sanity":7.0,"health":10.0},
+            "actionsPerRound":2,"actionsThisRound":0,"currentRoomId":"r1",
+            "inventory":{"slots":6,"itemIds":[],"keyIds":[]},
+            "equipment":{},
+            "history":[],"archetypeImmunities":[],
+            "afflictions":{"active":{},"turnsActive":{},"shakenOff":[],"immunity":{}}
+        }"#;
+        let snap: CharacterSnapshot = serde_json::from_str(json).unwrap();
+        let out = serde_json::to_value(&snap).unwrap();
+        assert!(
+            out.get("visible").is_none(),
+            "visible:true must not serialise (goldens stay byte-stable)"
+        );
+    }
+
+    #[test]
+    fn hidden_character_roundtrips_visible_false() {
+        // A hidden character serialises `visible: false` and round-trips.
+        let json = r#"{
+            "kind":"npc","id":"n1","name":"Ghost",
+            "stats":{"energy":1.0,"sanity":1.0,"health":1.0},
+            "actionsPerRound":1,"actionsThisRound":0,"currentRoomId":"r1",
+            "inventory":{"slots":0,"itemIds":[],"keyIds":[]},
+            "equipment":{},
+            "history":[],"archetypeImmunities":[],
+            "afflictions":{"active":{},"turnsActive":{},"shakenOff":[],"immunity":{}},
+            "visible":false
+        }"#;
+        let snap: CharacterSnapshot = serde_json::from_str(json).unwrap();
+        assert!(!snap.visible);
+        roundtrip::<CharacterSnapshot>(json);
     }
 
     #[test]

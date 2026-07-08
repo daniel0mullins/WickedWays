@@ -440,6 +440,7 @@ mod tests {
             light_averse: None,
             natural_attack: None,
             npc_behavior_key: None,
+            visible: true,
         };
         w.characters.insert(id.clone(), snap);
         if let Some(r) = w.rooms.get_mut(&room_id) {

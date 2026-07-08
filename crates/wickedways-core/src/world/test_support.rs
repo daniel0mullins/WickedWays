@@ -46,6 +46,7 @@ pub fn world_with_party(ids: &[&str], max_rounds: i64) -> World {
                 light_averse: None,
                 natural_attack: None,
                 npc_behavior_key: None,
+                visible: true,
             };
             (id.clone(), snap)
         })
@@ -129,6 +130,7 @@ pub fn world_two_rooms(next_dark: bool) -> World {
         light_averse: None,
         natural_attack: None,
         npc_behavior_key: None,
+        visible: true,
     };
 
     // Exit: behavior-free, start[0] -> next[1]

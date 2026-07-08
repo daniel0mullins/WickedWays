@@ -109,6 +109,7 @@ impl FormationDescriptor {
                         "stat": m.natural_attack.stat, "power": m.natural_attack.power
                     })),
                     npc_behavior_key: None,
+                    visible: true,
                 }
             })
             .collect()

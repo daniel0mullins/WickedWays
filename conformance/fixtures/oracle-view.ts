@@ -73,7 +73,10 @@ export function view(
   const roomName = room.name;
 
   const occupants: ScopeEntity[] = room.occupants
-    .filter((o) => o.id !== pc.id)
+    // Drop the active character, and any invisible occupant (a hidden NPC): absent
+    // from `occupants` and, since `scope` spreads `occupants`, from `scope` too.
+    // Mirrors the Rust view builder's occupant filter (view.rs).
+    .filter((o) => o.id !== pc.id && o.visible)
     .map((o) => ({
       id: o.id,
       name: o.name,

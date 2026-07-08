@@ -293,7 +293,11 @@ impl World {
         let occupants: Vec<ScopeEntity> = room_snap
             .occupant_ids
             .iter()
-            .filter(|id| *id != &active_id)
+            // Drop the active character, and any invisible occupant (a hidden NPC):
+            // absent from `occupants` and, since `scope` reuses this vec, from `scope`.
+            .filter(|id| {
+                *id != &active_id && self.characters.get(id).is_none_or(|c| c.visible)
+            })
             .map(|id| {
                 let name = self
                     .characters
@@ -580,6 +584,7 @@ mod tests {
             light_averse: None,
             natural_attack: None,
             npc_behavior_key: None,
+            visible: true,
         };
 
         // Character: PC with equipment
@@ -610,6 +615,7 @@ mod tests {
             light_averse: None,
             natural_attack: None,
             npc_behavior_key: None,
+            visible: true,
         };
 
         // Room
@@ -845,6 +851,30 @@ mod tests {
         assert_eq!(wraith.health, Some(3.0));
         assert_eq!(wraith.kind, "occupant");
         assert_eq!(wraith.aliases, alloc::vec!["wraith"]);
+    }
+
+    #[test]
+    fn view_omits_invisible_occupant_from_occupants_and_scope() {
+        let mut w = build_world_for_view();
+        // Hide the co-located "Wraith" occupant.
+        w.characters.get_mut(&char_id("npc1")).unwrap().visible = false;
+        let cat = build_catalog();
+        let v = w.view(&cat, &BTreeSet::new()).unwrap();
+
+        // Absent from occupants...
+        assert!(
+            v.occupants.iter().all(|o| o.name != "Wraith"),
+            "an invisible occupant must not appear in occupants"
+        );
+        // ...and from scope (scope reuses the occupants vec).
+        assert!(
+            v.scope.iter().all(|e| e.name != "Wraith"),
+            "an invisible occupant must not appear in scope"
+        );
+
+        // Sanity: a visible occupant is still present (regression guard).
+        let visible = build_world_for_view().view(&cat, &BTreeSet::new()).unwrap();
+        assert!(visible.occupants.iter().any(|o| o.name == "Wraith"));
     }
 
     #[test]
