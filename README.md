@@ -694,6 +694,31 @@ A room with `spawnModifier = 0` can never spawn an encounter. Blocked or fizzled
 a Confused character whose move fizzles) do not reach the destination room and therefore do
 not trigger a spawn check.
 
+##### Formations as data (`Catalog.formations`)
+
+A formation does not have to be a hand-written factory. It can instead be authored as **plain
+data** — a [`FormationDescriptor`](crates/wickedways-core/src/world/formation_descriptor.rs)
+(`{ mobs: MobSpec[] }`), where each `MobSpec` is a serializable mob template (`name`, `stats`,
+`naturalAttack`, `drops`, `baseEscapeChance`, `lightAverse`, `materialDrops`, `actionsPerRound`)
+whose field set reproduces the exact `CharacterSnapshot` a native factory would emit. Descriptors
+travel in the catalog under `Catalog.formations`, keyed by the same `behaviorKey` the encounter
+table references. When the encounter table picks a key, `maybe_spawn` resolves it **native first,
+then descriptor**: a compiled-in `FormationBehavior` wins if one is registered for the key,
+otherwise the catalog descriptor is interpreted (`None` from neither is a `ProceduralViolation` at
+the spawn site). Descriptor mobs get deterministic ids (`campaign-mob:{name.toLowerCase()}`, then
+`…#{i+1}` for the second and later mobs), and their `drops` are seeded into the world by
+`maybe_spawn` right after `build` (a descriptor's `build` has no catalog access). The TS engine
+mirrors this via `descriptorToFormation` (`packages/campaigns/src/formations.ts`), so a data-built
+mob is byte-faithful across both engines. Because the `i64` fields (`baseEscapeChance`,
+`actionsPerRound`) are `bigint` in the TS bindings, any code that `JSON.stringify`s a catalog with
+descriptors must coerce BigInt → Number first (the play-runtime catalog stringify does this).
+
+Hollow House exercises this path: its roving **Rats** are authored purely as descriptors (a single
+Rat and a Rat pair) rather than as a code factory. A Rat is a low farm mob (Health 2 / Sanity 2 /
+Energy 3, a 1-power Health bite, escape 50, dark-agnostic) that drops a **rat-tail** — a usable,
+non-key item whose `use` restores **+1 Sanity** to the user. Because the rat-tail is not a key, it
+is a legal roving-formation drop.
+
 ### Materials and crafting
 
 Crafting components are pooled at the **campaign** level and shared party-wide, not held per
