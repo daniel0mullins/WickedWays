@@ -89,6 +89,15 @@ export class NonPlayerCharacter
     return this.#dialogueBlocks;
   }
 
+  /**
+   * Registry key whose dialogue behavior this NPC re-binds from (set once at
+   * construction, never mutated). Read-only; the dialogue matcher resolves the
+   * NpcScript against it — mirrors the Rust snapshot's `npc_behavior_key`.
+   */
+  get behaviorKey(): string | undefined {
+    return this.#behaviorKey;
+  }
+
   protected override serializeKind(): "npc" {
     return "npc";
   }

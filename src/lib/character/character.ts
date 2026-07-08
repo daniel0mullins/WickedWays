@@ -1,6 +1,6 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { ADD_LIGHT_SOURCE, CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, ItemAction, MaterialMap, PLACE, REMOVE_LIGHT_SOURCE, SET_DURABILITY, SET_VISIBLE, UNEQUIP } from "../inventory";
+import { ADD_LIGHT_SOURCE, CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, ItemAction, MaterialMap, PLACE, REMOVE_LIGHT_SOURCE, SET_DURABILITY, SET_NPC_STATE, SET_VISIBLE, UNEQUIP } from "../inventory";
 import {
   DEFAULT_EQUIPMENT_SLOTS,
   EquipmentSlot,
@@ -12,7 +12,7 @@ import { Status } from "../status";
 import { Afflictions, AfflictionConfig, DEFAULT_AFFLICTION_CONFIG } from "./afflictions";
 import { EMIT_CUE } from "../presentation";
 import type { AssetRef, Presentation } from "../presentation";
-import type { MechanicCue } from "../mechanics/mechanic.js";
+import type { JsonValue, MechanicCue } from "../mechanics/mechanic.js";
 import { RECORD_ENCOUNTER } from "../codex";
 
 import { generateId, ProceduralViolation, typedEntries } from "../util";
@@ -92,6 +92,12 @@ export interface ICharacter extends IItemHolder {
    * occupant is dropped from the view's `occupants`/`scope`.
    */
   get visible(): boolean;
+  /**
+   * Per-instance NPC dialogue state — the `once`-latch store the dialogue matcher
+   * reads/writes under `onceFired[key]`. Empty state is `null`; round-trips through
+   * the snapshot (churn-free, like {@link ICharacter.visible}).
+   */
+  get npcState(): JsonValue;
   /** True when the character has an equipped, non-broken light source in a hand slot. */
   get hasLight(): boolean;
   /** Whether this actor can act (attack/loot/harvest) in an unlit room. */
@@ -191,6 +197,8 @@ export interface ICharacter extends IItemHolder {
   [GRANT_IMMUNITY]: (statuses: Status[], turns: number) => void;
   /** Sets the `visible` flag (reversibly); engine-internal (SetVisible effect only). */
   [SET_VISIBLE]: (visible: boolean) => void;
+  /** Overwrites the per-instance NPC dialogue state; engine-internal (dialogue matcher only). */
+  [SET_NPC_STATE]: (state: JsonValue) => void;
   /** Consumes an item for the Use path, gating suppressed; engine-internal. */
   [CONSUME_VIA_USE]: (item: IItem) => void;
 
@@ -233,6 +241,13 @@ export class Character implements ICharacter {
    * later `SetVisible` effect). Restored from the snapshot; absent → `true`.
    */
   #visible = true;
+  /**
+   * Per-instance NPC dialogue state (the `once`-latch store under `onceFired`).
+   * `null` is the empty state; only a fired `once` latch makes it non-null.
+   * Restored from the snapshot; absent → `null`. Two NPCs sharing a behavior key
+   * hold INDEPENDENT latches because this lives on the per-instance character.
+   */
+  #npcState: JsonValue = null;
   /** Injected randomness for all of this character's rolls (escape, etc.). */
   protected readonly rng: () => number;
   #history: ActionHistoryEntry[] = [];
@@ -269,6 +284,14 @@ export class Character implements ICharacter {
    */
   get visible(): boolean {
     return this.#visible;
+  }
+
+  /**
+   * Per-instance NPC dialogue state (the `once`-latch store). `null` when empty.
+   * The dialogue matcher reads this to gate `once` effects.
+   */
+  get npcState(): JsonValue {
+    return this.#npcState;
   }
 
   /** Whether this actor can act (attack/loot/harvest) in an unlit room. Default false; light-averse mobs override. */
@@ -381,6 +404,15 @@ export class Character implements ICharacter {
    */
   [SET_VISIBLE](visible: boolean) {
     this.#visible = visible;
+  }
+
+  /**
+   * Overwrites the per-instance NPC dialogue state (the `once`-latch store).
+   * Engine-internal: only the dialogue matcher writes it, keeping the latch
+   * unforgeable — same discipline as {@link SET_VISIBLE}.
+   */
+  [SET_NPC_STATE](state: JsonValue) {
+    this.#npcState = state;
   }
 
   /**
@@ -1167,6 +1199,10 @@ export class Character implements ICharacter {
     // (mirrors the Rust `skip_serializing_if = is_true`); only a hidden character
     // emits the key.
     if (!this.#visible) base.visible = false;
+    // Churn-free like `visible`: emit `npcState` only when non-null (mirrors the
+    // Rust `skip_serializing_if = Value::is_null`); only an NPC that fired a
+    // `once` dialogue effect carries state, so pre-existing goldens stay byte-stable.
+    if (this.#npcState !== null) base.npcState = this.#npcState;
     this.serializeExtra(base);
     return base;
   }
@@ -1194,6 +1230,7 @@ export class Character implements ICharacter {
     this.archetypeImmunities = [...data.archetypeImmunities];
     this.#currentRoom = data.currentRoomId ? ctx.room(data.currentRoomId) : null;
     this.#visible = data.visible ?? true; // absent (pre-existing snapshots) → visible
+    this.#npcState = data.npcState ?? null; // absent → empty (null) dialogue state
     this.#inventory.slots = data.inventory.slots;
     this.#inventory.items.length = 0;
     for (const id of data.inventory.itemIds) {

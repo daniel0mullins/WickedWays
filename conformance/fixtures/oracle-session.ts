@@ -15,6 +15,11 @@ import { Status } from "wickedways/lib/status";
 import { Mob } from "wickedways/lib/character/mob";
 import { NonPlayerCharacter } from "wickedways/lib/character/non-player-character";
 import { StatType } from "wickedways/lib/character/stats";
+import { EMIT_CUE } from "wickedways/lib/presentation";
+import { SET_NPC_STATE } from "wickedways/lib/inventory";
+import { applyEffect } from "wickedways/lib/mechanics/apply";
+import { MAX_EFFECTS_PER_EVENT } from "wickedways/lib/mechanics/mechanic";
+import { runTalk, description, type NpcScript, type NpcState } from "./npc-matcher.ts";
 import type { Campaign } from "wickedways/lib/campaign";
 import type { CharacterId } from "wickedways/lib/character/character";
 import type { CampaignRegistry } from "wickedways/lib/serialization/registry";
@@ -51,6 +56,12 @@ export interface OracleArgs {
   archetype?: string;
   /** SINGLE shared seeded closure — also authored into the template's rng. */
   rng: () => number;
+  /**
+   * The catalog's `behaviors` map (the same object exported to the Rust replica).
+   * The `talk`/`examine` paths resolve an NPC's `behaviorKey` here to its
+   * `{ family:"npc", script: NpcScript }` entry. Absent → dialogue is a no-op.
+   */
+  behaviors?: Record<string, { family: string; script?: unknown }>;
 }
 
 export class OracleSession {
@@ -218,12 +229,35 @@ export class OracleSession {
       case "talk": {
         // Resolve the target against the current room: it must be a co-located,
         // VISIBLE NonPlayerCharacter. Anything else (missing id, a Mob/player, or
-        // a hidden NPC) is "no one to talk to". Dialogue CONTENT is Sub-plan 2 —
-        // a resolved NPC is a quiet no-op placeholder here.
+        // a hidden NPC) is "no one to talk to".
         const npc = room.occupants.find((o) => o.id === intent.npcId);
         if (!(npc instanceof NonPlayerCharacter) || !npc.visible) {
           throw new ProceduralViolation("There's no one here to talk to.");
         }
+        // Resolve the NPC's dialogue behavior: no key, or a key that doesn't bind
+        // an `npc` behavior, is a quiet no-op (mirrors Rust `talk`'s fallbacks and
+        // `read_item`'s not-held no-op).
+        const key = npc.behaviorKey;
+        if (key === undefined) return;
+        const behavior = this.opts.behaviors?.[key];
+        if (behavior === undefined || behavior.family !== "npc") return;
+        const { cue, effects, nextState } = runTalk(
+          behavior.script as NpcScript,
+          intent.prompt,
+          npc.npcState as NpcState,
+          pc.id,
+        );
+        // The `once` latch is written on SELECTION (inside run_talk), BEFORE the
+        // effect-cap check — matching Rust (run_talk mutates state, then submit
+        // caps and only then pushes the cue).
+        npc[SET_NPC_STATE](nextState);
+        if (effects.length > MAX_EFFECTS_PER_EVENT) {
+          throw new ProceduralViolation(`NPC '${key}' emitted too many effects.`);
+        }
+        // Response cue first (the NPC "speaks"), then the scripted effects (which
+        // may push their own cues via applyEffect).
+        this.campaign[EMIT_CUE]({ kind: "mechanic", cue: { text: cue.text } });
+        for (const e of effects) applyEffect(this.campaign, e);
         return;
       }
     }
@@ -245,6 +279,26 @@ export class OracleSession {
     if (!item) return [];
     this.cueBuffer.length = 0;
     pc.read(item);
+    return [...this.cueBuffer];
+  }
+
+  examine(npcId: string): PresentationCue[] {
+    // FREE + non-advancing (mirrors Rust `World::examine`). A co-located, VISIBLE
+    // NPC whose behaviorKey resolves to an `npc` behavior emits its description as
+    // a `mechanic` cue (the SAME cue shape as `read`'s lore). Anything else — a
+    // non-NPC, hidden, missing, or unresolved-key target — is a quiet no-op ([]).
+    const pc = this.campaign.activeCharacter;
+    const npc = pc.currentRoom?.occupants.find((o) => o.id === npcId);
+    if (!(npc instanceof NonPlayerCharacter) || !npc.visible) return [];
+    const key = npc.behaviorKey;
+    if (key === undefined) return [];
+    const behavior = this.opts.behaviors?.[key];
+    if (behavior === undefined || behavior.family !== "npc") return [];
+    this.cueBuffer.length = 0;
+    this.campaign[EMIT_CUE]({
+      kind: "mechanic",
+      cue: { text: description(behavior.script as NpcScript) },
+    });
     return [...this.cueBuffer];
   }
 
