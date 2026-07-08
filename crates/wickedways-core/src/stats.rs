@@ -102,8 +102,9 @@ mod ts_export {
         ExecuteResult::export_all().expect("export ExecuteResult");
         // Scripted-ops DSL AST (scripted-ops plan, Task 10)
         use crate::script::ast::{
-            BehaviorScript, BinOp, DamageBody, EffectTemplate, Expr, ExitScript,
-            FieldTemplate, ItemScript, MechanicHooks, MechanicScript, Stmt, VictoryScript,
+            BehaviorScript, BinOp, DamageBody, DialogueEntry, DialogueMatch, EffectTemplate,
+            Expr, ExitScript, FieldTemplate, ItemScript, MechanicHooks, MechanicScript,
+            NpcScript, Stmt, VictoryScript,
         };
         use crate::script::value::Value as ScriptValue;
         ScriptValue::export_all().expect("export ScriptValue");
@@ -118,6 +119,9 @@ mod ts_export {
         ExitScript::export_all().expect("export ExitScript");
         VictoryScript::export_all().expect("export VictoryScript");
         ItemScript::export_all().expect("export ItemScript");
+        DialogueMatch::export_all().expect("export DialogueMatch");
+        DialogueEntry::export_all().expect("export DialogueEntry");
+        NpcScript::export_all().expect("export NpcScript");
         BehaviorScript::export_all().expect("export BehaviorScript");
     }
 }

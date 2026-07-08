@@ -47,7 +47,25 @@ pub fn validate_behavior(key: &str, b: &BehaviorScript) -> Result<(), Procedural
             }
             Ok(())
         }
+        BehaviorScript::Npc { script } => {
+            // Each entry's text `response` is a DSL Expr and its `effects` are
+            // effect templates (allow_emit=true, allow_pass=false — a dialogue
+            // entry is an effect context, not a script body). `match_` is data.
+            check_dialogue_entry(&script.default).or_else(bad)?;
+            for entry in &script.dialogue {
+                check_dialogue_entry(entry).or_else(bad)?;
+            }
+            Ok(())
+        }
     }
+}
+
+fn check_dialogue_entry(entry: &ast::DialogueEntry) -> Result<(), &'static str> {
+    check_expr(&entry.response)?;
+    for effect in &entry.effects {
+        check_effect(effect)?;
+    }
+    Ok(())
 }
 
 fn check_stmts(stmts: &[Stmt], allow_pass: bool, allow_emit: bool) -> Result<(), &'static str> {
@@ -123,9 +141,50 @@ fn check_expr(e: &Expr) -> Result<(), &'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::script::ast::{BehaviorScript, EffectTemplate, Expr, ItemScript, Stmt};
+    use crate::script::ast::{
+        BehaviorScript, DialogueEntry, DialogueMatch, EffectTemplate, Expr, ItemScript, NpcScript,
+        Stmt,
+    };
     use crate::script::value::Value;
     use crate::stats::StatType;
+
+    fn exact(text: &str, response: &str) -> DialogueEntry {
+        DialogueEntry {
+            match_: DialogueMatch::Exact { text: text.into() },
+            response: Expr::Lit { value: Value::Str(response.into()) },
+            effects: alloc::vec![],
+            once: false,
+        }
+    }
+
+    /// A well-formed NPC behavior: description + default + one exact + one fuzzy
+    /// entry, plus an entry carrying an effect.
+    fn sample_npc_script() -> NpcScript {
+        NpcScript {
+            description: "A hunched caretaker.".into(),
+            default: exact("", "The caretaker says nothing of note."),
+            dialogue: alloc::vec![
+                exact("hello", "Good evening to you."),
+                DialogueEntry {
+                    match_: DialogueMatch::Fuzzy {
+                        tokens: alloc::vec!["how".into(), "out".into()],
+                    },
+                    response: Expr::Lit { value: Value::Str("The gate is west.".into()) },
+                    effects: alloc::vec![],
+                    once: false,
+                },
+                DialogueEntry {
+                    match_: DialogueMatch::Exact { text: "key".into() },
+                    response: Expr::Lit { value: Value::Str("Take it.".into()) },
+                    effects: alloc::vec![EffectTemplate::SetVisible {
+                        target: Expr::Actor,
+                        visible: Expr::Lit { value: Value::Bool(true) },
+                    }],
+                    once: true,
+                },
+            ],
+        }
+    }
 
     #[test]
     fn validate_accepts_item_script_with_effect_bodies() {
@@ -157,5 +216,42 @@ mod tests {
             },
         };
         assert!(validate_behavior("items/bad", &b).is_err());
+    }
+
+    #[test]
+    fn validate_accepts_npc_script() {
+        let b = BehaviorScript::Npc { script: sample_npc_script() };
+        assert!(validate_behavior("npc/caretaker", &b).is_ok());
+    }
+
+    #[test]
+    fn validate_rejects_npc_ill_typed_effect() {
+        // A dialogue entry's effect carries an ill-typed Expr: `Lookup` requires a
+        // `MapLit` map operand, so a `Lookup` over `Actor` must be rejected at load.
+        let mut script = sample_npc_script();
+        script.dialogue.push(DialogueEntry {
+            match_: DialogueMatch::Exact { text: "curse".into() },
+            response: Expr::Lit { value: Value::Str("Beware.".into()) },
+            effects: alloc::vec![EffectTemplate::Cue {
+                text: Expr::Lookup {
+                    map: alloc::boxed::Box::new(Expr::Actor),
+                    key: alloc::boxed::Box::new(Expr::Lit { value: Value::Str("x".into()) }),
+                },
+            }],
+            once: false,
+        });
+        let b = BehaviorScript::Npc { script };
+        assert!(validate_behavior("npc/bad", &b).is_err());
+    }
+
+    #[test]
+    fn npc_script_serde_round_trip() {
+        let b = BehaviorScript::Npc { script: sample_npc_script() };
+        let json = serde_json::to_string(&b).expect("serialize");
+        // `family = "npc"` family tag + the `match` rename both surface in JSON.
+        assert!(json.contains("\"family\":\"npc\""), "family tag missing: {json}");
+        assert!(json.contains("\"match\""), "match rename missing: {json}");
+        let back: BehaviorScript = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(b, back);
     }
 }

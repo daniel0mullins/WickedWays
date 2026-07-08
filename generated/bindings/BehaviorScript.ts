@@ -2,9 +2,10 @@
 import type { ExitScript } from "./ExitScript";
 import type { ItemScript } from "./ItemScript";
 import type { MechanicScript } from "./MechanicScript";
+import type { NpcScript } from "./NpcScript";
 import type { VictoryScript } from "./VictoryScript";
 
 /**
- * A scripted behavior, tagged on `family` (mechanic / exit / victory / item).
+ * A scripted behavior, tagged on `family` (mechanic / exit / victory / item / npc).
  */
-export type BehaviorScript = { "family": "mechanic", script: MechanicScript, } | { "family": "exit", script: ExitScript, } | { "family": "victory", script: VictoryScript, } | { "family": "item", script: ItemScript, };
+export type BehaviorScript = { "family": "mechanic", script: MechanicScript, } | { "family": "exit", script: ExitScript, } | { "family": "victory", script: VictoryScript, } | { "family": "item", script: ItemScript, } | { "family": "npc", script: NpcScript, };

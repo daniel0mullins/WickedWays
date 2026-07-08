@@ -237,7 +237,46 @@ pub struct ItemScript {
     pub on_read: Option<Vec<Stmt>>,
 }
 
-/// A scripted behavior, tagged on `family` (mechanic / exit / victory / item).
+/// How a dialogue entry matches a player prompt (NPC sub-plan 2). Tagged on
+/// `kind`; `Exact` is full lowercased-string equality, `Fuzzy` is a token subset.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum DialogueMatch {
+    Exact { text: String },
+    Fuzzy { tokens: Vec<String> },
+}
+
+/// One prompt→response dialogue entry in an NPC behavior (NPC sub-plan 2): a
+/// match rule, a text `response` (a DSL `Expr`), optional emitted effects, and a
+/// `once` latch. `match_` serializes as `"match"` (`match` is a Rust keyword).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct DialogueEntry {
+    #[serde(rename = "match")]
+    pub match_: DialogueMatch,
+    pub response: Expr,
+    #[serde(default)]
+    pub effects: Vec<EffectTemplate>,
+    #[serde(default)]
+    pub once: bool,
+}
+
+/// A campaign-authored NPC dialogue behavior (NPC sub-plan 2): a `description`
+/// (returned by `examine`), a `default` entry (bare `talk`), and ordered
+/// prompt→response `dialogue` entries.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct NpcScript {
+    pub description: String,
+    pub default: DialogueEntry,
+    #[serde(default)]
+    pub dialogue: Vec<DialogueEntry>,
+}
+
+/// A scripted behavior, tagged on `family` (mechanic / exit / victory / item / npc).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(tag = "family", rename_all = "camelCase")]
@@ -246,4 +285,5 @@ pub enum BehaviorScript {
     Exit { script: ExitScript },
     Victory { script: VictoryScript },
     Item { script: ItemScript },
+    Npc { script: NpcScript },
 }
