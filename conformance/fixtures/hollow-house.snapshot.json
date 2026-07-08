@@ -57,9 +57,18 @@
     ],
     "actionSounds": {},
     "encounterTable": {
-      "baseChance": 0,
+      "baseChance": 20,
       "visited": [],
-      "formations": []
+      "formations": [
+        {
+          "behaviorKey": "rat-single",
+          "weight": 3
+        },
+        {
+          "behaviorKey": "rat-pair",
+          "weight": 1
+        }
+      ]
     },
     "chatPolicy": {
       "enabled": true,

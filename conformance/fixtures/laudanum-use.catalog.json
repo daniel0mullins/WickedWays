@@ -548,6 +548,27 @@
         ]
       }
     },
+    "rat-tail": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "actor"
+              },
+              "stat": "sanity",
+              "delta": {
+                "kind": "lit",
+                "value": 1
+              }
+            }
+          }
+        ]
+      }
+    },
     "reached-attic-with-journal": {
       "family": "victory",
       "script": {
