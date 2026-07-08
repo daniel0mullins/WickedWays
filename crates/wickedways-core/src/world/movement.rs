@@ -440,6 +440,7 @@ mod tests {
             light_averse: None,
             natural_attack: None,
             npc_behavior_key: None,
+            npc_state: serde_json::Value::Null,
             visible: true,
         };
         w.characters.insert(id.clone(), snap);

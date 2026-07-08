@@ -313,11 +313,11 @@ impl World {
                 }
                 self.attack(actor, &target, cat, cues)
             }
-            Intent::Talk { npc_id, .. } => {
+            Intent::Talk { npc_id, prompt } => {
                 // Resolve the target against the actor's current room: it must be a
                 // co-located, VISIBLE NPC. Anything else (missing id, a Mob/player,
-                // or a hidden NPC) is "no one to talk to". Dialogue CONTENT is
-                // Sub-plan 2 — a resolved NPC is a quiet no-op placeholder here.
+                // or a hidden NPC) is "no one to talk to". A resolved NPC then runs
+                // its data-driven dialogue (Sub-plan 2) via `talk`.
                 let room_id = self.current_room_id_of(actor)?;
                 let target = CharacterId(npc_id);
                 let in_room = self
@@ -333,7 +333,7 @@ impl World {
                 if !in_room || !is_visible_npc {
                     return Err(ProceduralViolation("There's no one here to talk to.".into()));
                 }
-                Ok(())
+                self.talk(actor, &target, prompt.as_deref(), cat, cues)
             }
         }
     }
@@ -412,6 +412,122 @@ impl World {
                 cue: MechanicCue { text: Some(lore), sound: None },
             });
         }
+        Ok(())
+    }
+
+    /// Run an NPC's data-driven dialogue (NPC sub-plan 2). Resolves the NPC's
+    /// `npc_behavior_key` to an `NpcScript` (catalog-only, via `resolve_npc`);
+    /// if it resolves, matches `prompt` to one dialogue entry, ALWAYS emits the
+    /// selected entry's response as a `mechanic` cue, and applies its effects
+    /// (honoring `once`, capped at `MAX_EFFECTS_PER_EVENT`). The `once` latch
+    /// lives in the NPC's per-instance `npc_state` (round-trips through the
+    /// snapshot), so two NPCs sharing a behavior key hold INDEPENDENT latches.
+    /// Free + non-advancing (the "no one here" gate lives in `dispatch_intent`).
+    /// An NPC with no key — or a key that doesn't bind an `Npc` behavior — is a
+    /// quiet no-op (validation guarantees a seated NPC's key resolves; this
+    /// fallback keeps `talk` total, mirroring `read_item`'s not-held no-op).
+    pub fn talk(
+        &mut self,
+        actor: &CharacterId,
+        npc: &CharacterId,
+        prompt: Option<&str>,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
+        // Behavior key off the NPC instance; clone it out before borrowing self mut.
+        let Some(key) = self
+            .characters
+            .get(npc)
+            .and_then(|c| c.npc_behavior_key.clone())
+        else {
+            return Ok(()); // no dialogue behavior — quiet no-op
+        };
+        // `resolve_npc` borrows only `cat` (a separate parameter of this fn), so the
+        // returned `&NpcScript` can be held across the mutable `self` borrows below.
+        let Some(script) = crate::world::resolve::resolve_npc(&key, cat) else {
+            return Ok(()); // key doesn't bind an NPC behavior — quiet no-op
+        };
+
+        // Build the (owned) views while `self` is borrowed only immutably.
+        let view = self.build_campaign_view(cat);
+        let actor_view = self.character_view(actor, cat).ok_or_else(|| {
+            ProceduralViolation(alloc::format!("Actor '{}' not found.", actor.0))
+        })?;
+
+        // Take `&mut` on the NPC's per-instance state AND on the rng — disjoint
+        // fields of `World`, which the borrow checker allows simultaneously (same
+        // shape as `use_mechanic_action`). The latch write lands in `npc.npc_state`,
+        // persisting into that NPC's snapshot → per-instance `once`.
+        let (mut cue_batch, effects) = {
+            let rng = &mut self.rng;
+            let npc_ref = self.characters.get_mut(npc).ok_or_else(|| {
+                ProceduralViolation(alloc::format!("NPC '{}' not found.", npc.0))
+            })?;
+            let mut base = crate::world::mechanics::HookCtx {
+                state: &mut npc_ref.npc_state,
+                view: &view,
+                rng,
+            };
+            crate::script::ops::ScriptedNpc { script }.run_talk(prompt, &mut base, &actor_view)
+        };
+        if effects.len() > crate::world::mechanics::MAX_EFFECTS_PER_EVENT {
+            return Err(ProceduralViolation(alloc::format!(
+                "NPC '{}' emitted too many effects.",
+                key
+            )));
+        }
+        // Response cue first (the NPC "speaks"), then the scripted effects (which
+        // may push their own cues via `apply_all`).
+        for cue in cue_batch.drain(..) {
+            cues.push(PresentationCue::Mechanic { cue });
+        }
+        self.apply_all(effects, cat, cues)?;
+        Ok(())
+    }
+
+    /// Emit an NPC's `examine` blurb (NPC sub-plan 2). Free + non-advancing. When
+    /// `target` is a co-located, VISIBLE NPC whose `npc_behavior_key` resolves to
+    /// an `NpcScript`, pushes the script's `description` as a `mechanic` cue (the
+    /// SAME cue shape as `read_item`'s lore). Any other target (non-NPC, hidden,
+    /// missing, no/unresolved key, or not in the actor's room) is a quiet no-op —
+    /// examining a non-NPC or the room, and CRT routing, are sub-plan 3b.
+    pub fn examine(
+        &self,
+        actor: &CharacterId,
+        target: &CharacterId,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
+        let is_visible_npc = self
+            .characters
+            .get(target)
+            .map(|c| c.kind == CharacterKind::Npc && c.visible)
+            .unwrap_or(false);
+        let co_located = self
+            .characters
+            .get(actor)
+            .and_then(|a| a.current_room_id.clone())
+            .and_then(|rid| self.rooms.get(&rid).map(|r| r.occupant_ids.contains(target)))
+            .unwrap_or(false);
+        if !is_visible_npc || !co_located {
+            return Ok(());
+        }
+        let Some(key) = self
+            .characters
+            .get(target)
+            .and_then(|c| c.npc_behavior_key.clone())
+        else {
+            return Ok(());
+        };
+        let Some(script) = crate::world::resolve::resolve_npc(&key, cat) else {
+            return Ok(());
+        };
+        cues.push(PresentationCue::Mechanic {
+            cue: MechanicCue {
+                text: Some(crate::script::ops::ScriptedNpc { script }.description().into()),
+                sound: None,
+            },
+        });
         Ok(())
     }
 
@@ -704,6 +820,7 @@ mod tests {
             light_averse: None,
             natural_attack: None,
             npc_behavior_key: Some("npc/keeper".into()),
+            npc_state: serde_json::Value::Null,
             visible,
         };
         w.characters.insert(id.clone(), snap);
@@ -985,5 +1102,176 @@ mod tests {
         let mut cues = Vec::new();
         w.read_item(&cid("pc"), &iid("item-sword"), &cat_with_items(), &mut cues).unwrap();
         assert!(cues.is_empty());
+    }
+
+    // ── talk → dialogue + examine → description (NPC sub-plan 2, T3a) ─────────
+
+    use crate::script::ast::{
+        BehaviorScript, DialogueEntry, DialogueMatch, EffectTemplate, Expr, NpcScript,
+    };
+    use crate::script::value::Value as ScriptValue;
+
+    /// An NPC script for "npc/keeper": a `default` entry (bare talk) whose single
+    /// AdjustStat(+3 sanity) effect is gated by `once`, plus one fuzzy "cellar"
+    /// entry with no effect. `once` toggles the default entry's latch.
+    fn keeper_script(default_once: bool) -> NpcScript {
+        let lit = |s: &str| Expr::Lit { value: ScriptValue::Str(s.into()) };
+        NpcScript {
+            description: "A hunched keeper.".into(),
+            default: DialogueEntry {
+                match_: DialogueMatch::Exact { text: "".into() },
+                response: lit("The keeper nods."),
+                effects: alloc::vec![EffectTemplate::AdjustStat {
+                    target: Expr::Actor,
+                    stat: StatType::Sanity,
+                    delta: Expr::Lit { value: ScriptValue::Number(3.0) },
+                }],
+                once: default_once,
+            },
+            dialogue: alloc::vec![DialogueEntry {
+                match_: DialogueMatch::Fuzzy { tokens: alloc::vec!["cellar".into()] },
+                response: lit("The cellar is locked."),
+                effects: alloc::vec![],
+                once: false,
+            }],
+        }
+    }
+
+    /// `cat_with_items` plus the "npc/keeper" NPC behavior registered.
+    fn cat_with_keeper(default_once: bool) -> Catalog {
+        let mut cat = cat_with_items();
+        cat.behaviors.insert(
+            "npc/keeper".into(),
+            BehaviorScript::Npc { script: keeper_script(default_once) },
+        );
+        cat
+    }
+
+    fn has_cue(r: &ExecuteResult, text: &str) -> bool {
+        r.cues.iter().any(|c| matches!(c,
+            PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some(text)))
+    }
+
+    #[test]
+    fn bare_talk_emits_default_response_and_fires_once_effects_then_latches_across_snapshot() {
+        let mut w = world_for_submit();
+        seat_npc(&mut w, "keeper", "room1", /*visible=*/ true);
+        let cat = cat_with_keeper(/*default_once=*/ true);
+
+        // First bare talk: DEFAULT response cue + the once effect fires (sanity 7→10).
+        let mut opened = BTreeSet::new();
+        let r1 = w.submit(Intent::Talk { npc_id: "keeper".into(), prompt: None }, &cat, &mut opened);
+        assert_eq!(r1.error, None);
+        assert!(has_cue(&r1, "The keeper nods."), "default response cue always emitted");
+        assert_eq!(w.characters[&cid("pc")].stats.sanity, 10.0, "once effect fired");
+        assert_eq!(w.campaign.round, 0, "talk is free — no round advance");
+
+        // The latch lives on THIS npc's per-instance state under onceFired.default.
+        assert_eq!(
+            w.characters[&cid("keeper")].npc_state["onceFired"]["default"],
+            serde_json::json!(true)
+        );
+
+        // Round-trip the whole world through JSON, proving npcState persists in bytes.
+        let json = serde_json::to_string(&w.to_snapshot()).unwrap();
+        assert!(json.contains("\"npcState\""), "fired latch must serialize: {json}");
+        assert!(json.contains("\"onceFired\""));
+        let mut w2 = crate::world::World::from_snapshot(serde_json::from_str(&json).unwrap());
+
+        // Second talk after the round-trip: response re-emits, effect is SUPPRESSED.
+        let mut opened2 = BTreeSet::new();
+        let r2 = w2.submit(Intent::Talk { npc_id: "keeper".into(), prompt: None }, &cat, &mut opened2);
+        assert_eq!(r2.error, None);
+        assert!(has_cue(&r2, "The keeper nods."), "response re-emitted");
+        assert_eq!(w2.characters[&cid("pc")].stats.sanity, 10.0, "once latch survived the snapshot");
+    }
+
+    #[test]
+    fn talk_with_prompt_selects_matching_dialogue_entry() {
+        let mut w = world_for_submit();
+        seat_npc(&mut w, "keeper", "room1", true);
+        let cat = cat_with_keeper(false);
+        let mut opened = BTreeSet::new();
+        let r = w.submit(
+            Intent::Talk { npc_id: "keeper".into(), prompt: Some("about the cellar?".into()) },
+            &cat,
+            &mut opened,
+        );
+        assert_eq!(r.error, None);
+        assert!(has_cue(&r, "The cellar is locked."), "fuzzy 'cellar' entry selected");
+    }
+
+    #[test]
+    fn talk_to_npc_without_registered_behavior_is_a_quiet_no_op() {
+        // seat_npc uses key "npc/keeper"; cat_with_items has no such behavior, so
+        // resolve_npc → None and talk emits nothing (mirrors read_item not-held).
+        let mut w = world_for_submit();
+        seat_npc(&mut w, "keeper", "room1", true);
+        let (r, _) = submit_one(&mut w, Intent::Talk { npc_id: "keeper".into(), prompt: None });
+        assert_eq!(r.error, None);
+        assert_eq!(r.cues, Vec::new());
+    }
+
+    #[test]
+    fn two_npcs_sharing_a_behavior_key_have_independent_once_latches() {
+        let mut w = world_for_submit();
+        seat_npc(&mut w, "keeper-a", "room1", true);
+        seat_npc(&mut w, "keeper-b", "room1", true);
+        let cat = cat_with_keeper(/*default_once=*/ true);
+        let mut opened = BTreeSet::new();
+
+        // keeper-a fires (7→10); keeper-b fires INDEPENDENTLY (10→13).
+        w.submit(Intent::Talk { npc_id: "keeper-a".into(), prompt: None }, &cat, &mut opened);
+        assert_eq!(w.characters[&cid("pc")].stats.sanity, 10.0);
+        w.submit(Intent::Talk { npc_id: "keeper-b".into(), prompt: None }, &cat, &mut opened);
+        assert_eq!(w.characters[&cid("pc")].stats.sanity, 13.0, "keeper-b's latch is separate");
+
+        // keeper-a is latched — talking to it again fires no effect.
+        w.submit(Intent::Talk { npc_id: "keeper-a".into(), prompt: None }, &cat, &mut opened);
+        assert_eq!(w.characters[&cid("pc")].stats.sanity, 13.0);
+
+        // Each NPC carries its OWN latch on its OWN snapshot state.
+        assert_eq!(w.characters[&cid("keeper-a")].npc_state["onceFired"]["default"], serde_json::json!(true));
+        assert_eq!(w.characters[&cid("keeper-b")].npc_state["onceFired"]["default"], serde_json::json!(true));
+    }
+
+    #[test]
+    fn examine_visible_npc_emits_description_cue() {
+        use crate::presentation::MechanicCue;
+        let mut w = world_for_submit();
+        seat_npc(&mut w, "keeper", "room1", true);
+        let cat = cat_with_keeper(false);
+        let mut cues = Vec::new();
+        w.examine(&cid("pc"), &cid("keeper"), &cat, &mut cues).unwrap();
+        assert_eq!(cues, alloc::vec![PresentationCue::Mechanic {
+            cue: MechanicCue { text: Some("A hunched keeper.".into()), sound: None },
+        }]);
+    }
+
+    #[test]
+    fn examine_hidden_or_non_npc_target_is_a_quiet_no_op() {
+        let cat = cat_with_keeper(false);
+        // hidden NPC
+        let mut w = world_for_submit();
+        seat_npc(&mut w, "keeper", "room1", /*visible=*/ false);
+        let mut cues = Vec::new();
+        w.examine(&cid("pc"), &cid("keeper"), &cat, &mut cues).unwrap();
+        assert!(cues.is_empty(), "a hidden NPC yields no description");
+        // a co-located Mob is not an NPC
+        let mut cues2 = Vec::new();
+        seat_test_mob(&mut w, "wraith", "room1");
+        w.examine(&cid("pc"), &cid("wraith"), &cat, &mut cues2).unwrap();
+        assert!(cues2.is_empty(), "examining a mob is a no-op");
+    }
+
+    #[test]
+    fn validate_mechanics_rejects_npc_with_unresolved_behavior_key() {
+        let mut w = world_for_submit();
+        seat_npc(&mut w, "keeper", "room1", true); // npc_behavior_key = "npc/keeper"
+        // No "npc/keeper" behavior registered → validation fails fast.
+        let err = w.validate_mechanics(&cat_with_items()).unwrap_err();
+        assert!(err.0.contains("npc/keeper"), "got: {}", err.0);
+        // Registered → validation passes.
+        assert!(w.validate_mechanics(&cat_with_keeper(false)).is_ok());
     }
 }

@@ -35,6 +35,17 @@ pub enum Command {
     Attack { target_id: String },
     #[serde(rename_all = "camelCase")]
     MechanicAction { mechanic_key: String, action_key: String },
+    /// Free, non-advancing: run an NPC's data-driven dialogue (NPC sub-plan 2).
+    /// `prompt` absent = bare `talk` (selects the NPC's `default` entry).
+    #[serde(rename_all = "camelCase")]
+    Talk {
+        npc_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        prompt: Option<String>,
+    },
+    /// Free, non-advancing: emit an NPC occupant's `examine` description.
+    #[serde(rename_all = "camelCase")]
+    Examine { target_id: String },
 }
 
 pub fn apply_command(
@@ -81,6 +92,12 @@ pub fn apply_command(
         }
         Command::MechanicAction { mechanic_key, action_key } =>
             world.use_mechanic_action(&actor, &mechanic_key, &action_key, cat, cues),
+        Command::Talk { npc_id, prompt } => {
+            world.talk(&actor, &CharacterId(npc_id), prompt.as_deref(), cat, cues)
+        }
+        Command::Examine { target_id } => {
+            world.examine(&actor, &CharacterId(target_id), cat, cues)
+        }
     }
 }
 
@@ -309,6 +326,27 @@ mod tests {
             "kind": "read", "targetId": "item-note"
         })).unwrap();
         assert!(matches!(c, Command::Read { target_id } if target_id == "item-note"));
+    }
+
+    #[test]
+    fn talk_command_deserializes_with_and_without_prompt() {
+        let bare: Command = serde_json::from_value(serde_json::json!({
+            "kind": "talk", "npcId": "keeper"
+        })).unwrap();
+        assert!(matches!(bare, Command::Talk { npc_id, prompt: None } if npc_id == "keeper"));
+        let prompted: Command = serde_json::from_value(serde_json::json!({
+            "kind": "talk", "npcId": "keeper", "prompt": "the cellar"
+        })).unwrap();
+        assert!(matches!(prompted,
+            Command::Talk { npc_id, prompt: Some(p) } if npc_id == "keeper" && p == "the cellar"));
+    }
+
+    #[test]
+    fn examine_command_deserializes() {
+        let c: Command = serde_json::from_value(serde_json::json!({
+            "kind": "examine", "targetId": "keeper"
+        })).unwrap();
+        assert!(matches!(c, Command::Examine { target_id } if target_id == "keeper"));
     }
 
     #[test]

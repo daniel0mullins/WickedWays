@@ -368,6 +368,27 @@ impl World {
                 }
             }
         }
+        // NPC dialogue behaviors (NPC sub-plan 2): every NPC carrying an
+        // `npc_behavior_key` must resolve to an `Npc` behavior (catalog-only, via
+        // `resolve_npc` — there is no native NPC concept), and that behavior is
+        // shape-checked at load like the other scripted families. Because
+        // resolution already requires an `Npc` catalog entry, a resolved key is
+        // always scripted, so `validate_behavior` always runs on it.
+        for c in self.characters.values() {
+            if c.kind != crate::world::snapshot::CharacterKind::Npc {
+                continue;
+            }
+            if let Some(key) = &c.npc_behavior_key {
+                if crate::world::resolve::resolve_npc(key, cat).is_none() {
+                    return Err(ProceduralViolation(format!(
+                        "NPC behavior '{key}' is not registered."
+                    )));
+                }
+                if let Some(b) = cat.behaviors.get(key) {
+                    crate::script::validate_behavior(key, b)?;
+                }
+            }
+        }
         // Formation keys (encounter table is an untyped Value; read behaviorKey like maybe_spawn).
         if let Some(arr) = self.campaign.encounter_table.get("formations").and_then(|v| v.as_array()) {
             for f in arr {
@@ -519,6 +540,7 @@ mod tests {
             light_averse: None,
             natural_attack: None,
             npc_behavior_key: None,
+            npc_state: serde_json::Value::Null,
             visible: true,
         };
         w.characters.insert(id, snap);

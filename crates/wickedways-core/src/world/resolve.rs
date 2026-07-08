@@ -101,6 +101,23 @@ pub fn resolve_item(snap: &ItemSnapshot, cat: &Catalog) -> Result<ResolvedItem, 
     }
 }
 
+/// Resolve an NPC dialogue behavior key to its `NpcScript`. There is no native
+/// NPC concept (unlike mechanics/exits/victory/formations), so resolution is
+/// catalog-only: it looks up `catalog.behaviors[key]` and matches the `Npc`
+/// family. Returns `None` if the key is absent or bound to a non-NPC behavior —
+/// mirroring the native-first-then-catalog `resolve_*` family (here the native
+/// arm is simply empty). Borrows only `cat`, so callers can hold the returned
+/// `&NpcScript` while separately taking a `&mut` on the NPC's snapshot state.
+pub fn resolve_npc<'a>(
+    key: &str,
+    cat: &'a Catalog,
+) -> Option<&'a crate::script::ast::NpcScript> {
+    match cat.behaviors.get(key) {
+        Some(crate::script::ast::BehaviorScript::Npc { script }) => Some(script),
+        _ => None,
+    }
+}
+
 impl World {
     /// Mirrors `character.ts:903-913` (`effectiveStat`):
     /// returns `base_stat + Σ modifier` for each **equipped** accessory whose
@@ -454,6 +471,7 @@ mod tests {
             light_averse: None,
             natural_attack: None,
             npc_behavior_key: None,
+            npc_state: serde_json::Value::Null,
             visible: true,
         };
         let mut characters = BTreeMap::new();

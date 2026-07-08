@@ -143,6 +143,17 @@ pub struct CharacterSnapshot {
     pub natural_attack: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub npc_behavior_key: Option<String>,
+    /// Per-NPC-instance dialogue script state — the `once`-latch store the NPC
+    /// matcher reads/writes under `state["onceFired"][key]` (see `ScriptedNpc::
+    /// run_talk`). Shaped like `MechanicSnapshot.state` (an opaque JSON object),
+    /// but churn-free like `visible`: `null`/absent is the empty state, and the
+    /// key is OMITTED on serialize when null (`Value::is_null`) so pre-existing
+    /// goldens stay byte-stable — only an NPC that has fired a `once` dialogue
+    /// effect emits `npcState`. Two NPCs sharing an `npcBehaviorKey` keep
+    /// INDEPENDENT latches because the state lives on the per-instance snapshot,
+    /// not on the shared behavior.
+    #[serde(default, skip_serializing_if = "Value::is_null")]
+    pub npc_state: Value,
     /// Whether this character is present in the room's view/scope. Default `true`;
     /// an NPC that "disappears" flips this to `false` (reversibly). Snapshots
     /// written before this field existed lack the key and parse back to `true`

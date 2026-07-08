@@ -584,6 +584,7 @@ mod tests {
             light_averse: None,
             natural_attack: None,
             npc_behavior_key: None,
+            npc_state: serde_json::Value::Null,
             visible: true,
         };
 
@@ -615,6 +616,7 @@ mod tests {
             light_averse: None,
             natural_attack: None,
             npc_behavior_key: None,
+            npc_state: serde_json::Value::Null,
             visible: true,
         };
 
