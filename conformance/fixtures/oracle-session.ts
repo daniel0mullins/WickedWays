@@ -13,6 +13,7 @@ import { deserializeCampaign } from "wickedways/lib/serialization/deserializer";
 import { ProceduralViolation } from "wickedways/lib/util";
 import { Status } from "wickedways/lib/status";
 import { Mob } from "wickedways/lib/character/mob";
+import { NonPlayerCharacter } from "wickedways/lib/character/non-player-character";
 import { StatType } from "wickedways/lib/character/stats";
 import type { Campaign } from "wickedways/lib/campaign";
 import type { CharacterId } from "wickedways/lib/character/character";
@@ -39,7 +40,7 @@ export type Intent =
   | { kind: "use"; targetId: string }
   | { kind: "talk"; npcId: string; prompt?: string }
   | { kind: "wait" };
-const TIME_ADVANCING = new Set(["move", "take", "drop", "use", "attack", "wait", "talk"]);
+const TIME_ADVANCING = new Set(["move", "take", "drop", "use", "attack", "wait"]);
 export const isTimeAdvancing = (i: Intent): boolean => TIME_ADVANCING.has(i.kind);
 
 export interface OracleArgs {
@@ -215,8 +216,15 @@ export class OracleSession {
         return;
       }
       case "talk": {
-        // No NPCs in this campaign; dialogue is reserved for future content.
-        throw new ProceduralViolation("There's no one here to talk to.");
+        // Resolve the target against the current room: it must be a co-located,
+        // VISIBLE NonPlayerCharacter. Anything else (missing id, a Mob/player, or
+        // a hidden NPC) is "no one to talk to". Dialogue CONTENT is Sub-plan 2 —
+        // a resolved NPC is a quiet no-op placeholder here.
+        const npc = room.occupants.find((o) => o.id === intent.npcId);
+        if (!(npc instanceof NonPlayerCharacter) || !npc.visible) {
+          throw new ProceduralViolation("There's no one here to talk to.");
+        }
+        return;
       }
     }
   }

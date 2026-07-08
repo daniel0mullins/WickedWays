@@ -72,6 +72,26 @@ export function parse(input: string, vm: ViewModel): ParseResult {
   if (verb === "help" || verb === "?") return { kind: "query", query: "help" };
   if (verb === "wait" || verb === "z") return { kind: "intent", intent: { kind: "wait" } };
 
+  // `talk`/`speak`/`ask <npc>` — resolve the NPC against scope, with an optional
+  // quoted prompt: `talk to keeper "how do I get out"` → prompt: "how do I get out".
+  // The prompt is pulled from the RAW input (its case preserved) before the noun
+  // phrase is tokenised, so quote contents never leak into NPC name resolution.
+  if (verb === "talk" || verb === "speak" || verb === "ask") {
+    const { prompt, remainder } = extractQuotedPrompt(input);
+    const target = remainder
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .slice(1) // drop the verb
+      .filter((t) => t.length > 0 && !STOP_WORDS.has(t))
+      .join(" ");
+    if (!target) return { kind: "error", message: `${verb} to whom?` };
+    return resolveThen(target, vm, (t) => ({
+      kind: "intent",
+      intent: prompt !== undefined ? { kind: "talk", npcId: t.id, prompt } : { kind: "talk", npcId: t.id },
+    }));
+  }
+
   const nounPhrase = tokens.slice(1).filter((t) => !STOP_WORDS.has(t)).join(" ");
 
   // examine is special: resolve then return an examine result (no engine call).
@@ -106,6 +126,18 @@ function resolve(phrase: string, scope: ScopeEntity[]): ScopeEntity[] {
     e.aliases.some((a) => a.includes(phrase) || phrase.includes(a)) || e.name.toLowerCase().includes(phrase),
   );
   return dedupe(partial);
+}
+
+// Pull the first double-quoted segment out of the raw input, returning its
+// trimmed contents (undefined when empty/absent) and the input with that segment
+// removed. Used by `talk` so a quoted prompt is captured verbatim (case intact)
+// and never confused with the NPC's name.
+function extractQuotedPrompt(input: string): { prompt?: string; remainder: string } {
+  const m = input.match(/"([^"]*)"/);
+  if (!m || m.index === undefined) return { remainder: input };
+  const prompt = m[1]!.trim();
+  const remainder = input.slice(0, m.index) + input.slice(m.index + m[0].length);
+  return { prompt: prompt.length > 0 ? prompt : undefined, remainder };
 }
 
 function dedupe(entities: ScopeEntity[]): ScopeEntity[] {

@@ -33,14 +33,7 @@
         }
       },
       "result": {
-        "cues": [
-          {
-            "kind": "mechanic",
-            "cue": {
-              "text": "The dread watches."
-            }
-          }
-        ],
+        "cues": [],
         "error": "There's no one here to talk to."
       },
       "snapshot": {
@@ -135,7 +128,7 @@
               "energy": 8
             },
             "actionsPerRound": 3,
-            "actionsThisRound": 0,
+            "actionsThisRound": 1,
             "currentRoomId": "room:Hall",
             "inventory": {
               "slots": 5,
@@ -156,11 +149,7 @@
             "archetypeImmunities": [],
             "afflictions": {
               "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
+              "turnsActive": {},
               "shakenOff": [],
               "immunity": {}
             },

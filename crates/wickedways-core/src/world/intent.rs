@@ -41,8 +41,9 @@ pub enum Intent {
     Wait,
 }
 
-/// Port of `intent.ts` `isTimeAdvancing`: move/take/drop/use/attack/wait/talk
-/// advance the turn; open/equip/unequip are free.
+/// Port of `intent.ts` `isTimeAdvancing`: move/take/drop/use/attack/wait
+/// advance the turn; open/equip/unequip/talk are free. `talk` is a free
+/// interaction (dialogue spends no round) — a co-located NPC just answers.
 pub fn is_time_advancing(intent: &Intent) -> bool {
     matches!(
         intent,
@@ -52,7 +53,6 @@ pub fn is_time_advancing(intent: &Intent) -> bool {
             | Intent::Use { .. }
             | Intent::Attack { .. }
             | Intent::Wait
-            | Intent::Talk { .. }
     )
 }
 
@@ -92,7 +92,8 @@ mod tests {
 
     #[test]
     fn time_advancing_set_matches_intent_ts() {
-        // intent.ts:15 — TIME_ADVANCING = {move, take, drop, use, attack, wait, talk}
+        // intent.ts — TIME_ADVANCING = {move, take, drop, use, attack, wait}
+        // (talk is a FREE interaction and must not appear here).
         let advancing = [
             Intent::Move { dir: crate::world::direction::Direction::North },
             Intent::Take { target_id: "x".into() },
@@ -100,7 +101,6 @@ mod tests {
             Intent::Use { target_id: "x".into() },
             Intent::Attack { target_id: "x".into() },
             Intent::Wait,
-            Intent::Talk { npc_id: "x".into(), prompt: None },
         ];
         for i in advancing {
             assert!(is_time_advancing(&i), "{i:?} must advance time");
@@ -109,9 +109,20 @@ mod tests {
             Intent::Open { target_id: "x".into() },
             Intent::Equip { target_id: "x".into() },
             Intent::Unequip { target_id: "x".into() },
+            Intent::Talk { npc_id: "x".into(), prompt: None },
         ];
         for i in free {
             assert!(!is_time_advancing(&i), "{i:?} must be free");
         }
+    }
+
+    #[test]
+    fn talk_is_not_time_advancing() {
+        // Talk is a free interaction — dialogue spends no round.
+        assert!(!is_time_advancing(&Intent::Talk { npc_id: "n1".into(), prompt: None }));
+        assert!(!is_time_advancing(&Intent::Talk {
+            npc_id: "n1".into(),
+            prompt: Some("hello".into()),
+        }));
     }
 }

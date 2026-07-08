@@ -1,10 +1,11 @@
 /**
- * facade-talk golden — the talk no-op AND the startup-cues fixture.
+ * facade-talk golden — the talk rejection AND the startup-cues fixture.
  *
- * `talk` is time-advancing but has no NPCs, so dispatch throws
- * "There's no one here to talk to." AFTER startTurn ran (dread's onTurnStart
- * cue is in the returned cues) but BEFORE nextPlayer (round stays 0). The error
- * path returns { cues, error } with NO mobAttacks key.
+ * `talk` is a FREE (non-advancing) interaction, and this campaign has no NPC to
+ * talk to, so dispatch throws "There's no one here to talk to." Because talk is
+ * free, startTurn does NOT run (no dread onTurnStart cue) and nextPlayer does NOT
+ * run (round stays 0); the error path returns { cues: [], error } with NO
+ * mobAttacks key.
  *
  * The dread shadow is enabled so beginCampaign buffers a round-0 onRoundStart
  * cue ("Dread stirs.") → golden.startupCues is non-empty → replayFacade proves
@@ -45,7 +46,7 @@ describe("generate facade-talk golden", () => {
     });
 
     const ops: FacadeOp[] = [
-      { kind: "submit", intent: { kind: "talk", npcId: "anyone" } }, // advancing throw: startTurn ran, nextPlayer did not
+      { kind: "submit", intent: { kind: "talk", npcId: "anyone" } }, // free throw: no startTurn, no nextPlayer (round stays 0)
       { kind: "submit", intent: { kind: "wait" } },                   // advancing no-op: nextPlayer wraps round 0 → 1
     ];
     const steps = writeFacadeFixture(here, "facade-talk", SEED, oracle, EMPTY_CATALOG, ops);
@@ -59,8 +60,8 @@ describe("generate facade-talk golden", () => {
       throw new Error(`step 0 expected talk error, got ${JSON.stringify(r0)}`);
     }
     if ("mobAttacks" in r0) throw new Error("error path must omit mobAttacks");
-    // talk is time-advancing: startTurn ran (dread onTurnStart cue present) but
-    // nextPlayer did NOT (round still 0); the following wait wraps to round 1.
+    // talk is FREE: neither startTurn nor nextPlayer ran (round still 0); the
+    // following advancing wait wraps to round 1.
     const s0 = steps[0]!.snapshot as { campaign: { round: number } };
     const s1 = steps[1]!.snapshot as { campaign: { round: number } };
     if (s0.campaign.round !== 0) throw new Error(`step 0 round expected 0, got ${s0.campaign.round}`);

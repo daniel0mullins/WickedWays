@@ -313,10 +313,27 @@ impl World {
                 }
                 self.attack(actor, &target, cat, cues)
             }
-            Intent::Talk { .. } => {
-                // No NPCs in this campaign; dialogue is reserved for future
-                // content (session.ts:242-245).
-                Err(ProceduralViolation("There's no one here to talk to.".into()))
+            Intent::Talk { npc_id, .. } => {
+                // Resolve the target against the actor's current room: it must be a
+                // co-located, VISIBLE NPC. Anything else (missing id, a Mob/player,
+                // or a hidden NPC) is "no one to talk to". Dialogue CONTENT is
+                // Sub-plan 2 — a resolved NPC is a quiet no-op placeholder here.
+                let room_id = self.current_room_id_of(actor)?;
+                let target = CharacterId(npc_id);
+                let in_room = self
+                    .rooms
+                    .get(&room_id)
+                    .map(|r| r.occupant_ids.contains(&target))
+                    .unwrap_or(false);
+                let is_visible_npc = self
+                    .characters
+                    .get(&target)
+                    .map(|c| c.kind == CharacterKind::Npc && c.visible)
+                    .unwrap_or(false);
+                if !in_room || !is_visible_npc {
+                    return Err(ProceduralViolation("There's no one here to talk to.".into()));
+                }
+                Ok(())
             }
         }
     }
@@ -659,6 +676,44 @@ mod tests {
         (r, opened)
     }
 
+    /// Seat an NPC `name` (id == name) into `room` with the given visibility, and
+    /// push its id into that room's `occupant_ids`. Mirrors `seat_test_mob` but
+    /// with `kind = Npc`.
+    fn seat_npc(w: &mut World, name: &str, room: &str, visible: bool) {
+        use crate::world::afflictions::Afflictions;
+        use crate::world::snapshot::{CharacterKind, InventorySnapshot, Stats};
+        let id = cid(name);
+        let room_id = rid(room);
+        let snap = crate::world::snapshot::CharacterSnapshot {
+            kind: CharacterKind::Npc,
+            id: id.clone(),
+            name: name.into(),
+            stats: Stats { health: 3.0, sanity: 3.0, energy: 3.0 },
+            actions_per_round: 1,
+            actions_this_round: 0,
+            current_room_id: Some(room_id.clone()),
+            inventory: InventorySnapshot { slots: 0, item_ids: alloc::vec![], key_ids: alloc::vec![] },
+            equipment: BTreeMap::new(),
+            history: alloc::vec![],
+            archetype_immunities: alloc::vec![],
+            afflictions: Afflictions::default(),
+            archetype_id: None,
+            origin: None,
+            base_escape_chance: None,
+            material_drops: None,
+            light_averse: None,
+            natural_attack: None,
+            npc_behavior_key: Some("npc/keeper".into()),
+            visible,
+        };
+        w.characters.insert(id.clone(), snap);
+        if let Some(r) = w.rooms.get_mut(&room_id) {
+            if !r.occupant_ids.contains(&id) {
+                r.occupant_ids.push(id);
+            }
+        }
+    }
+
     #[test]
     fn wait_advances_the_turn_and_returns_empty_mob_attacks() {
         let mut w = world_for_submit();
@@ -791,6 +846,59 @@ mod tests {
             assert_eq!(r.error.as_deref(), Some(want), "intent {intent:?}");
             assert_eq!(r.mob_attacks, None, "TS error path omits mobAttacks ({intent:?})");
         }
+    }
+
+    // ── talk: resolves a co-located visible NPC; free (non-advancing) ────────
+
+    #[test]
+    fn talk_to_visible_npc_resolves_as_free_no_op() {
+        // A co-located VISIBLE NPC resolves: no error, no cues, and — talk being
+        // non-advancing — the round does NOT tick and mobAttacks is empty ([]).
+        let mut w = world_for_submit();
+        seat_npc(&mut w, "keeper", "room1", /*visible=*/ true);
+        let (r, _) = submit_one(&mut w, Intent::Talk { npc_id: "keeper".into(), prompt: None });
+        assert_eq!(r.error, None, "a visible co-located NPC must resolve");
+        assert_eq!(r.cues, Vec::new(), "Sub-plan 2 owns dialogue; this is a placeholder no-op");
+        assert_eq!(r.mob_attacks, Some(Vec::new()), "free action returns mobAttacks: []");
+        assert_eq!(w.campaign.round, 0, "talk is free — no round advance");
+    }
+
+    #[test]
+    fn talk_with_prompt_to_visible_npc_resolves() {
+        let mut w = world_for_submit();
+        seat_npc(&mut w, "keeper", "room1", /*visible=*/ true);
+        let (r, _) = submit_one(
+            &mut w,
+            Intent::Talk { npc_id: "keeper".into(), prompt: Some("how do i get out".into()) },
+        );
+        assert_eq!(r.error, None);
+        assert_eq!(w.campaign.round, 0);
+    }
+
+    #[test]
+    fn talk_to_invisible_npc_is_rejected() {
+        // A hidden NPC is not "here" for conversation.
+        let mut w = world_for_submit();
+        seat_npc(&mut w, "keeper", "room1", /*visible=*/ false);
+        let (r, _) = submit_one(&mut w, Intent::Talk { npc_id: "keeper".into(), prompt: None });
+        assert_eq!(r.error.as_deref(), Some("There's no one here to talk to."));
+        assert_eq!(r.mob_attacks, None, "error path omits mobAttacks");
+    }
+
+    #[test]
+    fn talk_to_a_mob_is_rejected() {
+        // A co-located Mob is not an NPC — you can't converse with it.
+        let mut w = world_for_submit();
+        seat_test_mob(&mut w, "wraith", "room1");
+        let (r, _) = submit_one(&mut w, Intent::Talk { npc_id: "wraith".into(), prompt: None });
+        assert_eq!(r.error.as_deref(), Some("There's no one here to talk to."));
+    }
+
+    #[test]
+    fn talk_to_missing_npc_is_rejected() {
+        let mut w = world_for_submit();
+        let (r, _) = submit_one(&mut w, Intent::Talk { npc_id: "nobody".into(), prompt: None });
+        assert_eq!(r.error.as_deref(), Some("There's no one here to talk to."));
     }
 
     #[test]
