@@ -3,7 +3,7 @@
 **Status:** Design approved, ready for implementation plan
 **Date:** 2026-07-08
 **Branch:** `design/rust-engine-core`
-**Part of:** the NPC dialogue system (3 sub-plans). Depends on Sub-plan 1 (NPC foundation) + Sub-plan 2 (data-driven dialogue). This sub-plan is mostly **authoring** on top of that machinery, plus one differential fixture.
+**Part of:** the NPC dialogue system (now 4 sub-plans). Depends on Sub-plan 1 (NPC foundation) + Sub-plan 2 (data-driven dialogue) + Sub-plan 3 (data-driven scenes with effects + start-room onEnter firing). This sub-plan is **authoring** on top of that machinery, plus one differential fixture.
 **Related:** keyed doors (`doorBehavior`), `createKey`, scenes (onEnter), the item/behavior/formation authoring precedents.
 
 ## Goal
@@ -20,7 +20,7 @@ Author the actual Hollow House experience: a **caretaker** NPC in the Foyer who,
 ## Scope (Sub-plan 3 — authoring + one fixture)
 
 - **The caretaker NPC:** seed an `Npc` occupant in the Foyer, `visible: true`, holding the `cellar-key` in its inventory, with `npc_behavior_key` → a `BehaviorScript::Npc` (Sub-plan 2) authored via the `npc({...})` builder: a `description` (for `examine`), and dialogue whose bare/`default` (and/or a "cellar" pattern) entry emits `GiveItem(caretaker → player, cellar-key)` + `SetVisible(caretaker, false)`, `once: true`, with a hand-off response line; optional extra prompt→lore entries for flavor.
-- **The onEnter intro scene:** a Foyer scene that narrates the caretaker on entry (a `mechanic` cue). If it must run at game start (start-room), confirm/enable start-room enter-scene firing (a Sub-plan 1/3 detail); otherwise it plays on first arrival. The scene emits cues only (no new effects needed for the intro) — but note scenes gaining an effect channel is a possible dependency if the intro should also toggle visibility; the caretaker starts visible, so the intro is cue-only.
+- **The onEnter intro scene:** a **data-driven `onEnter` scene** (Sub-plan 3) attached to the Foyer, narrating the caretaker on entry. Because the Foyer is the start room, Sub-plan 3's `begin_campaign` start-room enter-scene firing surfaces its cue **at game start**. Authored via the `scene({ onEnter: [...] })` builder + registered in `hollowHouseBehaviors()`. Cue-only here (the caretaker starts visible), though scene effects (`SetVisible`/`GiveItem`) are available via Sub-plan 3 if wanted.
 - **The keyed door + key:** add a `cellar-key` (`createKey`, `consumeOnUse: false` like brass/iron) and a `cellar-door` `doorBehavior(keyCode="cellar", ...)`; replace the current free Foyer↔Cellar corridor (declared both ways today) with a **single** keyed exit declaration (a reverse declaration would shadow the `behaviorKey`, per the existing door convention). Register the scripted door twin in `hollowHouseBehaviors()`. NOTE: the key comes from the NPC (not loot, not a mob drop) — the keys-in-loot ban is irrelevant; the caretaker's inventory + `GiveItem` deliver it.
 - **Differential fixture** (the gate): drive the facade/HH oracle through: enter Foyer → intro cue; `examine caretaker` → description cue; `talk caretaker` → hand-off (cellar key received, caretaker invisible, response cue) + re-`talk`/re-`examine` shows the caretaker gone; then move Foyer→Cellar succeeds only with the key (locked without, unlocked with). Byte-identical Rust↔oracle.
 

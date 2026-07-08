@@ -4,13 +4,13 @@
 
 **Goal:** The caretaker experience in Hollow House: on game start you're introduced to a caretaker in the Foyer; `examine caretaker` describes them; `talk to caretaker` hands over the cellar key and the caretaker vanishes; the Foyer→Cellar corridor becomes a keyed door the cellar key opens.
 
-**Spec:** `docs/superpowers/specs/2026-07-08-hollow-house-caretaker-design.md`. **Depends on Sub-plans 1-2** (visibility, talk/dialogue, `GiveItem`/`SetVisible`, NPC `holds` seeding, `examine`-description).
+**Spec:** `docs/superpowers/specs/2026-07-08-hollow-house-caretaker-design.md`. **Depends on Sub-plans 1-3** (visibility, talk/dialogue, `GiveItem`/`SetVisible`, NPC `holds` seeding, `examine`-description, **data-driven scenes with effects + start-room onEnter firing**).
 
 ## Global Constraints
-- Authoring-first: no new engine mechanics (all in Sub-plans 1-2). Differential gate authority. `checks:phase2` green (incl. the updated capstone + manifest-boot + the new fixture).
+- Authoring-first: no new engine mechanics (all in Sub-plans 1-3). Differential gate authority. `checks:phase2` green (incl. the updated capstone + manifest-boot + the new fixture).
 
-## Design decision — the auto-intro mechanism (READ)
-The "automatic onEnter scene" cannot surface at game start: a start-room `onEnter` scene fires during TS boot **before** genesis serialization and its **cues are discarded** (only state is baked in); the Rust core never re-fires it. BUT `begin_campaign` fires round-0 **mechanic** `on_round_start` hooks, whose cues ARE captured by `takeStartupCues`. So implement the auto-intro as a **round-0, once scripted mechanic** (`caretaker-intro`) emitting the intro cue — it surfaces at game start with **no engine change**, and at round 0 the player is always in the Foyer (start room), so it's effectively Foyer-scoped. (Alternative, if a true room-scoped onEnter-at-start is later wanted: add start-room enter-scene cue surfacing to `begin_campaign` — a separate engine task, out of scope here.)
+## The auto-intro (a real onEnter scene)
+The caretaker intro is a **data-driven `onEnter` scene** on the Foyer (Sub-plan 3): because the Foyer is the start room, Sub-plan 3's `begin_campaign` start-room enter-scene firing surfaces its cue at game start. Authored via the `scene({ onEnter: [...] })` builder and registered in `hollowHouseBehaviors()` — no per-scene engine code. (The scene emits cues only here; the machinery also allows scene effects like `SetVisible`, e.g. a future "resurrect" scene.)
 
 ---
 
@@ -22,13 +22,13 @@ The "automatic onEnter scene" cannot surface at game start: a start-room `onEnte
 - [ ] Convert the free corridor `.exit(Foyer, South, Cellar).exit(Cellar, North, Foyer)` (index.ts:105) to a **single** keyed declaration: `.exit(Rooms.Foyer, Directions.South, Rooms.Cellar, { behaviorKey: ExitBehaviors.CellarDoor, name: "cellar door", initialState: { unlocked: false } })` (declare ONCE — a reverse decl shadows the behaviorKey).
 - [ ] Test: without the cellar key the door is locked (appears in `lockedDoors`, move fails with the fail message); with the key, first pass unlocks (opened line) + moves. Typecheck. Commit.
 
-## Task 2: The caretaker NPC (dialogue + description + intro) — authoring
-**Files:** `ids.ts` (`Npcs.Caretaker` behavior key); `scripted.ts` (`caretakerScript = npc({...})` + `caretakerIntroScript = mechanic({...})` + register both in `hollowHouseBehaviors()`); `index.ts` (`.npc(...)` seeding with `holds: [Keys.Cellar]` + `.useMechanic(caretaker-intro)`); `manifest.ts` (already threads behaviors/formations); tests + manifest-boot.
+## Task 2: The caretaker NPC (dialogue + description) + the Foyer intro scene — authoring
+**Files:** `ids.ts` (`Npcs.Caretaker` behavior key + `Scenes.CaretakerIntro` key); `scripted.ts` (`caretakerScript = npc({...})` + `caretakerIntroScene = scene({...})` + register both in `hollowHouseBehaviors()`); `index.ts` (`.npc(...)` seeding with `holds: [Keys.Cellar]` + attach the intro scene to the Foyer); `manifest.ts` (already threads behaviors/formations); tests + manifest-boot.
 
 - [ ] Author `caretakerScript = npc({ description: "<physical description>", default: dialogueEntry({ match: <bare/default>, response: "<hand-off line>", effects: [giveItem(caretaker, actor, Keys.Cellar), setVisible(caretaker, false)], once: true }), dialogue: [ /* optional lore prompts, e.g. dialogueFuzzy(["cellar"]) → hint */ ] })`. (Bare `talk` triggers the hand-off per the design; the `once` latch prevents re-giving; after `SetVisible(false)` the caretaker is unreachable anyway.)
-- [ ] Author `caretakerIntroScript = mechanic({ init: {}, hooks: { onRoundStart: [ guard(<round == 0 / not-yet-shown state>), emit(cue("<intro narration>")), setState("shown", true) ] } })` — the round-0 auto-intro. Register both scripts in `hollowHouseBehaviors()` keyed by their behavior keys; `.useMechanic(Mechanics.CaretakerIntro)` in the template.
+- [ ] Author `caretakerIntroScene = scene({ onEnter: [ emit(cue("<intro narration>")) ] })` (Sub-plan 3's `scene(...)` builder) — attach it to the **Foyer** (the start room), so Sub-plan 3's `begin_campaign` start-room enter-scene firing surfaces the cue at game start. (Cue-only here; effects are available if wanted.) Register both scripts in `hollowHouseBehaviors()` by their behavior keys; attach the scene to the Foyer room in the template (`.room(Rooms.Foyer, { ..., scenes: [Scenes.CaretakerIntro] })` or the real scene-attach API — confirm against how scenes attach to rooms).
 - [ ] Seed the NPC: `.npc("Caretaker", { stats: <minimal>, room: Rooms.Foyer, behavior: Npcs.Caretaker, holds: [Keys.Cellar] })` (Sub-plan 1's `holds`). The NPC's `npc_behavior_key` → `caretakerScript`.
-- [ ] Run `pnpm -r typecheck` + `manifest-boot.test.ts` (boots HH through the Authority — validates the caretaker's `npc_behavior_key`, the door + formation threading, and the bigint catalog path). If `scripted.test.ts` asserts a behavior-key count, update it. Commit.
+- [ ] Run `pnpm -r typecheck` + `manifest-boot.test.ts` (boots HH through the Authority — validates the caretaker's `npc_behavior_key`, the intro scene key, the door + formation threading, and the bigint catalog path). If `scripted.test.ts` asserts a behavior-key count, update it. Commit.
 
 ## Task 3: Capstone update + composed caretaker differential fixture
 **Files:** `packages/play/src/core/capstone.test.ts` (winning path); a new `conformance/fixtures/caretaker.gen.test.ts` + replay + vitest.config registration.
