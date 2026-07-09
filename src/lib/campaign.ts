@@ -442,7 +442,22 @@ export class Campaign implements ICampaign {
       }
     }
     this.#started = true;
+    // Round-0 onRoundStart readout FIRST.
     this.#dispatchRound("onRoundStart");
+    // Then the active character's start-room enter-scenes. Fire-point PINNED here —
+    // AFTER the round-0 dispatch — for gate parity with the Rust `begin_campaign`
+    // and the oracle-session begin/startup (identical order). The PC was placed at
+    // boot WITHOUT firing scenes (pristine genesis: startSession/session.ts/oracle
+    // pass `fireScenes = false` to `move`), so this is the scene's first and only
+    // firing at campaign start. `enterRoom` re-seats the (already-present) occupant
+    // idempotently and returns the enter-scene cues, which we surface like a move.
+    const active = this.activeCharacter;
+    const start = active.currentRoom;
+    if (start) {
+      for (const cue of start.enterRoom(active)) {
+        this[EMIT_CUE]({ kind: "mechanic", cue });
+      }
+    }
   }
 
   // Centralized termination: set the outcome, record the firing key, and emit a

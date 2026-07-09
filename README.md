@@ -1883,6 +1883,18 @@ action cue. The reference behavior, `conformance:visit-counter`, fires while
 `state.count < 3` and the room is occupied, incrementing `state.count` and emitting a
 cue naming the room and the new visit count.
 
+**Start-room enter-scenes fire at `begin_campaign`, not at boot.** The TS boot placement
+seats the PC in the start room WITHOUT firing scenes (`move(room, /*fireScenes*/ false)` in
+`session.ts` boot, `orchestration.ts` `startSession`, and the conformance oracle), so genesis
+carries an **un-fired** start-room scene (pristine state). `begin_campaign` (Rust) then fires
+the active player's start-room enter-scenes into the same buffer `take_startup_cues` returns —
+so a start-room scene's cue surfaces as a startup cue and its state advances exactly once. The
+fire-point is pinned **after** the round-0 `onRoundStart` dispatch, identically in Rust
+`begin_campaign`, TS `Campaign.beginCampaign`, and the oracle's begin/startup, for
+differential-gate parity. Regular later `move`/`go` keep firing scenes as before (default
+`fireScenes = true`). `validate_mechanics` fails fast on any room scene whose `behaviorKey`
+resolves via neither the native registry nor a catalog descriptor.
+
 #### Encounter spawning: the `FormationBehavior` registry (`crates/wickedways-core/src/world/formations.rs`)
 
 Sub-plan 6c-3 ports the roving-encounter table the same way keyed exits and scenes were

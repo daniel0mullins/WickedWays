@@ -26,7 +26,22 @@ impl World {
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
         self.campaign.started = true;
-        self.dispatch_round(RoundPhase::Start, cat, cues)
+        // Round-0 onRoundStart readout FIRST.
+        self.dispatch_round(RoundPhase::Start, cat, cues)?;
+        // Then the active player's start-room enter-scenes, into the SAME cue
+        // buffer `take_startup_cues` returns. Fire-point PINNED here — AFTER the
+        // round-0 dispatch — for gate parity: the TS oracle (oracle-session
+        // begin/startup) and TS `Campaign.beginCampaign` fire in this identical
+        // order. Genesis is pristine (the TS boot places the PC WITHOUT firing
+        // scenes), so this is the scene's first and only firing at campaign start.
+        if let Ok(actor) = self.active_character_id() {
+            if let Some(room) =
+                self.characters.get(&actor).and_then(|c| c.current_room_id.clone())
+            {
+                self.fire_scenes(&room, "enter", &actor, cat, cues)?;
+            }
+        }
+        Ok(())
     }
 
     /// Statuses immunized by equipped, non-broken gear or the selected archetype.
@@ -319,6 +334,40 @@ mod tests {
         w.begin_campaign(&Catalog::default(), &mut cues).unwrap();
         assert!(w.campaign.started);
         assert_eq!(mechanic_texts(&cues), vec!["Dread stirs."]);
+    }
+
+    /// Task 3: a start-room `onEnter` scene fires at begin_campaign — its cue
+    /// surfaces in the SAME buffer `take_startup_cues` returns, it fires EXACTLY
+    /// once (pristine genesis: count 0 → 1), and the fire-point is pinned AFTER
+    /// the round-0 onRoundStart readout (identical order to the TS oracle /
+    /// Campaign.beginCampaign, for gate parity).
+    #[test]
+    fn begin_campaign_fires_start_room_enter_scene_after_round_start_once() {
+        use crate::world::ids::RoomId;
+        let mut w = with_dread(crate::world::test_support::world_two_rooms(false));
+        w.campaign.started = false;
+        // Start-room enter-scene, PRISTINE (count 0) — the TS boot places the PC
+        // WITHOUT firing scenes, so genesis carries an un-fired scene.
+        w.rooms.get_mut(&RoomId("start".into())).unwrap().scenes.push(
+            crate::world::snapshot::SceneSnapshot {
+                id: "scene".into(),
+                behavior_key: "conformance:visit-counter".into(),
+                phase: "enter".into(),
+                state: serde_json::json!({ "count": 0 }),
+            },
+        );
+        let mut cues = Vec::new();
+        w.begin_campaign(&Catalog::default(), &mut cues).unwrap();
+        // Pinned order: round-0 onRoundStart FIRST, start-room enter-scene SECOND.
+        assert_eq!(
+            mechanic_texts(&cues),
+            vec!["Dread stirs.", "The Start stirs (visit 1)."]
+        );
+        // Fired exactly once: pristine 0 → 1 (not 2).
+        assert_eq!(
+            w.rooms[&RoomId("start".into())].scenes[0].state["count"],
+            serde_json::json!(1)
+        );
     }
 
     #[test]

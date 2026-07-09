@@ -76,7 +76,13 @@ export class GameSession {
     if (this.opts.archetype !== undefined) {
       pc.selectArchetype(this.opts.archetype as ArchetypeId);
     }
-    pc.move(rooms.get(builder.description.startRoom!)!);
+    // Pristine-genesis boot placement: seat the PC in the start room WITHOUT
+    // firing enter-scenes (`fireScenes = false`). The start-room enter-scenes are
+    // deferred to the Authority's `begin_campaign` (Rust), which fires them into
+    // the startup-cue buffer AFTER the round-0 dispatch — the order is pinned
+    // identically in Rust `begin_campaign`, TS `Campaign.beginCampaign`, and the
+    // oracle-session begin/startup, for differential-gate parity.
+    pc.move(rooms.get(builder.description.startRoom!)!, /*fireScenes*/ false);
     campaign.gm = pc;
 
     // Presentation overlay capture (rooms + boot-time occupants, by id).

@@ -89,10 +89,16 @@ export interface IRoom {
   /** Characters currently in the room. */
   get occupants(): ICharacter[];
 
-  /** Records a character as present and plays any `"enter"` scenes; returns their cues. */
-  enterRoom: (character: ICharacter) => MechanicCue[];
-  /** Plays any `"exit"` scenes (returning their cues) then removes the character. */
-  exitRoom: (character: ICharacter) => MechanicCue[];
+  /**
+   * Records a character as present and (when `fireScenes`, the default) plays any
+   * `"enter"` scenes; returns their cues. `fireScenes = false` seats the occupant
+   * WITHOUT firing scenes — the pristine-genesis boot placement (see
+   * {@link Character.move}); the scenes then fire at {@link ICampaign.beginCampaign}.
+   */
+  enterRoom: (character: ICharacter, fireScenes?: boolean) => MechanicCue[];
+  /** Plays any `"exit"` scenes (returning their cues) then removes the character.
+   *  `fireScenes = false` removes the occupant without firing scenes. */
+  exitRoom: (character: ICharacter, fireScenes?: boolean) => MechanicCue[];
   /**
    * Builds one shared {@link Exit} connecting this room to `to` in `direction`,
    * and (unless `opts.oneWay`) places the same exit in `to` under the reverse direction.
@@ -286,9 +292,9 @@ export class Room implements IRoom {
    * returning the mechanic cues those scenes emitted (in registration order).
    * @param character - The character entering the room.
    */
-  enterRoom(character: ICharacter): MechanicCue[] {
+  enterRoom(character: ICharacter, fireScenes = true): MechanicCue[] {
     this.#occupants.set(character.id, character);
-    return this.#scenes.flatMap((scene) => scene.playScene("enter", this));
+    return fireScenes ? this.#scenes.flatMap((scene) => scene.playScene("enter", this)) : [];
   }
 
   /**
@@ -296,8 +302,8 @@ export class Room implements IRoom {
    * registration order) and then removes `character` from the occupants.
    * @param character - The character leaving the room.
    */
-  exitRoom(character: ICharacter): MechanicCue[] {
-    const cues = this.#scenes.flatMap((scene) => scene.playScene("exit", this));
+  exitRoom(character: ICharacter, fireScenes = true): MechanicCue[] {
+    const cues = fireScenes ? this.#scenes.flatMap((scene) => scene.playScene("exit", this)) : [];
     this.#occupants.delete(character.id);
     return cues;
   }

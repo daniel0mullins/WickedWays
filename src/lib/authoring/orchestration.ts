@@ -79,7 +79,12 @@ export function startSession(
     if (p.archetype !== undefined) {
       pc.selectArchetype(p.archetype as ArchetypeId);
     }
-    pc.move(startRoomInstance);
+    // Pristine-genesis boot placement: seat the PC WITHOUT firing enter-scenes
+    // (`fireScenes = false`). `campaign.beginCampaign()` below fires the active
+    // character's start-room enter-scenes ONCE — AFTER the round-0 dispatch — so
+    // their state bakes into the post-begin genesis exactly once. Order pinned for
+    // gate parity with Rust `begin_campaign` and the oracle-session begin/startup.
+    pc.move(startRoomInstance, /*fireScenes*/ false);
     pcs.push(pc);
   }
 

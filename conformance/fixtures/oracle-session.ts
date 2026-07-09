@@ -79,7 +79,13 @@ export class OracleSession {
     pc.id = `player:${opts.playerName}` as CharacterId; // deterministic (regen-stable goldens)
     pc.joinCampaign();
     if (opts.archetype !== undefined) pc.selectArchetype(opts.archetype as ArchetypeId);
-    pc.move(rooms.get(opts.builder.description.startRoom!)!);
+    // Pristine-genesis boot placement: seat the PC WITHOUT firing enter-scenes
+    // (`fireScenes = false`) — mirrors GameSession.boot. The start-room enter-scenes
+    // are deferred to `campaign.beginCampaign()` below (the shared TS impl), which
+    // fires them AFTER the round-0 dispatch; with `onCue` registered first, their
+    // cues land in `startupCues`. This order is pinned identically in Rust
+    // `begin_campaign` and TS `Campaign.beginCampaign` for differential-gate parity.
+    pc.move(rooms.get(opts.builder.description.startRoom!)!, /*fireScenes*/ false);
     campaign.gm = pc;
     // PRE-begin genesis — exactly what GameSession will hand Authority::new.
     this.genesis = serializeCampaign(campaign);

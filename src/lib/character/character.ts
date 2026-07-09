@@ -1047,18 +1047,19 @@ export class Character implements ICharacter {
 
   /**
    * Shared room-entry body for {@link Character.move} and the {@link PLACE} seam:
-   * exits any current room and enters `room`, firing exit/enter scenes. Does NOT
-   * emit a visibility cue — the enter-cue is party-facing and belongs to the
-   * gameplay navigation path only ({@link Character.move}), not the ungated
-   * placement seam ({@link PLACE}) used to seat resident/spawned mobs.
+   * exits any current room and enters `room`, firing exit/enter scenes (unless
+   * `fireScenes` is `false`). Does NOT emit a visibility cue — the enter-cue is
+   * party-facing and belongs to the gameplay navigation path only
+   * ({@link Character.move}), not the ungated placement seam ({@link PLACE}) used
+   * to seat resident/spawned mobs.
    */
-  #enterRoom(room: IRoom): MechanicCue[] {
+  #enterRoom(room: IRoom, fireScenes = true): MechanicCue[] {
     const cues: MechanicCue[] = [];
     if (this.#currentRoom) {
-      cues.push(...this.#currentRoom.exitRoom(this));
+      cues.push(...this.#currentRoom.exitRoom(this, fireScenes));
     }
     this.#currentRoom = room;
-    cues.push(...room.enterRoom(this));
+    cues.push(...room.enterRoom(this, fireScenes));
     return cues;
   }
 
@@ -1080,10 +1081,16 @@ export class Character implements ICharacter {
    * Records a `move` action.
    *
    * @param room - Destination room.
+   * @param fireScenes - When `false`, seats the character WITHOUT playing the
+   *   destination's enter-scenes (or the departed room's exit-scenes) — used for
+   *   the pristine-genesis boot placement, where the start-room enter-scenes are
+   *   deferred to {@link ICampaign.beginCampaign} so their state is un-fired in
+   *   genesis and their cues surface as startup cues. Everything else (history
+   *   entry, budget tick, visibility cue) is unchanged. Defaults to `true`.
    */
-  move(room: IRoom) {
+  move(room: IRoom, fireScenes = true) {
     if (!this.attemptAction(this.move, true)) return;
-    const sceneCues = this.#enterRoom(room);
+    const sceneCues = this.#enterRoom(room, fireScenes);
     for (const cue of sceneCues) {
       this.campaign[EMIT_CUE]({ kind: "mechanic", cue });
     }

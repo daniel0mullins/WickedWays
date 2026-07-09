@@ -688,7 +688,23 @@ describe("Character", () => {
       character.move(room);
 
       expect(character.currentRoom).toBe(room);
-      expect(room.enterRoom).toHaveBeenCalledWith(character);
+      // `move` threads the `fireScenes` flag (default true) into `enterRoom`.
+      expect(room.enterRoom).toHaveBeenCalledWith(character, true);
+    });
+
+    it("seats the character WITHOUT firing scenes when fireScenes is false (pristine boot placement)", () => {
+      // Task 3: `move(room, false)` places the PC and records history/budget but
+      // does not play enter-scenes — genesis carries an un-fired start-room scene,
+      // which then fires at `beginCampaign`.
+      const character = makeCharacter();
+      const room = makeRoom();
+
+      character.move(room, false);
+
+      expect(character.currentRoom).toBe(room);
+      expect(room.enterRoom).toHaveBeenCalledWith(character, false);
+      // History + budget are still recorded — only scene-firing is skipped.
+      expect(character.history).toHaveLength(1);
     });
 
     it("exits the previous room before entering the next", () => {
@@ -699,8 +715,8 @@ describe("Character", () => {
       character.move(first);
       character.move(second);
 
-      expect(first.exitRoom).toHaveBeenCalledWith(character);
-      expect(second.enterRoom).toHaveBeenCalledWith(character);
+      expect(first.exitRoom).toHaveBeenCalledWith(character, true);
+      expect(second.enterRoom).toHaveBeenCalledWith(character, true);
       expect(character.currentRoom).toBe(second);
     });
 
@@ -2009,7 +2025,8 @@ describe("Character", () => {
       character[PLACE](room);
 
       expect(character.currentRoom).toBe(room);
-      expect(room.enterRoom).toHaveBeenCalledWith(character);
+      // PLACE keeps the default fireScenes=true through `#enterRoom`.
+      expect(room.enterRoom).toHaveBeenCalledWith(character, true);
       expect(character.history).toHaveLength(0);
     });
 
@@ -2021,7 +2038,7 @@ describe("Character", () => {
       character[PLACE](first);
       character[PLACE](second);
 
-      expect(first.exitRoom).toHaveBeenCalledWith(character);
+      expect(first.exitRoom).toHaveBeenCalledWith(character, true);
       expect(character.currentRoom).toBe(second);
     });
   });

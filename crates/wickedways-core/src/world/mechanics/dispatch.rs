@@ -389,6 +389,25 @@ impl World {
                 }
             }
         }
+        // Room scene behaviors (Task 3): every room scene's `behavior_key` must
+        // resolve via `resolve_scene` (native first, then a catalog descriptor) —
+        // fail fast like the item/mechanic/npc/exit/victory loops. A scripted
+        // (non-native) scene is also shape-checked at load. Mirrors the TS
+        // assembler/hydrate throw when a room scene references an unregistered key.
+        for room in self.rooms.values() {
+            for scene in &room.scenes {
+                if crate::world::scenes::resolve_scene(&scene.behavior_key, cat).is_none() {
+                    return Err(ProceduralViolation(format!(
+                        "Scene behavior '{}' is not registered.", scene.behavior_key
+                    )));
+                }
+                if let Some(b) = cat.behaviors.get(&scene.behavior_key) {
+                    if crate::world::scenes::scene_behavior(&scene.behavior_key).is_none() {
+                        crate::script::validate_behavior(&scene.behavior_key, b)?;
+                    }
+                }
+            }
+        }
         // Formation keys (encounter table is an untyped Value; read behaviorKey like maybe_spawn).
         if let Some(arr) = self.campaign.encounter_table.get("formations").and_then(|v| v.as_array()) {
             for f in arr {
