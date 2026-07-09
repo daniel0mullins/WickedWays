@@ -12,7 +12,10 @@ conformance = []
 [dependencies]
 serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
-ts-rs = { version = "10", optional = true }
+# no-serde-warnings: ts-rs 10.1.0 can't parse some of our serde attributes and
+# prints a "failed to parse serde attribute" warning per item (it harmlessly
+# ignores them — bindings stay correct). The flag mutes that build noise only.
+ts-rs = { version = "10", optional = true, features = ["no-serde-warnings"] }
 
 [dev-dependencies]
 proptest = "1"
