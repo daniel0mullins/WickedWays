@@ -83,6 +83,12 @@ export const adjust = (target: Expr, stat: StatType, delta: Expr): EffectTemplat
 export const grantImmunity = (target: Expr, turns: Expr): EffectTemplate =>
   ({ kind: "grantImmunity", target, turns });
 export const cue = (text: Expr): EffectTemplate => ({ kind: "cue", text });
+/** Transfer item `item` from character `from` to character `to` (`Effect::GiveItem`). */
+export const giveItem = (from: Expr, to: Expr, item: Expr): EffectTemplate =>
+  ({ kind: "giveItem", from, to, item });
+/** Toggle character `target`'s visibility (`Effect::SetVisible`). */
+export const setVisible = (target: Expr, visible: Expr): EffectTemplate =>
+  ({ kind: "setVisible", target, visible });
 export const status = (fields: FieldTemplate[]): EffectTemplate => ({ kind: "status", fields });
 export const field = (label: string, value: Expr, emphasis?: Expr): FieldTemplate =>
   emphasis === undefined ? { label, value } : { label, value, emphasis };

@@ -28,3 +28,7 @@ export const ExitBehaviors = {
   AtticDoor: "attic-door",
   CellarDoor: "cellar-door",
 } as const;
+
+export const Npcs = { Caretaker: "caretaker" } as const;
+
+export const Scenes = { CaretakerIntro: "caretaker-intro" } as const;

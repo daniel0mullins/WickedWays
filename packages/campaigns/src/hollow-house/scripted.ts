@@ -6,7 +6,7 @@
 import * as s from "../scripted/builders.ts";
 import type { BehaviorScript, Expr, EffectTemplate } from "../scripted/builders.ts";
 import { LORE } from "./content.js";
-import { Conditions, ExitBehaviors, Items, Mechanics, Rooms } from "./ids.js";
+import { Conditions, ExitBehaviors, Items, Mechanics, Npcs, Rooms, Scenes } from "./ids.js";
 
 // ── dread (oracle: mechanics.ts:5-11) ────────────────────────────────────────
 // onTurnStart: hasEquipped(lantern) ? [] : [adjustStat(actor, sanity, -1)]
@@ -128,6 +128,50 @@ export const partyDownScript: BehaviorScript = s.victory(
   ),
 );
 
+// ── the caretaker NPC + the foyer intro scene (NPC sub-plan 4) ────────────────
+// These three strings appear in BOTH the DSL twins below (interpreted by the Rust
+// core from `catalog.behaviors`) and the native TS twins in index.ts (fired by the
+// TS oracle when building genesis / at begin_campaign). They MUST be byte-identical
+// across both twins or the differential gate diverges — so each is defined ONCE
+// here (a leaf module: scripted.ts imports only from ./ids.js and ./content.js, so
+// index.ts→scripted.ts stays one-way, no barrel cycle) and imported into index.ts.
+export const CARETAKER_DESCRIPTION =
+  "A stooped caretaker in a moth-eaten coat, a ring of iron keys trembling at his belt. He will not meet your eyes.";
+export const CARETAKER_HANDOFF =
+  "Take the cellar key. I have no more use for it, nor for this house. I am leaving now, and I will not come back.";
+export const CARETAKER_INTRO_CUE =
+  "The front door thuds shut behind you and will not open again. In the gloom of the foyer, a stooped figure waits, a ring of keys shaking in his hand.";
+
+// The caretaker's own char id (assembler mints `npc:<name>`) and the id of his
+// first held item (`npc:<name>:item#0` -> the seeded cellar key). Pinned literals,
+// not runtime resolution, so neither engine can drift.
+const CARETAKER_ID = "npc:Caretaker";
+const CARETAKER_KEY_ITEM_ID = "npc:Caretaker:item#0";
+
+// The default entry catches BOTH a bare `talk` AND any prompt (there are no lore
+// `dialogue` entries to match first) -> every talk falls to the hand-off. `once`
+// gates the EFFECTS only (the response cue always emits); after `setVisible(false)`
+// the caretaker is unreachable, so a re-talk is a no-op anyway.
+export const caretakerScript: BehaviorScript = s.npc({
+  description: CARETAKER_DESCRIPTION,
+  default: s.entry({
+    match: s.exact(""),
+    response: s.lit(CARETAKER_HANDOFF),
+    effects: [
+      s.giveItem(s.lit(CARETAKER_ID), s.actor, s.lit(CARETAKER_KEY_ITEM_ID)),
+      s.setVisible(s.lit(CARETAKER_ID), s.lit(false)),
+    ],
+    once: true,
+  }),
+  dialogue: [],
+});
+
+// Foyer enter-scene: cue-only, no canPlay (always plays), no effects. Fires at
+// begin_campaign via the start-room enter-scene surfacing (NPC sub-plan 3).
+export const caretakerIntroScene: BehaviorScript = s.scene({
+  onEnter: [s.emit(s.cue(s.lit(CARETAKER_INTRO_CUE)))],
+});
+
 /** Every Hollow House behavior, keyed exactly as the engine resolves them. */
 export function hollowHouseBehaviors(): Record<string, BehaviorScript> {
   return {
@@ -145,5 +189,7 @@ export function hollowHouseBehaviors(): Record<string, BehaviorScript> {
     [Conditions.ReachedAtticWithJournal]: reachedAtticWithJournalScript,
     [Conditions.SanityZero]: sanityZeroScript,
     [Conditions.PartyDown]: partyDownScript,
+    [Npcs.Caretaker]: caretakerScript,
+    [Scenes.CaretakerIntro]: caretakerIntroScene,
   };
 }

@@ -72,6 +72,20 @@ describe("scripted-ops builders", () => {
     expect(s.item({})).toEqual({ family: "item", script: {} });
   });
 
+  it("emits the giveItem and setVisible effect templates", () => {
+    expect(s.giveItem(s.lit("npc:Caretaker"), s.actor, s.lit("npc:Caretaker:item#0"))).toEqual({
+      kind: "giveItem",
+      from: { kind: "lit", value: "npc:Caretaker" },
+      to: { kind: "actor" },
+      item: { kind: "lit", value: "npc:Caretaker:item#0" },
+    });
+    expect(s.setVisible(s.lit("npc:Caretaker"), s.lit(false))).toEqual({
+      kind: "setVisible",
+      target: { kind: "lit", value: "npc:Caretaker" },
+      visible: { kind: "lit", value: false },
+    });
+  });
+
   it("emits the scene family with canPlay + phase bodies", () => {
     // Full: a canPlay predicate + both phase bodies; canPlay serialized as its Expr.
     expect(

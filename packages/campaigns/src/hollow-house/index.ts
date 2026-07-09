@@ -9,7 +9,12 @@ import { ITEM_FACTORIES } from "./items.js";
 import { dread, makeStoryteller } from "./mechanics.js";
 import { statusBar } from "./status.js";
 import { LORE, doorBehavior } from "./content.js";
-import { Rooms, Items, Keys, Mobs, Mechanics, Archetypes, Conditions, ExitBehaviors, Formations } from "./ids.js";
+// scripted.ts is a leaf module (imports only ./ids.js + ./content.js), so this
+// index.ts→scripted.ts edge is one-way — no barrel cycle. These consts are the
+// SINGLE source of the caretaker's shared prose, so the native twins below stay
+// byte-identical to the DSL twins the Rust core interprets from catalog.behaviors.
+import { CARETAKER_HANDOFF, CARETAKER_INTRO_CUE } from "./scripted.js";
+import { Rooms, Items, Keys, Mobs, Mechanics, Archetypes, Conditions, ExitBehaviors, Formations, Npcs, Scenes } from "./ids.js";
 // Relative import: the package export map (`"./*": "./src/*/index.ts"`) does NOT
 // resolve `@wickedways/campaigns/formations`, so reach the sibling module directly.
 import { descriptorToFormation } from "../formations.js";
@@ -68,6 +73,18 @@ export function buildHauntedHouseRegistry(): CampaignRegistry {
       [ExitBehaviors.AtticDoor]: doorBehavior("iron", "attic door", "The iron key grinds in the lock; the attic stairs open above you."),
       [ExitBehaviors.CellarDoor]: doorBehavior("cellar", "cellar door", "The cellar key turns; the cellar door swings open."),
     },
+    // NPC + scene native twins. The Rust engine resolves the caretaker / intro
+    // scene from catalog.behaviors (the DSL twins in scripted.ts); these native
+    // registry entries are what the TS assembler/oracle consumes when building
+    // genesis and firing the start-room enter scene at begin_campaign. The scene
+    // `script` MUST emit the same cue text as the DSL `cue` (shared const), and
+    // `preconditions: []` matches the DSL's null canPlay (always plays).
+    npcs: {
+      [Npcs.Caretaker]: { initialDialogue: CARETAKER_HANDOFF, dialogue: [] },
+    },
+    scenes: {
+      [Scenes.CaretakerIntro]: { preconditions: [], script: () => [{ text: CARETAKER_INTRO_CUE }] },
+    },
   });
   // Formation → FormationBehavior. `descriptorToFormation` needs the item registry
   // to realize `MobSpec.drops`, but only dereferences it lazily inside `build()`
@@ -122,6 +139,11 @@ export function hauntedHouseTemplate(): TemplateBuilder<string, string> {
     // Mobs — Wraith drops the brass key (guards study door), Revenant drops iron key
     .mob(Mobs.Wraith, { stats: { [StatType.Health]: 6, [StatType.Sanity]: 5, [StatType.Energy]: 5 }, room: Rooms.Nursery, drops: [Keys.Brass], naturalAttack: { stat: StatType.Sanity, power: 3 } })
     .mob(Mobs.Revenant, { stats: { [StatType.Health]: 10, [StatType.Sanity]: 8, [StatType.Energy]: 6 }, room: Rooms.Cellar, drops: [Keys.Iron], naturalAttack: { stat: StatType.Sanity, power: 2 } })
+    // Caretaker — the foyer NPC. Never fights (minimal statline); holds the cellar
+    // key and hands it over on the first `talk`, then vanishes (setVisible false).
+    // The intro scene fires on entering the Foyer (the start room) at begin_campaign.
+    .npc("Caretaker", { stats: { [StatType.Health]: 1, [StatType.Sanity]: 1, [StatType.Energy]: 1 }, room: Rooms.Foyer, behavior: Npcs.Caretaker, holds: [Keys.Cellar] })
+    .scene(Rooms.Foyer, Scenes.CaretakerIntro, { phase: "enter" })
     // Mechanics + outcomes
     .useMechanic(Mechanics.Dread)
     .useMechanic(Mechanics.Storyteller)
