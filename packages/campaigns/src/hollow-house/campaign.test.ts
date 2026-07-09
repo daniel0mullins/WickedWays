@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { assemble } from "wickedways/lib/authoring/assembler";
 import { PlayerCharacter } from "wickedways/lib/character/player-character";
 import { hauntedHouseTemplate } from "./index.js";
+import { cellarKey } from "./items.js";
 import { Rooms, Mobs, Archetypes } from "./ids.js";
 import { Directions } from "wickedways/lib/room";
 import { Status } from "wickedways/lib/status";
@@ -74,6 +75,35 @@ describe("The Hollow House — winning path", () => {
     expect(wraith.status).toContain(Status.KO);
     take(pc, "Brass Key");
     expect(pc.inventory.keys.some((k) => k.keyCode === "brass")).toBe(true);
+  });
+});
+
+describe("The Hollow House — keyed cellar door", () => {
+  it("blocks Foyer->Cellar without the cellar key, opens with it, and traverses back Cellar->Foyer", () => {
+    const { campaign } = boot();
+    const pc = campaign.activeCharacter as unknown as PlayerCharacter;
+    const cues: string[] = [];
+    campaign.onCue((c) => { if (c.kind === "mechanic" && c.cue.text) cues.push(c.cue.text); });
+
+    // Without the cellar key: the door blocks the move south, no room change.
+    pc.startTurn(); pc.go(Directions.South); campaign.nextPlayer();
+    expect(pc.currentRoom!.name).toBe(Rooms.Foyer);            // did not move
+    expect(cues.some((t) => t.includes("won't budge"))).toBe(true);
+
+    // Grant the cellar key (later handed over by the caretaker NPC).
+    pc.addToInventory(cellarKey());
+    expect(pc.inventory.keys.some((k) => k.keyCode === "cellar")).toBe(true);
+
+    // First pass unlocks: emits the opened line and moves into the Cellar.
+    cues.length = 0;
+    pc.startTurn(); pc.go(Directions.South); campaign.nextPlayer();
+    expect(pc.currentRoom!.name).toBe(Rooms.Cellar);
+    expect(cues.some((t) => t.includes("the cellar door swings open"))).toBe(true);
+
+    // Reverse traversal: the single keyed declaration must be bidirectional —
+    // Cellar -> North -> Foyer must succeed once the shared door is unlocked.
+    pc.startTurn(); pc.go(Directions.North); campaign.nextPlayer();
+    expect(pc.currentRoom!.name).toBe(Rooms.Foyer);
   });
 });
 

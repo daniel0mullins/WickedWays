@@ -138,6 +138,8 @@ export function hollowHouseBehaviors(): Record<string, BehaviorScript> {
       "The brass key turns; the study door swings open."),
     [ExitBehaviors.AtticDoor]: doorScript("iron", "attic door",
       "The iron key grinds in the lock; the attic stairs open above you."),
+    [ExitBehaviors.CellarDoor]: doorScript("cellar", "cellar door",
+      "The cellar key turns; the cellar door swings open."),
     [Items.Laudanum]: laudanumScript,
     [Items.RatTail]: ratTailScript,
     [Conditions.ReachedAtticWithJournal]: reachedAtticWithJournalScript,

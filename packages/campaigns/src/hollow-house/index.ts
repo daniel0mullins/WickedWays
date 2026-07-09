@@ -66,6 +66,7 @@ export function buildHauntedHouseRegistry(): CampaignRegistry {
     exits: {
       [ExitBehaviors.StudyDoor]: doorBehavior("brass", "study door", "The brass key turns; the study door swings open."),
       [ExitBehaviors.AtticDoor]: doorBehavior("iron", "attic door", "The iron key grinds in the lock; the attic stairs open above you."),
+      [ExitBehaviors.CellarDoor]: doorBehavior("cellar", "cellar door", "The cellar key turns; the cellar door swings open."),
     },
   });
   // Formation → FormationBehavior. `descriptorToFormation` needs the item registry
@@ -102,7 +103,7 @@ export function hauntedHouseTemplate(): TemplateBuilder<string, string> {
     // dedupes by room-pair. Corridors are declared both ways below; KEYED DOORS are
     // declared ONCE (a reverse declaration would shadow the door's behaviorKey).
     .exit(Rooms.Foyer, Directions.North, Rooms.Hall).exit(Rooms.Hall, Directions.South, Rooms.Foyer)
-    .exit(Rooms.Foyer, Directions.South, Rooms.Cellar).exit(Rooms.Cellar, Directions.North, Rooms.Foyer)
+    .exit(Rooms.Foyer, Directions.South, Rooms.Cellar, { behaviorKey: ExitBehaviors.CellarDoor, name: "cellar door", initialState: { unlocked: false } })
     .exit(Rooms.Hall, Directions.West, Rooms.Kitchen).exit(Rooms.Kitchen, Directions.East, Rooms.Hall)
     .exit(Rooms.Hall, Directions.East, Rooms.Parlor).exit(Rooms.Parlor, Directions.West, Rooms.Hall)
     .exit(Rooms.Hall, Directions.North, Rooms.Landing).exit(Rooms.Landing, Directions.South, Rooms.Hall)

@@ -65,6 +65,7 @@ export const ratTail = (): Item =>
 
 export const brassKey = (): Item => createKey({ name: "Brass Key", keyCode: "brass", consumeOnUse: false });
 export const ironKey = (): Item => createKey({ name: "Iron Key", keyCode: "iron", consumeOnUse: false });
+export const cellarKey = (): Item => createKey({ name: "Cellar Key", keyCode: "cellar", consumeOnUse: false });
 
 export const ITEM_FACTORIES: Record<string, () => Item> = {
   [Items.Lantern]: lantern,
@@ -74,4 +75,5 @@ export const ITEM_FACTORIES: Record<string, () => Item> = {
   [Items.RatTail]: ratTail,
   [Keys.Brass]: brassKey,
   [Keys.Iron]: ironKey,
+  [Keys.Cellar]: cellarKey,
 };

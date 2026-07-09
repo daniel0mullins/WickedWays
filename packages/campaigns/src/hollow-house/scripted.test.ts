@@ -54,9 +54,9 @@ describe("hollow-house scripted behaviors", () => {
     expect(Object.keys(hollowHouseBehaviors())).toContain("attic-door");
   });
 
-  it("registers all ten behavior keys", () => {
+  it("registers all eleven behavior keys", () => {
     expect(Object.keys(hollowHouseBehaviors()).sort())
-      .toEqual(["attic-door", "dread", "laudanum", "party-down", "rat-tail",
+      .toEqual(["attic-door", "cellar-door", "dread", "laudanum", "party-down", "rat-tail",
         "reached-attic-with-journal", "sanity-zero", "status-bar", "storyteller",
         "study-door"]);
   });
