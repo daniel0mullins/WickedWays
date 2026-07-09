@@ -190,6 +190,24 @@ describe("<pnc-scene>", () => {
     expect(mc.style.left).toBe("80%");
   });
 
+  // ── stacking: an exit must sit above overlapping body hotspots ─────────────────
+
+  it("exit hotspots stack above body hotspots so an overlapping occupant cannot block the doorway", async () => {
+    // The east exit (top:50%) and the occupant band (top:48%) can overlap; without
+    // a higher z-index the later-painted occupant would swallow the exit click.
+    el.hotspots = [
+      { key: "east", label: "East", kind: "exit", dir: "east", actions: [] },
+      { key: "orc-1", label: "Orc", kind: "occupant", actions: [] },
+    ];
+    await el.updateComplete;
+
+    const exitEl = el.shadowRoot!.querySelector<HTMLElement>("[data-key='east']")!;
+    const bodyEl = el.shadowRoot!.querySelector<HTMLElement>("[data-key='orc-1']")!;
+    expect(exitEl).not.toBeNull();
+    expect(bodyEl).not.toBeNull();
+    expect(Number(exitEl.style.zIndex)).toBeGreaterThan(Number(bodyEl.style.zIndex));
+  });
+
   it("clicking an occupant hotspot emits 'hotspot' event with occupant key", async () => {
     el.hotspots = [{
       key: "revenant-123",

@@ -181,7 +181,10 @@ export class PncScene extends LitElement {
 
     return html`<div class="scene" style=${styleMap(sceneStyle)}>
 
-      ${perimeterHotspots.map((hs) => {
+      ${/* Perimeter (exit/door) hotspots stack ABOVE body hotspots (z-index 2 vs 1)
+           so an occupant whose central marker overlaps an edge exit cannot swallow
+           the exit click — a doorway is always clickable even with a monster on it. */
+      perimeterHotspots.map((hs) => {
         const pos = DIR_POSITION[hs.dir] ?? { left: "50%", top: "50%" };
         const isInteractive = hs.kind !== "locked";
         const clickHandler = isInteractive ? (e: MouseEvent) => this.#emitHotspot(hs.key, e) : undefined;
@@ -189,7 +192,7 @@ export class PncScene extends LitElement {
           class="hotspot ${hs.kind}"
           data-key=${hs.key}
           data-dir=${hs.dir}
-          style=${styleMap({ left: pos.left, top: pos.top })}
+          style=${styleMap({ left: pos.left, top: pos.top, zIndex: "2" })}
           @click=${clickHandler}
         >${this.#renderContent(hs, "perimeter")}</div>`;
       })}
@@ -199,7 +202,7 @@ export class PncScene extends LitElement {
         return html`<div
           class="hotspot ${hs.kind}"
           data-key=${hs.key}
-          style=${styleMap({ left: pos.left, top: pos.top })}
+          style=${styleMap({ left: pos.left, top: pos.top, zIndex: "1" })}
           @click=${(e: MouseEvent) => this.#emitHotspot(hs.key, e)}
         >${this.#renderContent(hs, "body")}</div>`;
       })}
