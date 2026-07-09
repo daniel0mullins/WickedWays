@@ -1,5 +1,21 @@
 import { test, expect, type Page } from "@playwright/test";
 
+// Deterministic rng seed for the full winning playthroughs: the browser session
+// otherwise draws a random seed (session.ts), making roving-encounter (Rat)
+// spawns non-deterministic — and in the PnC surface a spawned occupant hotspot
+// can overlap an exit hotspot and swallow the coordinate click. A fixed seed
+// keeps the traversal path clear and reproducible. main.ts reads
+// globalThis.__WICKED_SEED (test-only; undefined in production). Overridable via
+// E2E_SEED for local seed sweeps; the default is a verified clear-path seed.
+const E2E_SEED = Number(process.env.E2E_SEED ?? "2");
+
+/** Pin the browser session's rng seed before the app boots. */
+async function seedSession(page: Page): Promise<void> {
+  await page.addInitScript((s: number) => {
+    (globalThis as { __WICKED_SEED?: number }).__WICKED_SEED = s;
+  }, E2E_SEED);
+}
+
 // ── Shared helpers ──────────────────────────────────────────────────────────────
 
 /**
@@ -137,6 +153,7 @@ test.describe("Wicked Ways browser playthrough", () => {
   test("plays the haunted house to a win", async ({ page }) => {
     test.setTimeout(120_000);
 
+    await seedSession(page);
     // Deep-link directly to the CRT surface to bypass the surface picker.
     await page.goto("/?campaign=hollow-house&surface=crt-terminal");
     await enterGame(page);
@@ -363,6 +380,7 @@ test.describe("Wicked Ways browser playthrough", () => {
   test("wins Hollow House by clicking (PnC surface)", async ({ page }) => {
     test.setTimeout(120_000);
 
+    await seedSession(page);
     await page.goto("/?campaign=hollow-house&surface=point-and-click");
     await enterPncGame(page);
 

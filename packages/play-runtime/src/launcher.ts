@@ -13,7 +13,7 @@ export function resolveCampaign(slug: string | null, campaigns: CampaignManifest
   return campaigns.find((c) => c.slug === slug) ?? null;
 }
 
-export interface BootOpts { saveStore: SaveStore; now: () => number; locationSearch?: string }
+export interface BootOpts { saveStore: SaveStore; now: () => number; locationSearch?: string; seed?: number }
 
 /**
  * Wires the campaign registry, surfaces, and save store into the root DOM element.
@@ -92,6 +92,7 @@ export async function bootLauncher(
       behaviors: m.behaviors?.() ?? {},
       formations: m.formations?.() ?? {},
       playerName: m.playerName, archetype: m.archetype, saveStore: opts.saveStore, now: opts.now,
+      ...(opts.seed !== undefined ? { seed: opts.seed } : {}),
     });
     const audio = AudioRuntime.forCampaign(m.audio);
     handle = surface.mount({
