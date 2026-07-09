@@ -1,0 +1,1612 @@
+{
+  "seed": 51790,
+  "startupCues": [
+    {
+      "kind": "mechanic",
+      "cue": {
+        "text": "The front door thuds shut behind you and will not open again. In the gloom of the foyer, a stooped figure waits, a ring of keys shaking in his hand."
+      }
+    }
+  ],
+  "ops": [
+    {
+      "kind": "examine",
+      "targetId": "npc:Caretaker"
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "move",
+        "dir": "south"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "talk",
+        "npcId": "npc:Caretaker"
+      }
+    },
+    {
+      "kind": "examine",
+      "targetId": "npc:Caretaker"
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "move",
+        "dir": "south"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "op": {
+        "kind": "examine",
+        "targetId": "npc:Caretaker"
+      },
+      "result": [
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "A stooped caretaker in a moth-eaten coat, a ring of iron keys trembling at his belt. He will not meet your eyes."
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Caretaker (conformance)",
+          "title": "Caretaker (conformance)",
+          "maxRounds": 20,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:npc:Caretaker"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "The gloom of the foyer.",
+            "exits": {
+              "south": "exit:Cellar|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "npc:Caretaker",
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Foyer:caretaker-intro:enter",
+                "behaviorKey": "caretaker-intro",
+                "phase": "enter",
+                "state": {}
+              }
+            ]
+          },
+          {
+            "id": "room:Cellar",
+            "name": "Cellar",
+            "description": "A cold stone cellar.",
+            "exits": {
+              "north": "exit:Cellar|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Cellar|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Cellar"
+            ],
+            "behaviorKey": "cellar-door",
+            "name": "cellar door",
+            "state": {
+              "unlocked": false
+            }
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "npc",
+            "id": "npc:Caretaker",
+            "name": "Caretaker",
+            "stats": {
+              "health": 1,
+              "sanity": 1,
+              "energy": 1
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": [
+                "npc:Caretaker:item#0"
+              ]
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "npcBehaviorKey": "caretaker"
+          }
+        ],
+        "items": [
+          {
+            "kind": "key",
+            "id": "npc:Caretaker:item#0",
+            "name": "Cellar Key",
+            "keyCode": "cellar",
+            "consumeOnUse": false
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Caretaker",
+            "snapshot": {
+              "name": "Caretaker",
+              "stats": {
+                "health": 1,
+                "sanity": 1,
+                "energy": 1
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "The gloom of the foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Foyer",
+          "name": "Foyer",
+          "description": "The gloom of the foyer.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [
+          {
+            "name": "cellar door",
+            "dir": "south"
+          }
+        ],
+        "occupants": [
+          {
+            "id": "npc:Caretaker",
+            "name": "Caretaker",
+            "aliases": [
+              "caretaker"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "npc:Caretaker",
+            "name": "Caretaker",
+            "aliases": [
+              "caretaker"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "status": {
+          "locationName": "Foyer",
+          "turn": 0,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "move",
+          "dir": "south"
+        }
+      },
+      "result": {
+        "cues": [
+          {
+            "kind": "mechanic",
+            "cue": {
+              "text": "The cellar door won't budge — it's locked."
+            }
+          }
+        ],
+        "mobAttacks": []
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Caretaker (conformance)",
+          "title": "Caretaker (conformance)",
+          "maxRounds": 20,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:npc:Caretaker"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "The gloom of the foyer.",
+            "exits": {
+              "south": "exit:Cellar|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "npc:Caretaker",
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Foyer:caretaker-intro:enter",
+                "behaviorKey": "caretaker-intro",
+                "phase": "enter",
+                "state": {}
+              }
+            ]
+          },
+          {
+            "id": "room:Cellar",
+            "name": "Cellar",
+            "description": "A cold stone cellar.",
+            "exits": {
+              "north": "exit:Cellar|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Cellar|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Cellar"
+            ],
+            "behaviorKey": "cellar-door",
+            "name": "cellar door",
+            "state": {
+              "unlocked": false
+            }
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "npc",
+            "id": "npc:Caretaker",
+            "name": "Caretaker",
+            "stats": {
+              "health": 1,
+              "sanity": 1,
+              "energy": 1
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": [
+                "npc:Caretaker:item#0"
+              ]
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "npcBehaviorKey": "caretaker"
+          }
+        ],
+        "items": [
+          {
+            "kind": "key",
+            "id": "npc:Caretaker:item#0",
+            "name": "Cellar Key",
+            "keyCode": "cellar",
+            "consumeOnUse": false
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Caretaker",
+            "snapshot": {
+              "name": "Caretaker",
+              "stats": {
+                "health": 1,
+                "sanity": 1,
+                "energy": 1
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "The gloom of the foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Foyer",
+          "name": "Foyer",
+          "description": "The gloom of the foyer.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [
+          {
+            "name": "cellar door",
+            "dir": "south"
+          }
+        ],
+        "occupants": [
+          {
+            "id": "npc:Caretaker",
+            "name": "Caretaker",
+            "aliases": [
+              "caretaker"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "npc:Caretaker",
+            "name": "Caretaker",
+            "aliases": [
+              "caretaker"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "status": {
+          "locationName": "Foyer",
+          "turn": 1,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "talk",
+          "npcId": "npc:Caretaker"
+        }
+      },
+      "result": {
+        "cues": [
+          {
+            "kind": "mechanic",
+            "cue": {
+              "text": "Take the cellar key. I have no more use for it, nor for this house. I am leaving now, and I will not come back."
+            }
+          }
+        ],
+        "mobAttacks": []
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Caretaker (conformance)",
+          "title": "Caretaker (conformance)",
+          "maxRounds": 20,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:npc:Caretaker"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "The gloom of the foyer.",
+            "exits": {
+              "south": "exit:Cellar|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "npc:Caretaker",
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Foyer:caretaker-intro:enter",
+                "behaviorKey": "caretaker-intro",
+                "phase": "enter",
+                "state": {}
+              }
+            ]
+          },
+          {
+            "id": "room:Cellar",
+            "name": "Cellar",
+            "description": "A cold stone cellar.",
+            "exits": {
+              "north": "exit:Cellar|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Cellar|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Cellar"
+            ],
+            "behaviorKey": "cellar-door",
+            "name": "cellar door",
+            "state": {
+              "unlocked": false
+            }
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": [
+                "npc:Caretaker:item#0"
+              ]
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "npc",
+            "id": "npc:Caretaker",
+            "name": "Caretaker",
+            "stats": {
+              "health": 1,
+              "sanity": 1,
+              "energy": 1
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "visible": false,
+            "npcState": {
+              "onceFired": {
+                "default": true
+              }
+            },
+            "npcBehaviorKey": "caretaker"
+          }
+        ],
+        "items": [
+          {
+            "kind": "key",
+            "id": "npc:Caretaker:item#0",
+            "name": "Cellar Key",
+            "keyCode": "cellar",
+            "consumeOnUse": false
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Caretaker",
+            "snapshot": {
+              "name": "Caretaker",
+              "stats": {
+                "health": 1,
+                "sanity": 1,
+                "energy": 1
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "The gloom of the foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Foyer",
+          "name": "Foyer",
+          "description": "The gloom of the foyer.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [
+            {
+              "id": "npc:Caretaker:item#0",
+              "name": "Cellar Key",
+              "aliases": [
+                "cellar key"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": false,
+              "droppable": true
+            }
+          ],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "npc:Caretaker:item#0",
+            "name": "Cellar Key",
+            "aliases": [
+              "cellar key"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          }
+        ],
+        "status": {
+          "locationName": "Foyer",
+          "turn": 1,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "examine",
+        "targetId": "npc:Caretaker"
+      },
+      "result": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Caretaker (conformance)",
+          "title": "Caretaker (conformance)",
+          "maxRounds": 20,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:npc:Caretaker"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "The gloom of the foyer.",
+            "exits": {
+              "south": "exit:Cellar|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "npc:Caretaker",
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Foyer:caretaker-intro:enter",
+                "behaviorKey": "caretaker-intro",
+                "phase": "enter",
+                "state": {}
+              }
+            ]
+          },
+          {
+            "id": "room:Cellar",
+            "name": "Cellar",
+            "description": "A cold stone cellar.",
+            "exits": {
+              "north": "exit:Cellar|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Cellar|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Cellar"
+            ],
+            "behaviorKey": "cellar-door",
+            "name": "cellar door",
+            "state": {
+              "unlocked": false
+            }
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": [
+                "npc:Caretaker:item#0"
+              ]
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "npc",
+            "id": "npc:Caretaker",
+            "name": "Caretaker",
+            "stats": {
+              "health": 1,
+              "sanity": 1,
+              "energy": 1
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "visible": false,
+            "npcState": {
+              "onceFired": {
+                "default": true
+              }
+            },
+            "npcBehaviorKey": "caretaker"
+          }
+        ],
+        "items": [
+          {
+            "kind": "key",
+            "id": "npc:Caretaker:item#0",
+            "name": "Cellar Key",
+            "keyCode": "cellar",
+            "consumeOnUse": false
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Caretaker",
+            "snapshot": {
+              "name": "Caretaker",
+              "stats": {
+                "health": 1,
+                "sanity": 1,
+                "energy": 1
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "The gloom of the foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Foyer",
+          "name": "Foyer",
+          "description": "The gloom of the foyer.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Cellar"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [
+            {
+              "id": "npc:Caretaker:item#0",
+              "name": "Cellar Key",
+              "aliases": [
+                "cellar key"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": false,
+              "droppable": true
+            }
+          ],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "npc:Caretaker:item#0",
+            "name": "Cellar Key",
+            "aliases": [
+              "cellar key"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          }
+        ],
+        "status": {
+          "locationName": "Foyer",
+          "turn": 1,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "move",
+          "dir": "south"
+        }
+      },
+      "result": {
+        "cues": [
+          {
+            "kind": "mechanic",
+            "cue": {
+              "text": "The cellar key turns; the cellar door swings open."
+            }
+          },
+          {
+            "kind": "action",
+            "action": "move",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            }
+          }
+        ],
+        "mobAttacks": []
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Caretaker (conformance)",
+          "title": "Caretaker (conformance)",
+          "maxRounds": 20,
+          "round": 2,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:npc:Caretaker"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer",
+              "room:Cellar"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Cellar",
+            "name": "Cellar",
+            "description": "A cold stone cellar.",
+            "exits": {
+              "north": "exit:Cellar|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          },
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "The gloom of the foyer.",
+            "exits": {
+              "south": "exit:Cellar|Foyer"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "npc:Caretaker"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Foyer:caretaker-intro:enter",
+                "behaviorKey": "caretaker-intro",
+                "phase": "enter",
+                "state": {}
+              }
+            ]
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Cellar|Foyer",
+            "endpointIds": [
+              "room:Foyer",
+              "room:Cellar"
+            ],
+            "behaviorKey": "cellar-door",
+            "name": "cellar door",
+            "state": {
+              "unlocked": true
+            }
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Cellar",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": [
+                "npc:Caretaker:item#0"
+              ]
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Cellar",
+                  "name": "Cellar"
+                },
+                "round": 1
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "npc",
+            "id": "npc:Caretaker",
+            "name": "Caretaker",
+            "stats": {
+              "health": 1,
+              "sanity": 1,
+              "energy": 1
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "visible": false,
+            "npcState": {
+              "onceFired": {
+                "default": true
+              }
+            },
+            "npcBehaviorKey": "caretaker"
+          }
+        ],
+        "items": [
+          {
+            "kind": "key",
+            "id": "npc:Caretaker:item#0",
+            "name": "Cellar Key",
+            "keyCode": "cellar",
+            "consumeOnUse": false
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Caretaker",
+            "snapshot": {
+              "name": "Caretaker",
+              "stats": {
+                "health": 1,
+                "sanity": 1,
+                "energy": 1
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "The gloom of the foyer."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Cellar",
+            "snapshot": {
+              "name": "Cellar",
+              "description": "A cold stone cellar."
+            },
+            "firstSeen": {
+              "round": 1,
+              "characterId": "player:Ada",
+              "roomId": "room:Cellar"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Cellar",
+          "name": "Cellar",
+          "description": "A cold stone cellar.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Foyer"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [
+            {
+              "id": "npc:Caretaker:item#0",
+              "name": "Cellar Key",
+              "aliases": [
+                "cellar key"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": false,
+              "droppable": true
+            }
+          ],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "npc:Caretaker:item#0",
+            "name": "Cellar Key",
+            "aliases": [
+              "cellar key"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          }
+        ],
+        "status": {
+          "locationName": "Cellar",
+          "turn": 2,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    }
+  ]
+}

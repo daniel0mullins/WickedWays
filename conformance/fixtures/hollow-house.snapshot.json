@@ -112,13 +112,22 @@
       },
       "dark": false,
       "spawnModifier": 1,
-      "occupantIds": [],
+      "occupantIds": [
+        "npc:Caretaker"
+      ],
       "lootIds": [
         "loot:foyer-table"
       ],
       "materialCacheIds": [],
       "lightSourceIds": [],
-      "scenes": []
+      "scenes": [
+        {
+          "id": "scene:Foyer:caretaker-intro:enter",
+          "behaviorKey": "caretaker-intro",
+          "phase": "enter",
+          "state": {}
+        }
+      ]
     },
     {
       "id": "room:Cellar",
@@ -272,7 +281,11 @@
         "room:Foyer",
         "room:Cellar"
       ],
-      "state": {}
+      "behaviorKey": "cellar-door",
+      "name": "cellar door",
+      "state": {
+        "unlocked": false
+      }
     },
     {
       "id": "exit:Hall|Kitchen",
@@ -332,6 +345,36 @@
     }
   ],
   "characters": [
+    {
+      "kind": "npc",
+      "id": "npc:Caretaker",
+      "name": "Caretaker",
+      "stats": {
+        "health": 1,
+        "sanity": 1,
+        "energy": 1
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 0,
+      "currentRoomId": "room:Foyer",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [],
+        "keyIds": [
+          "npc:Caretaker:item#0"
+        ]
+      },
+      "equipment": {},
+      "history": [],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "npcBehaviorKey": "caretaker"
+    },
     {
       "kind": "mob",
       "id": "mob:Revenant",
@@ -432,6 +475,13 @@
       "id": "loot:study-desk:item#0",
       "behaviorKey": "laudanum",
       "modifier": 6
+    },
+    {
+      "kind": "key",
+      "id": "npc:Caretaker:item#0",
+      "name": "Cellar Key",
+      "keyCode": "cellar",
+      "consumeOnUse": false
     },
     {
       "kind": "key",

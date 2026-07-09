@@ -1,0 +1,121 @@
+{
+  "items": {},
+  "aliases": {},
+  "behaviors": {
+    "caretaker": {
+      "family": "npc",
+      "script": {
+        "description": "A stooped caretaker in a moth-eaten coat, a ring of iron keys trembling at his belt. He will not meet your eyes.",
+        "default": {
+          "match": {
+            "kind": "exact",
+            "text": ""
+          },
+          "response": {
+            "kind": "lit",
+            "value": "Take the cellar key. I have no more use for it, nor for this house. I am leaving now, and I will not come back."
+          },
+          "effects": [
+            {
+              "kind": "giveItem",
+              "from": {
+                "kind": "lit",
+                "value": "npc:Caretaker"
+              },
+              "to": {
+                "kind": "actor"
+              },
+              "item": {
+                "kind": "lit",
+                "value": "npc:Caretaker:item#0"
+              }
+            },
+            {
+              "kind": "setVisible",
+              "target": {
+                "kind": "lit",
+                "value": "npc:Caretaker"
+              },
+              "visible": {
+                "kind": "lit",
+                "value": false
+              }
+            }
+          ],
+          "once": true
+        },
+        "dialogue": []
+      }
+    },
+    "caretaker-intro": {
+      "family": "scene",
+      "script": {
+        "canPlay": null,
+        "onEnter": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "cue",
+              "text": {
+                "kind": "lit",
+                "value": "The front door thuds shut behind you and will not open again. In the gloom of the foyer, a stooped figure waits, a ring of keys shaking in his hand."
+              }
+            }
+          }
+        ]
+      }
+    },
+    "cellar-door": {
+      "family": "exit",
+      "script": {
+        "canPass": {
+          "kind": "bin",
+          "op": "or",
+          "left": {
+            "kind": "stateGet",
+            "field": "unlocked",
+            "default": false
+          },
+          "right": {
+            "kind": "hasKey",
+            "of": {
+              "kind": "actor"
+            },
+            "keyCode": "cellar"
+          }
+        },
+        "runScript": [
+          {
+            "kind": "when",
+            "cond": {
+              "kind": "not",
+              "expr": {
+                "kind": "stateGet",
+                "field": "unlocked",
+                "default": false
+              }
+            },
+            "then": [
+              {
+                "kind": "setState",
+                "field": "unlocked",
+                "value": {
+                  "kind": "lit",
+                  "value": true
+                }
+              },
+              {
+                "kind": "pass",
+                "value": {
+                  "kind": "lit",
+                  "value": "The cellar key turns; the cellar door swings open."
+                }
+              }
+            ]
+          }
+        ],
+        "failMessage": "The cellar door won't budge — it's locked."
+      }
+    }
+  }
+}

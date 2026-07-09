@@ -47,6 +47,7 @@ export default defineConfig({
       "conformance/fixtures/facade-open-fail.gen.test.ts",
       "conformance/fixtures/npc-foundation.gen.test.ts",
       "conformance/fixtures/npc-dialogue.gen.test.ts",
+      "conformance/fixtures/caretaker.gen.test.ts",
       "conformance/fixtures/npc-matcher.test.ts",
     ],
     environment: "node",
