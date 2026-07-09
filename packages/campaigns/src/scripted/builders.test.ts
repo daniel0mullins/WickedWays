@@ -72,6 +72,42 @@ describe("scripted-ops builders", () => {
     expect(s.item({})).toEqual({ family: "item", script: {} });
   });
 
+  it("emits the scene family with canPlay + phase bodies", () => {
+    // Full: a canPlay predicate + both phase bodies; canPlay serialized as its Expr.
+    expect(
+      s.scene({
+        canPlay: s.lt(s.stateGet("count", 0), s.lit(2)),
+        onEnter: [s.emit({ kind: "setVisible", target: s.lit("mob:Gargoyle"), visible: s.lit(false) })],
+        onExit: [s.emit(s.cue(s.lit("The vault falls silent behind you.")))],
+      }),
+    ).toEqual({
+      family: "scene",
+      script: {
+        canPlay: {
+          kind: "bin", op: "lt",
+          left: { kind: "stateGet", field: "count", default: 0 },
+          right: { kind: "lit", value: 2 },
+        },
+        onEnter: [
+          { kind: "emit", effect: { kind: "setVisible", target: { kind: "lit", value: "mob:Gargoyle" }, visible: { kind: "lit", value: false } } },
+        ],
+        onExit: [
+          { kind: "emit", effect: { kind: "cue", text: { kind: "lit", value: "The vault falls silent behind you." } } },
+        ],
+      },
+    });
+    // canPlay omitted → null (always serialized); onEnter-only body, onExit omitted.
+    expect(
+      s.scene({ onEnter: [s.setState("seen", s.lit(true))] }),
+    ).toEqual({
+      family: "scene",
+      script: {
+        canPlay: null,
+        onEnter: [{ kind: "setState", field: "seen", value: { kind: "lit", value: true } }],
+      },
+    });
+  });
+
   it("emits npc dialogue match rules, entries, and the npc family", () => {
     // Match rules.
     expect(s.exact("hello")).toEqual({ kind: "exact", text: "hello" });

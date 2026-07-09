@@ -11,6 +11,7 @@ import type { FieldTemplate } from "../../../../generated/bindings/FieldTemplate
 import type { MechanicHooks } from "../../../../generated/bindings/MechanicHooks.ts";
 import type { BehaviorScript } from "../../../../generated/bindings/BehaviorScript.ts";
 import type { ItemScript } from "../../../../generated/bindings/ItemScript.ts";
+import type { SceneScript } from "../../../../generated/bindings/SceneScript.ts";
 import type { DialogueEntry } from "../../../../generated/bindings/DialogueEntry.ts";
 import type { DialogueMatch } from "../../../../generated/bindings/DialogueMatch.ts";
 import type { ScriptValue } from "../../../../generated/bindings/ScriptValue.ts";
@@ -137,6 +138,28 @@ export const item = (spec: {
   if (spec.onUse !== undefined) script.onUse = spec.onUse;
   if (spec.onRead !== undefined) script.onRead = spec.onRead;
   return { family: "item", script };
+};
+
+/**
+ * `scene`-family behavior (`BehaviorScript::Scene`): a scripted room scene. An
+ * optional `canPlay` predicate `Expr` gates whether the scene may fire; optional
+ * `onEnter` / `onExit` effect bodies (`Vec<Stmt>`) run on the matching phase (a
+ * room registers a scene entry per phase, both keyed to this behavior). An unset
+ * hook is a no-op. `canPlay` is ALWAYS serialized (mirroring the Rust `SceneScript`
+ * serde shape — `#[serde(default)]`, not skip-if-none): `null` means always
+ * playable. The hand-written `SceneBehavior` registry descriptor
+ * (`preconditions` + `script`) stays the differential-conformance oracle; this
+ * script must reproduce it byte-for-byte.
+ */
+export const scene = (def: {
+  canPlay?: Expr;
+  onEnter?: Stmt[];
+  onExit?: Stmt[];
+}): BehaviorScript => {
+  const script: SceneScript = { canPlay: def.canPlay ?? null };
+  if (def.onEnter !== undefined) script.onEnter = def.onEnter;
+  if (def.onExit !== undefined) script.onExit = def.onExit;
+  return { family: "scene", script };
 };
 
 // ── npc dialogue ────────────────────────────────────────────────────────────────
