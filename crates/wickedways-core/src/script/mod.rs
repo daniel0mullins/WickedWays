@@ -312,4 +312,53 @@ mod tests {
         let back: BehaviorScript = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(b, back);
     }
+
+    #[test]
+    fn scene_script_serde_round_trip() {
+        // Populated scene: a `can_play` predicate plus enter/exit effect bodies
+        // (Emit + SetState), mirroring `validate_accepts_scene_script`.
+        let b = BehaviorScript::Scene {
+            script: SceneScript {
+                can_play: Some(Expr::Not {
+                    expr: alloc::boxed::Box::new(Expr::Defined {
+                        expr: alloc::boxed::Box::new(Expr::StateGet {
+                            field: "played".into(),
+                            default: Value::Bool(false),
+                        }),
+                    }),
+                }),
+                on_enter: Some(alloc::vec![Stmt::Emit {
+                    effect: EffectTemplate::Cue {
+                        text: Expr::Lit { value: Value::Str("The candles gutter.".into()) },
+                    },
+                }]),
+                on_exit: Some(alloc::vec![Stmt::SetState {
+                    field: "played".into(),
+                    value: Expr::Lit { value: Value::Bool(true) },
+                }]),
+            },
+        };
+        let json = serde_json::to_string(&b).expect("serialize");
+        // `family = "scene"` family tag + the camelCase `canPlay`/`onEnter`/`onExit`
+        // renames all surface in JSON.
+        assert!(json.contains("\"family\":\"scene\""), "family tag missing: {json}");
+        assert!(json.contains("\"canPlay\""), "canPlay rename missing: {json}");
+        assert!(json.contains("\"onEnter\""), "onEnter rename missing: {json}");
+        assert!(json.contains("\"onExit\""), "onExit rename missing: {json}");
+        let back: BehaviorScript = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(b, back);
+
+        // Empty scene: absent `can_play`/`on_enter`/`on_exit`. Per the serde shape,
+        // `canPlay` (`#[serde(default)]`) is ALWAYS emitted (as `null`), while
+        // `onEnter`/`onExit` (`skip_serializing_if = "Option::is_none"`) are omitted.
+        let empty = BehaviorScript::Scene {
+            script: SceneScript { can_play: None, on_enter: None, on_exit: None },
+        };
+        let json = serde_json::to_string(&empty).expect("serialize");
+        assert!(json.contains("\"canPlay\":null"), "canPlay should serialize as null: {json}");
+        assert!(!json.contains("\"onEnter\""), "onEnter should be skipped: {json}");
+        assert!(!json.contains("\"onExit\""), "onExit should be skipped: {json}");
+        let back: BehaviorScript = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(empty, back);
+    }
 }

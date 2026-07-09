@@ -223,6 +223,18 @@ impl World {
         // (`apply_all`), whose cues surface inline.
         let scene_count = self.rooms.get(room_id).map(|r| r.scenes.len()).unwrap_or(0);
         let mut emitted: Vec<MechanicCue> = Vec::new();
+        // FOOTGUN (mixed families in one room+phase): `view` above is built ONCE,
+        // pre-loop, so a Native scene always reads PRE-loop world state. A Scripted
+        // scene ordered earlier in this same loop mutates the LIVE world (e.g.
+        // SetVisible via `apply_all`), so a later Native scene would observe the
+        // stale snapshot in Rust but the mutated state in the TS oracle -> divergence.
+        // Cue ordering diverges too: scripted cues surface INLINE (via `apply_all`),
+        // native cues are BUFFERED and pushed AFTER the loop, so ordering only matches
+        // between engines for single-family (all-native OR all-scripted) rooms.
+        // Rule for authors: do NOT register a native scene alongside a state-mutating
+        // scripted scene in the same room+phase. Safe today -- native scenes are
+        // compiled-in and only `conformance:visit-counter` exists (real campaigns are
+        // all-scripted), so this case is unreachable; this note guards future authors.
         for i in 0..scene_count {
             let (scene_phase, behavior_key) =
                 match self.rooms.get(room_id).and_then(|r| r.scenes.get(i)) {
