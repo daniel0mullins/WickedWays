@@ -57,6 +57,20 @@ pub fn validate_behavior(key: &str, b: &BehaviorScript) -> Result<(), Procedural
             }
             Ok(())
         }
+        BehaviorScript::Scene { script } => {
+            // `can_play` is a predicate; `on_enter`/`on_exit` are effect bodies
+            // (allow_pass=false, allow_emit=true), like item/mechanic hook bodies.
+            if let Some(pred) = &script.can_play {
+                check_expr(pred).or_else(bad)?;
+            }
+            if let Some(body) = &script.on_enter {
+                check_stmts(body, /*allow_pass=*/false, /*allow_emit=*/true).or_else(bad)?;
+            }
+            if let Some(body) = &script.on_exit {
+                check_stmts(body, /*allow_pass=*/false, /*allow_emit=*/true).or_else(bad)?;
+            }
+            Ok(())
+        }
     }
 }
 
@@ -143,7 +157,7 @@ mod tests {
     use super::*;
     use crate::script::ast::{
         BehaviorScript, DialogueEntry, DialogueMatch, EffectTemplate, Expr, ItemScript, NpcScript,
-        Stmt,
+        SceneScript, Stmt,
     };
     use crate::script::value::Value;
     use crate::stats::StatType;
@@ -242,6 +256,50 @@ mod tests {
         });
         let b = BehaviorScript::Npc { script };
         assert!(validate_behavior("npc/bad", &b).is_err());
+    }
+
+    #[test]
+    fn validate_accepts_scene_script() {
+        // A well-formed scene: a `can_play` predicate plus enter/exit effect
+        // bodies (allow_emit=true). Mirrors the item-script accept test.
+        let b = BehaviorScript::Scene {
+            script: SceneScript {
+                can_play: Some(Expr::Not {
+                    expr: alloc::boxed::Box::new(Expr::Defined {
+                        expr: alloc::boxed::Box::new(Expr::StateGet {
+                            field: "played".into(),
+                            default: Value::Bool(false),
+                        }),
+                    }),
+                }),
+                on_enter: Some(alloc::vec![Stmt::Emit {
+                    effect: EffectTemplate::Cue {
+                        text: Expr::Lit { value: Value::Str("The candles gutter.".into()) },
+                    },
+                }]),
+                on_exit: Some(alloc::vec![Stmt::SetState {
+                    field: "played".into(),
+                    value: Expr::Lit { value: Value::Bool(true) },
+                }]),
+            },
+        };
+        assert!(validate_behavior("scene/opening", &b).is_ok());
+    }
+
+    #[test]
+    fn validate_rejects_pass_in_scene_body() {
+        // A scene body is an effect body (allow_pass=false); `Pass` is
+        // script-body-only, so a Pass statement must be rejected at load.
+        let b = BehaviorScript::Scene {
+            script: SceneScript {
+                can_play: None,
+                on_enter: Some(alloc::vec![Stmt::Pass {
+                    value: Expr::Lit { value: Value::Str("x".into()) },
+                }]),
+                on_exit: None,
+            },
+        };
+        assert!(validate_behavior("scene/bad", &b).is_err());
     }
 
     #[test]

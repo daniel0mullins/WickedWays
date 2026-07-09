@@ -104,7 +104,7 @@ mod ts_export {
         use crate::script::ast::{
             BehaviorScript, BinOp, DamageBody, DialogueEntry, DialogueMatch, EffectTemplate,
             Expr, ExitScript, FieldTemplate, ItemScript, MechanicHooks, MechanicScript,
-            NpcScript, Stmt, VictoryScript,
+            NpcScript, SceneScript, Stmt, VictoryScript,
         };
         use crate::script::value::Value as ScriptValue;
         ScriptValue::export_all().expect("export ScriptValue");
@@ -122,6 +122,7 @@ mod ts_export {
         DialogueMatch::export_all().expect("export DialogueMatch");
         DialogueEntry::export_all().expect("export DialogueEntry");
         NpcScript::export_all().expect("export NpcScript");
+        SceneScript::export_all().expect("export SceneScript");
         BehaviorScript::export_all().expect("export BehaviorScript");
     }
 }

@@ -276,7 +276,27 @@ pub struct NpcScript {
     pub dialogue: Vec<DialogueEntry>,
 }
 
-/// A scripted behavior, tagged on `family` (mechanic / exit / victory / item / npc).
+/// A campaign-authored scene behavior (NPC sub-plan 3): an optional `can_play`
+/// predicate gating whether the scene may play, plus optional `on_enter`/`on_exit`
+/// effect bodies. Mirrors the `MechanicScript`/`ItemScript` hook-body shape: the
+/// bodies are effect bodies (`Vec<Stmt>`, `allow_pass=false`, `allow_emit=true`),
+/// and `can_play` is a predicate `Expr`. Absent hook = no-op.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct SceneScript {
+    /// Predicate gating whether the scene may play; absent = always playable.
+    #[serde(default)]
+    pub can_play: Option<Expr>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub on_enter: Option<Vec<Stmt>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub on_exit: Option<Vec<Stmt>>,
+}
+
+/// A scripted behavior, tagged on `family` (mechanic / exit / victory / item / npc / scene).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(tag = "family", rename_all = "camelCase")]
@@ -286,4 +306,5 @@ pub enum BehaviorScript {
     Victory { script: VictoryScript },
     Item { script: ItemScript },
     Npc { script: NpcScript },
+    Scene { script: SceneScript },
 }
