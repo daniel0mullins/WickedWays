@@ -120,7 +120,9 @@ const WINNING_COMMANDS = [
   "attack revenant",
   "attack revenant",
   "open chest",
-  "take key",
+  // The player now also carries the caretaker's Cellar Key, so a bare "take key"
+  // is ambiguous — disambiguate to the Iron Key (mirrors capstone.test.ts).
+  "take iron key",
   // 7. Navigate to Landing
   "n",   // Cellar → Foyer
   "n",   // Foyer → Hall
