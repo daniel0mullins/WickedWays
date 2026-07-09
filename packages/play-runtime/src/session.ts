@@ -140,6 +140,13 @@ export class GameSession {
     return JSON.parse(this.#authority.read(itemId)) as PresentationCue[];
   }
 
+  /** Free, non-time-advancing examine of a co-located, visible NPC: the engine
+   *  emits the NPC's `description` blurb (empty for any non-NPC / hidden /
+   *  not-co-located target). Mirrors {@link read} for the NPC-examine path. */
+  examine(targetId: string): PresentationCue[] {
+    return JSON.parse(this.#authority.examine(targetId)) as PresentationCue[];
+  }
+
   get finished(): boolean { return this.#authority.finished; }
   get outcome(): string { return this.#authority.outcome; }
 

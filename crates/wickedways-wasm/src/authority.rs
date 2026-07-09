@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 use wasm_bindgen::prelude::*;
 use wickedways_core::presentation::{CampaignOutcome, PresentationCue};
 use wickedways_core::world::descriptor::Catalog;
-use wickedways_core::world::ids::ItemId;
+use wickedways_core::world::ids::{CharacterId, ItemId};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::{CampaignSnapshot, World};
 
@@ -83,6 +83,21 @@ impl Authority {
         let mut cues: Vec<PresentationCue> = Vec::new();
         self.world
             .read_item(&actor, &ItemId(item_id.into()), &self.catalog, &mut cues)
+            .map_err(|e| JsValue::from_str(&e.0))?;
+        serde_json::to_string(&cues).map_err(js_err)
+    }
+
+    /// Free, non-time-advancing examine of a co-located, visible NPC: emits the
+    /// NPC's `description` blurb. Returns PresentationCue[] JSON (empty for any
+    /// non-NPC / hidden / not-co-located target — a quiet no-op).
+    pub fn examine(&self, target_id: &str) -> Result<String, JsValue> {
+        let actor = self
+            .world
+            .active_character_id()
+            .map_err(|e| JsValue::from_str(&e.0))?;
+        let mut cues: Vec<PresentationCue> = Vec::new();
+        self.world
+            .examine(&actor, &CharacterId(target_id.into()), &self.catalog, &mut cues)
             .map_err(|e| JsValue::from_str(&e.0))?;
         serde_json::to_string(&cues).map_err(js_err)
     }

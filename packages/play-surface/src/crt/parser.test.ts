@@ -96,6 +96,25 @@ describe("parser — talk", () => {
   });
 });
 
+describe("parser — examine occupant / look at", () => {
+  const keeper = ent("npc-keeper", "The Keeper", ["keeper", "old man"], "occupant");
+
+  it("resolves `examine <npc>` to an examine result carrying the occupant target", () => {
+    const res = parse("examine keeper", vm({ scope: [keeper] }));
+    expect(res).toEqual({ kind: "examine", target: keeper });
+  });
+
+  it("routes `look at <npc>` to examine (the occupant target), not the room query", () => {
+    const res = parse("look at keeper", vm({ scope: [keeper] }));
+    expect(res).toEqual({ kind: "examine", target: keeper });
+  });
+
+  it("keeps bare `look` (no noun) as the room query", () => {
+    expect(parse("look", vm({ scope: [keeper] }))).toEqual({ kind: "query", query: "look" });
+    expect(parse("l", vm({ scope: [keeper] }))).toEqual({ kind: "query", query: "look" });
+  });
+});
+
 describe("parser — open", () => {
   it("open on a loot box is an open intent", () => {
     const box = ent("b1", "a chest", ["chest", "box"], "loot");

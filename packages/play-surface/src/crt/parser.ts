@@ -65,8 +65,8 @@ export function parse(input: string, vm: ViewModel): ParseResult {
   if (verb === "audio" || verb === "sound" || verb === "mute") return { kind: "meta", meta: "audio" };
   if (verb === "map") return { kind: "meta", meta: "map" };
 
-  // Zero-noun queries.
-  if (verb === "look" || verb === "l") return { kind: "query", query: "look" };
+  // Zero-noun queries. `look`/`l` fall through to the examine block below, which
+  // routes `look at <thing>` to examine and bare `look` back to the room query.
   if (verb === "inventory" || verb === "i" || verb === "inv") return { kind: "query", query: "inventory" };
   if (verb === "exits") return { kind: "query", query: "exits" };
   if (verb === "help" || verb === "?") return { kind: "query", query: "help" };
@@ -94,9 +94,11 @@ export function parse(input: string, vm: ViewModel): ParseResult {
 
   const nounPhrase = tokens.slice(1).filter((t) => !STOP_WORDS.has(t)).join(" ");
 
-  // examine is special: resolve then return an examine result (no engine call).
-  // `read` is an alias — reading an item reveals its lore through the same path.
-  if (verb === "examine" || verb === "x" || verb === "look-at" || verb === "read") {
+  // examine resolves the noun then returns an examine result. The controller
+  // routes it to the engine per target kind (NPC → examine description, item →
+  // read lore); both are free. `read` and `look`/`look at` are aliases; bare
+  // `look` (no noun) is the room query.
+  if (verb === "examine" || verb === "x" || verb === "look-at" || verb === "read" || verb === "look" || verb === "l") {
     if (!nounPhrase) return { kind: "query", query: "look" };
     return resolveThen(nounPhrase, vm, (t) => ({ kind: "examine", target: t }));
   }
