@@ -642,7 +642,7 @@ applies the results through the same collect-then-apply pipeline as native ops.
   iteration is ordered, string-from-number matches JS `Number.prototype.toString`
   byte-for-byte, and randomness only comes from the injected rng.
 - **Hollow House** is the reference user: its dread/storyteller/status-bar
-  mechanics, both keyed doors, all three victory conditions, and laudanum's `onUse`
+  mechanics, all three keyed doors (cellar/study/attic), all three victory conditions, and laudanum's `onUse`
   effect are re-authored in `packages/campaigns/src/hollow-house/scripted.ts` and
   gated byte-for-byte against the hand-written closures by the `conformance/scripted-*`
   differential fixtures. The closures remain the conformance oracle: each script must
@@ -828,6 +828,17 @@ action that returns the resolved NPC's `description`.
 whose entries come from `entry({ match, response, effects?, once? })` paired with `exact("…")` or
 `fuzzy("tok", …)` match rules; it emits the `BehaviorScript::Npc` AST, registered in the campaign's
 `behaviors` map under the NPC's `npcBehaviorKey`.
+
+**The Hollow House caretaker.** The reference campaign puts this machinery to work in its start
+room. Entering the Foyer at game start fires an `"enter"` scene that sets the mood — the front
+door thudding shut for good, a stooped figure waiting in the gloom with a ring of keys shaking in
+his hand. A `Caretaker` NPC stands there holding the campaign's cellar key: `examine caretaker`
+returns his description, and a single `talk to caretaker` runs a `once` hand-off entry whose
+effects `giveItem` the cellar key to the player and `setVisible false` the caretaker so he
+vanishes (both free/non-advancing, fired exactly once — re-talking would only replay the line, and
+he is unreachable anyway). That cellar key unlocks the keyed Foyer->Cellar door (the "cellar
+door"), opening the corridor down to the Revenant, its iron key, and the attic win beyond —
+otherwise unchanged.
 
 ### Serialization (save/load)
 
