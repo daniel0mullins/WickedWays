@@ -1,0 +1,2123 @@
+{
+  "seed": 380494,
+  "startupCues": [
+    {
+      "kind": "mechanic",
+      "cue": {
+        "text": "A cold draft stirs the dust of the threshold."
+      }
+    }
+  ],
+  "ops": [
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "move",
+        "dir": "north"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "move",
+        "dir": "south"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "move",
+        "dir": "north"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "move",
+        "dir": "south"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "move",
+        "dir": "north"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "move",
+        "dir": "south"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "move",
+          "dir": "north"
+        }
+      },
+      "result": {
+        "cues": [
+          {
+            "kind": "action",
+            "action": "move",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            }
+          },
+          {
+            "kind": "encounter",
+            "mob": {
+              "id": "mob:Gargoyle",
+              "name": "Gargoyle"
+            },
+            "room": {
+              "id": "room:Vault",
+              "name": "Vault"
+            }
+          }
+        ],
+        "mobAttacks": []
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scripted Scene (conformance)",
+          "title": "Scripted Scene (conformance)",
+          "maxRounds": 20,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Gargoyle"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Threshold",
+              "room:Vault"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "A silent vault.",
+            "exits": {
+              "south": "exit:Threshold|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Gargoyle",
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Vault:scene/vault-watch:enter",
+                "behaviorKey": "scene/vault-watch",
+                "phase": "enter",
+                "state": {
+                  "count": 1
+                }
+              },
+              {
+                "id": "scene:Vault:scene/vault-hush:exit",
+                "behaviorKey": "scene/vault-hush",
+                "phase": "exit",
+                "state": {}
+              }
+            ]
+          },
+          {
+            "id": "room:Threshold",
+            "name": "Threshold",
+            "description": "A cold stone threshold.",
+            "exits": {
+              "north": "exit:Threshold|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Threshold:scene/threshold-draft:enter",
+                "behaviorKey": "scene/threshold-draft",
+                "phase": "enter",
+                "state": {
+                  "seen": true
+                }
+              }
+            ]
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Threshold|Vault",
+            "endpointIds": [
+              "room:Threshold",
+              "room:Vault"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Vault",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Gargoyle",
+            "name": "Gargoyle",
+            "stats": {
+              "health": 4,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Vault",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "visible": false,
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Threshold",
+            "snapshot": {
+              "name": "Threshold",
+              "description": "A cold stone threshold."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Threshold"
+            }
+          },
+          {
+            "kind": "mob",
+            "key": "Gargoyle",
+            "snapshot": {
+              "name": "Gargoyle",
+              "stats": {
+                "health": 4,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Vault",
+            "snapshot": {
+              "name": "Vault",
+              "description": "A silent vault."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Vault",
+          "name": "Vault",
+          "description": "A silent vault.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Threshold"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "locationName": "Vault",
+          "turn": 1,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "move",
+          "dir": "south"
+        }
+      },
+      "result": {
+        "cues": [
+          {
+            "kind": "mechanic",
+            "cue": {
+              "text": "The vault falls silent behind you."
+            }
+          },
+          {
+            "kind": "action",
+            "action": "move",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            }
+          }
+        ],
+        "mobAttacks": []
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scripted Scene (conformance)",
+          "title": "Scripted Scene (conformance)",
+          "maxRounds": 20,
+          "round": 2,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Gargoyle"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Threshold",
+              "room:Vault"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Threshold",
+            "name": "Threshold",
+            "description": "A cold stone threshold.",
+            "exits": {
+              "north": "exit:Threshold|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Threshold:scene/threshold-draft:enter",
+                "behaviorKey": "scene/threshold-draft",
+                "phase": "enter",
+                "state": {
+                  "seen": true
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "A silent vault.",
+            "exits": {
+              "south": "exit:Threshold|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Gargoyle"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Vault:scene/vault-watch:enter",
+                "behaviorKey": "scene/vault-watch",
+                "phase": "enter",
+                "state": {
+                  "count": 1
+                }
+              },
+              {
+                "id": "scene:Vault:scene/vault-hush:exit",
+                "behaviorKey": "scene/vault-hush",
+                "phase": "exit",
+                "state": {}
+              }
+            ]
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Threshold|Vault",
+            "endpointIds": [
+              "room:Threshold",
+              "room:Vault"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Threshold",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 1
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Gargoyle",
+            "name": "Gargoyle",
+            "stats": {
+              "health": 4,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Vault",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "visible": false,
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Threshold",
+            "snapshot": {
+              "name": "Threshold",
+              "description": "A cold stone threshold."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Threshold"
+            }
+          },
+          {
+            "kind": "mob",
+            "key": "Gargoyle",
+            "snapshot": {
+              "name": "Gargoyle",
+              "stats": {
+                "health": 4,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Vault",
+            "snapshot": {
+              "name": "Vault",
+              "description": "A silent vault."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Threshold",
+          "name": "Threshold",
+          "description": "A cold stone threshold.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Vault"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "locationName": "Threshold",
+          "turn": 2,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "move",
+          "dir": "north"
+        }
+      },
+      "result": {
+        "cues": [
+          {
+            "kind": "action",
+            "action": "move",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            }
+          }
+        ],
+        "mobAttacks": []
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scripted Scene (conformance)",
+          "title": "Scripted Scene (conformance)",
+          "maxRounds": 20,
+          "round": 3,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Gargoyle"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Threshold",
+              "room:Vault"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "A silent vault.",
+            "exits": {
+              "south": "exit:Threshold|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Gargoyle",
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Vault:scene/vault-watch:enter",
+                "behaviorKey": "scene/vault-watch",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
+              },
+              {
+                "id": "scene:Vault:scene/vault-hush:exit",
+                "behaviorKey": "scene/vault-hush",
+                "phase": "exit",
+                "state": {}
+              }
+            ]
+          },
+          {
+            "id": "room:Threshold",
+            "name": "Threshold",
+            "description": "A cold stone threshold.",
+            "exits": {
+              "north": "exit:Threshold|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Threshold:scene/threshold-draft:enter",
+                "behaviorKey": "scene/threshold-draft",
+                "phase": "enter",
+                "state": {
+                  "seen": true
+                }
+              }
+            ]
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Threshold|Vault",
+            "endpointIds": [
+              "room:Threshold",
+              "room:Vault"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Vault",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 2
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Gargoyle",
+            "name": "Gargoyle",
+            "stats": {
+              "health": 4,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Vault",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "visible": false,
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Threshold",
+            "snapshot": {
+              "name": "Threshold",
+              "description": "A cold stone threshold."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Threshold"
+            }
+          },
+          {
+            "kind": "mob",
+            "key": "Gargoyle",
+            "snapshot": {
+              "name": "Gargoyle",
+              "stats": {
+                "health": 4,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Vault",
+            "snapshot": {
+              "name": "Vault",
+              "description": "A silent vault."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Vault",
+          "name": "Vault",
+          "description": "A silent vault.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Threshold"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "locationName": "Vault",
+          "turn": 3,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "move",
+          "dir": "south"
+        }
+      },
+      "result": {
+        "cues": [
+          {
+            "kind": "mechanic",
+            "cue": {
+              "text": "The vault falls silent behind you."
+            }
+          },
+          {
+            "kind": "action",
+            "action": "move",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            }
+          }
+        ],
+        "mobAttacks": []
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scripted Scene (conformance)",
+          "title": "Scripted Scene (conformance)",
+          "maxRounds": 20,
+          "round": 4,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Gargoyle"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Threshold",
+              "room:Vault"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Threshold",
+            "name": "Threshold",
+            "description": "A cold stone threshold.",
+            "exits": {
+              "north": "exit:Threshold|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Threshold:scene/threshold-draft:enter",
+                "behaviorKey": "scene/threshold-draft",
+                "phase": "enter",
+                "state": {
+                  "seen": true
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "A silent vault.",
+            "exits": {
+              "south": "exit:Threshold|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Gargoyle"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Vault:scene/vault-watch:enter",
+                "behaviorKey": "scene/vault-watch",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
+              },
+              {
+                "id": "scene:Vault:scene/vault-hush:exit",
+                "behaviorKey": "scene/vault-hush",
+                "phase": "exit",
+                "state": {}
+              }
+            ]
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Threshold|Vault",
+            "endpointIds": [
+              "room:Threshold",
+              "room:Vault"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Threshold",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 2
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 3
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Gargoyle",
+            "name": "Gargoyle",
+            "stats": {
+              "health": 4,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Vault",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "visible": false,
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Threshold",
+            "snapshot": {
+              "name": "Threshold",
+              "description": "A cold stone threshold."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Threshold"
+            }
+          },
+          {
+            "kind": "mob",
+            "key": "Gargoyle",
+            "snapshot": {
+              "name": "Gargoyle",
+              "stats": {
+                "health": 4,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Vault",
+            "snapshot": {
+              "name": "Vault",
+              "description": "A silent vault."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Threshold",
+          "name": "Threshold",
+          "description": "A cold stone threshold.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Vault"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "locationName": "Threshold",
+          "turn": 4,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "move",
+          "dir": "north"
+        }
+      },
+      "result": {
+        "cues": [
+          {
+            "kind": "action",
+            "action": "move",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            }
+          }
+        ],
+        "mobAttacks": []
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scripted Scene (conformance)",
+          "title": "Scripted Scene (conformance)",
+          "maxRounds": 20,
+          "round": 5,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Gargoyle"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Threshold",
+              "room:Vault"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "A silent vault.",
+            "exits": {
+              "south": "exit:Threshold|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Gargoyle",
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Vault:scene/vault-watch:enter",
+                "behaviorKey": "scene/vault-watch",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
+              },
+              {
+                "id": "scene:Vault:scene/vault-hush:exit",
+                "behaviorKey": "scene/vault-hush",
+                "phase": "exit",
+                "state": {}
+              }
+            ]
+          },
+          {
+            "id": "room:Threshold",
+            "name": "Threshold",
+            "description": "A cold stone threshold.",
+            "exits": {
+              "north": "exit:Threshold|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Threshold:scene/threshold-draft:enter",
+                "behaviorKey": "scene/threshold-draft",
+                "phase": "enter",
+                "state": {
+                  "seen": true
+                }
+              }
+            ]
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Threshold|Vault",
+            "endpointIds": [
+              "room:Threshold",
+              "room:Vault"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Vault",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 2
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 3
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 4
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Gargoyle",
+            "name": "Gargoyle",
+            "stats": {
+              "health": 4,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Vault",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "visible": false,
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Threshold",
+            "snapshot": {
+              "name": "Threshold",
+              "description": "A cold stone threshold."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Threshold"
+            }
+          },
+          {
+            "kind": "mob",
+            "key": "Gargoyle",
+            "snapshot": {
+              "name": "Gargoyle",
+              "stats": {
+                "health": 4,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Vault",
+            "snapshot": {
+              "name": "Vault",
+              "description": "A silent vault."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Vault",
+          "name": "Vault",
+          "description": "A silent vault.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Threshold"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "locationName": "Vault",
+          "turn": 5,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "move",
+          "dir": "south"
+        }
+      },
+      "result": {
+        "cues": [
+          {
+            "kind": "mechanic",
+            "cue": {
+              "text": "The vault falls silent behind you."
+            }
+          },
+          {
+            "kind": "action",
+            "action": "move",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            }
+          }
+        ],
+        "mobAttacks": []
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scripted Scene (conformance)",
+          "title": "Scripted Scene (conformance)",
+          "maxRounds": 20,
+          "round": 6,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Gargoyle"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 10,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Threshold",
+              "room:Vault"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Threshold",
+            "name": "Threshold",
+            "description": "A cold stone threshold.",
+            "exits": {
+              "north": "exit:Threshold|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Threshold:scene/threshold-draft:enter",
+                "behaviorKey": "scene/threshold-draft",
+                "phase": "enter",
+                "state": {
+                  "seen": true
+                }
+              }
+            ]
+          },
+          {
+            "id": "room:Vault",
+            "name": "Vault",
+            "description": "A silent vault.",
+            "exits": {
+              "south": "exit:Threshold|Vault"
+            },
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Gargoyle"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": [
+              {
+                "id": "scene:Vault:scene/vault-watch:enter",
+                "behaviorKey": "scene/vault-watch",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
+              },
+              {
+                "id": "scene:Vault:scene/vault-hush:exit",
+                "behaviorKey": "scene/vault-hush",
+                "phase": "exit",
+                "state": {}
+              }
+            ]
+          }
+        ],
+        "exits": [
+          {
+            "id": "exit:Threshold|Vault",
+            "endpointIds": [
+              "room:Threshold",
+              "room:Vault"
+            ],
+            "state": {}
+          }
+        ],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 10,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Threshold",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 1
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 2
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 3
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Vault",
+                  "name": "Vault"
+                },
+                "round": 4
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Threshold",
+                  "name": "Threshold"
+                },
+                "round": 5
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Gargoyle",
+            "name": "Gargoyle",
+            "stats": {
+              "health": 4,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Vault",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "visible": false,
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Threshold",
+            "snapshot": {
+              "name": "Threshold",
+              "description": "A cold stone threshold."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Threshold"
+            }
+          },
+          {
+            "kind": "mob",
+            "key": "Gargoyle",
+            "snapshot": {
+              "name": "Gargoyle",
+              "stats": {
+                "health": 4,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Vault",
+            "snapshot": {
+              "name": "Vault",
+              "description": "A silent vault."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Vault"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Threshold",
+          "name": "Threshold",
+          "description": "A cold stone threshold.",
+          "isLit": true
+        },
+        "exits": [
+          {
+            "dir": "north",
+            "toName": "Vault"
+          }
+        ],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [],
+        "status": {
+          "locationName": "Threshold",
+          "turn": 6,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 10
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    }
+  ]
+}

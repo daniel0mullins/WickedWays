@@ -31,6 +31,7 @@ import type { ILoot } from "wickedways/lib/loot";
 import type { IItem } from "wickedways/lib/inventory";
 import type { Direction } from "wickedways/lib/room";
 import { view } from "./oracle-view.ts";
+import { structuralClone } from "./gen-helpers.ts";
 
 export interface MobAttack { name: string; stat: StatType; amount: number; }
 export interface ExecuteResult { cues: PresentationCue[]; error?: string; mobAttacks?: MobAttack[]; }
@@ -88,7 +89,13 @@ export class OracleSession {
     pc.move(rooms.get(opts.builder.description.startRoom!)!, /*fireScenes*/ false);
     campaign.gm = pc;
     // PRE-begin genesis — exactly what GameSession will hand Authority::new.
-    this.genesis = serializeCampaign(campaign);
+    // Deep-copy at capture: `Scene`/`Exit` `[SERIALIZE]` return their `state` by
+    // LIVE reference, and `beginCampaign()` below fires start-room enter-scenes
+    // that mutate that state — without the clone the exported genesis would show
+    // the POST-begin (fired) scene state instead of the pristine pre-begin one.
+    // GameSession.boot avoids this by JSON.stringify-ing the genesis immediately;
+    // this mirrors that (an immutable pre-begin snapshot).
+    this.genesis = structuralClone(serializeCampaign(campaign));
     campaign.onCue((cue) => this.cueBuffer.push(cue));
     campaign.beginCampaign();
     this.startupCues = [...this.cueBuffer];

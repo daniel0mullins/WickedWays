@@ -22,6 +22,7 @@ export default defineConfig({
       "conformance/fixtures/mechanics-action.gen.test.ts",
       "conformance/fixtures/keyed-exit.gen.test.ts",
       "conformance/fixtures/scene.gen.test.ts",
+      "conformance/fixtures/scripted-scene.gen.test.ts",
       "conformance/fixtures/spawn.gen.test.ts",
       "conformance/fixtures/formation-descriptor.gen.test.ts",
       "conformance/fixtures/rat-tail.gen.test.ts",
