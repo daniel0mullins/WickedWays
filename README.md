@@ -788,17 +788,46 @@ recipient). `Character.consumeKey(key)` spends a key — removing it from the ke
 
 ### Dialogue
 
-`NonPlayerCharacter.dialogue(prompt)` returns the concatenated responses of every matching
-dialogue block. Blocks match either **exactly** (case-insensitive whole-prompt match) or
-**fuzzily** (every word in the trigger set appears somewhere in the prompt), and each block may
-carry a `precondition(character)` gate. With no prompt it returns the NPC's initial line.
+An NPC's conversation is a **data-driven catalog behavior**: a
+[`BehaviorScript::Npc`](crates/wickedways-core/bindings/BehaviorScript.ts) resolved through the
+NPC's `npcBehaviorKey` against the campaign's `behaviors` map, byte-faithful across the Rust core
+and its TS oracle under the differential gate. The behavior is an
+[`NpcScript`](crates/wickedways-core/bindings/NpcScript.ts) `{ description, default, dialogue }` — a
+`description` (returned by `examine`), a `default`
+[`DialogueEntry`](crates/wickedways-core/bindings/DialogueEntry.ts) for a bare `talk`, and an
+ordered list of prompt→response `dialogue` entries. Each entry is `{ match, response, effects, once }`,
+where `match` is a [`DialogueMatch`](crates/wickedways-core/bindings/DialogueMatch.ts) —
+`{ kind: "exact", text }` or `{ kind: "fuzzy", tokens }`.
+
+**Matching selects exactly one entry.** The talk prompt is lowercased and tokenized — split on
+whitespace, with ASCII punctuation stripped from each token's *edges* (internal punctuation kept)
+and empty tokens dropped. An **exact** entry matches when the tokenized prompt equals the tokenized
+trigger (order-exact, whitespace- and edge-punctuation-insensitive); a **fuzzy** entry matches when
+all of its normalized, non-empty, deduplicated tokens appear in the prompt's token set (an
+order-independent subset — extra prompt tokens are fine), scoring by that token count. Any exact
+match wins (first authored); otherwise the highest-scoring fuzzy match (ties break to the first
+authored); otherwise — for a bare `talk`, or when nothing matches — the `default` entry.
+
+A resolved entry emits its `response` (a text cue) **and** its `effects`, run through the same
+`Effect` pipeline as scene mechanics (including sub-plan 1's `giveItem`/`setVisible`) and subject to
+the same `MAX_EFFECTS_PER_EVENT = 64` cap. The `once` flag latches the **effects only**: a `once`
+entry fires its effects a single time, recorded in the NPC's per-instance `npcState`
+(`{ "onceFired": { … } }`) that serializes with the character — so re-talking after the hand-off
+replays the response cue without re-firing the effects. Two NPCs sharing one behavior key keep
+independent latches.
 
 The `talk` verb resolves a co-located **visible** `NonPlayerCharacter` occupant. It is a **free**
 interaction: it does **not** advance the round and does **not** provoke mob reactions. Talking to a
 missing, invisible, or non-NPC target fails with "There's no one here to talk to." The CRT parser
 accepts `talk`/`speak`/`ask` in a bare form (`talk to the keeper`) or with a quoted prompt
-(`talk to the keeper "how do I get out"`). (Dialogue **content** — what a resolved NPC actually
-says — lands in a later sub-plan; today a resolved NPC is a content-free no-op.)
+(`talk to the keeper "how do I get out"`). `examine <npc>` is likewise a **free**, non-advancing
+action that returns the resolved NPC's `description`.
+
+**Authoring.** Assemble the behavior with the
+[`npc({ description, default, dialogue })`](packages/campaigns/src/scripted/builders.ts) builder,
+whose entries come from `entry({ match, response, effects?, once? })` paired with `exact("…")` or
+`fuzzy("tok", …)` match rules; it emits the `BehaviorScript::Npc` AST, registered in the campaign's
+`behaviors` map under the NPC's `npcBehaviorKey`.
 
 ### Serialization (save/load)
 
