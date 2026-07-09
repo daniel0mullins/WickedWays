@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: jetli/wasm-pack-action@v0.4.0
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.6
@@ -18,4 +20,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # `pnpm run checks` (lint + typecheck + tests) resolves the engine types from
+      # the built wasm pkg (engine-types.ts = `typeof import(pkg-node)`) and boots the
+      # Authority in tests, so the pkg must be built first — pkg-node for the Node/type
+      # path, pkg-web for the bundler-target (engine-web.ts) typecheck.
+      - run: pnpm run wasm:build && pnpm run wasm:build:web
       - run: pnpm run checks

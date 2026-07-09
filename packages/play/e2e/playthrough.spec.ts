@@ -85,6 +85,10 @@ async function clickInventoryVerb(page: Page, itemName: string, verb: string): P
  * Sanity=8, poker modifier=5 → 2 damage/hit, 10÷2=5 kills, +1 buffer = 6).
  */
 const WINNING_COMMANDS = [
+  // 0. Foyer: talk to the caretaker → receive the cellar key (which unlocks the
+  //    Foyer→Cellar door) and the caretaker vanishes. Without this the keyed
+  //    cellar door stays locked and the run cannot reach the Revenant.
+  "talk to caretaker",
   // 1. Foyer: get journal
   "open chest",
   "take journal",
