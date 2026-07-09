@@ -296,9 +296,10 @@ impl World {
                     r.occupant_ids.push(id.clone());
                 }
             }
-            // Silent [PLACE] enter-scene firing: cues discarded.
+            // Silent [PLACE] enter-scene firing: cues discarded. The freshly-placed
+            // mob is the entering actor for any scripted enter-scene.
             let mut discard: Vec<PresentationCue> = Vec::new();
-            self.fire_scenes(room, "enter", cat, &mut discard)?;
+            self.fire_scenes(room, "enter", &id, cat, &mut discard)?;
             spawned.push(id);
         }
         Ok(spawned)

@@ -6,6 +6,7 @@ use alloc::vec::Vec;
 use serde_json::Value;
 
 use crate::presentation::MechanicCue;
+use crate::world::descriptor::Catalog;
 use crate::world::mechanics::RoomView;
 
 /// A first-party scene behavior. `state` is the scene's serialized `Value`.
@@ -26,6 +27,29 @@ pub fn scene_behavior(key: &str) -> Option<&'static dyn SceneBehavior> {
     }
     let _ = key;
     None
+}
+
+/// The outcome of resolving a scene `behavior_key`: a compiled-in native scene
+/// behavior, or a data-driven `SceneScript` from the catalog (`BehaviorScript::Scene`).
+pub enum ResolvedScene<'a> {
+    Native(&'static dyn SceneBehavior),
+    Scripted(&'a crate::script::ast::SceneScript),
+}
+
+/// Resolve a scene `key`: native first (a first-party `SceneBehavior`), then a
+/// catalog `BehaviorScript::Scene`. `None` if neither knows the key (surfaced as a
+/// `ProceduralViolation` at the fire site). Mirrors `resolve_formation`; a catalog
+/// key of a NON-scene family resolves to `None` (it is not a scene).
+pub fn resolve_scene<'a>(key: &str, cat: &'a Catalog) -> Option<ResolvedScene<'a>> {
+    if let Some(op) = scene_behavior(key) {
+        return Some(ResolvedScene::Native(op));
+    }
+    match cat.behaviors.get(key) {
+        Some(crate::script::ast::BehaviorScript::Scene { script }) => {
+            Some(ResolvedScene::Scripted(script))
+        }
+        _ => None,
+    }
 }
 
 #[cfg(any(test, feature = "conformance"))]

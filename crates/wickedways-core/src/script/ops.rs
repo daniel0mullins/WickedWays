@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::presentation::MechanicCue;
 use crate::script::ast::{
-    DialogueEntry, DialogueMatch, ExitScript, ItemScript, MechanicScript, NpcScript, Stmt,
-    VictoryScript,
+    DialogueEntry, DialogueMatch, ExitScript, ItemScript, MechanicScript, NpcScript, SceneScript,
+    Stmt, VictoryScript,
 };
 use crate::script::eval::{
     eval_damage, eval_effect_templates, eval_effects, eval_expr, eval_predicate, eval_script,
@@ -201,6 +201,71 @@ impl ScriptedVictory<'_> {
             rooms: RoomSource::World { world, cat, cache: BTreeMap::new() },
         };
         eval_predicate(&self.script.test, &mut cx)
+    }
+}
+
+/// Scene adapter (NPC sub-plan 3), bound to a borrowed `SceneScript` (built per
+/// fire-point by `resolve_scene`). A scene READS the room it fires in via the
+/// lazy, memoizing World-backed room resolver — the same access victory gets and
+/// the reason it is NOT a plain `SceneBehavior` impl (that trait carries only a
+/// `RoomView`). Like `ScriptedVictory`, it evaluates with `rng: None`:
+/// `RoomSource::World` holds `&World`, which cannot coexist with `&mut World.rng`,
+/// and no v1 node draws rng anyway (see `Ctx::rng`). `actor` is the entering /
+/// exiting character; `state` is the scene's own serialized `Value` (Write).
+pub struct ScriptedScene<'a> {
+    pub script: &'a SceneScript,
+}
+
+impl ScriptedScene<'_> {
+    fn ctx<'c>(
+        &self,
+        state: CtxState<'c>,
+        view: &'c CampaignView,
+        actor: Option<&'c CharacterView>,
+        world: &'c World,
+        cat: &'c Catalog,
+    ) -> Ctx<'c> {
+        Ctx {
+            view: Some(view),
+            state,
+            actor,
+            action: None,
+            damage: None,
+            element: None,
+            rng: None,
+            rooms: RoomSource::World { world, cat, cache: alloc::collections::BTreeMap::new() },
+        }
+    }
+
+    /// Evaluate the `can_play` predicate over the live world + scene state. A
+    /// `None` predicate is always playable (default true).
+    pub fn can_play(
+        &self,
+        state: &Json,
+        view: &CampaignView,
+        actor: Option<&CharacterView>,
+        world: &World,
+        cat: &Catalog,
+    ) -> bool {
+        let Some(pred) = &self.script.can_play else { return true };
+        let mut cx = self.ctx(CtxState::Read(state), view, actor, world, cat);
+        eval_predicate(pred, &mut cx)
+    }
+
+    /// Evaluate a phase body (`on_enter` / `on_exit`) into an ordered effect list,
+    /// writing any `SetState` back through `state`. A missing hook is a no-op.
+    pub fn run(
+        &self,
+        body: Option<&Vec<Stmt>>,
+        state: &mut Json,
+        view: &CampaignView,
+        actor: Option<&CharacterView>,
+        world: &World,
+        cat: &Catalog,
+    ) -> Vec<Effect> {
+        let Some(body) = body else { return Vec::new() };
+        let mut cx = self.ctx(CtxState::Write(state), view, actor, world, cat);
+        eval_effects(body, &mut cx)
     }
 }
 

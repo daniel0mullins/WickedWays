@@ -197,6 +197,7 @@ impl World {
         &mut self,
         room_id: &RoomId,
         phase: &str,
+        actor: &CharacterId,
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
@@ -212,30 +213,89 @@ impl World {
         let view = self
             .room_view(room_id, cat)
             .ok_or_else(|| ProceduralViolation("scene room missing".into()))?;
-        let room = self
-            .rooms
-            .get_mut(room_id)
-            .ok_or_else(|| ProceduralViolation("scene room missing".into()))?;
-        // Collect cues into a local buffer and push after the loop. Intentional:
-        // on the unregistered-key `Err` path this drops earlier scenes' cues, but
-        // the whole move aborts (`?`) so the cue stream is discarded anyway — a
-        // direct-push would be a behavior change, not a cleanup. (Unreachable via
-        // the gate: TS resolves a scene behaviorKey at hydrate, not at fire.)
+
+        // Native-scene cues are collected here and pushed AFTER the loop — byte-identical
+        // to the pre-scripted path. Intentional: on the unregistered-key `Err` path this
+        // drops earlier native scenes' cues, but the whole move aborts (`?`) so the cue
+        // stream is discarded anyway. Scripted scenes read the LIVE world
+        // (RoomSource::World), so they resolve by index and re-borrow `self` fresh each
+        // iteration — their effects flow through the shared collect-then-apply pipeline
+        // (`apply_all`), whose cues surface inline.
+        let scene_count = self.rooms.get(room_id).map(|r| r.scenes.len()).unwrap_or(0);
         let mut emitted: Vec<MechanicCue> = Vec::new();
-        for scene in room.scenes.iter_mut() {
-            if scene.phase != phase {
+        for i in 0..scene_count {
+            let (scene_phase, behavior_key) =
+                match self.rooms.get(room_id).and_then(|r| r.scenes.get(i)) {
+                    Some(s) => (s.phase.clone(), s.behavior_key.clone()),
+                    None => continue,
+                };
+            if scene_phase != phase {
                 continue;
             }
-            let behavior = crate::world::scenes::scene_behavior(&scene.behavior_key).ok_or_else(
-                || {
-                    ProceduralViolation(format!(
-                        "Scene behavior '{}' is not registered.",
-                        scene.behavior_key
-                    ))
-                },
-            )?;
-            if behavior.can_play(&view, &scene.state) {
-                emitted.extend(behavior.run_script(&view, &mut scene.state));
+            match crate::world::scenes::resolve_scene(&behavior_key, cat) {
+                None => {
+                    return Err(ProceduralViolation(format!(
+                        "Scene behavior '{behavior_key}' is not registered."
+                    )));
+                }
+                // Native: unchanged cue-only path (byte-identical to the old resolver).
+                Some(crate::world::scenes::ResolvedScene::Native(behavior)) => {
+                    if let Some(scene) =
+                        self.rooms.get_mut(room_id).and_then(|r| r.scenes.get_mut(i))
+                    {
+                        if behavior.can_play(&view, &scene.state) {
+                            emitted.extend(behavior.run_script(&view, &mut scene.state));
+                        }
+                    }
+                }
+                // Scripted: gate on `can_play`, evaluate the phase body into effects, then
+                // apply them (SetVisible/GiveItem/SetState + cues) through `apply_all`.
+                Some(crate::world::scenes::ResolvedScene::Scripted(script)) => {
+                    // Take the scene's own JSON state out so its Write borrow does not
+                    // collide with the RoomSource::World `&self` borrow used for room reads.
+                    let mut state =
+                        match self.rooms.get_mut(room_id).and_then(|r| r.scenes.get_mut(i)) {
+                            Some(s) => core::mem::take(&mut s.state),
+                            None => continue,
+                        };
+                    let campaign_view = self.build_campaign_view(cat);
+                    let actor_view = self.character_view(actor, cat);
+                    let scene_op = crate::script::ops::ScriptedScene { script };
+                    let effects = if scene_op.can_play(
+                        &state,
+                        &campaign_view,
+                        actor_view.as_ref(),
+                        self,
+                        cat,
+                    ) {
+                        let body = match phase {
+                            "enter" => script.on_enter.as_ref(),
+                            "exit" => script.on_exit.as_ref(),
+                            _ => None,
+                        };
+                        scene_op.run(
+                            body,
+                            &mut state,
+                            &campaign_view,
+                            actor_view.as_ref(),
+                            self,
+                            cat,
+                        )
+                    } else {
+                        Vec::new()
+                    };
+                    // Write the (possibly mutated) state back before applying effects.
+                    if let Some(s) = self.rooms.get_mut(room_id).and_then(|r| r.scenes.get_mut(i)) {
+                        s.state = state;
+                    }
+                    // Runaway backstop, then the shared collect-then-apply pipeline.
+                    if effects.len() > crate::world::mechanics::MAX_EFFECTS_PER_EVENT {
+                        return Err(ProceduralViolation(format!(
+                            "Scene behavior '{behavior_key}' emitted too many effects."
+                        )));
+                    }
+                    self.apply_all(effects, cat, cues)?;
+                }
             }
         }
         for cue in emitted {
@@ -264,7 +324,7 @@ impl World {
         if let Some(prev) =
             self.characters.get(actor).and_then(|c| c.current_room_id.clone())
         {
-            self.fire_scenes(&prev, "exit", cat, cues)?;
+            self.fire_scenes(&prev, "exit", actor, cat, cues)?;
             if let Some(r) = self.rooms.get_mut(&prev) {
                 r.occupant_ids.retain(|id| id != actor);
             }
@@ -284,7 +344,7 @@ impl World {
         // BEFORE the visibility cue. Mirrors TS `Room.enterRoom` (add occupant →
         // play "enter" scenes) inside `#enterRoom`, which runs before `move`'s
         // visibility cue.
-        self.fire_scenes(&room, "enter", cat, cues)?;
+        self.fire_scenes(&room, "enter", actor, cat, cues)?;
 
         // Visibility cue when the destination is dark (mirrors TS `move` :1021-1027).
         if !self.is_lit(&room, cat) {
@@ -449,6 +509,118 @@ mod tests {
                 r.occupant_ids.push(id);
             }
         }
+    }
+
+    /// Attach a scene to `room` under `key`/`phase` with the given initial state.
+    fn attach_named_scene(
+        w: &mut crate::world::World,
+        room: &str,
+        key: &str,
+        phase: &str,
+        state: serde_json::Value,
+    ) {
+        w.rooms.get_mut(&rid(room)).unwrap().scenes.push(
+            crate::world::snapshot::SceneSnapshot {
+                id: "scene".into(),
+                behavior_key: key.into(),
+                phase: phase.into(),
+                state,
+            },
+        );
+    }
+
+    fn mcue(text: &str) -> PresentationCue {
+        PresentationCue::Mechanic {
+            cue: crate::presentation::MechanicCue { text: Some(text.into()), sound: None },
+        }
+    }
+
+    #[test]
+    fn scripted_scene_enter_emits_cue_and_hides_target() {
+        let mut w = world_two_rooms(/*next_dark=*/false);
+        seat_mob(&mut w, "ghost", "start"); // a target to hide
+        attach_named_scene(&mut w, "start", "scenes/ambush", "enter", serde_json::json!({}));
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "behaviors": { "scenes/ambush": {
+                "family": "scene",
+                "script": { "onEnter": [
+                    { "kind": "emit", "effect": { "kind": "cue",
+                        "text": { "kind": "lit", "value": "A cold wind stirs." } } },
+                    { "kind": "emit", "effect": { "kind": "setVisible",
+                        "target": { "kind": "lit", "value": "ghost" },
+                        "visible": { "kind": "lit", "value": false } } }
+                ] }
+            } }
+        })).unwrap();
+        let mut cues = Vec::new();
+        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues).unwrap();
+        // cue surfaced AND target hidden — both effects applied in order.
+        assert_eq!(cues, alloc::vec![mcue("A cold wind stirs.")]);
+        assert!(!w.characters[&cid("ghost")].visible);
+    }
+
+    #[test]
+    fn scripted_scene_can_play_false_is_skipped() {
+        let mut w = world_two_rooms(false);
+        attach_named_scene(&mut w, "start", "scenes/quiet", "enter", serde_json::json!({}));
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "behaviors": { "scenes/quiet": {
+                "family": "scene",
+                "script": {
+                    "canPlay": { "kind": "lit", "value": false },
+                    "onEnter": [
+                        { "kind": "emit", "effect": { "kind": "cue",
+                            "text": { "kind": "lit", "value": "nope" } } },
+                        { "kind": "setState", "field": "fired",
+                            "value": { "kind": "lit", "value": true } }
+                    ]
+                }
+            } }
+        })).unwrap();
+        let mut cues = Vec::new();
+        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues).unwrap();
+        // Skipped: no cue emitted and the body's setState never ran.
+        assert!(cues.is_empty());
+        assert_eq!(w.rooms[&rid("start")].scenes[0].state, serde_json::json!({}));
+    }
+
+    #[test]
+    fn scripted_scene_setstate_persists_across_fires() {
+        let mut w = world_two_rooms(false);
+        attach_named_scene(&mut w, "start", "scenes/counter", "enter", serde_json::json!({}));
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "behaviors": { "scenes/counter": {
+                "family": "scene",
+                "script": { "onEnter": [ { "kind": "setState", "field": "count",
+                    "value": { "kind": "bin", "op": "add",
+                        "left": { "kind": "stateGet", "field": "count", "default": 0 },
+                        "right": { "kind": "lit", "value": 1 } } } ] }
+            } }
+        })).unwrap();
+        let mut cues = Vec::new();
+        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues).unwrap();
+        assert_eq!(w.rooms[&rid("start")].scenes[0].state["count"], serde_json::json!(1.0));
+        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues).unwrap();
+        assert_eq!(w.rooms[&rid("start")].scenes[0].state["count"], serde_json::json!(2.0));
+    }
+
+    #[test]
+    fn native_visit_counter_scene_still_fires_unchanged() {
+        let mut w = world_two_rooms(false);
+        attach_named_scene(&mut w, "start", "conformance:visit-counter", "enter",
+            serde_json::json!({ "count": 0 }));
+        let cat = Catalog::default();
+        let mut cues = Vec::new();
+        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues).unwrap();
+        assert_eq!(cues, alloc::vec![mcue("The Start stirs (visit 1).")]);
+        assert_eq!(w.rooms[&rid("start")].scenes[0].state["count"], serde_json::json!(1));
+        // Firing again advances the native counter — byte-identical to the old path.
+        let mut cues2 = Vec::new();
+        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues2).unwrap();
+        assert_eq!(cues2, alloc::vec![mcue("The Start stirs (visit 2).")]);
     }
 
     #[test]
