@@ -60,6 +60,13 @@ export function sceneHotspots(vm: ViewModel): Hotspot[] {
     const actions: ActionDescriptor[] = [
       { label: "Examine", kind: "examine", targetId: occupant.id },
     ];
+    if (occupant.talkable) {
+      actions.push({
+        label: "Talk",
+        kind: "intent",
+        intent: { kind: "talk", npcId: occupant.id },
+      });
+    }
     if (!occupant.defeated) {
       actions.push({
         label: "Attack",

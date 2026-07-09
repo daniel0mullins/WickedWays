@@ -372,6 +372,10 @@ test.describe("Wicked Ways browser playthrough", () => {
     // After opening, "Water-Stained Journal" appears as a floor-item hotspot.
     await clickBodyHotspot(page, "item", /Journal/i, "Take");
 
+    // Talk to the caretaker → receive the cellar key (unlocks the Foyer→Cellar
+    // keyed door) and the caretaker vanishes. Without this the descent is locked.
+    await clickBodyHotspot(page, "occupant", "Caretaker", "Talk");
+
     // ── Hall: go north, open stand (hall-stand), take + equip poker ──────────────
     await goDirection(page, "north");  // Foyer → Hall
 

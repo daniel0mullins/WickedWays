@@ -249,7 +249,8 @@
             ],
             "kind": "occupant",
             "health": 3,
-            "defeated": false
+            "defeated": false,
+            "talkable": true
           }
         ],
         "loot": [],
@@ -268,7 +269,8 @@
             ],
             "kind": "occupant",
             "health": 3,
-            "defeated": false
+            "defeated": false,
+            "talkable": true
           }
         ],
         "status": {

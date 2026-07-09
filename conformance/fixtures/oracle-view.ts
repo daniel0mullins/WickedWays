@@ -7,6 +7,7 @@
 import type { Campaign } from "wickedways/lib/campaign";
 import type { Direction } from "wickedways/lib/room";
 import { StatType } from "wickedways/lib/character/stats";
+import { NonPlayerCharacter } from "wickedways/lib/character/non-player-character";
 import { Status } from "wickedways/lib/status";
 
 export type ScopeKind = "occupant" | "item" | "loot";
@@ -19,6 +20,8 @@ export interface ScopeEntity {
   health?: number;
   /** Occupants only: true once knocked out (a defeated mob the engine keeps in the room). */
   defeated?: boolean;
+  /** Occupants only: true for NPCs the player can talk to (absent otherwise). */
+  talkable?: boolean;
   /** Campaign-supplied image asset reference, if the entity carries one. */
   image?: string;
   /** Items only: whether the item can be equipped. */
@@ -85,6 +88,7 @@ export function view(
       health: o.effectiveStat(StatType.Health),
       defeated: o.status.includes(Status.KO),
       image: o.presentation?.image,
+      ...(o instanceof NonPlayerCharacter ? { talkable: true as const } : {}),
     }));
 
   const loot: LootView[] = [...room.loot.values()].map((l) => {

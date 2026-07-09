@@ -17,7 +17,7 @@ use crate::presentation::{AssetRef, CampaignOutcome};
 use crate::stats::StatType;
 use crate::world::descriptor::Catalog;
 use crate::world::resolve::resolve_item;
-use crate::world::snapshot::ItemSnapshot;
+use crate::world::snapshot::{CharacterKind, ItemSnapshot};
 use crate::world::World;
 
 /// The room fields shared by the widened ViewModel.
@@ -82,6 +82,9 @@ pub struct ScopeEntity {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts", ts(optional))]
     pub defeated: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub talkable: Option<bool>,
 }
 
 /// A loot container with its resolved contents.
@@ -186,6 +189,7 @@ fn item_scope_entity(
         has_lore: Some(resolved.lore.is_some()),
         droppable: Some(resolved.properties.droppable != Some(false)),
         defeated: None,
+        talkable: None,
     })
 }
 
@@ -305,6 +309,16 @@ impl World {
                     .map(|c| c.name.clone())
                     .unwrap_or_default();
                 let health = self.effective_stat(id, StatType::Health, cat);
+                let talkable = if self
+                    .characters
+                    .get(id)
+                    .map(|c| c.kind == CharacterKind::Npc)
+                    .unwrap_or(false)
+                {
+                    Some(true)
+                } else {
+                    None
+                };
                 ScopeEntity {
                     id: id.0.clone(),
                     name: name.clone(),
@@ -317,6 +331,7 @@ impl World {
                     has_lore: None,
                     droppable: None,
                     defeated: Some(self.is_ko(id)),
+                    talkable,
                 }
             })
             .collect();
@@ -396,6 +411,7 @@ impl World {
                 has_lore: None,
                 droppable: None,
                 defeated: None,
+                talkable: None,
             })
             .collect();
 
@@ -945,6 +961,38 @@ mod tests {
             let v = w.view(&cat, &BTreeSet::new()).unwrap();
             let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
             assert_eq!(wraith.defeated, Some(true), "KO occupant should have defeated=Some(true)");
+        }
+    }
+
+    /// PnC "Talk" affordance: `talkable` is `Some(true)` for NPC occupants ONLY,
+    /// and `None` (→ omitted) for mobs, players, and items — byte-parity with the
+    /// TS oracle's conditional-spread emission.
+    #[test]
+    fn view_occupant_talkable_field() {
+        let mut w = build_world_for_view();
+        let cat = build_catalog();
+        let npc_id = char_id("npc1");
+
+        // Wraith is a Mob → talkable omitted (None).
+        {
+            let v = w.view(&cat, &BTreeSet::new()).unwrap();
+            let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
+            assert_eq!(wraith.talkable, None, "a mob occupant should have talkable=None");
+
+            // item entity in scope → talkable None
+            let potion = v.scope.iter().find(|e| e.name == "Healing Potion").unwrap();
+            assert_eq!(potion.talkable, None, "item entity should have talkable=None");
+        }
+
+        // Turn Wraith into an NPC → talkable Some(true).
+        {
+            w.characters.get_mut(&npc_id).unwrap().kind = CharacterKind::Npc;
+            let v = w.view(&cat, &BTreeSet::new()).unwrap();
+            let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
+            assert_eq!(wraith.talkable, Some(true), "an NPC occupant should have talkable=Some(true)");
+            // and in scope too (scope reuses the occupants vec)
+            let scoped = v.scope.iter().find(|e| e.name == "Wraith").unwrap();
+            assert_eq!(scoped.talkable, Some(true));
         }
     }
 
