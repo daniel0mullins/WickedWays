@@ -1853,7 +1853,7 @@ first time a keyed actor passes.
 The `ViewModel`'s `exits`/`lockedDoors` fields remain deferred — the registry drives
 traversal, but nothing yet projects exit/lock state out to a renderer.
 
-#### Scenes: the `SceneBehavior` registry (`crates/wickedways-core/src/world/scenes.rs`)
+#### Scenes: native `SceneBehavior` + data-driven `BehaviorScript::Scene` (`crates/wickedways-core/src/world/scenes.rs`)
 
 Sub-plan 6c-2 ports room-attached scene hooks the same way keyed exits were ported: a
 scene's `behavior_key` resolves to a compiled-in, stateless `impl SceneBehavior` via the
@@ -1864,6 +1864,33 @@ static lookup `scene_behavior(key)`; an unrecognized key surfaces as a
 emit (`Vec<MechanicCue>`, empty meaning none) — mirroring the TS `Scene`'s
 `preconditions`/`script` contract, extended so the script can emit cues (the TS `script`
 was previously `void`-returning).
+
+**Scenes are also authorable as data (NPC sub-plan 3).** `resolve_scene(key, cat)` resolves
+a scene's `behavior_key` **native-first**: a compiled-in `SceneBehavior` wins
+(`ResolvedScene::Native`), and only if no native behavior is registered does it fall back to
+a catalog [`BehaviorScript::Scene`](crates/wickedways-core/bindings/BehaviorScript.ts)
+(`ResolvedScene::Scripted`); an unregistered key — or a catalog key of a non-scene family —
+resolves to `None` and is the same `ProceduralViolation` at the fire site (and
+`validate_mechanics` fails fast on it). A scripted scene is a
+[`SceneScript`](crates/wickedways-core/bindings/SceneScript.ts) `{ canPlay, onEnter?, onExit? }`
+— a `can_play` predicate `Expr` (absent/`null` = always playable) plus optional
+`on_enter`/`on_exit` **effect bodies** (`Vec<Stmt>`), mirroring the `MechanicScript`/`ItemScript`
+hook-body shape. In `fire_scenes` a scripted scene reads the **live world** (a read-only
+`CampaignView` plus the entering/exiting character's view, via the `ScriptedScene` adapter's
+World-backed room resolver); it gates the matching-phase body on `can_play`, evaluates that
+body into an ordered effect list, and runs it through the same collect-then-apply `Effect`
+pipeline the mechanics and dialogue use. So an `on_enter`/`on_exit` body can emit cues **and**
+`SetVisible`/`GiveItem`/`SetState` effects, subject to the same `MAX_EFFECTS_PER_EVENT = 64`
+cap (exceeding it is a `ProceduralViolation`). The scene's own JSON `state` is threaded through
+the body (readable by `can_play`, mutated by `SetState`) and written back before the effects
+apply. Native scenes are untouched — they keep the cue-only `run_script` path.
+
+**Authoring.** Assemble a scripted scene with the
+[`scene({ canPlay, onEnter, onExit })`](packages/campaigns/src/scripted/builders.ts) builder —
+the hook bodies are DSL `Stmt` lists and `canPlay` a DSL `Expr` — which emits the
+`BehaviorScript::Scene` AST, registered in the campaign's `behaviors` map under the room scene's
+`behaviorKey`. `canPlay` is always serialized (`null` = always playable), mirroring the Rust
+`SceneScript` serde shape (`#[serde(default)]`, not skip-if-none).
 
 `World::move_to` fires scenes at two points per move, matching TS `Room.exitRoom`/
 `Room.enterRoom`/`#enterRoom`:
