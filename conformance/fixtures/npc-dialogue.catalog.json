@@ -1,0 +1,661 @@
+{
+  "items": {},
+  "aliases": {},
+  "behaviors": {
+    "npc/warden": {
+      "family": "npc",
+      "script": {
+        "description": "A grim warden bars the way.",
+        "default": {
+          "match": {
+            "kind": "exact",
+            "text": ""
+          },
+          "response": {
+            "kind": "lit",
+            "value": "The warden watches you."
+          },
+          "effects": [],
+          "once": false
+        },
+        "dialogue": [
+          {
+            "match": {
+              "kind": "exact",
+              "text": "open sesame"
+            },
+            "response": {
+              "kind": "lit",
+              "value": "The passage opens."
+            },
+            "effects": [],
+            "once": false
+          },
+          {
+            "match": {
+              "kind": "exact",
+              "text": "help me"
+            },
+            "response": {
+              "kind": "lit",
+              "value": "I will help you."
+            },
+            "effects": [],
+            "once": false
+          },
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "help"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "Help is a fuzzy word."
+            },
+            "effects": [],
+            "once": false
+          },
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "how",
+                "get",
+                "out"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "Follow the north stair."
+            },
+            "effects": [],
+            "once": false
+          },
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "cellar"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "The cellar lies below."
+            },
+            "effects": [],
+            "once": false
+          },
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "door",
+                "!!!"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "The door is heavy."
+            },
+            "effects": [],
+            "once": false
+          },
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "key"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "A key hangs on the wall."
+            },
+            "effects": [],
+            "once": false
+          },
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "gate"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "The gate is shut."
+            },
+            "effects": [],
+            "once": false
+          },
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "!!!"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "The warden shrugs."
+            },
+            "effects": [],
+            "once": false
+          },
+          {
+            "match": {
+              "kind": "exact",
+              "text": "overload"
+            },
+            "response": {
+              "kind": "lit",
+              "value": "Never emitted."
+            },
+            "effects": [
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              },
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "x"
+                }
+              }
+            ],
+            "once": false
+          }
+        ]
+      }
+    },
+    "npc/twin": {
+      "family": "npc",
+      "script": {
+        "description": "A pair of pale twins whisper as one.",
+        "default": {
+          "match": {
+            "kind": "exact",
+            "text": ""
+          },
+          "response": {
+            "kind": "lit",
+            "value": "We are the twins."
+          },
+          "effects": [],
+          "once": false
+        },
+        "dialogue": [
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "bless"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "A blessing upon you."
+            },
+            "effects": [
+              {
+                "kind": "cue",
+                "text": {
+                  "kind": "lit",
+                  "value": "The twins glow."
+                }
+              }
+            ],
+            "once": true
+          }
+        ]
+      }
+    }
+  }
+}
