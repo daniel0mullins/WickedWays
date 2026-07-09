@@ -134,22 +134,39 @@ describe("capstone: full winning path with save/undo round-trip", () => {
   // Brass Lantern. The Rust core's is_lit (crates/wickedways-core/src/world/movement.rs)
   // now folds in occupant-carried light, so combat there succeeds and the iron key drops.
   //
-  // SKIPPED (Hollow House caretaker sub-plan, Task 1): the Foyer->Cellar corridor is
-  // now a keyed door (the "cellar door") that requires the cellar key. That key's only
-  // in-game source is the Foyer caretaker NPC, added in a LATER task of this sub-plan.
-  // Until the caretaker exists, this command-driven path cannot descend into the Cellar
-  // to fell the Revenant for the iron key, so the full win is temporarily unreachable via
-  // GameSession (which runs the Rust Authority and offers no item-injection hook). Re-enable
-  // this test in the caretaker task: acquire the cellar key from the caretaker, then descend.
-  // The keyed cellar door itself (lock + open + BIDIRECTIONAL reverse traversal) is proven
-  // in packages/campaigns/src/hollow-house/campaign.test.ts ("keyed cellar door").
-  it.skip("drives the full winning path: save/undo round-trip then iron-key attic win", async () => {
+  // Hollow House caretaker sub-plan: the Foyer->Cellar corridor is a keyed door (the
+  // "cellar door") that requires the cellar key. That key's only in-game source is the
+  // Foyer caretaker NPC, seated in the start room. This path acquires it via a bare
+  // `talk` hand-off (below), which is why the descent into the Cellar now succeeds and
+  // emits the cellar-door opened line. The keyed cellar door itself (lock + open +
+  // BIDIRECTIONAL reverse traversal) is also proven in
+  // packages/campaigns/src/hollow-house/campaign.test.ts ("keyed cellar door").
+  it("drives the full winning path: save/undo round-trip then iron-key attic win", async () => {
+    // ── 0. begin_campaign: the Foyer onEnter intro scene fires at boot ────────
+    // Its cue lands in the Rust begin_campaign startup-cue buffer. takeStartupCues()
+    // returns AND CLEARS that buffer, so call it exactly once and assert against the
+    // captured result. (CARETAKER_INTRO_CUE is not re-exported from the hollow-house
+    // barrel, so match on a stable ASCII substring of its text.)
+    const startupCues = session.takeStartupCues();
+    const introCueText = "a ring of keys shaking in his hand";
+    expect(startupCues.some((c) => c.kind === "mechanic" && (c.cue.text ?? "").includes(introCueText))).toBe(true);
+
     // ── 1. Foyer: get journal ─────────────────────────────────────────────────
     expect(session.view().room.name).toBe(Rooms.Foyer);
 
     await handle("open chest");                       // open foyer-table
     await handle("take journal");                     // take Water-Stained Journal
     expect(session.view().inventory.items.some((i) => i.name === "Water-Stained Journal")).toBe(true);
+
+    // ── 1b. Foyer: the caretaker hands over the cellar key ────────────────────
+    // The seated caretaker holds the only cellar key; a bare `talk` triggers the
+    // one-time hand-off (key transferred, caretaker turns invisible → drops out of
+    // occupants). Without this the keyed cellar door below stays locked and the
+    // Cellar (and thus the iron key / the win) is unreachable.
+    expect(session.view().occupants.some((o) => o.name === "Caretaker")).toBe(true);
+    await handle("talk to caretaker");
+    expect(session.view().inventory.keys.some((k) => k.name === "Cellar Key")).toBe(true);
+    expect(session.view().occupants.some((o) => o.name === "Caretaker")).toBe(false);
 
     // ── 2. Hall: get + equip poker ────────────────────────────────────────────
     await handle("n");                                // Foyer → Hall
@@ -204,6 +221,11 @@ describe("capstone: full winning path with save/undo round-trip", () => {
     await handle("s");                                // Foyer → Cellar
     expect(session.view().room.name).toBe(Rooms.Cellar);
 
+    // With the caretaker's cellar key in hand, this first southward pass unlocks
+    // the keyed cellar door and emits its one-time opened line.
+    const cellarOpenLine = "The cellar key turns; the cellar door swings open.";
+    expect(transcript.some((l) => l.includes(cellarOpenLine))).toBe(true);
+
     // The lantern equip means the Cellar is now lit → we can attack.
     const revenantOccupants = session.view().occupants;
     expect(revenantOccupants.some((o) => o.name === "Revenant")).toBe(true);
@@ -217,7 +239,9 @@ describe("capstone: full winning path with save/undo round-trip", () => {
 
     // After defeat, iron key drops into the room's loot.
     await handle("open chest");                       // open the dropped loot box
-    await handle("take key");                         // take Iron Key
+    // Disambiguate: the caretaker's Cellar Key is also in scope, so a bare
+    // `take key` is ambiguous; name the Iron Key explicitly.
+    await handle("take iron key");                    // take Iron Key
 
     const ironKey = session.view().inventory.keys.find((k) => k.name === "Iron Key");
     expect(ironKey).toBeDefined();
