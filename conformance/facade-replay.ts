@@ -15,9 +15,9 @@ import { canonicalize } from "./canonical-json.ts";
 const here = dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
-const TIME_ADVANCING = new Set(["move", "take", "drop", "use", "attack", "wait", "talk"]);
+const TIME_ADVANCING = new Set(["move", "take", "drop", "use", "attack", "wait"]);
 
-interface GoldenStep { op: { kind: string; intent?: { kind: string }; itemId?: string }; result: unknown; snapshot: unknown; view: unknown; }
+interface GoldenStep { op: { kind: string; intent?: { kind: string }; itemId?: string; targetId?: string }; result: unknown; snapshot: unknown; view: unknown; }
 interface Golden { seed: number; startupCues: unknown[]; ops: unknown[]; steps: GoldenStep[]; }
 
 export function replayFacade(name: string): void {
@@ -26,6 +26,7 @@ export function replayFacade(name: string): void {
       takeStartupCues(): string;
       submit(intent: string): string;
       read(itemId: string): string;
+      examine(targetId: string): string;
       snapshot(): string;
       restore(snapshot: string): void;
       view(): string;
@@ -51,6 +52,8 @@ export function replayFacade(name: string): void {
       got = result;
     } else if (want.op.kind === "read") {
       got = JSON.parse(auth.read(want.op.itemId!));
+    } else if (want.op.kind === "examine") {
+      got = JSON.parse(auth.examine(want.op.targetId!));
     } else {
       const ok = undoStash !== null;
       if (undoStash !== null) { auth.restore(undoStash); undoStash = null; }

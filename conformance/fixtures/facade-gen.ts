@@ -13,6 +13,7 @@ import type { Intent, OracleSession } from "./oracle-session.ts";
 export type FacadeOp =
   | { kind: "submit"; intent: Intent }
   | { kind: "read"; itemId: string }
+  | { kind: "examine"; targetId: string }
   | { kind: "undo" };
 
 export function facadeViewProjected(oracle: OracleSession) {
@@ -26,6 +27,7 @@ export function runFacadeGolden(oracle: OracleSession, ops: FacadeOp[]): FacadeS
     let result: unknown;
     if (op.kind === "submit") result = oracle.execute(op.intent);
     else if (op.kind === "read") result = oracle.read(op.itemId);
+    else if (op.kind === "examine") result = oracle.examine(op.targetId);
     else result = { ok: oracle.undo() };
     return {
       op,

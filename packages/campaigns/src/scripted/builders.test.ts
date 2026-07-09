@@ -71,4 +71,68 @@ describe("scripted-ops builders", () => {
     });
     expect(s.item({})).toEqual({ family: "item", script: {} });
   });
+
+  it("emits npc dialogue match rules, entries, and the npc family", () => {
+    // Match rules.
+    expect(s.exact("hello")).toEqual({ kind: "exact", text: "hello" });
+    expect(s.fuzzy("key", "cellar")).toEqual({ kind: "fuzzy", tokens: ["key", "cellar"] });
+    // entry(): effects default to [] and once defaults to false when omitted.
+    expect(s.entry({ match: s.exact("hi"), response: s.lit("Hello there.") })).toEqual({
+      match: { kind: "exact", text: "hi" },
+      response: { kind: "lit", value: "Hello there." },
+      effects: [],
+      once: false,
+    });
+    // entry(): explicit effects + once are threaded through.
+    expect(
+      s.entry({
+        match: s.fuzzy("give", "key"),
+        response: s.lit("Take it."),
+        effects: [s.cue(s.lit("A key changes hands."))],
+        once: true,
+      }),
+    ).toEqual({
+      match: { kind: "fuzzy", tokens: ["give", "key"] },
+      response: { kind: "lit", value: "Take it." },
+      effects: [{ kind: "cue", text: { kind: "lit", value: "A key changes hands." } }],
+      once: true,
+    });
+    // npc family: description + default entry + ordered dialogue; dialogue omitted → [].
+    expect(
+      s.npc({
+        description: "A hooded figure.",
+        default: s.entry({ match: s.exact(""), response: s.lit("...") }),
+        dialogue: [s.entry({ match: s.exact("name"), response: s.lit("I am no one.") })],
+      }),
+    ).toEqual({
+      family: "npc",
+      script: {
+        description: "A hooded figure.",
+        default: {
+          match: { kind: "exact", text: "" },
+          response: { kind: "lit", value: "..." },
+          effects: [],
+          once: false,
+        },
+        dialogue: [
+          {
+            match: { kind: "exact", text: "name" },
+            response: { kind: "lit", value: "I am no one." },
+            effects: [],
+            once: false,
+          },
+        ],
+      },
+    });
+    expect(
+      s.npc({ description: "Silent.", default: s.entry({ match: s.exact(""), response: s.lit("") }) }),
+    ).toEqual({
+      family: "npc",
+      script: {
+        description: "Silent.",
+        default: { match: { kind: "exact", text: "" }, response: { kind: "lit", value: "" }, effects: [], once: false },
+        dialogue: [],
+      },
+    });
+  });
 });
