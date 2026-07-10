@@ -14,3 +14,20 @@ docs-site/.vitepress/dist
 landing/vendor
 **/*.log
 .DS_Store
+
+# Never bake host-local secrets into an image layer.
+.env
+
+# Rust build artifacts. `target/` alone is >1GB, and the wasm-pack `pkg*` output
+# is compiled inside the image's `wasm` stage — shipping a host-built copy would
+# let a stale artifact pass locally while a clean checkout (Coolify) fails.
+**/target
+crates/wickedways-wasm/pkg
+crates/wickedways-wasm/pkg-node
+crates/wickedways-wasm/pkg-web
+
+# Host-local tooling scratch.
+.claude
+.codegraph
+.superpowers
+.vscode
