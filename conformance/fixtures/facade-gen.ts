@@ -67,6 +67,11 @@ export function writeFacadeFixture(
 ): FacadeStep[] {
   const startupCues = structuralClone(oracle.startupCues);
   const genesis = structuralClone(oracle.genesis);
+  // Capture the description BEFORE ops run. `Character` stores `stats` BY
+  // REFERENCE, so combat during `runFacadeGolden` mutates `description.mobs[].stats`
+  // in place; serializing afterwards would record post-op stats that contradict the
+  // pre-op genesis. Strip rng first so the deep clone contains no functions.
+  const descOut = structuralClone(stripRng(description));
   const steps = runFacadeGolden(oracle, ops);
   writeFileSync(join(here, `${name}.genesis.json`), JSON.stringify(genesis, null, 2) + "\n");
   writeFileSync(join(here, `${name}.catalog.json`), JSON.stringify(catalog, null, 2) + "\n");
@@ -76,7 +81,7 @@ export function writeFacadeFixture(
   // `Authority::new` instead.
   writeFileSync(
     join(here, `${name}.description.json`),
-    JSON.stringify(stripRng(description), null, 2) + "\n",
+    JSON.stringify(descOut, null, 2) + "\n",
   );
   writeFileSync(
     join(here, `${name}.golden.json`),

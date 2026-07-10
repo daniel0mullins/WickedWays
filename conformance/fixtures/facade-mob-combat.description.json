@@ -27,7 +27,7 @@
     {
       "name": "Brute",
       "stats": {
-        "health": 4.8,
+        "health": 6,
         "sanity": 4,
         "energy": 4
       },

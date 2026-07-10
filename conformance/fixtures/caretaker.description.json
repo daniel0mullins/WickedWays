@@ -34,7 +34,7 @@
       "behaviorKey": "cellar-door",
       "name": "cellar door",
       "initialState": {
-        "unlocked": true
+        "unlocked": false
       }
     }
   ],

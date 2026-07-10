@@ -27,7 +27,7 @@
     {
       "name": "Blocked",
       "stats": {
-        "health": 6,
+        "health": 8,
         "sanity": 0,
         "energy": 4
       },

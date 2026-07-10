@@ -27,7 +27,7 @@
     {
       "name": "Wraith",
       "stats": {
-        "health": 0,
+        "health": 1,
         "sanity": 4,
         "energy": 4
       },

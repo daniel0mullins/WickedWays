@@ -1,4 +1,16 @@
 {
   "items": {},
-  "aliases": {}
+  "aliases": {},
+  "behaviors": {
+    "conformance:dread": {
+      "family": "mechanic",
+      "script": {
+        "init": {
+          "ticks": 0
+        },
+        "hooks": {},
+        "actions": {}
+      }
+    }
+  }
 }
