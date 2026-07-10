@@ -5,9 +5,11 @@
 //!
 //! This crate must never depend on `rand` or `uuid`: all ids are derived from content.
 
+pub mod construct;
 pub mod description;
 pub mod error;
 pub(crate) mod ids;
+pub(crate) mod seat;
 pub(crate) mod validate;
 
 pub use description::CampaignDescription;
@@ -37,6 +39,7 @@ pub fn assemble(
     if !problems.is_empty() {
         return Err(AssembleError { problems });
     }
-    let _ = party;
-    unimplemented!("construct pass lands in Task 5")
+    let mut snap = construct::construct(desc, catalog)?;
+    seat::seat_party(&mut snap, desc, catalog, party)?;
+    Ok(snap)
 }
