@@ -1,8 +1,9 @@
 //! Lower the parsed TOML surface (`AuthorDoc`) into the artifacts
 //! `wickedways_assemble::assemble` consumes.
 //!
-//! Task 4 fills the DESCRIPTION (`CampaignDescription`); the CATALOG is stubbed
-//! (`Catalog::default()`) and completed in Task 5. Panic-free on author input.
+//! `lower_description` builds the `CampaignDescription`; `lower_catalog` lowers
+//! items plus the exit/victory/scene behavior families into the `Catalog`.
+//! Panic-free on author input.
 
 use std::collections::BTreeMap;
 

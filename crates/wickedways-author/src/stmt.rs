@@ -283,12 +283,18 @@ mod tests {
 
     #[test]
     fn non_cue_effect_is_rejected() {
-        assert!(parse_stmts("emit damage(actor, 5)", Span { line: 1, col: 1 }).is_err());
+        assert!(matches!(
+            parse_stmts("emit damage(actor, 5)", Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }
+        ));
     }
 
     #[test]
     fn set_state_in_map_is_rejected() {
         // `set state.m[k] = v` (SetStateIn) is deferred; must error, not silently drop.
-        assert!(parse_stmts("set state.visits[actor] = true", Span { line: 1, col: 1 }).is_err());
+        assert!(matches!(
+            parse_stmts("set state.visits[actor] = true", Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }
+        ));
     }
 }

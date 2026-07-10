@@ -156,3 +156,11 @@ fn compile_is_deterministic() {
     let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
     assert_eq!(a, b, "compile() is not deterministic");
 }
+
+#[test]
+fn compile_is_deterministic_scene() {
+    let src = read(&fixtures().join("g2-scene.toml"));
+    let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
+    let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
+    assert_eq!(a, b, "compile() is not deterministic");
+}
