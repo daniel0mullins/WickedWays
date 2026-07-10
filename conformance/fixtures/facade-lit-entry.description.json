@@ -1,0 +1,62 @@
+{
+  "title": "Facade Lit Entry (conformance)",
+  "opts": {
+    "maxRounds": 20,
+    "baseEncounterChance": 0
+  },
+  "archetypes": [
+    {
+      "id": "delver",
+      "name": "Delver",
+      "baseStats": {
+        "health": 10,
+        "sanity": 8,
+        "energy": 8
+      }
+    }
+  ],
+  "rooms": [
+    {
+      "name": "Hall",
+      "description": "A stone hall."
+    },
+    {
+      "name": "Cell",
+      "description": "A lit cell."
+    }
+  ],
+  "startRoom": "Hall",
+  "exits": [
+    {
+      "from": "Hall",
+      "direction": "north",
+      "to": "Cell"
+    },
+    {
+      "from": "Cell",
+      "direction": "south",
+      "to": "Hall"
+    }
+  ],
+  "mobs": [
+    {
+      "name": "Brute",
+      "stats": {
+        "health": 4.8,
+        "sanity": 4,
+        "energy": 4
+      },
+      "room": "Cell"
+    }
+  ],
+  "loot": [],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

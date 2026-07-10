@@ -1,0 +1,73 @@
+{
+  "title": "Scripted Scene (conformance)",
+  "opts": {
+    "maxRounds": 20,
+    "baseEncounterChance": 0
+  },
+  "archetypes": [
+    {
+      "id": "delver",
+      "name": "Delver",
+      "baseStats": {
+        "health": 10,
+        "sanity": 8,
+        "energy": 8
+      }
+    }
+  ],
+  "rooms": [
+    {
+      "name": "Threshold",
+      "description": "A cold stone threshold."
+    },
+    {
+      "name": "Vault",
+      "description": "A silent vault."
+    }
+  ],
+  "startRoom": "Threshold",
+  "exits": [
+    {
+      "from": "Threshold",
+      "direction": "north",
+      "to": "Vault"
+    }
+  ],
+  "mobs": [
+    {
+      "name": "Gargoyle",
+      "stats": {
+        "health": 4,
+        "sanity": 4,
+        "energy": 4
+      },
+      "room": "Vault"
+    }
+  ],
+  "loot": [],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [
+    {
+      "room": "Threshold",
+      "key": "scene/threshold-draft",
+      "phase": "enter"
+    },
+    {
+      "room": "Vault",
+      "key": "scene/vault-watch",
+      "phase": "enter"
+    },
+    {
+      "room": "Vault",
+      "key": "scene/vault-hush",
+      "phase": "exit"
+    }
+  ],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

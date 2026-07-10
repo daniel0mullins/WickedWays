@@ -69,7 +69,7 @@ describe("generate facade-open-fail golden", () => {
       { kind: "submit", intent: { kind: "wait" } },                    // opened must persist into the next view
     ];
     const steps = writeFacadeFixture(here, "facade-open-fail", SEED, oracle,
-      { items: { [RELIC_KEY]: itemToCatalogEntry(makeRelic()) }, aliases: ALIASES }, ops);
+      { items: { [RELIC_KEY]: itemToCatalogEntry(makeRelic()) }, aliases: ALIASES }, ops, template.description);
 
     const r0 = steps[0]!.result as { error?: string };
     if (r0.error !== "Cannot loot in the dark") {

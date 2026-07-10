@@ -1,0 +1,72 @@
+{
+  "title": "Caretaker (conformance)",
+  "opts": {
+    "maxRounds": 20,
+    "baseEncounterChance": 0
+  },
+  "archetypes": [
+    {
+      "id": "delver",
+      "name": "Delver",
+      "baseStats": {
+        "health": 10,
+        "sanity": 8,
+        "energy": 8
+      }
+    }
+  ],
+  "rooms": [
+    {
+      "name": "Foyer",
+      "description": "The gloom of the foyer."
+    },
+    {
+      "name": "Cellar",
+      "description": "A cold stone cellar."
+    }
+  ],
+  "startRoom": "Foyer",
+  "exits": [
+    {
+      "from": "Foyer",
+      "direction": "south",
+      "to": "Cellar",
+      "behaviorKey": "cellar-door",
+      "name": "cellar door",
+      "initialState": {
+        "unlocked": true
+      }
+    }
+  ],
+  "mobs": [],
+  "loot": [],
+  "caches": [],
+  "npcs": [
+    {
+      "name": "Caretaker",
+      "stats": {
+        "health": 1,
+        "sanity": 1,
+        "energy": 1
+      },
+      "room": "Foyer",
+      "behavior": "caretaker",
+      "holds": [
+        "cellar-key"
+      ]
+    }
+  ],
+  "formations": [],
+  "scenes": [
+    {
+      "room": "Foyer",
+      "key": "caretaker-intro",
+      "phase": "enter"
+    }
+  ],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

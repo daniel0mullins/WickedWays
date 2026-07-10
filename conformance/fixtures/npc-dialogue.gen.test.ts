@@ -158,7 +158,7 @@ describe("generate npc-dialogue golden", () => {
       talk(castorId, "bless me"),                           // 12 Castor latch set → effect suppressed [#10 suppress, #11 round-trip]
       talk(polluxId, "bless me"),                           // 13 Pollux fires independently    [#12 multi-NPC latch]
     ];
-    const steps = writeFacadeFixture(here, "npc-dialogue", SEED, oracle, catalog, ops);
+    const steps = writeFacadeFixture(here, "npc-dialogue", SEED, oracle, catalog, ops, template.description);
 
     // ── self-validation: assert the key outcomes in the generated golden ──────────
     type Cue = { kind: string; cue?: { text?: string } };

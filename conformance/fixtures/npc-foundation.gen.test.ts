@@ -148,7 +148,7 @@ describe("generate npc-foundation golden", () => {
       { kind: "submit", intent: { kind: "talk", npcId: NPC_ID } }, // FREE: resolves, round stays 0
       { kind: "submit", intent: { kind: "wait" } },                 // advancing: fires the handoff mechanic
     ];
-    const steps = writeFacadeFixture(here, "npc-foundation", SEED, oracle, catalog, ops);
+    const steps = writeFacadeFixture(here, "npc-foundation", SEED, oracle, catalog, ops, template.description);
 
     type Vm = {
       occupants: { id: string }[];

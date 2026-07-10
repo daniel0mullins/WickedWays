@@ -1,0 +1,53 @@
+{
+  "title": "Crypt",
+  "opts": {
+    "maxRounds": 10
+  },
+  "archetypes": [
+    {
+      "id": "delver",
+      "name": "Delver",
+      "baseStats": {
+        "health": 2
+      }
+    }
+  ],
+  "rooms": [
+    {
+      "name": "Start",
+      "description": "the entrance"
+    },
+    {
+      "name": "Next",
+      "description": "an adjoining chamber"
+    }
+  ],
+  "startRoom": "Start",
+  "exits": [
+    {
+      "from": "Start",
+      "direction": "north",
+      "to": "Next"
+    }
+  ],
+  "mobs": [],
+  "loot": [],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [
+    "widget"
+  ],
+  "materials": [
+    {
+      "source": "seed",
+      "map": {
+        "metal": 2
+      }
+    }
+  ],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

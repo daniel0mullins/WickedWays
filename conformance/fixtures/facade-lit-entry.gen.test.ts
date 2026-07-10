@@ -55,7 +55,7 @@ describe("generate facade-lit-entry golden", () => {
       { kind: "submit", intent: { kind: "move", dir: Directions.North } }, // lit entry → NO ambush
       { kind: "submit", intent: { kind: "attack", targetId: "mob:Brute" } }, // co-located → mob counters
     ];
-    const steps = writeFacadeFixture(here, "facade-lit-entry", SEED, oracle, EMPTY_CATALOG, ops);
+    const steps = writeFacadeFixture(here, "facade-lit-entry", SEED, oracle, EMPTY_CATALOG, ops, template.description);
 
     // Coverage bar — the feature and its control both actually fired.
     const entry = steps[0]!.result as { mobAttacks?: unknown[]; error?: string };

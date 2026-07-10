@@ -126,7 +126,7 @@ describe("generate caretaker golden", () => {
       { kind: "examine", targetId: CARETAKER_ID },                          // 3 GONE: quiet no-op
       { kind: "submit", intent: { kind: "move", dir: Directions.South } },  // 4 UNLOCK: opened cue, -> Cellar
     ];
-    const steps = writeFacadeFixture(here, "caretaker", SEED, oracle, catalog, ops);
+    const steps = writeFacadeFixture(here, "caretaker", SEED, oracle, catalog, ops, template.description);
 
     // ── self-validation: assert the composed beat in the generated golden ─────────
     // (Serialized shape: characters carry NO room field — a room lists its

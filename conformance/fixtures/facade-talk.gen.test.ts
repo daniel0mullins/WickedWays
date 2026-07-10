@@ -49,7 +49,7 @@ describe("generate facade-talk golden", () => {
       { kind: "submit", intent: { kind: "talk", npcId: "anyone" } }, // free throw: no startTurn, no nextPlayer (round stays 0)
       { kind: "submit", intent: { kind: "wait" } },                   // advancing no-op: nextPlayer wraps round 0 → 1
     ];
-    const steps = writeFacadeFixture(here, "facade-talk", SEED, oracle, EMPTY_CATALOG, ops);
+    const steps = writeFacadeFixture(here, "facade-talk", SEED, oracle, EMPTY_CATALOG, ops, template.description);
 
     // The boot must have buffered round-0 cues so take_startup_cues has parity to prove.
     if (oracle.startupCues.length === 0) {

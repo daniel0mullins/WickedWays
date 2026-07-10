@@ -1,0 +1,68 @@
+{
+  "title": "NPC Dialogue (conformance)",
+  "opts": {
+    "maxRounds": 20,
+    "baseEncounterChance": 0
+  },
+  "archetypes": [
+    {
+      "id": "delver",
+      "name": "Delver",
+      "baseStats": {
+        "health": 10,
+        "sanity": 8,
+        "energy": 8
+      }
+    }
+  ],
+  "rooms": [
+    {
+      "name": "Hall",
+      "description": "A stone hall."
+    }
+  ],
+  "startRoom": "Hall",
+  "exits": [],
+  "mobs": [],
+  "loot": [],
+  "caches": [],
+  "npcs": [
+    {
+      "name": "Warden",
+      "stats": {
+        "health": 3,
+        "sanity": 3,
+        "energy": 3
+      },
+      "room": "Hall",
+      "behavior": "npc/warden"
+    },
+    {
+      "name": "Castor",
+      "stats": {
+        "health": 3,
+        "sanity": 3,
+        "energy": 3
+      },
+      "room": "Hall",
+      "behavior": "npc/twin"
+    },
+    {
+      "name": "Pollux",
+      "stats": {
+        "health": 3,
+        "sanity": 3,
+        "energy": 3
+      },
+      "room": "Hall",
+      "behavior": "npc/twin"
+    }
+  ],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

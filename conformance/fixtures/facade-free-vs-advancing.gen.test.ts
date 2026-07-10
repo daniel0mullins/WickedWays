@@ -69,6 +69,6 @@ describe("generate facade-free-vs-advancing golden", () => {
       { kind: "submit", intent: { kind: "wait" } },                       // advancing in empty room: no attacks
     ];
     writeFacadeFixture(here, "facade-free-vs-advancing", SEED,
-      oracle, { items: { [SWORD_KEY]: itemToCatalogEntry(makeSword()) }, aliases: { [SWORD_KEY]: ["sword", "blade"] } }, ops);
+      oracle, { items: { [SWORD_KEY]: itemToCatalogEntry(makeSword()) }, aliases: { [SWORD_KEY]: ["sword", "blade"] } }, ops, template.description);
   });
 });

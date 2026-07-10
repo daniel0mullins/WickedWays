@@ -76,7 +76,7 @@ describe("generate facade-undo golden", () => {
       { kind: "submit", intent: { kind: "wait" } },                     // 6 advancing in the restored state
     ];
     const steps = writeFacadeFixture(here, "facade-undo", SEED, oracle,
-      { items: { [SWORD_KEY]: itemToCatalogEntry(makeSword()) }, aliases: ALIASES }, ops);
+      { items: { [SWORD_KEY]: itemToCatalogEntry(makeSword()) }, aliases: ALIASES }, ops, template.description);
 
     // undo outcomes: ok, then not-ok (stash consumed), then ok.
     if ((steps[1]!.result as { ok: boolean }).ok !== true) throw new Error("first undo must succeed");

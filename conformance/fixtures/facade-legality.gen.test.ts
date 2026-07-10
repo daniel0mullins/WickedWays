@@ -88,7 +88,7 @@ describe("generate facade-legality golden", () => {
     ];
     const steps = writeFacadeFixture(here, "facade-legality", SEED, oracle,
       { items: { [SWORD_KEY]: itemToCatalogEntry(makeSword()), [LOCKET_KEY]: itemToCatalogEntry(makeLocket()) }, aliases: ALIASES },
-      ops);
+      ops, template.description);
 
     const wantErrors: Record<number, string> = {
       0: "There's nothing like that to open here.",
