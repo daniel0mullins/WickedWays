@@ -150,4 +150,12 @@ mod tests {
         assert!(matches!(parse_expr("round ==", Span { line: 1, col: 1 }).unwrap_err(),
             CompileError::ExprParse { .. }));
     }
+
+    #[test]
+    fn state_get_expression() {
+        assert_eq!(p("stateGet('seen', false)"),
+            json!({"kind":"stateGet","field":"seen","default":false}));
+        assert_eq!(p("!stateGet('seen', false)"),
+            json!({"kind":"not","expr":{"kind":"stateGet","field":"seen","default":false}}));
+    }
 }
