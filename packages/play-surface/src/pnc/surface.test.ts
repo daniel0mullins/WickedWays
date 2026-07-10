@@ -23,7 +23,6 @@ const makeSession = () => ({
   save: vi.fn((): Promise<void> => Promise.resolve()),
   restore: vi.fn((): Promise<{ ok: boolean }> => Promise.resolve({ ok: false })),
   undo: vi.fn(() => false),
-  get campaign() { return {}; },
   finished: false,
 }) as never;
 

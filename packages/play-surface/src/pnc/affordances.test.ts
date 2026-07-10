@@ -135,6 +135,28 @@ describe("sceneHotspots — occupants", () => {
     ]);
   });
 
+  it("talkable NPC occupant offers Examine + Talk + Attack (in that order)", () => {
+    const npc = ent("npc-1", "Caretaker", "occupant", { talkable: true });
+    const vm = mkVm({ occupants: [npc] });
+    const [h] = sceneHotspots(vm);
+    expect(h!.kind).toBe("occupant");
+    expect(h!.actions).toEqual([
+      { label: "Examine", kind: "examine", targetId: "npc-1" },
+      { label: "Talk", kind: "intent", intent: { kind: "talk", npcId: "npc-1" } },
+      { label: "Attack", kind: "intent", intent: { kind: "attack", targetId: "npc-1" } },
+    ]);
+  });
+
+  it("plain mob (no talkable) offers Examine + Attack (Talk NOT offered)", () => {
+    const mob = ent("mob-5", "Ghoul", "occupant");
+    const vm = mkVm({ occupants: [mob] });
+    const [h] = sceneHotspots(vm);
+    expect(h!.actions).toEqual([
+      { label: "Examine", kind: "examine", targetId: "mob-5" },
+      { label: "Attack", kind: "intent", intent: { kind: "attack", targetId: "mob-5" } },
+    ]);
+  });
+
   it("carries image from occupant entity when present", () => {
     const mob = ent("mob-3", "Ghost", "occupant", { image: "ghost.png" });
     const vm = mkVm({ occupants: [mob] });

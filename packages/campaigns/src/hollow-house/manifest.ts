@@ -1,5 +1,14 @@
 import type { CampaignManifest } from "@wickedways/play-runtime";
-import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES, TITLE, INTRO } from "./index.js";
+// Import from the LEAF modules, not the `./index.js` barrel. `index.ts`
+// re-exports `hollowHouse` from this file (a cycle), and under that cycle the
+// barrel's re-exported bindings (`hollowHouseBehaviors`, `ALIASES`, `TITLE`,
+// `INTRO`) are still undefined when this manifest object is constructed — which
+// silently left `behaviors` empty and broke boot (`Mechanic 'dread' is not
+// registered.`) under strict ESM loaders. The two hoisted functions below are
+// defined in index.ts and survive the cycle, so they stay barrel-sourced.
+import { hauntedHouseTemplate, buildHauntedHouseRegistry, hollowHouseFormations } from "./index.js";
+import { hollowHouseBehaviors } from "./scripted.js";
+import { ALIASES, TITLE, INTRO } from "./content.js";
 import { Archetypes } from "./ids.js";
 import { hollowHouseAudio } from "./audio.js";
 import { hollowHouseThemes } from "./themes.js";
@@ -13,6 +22,8 @@ export const hollowHouse: CampaignManifest = {
   buttonText: "Enter Hollow House",
   builder: hauntedHouseTemplate,
   registry: buildHauntedHouseRegistry,
+  behaviors: hollowHouseBehaviors,
+  formations: hollowHouseFormations,
   aliases: ALIASES,
   playerName: "Heir",
   archetype: Archetypes.Heir,

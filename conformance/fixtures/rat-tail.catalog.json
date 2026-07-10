@@ -1,0 +1,798 @@
+{
+  "items": {
+    "rat-tail": {
+      "name": "Rat Tail",
+      "type": "consumable",
+      "stat": "sanity",
+      "modifier": 1,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": true
+      },
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    }
+  },
+  "aliases": {},
+  "behaviors": {
+    "dread": {
+      "family": "mechanic",
+      "script": {
+        "init": {},
+        "hooks": {
+          "onTurnStart": [
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "not",
+                "expr": {
+                  "kind": "hasEquipped",
+                  "of": {
+                    "kind": "actor"
+                  },
+                  "itemKey": "lantern"
+                }
+              }
+            },
+            {
+              "kind": "emit",
+              "effect": {
+                "kind": "adjustStat",
+                "target": {
+                  "kind": "actor"
+                },
+                "stat": "sanity",
+                "delta": {
+                  "kind": "lit",
+                  "value": -1
+                }
+              }
+            }
+          ]
+        },
+        "actions": {}
+      }
+    },
+    "storyteller": {
+      "family": "mechanic",
+      "script": {
+        "init": {
+          "seen": {}
+        },
+        "hooks": {
+          "onAction": [
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "bin",
+                "op": "eq",
+                "left": {
+                  "kind": "get",
+                  "of": {
+                    "kind": "action"
+                  },
+                  "field": "kind"
+                },
+                "right": {
+                  "kind": "lit",
+                  "value": "move"
+                }
+              }
+            },
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "has",
+                "map": {
+                  "kind": "mapLit",
+                  "entries": {
+                    "Parlor": "A page of the journal clears: 'They would not let me bury her properly. The parlor still smells of lilies.'",
+                    "Study": "The journal's hand grows frantic here: 'The thing in the cellar wears her face now. The iron key keeps it down.'",
+                    "Nursery": "An entry, water-blurred: 'The child never cried. That was the first wrong thing.'",
+                    "Cellar": "The last legible page: 'If you are reading this in the dark, you have already lost the light. I am sorry.'",
+                    "Attic": "The final entry is unfinished — but you understand it now, standing where it ends."
+                  }
+                },
+                "key": {
+                  "kind": "get",
+                  "of": {
+                    "kind": "get",
+                    "of": {
+                      "kind": "action"
+                    },
+                    "field": "room"
+                  },
+                  "field": "name"
+                }
+              }
+            },
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "hasItem",
+                "of": {
+                  "kind": "actor"
+                },
+                "itemKey": "journal"
+              }
+            },
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "not",
+                "expr": {
+                  "kind": "stateGetIn",
+                  "mapField": "seen",
+                  "key": {
+                    "kind": "get",
+                    "of": {
+                      "kind": "get",
+                      "of": {
+                        "kind": "action"
+                      },
+                      "field": "room"
+                    },
+                    "field": "name"
+                  },
+                  "default": false
+                }
+              }
+            },
+            {
+              "kind": "setStateIn",
+              "mapField": "seen",
+              "key": {
+                "kind": "get",
+                "of": {
+                  "kind": "get",
+                  "of": {
+                    "kind": "action"
+                  },
+                  "field": "room"
+                },
+                "field": "name"
+              },
+              "value": {
+                "kind": "lit",
+                "value": true
+              }
+            },
+            {
+              "kind": "emit",
+              "effect": {
+                "kind": "cue",
+                "text": {
+                  "kind": "lookup",
+                  "map": {
+                    "kind": "mapLit",
+                    "entries": {
+                      "Parlor": "A page of the journal clears: 'They would not let me bury her properly. The parlor still smells of lilies.'",
+                      "Study": "The journal's hand grows frantic here: 'The thing in the cellar wears her face now. The iron key keeps it down.'",
+                      "Nursery": "An entry, water-blurred: 'The child never cried. That was the first wrong thing.'",
+                      "Cellar": "The last legible page: 'If you are reading this in the dark, you have already lost the light. I am sorry.'",
+                      "Attic": "The final entry is unfinished — but you understand it now, standing where it ends."
+                    }
+                  },
+                  "key": {
+                    "kind": "get",
+                    "of": {
+                      "kind": "get",
+                      "of": {
+                        "kind": "action"
+                      },
+                      "field": "room"
+                    },
+                    "field": "name"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "actions": {}
+      }
+    },
+    "status-bar": {
+      "family": "mechanic",
+      "script": {
+        "init": {},
+        "hooks": {
+          "onRoundStart": [
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "bin",
+                "op": "gt",
+                "left": {
+                  "kind": "length",
+                  "list": {
+                    "kind": "party"
+                  }
+                },
+                "right": {
+                  "kind": "lit",
+                  "value": 0
+                }
+              }
+            },
+            {
+              "kind": "emit",
+              "effect": {
+                "kind": "status",
+                "fields": [
+                  {
+                    "label": "Sanity",
+                    "value": {
+                      "kind": "str",
+                      "num": {
+                        "kind": "get",
+                        "of": {
+                          "kind": "first",
+                          "list": {
+                            "kind": "party"
+                          }
+                        },
+                        "field": "sanity"
+                      }
+                    },
+                    "emphasis": {
+                      "kind": "ifElse",
+                      "cond": {
+                        "kind": "bin",
+                        "op": "lte",
+                        "left": {
+                          "kind": "get",
+                          "of": {
+                            "kind": "first",
+                            "list": {
+                              "kind": "party"
+                            }
+                          },
+                          "field": "sanity"
+                        },
+                        "right": {
+                          "kind": "lit",
+                          "value": 3
+                        }
+                      },
+                      "then": {
+                        "kind": "lit",
+                        "value": "critical"
+                      },
+                      "else": {
+                        "kind": "ifElse",
+                        "cond": {
+                          "kind": "bin",
+                          "op": "lte",
+                          "left": {
+                            "kind": "get",
+                            "of": {
+                              "kind": "first",
+                              "list": {
+                                "kind": "party"
+                              }
+                            },
+                            "field": "sanity"
+                          },
+                          "right": {
+                            "kind": "lit",
+                            "value": 6
+                          }
+                        },
+                        "then": {
+                          "kind": "lit",
+                          "value": "warn"
+                        },
+                        "else": {
+                          "kind": "lit",
+                          "value": "normal"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "label": "Round",
+                    "value": {
+                      "kind": "concat",
+                      "parts": [
+                        {
+                          "kind": "str",
+                          "num": {
+                            "kind": "round"
+                          }
+                        },
+                        {
+                          "kind": "lit",
+                          "value": "/"
+                        },
+                        {
+                          "kind": "str",
+                          "num": {
+                            "kind": "maxRounds"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ],
+          "onTurnEnd": [
+            {
+              "kind": "emit",
+              "effect": {
+                "kind": "status",
+                "fields": [
+                  {
+                    "label": "Sanity",
+                    "value": {
+                      "kind": "str",
+                      "num": {
+                        "kind": "get",
+                        "of": {
+                          "kind": "actor"
+                        },
+                        "field": "sanity"
+                      }
+                    },
+                    "emphasis": {
+                      "kind": "ifElse",
+                      "cond": {
+                        "kind": "bin",
+                        "op": "lte",
+                        "left": {
+                          "kind": "get",
+                          "of": {
+                            "kind": "actor"
+                          },
+                          "field": "sanity"
+                        },
+                        "right": {
+                          "kind": "lit",
+                          "value": 3
+                        }
+                      },
+                      "then": {
+                        "kind": "lit",
+                        "value": "critical"
+                      },
+                      "else": {
+                        "kind": "ifElse",
+                        "cond": {
+                          "kind": "bin",
+                          "op": "lte",
+                          "left": {
+                            "kind": "get",
+                            "of": {
+                              "kind": "actor"
+                            },
+                            "field": "sanity"
+                          },
+                          "right": {
+                            "kind": "lit",
+                            "value": 6
+                          }
+                        },
+                        "then": {
+                          "kind": "lit",
+                          "value": "warn"
+                        },
+                        "else": {
+                          "kind": "lit",
+                          "value": "normal"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "label": "Round",
+                    "value": {
+                      "kind": "concat",
+                      "parts": [
+                        {
+                          "kind": "str",
+                          "num": {
+                            "kind": "round"
+                          }
+                        },
+                        {
+                          "kind": "lit",
+                          "value": "/"
+                        },
+                        {
+                          "kind": "str",
+                          "num": {
+                            "kind": "maxRounds"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "actions": {}
+      }
+    },
+    "study-door": {
+      "family": "exit",
+      "script": {
+        "canPass": {
+          "kind": "bin",
+          "op": "or",
+          "left": {
+            "kind": "stateGet",
+            "field": "unlocked",
+            "default": false
+          },
+          "right": {
+            "kind": "hasKey",
+            "of": {
+              "kind": "actor"
+            },
+            "keyCode": "brass"
+          }
+        },
+        "runScript": [
+          {
+            "kind": "when",
+            "cond": {
+              "kind": "not",
+              "expr": {
+                "kind": "stateGet",
+                "field": "unlocked",
+                "default": false
+              }
+            },
+            "then": [
+              {
+                "kind": "setState",
+                "field": "unlocked",
+                "value": {
+                  "kind": "lit",
+                  "value": true
+                }
+              },
+              {
+                "kind": "pass",
+                "value": {
+                  "kind": "lit",
+                  "value": "The brass key turns; the study door swings open."
+                }
+              }
+            ]
+          }
+        ],
+        "failMessage": "The study door won't budge — it's locked."
+      }
+    },
+    "attic-door": {
+      "family": "exit",
+      "script": {
+        "canPass": {
+          "kind": "bin",
+          "op": "or",
+          "left": {
+            "kind": "stateGet",
+            "field": "unlocked",
+            "default": false
+          },
+          "right": {
+            "kind": "hasKey",
+            "of": {
+              "kind": "actor"
+            },
+            "keyCode": "iron"
+          }
+        },
+        "runScript": [
+          {
+            "kind": "when",
+            "cond": {
+              "kind": "not",
+              "expr": {
+                "kind": "stateGet",
+                "field": "unlocked",
+                "default": false
+              }
+            },
+            "then": [
+              {
+                "kind": "setState",
+                "field": "unlocked",
+                "value": {
+                  "kind": "lit",
+                  "value": true
+                }
+              },
+              {
+                "kind": "pass",
+                "value": {
+                  "kind": "lit",
+                  "value": "The iron key grinds in the lock; the attic stairs open above you."
+                }
+              }
+            ]
+          }
+        ],
+        "failMessage": "The attic door won't budge — it's locked."
+      }
+    },
+    "cellar-door": {
+      "family": "exit",
+      "script": {
+        "canPass": {
+          "kind": "bin",
+          "op": "or",
+          "left": {
+            "kind": "stateGet",
+            "field": "unlocked",
+            "default": false
+          },
+          "right": {
+            "kind": "hasKey",
+            "of": {
+              "kind": "actor"
+            },
+            "keyCode": "cellar"
+          }
+        },
+        "runScript": [
+          {
+            "kind": "when",
+            "cond": {
+              "kind": "not",
+              "expr": {
+                "kind": "stateGet",
+                "field": "unlocked",
+                "default": false
+              }
+            },
+            "then": [
+              {
+                "kind": "setState",
+                "field": "unlocked",
+                "value": {
+                  "kind": "lit",
+                  "value": true
+                }
+              },
+              {
+                "kind": "pass",
+                "value": {
+                  "kind": "lit",
+                  "value": "The cellar key turns; the cellar door swings open."
+                }
+              }
+            ]
+          }
+        ],
+        "failMessage": "The cellar door won't budge — it's locked."
+      }
+    },
+    "laudanum": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "actor"
+              },
+              "stat": "sanity",
+              "delta": {
+                "kind": "lit",
+                "value": 6
+              }
+            }
+          }
+        ]
+      }
+    },
+    "rat-tail": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "actor"
+              },
+              "stat": "sanity",
+              "delta": {
+                "kind": "lit",
+                "value": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    "reached-attic-with-journal": {
+      "family": "victory",
+      "script": {
+        "test": {
+          "kind": "bin",
+          "op": "and",
+          "left": {
+            "kind": "bin",
+            "op": "eq",
+            "left": {
+              "kind": "get",
+              "of": {
+                "kind": "get",
+                "of": {
+                  "kind": "first",
+                  "list": {
+                    "kind": "party"
+                  }
+                },
+                "field": "room"
+              },
+              "field": "name"
+            },
+            "right": {
+              "kind": "lit",
+              "value": "Attic"
+            }
+          },
+          "right": {
+            "kind": "hasItem",
+            "of": {
+              "kind": "first",
+              "list": {
+                "kind": "party"
+              }
+            },
+            "itemKey": "journal"
+          }
+        }
+      }
+    },
+    "sanity-zero": {
+      "family": "victory",
+      "script": {
+        "test": {
+          "kind": "some",
+          "list": {
+            "kind": "party"
+          },
+          "pred": {
+            "kind": "bin",
+            "op": "lte",
+            "left": {
+              "kind": "get",
+              "of": {
+                "kind": "element"
+              },
+              "field": "sanity"
+            },
+            "right": {
+              "kind": "lit",
+              "value": 0
+            }
+          }
+        }
+      }
+    },
+    "party-down": {
+      "family": "victory",
+      "script": {
+        "test": {
+          "kind": "bin",
+          "op": "and",
+          "left": {
+            "kind": "bin",
+            "op": "gt",
+            "left": {
+              "kind": "length",
+              "list": {
+                "kind": "party"
+              }
+            },
+            "right": {
+              "kind": "lit",
+              "value": 0
+            }
+          },
+          "right": {
+            "kind": "every",
+            "list": {
+              "kind": "party"
+            },
+            "pred": {
+              "kind": "includes",
+              "list": {
+                "kind": "get",
+                "of": {
+                  "kind": "element"
+                },
+                "field": "status"
+              },
+              "value": {
+                "kind": "lit",
+                "value": "ko"
+              }
+            }
+          }
+        }
+      }
+    },
+    "caretaker": {
+      "family": "npc",
+      "script": {
+        "description": "A stooped caretaker in a moth-eaten coat, a ring of iron keys trembling at his belt. He will not meet your eyes.",
+        "default": {
+          "match": {
+            "kind": "exact",
+            "text": ""
+          },
+          "response": {
+            "kind": "lit",
+            "value": "Take the cellar key. I have no more use for it, nor for this house. I am leaving now, and I will not come back."
+          },
+          "effects": [
+            {
+              "kind": "giveItem",
+              "from": {
+                "kind": "lit",
+                "value": "npc:Caretaker"
+              },
+              "to": {
+                "kind": "actor"
+              },
+              "item": {
+                "kind": "lit",
+                "value": "npc:Caretaker:item#0"
+              }
+            },
+            {
+              "kind": "setVisible",
+              "target": {
+                "kind": "lit",
+                "value": "npc:Caretaker"
+              },
+              "visible": {
+                "kind": "lit",
+                "value": false
+              }
+            }
+          ],
+          "once": true
+        },
+        "dialogue": []
+      }
+    },
+    "caretaker-intro": {
+      "family": "scene",
+      "script": {
+        "canPlay": null,
+        "onEnter": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "cue",
+              "text": {
+                "kind": "lit",
+                "value": "The front door thuds shut behind you and will not open again. In the gloom of the foyer, a stooped figure waits, a ring of keys shaking in his hand."
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

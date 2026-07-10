@@ -1,0 +1,101 @@
+{
+  "items": {
+    "items/axe": {
+      "name": "Hand Axe",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 3,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 2,
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "items/cleaver": {
+      "name": "Meat Cleaver",
+      "type": "weapon",
+      "stat": "sanity",
+      "modifier": 4,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 5,
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "items/vest": {
+      "name": "Padded Vest",
+      "type": "armor",
+      "stat": "health",
+      "modifier": 1,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "torso",
+      "maxDurability": 2,
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "items/charm": {
+      "name": "Lucky Charm",
+      "type": "accessory",
+      "stat": "sanity",
+      "modifier": 2,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "finger",
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    }
+  },
+  "aliases": {
+    "items/axe": [
+      "axe",
+      "hand axe"
+    ],
+    "items/cleaver": [
+      "cleaver",
+      "meat cleaver"
+    ],
+    "items/vest": [
+      "vest",
+      "padded vest"
+    ],
+    "items/charm": [
+      "charm",
+      "lucky charm"
+    ]
+  }
+}

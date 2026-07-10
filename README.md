@@ -68,7 +68,14 @@ Character
   below). It also tracks an `origin` (`"room"` / `"campaign"` / `"unbound"`) that controls
   whether it drops key items on defeat.
 - [`NonPlayerCharacter`](src/lib/character/non-player-character.ts) stays on `Character`
-  directly and exposes `dialogue(prompt?)` over a list of dialogue blocks.
+  directly and exposes `dialogue(prompt?)` over a list of dialogue blocks. Authored NPCs may
+  start holding registry items via `.npc(name, { holds: [...] })`; each held item is seeded
+  into both the NPC's inventory and the campaign items map under a deterministic id
+  (`npc:{name}:item#{i}`).
+
+Every character carries a reversible `visible` flag (default `true`, flipped by the `setVisible`
+effect). An invisible character is filtered out of a room's `view.occupants` and `view.scope` — the
+way a hidden NPC "disappears" — and serializes only when `false` (omitted when `true`).
 
 ### Character archetypes
 
@@ -164,6 +171,13 @@ throws.
   never blocks them, even in the pitch dark), but they take `LIGHT_VULNERABILITY` (×1.5) amplified
   damage while their room is lit. Lighting a dark room therefore both *enables* the party to target
   the mob and *punishes* the mob for being in the light.
+- **Combat initiative is light-tied.** In single-player, after a time-advancing action a live mob
+  sharing the player's room strikes back (the solo-GM reaction). Entering a **lit** room is the
+  exception: a player who can see gets the drop, so a move into a lit room draws **no** entry swing —
+  you choose whether to engage. A **dark** room still ambushes on entry — a `lightAverse` mob strikes
+  as you arrive (a normal mob can't see you either, so it's a mutual standoff until someone brings
+  light). Killing the mob or leaving the room before it acts also denies its swing; loitering
+  (wait/take/use) beside a live mob does not.
 - A `visibility` presentation cue (`{ room, lit }`) fires when a character enters an unlit room, and
   when a light action flips a dark room's lit state. See **Presentation assets & cues** below.
 - **Non-goals:** no torch fuel or burn-down (lights are permanent); exits are never hidden; there is
@@ -181,8 +195,10 @@ draws an entity.
 
 Sounds are delivered as a push **cue stream**: subscribe with `Campaign.onCue(handler)` (and
 `offCue`). The engine emits an `action` cue for every recorded action (move, pickUp, attack, …),
-an `encounter` cue the first time a character meets a given mob (once per character/mob pair,
-covering both spawned and resident mobs), and a `visibility` cue (`{ room, lit }`) when a character
+an `encounter` cue each time a character enters a room containing a live, non-party occupant
+(deduped per viewer:mob pair — each character/mob combination fires at most once across the
+whole campaign, covering both spawned mobs and room-resident mobs), and a `visibility` cue
+(`{ room, lit }`) when a character
 enters an unlit room or a light action (`equip`/`unequip`/`placeLight`/`takeLight`) flips a dark
 room's lit state — the renderer uses it to reveal or conceal the room's contents (the data model is
 never hidden). The `action` and `encounter` cues carry a pre-resolved `sound`: the involved
@@ -259,7 +275,17 @@ Only methods registered in the character's `isActionMap` count against it — me
 themselves by identity (e.g. `move`, `attack`, `escape`, `addToInventory`,
 `removeFromInventory`). `recordAction(fn)` ignores unregistered functions and, once the budget
 is spent, automatically calls `endTurn()`. Notably, `takeDamage` is **not** a recordable
-action — taking a hit never consumes your turn.
+action — taking a hit never consumes your turn. It still tail-routes through the same cap
+check, though: attacking a target whose `actionsThisRound` is already at its cap auto-ends
+*that target's* turn (reconcile + `onTurnEnd`/mechanic `on_turn_end`), even though the hit
+itself never advances the budget.
+
+A character's turn ends either explicitly (the `endTurn` command) or automatically the moment a
+budgeted action brings `actionsThisRound` up to `actionsPerRound`. Ending a turn reconciles the
+character — base stats are floored, affliction flags recomputed from effective stats, and
+knock-out latched — mirroring `Character.endTurn`. Mechanic turn-end hooks fire for whichever
+character's turn just ended, whether they're a party member or a mob/NPC actor. (Character
+`onTurnEnd` events are a separate, still-unported hook.)
 
 ### Stats and damage mitigation
 
@@ -277,13 +303,16 @@ from the incoming strength (floored at 0); the remainder is then scaled by the *
 (max value 10):
 
 ```
-mitigated   = max(0, attackStrength − armorModifiers)
-finalDamage = mitigated × (10 − mitigator) × 0.2
+mitigated      = max(0, attackStrength − armorModifiers)
+lightMultiplier = lightAverse && roomLit ? 1.5 : 1
+finalDamage    = mitigated × max(0, 10 − mitigator) × 0.2 × lightMultiplier
 ```
 
-So a fully-rested mitigator (10) absorbs all damage, while a depleted one (0) doubles it. Each
+So a fully-rested mitigator (10) absorbs all damage, while a depleted one (0) doubles it.
+A `lightAverse` defender (a character or mob trait) in a lit room takes 1.5× damage. Each
 armor piece that absorbs a hit loses 1 durability and stops mitigating once it breaks (see
-Durability below).
+Durability below). A broken armor piece (durability = 0) is excluded from the `armorModifiers`
+sum — it contributes nothing and wears no further.
 
 ### Status effects
 
@@ -355,14 +384,27 @@ Both fields are plain declarative `Item` descriptor fields — no factory or sub
 
 ### Combat
 
-`Combatant.attack(target)` collects the attacker's *equipped weapons*, sums each weapon's
-modifier onto the stat it targets, and applies the result to the defender via `takeDamage`
-(which runs the mitigation above). With no equipped weapon, an attack falls back to the
-combatant's **natural attack** — `naturalAttack: { stat, power }`, defaulting to a 1-point
-Health jab. `Mob` exposes this as an authorable trait (`.mob(name, { …, naturalAttack })`),
-so a resident horror can claw Sanity, batter Health, etc.; it is serialized with the mob.
-Because weapons occupy hand slots (see Equipment below), an attacker fields at most two
-one-handed weapons — or one two-handed — so the summed modifier is naturally bounded.
+`Combatant.attack(target)` collects the attacker's *equipped, non-broken weapons*, sums each
+weapon's modifier onto the stat it targets, and applies the result to the defender via `takeDamage`
+(which runs the mitigation above). Broken weapons (durability = 0) are silently excluded — they
+neither contribute to the attack matrix nor wear further. With no non-broken equipped weapon an
+attack falls back to the combatant's **natural attack** — `naturalAttack: { stat, power }`,
+defaulting to a 1-point Health jab. `Mob` exposes this as an authorable trait
+(`.mob(name, { …, naturalAttack })`), so a resident horror can claw Sanity, batter Health, etc.;
+it is serialized with the mob. Because weapons occupy hand slots (see Equipment below), an attacker
+fields at most two one-handed weapons — or one two-handed — so the summed modifier is naturally
+bounded.
+
+Durability wear happens in two places:
+
+- **Weapons wear on attack**: every non-broken weapon that contributed to the swing loses 1 durability
+  after all `takeDamage` calls resolve.
+- **Armor wears on `takeDamage`**: each piece of non-broken armor that soaked incoming strength loses
+  1 durability at the end of that `takeDamage` call.
+
+When the defender's Health drops to ≤ 0 as a result of damage, `reconcile` fires and — if this is a
+false→true KO transition — calls `onKnockOut` exactly once. For mobs this drops loot (see
+Drop-on-defeat above); for player characters the base implementation is a no-op.
 
 Note the mitigation interaction: a defender whose *mitigator* stat for the attacked stat is
 ≥ the cap fully absorbs the hit (multiplier `max(0, MAX_STAT − mitigator) × …` → 0). So a
@@ -400,7 +442,7 @@ short-circuit in v1; reducer pre-emption is deferred.
 
 #### The `Effect` vocabulary (guardrail A)
 
-Mechanics communicate intent through a **closed union** of five effect kinds — they
+Mechanics communicate intent through a **closed union** of eight effect kinds — they
 cannot reach raw setters:
 
 | Kind | What it does |
@@ -410,9 +452,16 @@ cannot reach raw setters:
 | `{ kind: "adjustStat"; target; stat: "sanity"\|"energy"; delta }` | Sanity or Energy ±delta via `ADJUST_STAT` |
 | `{ kind: "grantImmunity"; target; turns }` | Grant all-status immunity for `turns` rounds (floored at 0) |
 | `{ kind: "cue"; cue }` | Emit a `{ kind: "mechanic", cue }` presentation cue |
+| `{ kind: "status"; fields }` | Emit a `{ kind: "status", fields }` presentation cue |
+| `{ kind: "giveItem"; from; to; item }` | Move an item id `from`→`to` (key→keyring, else inventory), leaving the item registry intact |
+| `{ kind: "setVisible"; target; visible }` | Flip `target`'s `visible` flag (reversibly) |
 
 All magnitude arguments are floored at 0 before being applied; `adjustStat` passes
-the delta sign through unchanged (the stat accumulator floors separately).
+the delta sign through unchanged (the stat accumulator floors separately). Unlike the
+target-oriented effects, `giveItem`/`setVisible` are **not** party-restricted: they
+act on any character (NPCs and mobs included). `giveItem` throws `ProceduralViolation`
+if `from` does not hold the item or `to` cannot be resolved; `setVisible` on a missing
+target is a no-op.
 
 #### Hook contexts
 
@@ -558,6 +607,47 @@ hit is zeroed and no further transformer runs. After a serialize/hydrate cycle t
 doom counter is preserved (`snap.campaign.mechanics` contains `{ key: "doom", state:
 { doom: 2, doomAt: 3 } }`) and the mechanic continues firing from the restored state.
 
+### Scripted behaviors (the ops DSL)
+
+Alongside hand-written TS `Mechanic`/`ExitBehavior`/victory closures, first-party
+ops can be authored as **scripts**: a closed, loop-free, deterministic data-AST
+(values, expressions, statements) interpreted by the Rust core. Scripts are pure —
+they read a projection (`CampaignView`, the actor, the action, their own JSON
+state) and return effects / a boolean / an optional narration line; the engine
+applies the results through the same collect-then-apply pipeline as native ops.
+
+- **Authoring:** typed builders in `@wickedways/campaigns` (`packages/campaigns/src/scripted/builders.ts`)
+  emit the AST; the AST types are generated from Rust via ts-rs (`generated/bindings/`).
+- **Storage/resolution:** scripts ride in the campaign catalog under
+  `Catalog.behaviors[key]`; the engine resolves a behavior key against the native
+  registry first, then the catalog (`family: "mechanic" | "exit" | "victory" | "item"`).
+  Unknown keys and ill-shaped ASTs fail fast at load with `ProceduralViolation`.
+- **Item behaviors (`onUse` / `onRead`):** an item keyed to an `item`-family script
+  can drive its `use` and `read` side effects from the DSL instead of a hand-written
+  closure. The two hooks fire at the exact points the native paths do, so ordering is
+  observable and contract-bound:
+  - `onUse` runs **after** the usable/KO guards (a non-`usable` item or a KO'd holder
+    is still rejected before any script runs) and **before** `grantsImmunity` is
+    applied and the item is consumed — so the script sees the pre-consume state and
+    its emitted effects land ahead of immunity/consumption.
+  - `onRead` runs **before** the item's `lore` cue is emitted, matching
+    `Character.read` (free action, non-consuming) — the read-triggered effect precedes
+    the flavour line, so a cursed tome can drain Sanity and *then* narrate.
+
+  Items without an `item`-family script (or with an unset hook) are pure no-ops on that
+  path — no descriptor churn — so existing items are unaffected. **Laudanum** (Hollow
+  House) is the first dogfooded example: its `onUse` emits `+6 Sanity`, reproducing the
+  hand-written `laudanum` descriptor.
+- **Determinism:** f64 arithmetic is restricted to `+ − × ÷` and comparisons,
+  iteration is ordered, string-from-number matches JS `Number.prototype.toString`
+  byte-for-byte, and randomness only comes from the injected rng.
+- **Hollow House** is the reference user: its dread/storyteller/status-bar
+  mechanics, all three keyed doors (cellar/study/attic), all three victory conditions, and laudanum's `onUse`
+  effect are re-authored in `packages/campaigns/src/hollow-house/scripted.ts` and
+  gated byte-for-byte against the hand-written closures by the `conformance/scripted-*`
+  differential fixtures. The closures remain the conformance oracle: each script must
+  reproduce its TS counterpart exactly.
+
 ### Mob encounters & loot
 
 #### Mob origin
@@ -572,10 +662,13 @@ A freshly constructed mob starts as `"unbound"` until the engine sets its origin
 When a mob's Health hits 0, its `onKnockOut` hook fires exactly once:
 
 1. **Material drops** — any `materialDrops` in the mob's options are deposited into the
-   campaign's shared material pool via `DEPOSIT_MATERIALS`.
+   campaign's shared material pool via `DEPOSIT_MATERIALS`, and each new material type is
+   also recorded in the Codex (attributed to the defeating character, or the party if no
+   defeater is resolvable).
 2. **Item loot box** — held items are relinquished and placed into a fresh `Loot` box
-   (named `"<mob>'s remains"`) which is added to the mob's current room. If the mob has
-   no items and no keys to drop, no box is created.
+   (human name `"<mob>'s remains"`, machine id `${mob.id}:remains`, capacity = initial items + 2)
+   which is added to the mob's current room. If the mob has no items and no keys to drop,
+   no box is created.
 3. **Key items** — if the mob is room-attached (`origin === "room"`), keys on its keyring
    are also stashed into the box via the `STASH_DROP` seam (past normal capacity, bypassing
    the key-exclusion guard on regular `stowItem`). Campaign-roving mobs never drop keys.
@@ -613,6 +706,31 @@ roll(100) <= threshold  →  weighted formation chosen  →  mobs built + placed
 A room with `spawnModifier = 0` can never spawn an encounter. Blocked or fizzled moves (e.g.
 a Confused character whose move fizzles) do not reach the destination room and therefore do
 not trigger a spawn check.
+
+##### Formations as data (`Catalog.formations`)
+
+A formation does not have to be a hand-written factory. It can instead be authored as **plain
+data** — a [`FormationDescriptor`](crates/wickedways-core/src/world/formation_descriptor.rs)
+(`{ mobs: MobSpec[] }`), where each `MobSpec` is a serializable mob template (`name`, `stats`,
+`naturalAttack`, `drops`, `baseEscapeChance`, `lightAverse`, `materialDrops`, `actionsPerRound`)
+whose field set reproduces the exact `CharacterSnapshot` a native factory would emit. Descriptors
+travel in the catalog under `Catalog.formations`, keyed by the same `behaviorKey` the encounter
+table references. When the encounter table picks a key, `maybe_spawn` resolves it **native first,
+then descriptor**: a compiled-in `FormationBehavior` wins if one is registered for the key,
+otherwise the catalog descriptor is interpreted (`None` from neither is a `ProceduralViolation` at
+the spawn site). Descriptor mobs get deterministic ids (`campaign-mob:{name.toLowerCase()}`, then
+`…#{i+1}` for the second and later mobs), and their `drops` are seeded into the world by
+`maybe_spawn` right after `build` (a descriptor's `build` has no catalog access). The TS engine
+mirrors this via `descriptorToFormation` (`packages/campaigns/src/formations.ts`), so a data-built
+mob is byte-faithful across both engines. Because the `i64` fields (`baseEscapeChance`,
+`actionsPerRound`) are `bigint` in the TS bindings, any code that `JSON.stringify`s a catalog with
+descriptors must coerce BigInt → Number first (the play-runtime catalog stringify does this).
+
+Hollow House exercises this path: its roving **Rats** are authored purely as descriptors (a single
+Rat and a Rat pair) rather than as a code factory. A Rat is a low farm mob (Health 2 / Sanity 2 /
+Energy 3, a 1-power Health bite, escape 50, dark-agnostic) that drops a **rat-tail** — a usable,
+non-key item whose `use` restores **+1 Sanity** to the user. Because the rat-tail is not a key, it
+is a legal roving-formation drop.
 
 ### Materials and crafting
 
@@ -670,10 +788,57 @@ recipient). `Character.consumeKey(key)` spends a key — removing it from the ke
 
 ### Dialogue
 
-`NonPlayerCharacter.dialogue(prompt)` returns the concatenated responses of every matching
-dialogue block. Blocks match either **exactly** (case-insensitive whole-prompt match) or
-**fuzzily** (every word in the trigger set appears somewhere in the prompt), and each block may
-carry a `precondition(character)` gate. With no prompt it returns the NPC's initial line.
+An NPC's conversation is a **data-driven catalog behavior**: a
+[`BehaviorScript::Npc`](crates/wickedways-core/bindings/BehaviorScript.ts) resolved through the
+NPC's `npcBehaviorKey` against the campaign's `behaviors` map, byte-faithful across the Rust core
+and its TS oracle under the differential gate. The behavior is an
+[`NpcScript`](crates/wickedways-core/bindings/NpcScript.ts) `{ description, default, dialogue }` — a
+`description` (returned by `examine`), a `default`
+[`DialogueEntry`](crates/wickedways-core/bindings/DialogueEntry.ts) for a bare `talk`, and an
+ordered list of prompt→response `dialogue` entries. Each entry is `{ match, response, effects, once }`,
+where `match` is a [`DialogueMatch`](crates/wickedways-core/bindings/DialogueMatch.ts) —
+`{ kind: "exact", text }` or `{ kind: "fuzzy", tokens }`.
+
+**Matching selects exactly one entry.** The talk prompt is lowercased and tokenized — split on
+whitespace, with ASCII punctuation stripped from each token's *edges* (internal punctuation kept)
+and empty tokens dropped. An **exact** entry matches when the tokenized prompt equals the tokenized
+trigger (order-exact, whitespace- and edge-punctuation-insensitive); a **fuzzy** entry matches when
+all of its normalized, non-empty, deduplicated tokens appear in the prompt's token set (an
+order-independent subset — extra prompt tokens are fine), scoring by that token count. Any exact
+match wins (first authored); otherwise the highest-scoring fuzzy match (ties break to the first
+authored); otherwise — for a bare `talk`, or when nothing matches — the `default` entry.
+
+A resolved entry emits its `response` (a text cue) **and** its `effects`, run through the same
+`Effect` pipeline as scene mechanics (including sub-plan 1's `giveItem`/`setVisible`) and subject to
+the same `MAX_EFFECTS_PER_EVENT = 64` cap. The `once` flag latches the **effects only**: a `once`
+entry fires its effects a single time, recorded in the NPC's per-instance `npcState`
+(`{ "onceFired": { … } }`) that serializes with the character — so re-talking after the hand-off
+replays the response cue without re-firing the effects. Two NPCs sharing one behavior key keep
+independent latches.
+
+The `talk` verb resolves a co-located **visible** `NonPlayerCharacter` occupant. It is a **free**
+interaction: it does **not** advance the round and does **not** provoke mob reactions. Talking to a
+missing, invisible, or non-NPC target fails with "There's no one here to talk to." The CRT parser
+accepts `talk`/`speak`/`ask` in a bare form (`talk to the keeper`) or with a quoted prompt
+(`talk to the keeper "how do I get out"`). `examine <npc>` is likewise a **free**, non-advancing
+action that returns the resolved NPC's `description`.
+
+**Authoring.** Assemble the behavior with the
+[`npc({ description, default, dialogue })`](packages/campaigns/src/scripted/builders.ts) builder,
+whose entries come from `entry({ match, response, effects?, once? })` paired with `exact("…")` or
+`fuzzy("tok", …)` match rules; it emits the `BehaviorScript::Npc` AST, registered in the campaign's
+`behaviors` map under the NPC's `npcBehaviorKey`.
+
+**The Hollow House caretaker.** The reference campaign puts this machinery to work in its start
+room. Entering the Foyer at game start fires an `"enter"` scene that sets the mood — the front
+door thudding shut for good, a stooped figure waiting in the gloom with a ring of keys shaking in
+his hand. A `Caretaker` NPC stands there holding the campaign's cellar key: `examine caretaker`
+returns his description, and a single `talk to caretaker` runs a `once` hand-off entry whose
+effects `giveItem` the cellar key to the player and `setVisible false` the caretaker so he
+vanishes (both free/non-advancing, fired exactly once — re-talking would only replay the line, and
+he is unreachable anyway). That cellar key unlocks the keyed Foyer->Cellar door (the "cellar
+door"), opening the corridor down to the Revenant, its iron key, and the attic win beyond —
+otherwise unchanged.
 
 ### Serialization (save/load)
 
@@ -908,6 +1073,11 @@ prose alongside the condition and surfaces it in two ways so every play surface 
 The timeout and manual-end paths have their own prose slots: `.onTimeout(narration)` and
 `.onEnd(narration)` on the builder.
 
+The Rust engine core (`crates/wickedways-core`) mirrors this: round-end evaluation resolves
+`won` / `lost` / `timed-out` (loss conditions before win, then the `maxRounds` ceiling) and the
+manual `endCampaign()` resolves `ended`, each emitting the same `resolution` cue with the
+authored outcome narration.
+
 **Authoring.** On the `TemplateBuilder` returned by `authorTemplate`:
 
 ```ts
@@ -933,6 +1103,38 @@ const builder = authorTemplate("Escape", reg)
 registered in the registry (compile-time-checked by `TypedRegistry`). `.onTimeout(prose)` and
 `.onEnd(prose)` set the fallback prose for those two resolution paths.
 
+### Entity id scheme
+
+All authored entities carry **content-derived ids** — deterministic, human-readable strings that
+are stable across separate `assemble` calls and safe when multiple campaigns are live in the same
+process:
+
+| Entity | Id form | Example |
+|--------|---------|---------|
+| Campaign | `campaign:<title>` | `campaign:The Crypt` |
+| Room | `room:<name>` | `room:vault` |
+| Mob | `mob:<name>` | `mob:Goblin` |
+| NPC | `npc:<name>` | `npc:Innkeeper` |
+| Exit | `exit:<a>\|<b>` (endpoints sorted) | `exit:start\|vault` |
+| Loot cache | `loot:<name>` | `loot:supply crate` |
+| Material cache | `cache:<name>` | `cache:iron vein` |
+| Scene | `scene:<room>:<key>:<phase>` | `scene:vault:ambush:enter` |
+| Player character | `player:<name>` | `player:Ada` |
+| Item in loot | `loot:<cache>:item#<n>` | `loot:supply crate:item#0` |
+| Item as mob drop | `mob:<mob>:drop#<n>` | `mob:Goblin:drop#0` |
+| Room light source | `room:<room>:light#<n>` | `room:vault:light#0` |
+
+Multi-instance items (drops, loot contents, light sources) use `${parentId}:role#index` so
+repeated uses of the same item key remain unique within a parent but collide if the index
+shifts — authors should treat item order as stable within a template.
+
+The campaign id (`campaign:<title>`) is mutable: a multi-campaign host may call `instantiate`
+and override the id for global uniqueness without affecting any other entity id.
+
+Runtime-minted entities (status effects, transient spawn, etc. — sub-plan 4c-2 onward) derive
+their ids from mint context rather than authored names, keeping the scheme consistent while
+accommodating entities that have no authored description.
+
 ## Swappable campaigns & play surfaces
 
 The [`@wickedways/play`](packages/play/README.md) browser experience is built on three
@@ -944,7 +1146,7 @@ the full topology and per-surface documentation.
 
 | Package | Role |
 |---------|------|
-| `@wickedways/play-runtime` | Surface-independent runtime, audio engine, launcher, and **all contracts**: `CampaignManifest`, `PlaySurface`, `Theme`, `AudioDirector`, `SoundPack`, `CampaignAudio`. Zero Hollow-House / surface references. |
+| `@wickedways/play-runtime` | Surface-independent runtime, audio engine, launcher, and **all contracts**: `CampaignManifest`, `PlaySurface`, `Theme`, `AudioDirector`, `SoundPack`, `CampaignAudio`. Zero Hollow-House / surface references. Its `GameSession` now delegates every turn to the Rust WASM `Authority` (see *Single-player cutover (Phase 2)*); the old `session.campaign` live-object getter is gone — surfaces and audio read the JSON `ViewModel`. |
 | `@wickedways/play-surface` | Both play surfaces under one package, subpath-exported as `@wickedways/play-surface/crt` (CRT terminal) and `@wickedways/play-surface/pnc` (point-and-click). A `src/shared/` module (Narrator, map-view) is reused by both surfaces. |
 | `@wickedways/campaigns` | All player-facing campaigns under `src/<slug>/`; subpath-exported as `@wickedways/campaigns/hollow-house` and `@wickedways/campaigns/seed`. |
 | `@wickedways/play` | Thin deploy shell — registers campaigns + surfaces, calls `bootLauncher`. `Dockerfile` and `nginx.conf` ship from here. |
@@ -1579,3 +1781,250 @@ have `avPolicy.enabled: true` (the demo genesis uses `DEFAULT_AV_POLICY`).
 
 **Symmetric-NAT note.** If two tabs on the same machine don't connect (rare but
 possible in some corp VPN setups), adding a TURN entry to `iceServers` resolves it.
+
+### Rust core (migration)
+
+The engine is being re-authored as a Rust core (`crates/wickedways-core`) compiled to
+WASM (`crates/wickedways-wasm`) per `docs/superpowers/specs/2026-06-30-rust-engine-core-design.md`.
+Phase 0 ports pure-leaf math (`roll`, the stat-mitigator cycle, the damage-mitigation
+formula) and proves the toolchain. Boundary types are defined in Rust and generated to
+`generated/bindings/` via ts-rs (do not hand-edit). Run the Phase 0 gate with:
+
+    pnpm run checks:phase0
+
+**Phase 2 has landed:** the single-player runtime now executes in the Rust core via a
+stateful WASM `Authority` — see *Single-player cutover (Phase 2)* below. Its acceptance
+gate is `pnpm run checks:phase2`.
+
+#### Mechanics: the op-registry (`crates/wickedways-core/src/world/mechanics/`)
+
+Sub-plan 6a ports the campaign mechanics system's extension points. On the Rust side,
+mechanics are still **data** — a campaign's `{ key, state }` list (`campaign.mechanics`)
+— but instead of rebinding an author-registered TS closure, each `key` resolves to a
+compiled-in, stateless `impl MechanicOp` via the static lookup `mechanic_op(key)`; an
+unrecognized key is a `ProceduralViolation` (`validate_mechanics`), mirroring the TS
+registry throw at hydrate.
+
+`MechanicOp` exposes the same hook set as the TS `Mechanic` interface —
+`on_round_start`/`on_round_end`, `on_turn_start`/`on_turn_end`, `on_action`, and the
+damage transformer `modify_damage` — each defaulted to a no-op so an op only implements
+the hooks it needs. Hooks return the same closed, six-variant `Effect` enum as the TS
+union — `Damage`, `Heal`, `AdjustStat`, `GrantImmunity`, `Cue`, `Status` — routed through
+`apply_effect`/`adjust_stat` exactly as `apply.ts` does (Damage/Heal/AdjustStat reconcile
+the target; GrantImmunity/Cue/Status do not). Damage/Heal/AdjustStat/GrantImmunity may only
+target a **party member** — mirroring TS's `campaign[FIND_CHARACTER]` lookup — so a mechanic
+that resolves an effect against a non-party character (e.g. a mob) throws a
+`ProceduralViolation` rather than silently no-op'ing.
+
+`dispatch_round`/`dispatch_turn`/`dispatch_action` fire at the same points as the TS
+turn loop (round start/end, turn start/end, and budgeted actions) and preserve
+**collect-then-apply**: every enabled mechanic's reducer runs against a read-only
+`CampaignView`/`CharacterView` projection first, and only after all reducers have run
+are the collected effects applied in order — a mechanic can't observe another's effects
+mid-event. A per-mechanic-per-event cap of `MAX_EFFECTS_PER_EVENT = 64` throws a
+`ProceduralViolation` if exceeded, matching the TS guardrail.
+
+`run_damage_transformers` folds post-mitigation damage through each enabled mechanic's
+`modify_damage` in opt-in order, clamping the running value to `>= 0` after every step; a
+`TransformResult::Final` result locks the value, emits a diagnostic `"{key} fixed damage
+at {value}."` cue, and short-circuits the remaining chain. `combat::take_damage` slots
+this chain between built-in mitigation and the stat subtract — the order is **mitigate →
+transform → subtract**, matching `Character.takeDamage` in the TS oracle.
+
+An op may also expose named custom actions via `MechanicOp::run_action(action_key, cx)
+-> Option<Vec<Effect>>` (`None` means the key is unrecognized). A player invokes one
+through the `Command::MechanicAction { mechanic_key, action_key }` command / the
+`use_mechanic_action` method — mirroring TS's `useMechanicAction`/
+`INVOKE_MECHANIC_ACTION` — which is a **budgeted** action: it gates, runs the action's
+effects through `apply_all`, records an `ActionHistoryEntry::MechanicAction`, then
+ticks the budget and dispatches `on_action` via the shared `record_action` path (same
+signature as every other budgeted action). Scripted (Rhai-driven) mechanics remain out
+of scope and arrive in sub-plan 6b; until then every op is native, first-party Rust.
+
+#### Keyed exits: the `ExitBehavior` registry (`crates/wickedways-core/src/world/exits.rs`)
+
+Sub-plan 6c-1 ports keyed-door traversal the same way sub-plan 6a ported mechanics: an
+exit's `behavior_key` resolves to a compiled-in, stateless `impl ExitBehavior` via the
+static lookup `exit_behavior(key)`, rather than rebinding an author-registered TS
+closure; an unrecognized key surfaces as a `ProceduralViolation` at the `go` call site.
+`ExitBehavior` exposes `can_pass(actor, state)` (read-only), an optional
+`run_script(actor, state)` that may mutate the exit's persisted `state` and return a
+one-time narration line, and optional `pass_message`/`fail_message` strings — mirroring
+the TS `Exit`'s `preconditions`/`script`/`passMessage`/`failMessage` contract.
+
+`World::go` evaluates a keyed exit before moving: a blocked exit (`can_pass` fails)
+emits its `fail_message` (if any) as a `Mechanic` cue and does **not** move; a passable
+exit runs `run_script` — falling back to `pass_message` when the script yields no
+narration — emits that line as a cue, then delegates to `move_to`. A behavior-free exit
+(no `behavior_key`) is always passable and skips straight to `move_to`. The reference
+behavior, `conformance:keyed-door`, gates on `state.unlocked` or the actor holding a
+`"brass-key"`-keyed item, and flips `state.unlocked = true` (once, with narration) the
+first time a keyed actor passes.
+
+The `ViewModel`'s `exits`/`lockedDoors` fields remain deferred — the registry drives
+traversal, but nothing yet projects exit/lock state out to a renderer.
+
+#### Scenes: native `SceneBehavior` + data-driven `BehaviorScript::Scene` (`crates/wickedways-core/src/world/scenes.rs`)
+
+Sub-plan 6c-2 ports room-attached scene hooks the same way keyed exits were ported: a
+scene's `behavior_key` resolves to a compiled-in, stateless `impl SceneBehavior` via the
+static lookup `scene_behavior(key)`; an unrecognized key surfaces as a
+`ProceduralViolation` at the firing site. `SceneBehavior` exposes `can_play(room, state)`
+(read-only over a `RoomView` and the scene's own persisted `state`) and
+`run_script(room, state)`, which may mutate that `state` and returns the mechanic cues to
+emit (`Vec<MechanicCue>`, empty meaning none) — mirroring the TS `Scene`'s
+`preconditions`/`script` contract, extended so the script can emit cues (the TS `script`
+was previously `void`-returning).
+
+**Scenes are also authorable as data (NPC sub-plan 3).** `resolve_scene(key, cat)` resolves
+a scene's `behavior_key` **native-first**: a compiled-in `SceneBehavior` wins
+(`ResolvedScene::Native`), and only if no native behavior is registered does it fall back to
+a catalog [`BehaviorScript::Scene`](crates/wickedways-core/bindings/BehaviorScript.ts)
+(`ResolvedScene::Scripted`); an unregistered key — or a catalog key of a non-scene family —
+resolves to `None` and is the same `ProceduralViolation` at the fire site (and
+`validate_mechanics` fails fast on it). A scripted scene is a
+[`SceneScript`](crates/wickedways-core/bindings/SceneScript.ts) `{ canPlay, onEnter?, onExit? }`
+— a `can_play` predicate `Expr` (absent/`null` = always playable) plus optional
+`on_enter`/`on_exit` **effect bodies** (`Vec<Stmt>`), mirroring the `MechanicScript`/`ItemScript`
+hook-body shape. In `fire_scenes` a scripted scene reads the **live world** (a read-only
+`CampaignView` plus the entering/exiting character's view, via the `ScriptedScene` adapter's
+World-backed room resolver); it gates the matching-phase body on `can_play`, evaluates that
+body into an ordered effect list, and runs it through the same collect-then-apply `Effect`
+pipeline the mechanics and dialogue use. So an `on_enter`/`on_exit` body can emit cues **and**
+`SetVisible`/`GiveItem`/`SetState` effects, subject to the same `MAX_EFFECTS_PER_EVENT = 64`
+cap (exceeding it is a `ProceduralViolation`). The scene's own JSON `state` is threaded through
+the body (readable by `can_play`, mutated by `SetState`) and written back before the effects
+apply. Native scenes are untouched — they keep the cue-only `run_script` path.
+
+**Authoring.** Assemble a scripted scene with the
+[`scene({ canPlay, onEnter, onExit })`](packages/campaigns/src/scripted/builders.ts) builder —
+the hook bodies are DSL `Stmt` lists and `canPlay` a DSL `Expr` — which emits the
+`BehaviorScript::Scene` AST, registered in the campaign's `behaviors` map under the room scene's
+`behaviorKey`. `canPlay` is always serialized (`null` = always playable), mirroring the Rust
+`SceneScript` serde shape (`#[serde(default)]`, not skip-if-none).
+
+`World::move_to` fires scenes at two points per move, matching TS `Room.exitRoom`/
+`Room.enterRoom`/`#enterRoom`:
+- **Exit-phase scenes** of the departed room fire first, while the mover is **still** an
+  occupant of that room (so `can_play`/`run_script` observe it in the room's `RoomView`),
+  and only then is the mover removed from that room's occupancy.
+- **Enter-phase scenes** of the destination room fire after the mover has **already**
+  joined that room's occupancy, and before the destination's visibility cue.
+
+Each matching-phase scene on a room fires in snapshot order; an unregistered
+`behavior_key` on a matching-phase scene aborts the move with a `ProceduralViolation`.
+Every emitted mechanic cue is pushed as a `Mechanic` cue on the shared `cues` buffer
+**before** the destination's visibility cue, which in turn precedes the move's `Action`
+cue — so one `go` that crosses a lit boundary can emit, in order: old-room exit-scene
+cues, new-room enter-scene cues, a visibility cue (dark destination only), then the move
+action cue. The reference behavior, `conformance:visit-counter`, fires while
+`state.count < 3` and the room is occupied, incrementing `state.count` and emitting a
+cue naming the room and the new visit count.
+
+**Start-room enter-scenes fire at `begin_campaign`, not at boot.** The TS boot placement
+seats the PC in the start room WITHOUT firing scenes (`move(room, /*fireScenes*/ false)` in
+`session.ts` boot, `orchestration.ts` `startSession`, and the conformance oracle), so genesis
+carries an **un-fired** start-room scene (pristine state). `begin_campaign` (Rust) then fires
+the active player's start-room enter-scenes into the same buffer `take_startup_cues` returns —
+so a start-room scene's cue surfaces as a startup cue and its state advances exactly once. The
+fire-point is pinned **after** the round-0 `onRoundStart` dispatch, identically in Rust
+`begin_campaign`, TS `Campaign.beginCampaign`, and the oracle's begin/startup, for
+differential-gate parity. Regular later `move`/`go` keep firing scenes as before (default
+`fireScenes = true`). `validate_mechanics` fails fast on any room scene whose `behaviorKey`
+resolves via neither the native registry nor a catalog descriptor.
+
+#### Encounter spawning: the `FormationBehavior` registry (`crates/wickedways-core/src/world/formations.rs`)
+
+Sub-plan 6c-3 ports the roving-encounter table the same way keyed exits and scenes were
+ported: a registered formation's `behaviorKey` resolves to a compiled-in, stateless
+`impl FormationBehavior` via the static lookup `formation(key)`, rather than rebinding an
+author-registered TS factory. `FormationBehavior` exposes a single method,
+`build(&self, &CampaignView) -> Vec<CharacterSnapshot>`, and each mob it returns MUST
+carry a deterministic id — unlike ordinary character creation, spawned mob ids are not
+auto-derived. The reference behavior, `conformance:wraith`, always builds one fixed
+`"campaign-mob:wraith"` snapshot.
+
+`World::maybe_spawn(room, cat)` is the port of TS `EncounterTable.maybeSpawn` and runs
+the same gate sequence:
+
+1. **First-visit-only.** The room is marked visited **unconditionally** on first visit —
+   before any other check — so a suppressed spawn still consumes the room's one shot.
+   An already-visited room short-circuits immediately.
+2. **Active-occupant guard.** Suppressed if the room already holds an active (non-KO)
+   non-party occupant.
+3. **No-formations guard.** Suppressed if the encounter table has no registered
+   formations.
+4. **Threshold roll.** `threshold = clamp(baseChance * spawnModifier, 0, 100)`; a
+   `roll(100)` above the threshold suppresses the spawn.
+5. **Weighted select.** A second `roll(totalWeight)` picks one formation by cumulative
+   weight, exactly as the TS table does.
+
+If all gates pass, the chosen behavior's `build` runs against a read-only
+`CampaignView`, and each returned mob is placed: `origin` is set to `"campaign"`, the
+mob is inserted into the character roster and pushed onto the room's `occupant_ids`,
+and the room's enter-phase scenes fire **silently** — same `fire_scenes` path scenes
+otherwise use, but the cues are discarded, matching the TS `[PLACE]` behavior of not
+narrating a spawn's own arrival. `maybe_spawn` itself emits no cues; only the spawn's
+subsequent detection (below) does.
+
+`PlayerCharacter.move`'s player-only tail runs its steps in this order, all **after**
+`record_action` (so any turn-end/reconcile from the budget-exhausting move happens
+first): `maybe_spawn` → `NOTE_ENCOUNTERS` → room codex. Because the spawn runs before
+the occupant scan, a freshly spawned mob is picked up by that same move's encounter
+detection and gets its own `Encounter` cue, staged after the move's `Action` cue and
+any turn-end cues.
+
+**v1 simplifications:** `build` is rng-free (the reference formation always returns the
+same fixed mob), and `spawnModifier` is modeled as an integer rather than a fractional
+multiplier.
+
+#### Single-player cutover (Phase 2): the stateful WASM `Authority`
+
+Phase 2 moves the **single-player runtime** onto the Rust core. `GameSession`
+(`packages/play-runtime/src/session.ts`) no longer runs the TypeScript engine directly — it
+delegates every turn to a stateful WASM handle, the Rust `Authority`
+(`crates/wickedways-wasm/src/authority.rs`; distinct from the multiplayer sync `Authority`
+in `src/lib/sync/`). TS authoring still assembles the campaign (builder + registry) and
+serializes a **pre-begin genesis snapshot**; the core owns `begin_campaign`, the round/turn
+wrap, and solo-GM mob reactions (`World::submit`, `crates/wickedways-core/src/world/submit.rs`).
+Undo is host-side: `GameSession` keeps the pre-intent snapshot and calls the core's `restore`.
+
+**JSON-only boundary.** Nothing but JSON crosses the WASM edge: an `Intent` goes in;
+`ExecuteResult { cues, mobAttacks?, error? }`, a `ViewModel`, and a `CampaignSnapshot` come
+out. The boundary TS types are ts-rs-generated into `generated/bindings/` and are never
+hand-edited — `pnpm run bindings:check` fails on drift. No surface holds a live engine
+object any longer: the `session.campaign` live-object getter is **retired**, and audio reads
+the view DTO (`AudioDirector.tension(view)`).
+
+**Build split.**
+- `pnpm run wasm:build` — the default, shipped nodejs build. It carries **no** `conformance:*`
+  ops; `scripts/assert-no-conformance.mjs` asserts the JS glue and the wasm binary are clean
+  and that the `Authority` class is present.
+- `pnpm run wasm:build:web` — the browser bundler target. The engine is initialized **once**,
+  asynchronously, during `bootLauncher` (via `initEngine`, a no-op await on node); so
+  `GameSession.start` stays synchronous.
+- `pnpm run wasm:build:conformance` — a gate-only build that exposes the conformance ops.
+
+**Differential gate over the facade.** Beyond the raw-engine fixtures, the gate now also
+drives the *facade*: seeded, frozen-oracle `GameSession` fixtures
+(`conformance/fixtures/facade-*.gen.test.ts`) replay a scripted intent stream and diff
+`{ result, snapshot, view }` per intent against the Rust `Authority.submit` — the first
+coverage of `runMobReactions` and the turn wrap. Regenerate with `pnpm run fixtures:gen`;
+the diff gate is `pnpm run test:conformance`; the full Phase-2 acceptance run is
+`pnpm run checks:phase2` (no_std core build → workspace Rust tests → `bindings:check` →
+default + web wasm builds → no-conformance assert → conformance suite → typechecks → the
+full vitest suite, which includes `session.test.ts` against the real wasm).
+
+The occupant-carried-light rule is ported: a party member carrying a lit source lights an
+otherwise-dark room in the Rust `is_lit` check (dark-room combat), matching the TS oracle.
+
+**Scope / known gaps.** Hollow House is winnable end-to-end on the Rust core (proven by the
+`capstone` full-winning-path test in `packages/play/src/core/capstone.test.ts`, which plays a
+complete run — including a save/undo round-trip — through the WASM `Authority`). One carry remains open: the browser bundler path is now **runtime-verified** — the Playwright
+e2e (`packages/play/e2e/`, run via `pnpm --filter @wickedways/play run test:e2e` and the
+dedicated `.github/workflows/e2e.yml` CI job) boots hollow-house through the WASM `Authority`
+in real chromium, and a `wasm-boot.spec.ts` smoke test asserts no `engine not initialized` /
+wasm-load errors during boot. The remaining gap is item `onUse`
+consumable effects (e.g. laudanum restoring sanity) are **not yet ported** to the Rust
+catalog. That consumable path is a survival aid *off* the Hollow House win path, so this is
+deliberately not 100% item-action parity yet.

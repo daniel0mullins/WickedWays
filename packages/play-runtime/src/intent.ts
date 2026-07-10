@@ -1,18 +1,12 @@
-import type { Direction } from "wickedways/lib/room";
+import type { Intent } from "../../../generated/bindings/Intent.ts";
 
-export type Intent =
-  | { kind: "move"; dir: Direction }
-  | { kind: "take"; targetId: string }
-  | { kind: "drop"; targetId: string }
-  | { kind: "open"; targetId: string }
-  | { kind: "attack"; targetId: string }
-  | { kind: "equip"; targetId: string }
-  | { kind: "unequip"; targetId: string }
-  | { kind: "use"; targetId: string }
-  | { kind: "talk"; npcId: string; prompt?: string }
-  | { kind: "wait" };
+export type { Intent };
 
-const TIME_ADVANCING = new Set(["move", "take", "drop", "use", "attack", "wait", "talk"]);
+/** Duplicated from the core's is_time_advancing for the HOST-side undo-stash
+ *  decision only (the core classifies authoritatively inside submit). */
+const TIME_ADVANCING = new Set<Intent["kind"]>([
+  "move", "take", "drop", "use", "attack", "wait",
+]);
 
 export function isTimeAdvancing(intent: Intent): boolean {
   return TIME_ADVANCING.has(intent.kind);

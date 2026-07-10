@@ -53,4 +53,5 @@ export const ALIASES: Record<string, string[]> = {
   [Items.Laudanum]: ["laudanum", "vial", "tonic"],
   [Keys.Brass]: ["brass key", "brass", "key"],
   [Keys.Iron]: ["iron key", "iron", "key"],
+  [Keys.Cellar]: ["cellar key", "cellar", "key"],
 };

@@ -3,6 +3,7 @@ import type { PlaySurface, SurfaceHandle } from "./surface.js";
 import type { SaveStore } from "./savestore.js";
 import { GameSession } from "./session.js";
 import { AudioRuntime } from "./audio/audio-runtime.js";
+import { initEngine } from "#engine";
 import "./components/campaign-menu.js";
 import "./components/surface-picker.js";
 
@@ -12,7 +13,7 @@ export function resolveCampaign(slug: string | null, campaigns: CampaignManifest
   return campaigns.find((c) => c.slug === slug) ?? null;
 }
 
-export interface BootOpts { saveStore: SaveStore; now: () => number; locationSearch?: string }
+export interface BootOpts { saveStore: SaveStore; now: () => number; locationSearch?: string; seed?: number }
 
 /**
  * Wires the campaign registry, surfaces, and save store into the root DOM element.
@@ -37,11 +38,14 @@ export interface BootOpts { saveStore: SaveStore; now: () => number; locationSea
  * @param opts - Save store and clock; `locationSearch` overrides `window.location.search`
  *               (useful in unit tests that run without a real DOM).
  */
-export function bootLauncher(
+export async function bootLauncher(
   app: HTMLElement,
   reg: { campaigns: CampaignManifest[]; surfaces: PlaySurface[] },
   opts: BootOpts,
-): void {
+): Promise<void> {
+  // One-time WASM init: after this resolves, GameSession.start (inside
+  // mountSurface) constructs Authorities synchronously.
+  await initEngine();
   let handle: SurfaceHandle | null = null;
 
   /** Returns the current URL search string; honours test injection via opts.locationSearch. */
@@ -85,7 +89,10 @@ export function bootLauncher(
     const initialThemeId = new URLSearchParams(currentSearch()).get("theme") ?? undefined;
     const session = GameSession.start({
       builder: m.builder(), registry: m.registry(), aliases: m.aliases,
+      behaviors: m.behaviors?.() ?? {},
+      formations: m.formations?.() ?? {},
       playerName: m.playerName, archetype: m.archetype, saveStore: opts.saveStore, now: opts.now,
+      ...(opts.seed !== undefined ? { seed: opts.seed } : {}),
     });
     const audio = AudioRuntime.forCampaign(m.audio);
     handle = surface.mount({

@@ -1,0 +1,253 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "campaign:Item Actions (conformance)",
+    "title": "Item Actions (conformance)",
+    "maxRounds": 10,
+    "round": 0,
+    "started": true,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "player:Ada",
+      "player:Ben"
+    ],
+    "actedThisRound": [],
+    "gmId": "player:Ada",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "delver",
+        "name": "Delver",
+        "baseStats": {
+          "health": 12,
+          "sanity": 10
+        },
+        "inventorySlots": 5
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 20,
+      "visited": [
+        "room:Hall"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "room:Hall",
+      "name": "Hall",
+      "description": "A stone hall.",
+      "exits": {
+        "south": "exit:Cellar|Hall"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "player:Ada",
+        "player:Ben"
+      ],
+      "lootIds": [
+        "loot:chest"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "room:Cellar",
+      "name": "Cellar",
+      "description": "A pitch-black cellar.",
+      "exits": {
+        "north": "exit:Cellar|Hall"
+      },
+      "dark": true,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [
+        "loot:cryptbox"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [
+    {
+      "id": "exit:Cellar|Hall",
+      "endpointIds": [
+        "room:Hall",
+        "room:Cellar"
+      ],
+      "state": {}
+    }
+  ],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "player:Ada",
+      "name": "Ada",
+      "stats": {
+        "health": 12,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "room:Hall",
+      "inventory": {
+        "slots": 10,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Hall",
+            "name": "Hall"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "delver"
+    },
+    {
+      "kind": "player",
+      "id": "player:Ben",
+      "name": "Ben",
+      "stats": {
+        "health": 12,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "room:Hall",
+      "inventory": {
+        "slots": 10,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Hall",
+            "name": "Hall"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "delver"
+    }
+  ],
+  "items": [
+    {
+      "kind": "item",
+      "id": "loot:chest:item#0",
+      "behaviorKey": "items/iron-sword",
+      "durability": 10,
+      "modifier": 5
+    },
+    {
+      "kind": "item",
+      "id": "loot:chest:item#1",
+      "behaviorKey": "items/silver-ring",
+      "modifier": 3
+    },
+    {
+      "kind": "item",
+      "id": "loot:chest:item#2",
+      "behaviorKey": "items/healing-tonic",
+      "modifier": 4
+    },
+    {
+      "kind": "item",
+      "id": "loot:chest:item#3",
+      "behaviorKey": "items/old-coin",
+      "modifier": 0
+    },
+    {
+      "kind": "item",
+      "id": "loot:cryptbox:item#0",
+      "behaviorKey": "items/dusty-relic",
+      "modifier": 0
+    }
+  ],
+  "loot": [
+    {
+      "id": "loot:chest",
+      "description": "An old chest.",
+      "capacity": 6,
+      "contentIds": [
+        "loot:chest:item#0",
+        "loot:chest:item#1",
+        "loot:chest:item#2",
+        "loot:chest:item#3"
+      ]
+    },
+    {
+      "id": "loot:cryptbox",
+      "description": "A cobwebbed strongbox.",
+      "capacity": 3,
+      "contentIds": [
+        "loot:cryptbox:item#0"
+      ]
+    }
+  ],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "room:Hall",
+      "snapshot": {
+        "name": "Hall",
+        "description": "A stone hall."
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
+      }
+    }
+  ]
+}

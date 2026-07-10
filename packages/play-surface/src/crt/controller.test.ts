@@ -51,14 +51,12 @@ const makeSession = () => {
     view: () => makeView({ finished }),
     execute: vi.fn(() => ({ cues: [], mobAttacks: [] })),
     read: vi.fn(() => []),
+    examine: vi.fn((): unknown[] => []),
     takeStartupCues: vi.fn(() => []),
     restart: vi.fn(() => {}),
     save: vi.fn((): Promise<void> => Promise.resolve()),
     restore: vi.fn((): Promise<{ ok: boolean }> => Promise.resolve({ ok: false })),
     undo: vi.fn(() => false),
-    get campaign() {
-      return {};
-    },
     /** Test hook: flip the session into a finished state. */
     finish() {
       finished = true;
@@ -143,6 +141,28 @@ describe("mountTerminal (controller)", () => {
     await flushRender(game, game.transcript);
     const transcript = deepQuery(game, "#transcript")!;
     expect(transcript.textContent).toContain("> look");
+  });
+
+  it("routes `examine <npc>` to session.examine and prints the NPC description cue", async () => {
+    const { session, game } = mount();
+    await flushRender(game, game.transcript);
+    game.dispatchEvent(new CustomEvent("enter", { bubbles: true, composed: true }));
+    await flushRender(game, game.transcript);
+
+    const keeper = { id: "npc-keeper", name: "The Keeper", aliases: ["keeper"], kind: "occupant" };
+    session.view = () => makeView({ scope: [keeper], occupants: [keeper] });
+    session.examine.mockReturnValueOnce([
+      { kind: "mechanic", cue: { text: "A stooped man in a moth-eaten coat." } },
+    ]);
+
+    game.dispatchEvent(new CustomEvent("command", { detail: { line: "examine keeper" }, bubbles: true }));
+    await flushRender(game, game.transcript);
+
+    // Occupant target takes the engine NPC-examine path, not the item `read` path.
+    expect(session.examine).toHaveBeenCalledWith("npc-keeper");
+    expect(session.read).not.toHaveBeenCalled();
+    const transcript = deepQuery(game, "#transcript")!;
+    expect(transcript.textContent).toContain("A stooped man in a moth-eaten coat.");
   });
 
   it("prints THE END and disables the prompt when the session finishes", async () => {

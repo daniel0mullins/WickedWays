@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "campaign:Formation Descriptor (conformance)",
+    "title": "Formation Descriptor (conformance)",
+    "maxRounds": 10,
+    "round": 0,
+    "started": true,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "player:Mara"
+    ],
+    "actedThisRound": [],
+    "gmId": "player:Mara",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "delver",
+        "name": "Delver",
+        "baseStats": {
+          "health": 10,
+          "sanity": 10
+        }
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 100,
+      "visited": [
+        "room:Foyer"
+      ],
+      "formations": [
+        {
+          "behaviorKey": "rat-single",
+          "weight": 1
+        }
+      ]
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "room:Foyer",
+      "name": "Foyer",
+      "description": "A dusty foyer.",
+      "exits": {
+        "north": "exit:Crypt|Foyer"
+      },
+      "dark": false,
+      "spawnModifier": 0,
+      "occupantIds": [
+        "player:Mara"
+      ],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "room:Crypt",
+      "name": "Crypt",
+      "description": "A silent crypt.",
+      "exits": {
+        "south": "exit:Crypt|Foyer"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [
+    {
+      "id": "exit:Crypt|Foyer",
+      "endpointIds": [
+        "room:Foyer",
+        "room:Crypt"
+      ],
+      "state": {}
+    }
+  ],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "player:Mara",
+      "name": "Mara",
+      "stats": {
+        "health": 10,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "room:Foyer",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Foyer",
+            "name": "Foyer"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "delver"
+    }
+  ],
+  "items": [],
+  "loot": [],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "room:Foyer",
+      "snapshot": {
+        "name": "Foyer",
+        "description": "A dusty foyer."
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Mara",
+        "roomId": "room:Foyer"
+      }
+    }
+  ]
+}

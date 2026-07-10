@@ -1,0 +1,782 @@
+{
+  "seed": 262974947,
+  "startupCues": [],
+  "ops": [
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "wait"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "wait"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "wait"
+        }
+      },
+      "result": {
+        "cues": [
+          {
+            "kind": "action",
+            "action": "takeDamage",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            }
+          },
+          {
+            "kind": "action",
+            "action": "attack",
+            "actor": {
+              "id": "mob:First",
+              "name": "First"
+            }
+          },
+          {
+            "kind": "action",
+            "action": "takeDamage",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            }
+          },
+          {
+            "kind": "action",
+            "action": "attack",
+            "actor": {
+              "id": "mob:Second",
+              "name": "Second"
+            }
+          }
+        ],
+        "mobAttacks": [
+          {
+            "name": "First",
+            "stat": "health",
+            "amount": 2
+          },
+          {
+            "name": "Second",
+            "stat": "health",
+            "amount": 1
+          }
+        ]
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade KO Piling (conformance)",
+          "title": "Facade KO Piling (conformance)",
+          "maxRounds": 20,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:First",
+            "player:Ada:mob:Second"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 3,
+                "sanity": 0,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:First",
+              "mob:Second",
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 0,
+              "sanity": 0,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "takeDamage",
+                "amount": 2,
+                "stat": "health",
+                "round": 0
+              },
+              {
+                "kind": "takeDamage",
+                "amount": 2,
+                "stat": "health",
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "turnsActive": {
+                "fear": 0,
+                "confused": 0,
+                "panic": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:First",
+            "name": "First",
+            "stats": {
+              "health": 5,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Second",
+            "name": "Second",
+            "stats": {
+              "health": 5,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "First",
+            "snapshot": {
+              "name": "First",
+              "stats": {
+                "health": 5,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "mob",
+            "key": "Second",
+            "snapshot": {
+              "name": "Second",
+              "stats": {
+                "health": 5,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:First",
+            "name": "First",
+            "aliases": [
+              "first"
+            ],
+            "kind": "occupant",
+            "health": 5,
+            "defeated": false
+          },
+          {
+            "id": "mob:Second",
+            "name": "Second",
+            "aliases": [
+              "second"
+            ],
+            "kind": "occupant",
+            "health": 5,
+            "defeated": false
+          }
+        ],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:First",
+            "name": "First",
+            "aliases": [
+              "first"
+            ],
+            "kind": "occupant",
+            "health": 5,
+            "defeated": false
+          },
+          {
+            "id": "mob:Second",
+            "name": "Second",
+            "aliases": [
+              "second"
+            ],
+            "kind": "occupant",
+            "health": 5,
+            "defeated": false
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 1,
+          "maxTurns": 20,
+          "sanity": 0,
+          "health": 0
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "wait"
+        }
+      },
+      "result": {
+        "cues": [],
+        "mobAttacks": []
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade KO Piling (conformance)",
+          "title": "Facade KO Piling (conformance)",
+          "maxRounds": 20,
+          "round": 2,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:First",
+            "player:Ada:mob:Second"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 3,
+                "sanity": 0,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:First",
+              "mob:Second",
+              "player:Ada"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 0,
+              "sanity": 0,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "takeDamage",
+                "amount": 2,
+                "stat": "health",
+                "round": 0
+              },
+              {
+                "kind": "takeDamage",
+                "amount": 2,
+                "stat": "health",
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "turnsActive": {
+                "fear": 0,
+                "confused": 0,
+                "panic": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:First",
+            "name": "First",
+            "stats": {
+              "health": 5,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Second",
+            "name": "Second",
+            "stats": {
+              "health": 5,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "First",
+            "snapshot": {
+              "name": "First",
+              "stats": {
+                "health": 5,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "mob",
+            "key": "Second",
+            "snapshot": {
+              "name": "Second",
+              "stats": {
+                "health": 5,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:First",
+            "name": "First",
+            "aliases": [
+              "first"
+            ],
+            "kind": "occupant",
+            "health": 5,
+            "defeated": false
+          },
+          {
+            "id": "mob:Second",
+            "name": "Second",
+            "aliases": [
+              "second"
+            ],
+            "kind": "occupant",
+            "health": 5,
+            "defeated": false
+          }
+        ],
+        "loot": [],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:First",
+            "name": "First",
+            "aliases": [
+              "first"
+            ],
+            "kind": "occupant",
+            "health": 5,
+            "defeated": false
+          },
+          {
+            "id": "mob:Second",
+            "name": "Second",
+            "aliases": [
+              "second"
+            ],
+            "kind": "occupant",
+            "health": 5,
+            "defeated": false
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 2,
+          "maxTurns": 20,
+          "sanity": 0,
+          "health": 0
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    }
+  ]
+}

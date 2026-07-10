@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "campaign:Item Test (conformance)",
+    "title": "Item Test (conformance)",
+    "maxRounds": 5,
+    "round": 0,
+    "started": true,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "player:Ada",
+      "player:Ben"
+    ],
+    "actedThisRound": [],
+    "gmId": "player:Ada",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "delver",
+        "name": "Delver",
+        "baseStats": {
+          "health": 12,
+          "sanity": 10
+        },
+        "inventorySlots": 1
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 20,
+      "visited": [
+        "room:Hall"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "room:Hall",
+      "name": "Hall",
+      "description": "A stone hall.",
+      "exits": {},
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "player:Ada",
+        "player:Ben"
+      ],
+      "lootIds": [
+        "loot:chest"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "player:Ada",
+      "name": "Ada",
+      "stats": {
+        "health": 12,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 2,
+      "currentRoomId": "room:Hall",
+      "inventory": {
+        "slots": 6,
+        "itemIds": [
+          "player:Ada:item#items/iron-sword",
+          "player:Ada:item#items/silver-ring",
+          "player:Ada:item#items/healing-tonic"
+        ],
+        "keyIds": [
+          "player:Ada:item#key:old"
+        ]
+      },
+      "equipment": {
+        "leftIndexFinger": "player:Ada:item#items/silver-ring"
+      },
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Hall",
+            "name": "Hall"
+          },
+          "round": 0
+        },
+        {
+          "kind": "pickUp",
+          "items": [
+            {
+              "id": "player:Ada:item#items/iron-sword",
+              "name": "Iron Sword"
+            },
+            {
+              "id": "player:Ada:item#items/silver-ring",
+              "name": "Silver Ring"
+            },
+            {
+              "id": "player:Ada:item#items/healing-tonic",
+              "name": "Healing Tonic"
+            }
+          ],
+          "round": 0
+        },
+        {
+          "kind": "pickUp",
+          "items": [
+            {
+              "id": "player:Ada:item#key:old",
+              "name": "Old Key"
+            }
+          ],
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {
+          "panic": 0,
+          "fear": 0,
+          "confused": 0
+        },
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "delver"
+    },
+    {
+      "kind": "player",
+      "id": "player:Ben",
+      "name": "Ben",
+      "stats": {
+        "health": 12,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "room:Hall",
+      "inventory": {
+        "slots": 6,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Hall",
+            "name": "Hall"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "delver"
+    }
+  ],
+  "items": [
+    {
+      "kind": "item",
+      "id": "loot:chest:item#0",
+      "behaviorKey": "items/old-coin",
+      "modifier": 0
+    },
+    {
+      "kind": "item",
+      "id": "player:Ada:item#items/iron-sword",
+      "behaviorKey": "items/iron-sword",
+      "durability": 10,
+      "modifier": 5
+    },
+    {
+      "kind": "item",
+      "id": "player:Ada:item#items/silver-ring",
+      "behaviorKey": "items/silver-ring",
+      "modifier": 3
+    },
+    {
+      "kind": "item",
+      "id": "player:Ada:item#items/healing-tonic",
+      "behaviorKey": "items/healing-tonic",
+      "modifier": 4
+    },
+    {
+      "kind": "key",
+      "id": "player:Ada:item#key:old",
+      "name": "Old Key",
+      "keyCode": "old",
+      "consumeOnUse": false
+    }
+  ],
+  "loot": [
+    {
+      "id": "loot:chest",
+      "description": "An old chest.",
+      "capacity": 3,
+      "contentIds": [
+        "loot:chest:item#0"
+      ]
+    }
+  ],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "room:Hall",
+      "snapshot": {
+        "name": "Hall",
+        "description": "A stone hall."
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
+      }
+    },
+    {
+      "kind": "item",
+      "key": "weapon:Iron Sword",
+      "snapshot": {
+        "name": "Iron Sword",
+        "type": "weapon",
+        "slot": "hand"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
+      }
+    },
+    {
+      "kind": "item",
+      "key": "accessory:Silver Ring",
+      "snapshot": {
+        "name": "Silver Ring",
+        "type": "accessory",
+        "slot": "finger"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
+      }
+    },
+    {
+      "kind": "item",
+      "key": "consumable:Healing Tonic",
+      "snapshot": {
+        "name": "Healing Tonic",
+        "type": "consumable"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
+      }
+    },
+    {
+      "kind": "key",
+      "key": "old:Old Key",
+      "snapshot": {
+        "name": "Old Key",
+        "keyCode": "old",
+        "consumeOnUse": false
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
+      }
+    }
+  ]
+}

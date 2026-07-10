@@ -119,8 +119,9 @@ export function mountTerminal(
     computeClickableNouns();
     // Persistent bottom HUD, driven from the viewmodel each turn (rendered inside <crt-hud>).
     game.setHud(vm);
-    // Drive the ambient drone from the live campaign each turn.
-    audio.update(session.campaign);
+    // Drive the ambient drone from the viewmodel each turn (DTO boundary —
+    // no live engine object crosses the surface seam).
+    audio.update(vm);
     mapModel.observe(vm);
   };
 
@@ -158,9 +159,14 @@ export function mountTerminal(
         if (res.query === "help") { game.openHelp(narrator.renderQuery("help", session.view())); return; }
         game.transcript.print(narrator.renderQuery(res.query, before)); return;
       case "examine": {
-        // Reading an item reveals its lore (engine-backed, free, non-consuming);
-        // anything without lore falls back to the generic look line.
-        const cues = res.target.kind === "item" ? session.read(res.target.id) : [];
+        // Examining a co-located NPC surfaces its engine `examine` description;
+        // an item reveals its lore via `read`. Both are engine-backed, free, and
+        // non-advancing. Loot (and anything the engine has no blurb for) falls
+        // back to the generic look line.
+        const cues =
+          res.target.kind === "occupant" ? session.examine(res.target.id)
+          : res.target.kind === "item" ? session.read(res.target.id)
+          : [];
         absorbStatusCues(cues);
         game.transcript.print(cues.length ? narrator.renderCues(cues) : narrator.renderExamine(res.target, before));
         return;

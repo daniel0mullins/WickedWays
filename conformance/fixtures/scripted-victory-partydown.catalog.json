@@ -1,0 +1,69 @@
+{
+  "items": {
+    "items/cursed-band": {
+      "name": "Cursed Band",
+      "type": "accessory",
+      "stat": "health",
+      "modifier": -99,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "finger",
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    }
+  },
+  "aliases": {},
+  "behaviors": {
+    "party-down": {
+      "family": "victory",
+      "script": {
+        "test": {
+          "kind": "bin",
+          "op": "and",
+          "left": {
+            "kind": "bin",
+            "op": "gt",
+            "left": {
+              "kind": "length",
+              "list": {
+                "kind": "party"
+              }
+            },
+            "right": {
+              "kind": "lit",
+              "value": 0
+            }
+          },
+          "right": {
+            "kind": "every",
+            "list": {
+              "kind": "party"
+            },
+            "pred": {
+              "kind": "includes",
+              "list": {
+                "kind": "get",
+                "of": {
+                  "kind": "element"
+                },
+                "field": "status"
+              },
+              "value": {
+                "kind": "lit",
+                "value": "ko"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

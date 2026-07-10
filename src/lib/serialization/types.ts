@@ -95,6 +95,21 @@ export interface CharacterSnapshot {
   lightAverse?: boolean;
   naturalAttack?: { stat: StatType; power: number }; // mob-only
   npcBehaviorKey?: string; // npc-only: registry key its dialogue re-binds from
+  /**
+   * Per-instance NPC dialogue state — the `once`-latch store the dialogue matcher
+   * reads/writes under `onceFired[key]` (`key` = `"default"` or the decimal
+   * dialogue index). Empty state is `null`/absent; omitted from the snapshot when
+   * null (only an NPC that fired a `once` effect emits it), so pre-existing
+   * snapshots/goldens stay byte-stable — churn-free like {@link CharacterSnapshot.visible}.
+   */
+  npcState?: JsonValue;
+  /**
+   * Whether this character is present in the room's view/scope. Defaults to
+   * `true`; a hidden NPC (one that "disappears") flips it to `false`, reversibly.
+   * Omitted from the snapshot when `true` (only a hidden character emits the key),
+   * so pre-existing snapshots/goldens stay byte-stable and hydrate back to visible.
+   */
+  visible?: boolean;
 }
 
 export interface EncounterTableSnapshot {

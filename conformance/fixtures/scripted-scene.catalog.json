@@ -1,0 +1,108 @@
+{
+  "items": {},
+  "aliases": {},
+  "behaviors": {
+    "scene/threshold-draft": {
+      "family": "scene",
+      "script": {
+        "canPlay": {
+          "kind": "not",
+          "expr": {
+            "kind": "stateGet",
+            "field": "seen",
+            "default": false
+          }
+        },
+        "onEnter": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "cue",
+              "text": {
+                "kind": "lit",
+                "value": "A cold draft stirs the dust of the threshold."
+              }
+            }
+          },
+          {
+            "kind": "setState",
+            "field": "seen",
+            "value": {
+              "kind": "lit",
+              "value": true
+            }
+          }
+        ]
+      }
+    },
+    "scene/vault-watch": {
+      "family": "scene",
+      "script": {
+        "canPlay": {
+          "kind": "bin",
+          "op": "lt",
+          "left": {
+            "kind": "stateGet",
+            "field": "count",
+            "default": 0
+          },
+          "right": {
+            "kind": "lit",
+            "value": 2
+          }
+        },
+        "onEnter": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "setVisible",
+              "target": {
+                "kind": "lit",
+                "value": "mob:Gargoyle"
+              },
+              "visible": {
+                "kind": "lit",
+                "value": false
+              }
+            }
+          },
+          {
+            "kind": "setState",
+            "field": "count",
+            "value": {
+              "kind": "bin",
+              "op": "add",
+              "left": {
+                "kind": "stateGet",
+                "field": "count",
+                "default": 0
+              },
+              "right": {
+                "kind": "lit",
+                "value": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    "scene/vault-hush": {
+      "family": "scene",
+      "script": {
+        "canPlay": null,
+        "onExit": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "cue",
+              "text": {
+                "kind": "lit",
+                "value": "The vault falls silent behind you."
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

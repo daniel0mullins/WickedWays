@@ -4,12 +4,14 @@ export const Rooms = {
 } as const;
 
 export const Items = {
-  Lantern: "lantern", Journal: "journal", Poker: "poker", Laudanum: "laudanum",
+  Lantern: "lantern", Journal: "journal", Poker: "poker", Laudanum: "laudanum", RatTail: "rat-tail",
 } as const;
 
-export const Keys = { Brass: "brass-key", Iron: "iron-key" } as const;
+export const Keys = { Brass: "brass-key", Iron: "iron-key", Cellar: "cellar-key" } as const;
 
 export const Mobs = { Wraith: "Wraith", Revenant: "Revenant" } as const;
+
+export const Formations = { RatSingle: "rat-single", RatPair: "rat-pair" } as const;
 
 export const Mechanics = { Dread: "dread", Storyteller: "storyteller", StatusBar: "status-bar" } as const;
 
@@ -24,4 +26,9 @@ export const Conditions = {
 export const ExitBehaviors = {
   StudyDoor: "study-door",
   AtticDoor: "attic-door",
+  CellarDoor: "cellar-door",
 } as const;
+
+export const Npcs = { Caretaker: "caretaker" } as const;
+
+export const Scenes = { CaretakerIntro: "caretaker-intro" } as const;

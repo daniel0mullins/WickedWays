@@ -2,6 +2,7 @@ import { assemble } from "./assembler";
 import { PlayerCharacter } from "../character/player-character";
 import { generateId, ProceduralViolation } from "../util";
 import type { CampaignId } from "../campaign";
+import type { CharacterId } from "../character/character";
 import type { Campaign } from "../campaign";
 import type { ArchetypeId } from "../archetype";
 import type { CampaignSnapshot } from "../serialization/types";
@@ -71,13 +72,19 @@ export function startSession(
   const pcs: PlayerCharacter[] = [];
   for (const p of players) {
     const pc = new PlayerCharacter({ campaign, name: p.name });
+    pc.id = `player:${p.name}` as CharacterId;
     pc.joinCampaign();
     // When an archetype is omitted, beginCampaign auto-selects the sole
     // registered archetype (if exactly one exists).
     if (p.archetype !== undefined) {
       pc.selectArchetype(p.archetype as ArchetypeId);
     }
-    pc.move(startRoomInstance);
+    // Pristine-genesis boot placement: seat the PC WITHOUT firing enter-scenes
+    // (`fireScenes = false`). `campaign.beginCampaign()` below fires the active
+    // character's start-room enter-scenes ONCE — AFTER the round-0 dispatch — so
+    // their state bakes into the post-begin genesis exactly once. Order pinned for
+    // gate parity with Rust `begin_campaign` and the oracle-session begin/startup.
+    pc.move(startRoomInstance, /*fireScenes*/ false);
     pcs.push(pc);
   }
 

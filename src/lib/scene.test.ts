@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { IRoom } from "./room";
+import type { MechanicCue } from "./mechanics/mechanic";
 import { Scene, type SceneConfig } from "./scene";
 import { Character } from "./character/character";
 import { createKey } from "./inventory";
@@ -23,6 +24,49 @@ function makeScene(overrides: Partial<SceneConfig> = {}) {
   });
   return { scene, script, room };
 }
+
+describe("Scene cue emission", () => {
+  const roomStub = { name: "Cell", occupants: [{}] } as unknown as IRoom;
+
+  it("returns the script's cues when the phase matches and preconditions pass", () => {
+    const scene = new Scene<{ n: number }>({
+      phase: "enter",
+      preconditions: [(_r, s) => s.n < 2],
+      script: (_r, s): MechanicCue[] => {
+        s.n += 1;
+        return [{ text: `stir ${s.n}` }];
+      },
+      initialState: { n: 0 },
+      behaviorKey: "test/counter",
+    });
+    expect(scene.playScene("enter", roomStub)).toEqual([{ text: "stir 1" }]);
+    expect(scene.playScene("enter", roomStub)).toEqual([{ text: "stir 2" }]);
+    // precondition now false (n === 2): no fire, no cue, no mutation
+    expect(scene.playScene("enter", roomStub)).toEqual([]);
+  });
+
+  it("returns [] when the phase does not match", () => {
+    const scene = new Scene({
+      phase: "enter",
+      preconditions: [],
+      script: (): MechanicCue[] => [{ text: "should not fire" }],
+      behaviorKey: "test/x",
+    });
+    expect(scene.playScene("exit", roomStub)).toEqual([]);
+  });
+
+  it("returns [] when the script returns void", () => {
+    const scene = new Scene({
+      phase: "enter",
+      preconditions: [],
+      script: () => {
+        /* void */
+      },
+      behaviorKey: "test/void",
+    });
+    expect(scene.playScene("enter", roomStub)).toEqual([]);
+  });
+});
 
 describe("Scene", () => {
   describe("constructor", () => {

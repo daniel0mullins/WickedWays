@@ -1,0 +1,30 @@
+name: E2E
+
+# Browser end-to-end run: boots hollow-house through the WASM Authority in real
+# chromium. Kept separate from the fast `checks` gate because it needs a Rust
+# toolchain, wasm-pack, and a browser binary.
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: jetli/wasm-pack-action@v0.4.0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @wickedways/play exec playwright install --with-deps chromium
+      # `pretest:e2e` builds pkg-web (needs cargo + wasm-pack, both set up above);
+      # then Playwright starts `pnpm dev` and runs every spec.
+      - run: pnpm --filter @wickedways/play run test:e2e
+        env:
+          CI: "true"

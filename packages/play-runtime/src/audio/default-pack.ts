@@ -53,5 +53,6 @@ export const defaultChiptunePack: SoundPack = {
 };
 
 export function defaultDirector(): AudioDirector {
+  // Flat ambient bed: tension ignores the ViewModel and stays at 0.
   return { react: (cue) => cuesFor(cue), tension: () => 0 };
 }

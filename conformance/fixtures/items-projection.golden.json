@@ -1,0 +1,209 @@
+{
+  "view": {
+    "room": {
+      "id": "room:Hall",
+      "name": "Hall",
+      "description": "A stone hall.",
+      "isLit": true
+    },
+    "exits": [],
+    "lockedDoors": [],
+    "occupants": [
+      {
+        "id": "player:Ben",
+        "name": "Ben",
+        "aliases": [
+          "ben"
+        ],
+        "kind": "occupant",
+        "health": 12,
+        "defeated": false
+      }
+    ],
+    "loot": [
+      {
+        "id": "loot:chest",
+        "description": "An old chest.",
+        "opened": false,
+        "contents": [
+          {
+            "id": "loot:chest:item#0",
+            "name": "Old Coin",
+            "aliases": [
+              "old coin",
+              "coin"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          }
+        ]
+      }
+    ],
+    "inventory": {
+      "items": [
+        {
+          "id": "player:Ada:item#items/iron-sword",
+          "name": "Iron Sword",
+          "aliases": [
+            "iron sword",
+            "sword",
+            "blade"
+          ],
+          "kind": "item",
+          "equippable": true,
+          "usable": false,
+          "hasLore": true,
+          "droppable": true
+        },
+        {
+          "id": "player:Ada:item#items/silver-ring",
+          "name": "Silver Ring",
+          "aliases": [
+            "silver ring",
+            "ring",
+            "band"
+          ],
+          "kind": "item",
+          "equippable": true,
+          "usable": false,
+          "hasLore": false,
+          "droppable": true
+        },
+        {
+          "id": "player:Ada:item#items/healing-tonic",
+          "name": "Healing Tonic",
+          "aliases": [
+            "healing tonic",
+            "tonic",
+            "vial"
+          ],
+          "kind": "item",
+          "equippable": false,
+          "usable": true,
+          "hasLore": false,
+          "droppable": true
+        }
+      ],
+      "keys": [
+        {
+          "id": "player:Ada:item#key:old",
+          "name": "Old Key",
+          "aliases": [
+            "old key"
+          ],
+          "kind": "item",
+          "equippable": false,
+          "usable": false,
+          "hasLore": false,
+          "droppable": true
+        }
+      ],
+      "equippedNames": [
+        "Silver Ring"
+      ],
+      "slots": 6
+    },
+    "scope": [
+      {
+        "id": "player:Ben",
+        "name": "Ben",
+        "aliases": [
+          "ben"
+        ],
+        "kind": "occupant",
+        "health": 12,
+        "defeated": false
+      },
+      {
+        "id": "loot:chest:item#0",
+        "name": "Old Coin",
+        "aliases": [
+          "old coin",
+          "coin"
+        ],
+        "kind": "item",
+        "equippable": false,
+        "usable": false,
+        "hasLore": false,
+        "droppable": true
+      },
+      {
+        "id": "player:Ada:item#items/iron-sword",
+        "name": "Iron Sword",
+        "aliases": [
+          "iron sword",
+          "sword",
+          "blade"
+        ],
+        "kind": "item",
+        "equippable": true,
+        "usable": false,
+        "hasLore": true,
+        "droppable": true
+      },
+      {
+        "id": "player:Ada:item#items/silver-ring",
+        "name": "Silver Ring",
+        "aliases": [
+          "silver ring",
+          "ring",
+          "band"
+        ],
+        "kind": "item",
+        "equippable": true,
+        "usable": false,
+        "hasLore": false,
+        "droppable": true
+      },
+      {
+        "id": "player:Ada:item#items/healing-tonic",
+        "name": "Healing Tonic",
+        "aliases": [
+          "healing tonic",
+          "tonic",
+          "vial"
+        ],
+        "kind": "item",
+        "equippable": false,
+        "usable": true,
+        "hasLore": false,
+        "droppable": true
+      },
+      {
+        "id": "player:Ada:item#key:old",
+        "name": "Old Key",
+        "aliases": [
+          "old key"
+        ],
+        "kind": "item",
+        "equippable": false,
+        "usable": false,
+        "hasLore": false,
+        "droppable": true
+      },
+      {
+        "id": "loot:chest",
+        "name": "An old chest.",
+        "aliases": [
+          "chest",
+          "box",
+          "drawer",
+          "container"
+        ],
+        "kind": "loot"
+      }
+    ],
+    "status": {
+      "locationName": "Hall",
+      "turn": 0,
+      "maxTurns": 5,
+      "sanity": 13,
+      "health": 12
+    },
+    "outcome": "ongoing",
+    "finished": false
+  }
+}

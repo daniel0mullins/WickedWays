@@ -66,6 +66,55 @@ describe("parser — read", () => {
   });
 });
 
+describe("parser — talk", () => {
+  const keeper = ent("npc-keeper", "The Keeper", ["keeper", "old man"], "occupant");
+
+  it("resolves `talk to <npc>` to a bare talk intent", () => {
+    const res = parse("talk to keeper", vm({ scope: [keeper] }));
+    expect(res).toEqual({ kind: "intent", intent: { kind: "talk", npcId: "npc-keeper" } });
+  });
+
+  it("resolves `talk keeper` (no preposition) too", () => {
+    const res = parse("talk keeper", vm({ scope: [keeper] }));
+    expect(res).toEqual({ kind: "intent", intent: { kind: "talk", npcId: "npc-keeper" } });
+  });
+
+  it("captures a quoted prompt verbatim without leaking it into name resolution", () => {
+    const res = parse('talk to keeper "how do I get out"', vm({ scope: [keeper] }));
+    expect(res).toEqual({
+      kind: "intent",
+      intent: { kind: "talk", npcId: "npc-keeper", prompt: "how do I get out" },
+    });
+  });
+
+  it("errors when no NPC is named", () => {
+    expect(parse("talk", vm({ scope: [keeper] })).kind).toBe("error");
+  });
+
+  it("errors when the named NPC is not in scope", () => {
+    expect(parse("talk to ghost", vm({ scope: [keeper] })).kind).toBe("error");
+  });
+});
+
+describe("parser — examine occupant / look at", () => {
+  const keeper = ent("npc-keeper", "The Keeper", ["keeper", "old man"], "occupant");
+
+  it("resolves `examine <npc>` to an examine result carrying the occupant target", () => {
+    const res = parse("examine keeper", vm({ scope: [keeper] }));
+    expect(res).toEqual({ kind: "examine", target: keeper });
+  });
+
+  it("routes `look at <npc>` to examine (the occupant target), not the room query", () => {
+    const res = parse("look at keeper", vm({ scope: [keeper] }));
+    expect(res).toEqual({ kind: "examine", target: keeper });
+  });
+
+  it("keeps bare `look` (no noun) as the room query", () => {
+    expect(parse("look", vm({ scope: [keeper] }))).toEqual({ kind: "query", query: "look" });
+    expect(parse("l", vm({ scope: [keeper] }))).toEqual({ kind: "query", query: "look" });
+  });
+});
+
 describe("parser — open", () => {
   it("open on a loot box is an open intent", () => {
     const box = ent("b1", "a chest", ["chest", "box"], "loot");

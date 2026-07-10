@@ -1,6 +1,5 @@
 import type { SynthVoice } from "./cue-sound.js";
 import type { PresentationCue } from "wickedways/lib/presentation";
-import type { ICampaign } from "wickedways/lib/campaign";
 import type { ViewModel } from "../viewmodel.js";
 
 /**
@@ -29,7 +28,7 @@ export interface AudioCue { type: BaseAudioCue | (string & {}); entityId?: strin
 
 /**
  * Campaign-owned audio brain. Translates engine `PresentationCue`s into `AudioCue`s
- * (discrete events) and reads continuous tension off the live campaign (0–1 scalar
+ * (discrete events) and reads continuous tension off the `ViewModel` DTO (0–1 scalar
  * that drives the ambient bed).
  *
  * `createDirector()` in `CampaignAudio` is a stateful factory — the director closes
@@ -42,8 +41,10 @@ export interface AudioCue { type: BaseAudioCue | (string & {}); entityId?: strin
 export interface AudioDirector {
   /** Map one `PresentationCue` to zero or more discrete audio events. */
   react(cue: PresentationCue, view: ViewModel): AudioCue[];
-  /** Compute continuous tension (0–1) from the live campaign state for the ambient bed. */
-  tension(campaign: ICampaign): number;
+  /** Compute continuous tension (0–1) from the current ViewModel for the
+   *  ambient bed. DTO-only: directors never see live engine objects
+   *  (master-design invariant 4). */
+  tension(view: ViewModel): number;
 }
 
 /** How this soundpack wants the ambient bed to behave right now. */
@@ -77,7 +78,7 @@ export interface SoundPack {
   voice(cue: AudioCue): SoundSpec | null;
   /**
    * Map a continuous tension value (0–1) to an ambient bed directive.
-   * Called on every `update(campaign)` to drive the `AmbientBed`.
+   * Called on every `update(view)` to drive the `AmbientBed`.
    */
   ambient(tension: number): AmbientDirective;
 }

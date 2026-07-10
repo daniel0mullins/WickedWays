@@ -1,5 +1,4 @@
 import type { PresentationCue } from "wickedways/lib/presentation";
-import type { ICampaign } from "wickedways/lib/campaign";
 import type { ViewModel } from "../viewmodel.js";
 import type { MobAttack } from "../session.js";
 import type { AudioDirector, CampaignAudio, Renderer, SoundPack } from "./contracts.js";
@@ -95,9 +94,9 @@ export class AudioRuntime {
   }
   noteError(): void { if (this.#enabled) this.#deps.render({ kind: "synth", voice: errorSound() }); }
 
-  update(campaign: ICampaign): void {
+  update(view: ViewModel): void {
     if (!this.#enabled) return;
-    const directive = this.#active.ambient(this.#director.tension(campaign));
+    const directive = this.#active.ambient(this.#director.tension(view));
     this.#deps.bed.setTension(directive.bedTension);
   }
 }

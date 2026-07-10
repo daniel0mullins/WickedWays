@@ -1,0 +1,1333 @@
+{
+  "seed": 20931,
+  "commands": [
+    {
+      "kind": "startTurn"
+    },
+    {
+      "kind": "nextPlayer"
+    },
+    {
+      "kind": "startTurn"
+    },
+    {
+      "kind": "nextPlayer"
+    }
+  ],
+  "steps": [
+    {
+      "command": {
+        "kind": "startTurn"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scripted Victory Party Down (conformance)",
+          "title": "Scripted Victory Party Down (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [
+            {
+              "key": "party-down",
+              "narration": {
+                "text": "You fall, and do not rise. The house is patient. It has all the time there is."
+              }
+            }
+          ],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada",
+            "player:Ben"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "heir",
+              "name": "Heir",
+              "baseStats": {
+                "health": 12,
+                "sanity": 16,
+                "energy": 5
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "The entrance hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada",
+              "player:Ben"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 12,
+              "sanity": 16,
+              "energy": 5
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "items/cursed-band#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {
+              "leftIndexFinger": "items/cursed-band#0"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "items/cursed-band#0",
+                    "name": "Cursed Band"
+                  }
+                ],
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "heir"
+          },
+          {
+            "kind": "player",
+            "id": "player:Ben",
+            "name": "Ben",
+            "stats": {
+              "health": 12,
+              "sanity": 16,
+              "energy": 5
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 2,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "items/cursed-band#1"
+              ],
+              "keyIds": []
+            },
+            "equipment": {
+              "leftIndexFinger": "items/cursed-band#1"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "items/cursed-band#1",
+                    "name": "Cursed Band"
+                  }
+                ],
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "heir"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "items/cursed-band#0",
+            "behaviorKey": "items/cursed-band",
+            "modifier": -99
+          },
+          {
+            "kind": "item",
+            "id": "items/cursed-band#1",
+            "behaviorKey": "items/cursed-band",
+            "modifier": -99
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "The entrance hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "accessory:Cursed Band",
+            "snapshot": {
+              "name": "Cursed Band",
+              "type": "accessory",
+              "slot": "finger"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Foyer",
+          "name": "Foyer",
+          "description": "The entrance hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "player:Ben",
+            "name": "Ben",
+            "aliases": [
+              "ben"
+            ],
+            "kind": "occupant",
+            "health": -87,
+            "defeated": false
+          }
+        ],
+        "loot": [],
+        "inventory": {
+          "items": [
+            {
+              "id": "items/cursed-band#0",
+              "name": "Cursed Band",
+              "aliases": [
+                "cursed band"
+              ],
+              "kind": "item",
+              "equippable": true,
+              "usable": false,
+              "hasLore": false,
+              "droppable": true
+            }
+          ],
+          "keys": [],
+          "equippedNames": [
+            "Cursed Band"
+          ],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "player:Ben",
+            "name": "Ben",
+            "aliases": [
+              "ben"
+            ],
+            "kind": "occupant",
+            "health": -87,
+            "defeated": false
+          },
+          {
+            "id": "items/cursed-band#0",
+            "name": "Cursed Band",
+            "aliases": [
+              "cursed band"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          }
+        ],
+        "status": {
+          "locationName": "Foyer",
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 16,
+          "health": -87
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "nextPlayer"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scripted Victory Party Down (conformance)",
+          "title": "Scripted Victory Party Down (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [
+            {
+              "key": "party-down",
+              "narration": {
+                "text": "You fall, and do not rise. The house is patient. It has all the time there is."
+              }
+            }
+          ],
+          "activeCharacterIndex": 1,
+          "partyIds": [
+            "player:Ada",
+            "player:Ben"
+          ],
+          "actedThisRound": [
+            "player:Ada"
+          ],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "heir",
+              "name": "Heir",
+              "baseStats": {
+                "health": 12,
+                "sanity": 16,
+                "energy": 5
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "The entrance hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada",
+              "player:Ben"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 12,
+              "sanity": 16,
+              "energy": 5
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "items/cursed-band#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {
+              "leftIndexFinger": "items/cursed-band#0"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "items/cursed-band#0",
+                    "name": "Cursed Band"
+                  }
+                ],
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "heir"
+          },
+          {
+            "kind": "player",
+            "id": "player:Ben",
+            "name": "Ben",
+            "stats": {
+              "health": 12,
+              "sanity": 16,
+              "energy": 5
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 2,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "items/cursed-band#1"
+              ],
+              "keyIds": []
+            },
+            "equipment": {
+              "leftIndexFinger": "items/cursed-band#1"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "items/cursed-band#1",
+                    "name": "Cursed Band"
+                  }
+                ],
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "heir"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "items/cursed-band#0",
+            "behaviorKey": "items/cursed-band",
+            "modifier": -99
+          },
+          {
+            "kind": "item",
+            "id": "items/cursed-band#1",
+            "behaviorKey": "items/cursed-band",
+            "modifier": -99
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "The entrance hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "accessory:Cursed Band",
+            "snapshot": {
+              "name": "Cursed Band",
+              "type": "accessory",
+              "slot": "finger"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Foyer",
+          "name": "Foyer",
+          "description": "The entrance hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "player:Ada",
+            "name": "Ada",
+            "aliases": [
+              "ada"
+            ],
+            "kind": "occupant",
+            "health": -87,
+            "defeated": true
+          }
+        ],
+        "loot": [],
+        "inventory": {
+          "items": [
+            {
+              "id": "items/cursed-band#1",
+              "name": "Cursed Band",
+              "aliases": [
+                "cursed band"
+              ],
+              "kind": "item",
+              "equippable": true,
+              "usable": false,
+              "hasLore": false,
+              "droppable": true
+            }
+          ],
+          "keys": [],
+          "equippedNames": [
+            "Cursed Band"
+          ],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "player:Ada",
+            "name": "Ada",
+            "aliases": [
+              "ada"
+            ],
+            "kind": "occupant",
+            "health": -87,
+            "defeated": true
+          },
+          {
+            "id": "items/cursed-band#1",
+            "name": "Cursed Band",
+            "aliases": [
+              "cursed band"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          }
+        ],
+        "status": {
+          "locationName": "Foyer",
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 16,
+          "health": -87
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "startTurn"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scripted Victory Party Down (conformance)",
+          "title": "Scripted Victory Party Down (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [
+            {
+              "key": "party-down",
+              "narration": {
+                "text": "You fall, and do not rise. The house is patient. It has all the time there is."
+              }
+            }
+          ],
+          "activeCharacterIndex": 1,
+          "partyIds": [
+            "player:Ada",
+            "player:Ben"
+          ],
+          "actedThisRound": [
+            "player:Ada"
+          ],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "heir",
+              "name": "Heir",
+              "baseStats": {
+                "health": 12,
+                "sanity": 16,
+                "energy": 5
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "The entrance hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada",
+              "player:Ben"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 12,
+              "sanity": 16,
+              "energy": 5
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "items/cursed-band#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {
+              "leftIndexFinger": "items/cursed-band#0"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "items/cursed-band#0",
+                    "name": "Cursed Band"
+                  }
+                ],
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "heir"
+          },
+          {
+            "kind": "player",
+            "id": "player:Ben",
+            "name": "Ben",
+            "stats": {
+              "health": 12,
+              "sanity": 16,
+              "energy": 5
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "items/cursed-band#1"
+              ],
+              "keyIds": []
+            },
+            "equipment": {
+              "leftIndexFinger": "items/cursed-band#1"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "items/cursed-band#1",
+                    "name": "Cursed Band"
+                  }
+                ],
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "heir"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "items/cursed-band#0",
+            "behaviorKey": "items/cursed-band",
+            "modifier": -99
+          },
+          {
+            "kind": "item",
+            "id": "items/cursed-band#1",
+            "behaviorKey": "items/cursed-band",
+            "modifier": -99
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "The entrance hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "accessory:Cursed Band",
+            "snapshot": {
+              "name": "Cursed Band",
+              "type": "accessory",
+              "slot": "finger"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Foyer",
+          "name": "Foyer",
+          "description": "The entrance hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "player:Ada",
+            "name": "Ada",
+            "aliases": [
+              "ada"
+            ],
+            "kind": "occupant",
+            "health": -87,
+            "defeated": true
+          }
+        ],
+        "loot": [],
+        "inventory": {
+          "items": [
+            {
+              "id": "items/cursed-band#1",
+              "name": "Cursed Band",
+              "aliases": [
+                "cursed band"
+              ],
+              "kind": "item",
+              "equippable": true,
+              "usable": false,
+              "hasLore": false,
+              "droppable": true
+            }
+          ],
+          "keys": [],
+          "equippedNames": [
+            "Cursed Band"
+          ],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "player:Ada",
+            "name": "Ada",
+            "aliases": [
+              "ada"
+            ],
+            "kind": "occupant",
+            "health": -87,
+            "defeated": true
+          },
+          {
+            "id": "items/cursed-band#1",
+            "name": "Cursed Band",
+            "aliases": [
+              "cursed band"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          }
+        ],
+        "status": {
+          "locationName": "Foyer",
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 16,
+          "health": -87
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "nextPlayer"
+      },
+      "cues": [
+        {
+          "kind": "resolution",
+          "outcome": "lost",
+          "reason": "party-down",
+          "narration": {
+            "text": "You fall, and do not rise. The house is patient. It has all the time there is."
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Scripted Victory Party Down (conformance)",
+          "title": "Scripted Victory Party Down (conformance)",
+          "maxRounds": 10,
+          "round": 1,
+          "started": true,
+          "outcome": "lost",
+          "outcomeReason": "party-down",
+          "winConditions": [],
+          "loseConditions": [
+            {
+              "key": "party-down",
+              "narration": {
+                "text": "You fall, and do not rise. The house is patient. It has all the time there is."
+              }
+            }
+          ],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada",
+            "player:Ben"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "heir",
+              "name": "Heir",
+              "baseStats": {
+                "health": 12,
+                "sanity": 16,
+                "energy": 5
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Foyer"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Foyer",
+            "name": "Foyer",
+            "description": "The entrance hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ada",
+              "player:Ben"
+            ],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 12,
+              "sanity": 16,
+              "energy": 5
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "items/cursed-band#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {
+              "leftIndexFinger": "items/cursed-band#0"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "items/cursed-band#0",
+                    "name": "Cursed Band"
+                  }
+                ],
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "heir"
+          },
+          {
+            "kind": "player",
+            "id": "player:Ben",
+            "name": "Ben",
+            "stats": {
+              "health": 12,
+              "sanity": 16,
+              "energy": 5
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Foyer",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "items/cursed-band#1"
+              ],
+              "keyIds": []
+            },
+            "equipment": {
+              "leftIndexFinger": "items/cursed-band#1"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Foyer",
+                  "name": "Foyer"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "items/cursed-band#1",
+                    "name": "Cursed Band"
+                  }
+                ],
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "heir"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "items/cursed-band#0",
+            "behaviorKey": "items/cursed-band",
+            "modifier": -99
+          },
+          {
+            "kind": "item",
+            "id": "items/cursed-band#1",
+            "behaviorKey": "items/cursed-band",
+            "modifier": -99
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Foyer",
+            "snapshot": {
+              "name": "Foyer",
+              "description": "The entrance hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "accessory:Cursed Band",
+            "snapshot": {
+              "name": "Cursed Band",
+              "type": "accessory",
+              "slot": "finger"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Foyer",
+          "name": "Foyer",
+          "description": "The entrance hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "player:Ben",
+            "name": "Ben",
+            "aliases": [
+              "ben"
+            ],
+            "kind": "occupant",
+            "health": -87,
+            "defeated": true
+          }
+        ],
+        "loot": [],
+        "inventory": {
+          "items": [
+            {
+              "id": "items/cursed-band#0",
+              "name": "Cursed Band",
+              "aliases": [
+                "cursed band"
+              ],
+              "kind": "item",
+              "equippable": true,
+              "usable": false,
+              "hasLore": false,
+              "droppable": true
+            }
+          ],
+          "keys": [],
+          "equippedNames": [
+            "Cursed Band"
+          ],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "player:Ben",
+            "name": "Ben",
+            "aliases": [
+              "ben"
+            ],
+            "kind": "occupant",
+            "health": -87,
+            "defeated": true
+          },
+          {
+            "id": "items/cursed-band#0",
+            "name": "Cursed Band",
+            "aliases": [
+              "cursed band"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          }
+        ],
+        "status": {
+          "locationName": "Foyer",
+          "turn": 1,
+          "maxTurns": 10,
+          "sanity": 16,
+          "health": -87
+        },
+        "outcome": "lost",
+        "finished": true
+      }
+    }
+  ]
+}

@@ -165,9 +165,12 @@ export class PlayerCharacter extends Combatant implements IPlayerCharacter {
    * room unchanged), no spawn check runs.
    *
    * @param room - Destination room.
+   * @param fireScenes - Forwarded to {@link Character.move}; `false` defers the
+   *   destination's enter-scenes (pristine-genesis boot placement). The spawn /
+   *   encounter / codex tail below is unaffected. Defaults to `true`.
    */
-  override move(room: IRoom) {
-    super.move(room);
+  override move(room: IRoom, fireScenes = true) {
+    super.move(room, fireScenes);
     if (this.currentRoom === room) {
       this.campaign.maybeSpawn(room);
       this.campaign[NOTE_ENCOUNTERS](this, room);

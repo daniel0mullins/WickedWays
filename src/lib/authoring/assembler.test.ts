@@ -9,7 +9,7 @@ import { Mob, type IMob } from "../character/mob";
 import type { ICampaign } from "../campaign";
 import { Directions } from "../room";
 import { StatType } from "../character/stats";
-import { Item } from "../inventory";
+import { Item, createKey } from "../inventory";
 import { serializeCampaign } from "../serialization/serializer";
 import { deserializeCampaign } from "../serialization/deserializer";
 import type { CampaignTemplateDescription } from "./description";
@@ -82,6 +82,50 @@ describe("assemble", () => {
     // loot chest has the item
     const chest = [...next.loot.values()][0]!;
     expect(chest.contents.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("assigns content-derived ids, stable across builds", () => {
+    const desc = baseDesc({
+      mobs: [{ name: "goblin", stats: stats(), room: "next", drops: [] }],
+      caches: [{ name: "vein", room: "next", materials: {} }],
+      scenes: [],
+    });
+    const a = assemble(desc, registry);
+    expect(a.campaign.id).toBe("campaign:Crypt");
+    expect(a.rooms.get("start")!.id).toBe("room:start");
+    expect(a.rooms.get("next")!.id).toBe("room:next");
+    expect(a.rooms.get("next")!.occupants[0]!.id).toBe("mob:goblin");
+    expect([...a.rooms.get("next")!.materials.values()][0]!.id).toBe("cache:vein");
+    const exit = a.rooms.get("start")!.exits.get(Directions.North)!;
+    expect(exit.id).toBe("exit:next|start"); // author names, sorted
+    // Stable across a second, independent build (no shared counter).
+    const b = assemble(desc, registry);
+    expect(b.rooms.get("start")!.id).toBe("room:start");
+    expect(b.rooms.get("next")!.occupants[0]!.id).toBe("mob:goblin");
+  });
+
+  it("assigns npc:<name> and scene:<room>:<key>:enter id forms", () => {
+    const reg = defineRegistry({
+      items: {},
+      npcs: {
+        keeper: { initialDialogue: "Hello.", dialogue: [] },
+      },
+      scenes: {
+        intro: { preconditions: [], script: () => {} },
+      },
+    });
+    const desc = baseDesc({
+      npcs: [{ name: "Keeper", stats: stats(), room: "start", behavior: "keeper" }],
+      scenes: [{ room: "start", key: "intro" }],
+    });
+    const a = assemble(desc, reg);
+    // NPC ids use "npc:<name>" form
+    const keeper = a.rooms.get("start")!.occupants.find((o) => o.name === "Keeper");
+    expect(keeper?.id).toBe("npc:Keeper");
+    // Scene ids use "scene:<room>:<key>:<phase>" — default phase is "enter"; check via snapshot
+    const snapshot = serializeCampaign(a.campaign, { rootRooms: a.rooms.values() });
+    const startRoom = snapshot.rooms.find((r) => r.name === "start");
+    expect(startRoom?.scenes.find((s) => s.id === "scene:start:intro:enter")).toBeDefined();
   });
 
   it("collects ALL validation problems into one AuthoringError", () => {
@@ -195,6 +239,83 @@ describe("npc authoring (.npc)", () => {
 
     expect(() => builder.build()).toThrow(AuthoringError);
   });
+
+  it("seeds a held key into the NPC key list with a deterministic id + a reachable ItemSnapshot", () => {
+    const makeCellarKey = () => createKey({ name: "Cellar Key", keyCode: "cellar", consumeOnUse: false });
+    const reg = defineRegistry({
+      items: { "cellar-key": makeCellarKey },
+      npcs: { keeper: { initialDialogue: "Take this.", dialogue: [] } },
+    });
+    const builder = authorTemplate("T", reg)
+      .room("cellar", { description: "a cellar" })
+      .startRoom("cellar")
+      .npc("Keeper", { stats: stats(), room: "cellar", behavior: "keeper", holds: ["cellar-key"] });
+
+    // Live campaign: the key lands in the NPC's key compartment (not items).
+    const { rooms } = assemble(builder.description, builder.registry);
+    const keeper = rooms.get("cellar")!.occupants.find((o) => o.name === "Keeper") as
+      | INonPlayerCharacter
+      | undefined;
+    expect(keeper).toBeDefined();
+    expect(keeper!.inventory.keys.map((k) => k.id)).toEqual(["npc:Keeper:item#0"]);
+    expect(keeper!.inventory.items).toHaveLength(0);
+
+    // Snapshot: the id is in the NPC's keyIds and a matching ItemSnapshot exists.
+    const snapshot = builder.toSnapshot();
+    const keeperSnap = snapshot.characters.find((c) => c.name === "Keeper");
+    expect(keeperSnap?.inventory.keyIds).toEqual(["npc:Keeper:item#0"]);
+    expect(keeperSnap?.inventory.itemIds).toEqual([]);
+    const itemSnap = snapshot.items.find((i) => i.id === "npc:Keeper:item#0");
+    expect(itemSnap).toBeDefined();
+    expect(itemSnap?.kind).toBe("key");
+  });
+
+  it("seeds a held non-key item into the NPC item list with a deterministic id", () => {
+    const reg = defineRegistry({
+      items: { "coin-item": makeCoin },
+      npcs: { keeper: { initialDialogue: "A gift.", dialogue: [] } },
+    });
+    const builder = authorTemplate("T", reg)
+      .room("cellar", { description: "a cellar" })
+      .startRoom("cellar")
+      .npc("Keeper", { stats: stats(), room: "cellar", behavior: "keeper", holds: ["coin-item"] });
+
+    const snapshot = builder.toSnapshot();
+    const keeperSnap = snapshot.characters.find((c) => c.name === "Keeper");
+    expect(keeperSnap?.inventory.itemIds).toEqual(["npc:Keeper:item#0"]);
+    expect(keeperSnap?.inventory.keyIds).toEqual([]);
+    const itemSnap = snapshot.items.find((i) => i.id === "npc:Keeper:item#0");
+    expect(itemSnap?.kind).toBe("item");
+  });
+
+  it("rejects an NPC holding an unregistered item key", () => {
+    const reg = defineRegistry({ items: {}, npcs: { keeper: { initialDialogue: "Hi.", dialogue: [] } } });
+    const builder = authorTemplate("T", reg)
+      .room("cellar", { description: "a cellar" })
+      .npc("Keeper", { stats: stats(), room: "cellar", behavior: "keeper", holds: ["missing-item"] as never });
+
+    expect(() => builder.build()).toThrow(AuthoringError);
+  });
+});
+
+describe("content-derived item ids", () => {
+  it("assigns content-derived item ids incl. repeated keys", () => {
+    const { rooms } = assemble(baseDesc({
+      loot: [{ name: "chest", room: "next", items: ["coin-item", "coin-item"] }],
+      mobs: [{ name: "goblin", stats: stats(), room: "next", drops: ["coin-item"] }],
+      rooms: [{ name: "start", description: "e" }, { name: "next", description: "n", lights: ["coin-item"] }],
+      exits: [{ from: "start", direction: Directions.North, to: "next" }],
+    }), registry);
+    const next = rooms.get("next")!;
+    const chest = [...next.loot.values()][0]!;
+    expect(chest.contents.map((i) => i.id)).toEqual(["loot:chest:item#0", "loot:chest:item#1"]);
+    const goblin = next.occupants.find((o) => o.name === "goblin")!;
+    expect(goblin.inventory.items[0]!.id).toBe("mob:goblin:drop#0");
+    expect([...next.lightSources.values()][0]!.id).toBe("room:next:light#0");
+    // all ids unique
+    const all = [...chest.contents.map((i) => i.id), goblin.inventory.items[0]!.id, [...next.lightSources.values()][0]!.id];
+    expect(new Set(all).size).toBe(all.length);
+  });
 });
 
 describe("formation authoring (.formation)", () => {
@@ -225,5 +346,21 @@ describe("formation authoring (.formation)", () => {
       .formation("missing");
 
     expect(() => builder.build()).toThrow(AuthoringError);
+  });
+});
+
+describe("multi-campaign id determinism", () => {
+  it("derives independent, non-interfering ids across campaigns in one process", () => {
+    const d1 = baseDesc({ mobs: [{ name: "goblin", stats: stats(), room: "next", drops: [] }] });
+    const d2 = baseDesc({ title: "Other", rooms: [{ name: "cell", description: "c" }], startRoom: "cell", exits: [] });
+    const a1 = assemble(d1, registry);
+    const a2 = assemble(d2, registry);           // second campaign built after the first
+    const a1again = assemble(d1, registry);      // rebuild the first, later still
+    expect(a1.rooms.get("next")!.occupants[0]!.id).toBe("mob:goblin");
+    expect(a2.campaign.id).toBe("campaign:Other");
+    expect(a2.rooms.get("cell")!.id).toBe("room:cell");
+    // First campaign's ids are identical no matter how many campaigns were built in between.
+    expect(a1again.rooms.get("start")!.id).toBe("room:start");
+    expect(a1again.rooms.get("next")!.occupants[0]!.id).toBe("mob:goblin");
   });
 });

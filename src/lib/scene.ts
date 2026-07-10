@@ -4,14 +4,16 @@ import { generateId, ProceduralViolation } from "./util";
 import { SERIALIZE } from "./serialization/symbols";
 import type { SceneSnapshot } from "./serialization/types";
 import type { HydrateContext } from "./serialization/context";
+import type { MechanicCue } from "./mechanics/mechanic.js";
 
 /**
  * Gate evaluated against a room and the scene's persisted state; the scene only
  * fires when all return `true`. State is read-only here — only the script mutates it.
  */
 type PreconditionFn<TState> = (r: IRoom, state: Readonly<TState>) => boolean;
-/** The scripted effect a scene runs against the room it fired in; may mutate the scene's persisted state. */
-type ScriptFn<TState> = (r: IRoom, state: TState) => void;
+/** The scripted effect a scene runs against the room it fired in; may mutate the
+ *  scene's persisted state, and returns the mechanic cues to emit (or nothing). */
+type ScriptFn<TState> = (r: IRoom, state: TState) => MechanicCue[] | void;
 /** Whether a scene triggers as a character enters or exits the room. */
 type TriggerPhase = "enter" | "exit";
 
@@ -52,7 +54,7 @@ export interface IScene {
    * Runs the scene's script if `phase` matches its trigger phase and every
    * precondition passes for `room`.
    */
-  playScene: (phase: TriggerPhase, room: IRoom) => void;
+  playScene: (phase: TriggerPhase, room: IRoom) => MechanicCue[];
   /** Returns a plain-data snapshot of this scene's state. See {@link SERIALIZE}. */
   [SERIALIZE](): SceneSnapshot;
 }
@@ -132,13 +134,14 @@ export class Scene<TState = Record<string, never>> implements IScene {
    * @param phase - The phase being played (`"enter"` or `"exit"`).
    * @param room - The room the triggering character is entering or exiting.
    */
-  playScene(phase: TriggerPhase, room: IRoom) {
+  playScene(phase: TriggerPhase, room: IRoom): MechanicCue[] {
     if (
       this.#triggerPhase === phase &&
       this.preconditions.every((fn) => fn(room, this.#state))
     ) {
-      this.#script(room, this.#state);
+      return this.#script(room, this.#state) ?? [];
     }
+    return [];
   }
 }
 

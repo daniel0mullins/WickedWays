@@ -3,13 +3,20 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "exports": { "./*": "./src/*/index.ts" },
-  "scripts": { "typecheck": "tsc --noEmit" },
+  "exports": {
+    "./*": "./src/*/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@fontsource/silkscreen": "^5.2.8",
     "@fontsource/vt323": "^5.2.7",
     "@wickedways/play-runtime": "workspace:*",
     "lit": "^3",
     "wickedways": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0"
   }
 }

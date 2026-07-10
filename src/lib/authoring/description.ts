@@ -87,6 +87,8 @@ export interface NpcDef {
   room?: string;
   /** Registry NPC-behavior key supplying this NPC's dialogue. */
   behavior: string;
+  /** Registry item keys for items the NPC starts holding (e.g. a key to hand over). */
+  holds?: string[];
 }
 
 /** Opts a roving encounter formation (by registry behavior key) into the campaign. */

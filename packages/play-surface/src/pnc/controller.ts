@@ -123,7 +123,9 @@ export function mountPointAndClick(
     inventory.keys = vm.inventory.keys;
     inventory.equippedNames = vm.inventory.equippedNames;
     inventory.slots = vm.inventory.slots;
-    audio.update(session.campaign);
+    // Drive the ambient drone from the viewmodel each turn (DTO boundary —
+    // no live engine object crosses the surface seam).
+    audio.update(vm);
     mapModel.observe(vm);
   };
 

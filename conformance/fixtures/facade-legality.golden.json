@@ -1,0 +1,4168 @@
+{
+  "seed": 262974951,
+  "startupCues": [],
+  "ops": [
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "open",
+        "targetId": "nope"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "take",
+        "targetId": "nope"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "drop",
+        "targetId": "nope"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "equip",
+        "targetId": "nope"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "use",
+        "targetId": "nope"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "unequip",
+        "targetId": "nope"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "attack",
+        "targetId": "nope"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "take",
+        "targetId": "loot:chest:item#1"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "drop",
+        "targetId": "loot:chest:item#1"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "attack",
+        "targetId": "mob:Wraith"
+      }
+    },
+    {
+      "kind": "submit",
+      "intent": {
+        "kind": "attack",
+        "targetId": "mob:Wraith"
+      }
+    }
+  ],
+  "steps": [
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "open",
+          "targetId": "nope"
+        }
+      },
+      "result": {
+        "cues": [],
+        "error": "There's nothing like that to open here."
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade Legality (conformance)",
+          "title": "Facade Legality (conformance)",
+          "maxRounds": 20,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Wraith"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 20,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 20,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "stats": {
+              "health": 1,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "modifier": 3
+          },
+          {
+            "kind": "item",
+            "id": "loot:chest:item#1",
+            "behaviorKey": "items/facade-locket",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#0",
+              "loot:chest:item#1"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Wraith",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "health": 1,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "opened": false,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Sword",
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "kind": "item",
+                "equippable": true,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              },
+              {
+                "id": "loot:chest:item#1",
+                "name": "Locket",
+                "aliases": [
+                  "locket"
+                ],
+                "kind": "item",
+                "equippable": false,
+                "usable": false,
+                "hasLore": false,
+                "droppable": false
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          },
+          {
+            "id": "loot:chest:item#0",
+            "name": "Sword",
+            "aliases": [
+              "sword",
+              "blade"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest:item#1",
+            "name": "Locket",
+            "aliases": [
+              "locket"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": false
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 0,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 20
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "take",
+          "targetId": "nope"
+        }
+      },
+      "result": {
+        "cues": [],
+        "error": "You don't see that here."
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade Legality (conformance)",
+          "title": "Facade Legality (conformance)",
+          "maxRounds": 20,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Wraith"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 20,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 20,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "stats": {
+              "health": 1,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "modifier": 3
+          },
+          {
+            "kind": "item",
+            "id": "loot:chest:item#1",
+            "behaviorKey": "items/facade-locket",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#0",
+              "loot:chest:item#1"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Wraith",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "health": 1,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "opened": false,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Sword",
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "kind": "item",
+                "equippable": true,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              },
+              {
+                "id": "loot:chest:item#1",
+                "name": "Locket",
+                "aliases": [
+                  "locket"
+                ],
+                "kind": "item",
+                "equippable": false,
+                "usable": false,
+                "hasLore": false,
+                "droppable": false
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          },
+          {
+            "id": "loot:chest:item#0",
+            "name": "Sword",
+            "aliases": [
+              "sword",
+              "blade"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest:item#1",
+            "name": "Locket",
+            "aliases": [
+              "locket"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": false
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 0,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 20
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "drop",
+          "targetId": "nope"
+        }
+      },
+      "result": {
+        "cues": [],
+        "error": "You aren't carrying that."
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade Legality (conformance)",
+          "title": "Facade Legality (conformance)",
+          "maxRounds": 20,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Wraith"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 20,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 20,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "stats": {
+              "health": 1,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "modifier": 3
+          },
+          {
+            "kind": "item",
+            "id": "loot:chest:item#1",
+            "behaviorKey": "items/facade-locket",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#0",
+              "loot:chest:item#1"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Wraith",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "health": 1,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "opened": false,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Sword",
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "kind": "item",
+                "equippable": true,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              },
+              {
+                "id": "loot:chest:item#1",
+                "name": "Locket",
+                "aliases": [
+                  "locket"
+                ],
+                "kind": "item",
+                "equippable": false,
+                "usable": false,
+                "hasLore": false,
+                "droppable": false
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          },
+          {
+            "id": "loot:chest:item#0",
+            "name": "Sword",
+            "aliases": [
+              "sword",
+              "blade"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest:item#1",
+            "name": "Locket",
+            "aliases": [
+              "locket"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": false
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 0,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 20
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "equip",
+          "targetId": "nope"
+        }
+      },
+      "result": {
+        "cues": [],
+        "error": "You aren't carrying that."
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade Legality (conformance)",
+          "title": "Facade Legality (conformance)",
+          "maxRounds": 20,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Wraith"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 20,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 20,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "stats": {
+              "health": 1,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "modifier": 3
+          },
+          {
+            "kind": "item",
+            "id": "loot:chest:item#1",
+            "behaviorKey": "items/facade-locket",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#0",
+              "loot:chest:item#1"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Wraith",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "health": 1,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "opened": false,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Sword",
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "kind": "item",
+                "equippable": true,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              },
+              {
+                "id": "loot:chest:item#1",
+                "name": "Locket",
+                "aliases": [
+                  "locket"
+                ],
+                "kind": "item",
+                "equippable": false,
+                "usable": false,
+                "hasLore": false,
+                "droppable": false
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          },
+          {
+            "id": "loot:chest:item#0",
+            "name": "Sword",
+            "aliases": [
+              "sword",
+              "blade"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest:item#1",
+            "name": "Locket",
+            "aliases": [
+              "locket"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": false
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 0,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 20
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "use",
+          "targetId": "nope"
+        }
+      },
+      "result": {
+        "cues": [],
+        "error": "You aren't carrying that."
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade Legality (conformance)",
+          "title": "Facade Legality (conformance)",
+          "maxRounds": 20,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Wraith"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 20,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 20,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "stats": {
+              "health": 1,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "modifier": 3
+          },
+          {
+            "kind": "item",
+            "id": "loot:chest:item#1",
+            "behaviorKey": "items/facade-locket",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#0",
+              "loot:chest:item#1"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Wraith",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "health": 1,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "opened": false,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Sword",
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "kind": "item",
+                "equippable": true,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              },
+              {
+                "id": "loot:chest:item#1",
+                "name": "Locket",
+                "aliases": [
+                  "locket"
+                ],
+                "kind": "item",
+                "equippable": false,
+                "usable": false,
+                "hasLore": false,
+                "droppable": false
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          },
+          {
+            "id": "loot:chest:item#0",
+            "name": "Sword",
+            "aliases": [
+              "sword",
+              "blade"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest:item#1",
+            "name": "Locket",
+            "aliases": [
+              "locket"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": false
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 0,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 20
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "unequip",
+          "targetId": "nope"
+        }
+      },
+      "result": {
+        "cues": [],
+        "error": "That isn't equipped."
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade Legality (conformance)",
+          "title": "Facade Legality (conformance)",
+          "maxRounds": 20,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Wraith"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 20,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 20,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "stats": {
+              "health": 1,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "modifier": 3
+          },
+          {
+            "kind": "item",
+            "id": "loot:chest:item#1",
+            "behaviorKey": "items/facade-locket",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#0",
+              "loot:chest:item#1"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Wraith",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "health": 1,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "opened": false,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Sword",
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "kind": "item",
+                "equippable": true,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              },
+              {
+                "id": "loot:chest:item#1",
+                "name": "Locket",
+                "aliases": [
+                  "locket"
+                ],
+                "kind": "item",
+                "equippable": false,
+                "usable": false,
+                "hasLore": false,
+                "droppable": false
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          },
+          {
+            "id": "loot:chest:item#0",
+            "name": "Sword",
+            "aliases": [
+              "sword",
+              "blade"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest:item#1",
+            "name": "Locket",
+            "aliases": [
+              "locket"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": false
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 0,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 20
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "attack",
+          "targetId": "nope"
+        }
+      },
+      "result": {
+        "cues": [],
+        "error": "There's nothing like that to attack here."
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade Legality (conformance)",
+          "title": "Facade Legality (conformance)",
+          "maxRounds": 20,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Wraith"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 20,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 20,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "stats": {
+              "health": 1,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "modifier": 3
+          },
+          {
+            "kind": "item",
+            "id": "loot:chest:item#1",
+            "behaviorKey": "items/facade-locket",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#0",
+              "loot:chest:item#1"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Wraith",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "health": 1,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "opened": false,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Sword",
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "kind": "item",
+                "equippable": true,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              },
+              {
+                "id": "loot:chest:item#1",
+                "name": "Locket",
+                "aliases": [
+                  "locket"
+                ],
+                "kind": "item",
+                "equippable": false,
+                "usable": false,
+                "hasLore": false,
+                "droppable": false
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          },
+          {
+            "id": "loot:chest:item#0",
+            "name": "Sword",
+            "aliases": [
+              "sword",
+              "blade"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest:item#1",
+            "name": "Locket",
+            "aliases": [
+              "locket"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": false
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 0,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 20
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "take",
+          "targetId": "loot:chest:item#1"
+        }
+      },
+      "result": {
+        "cues": [
+          {
+            "kind": "action",
+            "action": "pickUp",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            }
+          },
+          {
+            "kind": "action",
+            "action": "takeDamage",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            }
+          },
+          {
+            "kind": "action",
+            "action": "attack",
+            "actor": {
+              "id": "mob:Wraith",
+              "name": "Wraith"
+            }
+          }
+        ],
+        "mobAttacks": [
+          {
+            "name": "Wraith",
+            "stat": "health",
+            "amount": 0.3999999999999986
+          }
+        ]
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade Legality (conformance)",
+          "title": "Facade Legality (conformance)",
+          "maxRounds": 20,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Wraith"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 20,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 19.6,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "loot:chest:item#1"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "loot:chest:item#1",
+                    "name": "Locket"
+                  }
+                ],
+                "round": 0
+              },
+              {
+                "kind": "takeDamage",
+                "amount": 0.4,
+                "stat": "health",
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "stats": {
+              "health": 1,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "modifier": 3
+          },
+          {
+            "kind": "item",
+            "id": "loot:chest:item#1",
+            "behaviorKey": "items/facade-locket",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#0"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Wraith",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "health": 1,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "accessory:Locket",
+            "snapshot": {
+              "name": "Locket",
+              "type": "accessory"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "opened": true,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Sword",
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "kind": "item",
+                "equippable": true,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [
+            {
+              "id": "loot:chest:item#1",
+              "name": "Locket",
+              "aliases": [
+                "locket"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": false,
+              "droppable": false
+            }
+          ],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          },
+          {
+            "id": "loot:chest:item#0",
+            "name": "Sword",
+            "aliases": [
+              "sword",
+              "blade"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest:item#1",
+            "name": "Locket",
+            "aliases": [
+              "locket"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": false
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 1,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 19.6
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "drop",
+          "targetId": "loot:chest:item#1"
+        }
+      },
+      "result": {
+        "cues": [],
+        "error": "You can't bring yourself to part with the Locket."
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade Legality (conformance)",
+          "title": "Facade Legality (conformance)",
+          "maxRounds": 20,
+          "round": 1,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Wraith"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 20,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 19.6,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "loot:chest:item#1"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "loot:chest:item#1",
+                    "name": "Locket"
+                  }
+                ],
+                "round": 0
+              },
+              {
+                "kind": "takeDamage",
+                "amount": 0.4,
+                "stat": "health",
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "stats": {
+              "health": 1,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {},
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "modifier": 3
+          },
+          {
+            "kind": "item",
+            "id": "loot:chest:item#1",
+            "behaviorKey": "items/facade-locket",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#0"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Wraith",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "health": 1,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "accessory:Locket",
+            "snapshot": {
+              "name": "Locket",
+              "type": "accessory"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "opened": true,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Sword",
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "kind": "item",
+                "equippable": true,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [
+            {
+              "id": "loot:chest:item#1",
+              "name": "Locket",
+              "aliases": [
+                "locket"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": false,
+              "droppable": false
+            }
+          ],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 1,
+            "defeated": false
+          },
+          {
+            "id": "loot:chest:item#0",
+            "name": "Sword",
+            "aliases": [
+              "sword",
+              "blade"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest:item#1",
+            "name": "Locket",
+            "aliases": [
+              "locket"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": false
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 1,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 19.6
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "attack",
+          "targetId": "mob:Wraith"
+        }
+      },
+      "result": {
+        "cues": [
+          {
+            "kind": "action",
+            "action": "takeDamage",
+            "actor": {
+              "id": "mob:Wraith",
+              "name": "Wraith"
+            }
+          },
+          {
+            "kind": "action",
+            "action": "attack",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            }
+          }
+        ],
+        "mobAttacks": []
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade Legality (conformance)",
+          "title": "Facade Legality (conformance)",
+          "maxRounds": 20,
+          "round": 2,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Wraith"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 20,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 19.6,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "loot:chest:item#1"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "loot:chest:item#1",
+                    "name": "Locket"
+                  }
+                ],
+                "round": 0
+              },
+              {
+                "kind": "takeDamage",
+                "amount": 0.4,
+                "stat": "health",
+                "round": 0
+              },
+              {
+                "kind": "attack",
+                "target": {
+                  "id": "mob:Wraith",
+                  "name": "Wraith"
+                },
+                "round": 1
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "stats": {
+              "health": 0,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                },
+                "round": 0
+              },
+              {
+                "kind": "takeDamage",
+                "amount": 1.2000000000000002,
+                "stat": "health",
+                "round": 1
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "modifier": 3
+          },
+          {
+            "kind": "item",
+            "id": "loot:chest:item#1",
+            "behaviorKey": "items/facade-locket",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#0"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Wraith",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "health": 1,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "accessory:Locket",
+            "snapshot": {
+              "name": "Locket",
+              "type": "accessory"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 0,
+            "defeated": true
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "opened": true,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Sword",
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "kind": "item",
+                "equippable": true,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [
+            {
+              "id": "loot:chest:item#1",
+              "name": "Locket",
+              "aliases": [
+                "locket"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": false,
+              "droppable": false
+            }
+          ],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 0,
+            "defeated": true
+          },
+          {
+            "id": "loot:chest:item#0",
+            "name": "Sword",
+            "aliases": [
+              "sword",
+              "blade"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest:item#1",
+            "name": "Locket",
+            "aliases": [
+              "locket"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": false
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 2,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 19.6
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "op": {
+        "kind": "submit",
+        "intent": {
+          "kind": "attack",
+          "targetId": "mob:Wraith"
+        }
+      },
+      "result": {
+        "cues": [],
+        "error": "The Wraith is already dead."
+      },
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Facade Legality (conformance)",
+          "title": "Facade Legality (conformance)",
+          "maxRounds": 20,
+          "round": 2,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ada"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ada",
+          "materials": {},
+          "claims": [],
+          "encountered": [
+            "player:Ada:mob:Wraith"
+          ],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "delver",
+              "name": "Delver",
+              "baseStats": {
+                "health": 20,
+                "sanity": 8,
+                "energy": 8
+              }
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Hall"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Hall",
+            "name": "Hall",
+            "description": "A stone hall.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ada",
+            "name": "Ada",
+            "stats": {
+              "health": 19.6,
+              "sanity": 8,
+              "energy": 8
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 5,
+              "itemIds": [
+                "loot:chest:item#1"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "loot:chest:item#1",
+                    "name": "Locket"
+                  }
+                ],
+                "round": 0
+              },
+              {
+                "kind": "takeDamage",
+                "amount": 0.4,
+                "stat": "health",
+                "round": 0
+              },
+              {
+                "kind": "attack",
+                "target": {
+                  "id": "mob:Wraith",
+                  "name": "Wraith"
+                },
+                "round": 1
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "delver"
+          },
+          {
+            "kind": "mob",
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "stats": {
+              "health": 0,
+              "sanity": 4,
+              "energy": 4
+            },
+            "actionsPerRound": 2,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Hall",
+            "inventory": {
+              "slots": 2,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                },
+                "round": 0
+              },
+              {
+                "kind": "takeDamage",
+                "amount": 1.2000000000000002,
+                "stat": "health",
+                "round": 1
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "origin": "room",
+            "baseEscapeChance": 50,
+            "materialDrops": {},
+            "lightAverse": false,
+            "naturalAttack": {
+              "stat": "health",
+              "power": 1
+            }
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "modifier": 3
+          },
+          {
+            "kind": "item",
+            "id": "loot:chest:item#1",
+            "behaviorKey": "items/facade-locket",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#0"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "mob",
+            "key": "Wraith",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "health": 1,
+                "sanity": 4,
+                "energy": 4
+              }
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "room",
+            "key": "room:Hall",
+            "snapshot": {
+              "name": "Hall",
+              "description": "A stone hall."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "accessory:Locket",
+            "snapshot": {
+              "name": "Locket",
+              "type": "accessory"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ada",
+              "roomId": "room:Hall"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Hall",
+          "name": "Hall",
+          "description": "A stone hall.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 0,
+            "defeated": true
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old chest.",
+            "opened": true,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Sword",
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "kind": "item",
+                "equippable": true,
+                "usable": false,
+                "hasLore": false,
+                "droppable": true
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [
+            {
+              "id": "loot:chest:item#1",
+              "name": "Locket",
+              "aliases": [
+                "locket"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": false,
+              "droppable": false
+            }
+          ],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 5
+        },
+        "scope": [
+          {
+            "id": "mob:Wraith",
+            "name": "Wraith",
+            "aliases": [
+              "wraith"
+            ],
+            "kind": "occupant",
+            "health": 0,
+            "defeated": true
+          },
+          {
+            "id": "loot:chest:item#0",
+            "name": "Sword",
+            "aliases": [
+              "sword",
+              "blade"
+            ],
+            "kind": "item",
+            "equippable": true,
+            "usable": false,
+            "hasLore": false,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest:item#1",
+            "name": "Locket",
+            "aliases": [
+              "locket"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": false,
+            "droppable": false
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Hall",
+          "turn": 2,
+          "maxTurns": 20,
+          "sanity": 8,
+          "health": 19.6
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    }
+  ]
+}

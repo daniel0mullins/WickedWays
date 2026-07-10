@@ -5,12 +5,12 @@ import type { ICampaign } from "../campaign";
 import type { IMob } from "../character/mob";
 import type { IRoom } from "../room";
 import type { IDialogue } from "../character/non-player-character";
-import type { Mechanic, JsonObject } from "../mechanics/mechanic.js";
+import type { Mechanic, JsonObject, MechanicCue } from "../mechanics/mechanic.js";
 import type { ExitBehavior } from "../exit";
 
 export interface SceneBehavior {
   preconditions: ((room: IRoom, state: never) => boolean)[];
-  script: (room: IRoom, state: never) => void;
+  script: (room: IRoom, state: never) => MechanicCue[] | void;
 }
 export interface FormationBehavior {
   build: (campaign: ICampaign) => IMob[];
@@ -108,6 +108,15 @@ export class CampaignRegistry {
    */
   registerExit(key: string, behavior: ExitBehavior): void {
     this.#exits.set(key, behavior);
+  }
+
+  /**
+   * Keys of every registered item factory, in registration order. Read-only
+   * enumeration used by the play-runtime to export the WASM item catalog;
+   * registration stays write-only.
+   */
+  get itemKeys(): readonly string[] {
+    return [...this.#items.keys()];
   }
 
   scene(key: string): SceneBehavior {

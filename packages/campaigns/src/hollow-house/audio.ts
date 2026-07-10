@@ -1,6 +1,4 @@
-import { StatType } from "wickedways/lib/character/stats";
-import type { ICampaign } from "wickedways/lib/campaign";
-import type { AudioDirector, CampaignAudio } from "@wickedways/play-runtime";
+import type { AudioDirector, CampaignAudio, ViewModel } from "@wickedways/play-runtime";
 import { defaultDirector, defaultChiptunePack } from "@wickedways/play-runtime";
 import { sanityToTension } from "@wickedways/play-runtime";
 
@@ -10,8 +8,8 @@ export function createHollowHouseDirector(): AudioDirector {
   let baseline = 0; // high-water-mark sanity seen this session
   return {
     react: base.react,
-    tension: (c: ICampaign) => {
-      const sanity = c.party[0]?.effectiveStat(StatType.Sanity) ?? 0;
+    tension: (view: ViewModel) => {
+      const sanity = view.status.sanity;
       baseline = Math.max(baseline, sanity);
       return sanityToTension(sanity, baseline);
     },

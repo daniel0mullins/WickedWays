@@ -65,18 +65,40 @@ export function parse(input: string, vm: ViewModel): ParseResult {
   if (verb === "audio" || verb === "sound" || verb === "mute") return { kind: "meta", meta: "audio" };
   if (verb === "map") return { kind: "meta", meta: "map" };
 
-  // Zero-noun queries.
-  if (verb === "look" || verb === "l") return { kind: "query", query: "look" };
+  // Zero-noun queries. `look`/`l` fall through to the examine block below, which
+  // routes `look at <thing>` to examine and bare `look` back to the room query.
   if (verb === "inventory" || verb === "i" || verb === "inv") return { kind: "query", query: "inventory" };
   if (verb === "exits") return { kind: "query", query: "exits" };
   if (verb === "help" || verb === "?") return { kind: "query", query: "help" };
   if (verb === "wait" || verb === "z") return { kind: "intent", intent: { kind: "wait" } };
 
+  // `talk`/`speak`/`ask <npc>` — resolve the NPC against scope, with an optional
+  // quoted prompt: `talk to keeper "how do I get out"` → prompt: "how do I get out".
+  // The prompt is pulled from the RAW input (its case preserved) before the noun
+  // phrase is tokenised, so quote contents never leak into NPC name resolution.
+  if (verb === "talk" || verb === "speak" || verb === "ask") {
+    const { prompt, remainder } = extractQuotedPrompt(input);
+    const target = remainder
+      .trim()
+      .toLowerCase()
+      .split(/\s+/)
+      .slice(1) // drop the verb
+      .filter((t) => t.length > 0 && !STOP_WORDS.has(t))
+      .join(" ");
+    if (!target) return { kind: "error", message: `${verb} to whom?` };
+    return resolveThen(target, vm, (t) => ({
+      kind: "intent",
+      intent: prompt !== undefined ? { kind: "talk", npcId: t.id, prompt } : { kind: "talk", npcId: t.id },
+    }));
+  }
+
   const nounPhrase = tokens.slice(1).filter((t) => !STOP_WORDS.has(t)).join(" ");
 
-  // examine is special: resolve then return an examine result (no engine call).
-  // `read` is an alias — reading an item reveals its lore through the same path.
-  if (verb === "examine" || verb === "x" || verb === "look-at" || verb === "read") {
+  // examine resolves the noun then returns an examine result. The controller
+  // routes it to the engine per target kind (NPC → examine description, item →
+  // read lore); both are free. `read` and `look`/`look at` are aliases; bare
+  // `look` (no noun) is the room query.
+  if (verb === "examine" || verb === "x" || verb === "look-at" || verb === "read" || verb === "look" || verb === "l") {
     if (!nounPhrase) return { kind: "query", query: "look" };
     return resolveThen(nounPhrase, vm, (t) => ({ kind: "examine", target: t }));
   }
@@ -106,6 +128,18 @@ function resolve(phrase: string, scope: ScopeEntity[]): ScopeEntity[] {
     e.aliases.some((a) => a.includes(phrase) || phrase.includes(a)) || e.name.toLowerCase().includes(phrase),
   );
   return dedupe(partial);
+}
+
+// Pull the first double-quoted segment out of the raw input, returning its
+// trimmed contents (undefined when empty/absent) and the input with that segment
+// removed. Used by `talk` so a quoted prompt is captured verbatim (case intact)
+// and never confused with the NPC's name.
+function extractQuotedPrompt(input: string): { prompt?: string; remainder: string } {
+  const m = input.match(/"([^"]*)"/);
+  if (!m || m.index === undefined) return { remainder: input };
+  const prompt = m[1]!.trim();
+  const remainder = input.slice(0, m.index) + input.slice(m.index + m[0].length);
+  return { prompt: prompt.length > 0 ? prompt : undefined, remainder };
 }
 
 function dedupe(entities: ScopeEntity[]): ScopeEntity[] {

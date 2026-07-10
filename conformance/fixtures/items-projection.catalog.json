@@ -1,0 +1,101 @@
+{
+  "items": {
+    "items/iron-sword": {
+      "name": "Iron Sword",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 5,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 10,
+      "lore": "A well-worn blade, its edge still keen.",
+      "recipe": {
+        "metal": 2
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "items/silver-ring": {
+      "name": "Silver Ring",
+      "type": "accessory",
+      "stat": "sanity",
+      "modifier": 3,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "finger",
+      "recipe": {
+        "metal": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "items/healing-tonic": {
+      "name": "Healing Tonic",
+      "type": "consumable",
+      "stat": "health",
+      "modifier": 4,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": true
+      },
+      "recipe": {
+        "healing": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "items/old-coin": {
+      "name": "Old Coin",
+      "type": "consumable",
+      "stat": "health",
+      "modifier": 0,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    }
+  },
+  "aliases": {
+    "items/iron-sword": [
+      "sword",
+      "iron sword",
+      "blade"
+    ],
+    "items/silver-ring": [
+      "ring",
+      "silver ring",
+      "band"
+    ],
+    "items/healing-tonic": [
+      "tonic",
+      "healing tonic",
+      "vial"
+    ],
+    "items/old-coin": [
+      "coin",
+      "old coin"
+    ]
+  }
+}

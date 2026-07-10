@@ -1,0 +1,19 @@
+[package]
+name = "wickedways-wasm"
+version = "0.0.1"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# Compiles the first-party conformance mechanic op (`conformance:dread`) into the
+# core registry. Enabled by the conformance-gate wasm build (`pnpm run wasm:build`)
+# so `replay_commands` can resolve the op; purely additive (one extra op arm).
+conformance = ["wickedways-core/conformance"]
+
+[dependencies]
+wickedways-core = { path = "../wickedways-core", features = ["std", "ts"] }
+wasm-bindgen = "0.2"
+serde-wasm-bindgen = "0.6"
+serde_json = "1"

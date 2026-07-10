@@ -1,0 +1,784 @@
+{
+  "seed": 19975,
+  "commands": [
+    {
+      "kind": "startTurn"
+    },
+    {
+      "kind": "take",
+      "targetId": "loot:chest:item#0"
+    },
+    {
+      "kind": "read",
+      "targetId": "loot:chest:item#0"
+    }
+  ],
+  "steps": [
+    {
+      "command": {
+        "kind": "startTurn"
+      },
+      "cues": [],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Read Effects (conformance)",
+          "title": "Read Effects (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ida"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ida",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "reader",
+              "name": "Reader",
+              "baseStats": {
+                "health": 12,
+                "sanity": 7
+              },
+              "inventorySlots": 5
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Study"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Study",
+            "name": "Study",
+            "description": "A candle-lit study.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ida"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ida",
+            "name": "Ida",
+            "stats": {
+              "health": 12,
+              "sanity": 7,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "currentRoomId": "room:Study",
+            "inventory": {
+              "slots": 10,
+              "itemIds": [],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Study",
+                  "name": "Study"
+                },
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "reader"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/cursed-note",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old writing chest.",
+            "capacity": 3,
+            "contentIds": [
+              "loot:chest:item#0"
+            ]
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Study",
+            "snapshot": {
+              "name": "Study",
+              "description": "A candle-lit study."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ida",
+              "roomId": "room:Study"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Study",
+          "name": "Study",
+          "description": "A candle-lit study.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old writing chest.",
+            "opened": false,
+            "contents": [
+              {
+                "id": "loot:chest:item#0",
+                "name": "Cursed Note",
+                "aliases": [
+                  "cursed note",
+                  "note"
+                ],
+                "kind": "item",
+                "equippable": false,
+                "usable": false,
+                "hasLore": true,
+                "droppable": true
+              }
+            ]
+          }
+        ],
+        "inventory": {
+          "items": [],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 10
+        },
+        "scope": [
+          {
+            "id": "loot:chest:item#0",
+            "name": "Cursed Note",
+            "aliases": [
+              "cursed note",
+              "note"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": true,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old writing chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Study",
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 7,
+          "health": 12
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "take",
+        "targetId": "loot:chest:item#0"
+      },
+      "cues": [
+        {
+          "kind": "action",
+          "action": "pickUp",
+          "actor": {
+            "id": "player:Ida",
+            "name": "Ida"
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Read Effects (conformance)",
+          "title": "Read Effects (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ida"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ida",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "reader",
+              "name": "Reader",
+              "baseStats": {
+                "health": 12,
+                "sanity": 7
+              },
+              "inventorySlots": 5
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Study"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Study",
+            "name": "Study",
+            "description": "A candle-lit study.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ida"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ida",
+            "name": "Ida",
+            "stats": {
+              "health": 12,
+              "sanity": 7,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Study",
+            "inventory": {
+              "slots": 10,
+              "itemIds": [
+                "loot:chest:item#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Study",
+                  "name": "Study"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "loot:chest:item#0",
+                    "name": "Cursed Note"
+                  }
+                ],
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "reader"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/cursed-note",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old writing chest.",
+            "capacity": 3,
+            "contentIds": []
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Study",
+            "snapshot": {
+              "name": "Study",
+              "description": "A candle-lit study."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ida",
+              "roomId": "room:Study"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "consumable:Cursed Note",
+            "snapshot": {
+              "name": "Cursed Note",
+              "type": "consumable"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ida",
+              "roomId": "room:Study"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Study",
+          "name": "Study",
+          "description": "A candle-lit study.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old writing chest.",
+            "opened": true,
+            "contents": []
+          }
+        ],
+        "inventory": {
+          "items": [
+            {
+              "id": "loot:chest:item#0",
+              "name": "Cursed Note",
+              "aliases": [
+                "cursed note",
+                "note"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": true,
+              "droppable": true
+            }
+          ],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 10
+        },
+        "scope": [
+          {
+            "id": "loot:chest:item#0",
+            "name": "Cursed Note",
+            "aliases": [
+              "cursed note",
+              "note"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": true,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old writing chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Study",
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 7,
+          "health": 12
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    },
+    {
+      "command": {
+        "kind": "read",
+        "targetId": "loot:chest:item#0"
+      },
+      "cues": [
+        {
+          "kind": "mechanic",
+          "cue": {
+            "text": "The ink writhes."
+          }
+        }
+      ],
+      "snapshot": {
+        "schemaVersion": 6,
+        "campaign": {
+          "id": "campaign:Read Effects (conformance)",
+          "title": "Read Effects (conformance)",
+          "maxRounds": 10,
+          "round": 0,
+          "started": true,
+          "outcome": "ongoing",
+          "winConditions": [],
+          "loseConditions": [],
+          "activeCharacterIndex": 0,
+          "partyIds": [
+            "player:Ida"
+          ],
+          "actedThisRound": [],
+          "gmId": "player:Ida",
+          "materials": {},
+          "claims": [],
+          "encountered": [],
+          "knownRecipes": [],
+          "archetypes": [
+            {
+              "id": "reader",
+              "name": "Reader",
+              "baseStats": {
+                "health": 12,
+                "sanity": 7
+              },
+              "inventorySlots": 5
+            }
+          ],
+          "actionSounds": {},
+          "encounterTable": {
+            "baseChance": 0,
+            "visited": [
+              "room:Study"
+            ],
+            "formations": []
+          },
+          "chatPolicy": {
+            "enabled": true,
+            "whisper": true,
+            "edit": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "backfillWindow": 200
+          },
+          "avPolicy": {
+            "enabled": true,
+            "video": true,
+            "maxParticipants": 6
+          },
+          "mechanics": []
+        },
+        "rooms": [
+          {
+            "id": "room:Study",
+            "name": "Study",
+            "description": "A candle-lit study.",
+            "exits": {},
+            "dark": false,
+            "spawnModifier": 1,
+            "occupantIds": [
+              "player:Ida"
+            ],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "lightSourceIds": [],
+            "scenes": []
+          }
+        ],
+        "exits": [],
+        "characters": [
+          {
+            "kind": "player",
+            "id": "player:Ida",
+            "name": "Ida",
+            "stats": {
+              "health": 12,
+              "sanity": 5,
+              "energy": 10
+            },
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "currentRoomId": "room:Study",
+            "inventory": {
+              "slots": 10,
+              "itemIds": [
+                "loot:chest:item#0"
+              ],
+              "keyIds": []
+            },
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Study",
+                  "name": "Study"
+                },
+                "round": 0
+              },
+              {
+                "kind": "pickUp",
+                "items": [
+                  {
+                    "id": "loot:chest:item#0",
+                    "name": "Cursed Note"
+                  }
+                ],
+                "round": 0
+              }
+            ],
+            "archetypeImmunities": [],
+            "afflictions": {
+              "active": {},
+              "turnsActive": {
+                "panic": 0,
+                "fear": 0,
+                "confused": 0
+              },
+              "shakenOff": [],
+              "immunity": {}
+            },
+            "archetypeId": "reader"
+          }
+        ],
+        "items": [
+          {
+            "kind": "item",
+            "id": "loot:chest:item#0",
+            "behaviorKey": "items/cursed-note",
+            "modifier": 0
+          }
+        ],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old writing chest.",
+            "capacity": 3,
+            "contentIds": []
+          }
+        ],
+        "materialCaches": [],
+        "codex": [
+          {
+            "kind": "room",
+            "key": "room:Study",
+            "snapshot": {
+              "name": "Study",
+              "description": "A candle-lit study."
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ida",
+              "roomId": "room:Study"
+            }
+          },
+          {
+            "kind": "item",
+            "key": "consumable:Cursed Note",
+            "snapshot": {
+              "name": "Cursed Note",
+              "type": "consumable"
+            },
+            "firstSeen": {
+              "round": 0,
+              "characterId": "player:Ida",
+              "roomId": "room:Study"
+            }
+          }
+        ]
+      },
+      "view": {
+        "room": {
+          "id": "room:Study",
+          "name": "Study",
+          "description": "A candle-lit study.",
+          "isLit": true
+        },
+        "exits": [],
+        "lockedDoors": [],
+        "occupants": [],
+        "loot": [
+          {
+            "id": "loot:chest",
+            "description": "An old writing chest.",
+            "opened": true,
+            "contents": []
+          }
+        ],
+        "inventory": {
+          "items": [
+            {
+              "id": "loot:chest:item#0",
+              "name": "Cursed Note",
+              "aliases": [
+                "cursed note",
+                "note"
+              ],
+              "kind": "item",
+              "equippable": false,
+              "usable": false,
+              "hasLore": true,
+              "droppable": true
+            }
+          ],
+          "keys": [],
+          "equippedNames": [],
+          "slots": 10
+        },
+        "scope": [
+          {
+            "id": "loot:chest:item#0",
+            "name": "Cursed Note",
+            "aliases": [
+              "cursed note",
+              "note"
+            ],
+            "kind": "item",
+            "equippable": false,
+            "usable": false,
+            "hasLore": true,
+            "droppable": true
+          },
+          {
+            "id": "loot:chest",
+            "name": "An old writing chest.",
+            "aliases": [
+              "chest",
+              "box",
+              "drawer",
+              "container"
+            ],
+            "kind": "loot"
+          }
+        ],
+        "status": {
+          "locationName": "Study",
+          "turn": 0,
+          "maxTurns": 10,
+          "sanity": 5,
+          "health": 12
+        },
+        "outcome": "ongoing",
+        "finished": false
+      }
+    }
+  ]
+}

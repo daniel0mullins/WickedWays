@@ -71,4 +71,16 @@ describe("startSession", () => {
       }),
     ).toThrow(ProceduralViolation);
   });
+
+  it("assigns content-derived player ids distinct from a same-named mob", () => {
+    const reg = defineRegistry({ items: {} });
+    const builder = authorTemplate("T", reg)
+      .room("hall", { description: "a hall" })
+      .startRoom("hall")
+      .mob("Ada", { stats: { [StatType.Health]: 6, [StatType.Sanity]: 6, [StatType.Energy]: 6 }, room: "hall", drops: [] });
+    const campaign = startSession(builder, { players: [{ name: "Ada" }], gm: 0 });
+    // player id uses "player:" prefix; mob id uses "mob:" prefix — distinct by construction
+    expect(campaign.party[0]!.id).toBe("player:Ada");
+    expect(campaign.party[0]!.id).not.toBe("mob:Ada");
+  });
 });

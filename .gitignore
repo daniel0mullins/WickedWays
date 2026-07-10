@@ -16,3 +16,12 @@ test-results/
 playwright-report/
 # Superpowers scratch (brainstorm mockups, SDD ledgers)
 .superpowers/
+
+# Rust / WASM build artifacts
+/target
+/crates/**/target
+/crates/wickedways-wasm/pkg
+crates/wickedways-wasm/pkg-node/
+crates/wickedways-wasm/pkg-web/
+# ts-rs stray output from bare `cargo test` (no TS_RS_EXPORT_DIR set)
+/crates/wickedways-core/bindings/

@@ -1,0 +1,131 @@
+{
+  "items": {
+    "items/dagger": {
+      "name": "Iron Dagger",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 3,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 5,
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    }
+  },
+  "aliases": {},
+  "behaviors": {
+    "study-door": {
+      "family": "exit",
+      "script": {
+        "canPass": {
+          "kind": "bin",
+          "op": "or",
+          "left": {
+            "kind": "stateGet",
+            "field": "unlocked",
+            "default": false
+          },
+          "right": {
+            "kind": "hasKey",
+            "of": {
+              "kind": "actor"
+            },
+            "keyCode": "brass"
+          }
+        },
+        "runScript": [
+          {
+            "kind": "when",
+            "cond": {
+              "kind": "not",
+              "expr": {
+                "kind": "stateGet",
+                "field": "unlocked",
+                "default": false
+              }
+            },
+            "then": [
+              {
+                "kind": "setState",
+                "field": "unlocked",
+                "value": {
+                  "kind": "lit",
+                  "value": true
+                }
+              },
+              {
+                "kind": "pass",
+                "value": {
+                  "kind": "lit",
+                  "value": "The brass key turns; the study door swings open."
+                }
+              }
+            ]
+          }
+        ],
+        "failMessage": "The study door won't budge — it's locked."
+      }
+    },
+    "attic-door": {
+      "family": "exit",
+      "script": {
+        "canPass": {
+          "kind": "bin",
+          "op": "or",
+          "left": {
+            "kind": "stateGet",
+            "field": "unlocked",
+            "default": false
+          },
+          "right": {
+            "kind": "hasKey",
+            "of": {
+              "kind": "actor"
+            },
+            "keyCode": "iron"
+          }
+        },
+        "runScript": [
+          {
+            "kind": "when",
+            "cond": {
+              "kind": "not",
+              "expr": {
+                "kind": "stateGet",
+                "field": "unlocked",
+                "default": false
+              }
+            },
+            "then": [
+              {
+                "kind": "setState",
+                "field": "unlocked",
+                "value": {
+                  "kind": "lit",
+                  "value": true
+                }
+              },
+              {
+                "kind": "pass",
+                "value": {
+                  "kind": "lit",
+                  "value": "The iron key grinds in the lock; the attic stairs open above you."
+                }
+              }
+            ]
+          }
+        ],
+        "failMessage": "The attic door won't budge — it's locked."
+      }
+    }
+  }
+}

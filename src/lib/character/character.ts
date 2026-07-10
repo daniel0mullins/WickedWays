@@ -1,6 +1,6 @@
 import type { Brand } from "../brand";
 import { ICampaign } from "../campaign";
-import { ADD_LIGHT_SOURCE, CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, ItemAction, MaterialMap, PLACE, REMOVE_LIGHT_SOURCE, SET_DURABILITY, UNEQUIP } from "../inventory";
+import { ADD_LIGHT_SOURCE, CLAIM, CONSUME_VIA_USE, DEPOSIT_MATERIALS, EQUIP, GRANT_IMMUNITY, IItem, IItemHolder, Inventory, ItemAction, MaterialMap, PLACE, REMOVE_LIGHT_SOURCE, SET_DURABILITY, SET_NPC_STATE, SET_VISIBLE, UNEQUIP } from "../inventory";
 import {
   DEFAULT_EQUIPMENT_SLOTS,
   EquipmentSlot,
@@ -12,6 +12,7 @@ import { Status } from "../status";
 import { Afflictions, AfflictionConfig, DEFAULT_AFFLICTION_CONFIG } from "./afflictions";
 import { EMIT_CUE } from "../presentation";
 import type { AssetRef, Presentation } from "../presentation";
+import type { JsonValue, MechanicCue } from "../mechanics/mechanic.js";
 import { RECORD_ENCOUNTER } from "../codex";
 
 import { generateId, ProceduralViolation, typedEntries } from "../util";
@@ -24,18 +25,11 @@ import type { CharacterSnapshot } from "../serialization/types";
 import type { HydrateContext } from "../serialization/context";
 import { ADJUST_STAT, DISPATCH_TURN, DISPATCH_ACTION, TRANSFORM_DAMAGE, INVOKE_MECHANIC_ACTION } from "../mechanics/symbols";
 import type { IPlayerCharacter } from "./player-character";
+import { computeMitigatedDamage } from "./damage";
+export { LIGHT_VULNERABILITY } from "./damage";
 
 /** Unique identifier for a {@link Character}. */
 export type CharacterId = Brand<string, "CharacterId">;
-
-// Damage mitigation: a mitigating stat of MAX_STAT fully absorbs the hit, while
-// a mitigator of 0 doubles it. Each point of the mitigating stat removes
-// MITIGATION_PER_POINT of the incoming damage multiplier.
-const MAX_STAT = 10;
-const MITIGATION_PER_POINT = 0.2;
-
-/** Damage multiplier applied to a light-averse creature while its room is lit. */
-export const LIGHT_VULNERABILITY = 1.5;
 
 /**
  * Any callable, used purely as an identity key in the action-tracking maps.
@@ -92,6 +86,18 @@ export interface ICharacter extends IItemHolder {
   get presentation(): Presentation | undefined;
   /** The room the character currently occupies, or `null` if none. */
   get currentRoom(): IRoom | null;
+  /**
+   * Whether this character is present in the room's view/scope. Default `true`;
+   * a hidden NPC (one that "disappears") is `false`, reversibly. An invisible
+   * occupant is dropped from the view's `occupants`/`scope`.
+   */
+  get visible(): boolean;
+  /**
+   * Per-instance NPC dialogue state — the `once`-latch store the dialogue matcher
+   * reads/writes under `onceFired[key]`. Empty state is `null`; round-trips through
+   * the snapshot (churn-free, like {@link ICharacter.visible}).
+   */
+  get npcState(): JsonValue;
   /** True when the character has an equipped, non-broken light source in a hand slot. */
   get hasLight(): boolean;
   /** Whether this actor can act (attack/loot/harvest) in an unlit room. */
@@ -189,6 +195,10 @@ export interface ICharacter extends IItemHolder {
   [ADJUST_STAT]: (stat: StatType, delta: number) => void;
   /** Grants timed status immunity; engine-internal (item Use path only). */
   [GRANT_IMMUNITY]: (statuses: Status[], turns: number) => void;
+  /** Sets the `visible` flag (reversibly); engine-internal (SetVisible effect only). */
+  [SET_VISIBLE]: (visible: boolean) => void;
+  /** Overwrites the per-instance NPC dialogue state; engine-internal (dialogue matcher only). */
+  [SET_NPC_STATE]: (state: JsonValue) => void;
   /** Consumes an item for the Use path, gating suppressed; engine-internal. */
   [CONSUME_VIA_USE]: (item: IItem) => void;
 
@@ -225,6 +235,19 @@ export class Character implements ICharacter {
   // Private Properties
   #campaign: ICampaign;
   #currentRoom: IRoom | null = null;
+  /**
+   * Whether this character is present in the room's view/scope. Default `true`;
+   * a hidden NPC (one that "disappears") flips it to `false` (reversibly, via a
+   * later `SetVisible` effect). Restored from the snapshot; absent → `true`.
+   */
+  #visible = true;
+  /**
+   * Per-instance NPC dialogue state (the `once`-latch store under `onceFired`).
+   * `null` is the empty state; only a fired `once` latch makes it non-null.
+   * Restored from the snapshot; absent → `null`. Two NPCs sharing a behavior key
+   * hold INDEPENDENT latches because this lives on the per-instance character.
+   */
+  #npcState: JsonValue = null;
   /** Injected randomness for all of this character's rolls (escape, etc.). */
   protected readonly rng: () => number;
   #history: ActionHistoryEntry[] = [];
@@ -252,6 +275,23 @@ export class Character implements ICharacter {
 
   get currentRoom() {
     return this.#currentRoom;
+  }
+
+  /**
+   * Whether this character is present in the room's view/scope. Default `true`;
+   * a hidden NPC is `false`. An invisible occupant is dropped from the view's
+   * `occupants`/`scope`.
+   */
+  get visible(): boolean {
+    return this.#visible;
+  }
+
+  /**
+   * Per-instance NPC dialogue state (the `once`-latch store). `null` when empty.
+   * The dialogue matcher reads this to gate `once` effects.
+   */
+  get npcState(): JsonValue {
+    return this.#npcState;
   }
 
   /** Whether this actor can act (attack/loot/harvest) in an unlit room. Default false; light-averse mobs override. */
@@ -356,6 +396,23 @@ export class Character implements ICharacter {
   /** Grants timed status immunity. Engine-internal: only the item Use path calls it. */
   [GRANT_IMMUNITY](statuses: Status[], turns: number) {
     this.#afflictions.grantImmunity(statuses, turns);
+  }
+
+  /**
+   * Sets the `visible` flag (reversibly). Engine-internal: only the mechanics
+   * `SetVisible` effect calls it (an NPC that "disappears" flips it to `false`).
+   */
+  [SET_VISIBLE](visible: boolean) {
+    this.#visible = visible;
+  }
+
+  /**
+   * Overwrites the per-instance NPC dialogue state (the `once`-latch store).
+   * Engine-internal: only the dialogue matcher writes it, keeping the latch
+   * unforgeable — same discipline as {@link SET_VISIBLE}.
+   */
+  [SET_NPC_STATE](state: JsonValue) {
+    this.#npcState = state;
   }
 
   /**
@@ -945,13 +1002,13 @@ export class Character implements ICharacter {
         item.stat === attackStat,
     );
     const armorSum = armor.reduce((sum, piece) => sum + piece.modifier, 0);
-    const mitigatedStrength = Math.max(0, attackStrength - armorSum);
-
-    const mitigator = this.effectiveStat(MitigatorStatType[attackStat]);
-    const damageMultiplier = Math.max(0, MAX_STAT - mitigator) * MITIGATION_PER_POINT;
-    const lightMultiplier =
-      this.lightAverse && this.#currentRoom?.isLit ? LIGHT_VULNERABILITY : 1;
-    const finalAttackStrength = mitigatedStrength * damageMultiplier * lightMultiplier;
+    const finalAttackStrength = computeMitigatedDamage({
+      attackStrength,
+      armorSum,
+      mitigator: this.effectiveStat(MitigatorStatType[attackStat]),
+      lightAverse: this.lightAverse,
+      roomLit: this.#currentRoom?.isLit ?? false,
+    });
 
     const dealt = this.campaign[TRANSFORM_DAMAGE]({
       amount: finalAttackStrength,
@@ -990,17 +1047,20 @@ export class Character implements ICharacter {
 
   /**
    * Shared room-entry body for {@link Character.move} and the {@link PLACE} seam:
-   * exits any current room and enters `room`, firing exit/enter scenes. Does NOT
-   * emit a visibility cue — the enter-cue is party-facing and belongs to the
-   * gameplay navigation path only ({@link Character.move}), not the ungated
-   * placement seam ({@link PLACE}) used to seat resident/spawned mobs.
+   * exits any current room and enters `room`, firing exit/enter scenes (unless
+   * `fireScenes` is `false`). Does NOT emit a visibility cue — the enter-cue is
+   * party-facing and belongs to the gameplay navigation path only
+   * ({@link Character.move}), not the ungated placement seam ({@link PLACE}) used
+   * to seat resident/spawned mobs.
    */
-  #enterRoom(room: IRoom) {
+  #enterRoom(room: IRoom, fireScenes = true): MechanicCue[] {
+    const cues: MechanicCue[] = [];
     if (this.#currentRoom) {
-      this.#currentRoom.exitRoom(this);
+      cues.push(...this.#currentRoom.exitRoom(this, fireScenes));
     }
     this.#currentRoom = room;
-    room.enterRoom(this);
+    cues.push(...room.enterRoom(this, fireScenes));
+    return cues;
   }
 
   /** Emits a visibility cue if a dark room's lit state changed across a light action. */
@@ -1021,10 +1081,19 @@ export class Character implements ICharacter {
    * Records a `move` action.
    *
    * @param room - Destination room.
+   * @param fireScenes - When `false`, seats the character WITHOUT playing the
+   *   destination's enter-scenes (or the departed room's exit-scenes) — used for
+   *   the pristine-genesis boot placement, where the start-room enter-scenes are
+   *   deferred to {@link ICampaign.beginCampaign} so their state is un-fired in
+   *   genesis and their cues surface as startup cues. Everything else (history
+   *   entry, budget tick, visibility cue) is unchanged. Defaults to `true`.
    */
-  move(room: IRoom) {
+  move(room: IRoom, fireScenes = true) {
     if (!this.attemptAction(this.move, true)) return;
-    this.#enterRoom(room);
+    const sceneCues = this.#enterRoom(room, fireScenes);
+    for (const cue of sceneCues) {
+      this.campaign[EMIT_CUE]({ kind: "mechanic", cue });
+    }
     if (!room.isLit) {
       this.campaign[EMIT_CUE]({
         kind: "visibility",
@@ -1133,6 +1202,14 @@ export class Character implements ICharacter {
       archetypeImmunities: [...this.archetypeImmunities],
       afflictions: this.#afflictions[SERIALIZE](),
     } as CharacterSnapshot;
+    // Omit `visible` when true so pre-existing snapshots/goldens stay byte-stable
+    // (mirrors the Rust `skip_serializing_if = is_true`); only a hidden character
+    // emits the key.
+    if (!this.#visible) base.visible = false;
+    // Churn-free like `visible`: emit `npcState` only when non-null (mirrors the
+    // Rust `skip_serializing_if = Value::is_null`); only an NPC that fired a
+    // `once` dialogue effect carries state, so pre-existing goldens stay byte-stable.
+    if (this.#npcState !== null) base.npcState = this.#npcState;
     this.serializeExtra(base);
     return base;
   }
@@ -1159,6 +1236,8 @@ export class Character implements ICharacter {
     this.actionsThisRound = data.actionsThisRound;
     this.archetypeImmunities = [...data.archetypeImmunities];
     this.#currentRoom = data.currentRoomId ? ctx.room(data.currentRoomId) : null;
+    this.#visible = data.visible ?? true; // absent (pre-existing snapshots) → visible
+    this.#npcState = data.npcState ?? null; // absent → empty (null) dialogue state
     this.#inventory.slots = data.inventory.slots;
     this.#inventory.items.length = 0;
     for (const id of data.inventory.itemIds) {

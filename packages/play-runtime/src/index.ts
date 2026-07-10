@@ -1,9 +1,9 @@
 export { GameSession } from "./session.js";
 export type { SessionOptions, ExecuteResult, MobAttack } from "./session.js";
 export { bootLauncher, resolveCampaign } from "./launcher.js";
+export { initEngine } from "#engine";
 export { isTimeAdvancing } from "./intent.js";
 export type { Intent } from "./intent.js";
-export { view } from "./viewmodel.js";
 export type { ViewModel, ScopeEntity, ExitView, LockedDoorView, LootView } from "./viewmodel.js";
 export { LocalStorageSaveStore } from "./savestore.js";
 export type { SaveStore, SaveSlot, SurfaceState } from "./savestore.js";

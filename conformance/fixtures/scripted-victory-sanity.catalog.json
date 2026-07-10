@@ -1,0 +1,70 @@
+{
+  "items": {},
+  "aliases": {},
+  "behaviors": {
+    "dread": {
+      "family": "mechanic",
+      "script": {
+        "init": {},
+        "hooks": {
+          "onTurnStart": [
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "not",
+                "expr": {
+                  "kind": "hasEquipped",
+                  "of": {
+                    "kind": "actor"
+                  },
+                  "itemKey": "lantern"
+                }
+              }
+            },
+            {
+              "kind": "emit",
+              "effect": {
+                "kind": "adjustStat",
+                "target": {
+                  "kind": "actor"
+                },
+                "stat": "sanity",
+                "delta": {
+                  "kind": "lit",
+                  "value": -1
+                }
+              }
+            }
+          ]
+        },
+        "actions": {}
+      }
+    },
+    "sanity-zero": {
+      "family": "victory",
+      "script": {
+        "test": {
+          "kind": "some",
+          "list": {
+            "kind": "party"
+          },
+          "pred": {
+            "kind": "bin",
+            "op": "lte",
+            "left": {
+              "kind": "get",
+              "of": {
+                "kind": "element"
+              },
+              "field": "sanity"
+            },
+            "right": {
+              "kind": "lit",
+              "value": 0
+            }
+          }
+        }
+      }
+    }
+  }
+}

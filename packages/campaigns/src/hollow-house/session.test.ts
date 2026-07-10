@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { GameSession, LocalStorageSaveStore } from "@wickedways/play-runtime";
-import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES } from "./index.js";
+import { hauntedHouseTemplate, buildHauntedHouseRegistry, ALIASES, hollowHouseFormations } from "./index.js";
+import { hollowHouseBehaviors } from "./scripted.js";
 import { Rooms, Archetypes } from "./ids.js";
 import { Directions } from "wickedways/lib/room";
 
@@ -22,7 +23,12 @@ function newSession() {
     archetype: Archetypes.Heir,
     saveStore: new LocalStorageSaveStore(new MemStorage() as unknown as Storage),
     now: () => 1234,
-    rng: () => 0.5,
+    behaviors: hollowHouseBehaviors(),
+    // Thread data-driven formations exactly as bootLauncher does; the HH
+    // encounter table references rat-single/rat-pair, so validate_mechanics
+    // rejects the boot ("Formation 'rat-single' is not registered.") without them.
+    formations: hollowHouseFormations(),
+    seed: 0x5e551,
   });
 }
 
@@ -92,6 +98,10 @@ describe("GameSession", () => {
     expect(result.cues.some((c) => c.kind === "mechanic" && "cue" in c && (c.cue.text ?? "").includes("won't budge"))).toBe(true);
   });
 
+  // NOTE (Rust-core cutover): the following cases fell the Wraith in the DARK
+  // Nursery, lit by the equipped Brass Lantern. The Rust core's is_lit
+  // (crates/wickedways-core/src/world/movement.rs) now folds in occupant-carried
+  // light, so combat there succeeds and these play through the Authority.
   it("go into a locked door with the key opens it and moves through", () => {
     const s = newSession();
     // Arm with poker + lantern (lantern needed for dark Nursery), fell the Wraith for brass key
