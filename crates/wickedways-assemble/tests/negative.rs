@@ -2,7 +2,7 @@
 //! The gate proves parity on campaigns that WORK; these prove the validation paths.
 
 use serde_json::json;
-use wickedways_assemble::{assemble, description::CampaignDescription, error::Problem, Seat};
+use wickedways_assemble::{assemble, description::CampaignDescription, error::Problem};
 use wickedways_core::world::descriptor::Catalog;
 
 fn desc_from(v: serde_json::Value) -> CampaignDescription {

@@ -30,7 +30,7 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
     let mut problems = Vec::new();
 
     // ---- duplicate names (assembler.ts:42-55) ----
-    let mut dup = |kind: &'static str, names: Vec<&str>, problems: &mut Vec<Problem>| {
+    let dup = |kind: &'static str, names: Vec<&str>, problems: &mut Vec<Problem>| {
         let mut seen = BTreeSet::new();
         for n in names {
             if !seen.insert(n) {
@@ -45,7 +45,7 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
     dup("npc", desc.npcs.iter().map(|n| n.name.as_str()).collect(), &mut problems);
 
     let room_names: BTreeSet<&str> = desc.rooms.iter().map(|r| r.name.as_str()).collect();
-    let mut require_room = |ctx: String, name: &str, problems: &mut Vec<Problem>| {
+    let require_room = |ctx: String, name: &str, problems: &mut Vec<Problem>| {
         if !room_names.contains(name) {
             problems.push(Problem::UndefinedRoom { ctx, room: name.to_owned() });
         }
@@ -70,7 +70,7 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
     for s in &desc.scenes { require_room(format!("scene '{}'", s.key), &s.room, &mut problems); }
 
     // ---- item keys (assembler.ts:75-93) ----
-    let mut require_item = |ctx: String, k: &str, problems: &mut Vec<Problem>| {
+    let require_item = |ctx: String, k: &str, problems: &mut Vec<Problem>| {
         if !catalog.items.contains_key(k) {
             problems.push(Problem::UnregisteredItem { ctx, key: k.to_owned() });
         }
