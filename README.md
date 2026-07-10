@@ -2088,8 +2088,8 @@ descriptions) are therefore constrained to ASCII.
 a deliberate divergence from TS: `assembler.ts` returns a **player-less** campaign — seating
 lived downstream in `oracle-session.ts:79-98`. The Rust crate folds seating in so `assemble()`
 produces a genesis directly. The party may be empty (a pristine, unseated snapshot) or hold
-any number of seats; the **first seat becomes the GM** (`gmId`), the rest fill `partyIds`, and
-each PC is placed in `startRoom`. Player ids are `player:{name}`, minted here rather than by
+any number of seats; the **first seat becomes the GM** (`gmId`), all seats — GM included — fill
+`partyIds` in order, and each PC is placed in `startRoom`. Player ids are `player:{name}`, minted here rather than by
 the TS `assemble()`.
 
 **The gate, and why only pre-begin goldens are oracles.** `cargo test -p wickedways-assemble`
