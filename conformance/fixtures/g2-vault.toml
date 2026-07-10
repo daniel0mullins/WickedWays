@@ -1,0 +1,34 @@
+title = "Vault"
+startRoom = "Hall"
+
+[[rooms]]
+name = "Hall"
+description = "A cold stone hall."
+[[rooms]]
+name = "Vault"
+description = "The vault beyond."
+
+[[exits]]
+from = "Hall"
+to = "Vault"
+direction = "north"
+behavior = "vault-door"          # references [behaviors.exit.vault-door]
+
+[behaviors.exit.vault-door]
+canPass     = "hasKey(actor, 'vault')"
+failMessage = "The vault door is locked."
+passMessage = "The lock yields."
+
+[[items]]
+key = "vault-key"
+name = "Vault Key"
+keyCode = "vault"
+
+[[loot]]
+name = "shelf"
+room = "Hall"
+items = ["vault-key"]
+
+[victory.win.reached-vault]
+test = "party[0].room.name == 'Vault'"
+narration = "You reached the vault."

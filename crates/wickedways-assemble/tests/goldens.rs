@@ -181,6 +181,18 @@ fn two_pc_genesis_golden() {
     gate("two-pc", "two-pc.genesis.json", Some("two-pc"), &party);
 }
 
+/// The G2 MVP author's canonical `Vault` campaign, seated with a single PC that
+/// declares NO archetype (`Seat { archetype: None }` — the MVP TOML surface has no
+/// archetype concept, so `player:Ada`'s `archetypeId` is `null` in the genesis).
+/// Gates the assembler over the G2 oracle: a keyed door (`hasKey(actor, 'vault')`),
+/// an authored key item placed inside a loot container (`shelf` holds `vault-key`),
+/// and a `party[0].room.name == 'Vault'` victory.
+#[test]
+fn g2_vault_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-vault", "g2-vault.genesis.json", Some("g2-vault"), &party);
+}
+
 #[test]
 fn hollow_house_pristine() {
     gate("hollow-house", "hollow-house.snapshot.json", Some("hollow-house"), &[]);

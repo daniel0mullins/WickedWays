@@ -49,6 +49,7 @@ export default defineConfig({
       "conformance/fixtures/npc-dialogue.gen.test.ts",
       "conformance/fixtures/caretaker.gen.test.ts",
       "conformance/fixtures/two-pc.gen.test.ts",
+      "conformance/fixtures/g2-vault.gen.test.ts",
       "conformance/fixtures/npc-matcher.test.ts",
     ],
     environment: "node",

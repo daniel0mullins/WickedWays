@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "campaign:Vault",
+    "title": "Vault",
+    "maxRounds": 20,
+    "round": 0,
+    "started": false,
+    "outcome": "ongoing",
+    "winConditions": [
+      {
+        "key": "reached-vault",
+        "narration": {
+          "text": "You reached the vault."
+        }
+      }
+    ],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "player:Ada"
+    ],
+    "actedThisRound": [],
+    "gmId": "player:Ada",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 0,
+      "visited": [
+        "room:Hall"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "room:Hall",
+      "name": "Hall",
+      "description": "A cold stone hall.",
+      "exits": {
+        "north": "exit:Hall|Vault"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "player:Ada"
+      ],
+      "lootIds": [
+        "loot:shelf"
+      ],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "room:Vault",
+      "name": "Vault",
+      "description": "The vault beyond.",
+      "exits": {
+        "south": "exit:Hall|Vault"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [
+    {
+      "id": "exit:Hall|Vault",
+      "endpointIds": [
+        "room:Hall",
+        "room:Vault"
+      ],
+      "behaviorKey": "vault-door",
+      "state": {
+        "unlocked": false
+      }
+    }
+  ],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "player:Ada",
+      "name": "Ada",
+      "stats": {
+        "health": 10,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "room:Hall",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Hall",
+            "name": "Hall"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      }
+    }
+  ],
+  "items": [
+    {
+      "kind": "key",
+      "id": "loot:shelf:item#0",
+      "name": "Vault Key",
+      "keyCode": "vault",
+      "consumeOnUse": false
+    }
+  ],
+  "loot": [
+    {
+      "id": "loot:shelf",
+      "description": "shelf",
+      "capacity": 3,
+      "contentIds": [
+        "loot:shelf:item#0"
+      ]
+    }
+  ],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "room:Hall",
+      "snapshot": {
+        "name": "Hall",
+        "description": "A cold stone hall."
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
+      }
+    }
+  ]
+}
