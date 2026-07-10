@@ -1,0 +1,13 @@
+[package]
+name = "wickedways-author"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+wickedways-core = { path = "../wickedways-core", features = ["std"] }
+wickedways-assemble = { path = "../wickedways-assemble" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# NOTE: rand/uuid are deliberately absent — ids are derived by assemble().

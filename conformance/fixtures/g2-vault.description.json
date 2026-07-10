@@ -1,0 +1,50 @@
+{
+  "title": "Vault",
+  "opts": {},
+  "archetypes": [],
+  "rooms": [
+    {
+      "name": "Hall",
+      "description": "A cold stone hall."
+    },
+    {
+      "name": "Vault",
+      "description": "The vault beyond."
+    }
+  ],
+  "startRoom": "Hall",
+  "exits": [
+    {
+      "from": "Hall",
+      "direction": "north",
+      "to": "Vault",
+      "behaviorKey": "vault-door"
+    }
+  ],
+  "mobs": [],
+  "loot": [
+    {
+      "name": "shelf",
+      "room": "Hall",
+      "items": [
+        "vault-key"
+      ]
+    }
+  ],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [
+    {
+      "key": "reached-vault",
+      "narration": {
+        "text": "You reached the vault."
+      }
+    }
+  ],
+  "loseConditions": [],
+  "mechanics": []
+}

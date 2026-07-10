@@ -2124,3 +2124,83 @@ correctly" — so only the pre-begin artifacts are used as assembler oracles.
 `(description, catalog, party)` inputs `assemble()` already takes. The gate is pure `cargo test`
 (no wasm-pack, no browser, no vitest), so it runs in the fast CI job; the convenience alias is
 `pnpm run checks:assemble`.
+
+#### The Rust campaign author (G2 MVP)
+
+`crates/wickedways-author` sits one layer above the G1 assembler: it turns a friendly,
+hand-written **TOML** campaign into the `description.json` + `catalog.json` pair the assembler
+consumes. The public entry point is one function —
+
+```
+compile(toml_src: &str) -> Result<CompiledCampaign, CompileError>
+//                              ^ { description, catalog }
+```
+
+— and the `wwauthor` bin wraps it: `wwauthor <campaign.toml>` reads the TOML, compiles it, and
+writes `<stem>.description.json` + `<stem>.catalog.json` (`serde_json::to_string_pretty` +
+trailing newline) beside the input. On any `CompileError` it prints the `Display` message to
+stderr and exits non-zero; author input never panics (`compile` is the modding trust boundary).
+
+**The TOML surface.** Rooms, exits, items, loot containers, and a victory condition are declared
+as tables/arrays; behaviors are named tables the exits/victory reference by key:
+
+```toml
+title = "Vault"
+startRoom = "Hall"
+
+[[rooms]]
+name = "Hall"
+description = "A cold stone hall."
+
+[[exits]]
+from = "Hall"
+to = "Vault"
+direction = "north"
+behavior = "vault-door"          # -> [behaviors.exit.vault-door]
+
+[behaviors.exit.vault-door]
+canPass     = "hasKey(actor, 'vault')"
+failMessage = "The vault door is locked."
+
+[victory.win.reached-vault]
+test = "party[0].room.name == 'Vault'"
+narration = "You reached the vault."
+```
+
+**The infix expression language.** The string values of `canPass`/`test` (and similar) are not
+opaque — they are a single-line **infix expression language** that Pratt-parses into the closed
+`wickedways_core::script::ast::Expr` AST the runtime already evaluates. It has the four read-model
+subjects (`actor`, `party`, `round`, `maxRounds`), literals, `.field` access, `[i]` subscripting,
+the three typed calls (`hasKey`/`hasItem`/`hasEquipped`, each 2-arg with a string-literal key),
+comparison/equality/boolean operators, unary `!`, and a ternary — precedence loosest→tightest:
+`?:` < `||` < `&&` < equality < comparison < additive < multiplicative < unary < postfix. So
+`party[0].room.name == 'Vault'` lowers to an `eq` of a `get`/`get`/`index` chain against a string
+literal. It is panic-free: every failure is a spanned `CompileError`
+(`TomlParse`/`ExprParse`/`UnknownReference`/`UnresolvedKey`).
+
+**The gate.** Like the assembler, the author is gated **byte-for-byte** against a committed
+oracle — the `g2-vault` fixture, whose `description.json`/`catalog.json` are emitted by a
+TypeScript twin (`canonical-json.ts` canonicalization) — via `cargo test -p wickedways-author`
+(pure Rust, fast CI job; convenience alias `pnpm run checks:author`). The gate compares
+canonicalized JSON values (whole-float numbers collapsed to ints, object keys sorted), so the
+bin's raw pretty output — where `Value::Number` emits `0.0` and catalog keys serialize in
+`BTreeMap` order — matches the oracle under that comparison. **The gate is the authority:** when
+`compile()` and the fixture disagree, the compiler is wrong until proven otherwise — fix
+`lower.rs`/the parser, never the fixture.
+
+**MVP scope, and forward pointers.** This is a deliberately thin first slice: the two behavior
+families it lowers are **exit** (`canPass` + fail/pass messages) and **victory** (a `test`
+expression + narration, which produces *two* artifacts — a `winConditions` entry in the
+description AND a `BehaviorScript::Victory { test }` in the catalog), and behavior bodies are
+**expressions only**. Two deliberate divergences from the design spec: the compiler is permissive
+(no compile-time `TypeError` — the `Expr` AST is total and the TS builders type-check nothing, so
+mapping must stay permissive to byte-match), and subscript always lowers to `Index` (never
+`First`). Later G2 slices add: **statements/effects** (imperative behavior bodies, not just
+expressions), the **other behavior families** (mob/npc/scene/etc.), **npx/WASM packaging** of the
+CLI, and **runtime-load** of a compiled campaign. None of those change `compile()`'s signature.
+
+**Engine change this milestone made.** Authoring a key item into a loot container's initial
+contents was previously rejected by the `Loot` constructor guard; that guard was **relaxed** so
+campaign authors can seed a key in a container (as `g2-vault` does — `vault-key` in the `shelf`).
+The runtime add-to-loot guards (`Loot.receiveItem` / player mid-game stashing) are **unchanged** —
+a player stashing a key during play is a distinct action still governed by those guards.

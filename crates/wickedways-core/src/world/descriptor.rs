@@ -120,15 +120,21 @@ pub struct Catalog {
     pub items: BTreeMap<String, ItemDescriptor>,
     pub aliases: BTreeMap<String, Vec<String>>,
     /// Campaign-authored scripted behaviors, keyed by behavior key
-    /// (mechanic key / exit behaviorKey / victory condition key).
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    /// (mechanic key / exit behaviorKey / victory condition key). Always emitted
+    /// (even when empty), byte-faithful to the TS `catalogFromRegistry` oracle,
+    /// which always writes this key; `default` keeps older keyless fixtures
+    /// deserializable.
+    #[serde(default)]
     pub behaviors: BTreeMap<String, crate::script::ast::BehaviorScript>,
     /// Campaign-authored formation descriptors, keyed by encounter `behaviorKey`.
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    /// Always emitted (even when empty) to match the TS oracle; `default` keeps
+    /// older keyless fixtures deserializable.
+    #[serde(default)]
     pub formations: BTreeMap<String, crate::world::formation_descriptor::FormationDescriptor>,
-    /// Campaign-authored crafting recipe metadata, keyed by recipe key. Absent
-    /// from catalogs without recipes (empty map is skipped on serialize).
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    /// Campaign-authored crafting recipe metadata, keyed by recipe key. Always
+    /// emitted (even when empty) to match the TS oracle; `default` keeps older
+    /// keyless fixtures deserializable.
+    #[serde(default)]
     pub recipes: BTreeMap<String, RecipeMeta>,
 }
 
@@ -171,9 +177,10 @@ mod tests {
             "items": {}, "aliases": {}
         })).unwrap();
         assert!(cat.behaviors.is_empty());
-        // empty behaviors are omitted on serialize (fixture-catalog stability)
+        // empty behaviors are still emitted as {} on serialize, byte-faithful to
+        // the TS `catalogFromRegistry` oracle (which always writes the key).
         let out = serde_json::to_value(&cat).unwrap();
-        assert!(out.get("behaviors").is_none());
+        assert_eq!(out.get("behaviors"), Some(&serde_json::json!({})));
     }
 
     #[test]
@@ -203,9 +210,10 @@ mod tests {
         }))
         .unwrap();
         assert!(cat.formations.is_empty());
-        // empty formations are omitted on serialize (fixture-catalog stability)
+        // empty formations are still emitted as {} on serialize, byte-faithful to
+        // the TS `catalogFromRegistry` oracle (which always writes the key).
         let out = serde_json::to_value(&cat).unwrap();
-        assert!(out.get("formations").is_none());
+        assert_eq!(out.get("formations"), Some(&serde_json::json!({})));
     }
 
     #[test]
@@ -238,9 +246,10 @@ mod tests {
         }))
         .unwrap();
         assert!(cat.recipes.is_empty());
-        // empty recipes are omitted on serialize (fixture-catalog stability)
+        // empty recipes are still emitted as {} on serialize, byte-faithful to
+        // the TS `catalogFromRegistry` oracle (which always writes the key).
         let out = serde_json::to_value(&cat).unwrap();
-        assert!(out.get("recipes").is_none());
+        assert_eq!(out.get("recipes"), Some(&serde_json::json!({})));
     }
 
     #[test]

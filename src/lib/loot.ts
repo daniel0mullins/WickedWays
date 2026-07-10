@@ -78,13 +78,9 @@ export class Loot implements ILoot {
 
   /**
    * @param opts - See {@link LootOptions}.
-   * @throws {@link ProceduralViolation} if any initial item is a key.
    */
   constructor(opts: LootOptions) {
     const { description, contents, presentation } = opts;
-    if (contents.some((item) => item.type === "key")) {
-      throw new ProceduralViolation("Keys cannot be stored in a loot container.");
-    }
     this.id = generateId<LootId>();
     this.description = description;
     this.contents = contents;
