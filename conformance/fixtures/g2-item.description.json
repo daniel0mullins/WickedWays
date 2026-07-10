@@ -1,0 +1,24 @@
+{
+  "title": "Item",
+  "opts": {},
+  "archetypes": [],
+  "rooms": [
+    {
+      "name": "Chamber",
+      "description": "A shuttered apothecary's chamber."
+    }
+  ],
+  "startRoom": "Chamber",
+  "exits": [],
+  "mobs": [],
+  "loot": [],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

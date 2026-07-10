@@ -1,0 +1,48 @@
+{
+  "items": {
+    "laudanum": {
+      "name": "Vial of Laudanum",
+      "type": "consumable",
+      "stat": "sanity",
+      "modifier": 6,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": true
+      },
+      "recipe": {
+        "healing": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    }
+  },
+  "aliases": {},
+  "behaviors": {
+    "laudanum": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "actor"
+              },
+              "stat": "sanity",
+              "delta": {
+                "kind": "lit",
+                "value": 6
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "formations": {},
+  "recipes": {}
+}

@@ -1,0 +1,38 @@
+# g2-item — the TOML twin of the g2-item oracle (g2-item.gen.test.ts).
+#
+# Authored in the G2 item surface: a usable consumable `[[items]]` descriptor plus
+# a `[behaviors.item.<key>]` `onUse` body that (Task 3) compile to the committed
+# g2-item.{description,catalog}.json byte-for-byte. The item and its behavior SHARE
+# the key `laudanum` (the engine resolves an item's onUse via
+# `catalog.behaviors[item_key]`; `usable = true` enables it).
+#
+# The onUse body stays inside the slice's subset: a single `emit adjustStat`
+# (positive delta +6), no other effect, no onRead.
+#
+# RECIPE = AUTHOR-DATA: `recipe = { healing = 1 }` is the laudanum factory's map,
+# distinct from the key default `{ item = 1 }`. Consumables vary in recipe, so the
+# surface carries it and `lower_item` reads it (it is NOT factory-derived per kind).
+#
+# The item is declared but NOT placed (no [[loot]]) — it need not be reachable at
+# genesis; the static gate compares description + catalog + the pre-begin genesis.
+# ASCII only.
+
+title = "Item"
+startRoom = "Chamber"
+
+[[rooms]]
+name = "Chamber"
+description = "A shuttered apothecary's chamber."
+
+[[items]]
+key = "laudanum"
+name = "Vial of Laudanum"
+type = "consumable"
+stat = "sanity"
+modifier = 6
+usable = true
+destroyable = true
+recipe = { healing = 1 }
+
+[behaviors.item.laudanum]
+onUse = "emit adjustStat(actor, sanity, 6)"

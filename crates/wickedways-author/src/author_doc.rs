@@ -37,12 +37,22 @@ pub struct ExitEntry {
     #[serde(default)] pub one_way: Option<bool>,
 }
 
+/// A `[[items]]` entry. A `keyCode` entry lowers to a key `ItemDescriptor`
+/// (unchanged from the MVP); a `type = "consumable"` entry carries the consumable
+/// descriptor fields below (`stat`/`modifier`/`usable`/`destroyable` + the inert
+/// `recipe` crafting map — author-data, since consumables vary in recipe).
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ItemEntry {
     pub key: String,
     pub name: String,
     #[serde(default)] pub key_code: Option<String>,
+    #[serde(default, rename = "type")] pub type_: Option<String>,
+    #[serde(default)] pub stat: Option<String>,
+    #[serde(default)] pub modifier: Option<i64>,
+    #[serde(default)] pub usable: Option<bool>,
+    #[serde(default)] pub destroyable: Option<bool>,
+    #[serde(default)] pub recipe: Option<toml::Value>,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
@@ -68,6 +78,18 @@ pub struct SceneEntry {
 pub struct Behaviors {
     #[serde(default)] pub exit: BTreeMap<String, ExitBehaviorEntry>,
     #[serde(default)] pub scene: BTreeMap<String, SceneBehaviorEntry>,
+    #[serde(default)] pub item: BTreeMap<String, ItemBehaviorEntry>,
+}
+
+/// A `[behaviors.item.<key>]` body, keyed the same as its `[[items]]` entry (the
+/// shared-key link). `on_use`/`on_read` are statement-block bodies (the `'''...'''`
+/// grammar) lowering to `ItemScript { on_use, on_read }`. Each is optional (absent
+/// = that hook stays native / a no-op).
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ItemBehaviorEntry {
+    #[serde(default)] pub on_use: Option<String>,
+    #[serde(default)] pub on_read: Option<String>,
 }
 
 /// A `[behaviors.scene.<key>]` body. `can_play` is an expression string gating
@@ -163,5 +185,40 @@ mod tests {
         assert!(sb.on_enter.as_deref().unwrap().contains("emit cue("));
         assert!(sb.on_enter.as_deref().unwrap().contains("set state.seen = true"));
         assert!(sb.on_exit.is_none());
+    }
+
+    #[test]
+    fn parses_the_consumable_item_surface() {
+        let src = r#"
+            title = "Item"
+            [[items]]
+            key = "laudanum"
+            name = "Vial of Laudanum"
+            type = "consumable"
+            stat = "sanity"
+            modifier = 6
+            usable = true
+            destroyable = true
+            recipe = { healing = 1 }
+            [behaviors.item.laudanum]
+            onUse = "emit adjustStat(actor, sanity, 6)"
+        "#;
+        let doc: AuthorDoc = toml::from_str(src).expect("parse");
+        assert_eq!(doc.items.len(), 1);
+        let it = &doc.items[0];
+        assert_eq!(it.key, "laudanum");
+        assert_eq!(it.name, "Vial of Laudanum");
+        assert_eq!(it.type_.as_deref(), Some("consumable"));
+        assert_eq!(it.stat.as_deref(), Some("sanity"));
+        assert_eq!(it.modifier, Some(6));
+        assert_eq!(it.usable, Some(true));
+        assert_eq!(it.destroyable, Some(true));
+        assert!(it.key_code.is_none());
+        // recipe is the inert crafting map (author-data): { healing = 1 }.
+        let recipe = it.recipe.as_ref().expect("recipe present");
+        assert_eq!(recipe.get("healing").and_then(toml::Value::as_integer), Some(1));
+        let ib = &doc.behaviors.item["laudanum"];
+        assert_eq!(ib.on_use.as_deref(), Some("emit adjustStat(actor, sanity, 6)"));
+        assert!(ib.on_read.is_none());
     }
 }
