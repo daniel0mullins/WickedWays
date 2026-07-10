@@ -4,6 +4,7 @@
 pub mod author_doc;
 pub mod error;
 pub(crate) mod expr;
+pub(crate) mod lower;
 
 use wickedways_assemble::description::CampaignDescription;
 use wickedways_core::world::descriptor::Catalog;
@@ -14,7 +15,7 @@ pub struct CompiledCampaign { pub description: CampaignDescription, pub catalog:
 
 /// Parse the TOML surface. Lowering (expressions → description/catalog) lands in Tasks 4-5.
 pub fn compile(toml_src: &str) -> Result<CompiledCampaign, CompileError> {
-    let _doc: author_doc::AuthorDoc = toml::from_str(toml_src)
+    let doc: author_doc::AuthorDoc = toml::from_str(toml_src)
         .map_err(|e| CompileError::TomlParse { message: e.to_string() })?;
-    unimplemented!("lowering lands in Tasks 4-5")
+    lower::lower(&doc)
 }
