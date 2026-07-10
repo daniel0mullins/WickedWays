@@ -26,6 +26,9 @@ jobs:
       # The G2 author gate is likewise pure Rust: it byte-diffs the TOML compiler's
       # output against the committed g2-vault oracle. Runs in the fast job.
       - run: cargo test -p wickedways-author
+      # Regenerate the ts-rs bindings and fail if the committed ones drifted from the
+      # Rust source of truth. Pure Rust + git diff, so it lives in the fast job.
+      - run: pnpm run bindings:check
       # `pnpm run checks` (lint + typecheck + tests) resolves the engine types from
       # the built wasm pkg (engine-types.ts = `typeof import(pkg-node)`) and boots the
       # Authority in tests, so the pkg must be built first — pkg-node for the Node/type

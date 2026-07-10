@@ -2178,6 +2178,43 @@ comparison/equality/boolean operators, unary `!`, and a ternary — precedence l
 literal. It is panic-free: every failure is a spanned `CompileError`
 (`TomlParse`/`ExprParse`/`UnknownReference`/`UnresolvedKey`).
 
+**The statement grammar (imperative behavior bodies).** Beyond single-expression predicates, a
+behavior body can be an imperative **statement block** — a newline-separated sequence lowered to
+the `Stmt` AST the runtime executes. Four statement forms are parsed: `guard <expr>` (abort the
+script unless the condition holds), `when <expr> { <stmts> }` (a nested block run conditionally),
+`set state.<field> = <expr>` (write a scalar into scene/mechanic state), and `emit cue(<expr>)`
+(surface a narration cue). Scenes are the first family wired to this: a `[[scenes]]` room-attached
+scene plus a `[behaviors.scene.<key>]` body compile to a `SceneDef` (description) and a
+`BehaviorScript::Scene { canPlay, onEnter, onExit }` (catalog), gated byte-for-byte against the
+`g2-scene` oracle. The scene's `canPlay` is a predicate (here using `stateGet`), and `onEnter`
+is a statement block:
+
+```toml
+[[scenes]]
+room = "Threshold"
+key = "scene/threshold-draft"
+phase = "enter"
+
+[behaviors.scene."scene/threshold-draft"]
+canPlay = "!stateGet('seen', false)"
+onEnter = '''
+guard round == 0
+when !stateGet('revealed', false) {
+  emit cue('A cold draft stirs the dust of the threshold.')
+  set state.revealed = true
+}
+set state.seen = true
+'''
+```
+
+**Deliberate scope of this slice.** The statement lowering is intentionally narrow so nothing lands
+without byte-parity coverage. Only the `Cue` effect is emittable and only `stateGet` extends the
+read model; `emit` of any other effect (`Damage`/`Heal`/`AdjustStat`/`GrantImmunity`/`Status`/
+`GiveItem`/`SetVisible`), the `Pass` statement (exit-script-only), and `SetStateIn` (dynamic
+`set state.m[k] = …` map writes) are **rejected with a clear `CompileError`, not mis-lowered** —
+each lands with the slice that exercises it. Likewise, only the **scene** family is wired here;
+mechanic/item/npc bodies reuse this same statement parser in their own later slices.
+
 **The gate.** Like the assembler, the author is gated **byte-for-byte** against a committed
 oracle — the `g2-vault` fixture, whose `description.json`/`catalog.json` are emitted by a
 TypeScript twin (`canonical-json.ts` canonicalization) — via `cargo test -p wickedways-author`
@@ -2188,16 +2225,16 @@ bin's raw pretty output — where `Value::Number` emits `0.0` and catalog keys s
 `compile()` and the fixture disagree, the compiler is wrong until proven otherwise — fix
 `lower.rs`/the parser, never the fixture.
 
-**MVP scope, and forward pointers.** This is a deliberately thin first slice: the two behavior
-families it lowers are **exit** (`canPass` + fail/pass messages) and **victory** (a `test`
-expression + narration, which produces *two* artifacts — a `winConditions` entry in the
-description AND a `BehaviorScript::Victory { test }` in the catalog), and behavior bodies are
-**expressions only**. Two deliberate divergences from the design spec: the compiler is permissive
-(no compile-time `TypeError` — the `Expr` AST is total and the TS builders type-check nothing, so
-mapping must stay permissive to byte-match), and subscript always lowers to `Index` (never
-`First`). Later G2 slices add: **statements/effects** (imperative behavior bodies, not just
-expressions), the **other behavior families** (mob/npc/scene/etc.), **npx/WASM packaging** of the
-CLI, and **runtime-load** of a compiled campaign. None of those change `compile()`'s signature.
+**MVP scope, and forward pointers.** This started as a deliberately thin first slice — **exit**
+(`canPass` + fail/pass messages) and **victory** (a `test` expression + narration, which produces
+*two* artifacts — a `winConditions` entry in the description AND a `BehaviorScript::Victory { test }`
+in the catalog) with expression-only bodies — since extended with the **statement grammar** and the
+**scene** family above. Two deliberate divergences from the design spec carry through: the compiler
+is permissive (no compile-time `TypeError` — the `Expr` AST is total and the TS builders type-check
+nothing, so mapping must stay permissive to byte-match), and subscript always lowers to `Index`
+(never `First`). Later G2 slices add: the **remaining effects** and the **other behavior families**
+(mob/npc/mechanic) reusing this same statement parser, **npx/WASM packaging** of the CLI, and
+**runtime-load** of a compiled campaign. None of those change `compile()`'s signature.
 
 **Engine change this milestone made.** Authoring a key item into a loot container's initial
 contents was previously rejected by the `Loot` constructor guard; that guard was **relaxed** so

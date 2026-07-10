@@ -237,6 +237,39 @@ impl Parser {
         }
         self.expect(&Token::RParen, "')' to close call arguments")?;
 
+        // `stateGet(field, default)` has its own shape (Task 5 read): 2 args, the
+        // 1st a string literal (→ `field: String`), the 2nd ANY literal (→
+        // `default: Value`, the inner `Value` of a `Lit`). A non-literal 2nd arg
+        // is an `ExprParse` — the default must be a compile-time constant.
+        if name == "stateGet" {
+            if args.len() != 2 {
+                return Err(CompileError::ExprParse {
+                    span: name_span,
+                    message: format!("stateGet expects exactly 2 arguments, got {}", args.len()),
+                });
+            }
+            let mut it = args.into_iter();
+            let field = match it.next() {
+                Some(Expr::Lit { value: Value::Str(s) }) => s,
+                _ => {
+                    return Err(CompileError::ExprParse {
+                        span: name_span,
+                        message: "stateGet's first argument must be a string literal".into(),
+                    });
+                }
+            };
+            let default = match it.next() {
+                Some(Expr::Lit { value }) => value,
+                _ => {
+                    return Err(CompileError::ExprParse {
+                        span: name_span,
+                        message: "stateGet's second argument must be a literal".into(),
+                    });
+                }
+            };
+            return Ok(Expr::StateGet { field, default });
+        }
+
         // Only these three call names are known; everything else is unknown.
         let known = matches!(name.as_str(), "hasKey" | "hasItem" | "hasEquipped");
         if !known {

@@ -1,0 +1,32 @@
+# g2-scene — the TOML twin of the g2-scene oracle (g2-scene.gen.test.ts).
+#
+# Authored in the G2 scene surface: a room with an attached enter-scene whose
+# `canPlay` predicate + `onEnter` statement body compile (Task 3) to the committed
+# g2-scene.{description,catalog}.json byte-for-byte. The onEnter body exercises the
+# FULL statement grammar this slice implements — `guard`, a nested `when { emit
+# cue; set }`, and a trailing `set` — and `canPlay` uses `stateGet`. Kept inside the
+# slice's subset (no Pass, no SetStateIn, no non-cue effect, no scene initialState).
+# ASCII only.
+
+title = "Scene"
+startRoom = "Threshold"
+
+[[rooms]]
+name = "Threshold"
+description = "A cold stone threshold."
+
+[[scenes]]
+room = "Threshold"
+key = "scene/threshold-draft"
+phase = "enter"
+
+[behaviors.scene."scene/threshold-draft"]
+canPlay = "!stateGet('seen', false)"
+onEnter = '''
+guard round == 0
+when !stateGet('revealed', false) {
+  emit cue('A cold draft stirs the dust of the threshold.')
+  set state.revealed = true
+}
+set state.seen = true
+'''

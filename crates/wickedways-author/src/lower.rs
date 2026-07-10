@@ -1,16 +1,17 @@
 //! Lower the parsed TOML surface (`AuthorDoc`) into the artifacts
 //! `wickedways_assemble::assemble` consumes.
 //!
-//! Task 4 fills the DESCRIPTION (`CampaignDescription`); the CATALOG is stubbed
-//! (`Catalog::default()`) and completed in Task 5. Panic-free on author input.
+//! `lower_description` builds the `CampaignDescription`; `lower_catalog` lowers
+//! items plus the exit/victory/scene behavior families into the `Catalog`.
+//! Panic-free on author input.
 
 use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
 use wickedways_assemble::description::{
-    CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, LootDef, RoomDef,
+    CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, LootDef, RoomDef, SceneDef,
 };
-use wickedways_core::script::ast::{BehaviorScript, ExitScript, VictoryScript};
+use wickedways_core::script::ast::{BehaviorScript, ExitScript, SceneScript, VictoryScript};
 use wickedways_core::stats::StatType;
 use wickedways_core::world::descriptor::{
     Catalog, ItemDescriptor, ItemProperties, ItemType,
@@ -19,6 +20,7 @@ use wickedways_core::world::descriptor::{
 use crate::author_doc::{AuthorDoc, ConditionEntry as AuthorCondition, ItemEntry};
 use crate::error::{CompileError, Span};
 use crate::expr::parse_expr;
+use crate::stmt::parse_stmts;
 use crate::CompiledCampaign;
 
 /// Base span for author expressions embedded in TOML. The TOML deserializer does
@@ -81,7 +83,22 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
         caches: Vec::new(),
         npcs: Vec::new(),
         formations: Vec::new(),
-        scenes: Vec::new(),
+        scenes: doc
+            .scenes
+            .iter()
+            .map(|s| SceneDef {
+                room: s.room.clone(),
+                key: s.key.clone(),
+                phase: s.phase.clone(),
+                // The scene surface seeds state via TOML; convert the author's
+                // `toml::Value` to the description's `serde_json::Value`. A
+                // conversion failure drops the seed (absent) rather than panicking.
+                initial_state: s
+                    .initial_state
+                    .as_ref()
+                    .and_then(|v| serde_json::to_value(v).ok()),
+            })
+            .collect(),
         recipes: Vec::new(),
         materials: Vec::new(),
         win_conditions: doc
@@ -125,6 +142,31 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
             fail_message: entry.fail_message.clone(),
         };
         behaviors.insert(key.clone(), BehaviorScript::Exit { script });
+    }
+
+    // Scene behaviors: `can_play` is an optional predicate (serialized as `null`
+    // when absent — the catalog always carries a `canPlay` key); `on_enter`/
+    // `on_exit` are optional statement bodies (skipped when absent). Keyed by the
+    // scene behavior key (shared with the description's SceneDef.key).
+    for (key, entry) in &doc.behaviors.scene {
+        let script = SceneScript {
+            can_play: entry
+                .can_play
+                .as_deref()
+                .map(|s| parse_expr(s, EXPR_BASE))
+                .transpose()?,
+            on_enter: entry
+                .on_enter
+                .as_deref()
+                .map(|s| parse_stmts(s, EXPR_BASE))
+                .transpose()?,
+            on_exit: entry
+                .on_exit
+                .as_deref()
+                .map(|s| parse_stmts(s, EXPR_BASE))
+                .transpose()?,
+        };
+        behaviors.insert(key.clone(), BehaviorScript::Scene { script });
     }
 
     // Victory behaviors: each win/lose condition's `test` is a parsed predicate,

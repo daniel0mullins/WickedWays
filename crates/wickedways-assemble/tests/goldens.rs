@@ -193,6 +193,19 @@ fn g2_vault_genesis_golden() {
     gate("g2-vault", "g2-vault.genesis.json", Some("g2-vault"), &party);
 }
 
+/// The G2 "scene bodies" author oracle, seated with a single PC that declares NO
+/// archetype (`Seat { archetype: None }` — the surface has no archetype concept, so
+/// `player:Ada`'s `archetypeId` is `null` in the genesis). Gates the assembler over
+/// a room-attached enter-scene: the `[[scenes]]` attachment reaches the genesis as a
+/// pristine (pre-begin, `state: {}`) `scene:Threshold:scene/threshold-draft:enter`
+/// entry, and its `BehaviorScript::Scene` (canPlay expr + onEnter statement body)
+/// rides in the catalog untouched.
+#[test]
+fn g2_scene_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-scene", "g2-scene.genesis.json", Some("g2-scene"), &party);
+}
+
 #[test]
 fn hollow_house_pristine() {
     gate("hollow-house", "hollow-house.snapshot.json", Some("hollow-house"), &[]);

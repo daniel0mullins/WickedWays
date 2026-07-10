@@ -5,6 +5,7 @@ pub mod author_doc;
 pub mod error;
 pub(crate) mod expr;
 pub(crate) mod lower;
+pub(crate) mod stmt;
 
 use wickedways_assemble::description::CampaignDescription;
 use wickedways_core::world::descriptor::Catalog;
