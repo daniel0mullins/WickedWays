@@ -10,6 +10,7 @@
 //! land them without a hidden behavior change.
 
 use wickedways_core::script::ast::{EffectTemplate, Stmt};
+use wickedways_core::stats::StatType;
 
 use crate::error::{CompileError, Span};
 use crate::expr::parse_expr;
@@ -108,33 +109,117 @@ fn parse_set(rest: &str, base: Span) -> Result<Stmt, CompileError> {
     Ok(Stmt::SetState { field: field.to_string(), value })
 }
 
-/// `emit cue(<expr>)` — the only effect this slice emits. `emit` of any other
-/// effect name MUST error rather than be mis-lowered.
+/// `emit <effect>(<args>)` — this slice emits only `cue` and `adjustStat`.
+/// `emit` of any other effect name (`heal`, `damage`, `giveItem`, `setVisible`,
+/// …) MUST error rather than be mis-lowered.
 fn parse_emit(rest: &str, base: Span) -> Result<Stmt, CompileError> {
     let open = rest.find('(').ok_or_else(|| CompileError::ExprParse {
         span: base,
-        message: "expected `cue(<expr>)` after emit".into(),
+        message: "expected `<effect>(<args>)` after emit".into(),
     })?;
     let effect_name = rest[..open].trim();
-    if effect_name != "cue" {
-        return Err(CompileError::ExprParse {
-            span: base,
-            message: format!("only `emit cue(...)` is supported (got `{effect_name}`)"),
-        });
-    }
     let close = rest.rfind(')').ok_or_else(|| CompileError::ExprParse {
         span: base,
-        message: "expected ')' to close `cue(...)`".into(),
+        message: "expected ')' to close the effect argument list".into(),
     })?;
     if close < open {
         return Err(CompileError::ExprParse {
             span: base,
-            message: "malformed `cue(...)`".into(),
+            message: "malformed effect argument list".into(),
         });
     }
     // `open`/`close` index the ASCII `(`/`)`, so `open + 1` is a char boundary.
-    let text = parse_expr(&rest[open + 1..close], base)?;
-    Ok(Stmt::Emit { effect: EffectTemplate::Cue { text } })
+    let args_src = &rest[open + 1..close];
+    // Split the comma-separated arguments at top level (commas nested inside
+    // `(...)`/`[...]` or single-quoted strings do not separate arguments).
+    let args = split_args(args_src);
+    match effect_name {
+        // `cue(<text>)` — 1 expression argument.
+        "cue" => {
+            if args.len() != 1 {
+                return Err(CompileError::ExprParse {
+                    span: base,
+                    message: format!("`cue(...)` takes 1 argument (got {})", args.len()),
+                });
+            }
+            let text = parse_expr(args[0].trim(), base)?;
+            Ok(Stmt::Emit { effect: EffectTemplate::Cue { text } })
+        }
+        // `adjustStat(<target>, <stat>, <delta>)` — 3 args. arg1/arg3 are
+        // expressions; arg2 is a BARE stat KEYWORD (not an expression) mapped to
+        // `StatType`, so an unknown keyword errors rather than parsing as an id.
+        "adjustStat" => {
+            if args.len() != 3 {
+                return Err(CompileError::ExprParse {
+                    span: base,
+                    message: format!("`adjustStat(...)` takes 3 arguments (got {})", args.len()),
+                });
+            }
+            let target = parse_expr(args[0].trim(), base)?;
+            let stat = parse_stat_keyword(args[1].trim(), base)?;
+            let delta = parse_expr(args[2].trim(), base)?;
+            Ok(Stmt::Emit { effect: EffectTemplate::AdjustStat { target, stat, delta } })
+        }
+        // Every other effect (heal, damage, giveItem, setVisible, …) is deferred.
+        _ => Err(CompileError::ExprParse {
+            span: base,
+            message: format!(
+                "only `emit cue(...)` and `emit adjustStat(...)` are supported (got `{effect_name}`)"
+            ),
+        }),
+    }
+}
+
+/// Map a bare stat keyword (`sanity`/`health`/`energy`) to [`StatType`]. An
+/// unknown keyword is an `ExprParse` error — the stat argument is a keyword, not
+/// an expression, so it is never parsed as an identifier.
+fn parse_stat_keyword(kw: &str, base: Span) -> Result<StatType, CompileError> {
+    match kw {
+        "sanity" => Ok(StatType::Sanity),
+        "health" => Ok(StatType::Health),
+        "energy" => Ok(StatType::Energy),
+        _ => Err(CompileError::ExprParse {
+            span: base,
+            message: format!(
+                "unknown stat `{kw}` (expected `sanity`, `health`, or `energy`)"
+            ),
+        }),
+    }
+}
+
+/// Split an argument list on top-level commas, tracking `(`/`[` nesting and
+/// single-quoted string state so a comma inside a nested expression or string
+/// literal does not separate arguments. An empty source yields no arguments.
+fn split_args(src: &str) -> Vec<String> {
+    if src.trim().is_empty() {
+        return Vec::new();
+    }
+    let mut args = Vec::new();
+    let mut current = String::new();
+    let mut depth: i32 = 0;
+    let mut in_str = false;
+    for c in src.chars() {
+        match c {
+            '\'' => {
+                in_str = !in_str;
+                current.push(c);
+            }
+            '(' | '[' if !in_str => {
+                depth += 1;
+                current.push(c);
+            }
+            ')' | ']' if !in_str => {
+                depth -= 1;
+                current.push(c);
+            }
+            ',' if !in_str && depth <= 0 => {
+                args.push(std::mem::take(&mut current));
+            }
+            _ => current.push(c),
+        }
+    }
+    args.push(current);
+    args
 }
 
 /// Split `src` into statement units on newlines at brace-depth 0, tracking
@@ -287,6 +372,25 @@ mod tests {
             parse_stmts("emit damage(actor, 5)", Span { line: 1, col: 1 }).unwrap_err(),
             CompileError::ExprParse { .. }
         ));
+    }
+
+    #[test]
+    fn emit_adjust_stat() {
+        assert_eq!(s("emit adjustStat(actor, sanity, 6)"), serde_json::json!([
+            {"kind":"emit","effect":{"kind":"adjustStat","target":{"kind":"actor"},
+             "stat":"sanity","delta":{"kind":"lit","value":6}}}
+        ]));
+    }
+
+    #[test]
+    fn adjust_stat_unknown_stat_rejected() {
+        assert!(parse_stmts("emit adjustStat(actor, vigor, 6)", Span { line: 1, col: 1 }).is_err());
+    }
+
+    #[test]
+    fn heal_effect_still_rejected() {
+        // Only cue + adjustStat this slice; heal (and every other effect) still errors.
+        assert!(parse_stmts("emit heal(actor, 6)", Span { line: 1, col: 1 }).is_err());
     }
 
     #[test]
