@@ -3,11 +3,12 @@
 //! expressions. A modding trust boundary — panic-free on author input: every
 //! failure is a [`CompileError`], never an `unwrap`/`expect`/`panic!`.
 //!
-//! This slice implements ONLY `guard` / `when` / `set state.<f> = …` /
-//! `emit cue(…)`. The deferred forms — `pass`, subscripted `set state.m[k] = …`
-//! (`SetStateIn`), and `emit` of any non-`cue` effect — are REJECTED with a
-//! clear `CompileError` rather than silently mis-lowered, so a later phase can
-//! land them without a hidden behavior change.
+//! Implemented so far: `guard` / `when` / `set state.<f> = …` / `emit cue(…)` /
+//! `emit adjustStat(…)`. The deferred forms — `pass`, subscripted
+//! `set state.m[k] = …` (`SetStateIn`), and `emit` of any effect other than
+//! `cue`/`adjustStat` — are REJECTED with a clear `CompileError` rather than
+//! silently mis-lowered, so a later slice can land them without a hidden
+//! behavior change.
 
 use wickedways_core::script::ast::{EffectTemplate, Stmt};
 use wickedways_core::stats::StatType;
