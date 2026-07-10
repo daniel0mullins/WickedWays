@@ -11,7 +11,9 @@ use serde_json::{Map, Value};
 use wickedways_assemble::description::{
     CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, LootDef, RoomDef, SceneDef,
 };
-use wickedways_core::script::ast::{BehaviorScript, ExitScript, SceneScript, VictoryScript};
+use wickedways_core::script::ast::{
+    BehaviorScript, ExitScript, ItemScript, SceneScript, VictoryScript,
+};
 use wickedways_core::stats::StatType;
 use wickedways_core::world::descriptor::{
     Catalog, ItemDescriptor, ItemProperties, ItemType,
@@ -169,6 +171,26 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
         behaviors.insert(key.clone(), BehaviorScript::Scene { script });
     }
 
+    // Item behaviors: each `[behaviors.item.<key>]` lowers to an `ItemScript`
+    // with optional `on_use`/`on_read` effect bodies (skipped when absent). Keyed
+    // by `<key>` — shared with the `[[items]]` entry (the engine resolves an item's
+    // onUse via `catalog.behaviors[item_key]`).
+    for (key, entry) in &doc.behaviors.item {
+        let script = ItemScript {
+            on_use: entry
+                .on_use
+                .as_deref()
+                .map(|s| parse_stmts(s, EXPR_BASE))
+                .transpose()?,
+            on_read: entry
+                .on_read
+                .as_deref()
+                .map(|s| parse_stmts(s, EXPR_BASE))
+                .transpose()?,
+        };
+        behaviors.insert(key.clone(), BehaviorScript::Item { script });
+    }
+
     // Victory behaviors: each win/lose condition's `test` is a parsed predicate,
     // keyed by the condition key (shared with the description's condition entry).
     for (key, cond) in doc.victory.win.iter().chain(doc.victory.lose.iter()) {
@@ -194,29 +216,85 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
     })
 }
 
-/// Lower one author item to its catalog descriptor. A `keyCode`-bearing entry is
-/// a KEY item: it reproduces the TS `createKey` descriptor exactly — `type: key`,
-/// `stat: health`, `modifier: 0`, the non-equippable/non-destroyable property
-/// quadruple, `recipe: { item: 1 }`, and `consumeOnUse: false` (the MVP surface
-/// carries no `consumeOnUse`, so it defaults off). The inert `teaches`/
-/// `immunities`/`grantsImmunity` fields are always emitted as `null`.
+/// Lower one author item to its catalog descriptor. Two shapes:
+///
+/// - A `keyCode`-bearing entry is a KEY item: it reproduces the TS `createKey`
+///   descriptor exactly — `type: key`, `stat: health`, `modifier: 0`, the
+///   non-equippable/non-destroyable property quadruple, `recipe: { item: 1 }`,
+///   and `consumeOnUse: false` (the MVP surface carries no `consumeOnUse`, so it
+///   defaults off).
+/// - Otherwise a CONSUMABLE: `type`/`stat`/`modifier` come from the surface, the
+///   `properties` quadruple is `equippable:false, equipped:false, destroyable,
+///   usable` (the latter two from the surface), and `recipe` is READ from the
+///   surface `ItemEntry.recipe` (author-data — consumables vary in recipe, so it
+///   is not kind-derived; a `toml::Value` converted to `serde_json::Value`). The
+///   consumable carries no `consumeOnUse`/`keyCode` (both skipped when `None`).
+///
+/// The inert `teaches`/`immunities`/`grantsImmunity` fields are always emitted as
+/// `null`.
 fn lower_item(item: &ItemEntry) -> ItemDescriptor {
-    // The MVP surface only authors key items (`keyCode` present). Non-key items
-    // are not yet expressible in the TOML surface; a `keyCode`-less entry still
-    // lowers to the key-shaped descriptor here, which is the only shape the
-    // oracle produces for the G2 fixture.
-    let mut recipe = Map::new();
-    recipe.insert("item".to_string(), Value::Number(1.into()));
+    if item.key_code.is_some() {
+        // KEY item — the existing `createKey` descriptor, unchanged.
+        let mut recipe = Map::new();
+        recipe.insert("item".to_string(), Value::Number(1.into()));
+        return ItemDescriptor {
+            name: item.name.clone(),
+            r#type: ItemType::Key,
+            stat: StatType::Health,
+            modifier: 0,
+            properties: ItemProperties {
+                equippable: false,
+                equipped: false,
+                destroyable: false,
+                usable: false,
+                droppable: None,
+            },
+            slot: None,
+            two_handed: None,
+            emits_light: None,
+            max_durability: None,
+            lore: None,
+            presentation: None,
+            key_code: item.key_code.clone(),
+            consume_on_use: Some(false),
+            recipe: Value::Object(recipe),
+            teaches: Value::Null,
+            immunities: Value::Null,
+            grants_immunity: Value::Null,
+        };
+    }
+
+    // CONSUMABLE item — built from the surface fields. Enum strings deserialize
+    // via serde (both `ItemType` and `StatType` are `rename_all = "lowercase"`);
+    // a malformed/absent value falls back to the consumable default rather than
+    // panicking (a well-formed fixture always carries valid values).
+    let r#type = item
+        .type_
+        .as_deref()
+        .and_then(|s| serde_json::from_value::<ItemType>(Value::String(s.to_string())).ok())
+        .unwrap_or(ItemType::Consumable);
+    let stat = item
+        .stat
+        .as_deref()
+        .and_then(|s| serde_json::from_value::<StatType>(Value::String(s.to_string())).ok())
+        .unwrap_or(StatType::Health);
+    // `recipe` is author-data: read it from the surface (toml → json). Absent or
+    // unconvertible falls to an empty map rather than panicking.
+    let recipe = item
+        .recipe
+        .as_ref()
+        .and_then(|v| serde_json::to_value(v).ok())
+        .unwrap_or_else(|| Value::Object(Map::new()));
     ItemDescriptor {
         name: item.name.clone(),
-        r#type: ItemType::Key,
-        stat: StatType::Health,
-        modifier: 0,
+        r#type,
+        stat,
+        modifier: item.modifier.unwrap_or(0),
         properties: ItemProperties {
             equippable: false,
             equipped: false,
-            destroyable: false,
-            usable: false,
+            destroyable: item.destroyable.unwrap_or(false),
+            usable: item.usable.unwrap_or(false),
             droppable: None,
         },
         slot: None,
@@ -225,9 +303,9 @@ fn lower_item(item: &ItemEntry) -> ItemDescriptor {
         max_durability: None,
         lore: None,
         presentation: None,
-        key_code: item.key_code.clone(),
-        consume_on_use: Some(false),
-        recipe: Value::Object(recipe),
+        key_code: None,
+        consume_on_use: None,
+        recipe,
         teaches: Value::Null,
         immunities: Value::Null,
         grants_immunity: Value::Null,
