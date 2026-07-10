@@ -101,6 +101,19 @@ pub struct ItemDescriptor {
     pub grants_immunity: serde_json::Value,
 }
 
+/// Campaign-authored crafting recipe metadata, carried in the catalog so the
+/// assembler can reconstruct the genesis recipe codex (the `outputName`/`materials`
+/// otherwise live only in the registry's `create` closure). Keyed by recipe key
+/// in the catalog's `recipes` map.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct RecipeMeta {
+    pub id: String,
+    pub output_name: String,
+    pub materials: BTreeMap<String, i64>,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 pub struct Catalog {
@@ -113,6 +126,10 @@ pub struct Catalog {
     /// Campaign-authored formation descriptors, keyed by encounter `behaviorKey`.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub formations: BTreeMap<String, crate::world::formation_descriptor::FormationDescriptor>,
+    /// Campaign-authored crafting recipe metadata, keyed by recipe key. Absent
+    /// from catalogs without recipes (empty map is skipped on serialize).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub recipes: BTreeMap<String, RecipeMeta>,
 }
 
 #[cfg(test)]
@@ -208,6 +225,38 @@ mod tests {
         assert_eq!(f.mobs.len(), 1);
         assert_eq!(f.mobs[0].name, "Rat");
         // round-trips: the parsed catalog re-serializes with its formation intact
+        let back: Catalog =
+            serde_json::from_value(serde_json::to_value(&cat).unwrap()).unwrap();
+        assert_eq!(back, cat);
+    }
+
+    #[test]
+    fn catalog_without_recipes_still_parses_and_roundtrips_empty() {
+        // Every committed fixture catalog (before this change) lacks "recipes".
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {}
+        }))
+        .unwrap();
+        assert!(cat.recipes.is_empty());
+        // empty recipes are omitted on serialize (fixture-catalog stability)
+        let out = serde_json::to_value(&cat).unwrap();
+        assert!(out.get("recipes").is_none());
+    }
+
+    #[test]
+    fn catalog_parses_a_recipe() {
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "recipes": { "widget": {
+                "id": "widget", "outputName": "Widget", "materials": { "metal": 2 }
+            } }
+        }))
+        .unwrap();
+        let r = cat.recipes.get("widget").unwrap();
+        assert_eq!(r.id, "widget");
+        assert_eq!(r.output_name, "Widget");
+        assert_eq!(r.materials.get("metal"), Some(&2));
+        // round-trips: the parsed catalog re-serializes with its recipe intact
         let back: Catalog =
             serde_json::from_value(serde_json::to_value(&cat).unwrap()).unwrap();
         assert_eq!(back, cat);

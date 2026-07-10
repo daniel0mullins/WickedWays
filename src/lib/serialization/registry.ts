@@ -119,6 +119,15 @@ export class CampaignRegistry {
     return [...this.#items.keys()];
   }
 
+  /**
+   * Keys of every registered crafting recipe, in registration order. Read-only
+   * enumeration used by the play-runtime to export the recipe metadata into the
+   * WASM catalog; registration stays write-only.
+   */
+  get recipeKeys(): readonly string[] {
+    return [...this.#recipes.keys()];
+  }
+
   scene(key: string): SceneBehavior {
     return this.#require(this.#scenes.get(key), "scene", key);
   }

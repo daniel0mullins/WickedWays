@@ -22,5 +22,14 @@
   },
   "aliases": {},
   "behaviors": {},
-  "formations": {}
+  "formations": {},
+  "recipes": {
+    "widget": {
+      "id": "widget",
+      "outputName": "Widget",
+      "materials": {
+        "metal": 2
+      }
+    }
+  }
 }

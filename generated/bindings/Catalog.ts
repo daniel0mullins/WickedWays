@@ -2,6 +2,7 @@
 import type { BehaviorScript } from "./BehaviorScript";
 import type { FormationDescriptor } from "./FormationDescriptor";
 import type { ItemDescriptor } from "./ItemDescriptor";
+import type { RecipeMeta } from "./RecipeMeta";
 
 export type Catalog = { items: { [key in string]?: ItemDescriptor }, aliases: { [key in string]?: Array<string> }, 
 /**
@@ -12,4 +13,9 @@ behaviors: { [key in string]?: BehaviorScript },
 /**
  * Campaign-authored formation descriptors, keyed by encounter `behaviorKey`.
  */
-formations: { [key in string]?: FormationDescriptor }, };
+formations: { [key in string]?: FormationDescriptor }, 
+/**
+ * Campaign-authored crafting recipe metadata, keyed by recipe key. Absent
+ * from catalogs without recipes (empty map is skipped on serialize).
+ */
+recipes: { [key in string]?: RecipeMeta }, };
