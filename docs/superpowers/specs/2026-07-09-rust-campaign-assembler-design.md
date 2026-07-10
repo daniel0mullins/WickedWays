@@ -106,20 +106,54 @@ uuids). Serialization re-derives item ids from holder and index, discarding the 
 **This is the single assumption the entire gate rests on, and it is currently implicit
 in serialization code rather than written down anywhere.** It is now written down:
 
-| entity | id |
-| --- | --- |
-| room | `room:{name}` |
-| exit | `exit:{a}\|{b}` where `a` < `b` **lexicographically** — *not* `from\|to` |
-| scene | `scene:{room}:{key}:{phase}` |
-| npc / mob / player | `npc:{Name}` · `mob:{Name}` · `player:{Name}` |
-| item | `{holderId}:item#{index}` — positional, e.g. `loot:foyer-table:item#0` |
+All ids are minted in `assembler.ts` (pass 2), **except the player id** — see below.
 
-The Rust assembler mints these directly and never allocates a uuid.
+| entity | id | site |
+| --- | --- | --- |
+| campaign | `campaign:{title}` | `:199` |
+| room | `room:{name}` | `:248` |
+| mob | `mob:{name}` | `:233` |
+| npc | `npc:{name}` | `:287` |
+| cache | `cache:{name}` | `:214` |
+| loot box | `loot:{name}` | `:220` |
+| exit | `exit:{a}\|{b}` — the two **author-supplied room names**, sorted | `:332` |
+| scene | `scene:{room}:{key}:{phase ?? "enter"}` | `:345` |
 
-The exit rule is easy to get wrong. `hollow-house` declares `Foyer --south--> Cellar` yet
-serializes `exit:Cellar|Foyer`, while `Foyer --north--> Hall` serializes `exit:Foyer|Hall`.
-Both are the sorted pair; neither is `from|to`. **Implementation must confirm the exact
-comparator against the TS serializer** rather than infer it from these two cases.
+Item ids are **positional per holder, and the infix differs by holder** — this is four
+rules, not one:
+
+| holder | item id | site |
+| --- | --- | --- |
+| loot contents | `loot:{name}:item#{i}` | `:223` |
+| mob drops | `mob:{name}:drop#{i}` | `:236` |
+| room lights | `room:{name}:light#{i}` | `:251` |
+| npc holds | `npc:{name}:item#{i}` | `:295` |
+
+`i` is the index in the source key array, so repeated keys get distinct indices
+(`assembler.test.ts:311`). The Rust assembler mints all of these directly and never
+allocates a uuid.
+
+**The player id is NOT minted by `assemble()`.** `assembler.ts` returns a *player-less*
+campaign (its own test says so). `player:{name}` is stamped in
+`src/lib/authoring/orchestration.ts:75` and `conformance/fixtures/oracle-session.ts:80`.
+Since this spec's `assemble(…, party)` folds seating in, **the oracle for the seating
+step is `oracle-session.ts:79-98`**, not `assembler.ts`.
+
+### The exit comparator is a cross-language hazard
+
+```ts
+exit.id = `exit:${[e.from, e.to].sort().join("|")}`   // assembler.ts:332
+```
+
+`hollow-house` declares `Foyer --south--> Cellar` yet serializes `exit:Cellar|Foyer`,
+while `Foyer --north--> Hall` serializes `exit:Foyer|Hall`. Both are the sorted pair;
+neither is `from|to`.
+
+**JavaScript's default `Array.prototype.sort()` compares UTF-16 code units; Rust's
+`str: Ord` compares UTF-8 bytes.** They agree on all ASCII and diverge above the BMP. A
+campaign with a non-ASCII room name would therefore mint a *different exit id* in Rust
+than in TypeScript, surfacing as an inexplicable byte diff. Room names must be ASCII —
+see Global Constraints in the plan.
 
 ### 4. Only pre-begin goldens are valid assembler oracles
 
@@ -306,17 +340,65 @@ crate must never `panic!` or `unwrap` on author data.
 pub struct AssembleError { pub problems: Vec<Problem> }   // ALL problems, not the first
 
 pub enum Problem {
-    DuplicateName      { kind: &'static str, name: String },
-    UnknownRegistryKey { kind: &'static str, key: String },
-    UnknownRoom        { referenced_by: String, room: String },
-    MissingStartRoom,
-    UnknownArchetype   { seat: String, archetype: String },
+    /// `Duplicate {kind} name '{name}'.`  kind ∈ room|mob|loot|cache|npc   (assembler.ts:45)
+    DuplicateName        { kind: &'static str, name: String },
+    /// `{ctx} references undefined room '{room}'.`                        (:59)
+    UndefinedRoom        { ctx: String, room: String },
+    /// `{ctx} references unregistered item key '{key}'.`                  (:79)
+    UnregisteredItem     { ctx: String, key: String },
+    /// `{ctx} references unregistered condition key '{key}'.`  ctx ∈ winWhen|loseWhen (:107)
+    /// Conditions are the `victory` behavior family — there is no `condition` family.
+    UnregisteredCondition{ ctx: String, key: String },
+    /// `scene references unregistered scene key '{key}'.`                 (:117)
+    UnregisteredScene    { key: String },
+    /// `exit from '{from}' to '{to}' references unregistered exit key '{key}'.` (:126)
+    UnregisteredExit     { from: String, to: String, key: String },
+    /// `formation references unregistered formation key '{key}'.`         (:135)
+    UnregisteredFormation{ key: String },
+    /// `npc '{npc}' references unregistered npc key '{key}'.`             (:143)
+    UnregisteredNpc      { npc: String, key: String },
+    /// `useMechanic key '{key}' is duplicated.`                           (:150)
+    DuplicateMechanic    { key: String },
+    /// `useMechanic references unregistered mechanic key '{key}'.`        (:156)
+    UnregisteredMechanic { key: String },
+    /// `chat.backfillWindow must be >= 1 (got {got}).`                    (:160-162)
+    ChatBackfillWindow   { got: i64 },
+    /// `av.maxParticipants must be >= 1 (got {got}).`                     (:164-166)
+    AvMaxParticipants    { got: i64 },
 }
 ```
 
-Aggregating every problem mirrors `assembler.ts:39-48` and is what makes the eventual
-CLI usable. Two hosts, two presentations: the CLI prints all problems (with TOML spans,
-once G2 exists); the client renders a "this campaign didn't load" state and stays alive.
+Aggregating every problem mirrors `assembler.ts:39-48` — the TS collects into
+`problems: string[]` and throws one `AuthoringError` only if non-empty. That is what
+makes the eventual CLI usable. Two hosts, two presentations: the CLI prints all problems
+(with TOML spans, once G2 exists); the client renders a "this campaign didn't load"
+state and stays alive.
+
+**Registry lookups become catalog lookups.** In TypeScript the validate-all pass calls
+`registry.item(k)` / `.recipe(k)` / `.condition(k)` / `.scene(k)` / `.exit(k)` /
+`.formation(k)` / `.npc(k)` / `.mechanic(k)`. In Rust the equivalent existence checks are
+`catalog.items` (a `BTreeMap`) and `catalog.behaviors` / `catalog.formations`.
+
+The behavior families present across every catalog fixture are exactly
+`mechanic | exit | item | victory | npc | scene`. Note two things:
+
+- **Conditions are the `victory` family.** There is no `condition` family. Verified: the
+  hollow-house keys `reached-attic-with-journal`, `sanity-zero`, `party-down` all carry
+  `family: "victory"`.
+- **There is no recipe registry in the catalog** (its keys are only `items`, `aliases`,
+  `behaviors`, `formations`). So `registry.recipe(k)`'s existence check has **no Rust
+  counterpart in G1**, and there is no `UnregisteredRecipe` problem. Genesis is
+  unaffected — `knownRecipes` is populated straight from `desc.recipes` (`seed`'s genesis
+  carries `knownRecipes: ["widget"]`). Closing this gap is a **G2 prerequisite**, since
+  G2's modding makes `assemble`'s input untrusted; it means adding a
+  `recipes: BTreeMap<..>` to `Catalog` (skip-if-empty, so zero golden churn).
+
+**Mechanic initial state comes from the catalog, not a closure.** TypeScript calls
+`registry.mechanic(key).initialState(config)` (`assembler.ts:181-184`). The scripted-ops
+DSL already carries that value as data: verified against the goldens,
+`campaign.mechanics[i].state` is exactly `catalog.behaviors[key].script.init`
+(`dread → {}`, `storyteller → {"seen":{}}`, `status-bar → {}`). Rust clones it, in
+`desc.mechanics` declared order. No closure needs porting.
 
 Malformed-file errors (serde) stay a distinct type from valid-but-wrong-content errors
 (`AssembleError`) — different audiences, different messages.
