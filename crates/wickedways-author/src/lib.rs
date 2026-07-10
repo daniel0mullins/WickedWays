@@ -3,6 +3,7 @@
 //! artifacts `wickedways_assemble::assemble` consumes. Panic-free on author input.
 pub mod author_doc;
 pub mod error;
+pub(crate) mod expr;
 
 use wickedways_assemble::description::CampaignDescription;
 use wickedways_core::world::descriptor::Catalog;
