@@ -2180,10 +2180,12 @@ literal. It is panic-free: every failure is a spanned `CompileError`
 
 **The statement grammar (imperative behavior bodies).** Beyond single-expression predicates, a
 behavior body can be an imperative **statement block** — a newline-separated sequence lowered to
-the `Stmt` AST the runtime executes. Four statement forms are parsed: `guard <expr>` (abort the
+the `Stmt` AST the runtime executes. Five statement forms are parsed: `guard <expr>` (abort the
 script unless the condition holds), `when <expr> { <stmts> }` (a nested block run conditionally),
-`set state.<field> = <expr>` (write a scalar into scene/mechanic state), and `emit cue(<expr>)`
-(surface a narration cue). Scenes are the first family wired to this: a `[[scenes]]` room-attached
+`set state.<field> = <expr>` (write a scalar into scene/mechanic state), `emit cue(<expr>)`
+(surface a narration cue), and `emit adjustStat(<target>, <stat>, <delta>)` (change a character
+stat — `target`/`delta` are expressions, `stat` is a **bare keyword** ∈
+`sanity`/`health`/`energy` mapped to `StatType`). Scenes are the first family wired to this: a `[[scenes]]` room-attached
 scene plus a `[behaviors.scene.<key>]` body compile to a `SceneDef` (description) and a
 `BehaviorScript::Scene { canPlay, onEnter, onExit }` (catalog), gated byte-for-byte against the
 `g2-scene` oracle. The scene's `canPlay` is a predicate (here using `stateGet`), and `onEnter`
@@ -2207,17 +2209,41 @@ set state.seen = true
 '''
 ```
 
+**Consumable items with behavior bodies.** Beyond the MVP's key items, an item can carry an
+imperative behavior. An `[[items]]` entry with a `type` (e.g. `consumable`) plus a
+`[behaviors.item.<key>]` table whose `onUse`/`onRead` are statement blocks compiles to an
+`ItemDescriptor` (`usable: true`) in the catalog's `items` map **and** a `BehaviorScript::Item`
+under the **same key** in `behaviors` — `catalog.items[k]` and `catalog.behaviors[k]` share the
+key. The bodies reuse the exact statement grammar above, so an `onUse` can `emit
+adjustStat(actor, sanity, 6)`. Gated byte-for-byte against the `g2-item` oracle:
+
+```toml
+[[items]]
+key = "elixir"
+name = "Calming Elixir"
+type = "consumable"
+behavior = "elixir"              # -> [behaviors.item.elixir]
+
+[behaviors.item.elixir]
+onUse = '''
+emit cue('A warmth spreads through you.')
+emit adjustStat(actor, sanity, 6)
+'''
+```
+
 **Deliberate scope of this slice.** The statement lowering is intentionally narrow so nothing lands
-without byte-parity coverage. Only the `Cue` effect is emittable and only `stateGet` extends the
-read model; `emit` of any other effect (`Damage`/`Heal`/`AdjustStat`/`GrantImmunity`/`Status`/
-`GiveItem`/`SetVisible`), the `Pass` statement (exit-script-only), and `SetStateIn` (dynamic
-`set state.m[k] = …` map writes) are **rejected with a clear `CompileError`, not mis-lowered** —
-each lands with the slice that exercises it. Likewise, only the **scene** family is wired here;
-mechanic/item/npc bodies reuse this same statement parser in their own later slices.
+without byte-parity coverage. Only the `Cue` and `AdjustStat` effects are emittable and only
+`stateGet` extends the read model; `emit` of any other effect (`Damage`/`Heal`/`GrantImmunity`/
+`Status`/`GiveItem`/`SetVisible`), the `Pass` statement (exit-script-only), and `SetStateIn`
+(dynamic `set state.m[k] = …` map writes) are **rejected with a clear `CompileError`, not
+mis-lowered** — each lands with the slice that exercises it. The **exit**, **victory**, **scene**,
+and (consumable) **item** families are wired; **mechanic** and **npc** bodies reuse this same
+statement parser in their own later slices.
 
 **The gate.** Like the assembler, the author is gated **byte-for-byte** against a committed
-oracle — the `g2-vault` fixture, whose `description.json`/`catalog.json` are emitted by a
-TypeScript twin (`canonical-json.ts` canonicalization) — via `cargo test -p wickedways-author`
+oracle — the `g2-vault`/`g2-scene`/`g2-item` fixtures, whose `description.json`/`catalog.json`
+are emitted by a TypeScript twin (`canonical-json.ts` canonicalization), each also checked for
+compile determinism — via `cargo test -p wickedways-author`
 (pure Rust, fast CI job; convenience alias `pnpm run checks:author`). The gate compares
 canonicalized JSON values (whole-float numbers collapsed to ints, object keys sorted), so the
 bin's raw pretty output — where `Value::Number` emits `0.0` and catalog keys serialize in
@@ -2228,8 +2254,9 @@ bin's raw pretty output — where `Value::Number` emits `0.0` and catalog keys s
 **MVP scope, and forward pointers.** This started as a deliberately thin first slice — **exit**
 (`canPass` + fail/pass messages) and **victory** (a `test` expression + narration, which produces
 *two* artifacts — a `winConditions` entry in the description AND a `BehaviorScript::Victory { test }`
-in the catalog) with expression-only bodies — since extended with the **statement grammar** and the
-**scene** family above. Two deliberate divergences from the design spec carry through: the compiler
+in the catalog) with expression-only bodies — since extended with the **statement grammar**, the
+**scene** family, the **adjustStat** effect, and (consumable) **items** with `onUse`/`onRead`
+bodies above. Two deliberate divergences from the design spec carry through: the compiler
 is permissive (no compile-time `TypeError` — the `Expr` AST is total and the TS builders type-check
 nothing, so mapping must stay permissive to byte-match), and subscript always lowers to `Index`
 (never `First`). Later G2 slices add: the **remaining effects** and the **other behavior families**

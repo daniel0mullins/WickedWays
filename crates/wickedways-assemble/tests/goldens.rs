@@ -206,6 +206,20 @@ fn g2_scene_genesis_golden() {
     gate("g2-scene", "g2-scene.genesis.json", Some("g2-scene"), &party);
 }
 
+/// The G2 "item bodies" author oracle, seated with a single PC that declares NO
+/// archetype (`Seat { archetype: None }` — the surface has no archetype concept, so
+/// `player:Ada`'s stats are the campaign defaults). Gates the assembler over a
+/// declared-but-unplaced usable consumable: the `[[items]]` consumable descriptor
+/// (`type:"consumable"`, `usable:true`, `stat:"sanity"`, `modifier:6`, author-data
+/// `recipe:{healing:1}`) and its `BehaviorScript::Item` (an `onUse` statement body
+/// emitting `adjustStat`) ride in the catalog untouched; the pre-begin genesis is a
+/// single room + PC (the item is not reachable at genesis).
+#[test]
+fn g2_item_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-item", "g2-item.genesis.json", Some("g2-item"), &party);
+}
+
 #[test]
 fn hollow_house_pristine() {
     gate("hollow-house", "hollow-house.snapshot.json", Some("hollow-house"), &[]);

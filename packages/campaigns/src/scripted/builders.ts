@@ -80,6 +80,8 @@ export const heal = (target: Expr, amount: Expr): EffectTemplate =>
   ({ kind: "heal", target, amount });
 export const adjust = (target: Expr, stat: StatType, delta: Expr): EffectTemplate =>
   ({ kind: "adjustStat", target, stat, delta });
+/** Spelled-out alias for {@link adjust} — the `emit adjustStat(t, stat, d)` effect. */
+export const adjustStat = adjust;
 export const grantImmunity = (target: Expr, turns: Expr): EffectTemplate =>
   ({ kind: "grantImmunity", target, turns });
 export const cue = (text: Expr): EffectTemplate => ({ kind: "cue", text });
