@@ -1,0 +1,35 @@
+{
+  "items": {
+    "widget-item": {
+      "name": "Widget",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 0,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    }
+  },
+  "aliases": {},
+  "behaviors": {},
+  "formations": {},
+  "recipes": {
+    "widget": {
+      "id": "widget",
+      "outputName": "Widget",
+      "materials": {
+        "metal": 2
+      }
+    }
+  }
+}

@@ -38,6 +38,7 @@ import { EffectKind, type Effect, type Mechanic } from "wickedways/lib/mechanics
 import type { CharacterId } from "wickedways/lib/character/character";
 import type { ItemId } from "wickedways/lib/inventory";
 import { mulberry32 } from "../seeded-rng.ts";
+import { itemToCatalogEntry } from "./facade-catalog.ts";
 import { OracleSession } from "./oracle-session.ts";
 import { writeFacadeFixture, type FacadeOp } from "./facade-gen.ts";
 import { mechanic, emit, lit, npc, entry, exact } from "../../packages/campaigns/src/scripted/builders.ts";
@@ -129,7 +130,11 @@ describe("generate npc-foundation golden", () => {
     // Keeper's NPC dialogue behavior. The oracle resolves `talk`/`examine` through
     // `behaviors`, so it must receive the SAME map the Rust replica loads.
     const behaviors = { [HANDOFF_KEY]: handoffBehavior, [NPC_KEY]: keeperBehavior };
-    const catalog = { items: {}, aliases: {}, behaviors };
+    // The catalog must carry EVERY item the description references — the Keeper
+    // holds the gate key (`holds: [KEY_ITEM_KEY]`), so export it here (the same
+    // factory the campaign registered under KEY_ITEM_KEY), or the Rust assembler
+    // throws UnregisteredItem.
+    const catalog = { items: { [KEY_ITEM_KEY]: itemToCatalogEntry(makeGateKey()) }, aliases: {}, behaviors };
 
     const oracle = new OracleSession({
       builder: template, registry, aliases: {}, playerName: "Ada", archetype: "delver", rng, behaviors,
@@ -148,7 +153,7 @@ describe("generate npc-foundation golden", () => {
       { kind: "submit", intent: { kind: "talk", npcId: NPC_ID } }, // FREE: resolves, round stays 0
       { kind: "submit", intent: { kind: "wait" } },                 // advancing: fires the handoff mechanic
     ];
-    const steps = writeFacadeFixture(here, "npc-foundation", SEED, oracle, catalog, ops);
+    const steps = writeFacadeFixture(here, "npc-foundation", SEED, oracle, catalog, ops, template.description);
 
     type Vm = {
       occupants: { id: string }[];

@@ -53,10 +53,24 @@ export function catalogFromRegistry(
   aliases: Record<string, string[]>;
   behaviors: Record<string, BehaviorScript>;
   formations: Record<string, FormationDescriptor>;
+  recipes: Record<string, unknown>;
 } {
   const items: Record<string, unknown> = {};
   for (const key of registry.itemKeys) {
     items[key] = itemToCatalogEntry(registry.item(key)());
   }
-  return { items, aliases, behaviors, formations };
+  // Recipe metadata (id / outputName / materials) so the Rust assembler can
+  // reconstruct the genesis recipe codex — `outputName`/`materials` otherwise
+  // live only in the registry's `create` closure. A `materials` recipe carries
+  // its material cost; a `keys` recipe has none, so its materials map is empty.
+  const recipes: Record<string, unknown> = {};
+  for (const key of registry.recipeKeys) {
+    const recipe = registry.recipe(key);
+    recipes[key] = {
+      id: recipe.id,
+      outputName: recipe.create().name,
+      materials: "materials" in recipe ? recipe.materials : {},
+    };
+  }
+  return { items, aliases, behaviors, formations, recipes };
 }

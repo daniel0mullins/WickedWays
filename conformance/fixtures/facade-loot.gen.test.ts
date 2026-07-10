@@ -89,7 +89,7 @@ describe("generate facade-loot golden", () => {
     ];
     const steps = writeFacadeFixture(here, "facade-loot", SEED, oracle,
       { items: { [JOURNAL_KEY]: itemToCatalogEntry(makeJournal()), [SWORD_KEY]: itemToCatalogEntry(makeSword()) }, aliases: ALIASES },
-      ops);
+      ops, template.description);
 
     // opened must be set from the very first op and stay set thereafter.
     for (const [i, s] of steps.entries()) {

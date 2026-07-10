@@ -52,7 +52,7 @@ describe("generate facade-mob-combat golden", () => {
       { kind: "submit", intent: { kind: "attack", targetId: "mob:Brute" } }, // PC hits back mid-exchange
       { kind: "submit", intent: { kind: "wait" } },
     ];
-    const steps = writeFacadeFixture(here, "facade-mob-combat", SEED, oracle, EMPTY_CATALOG, ops);
+    const steps = writeFacadeFixture(here, "facade-mob-combat", SEED, oracle, EMPTY_CATALOG, ops, template.description);
 
     // Coverage bar: the exchange actually happened — step 0 carries mob strikes.
     const r0 = steps[0]!.result as { mobAttacks?: { name: string }[] };

@@ -1,0 +1,47 @@
+{
+  "title": "Facade Open Fail (conformance)",
+  "opts": {
+    "maxRounds": 20,
+    "baseEncounterChance": 0
+  },
+  "archetypes": [
+    {
+      "id": "delver",
+      "name": "Delver",
+      "baseStats": {
+        "health": 10,
+        "sanity": 8,
+        "energy": 8
+      }
+    }
+  ],
+  "rooms": [
+    {
+      "name": "Vault",
+      "description": "A pitch-black vault.",
+      "dark": true
+    }
+  ],
+  "startRoom": "Vault",
+  "exits": [],
+  "mobs": [],
+  "loot": [
+    {
+      "name": "chest",
+      "room": "Vault",
+      "items": [
+        "items/facade-relic"
+      ],
+      "description": "An unseen chest."
+    }
+  ],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

@@ -1,0 +1,18 @@
+[package]
+name = "wickedways-assemble"
+version = "0.0.1"
+edition = "2021"
+
+[features]
+default = []
+# Mirrors wickedways-core: emits TS bindings via ts-rs under `cargo test --features ts`.
+ts = ["dep:ts-rs", "wickedways-core/ts"]
+
+[dependencies]
+wickedways-core = { path = "../wickedways-core", features = ["std"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ts-rs = { version = "10", optional = true, features = ["no-serde-warnings"] }
+
+# NOTE: `rand` and `uuid` are deliberately absent. Ids are derived, never generated.
+# Adding either is a spec violation.

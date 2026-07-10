@@ -9,6 +9,15 @@ import { join } from "node:path";
 import { serializeCampaign } from "wickedways/lib/serialization/serializer";
 import { structuralClone } from "./gen-helpers.ts";
 import type { Intent, OracleSession } from "./oracle-session.ts";
+import type { CampaignTemplateDescription } from "wickedways/lib/authoring/description";
+
+/** `CampaignTemplateDescription.opts.rng` is a function; strip it before serializing. */
+export function stripRng(d: CampaignTemplateDescription): Omit<CampaignTemplateDescription, "opts"> & {
+  opts: Omit<CampaignTemplateDescription["opts"], "rng">;
+} {
+  const { rng: _rng, ...opts } = d.opts;
+  return { ...d, opts };
+}
 
 export type FacadeOp =
   | { kind: "submit"; intent: Intent }
@@ -54,12 +63,26 @@ export function writeFacadeFixture(
   oracle: OracleSession,
   catalog: unknown,
   ops: FacadeOp[],
+  description: CampaignTemplateDescription,
 ): FacadeStep[] {
   const startupCues = structuralClone(oracle.startupCues);
   const genesis = structuralClone(oracle.genesis);
+  // Capture the description BEFORE ops run. `Character` stores `stats` BY
+  // REFERENCE, so combat during `runFacadeGolden` mutates `description.mobs[].stats`
+  // in place; serializing afterwards would record post-op stats that contradict the
+  // pre-op genesis. Strip rng first so the deep clone contains no functions.
+  const descOut = structuralClone(stripRng(description));
   const steps = runFacadeGolden(oracle, ops);
   writeFileSync(join(here, `${name}.genesis.json`), JSON.stringify(genesis, null, 2) + "\n");
   writeFileSync(join(here, `${name}.catalog.json`), JSON.stringify(catalog, null, 2) + "\n");
+  // The description is the assembler's INPUT artifact; genesis is its output. Emitting
+  // it here lets the Rust assembler be gated against the genesis golden beside it.
+  // Note `opts.rng` is a closure and is dropped — the seed reaches the engine via
+  // `Authority::new` instead.
+  writeFileSync(
+    join(here, `${name}.description.json`),
+    JSON.stringify(descOut, null, 2) + "\n",
+  );
   writeFileSync(
     join(here, `${name}.golden.json`),
     JSON.stringify({ seed, startupCues, ops, steps }, null, 2) + "\n",

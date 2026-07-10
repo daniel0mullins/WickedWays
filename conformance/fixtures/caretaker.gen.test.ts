@@ -39,6 +39,7 @@ import { Directions } from "wickedways/lib/room";
 import type { SceneBehavior } from "wickedways/lib/serialization/registry";
 import type { MechanicCue } from "wickedways/lib/mechanics/mechanic";
 import { mulberry32 } from "../seeded-rng.ts";
+import { itemToCatalogEntry } from "./facade-catalog.ts";
 import { OracleSession } from "./oracle-session.ts";
 import { writeFacadeFixture, type FacadeOp } from "./facade-gen.ts";
 import {
@@ -113,7 +114,11 @@ describe("generate caretaker golden", () => {
       [INTRO_KEY]: caretakerIntroScene,
       [DOOR_KEY]: doorScript("cellar", "cellar door", OPENED),
     };
-    const catalog = { items: {}, aliases: {}, behaviors };
+    // The catalog must carry EVERY item the description references — the Caretaker
+    // holds the cellar key (`holds: [KEY_ITEM_KEY]`), so export it here (the same
+    // registry factory the campaign registered under KEY_ITEM_KEY), or the Rust
+    // assembler throws UnregisteredItem.
+    const catalog = { items: { [KEY_ITEM_KEY]: itemToCatalogEntry(cellarKey()) }, aliases: {}, behaviors };
 
     const oracle = new OracleSession({
       builder: template, registry, aliases: {}, playerName: "Ada", archetype: "delver", rng, behaviors,
@@ -126,7 +131,7 @@ describe("generate caretaker golden", () => {
       { kind: "examine", targetId: CARETAKER_ID },                          // 3 GONE: quiet no-op
       { kind: "submit", intent: { kind: "move", dir: Directions.South } },  // 4 UNLOCK: opened cue, -> Cellar
     ];
-    const steps = writeFacadeFixture(here, "caretaker", SEED, oracle, catalog, ops);
+    const steps = writeFacadeFixture(here, "caretaker", SEED, oracle, catalog, ops, template.description);
 
     // ── self-validation: assert the composed beat in the generated golden ─────────
     // (Serialized shape: characters carry NO room field — a room lists its

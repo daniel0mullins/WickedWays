@@ -173,7 +173,7 @@ describe("generate scripted-scene golden", () => {
       { kind: "submit", intent: { kind: "move", dir: Directions.North } }, // 4 →Vault : canPlay 2<2 false → no fire
       { kind: "submit", intent: { kind: "move", dir: Directions.South } }, // 5 →Threshold : hush cue
     ];
-    const steps = writeFacadeFixture(here, "scripted-scene", SEED, oracle, catalog, ops);
+    const steps = writeFacadeFixture(here, "scripted-scene", SEED, oracle, catalog, ops, template.description);
 
     // ── self-validation: assert the fixture exercises every gated behavior ─────────
     type Cue = { kind: string; cue?: { text?: string } };

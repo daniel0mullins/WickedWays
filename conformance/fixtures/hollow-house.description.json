@@ -1,0 +1,288 @@
+{
+  "title": "The Hollow House",
+  "opts": {
+    "maxRounds": 150,
+    "baseEncounterChance": 20
+  },
+  "archetypes": [
+    {
+      "id": "heir",
+      "name": "Heir",
+      "baseStats": {
+        "health": 12,
+        "sanity": 16,
+        "energy": 5
+      },
+      "inventorySlots": 1,
+      "immunities": [
+        "fear"
+      ]
+    }
+  ],
+  "rooms": [
+    {
+      "name": "Foyer",
+      "description": "The entrance hall of the Hollow House. Dust sheets shroud the furniture; the front door has locked itself behind you."
+    },
+    {
+      "name": "Cellar",
+      "description": "A low brick cellar, black as a throat. Water seeps somewhere unseen.",
+      "dark": true
+    },
+    {
+      "name": "Hall",
+      "description": "A long central hall. Portraits watch from the walls, their eyes scratched out.",
+      "spawnModifier": 1
+    },
+    {
+      "name": "Kitchen",
+      "description": "A cold scullery. Copper pots hang in rows; one still sways.",
+      "spawnModifier": 1
+    },
+    {
+      "name": "Parlor",
+      "description": "A receiving parlor gone to mildew. A piano sits with its lid nailed shut.",
+      "spawnModifier": 1
+    },
+    {
+      "name": "Landing",
+      "description": "The upstairs landing. Two doors face you — one to the west, one leading further up — and a nursery stands open to the east.",
+      "spawnModifier": 1
+    },
+    {
+      "name": "Study",
+      "description": "A cramped study, papers everywhere, as if someone left mid-sentence."
+    },
+    {
+      "name": "Nursery",
+      "description": "A child's nursery. A rocking horse moves, very slightly, on its own.",
+      "dark": true
+    },
+    {
+      "name": "Attic",
+      "description": "The attic, under the bare ribs of the roof. This is where the journal ends."
+    }
+  ],
+  "startRoom": "Foyer",
+  "exits": [
+    {
+      "from": "Foyer",
+      "direction": "north",
+      "to": "Hall"
+    },
+    {
+      "from": "Hall",
+      "direction": "south",
+      "to": "Foyer"
+    },
+    {
+      "from": "Foyer",
+      "direction": "south",
+      "to": "Cellar",
+      "behaviorKey": "cellar-door",
+      "name": "cellar door",
+      "initialState": {
+        "unlocked": false
+      }
+    },
+    {
+      "from": "Hall",
+      "direction": "west",
+      "to": "Kitchen"
+    },
+    {
+      "from": "Kitchen",
+      "direction": "east",
+      "to": "Hall"
+    },
+    {
+      "from": "Hall",
+      "direction": "east",
+      "to": "Parlor"
+    },
+    {
+      "from": "Parlor",
+      "direction": "west",
+      "to": "Hall"
+    },
+    {
+      "from": "Hall",
+      "direction": "north",
+      "to": "Landing"
+    },
+    {
+      "from": "Landing",
+      "direction": "south",
+      "to": "Hall"
+    },
+    {
+      "from": "Landing",
+      "direction": "east",
+      "to": "Nursery"
+    },
+    {
+      "from": "Nursery",
+      "direction": "west",
+      "to": "Landing"
+    },
+    {
+      "from": "Landing",
+      "direction": "west",
+      "to": "Study",
+      "behaviorKey": "study-door",
+      "name": "study door",
+      "initialState": {
+        "unlocked": false
+      }
+    },
+    {
+      "from": "Landing",
+      "direction": "north",
+      "to": "Attic",
+      "behaviorKey": "attic-door",
+      "name": "attic door",
+      "initialState": {
+        "unlocked": false
+      }
+    }
+  ],
+  "mobs": [
+    {
+      "name": "Wraith",
+      "stats": {
+        "health": 6,
+        "sanity": 5,
+        "energy": 5
+      },
+      "room": "Nursery",
+      "drops": [
+        "brass-key"
+      ],
+      "naturalAttack": {
+        "stat": "sanity",
+        "power": 3
+      }
+    },
+    {
+      "name": "Revenant",
+      "stats": {
+        "health": 10,
+        "sanity": 8,
+        "energy": 6
+      },
+      "room": "Cellar",
+      "drops": [
+        "iron-key"
+      ],
+      "naturalAttack": {
+        "stat": "sanity",
+        "power": 2
+      }
+    }
+  ],
+  "loot": [
+    {
+      "name": "foyer-table",
+      "room": "Foyer",
+      "items": [
+        "journal"
+      ],
+      "description": "A hall table with a single drawer."
+    },
+    {
+      "name": "hall-stand",
+      "room": "Hall",
+      "items": [
+        "poker"
+      ],
+      "description": "A fireplace stand."
+    },
+    {
+      "name": "kitchen-hook",
+      "room": "Kitchen",
+      "items": [
+        "lantern"
+      ],
+      "description": "A lantern hangs from a hook."
+    },
+    {
+      "name": "study-desk",
+      "room": "Study",
+      "items": [
+        "laudanum"
+      ],
+      "description": "A writing desk with a locked-open drawer."
+    }
+  ],
+  "caches": [],
+  "npcs": [
+    {
+      "name": "Caretaker",
+      "stats": {
+        "health": 1,
+        "sanity": 1,
+        "energy": 1
+      },
+      "room": "Foyer",
+      "behavior": "caretaker",
+      "holds": [
+        "cellar-key"
+      ]
+    }
+  ],
+  "formations": [
+    {
+      "key": "rat-single",
+      "weight": 3
+    },
+    {
+      "key": "rat-pair",
+      "weight": 1
+    }
+  ],
+  "scenes": [
+    {
+      "room": "Foyer",
+      "key": "caretaker-intro",
+      "phase": "enter"
+    }
+  ],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [
+    {
+      "key": "reached-attic-with-journal",
+      "narration": {
+        "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
+      }
+    }
+  ],
+  "loseConditions": [
+    {
+      "key": "sanity-zero",
+      "narration": {
+        "text": "The dark gets in. Your thoughts come apart like wet paper, and the Hollow House keeps what is left of you."
+      }
+    },
+    {
+      "key": "party-down",
+      "narration": {
+        "text": "You fall, and do not rise. The house is patient. It has all the time there is."
+      }
+    }
+  ],
+  "mechanics": [
+    {
+      "key": "dread"
+    },
+    {
+      "key": "storyteller"
+    },
+    {
+      "key": "status-bar"
+    }
+  ],
+  "timeoutNarration": {
+    "text": "Dawn never comes. You realize, slowly, that it never will — and that you stopped looking for the door some hours ago."
+  }
+}

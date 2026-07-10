@@ -1,0 +1,69 @@
+{
+  "title": "Two PC (conformance)",
+  "opts": {
+    "maxRounds": 20,
+    "baseEncounterChance": 0
+  },
+  "archetypes": [
+    {
+      "id": "delver",
+      "name": "Delver",
+      "baseStats": {
+        "health": 10,
+        "sanity": 8,
+        "energy": 8
+      }
+    }
+  ],
+  "rooms": [
+    {
+      "name": "A",
+      "description": "A vaulted antechamber.",
+      "lights": [
+        "items/two-pc-torch"
+      ]
+    },
+    {
+      "name": "B",
+      "description": "A slanted gallery."
+    },
+    {
+      "name": "C",
+      "description": "A one-way oubliette."
+    }
+  ],
+  "startRoom": "A",
+  "exits": [
+    {
+      "from": "A",
+      "direction": "northeast",
+      "to": "B"
+    },
+    {
+      "from": "A",
+      "direction": "south",
+      "to": "C",
+      "oneWay": true
+    }
+  ],
+  "mobs": [],
+  "loot": [],
+  "caches": [
+    {
+      "name": "Vein",
+      "room": "A",
+      "materials": {
+        "metal": 3,
+        "glass": 2
+      }
+    }
+  ],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

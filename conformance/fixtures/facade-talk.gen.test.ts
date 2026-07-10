@@ -19,12 +19,23 @@ import { authorTemplate } from "wickedways/lib/authoring/template-builder";
 import { StatType } from "wickedways/lib/character/stats";
 import { mulberry32 } from "../seeded-rng.ts";
 import { DREAD_KEY, dreadShadow } from "./dread-shadow.ts";
+import { mechanic } from "../../packages/campaigns/src/scripted/builders.ts";
 import { OracleSession } from "./oracle-session.ts";
 import { writeFacadeFixture, type FacadeOp } from "./facade-gen.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const SEED = 0xfacade5;
-const EMPTY_CATALOG = { items: {}, aliases: {} };
+
+// `conformance:dread` catalog twin. The campaign opts into the mechanic
+// (`.useMechanic(DREAD_KEY)`), so the description references it and the Rust
+// assembler's validate throws UnregisteredMechanic unless it is in the catalog
+// behaviors. At RUNTIME the Rust core resolves `conformance:dread` NATIVELY
+// (conformance.rs; native resolution WINS over a same-key catalog behavior), so
+// these hooks are never executed — this entry exists solely so the assembler can
+// validate the key and read `script.init` for the genesis mechanic state, which
+// must equal `dreadShadow.initialState()` ({ ticks: 0 }).
+const dreadCatalogTwin = mechanic({ init: dreadShadow.initialState() });
+const CATALOG = { items: {}, aliases: {}, behaviors: { [DREAD_KEY]: dreadCatalogTwin } };
 
 describe("generate facade-talk golden", () => {
   it("writes genesis + catalog + per-op golden", () => {
@@ -49,7 +60,7 @@ describe("generate facade-talk golden", () => {
       { kind: "submit", intent: { kind: "talk", npcId: "anyone" } }, // free throw: no startTurn, no nextPlayer (round stays 0)
       { kind: "submit", intent: { kind: "wait" } },                   // advancing no-op: nextPlayer wraps round 0 → 1
     ];
-    const steps = writeFacadeFixture(here, "facade-talk", SEED, oracle, EMPTY_CATALOG, ops);
+    const steps = writeFacadeFixture(here, "facade-talk", SEED, oracle, CATALOG, ops, template.description);
 
     // The boot must have buffered round-0 cues so take_startup_cues has parity to prove.
     if (oracle.startupCues.length === 0) {

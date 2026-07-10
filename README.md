@@ -2028,3 +2028,99 @@ wasm-load errors during boot. The remaining gap is item `onUse`
 consumable effects (e.g. laudanum restoring sanity) are **not yet ported** to the Rust
 catalog. That consumable path is a survival aid *off* the Hollow House win path, so this is
 deliberately not 100% item-action parity yet.
+
+#### The Rust campaign assembler (G1)
+
+`crates/wickedways-assemble` is the Rust port of the TypeScript authoring assembler
+(`src/lib/authoring/assembler.ts`). It closes the last authoring seam that still ran in
+TypeScript at runtime: turning an author's campaign definition into a playable **pre-begin
+genesis snapshot** the Rust core can `begin_campaign` on.
+
+**The artifact triple.** Authoring is now a two-input, one-output pipeline:
+
+```
+description.json  +  catalog.json   ->   genesis.json
+(what the author       (registry of        (a pre-begin CampaignSnapshot,
+ declared)              behaviors/items/     ready for begin_campaign)
+                        recipes/formations)
+```
+
+`description.json` is the campaign the author declared (rooms, mobs, npcs, loot, caches,
+exits, scenes, win/lose conditions, policies); `catalog.json` is the resolved registry of
+behavior scripts, items, aliases, formations, and crafting-recipe metadata; `genesis.json`
+is the deterministic `CampaignSnapshot` `assemble()` produces from the pair. The boundary DTO
+`CampaignDescription` is ts-rs-generated into `generated/bindings/` and is gated by
+`pnpm run bindings:check`, exactly like the WASM boundary types — TypeScript's role in
+authoring is now reduced to a build-time `description.json` emitter.
+
+**Id derivation, never generation.** Every id is derived from author-supplied names, so the
+crate depends on neither `rand` nor `uuid` and re-running `assemble()` on the same inputs
+yields byte-identical output. The rules (verbatim from the TS oracle):
+
+| entity | id | TS site |
+| --- | --- | --- |
+| campaign | `campaign:{title}` | `assembler.ts:199` |
+| room | `room:{name}` | `:248` |
+| mob | `mob:{name}` | `:233` |
+| npc | `npc:{name}` | `:287` |
+| cache | `cache:{name}` | `:214` |
+| loot box | `loot:{name}` | `:220` |
+| exit | `exit:{a}\|{b}` — the two **author-supplied room names** (`e.from`, `e.to`), sorted | `:332` |
+| scene | `scene:{room}:{key}:{phase ?? "enter"}` | `:345` |
+| loot content item | `loot:{name}:item#{i}` | `:223` |
+| mob drop item | `mob:{name}:drop#{i}` | `:236` |
+| room light item | `room:{name}:light#{i}` | `:251` |
+| npc held item | `npc:{name}:item#{i}` | `:295` |
+| player | `player:{name}` — minted by seating (see below), not by the TS `assemble()` | — |
+
+Note the item infix differs by holder — `item#`, `drop#`, `light#` — and `i` is the index in
+the source key array, so repeated keys still get distinct ids.
+
+**ASCII room names + the sort rationale.** `exit:` ids are minted by sorting the two author
+room names. JavaScript's `Array.prototype.sort()` compares UTF-16 code units; Rust's
+`str: Ord` compares UTF-8 bytes. The two orderings agree on ASCII and diverge above the BMP,
+so a non-ASCII room name would mint a *different* `exit:` id in each language and silently
+break byte-parity. Room names (and all conformance-fixture prompts, triggers, and
+descriptions) are therefore constrained to ASCII.
+
+**Party seating: `assemble()` takes 0..N seats; the first becomes GM.** The signature is
+`assemble(desc, catalog, party: &[Seat]) -> Result<CampaignSnapshot, AssembleError>`. This is
+a deliberate divergence from TS: `assembler.ts` returns a **player-less** campaign — seating
+lived downstream in `oracle-session.ts:79-98`. The Rust crate folds seating in so `assemble()`
+produces a genesis directly. The party may be empty (a pristine, unseated snapshot) or hold
+any number of seats; the **first seat becomes the GM** (`gmId`), all seats — GM included — fill
+`partyIds` in order, and each PC is placed in `startRoom`. Player ids are `player:{name}`, minted here rather than by
+the TS `assemble()`.
+
+**The gate, and why only pre-begin goldens are oracles.** `cargo test -p wickedways-assemble`
+diffs Rust's assembled genesis against the committed goldens **byte-for-byte** — the gate is
+the authority; when Rust and a golden disagree, Rust is wrong until proven otherwise. It is
+gated against the **17 pre-begin goldens only** (2 pristine snapshots + 14 single-PC facade
+genesis fixtures + the two-PC fixture + a determinism check). The 31 `started: true`
+snapshots in the corpus are **not** valid oracles for the assembler: they capture state
+*after* `begin_campaign` and turn execution (round/turn wrap, mob reactions, scene fires),
+which is the core's job, not the assembler's. Gating `assemble()` against a post-begin
+snapshot would conflate "did we build the genesis correctly" with "did the engine run
+correctly" — so only the pre-begin artifacts are used as assembler oracles.
+
+**Deliberate divergences / early decisions (recorded so they aren't mistaken for bugs):**
+
+1. **The recipe-catalog extension was pulled into G1.** The core `Catalog`
+   (`wickedways_core::world::descriptor`) now carries a `recipes: BTreeMap<String, RecipeMeta>`
+   map (`skip_serializing_if` empty, so zero churn to existing catalog goldens). The recipe
+   `outputName`/`materials` otherwise live only inside the registry's `create` closure and
+   could not be reconstructed on the Rust side; carrying them in the catalog lets the assembler
+   reproduce seed's recipe codex. This is distinct from validation — there is still **no
+   `UnregisteredRecipe` check** (the catalog has no recipe *registry* for existence checks);
+   `knownRecipes` is populated straight from `desc.recipes`. Closing that validation gap is a
+   G2 prerequisite once `assemble()` consumes untrusted (modded) input.
+2. **Validation message strings are not byte-gated.** The `Display` impls reproduce the TS
+   error strings, but the gate compares genesis bytes, not error text.
+3. **`assemble()` seats the party; the TS assembler does not** (see the seating note above) —
+   this is what lets the Rust crate emit a genesis directly, and why `party: &[Seat]` exists.
+
+**Forward pointer (G2).** G2 adds the TOML authoring surface and a CLI on top of this crate
+**without changing `assemble()`'s signature** — the TOML/parser/CLI layer produces the same
+`(description, catalog, party)` inputs `assemble()` already takes. The gate is pure `cargo test`
+(no wasm-pack, no browser, no vitest), so it runs in the fast CI job; the convenience alias is
+`pnpm run checks:assemble`.

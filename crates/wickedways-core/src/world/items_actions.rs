@@ -850,7 +850,7 @@ mod tests {
     fn simple_cat_with(key: &str, desc: ItemDescriptor) -> Catalog {
         let mut items = BTreeMap::new();
         items.insert(key.to_string(), desc);
-        Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default() }
+        Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() }
     }
 
     // ── tests ──────────────────────────────────────────────────────────────────
@@ -1534,7 +1534,7 @@ mod tests {
             immunities: json!([]),
             grants_immunity: json!(null),
         });
-        let cat = Catalog { items: cat_items, aliases: alloc::collections::BTreeMap::new(), behaviors: Default::default(), formations: Default::default() };
+        let cat = Catalog { items: cat_items, aliases: alloc::collections::BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() };
 
         let (mut world, pc_id) = world_with_items(&[("key-x", "items/brass-key")], &cat);
         let item_id = iid("key-x");
@@ -1796,7 +1796,7 @@ mod tests {
                 },
             },
         );
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors, formations: Default::default() };
+        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors, formations: Default::default(), recipes: Default::default() };
 
         let (mut world, pc_id) = world_with_items(&[("potion-1", "items/potion")], &cat);
         // sanity 4 so +6 is observable and uncapped (world_with_party seeds 5.0).

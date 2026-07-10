@@ -1,0 +1,62 @@
+{
+  "title": "Facade Free vs Advancing (conformance)",
+  "opts": {
+    "maxRounds": 20,
+    "baseEncounterChance": 0
+  },
+  "archetypes": [
+    {
+      "id": "delver",
+      "name": "Delver",
+      "baseStats": {}
+    }
+  ],
+  "rooms": [
+    {
+      "name": "Hall",
+      "description": "A stone hall."
+    },
+    {
+      "name": "Crypt",
+      "description": "A dark-cornered crypt."
+    }
+  ],
+  "startRoom": "Hall",
+  "exits": [
+    {
+      "from": "Hall",
+      "direction": "north",
+      "to": "Crypt"
+    }
+  ],
+  "mobs": [
+    {
+      "name": "Lurker",
+      "stats": {
+        "health": 5,
+        "sanity": 4,
+        "energy": 4
+      },
+      "room": "Hall"
+    }
+  ],
+  "loot": [
+    {
+      "name": "chest",
+      "room": "Hall",
+      "items": [
+        "items/facade-sword"
+      ],
+      "description": "An old chest."
+    }
+  ],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

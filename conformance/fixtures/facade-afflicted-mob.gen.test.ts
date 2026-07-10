@@ -47,7 +47,7 @@ describe("generate facade-afflicted-mob golden", () => {
       { kind: "submit", intent: { kind: "wait" } },
       { kind: "submit", intent: { kind: "wait" } },
     ];
-    const steps = writeFacadeFixture(here, "facade-afflicted-mob", SEED, oracle, EMPTY_CATALOG, ops);
+    const steps = writeFacadeFixture(here, "facade-afflicted-mob", SEED, oracle, EMPTY_CATALOG, ops, template.description);
 
     for (const s of steps.slice(1)) {
       const names = ((s.result as { mobAttacks?: { name: string }[] }).mobAttacks ?? []).map((a) => a.name);

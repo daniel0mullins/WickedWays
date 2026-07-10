@@ -46,7 +46,7 @@ describe("generate facade-ko-piling golden", () => {
       { kind: "submit", intent: { kind: "wait" } }, // both mobs strike; Second KOs the PC
       { kind: "submit", intent: { kind: "wait" } }, // PC downed → reactions empty
     ];
-    const steps = writeFacadeFixture(here, "facade-ko-piling", SEED, oracle, EMPTY_CATALOG, ops);
+    const steps = writeFacadeFixture(here, "facade-ko-piling", SEED, oracle, EMPTY_CATALOG, ops, template.description);
 
     const r0 = steps[0]!.result as { mobAttacks?: { name: string }[] };
     const names = (r0.mobAttacks ?? []).map((a) => a.name);

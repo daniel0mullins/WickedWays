@@ -1,0 +1,28 @@
+{
+  "items": {
+    "items/two-pc-torch": {
+      "name": "Torch",
+      "type": "accessory",
+      "stat": "sanity",
+      "modifier": 0,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": false,
+        "usable": false
+      },
+      "slot": "hand",
+      "emitsLight": true,
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    }
+  },
+  "aliases": {},
+  "behaviors": {},
+  "formations": {},
+  "recipes": {}
+}
