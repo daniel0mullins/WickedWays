@@ -6,5 +6,6 @@
 //! This crate must never depend on `rand` or `uuid`: all ids are derived from content.
 
 pub mod description;
+pub(crate) mod ids;
 
 pub use description::CampaignDescription;
