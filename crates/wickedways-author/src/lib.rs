@@ -10,7 +10,7 @@ use wickedways_assemble::description::CampaignDescription;
 use wickedways_core::world::descriptor::Catalog;
 use error::CompileError;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct CompiledCampaign { pub description: CampaignDescription, pub catalog: Catalog }
 
 /// Parse the TOML surface. Lowering (expressions → description/catalog) lands in Tasks 4-5.

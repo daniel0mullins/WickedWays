@@ -118,3 +118,21 @@ fn g2_vault_description_matches() {
         serde_json::from_str(&read(&dir.join("g2-vault.description.json"))).expect("parse");
     assert_json_eq(&got, &want, "g2-vault.description.json");
 }
+
+#[test]
+fn g2_vault_catalog_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("g2-vault.toml"))).expect("compile");
+    let got: Value = serde_json::to_value(&compiled.catalog).expect("to_value");
+    let want: Value =
+        serde_json::from_str(&read(&dir.join("g2-vault.catalog.json"))).expect("parse");
+    assert_json_eq(&got, &want, "g2-vault.catalog.json");
+}
+
+#[test]
+fn compile_is_deterministic() {
+    let src = read(&fixtures().join("g2-vault.toml"));
+    let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
+    let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
+    assert_eq!(a, b, "compile() is not deterministic");
+}
