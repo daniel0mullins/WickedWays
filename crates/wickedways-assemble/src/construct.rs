@@ -333,6 +333,32 @@ pub fn construct(
         mechanics,
     };
 
+    // Genesis codex: one recipe entry per declared recipe key (declaration
+    // order), resolving `outputName`/`materials` from `catalog.recipes` (the
+    // registry metadata the exporter now carries). `firstSeen` is `{round:0}`
+    // only — the party/room discovery fields belong to seating's codex (Task 7),
+    // appended after these. An unregistered recipe key is skipped (trust
+    // boundary), not a panic.
+    let codex = Value::Array(
+        desc.recipes
+            .iter()
+            .filter_map(|key| {
+                catalog.recipes.get(key).map(|meta| {
+                    json!({
+                        "kind": "recipe",
+                        "key": key,
+                        "snapshot": {
+                            "id": meta.id,
+                            "outputName": meta.output_name,
+                            "materials": meta.materials,
+                        },
+                        "firstSeen": { "round": 0 },
+                    })
+                })
+            })
+            .collect(),
+    );
+
     Ok(CampaignSnapshot {
         schema_version: SCHEMA_VERSION,
         campaign,
@@ -342,11 +368,7 @@ pub fn construct(
         items,
         loot,
         material_caches,
-        // Genesis codex is empty at construct time. (Recipe/material codex entries
-        // are recorded by the live TS engine's `discoverRecipe`/`claimMaterials`
-        // encounter log, whose recipe metadata — outputName/materials — lives in
-        // registry closures that the exported catalog does not carry.)
-        codex: json!([]),
+        codex,
     })
 }
 

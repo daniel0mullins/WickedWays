@@ -126,19 +126,7 @@ fn hollow_house_pristine() {
     gate("hollow-house", "hollow-house.snapshot.json", Some("hollow-house"), &[]);
 }
 
-/// BLOCKED (input-completeness gap, NOT a construct bug). First diff is at
-/// exactly `/codex`: the seed golden's codex carries a recipe entry
-/// `{id:"widget", outputName:"Widget", materials:{metal:2}}`, produced by the
-/// live TS engine's `discoverRecipe`. But `outputName`/`materials` live in the
-/// registry closures (`makeWidgetRecipe`/`makeWidgetItem`, packages/seed) and are
-/// NOT exported by `catalogFromRegistry` — the catalog has no `recipes` map, only
-/// `widget-item.recipe = {item:1}` (a different value), and the description carries
-/// only the recipe KEY `"widget"`. So the assembler cannot reconstruct the codex
-/// from (description + catalog). Un-ignore once the catalog carries recipe metadata
-/// (needs `catalogFromRegistry` + `Catalog` extension — Task 3/4 territory).
-/// Everything else in this fixture is byte-exact. See task-5-6-report.md.
 #[test]
-#[ignore = "BLOCKED at /codex: seed recipe metadata (outputName/materials) is not in description+catalog; see task-5-6-report.md"]
 fn seed_pristine() {
     gate("seed", "seed.snapshot.json", Some("seed"), &[]);
 }
