@@ -212,10 +212,13 @@ describe("Loot", () => {
       expect(() => box.receiveItem(key)).toThrow(ProceduralViolation);
     });
 
-    it("refuses to be constructed holding a key", () => {
+    it("permits an authored key in its initial contents, claiming it", () => {
       const key = createKey({ name: "Key", keyCode: "vault", consumeOnUse: false });
 
-      expect(() => new Loot({ description: "chest", contents: [key] })).toThrow(ProceduralViolation);
+      const box = new Loot({ description: "chest", contents: [key] });
+
+      expect(box.contents).toContain(key);
+      expect(heldBy(key)).toBe(box);
     });
   });
 
