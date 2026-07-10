@@ -71,11 +71,7 @@ describe("generate g2-vault oracle fixture", () => {
       conditions: { [WIN_KEY]: reachedVault },
     });
 
-    const template = authorTemplate("Vault", registry, {
-      rng,
-      maxRounds: 20,
-      baseEncounterChance: 0,
-    })
+    const template = authorTemplate("Vault", registry, { rng })
       .room("Hall", { description: "A cold stone hall." })
       .room("Vault", { description: "The vault beyond." })
       .startRoom("Hall")

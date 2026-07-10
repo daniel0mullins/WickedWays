@@ -1,9 +1,6 @@
 {
   "title": "Vault",
-  "opts": {
-    "maxRounds": 20,
-    "baseEncounterChance": 0
-  },
+  "opts": {},
   "archetypes": [],
   "rooms": [
     {

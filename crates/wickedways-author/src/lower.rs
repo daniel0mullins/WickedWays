@@ -14,11 +14,6 @@ use crate::author_doc::{AuthorDoc, ConditionEntry as AuthorCondition};
 use crate::error::CompileError;
 use crate::CompiledCampaign;
 
-/// The MVP surface exposes no `opts`; the canonical author fixes these bounds
-/// (mirrors the TS twin's `authorTemplate(..., { maxRounds: 20, baseEncounterChance: 0 })`).
-const MVP_MAX_ROUNDS: i64 = 20;
-const MVP_BASE_ENCOUNTER_CHANCE: i64 = 0;
-
 /// Lower a parsed author document. Infallible for the description half, but keeps
 /// the fallible signature: the catalog half (Task 5) surfaces `CompileError`s.
 pub(crate) fn lower(doc: &AuthorDoc) -> Result<CompiledCampaign, CompileError> {
@@ -29,10 +24,9 @@ pub(crate) fn lower(doc: &AuthorDoc) -> Result<CompiledCampaign, CompileError> {
 fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
     CampaignDescription {
         title: doc.title.clone(),
-        opts: CampaignOpts {
-            max_rounds: Some(MVP_MAX_ROUNDS),
-            base_encounter_chance: Some(MVP_BASE_ENCOUNTER_CHANCE),
-        },
+        // The MVP surface exposes no `opts`; both bounds fall to the engine
+        // defaults (maxRounds 100, baseEncounterChance 20) applied by `assemble`.
+        opts: CampaignOpts::default(),
         archetypes: Vec::new(),
         rooms: doc
             .rooms

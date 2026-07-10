@@ -3,7 +3,7 @@
   "campaign": {
     "id": "campaign:Vault",
     "title": "Vault",
-    "maxRounds": 20,
+    "maxRounds": 100,
     "round": 0,
     "started": false,
     "outcome": "ongoing",
@@ -29,7 +29,7 @@
     "archetypes": [],
     "actionSounds": {},
     "encounterTable": {
-      "baseChance": 0,
+      "baseChance": 20,
       "visited": [
         "room:Hall"
       ],
