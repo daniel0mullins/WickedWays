@@ -165,6 +165,22 @@ fn facade_genesis_goldens_single_pc() {
     }
 }
 
+/// The ONLY pre-begin MULTI-PC oracle. Every other pre-begin golden is single-PC
+/// (or player-less); `combat.start.snapshot.json` has two PCs but is `started: true`,
+/// so `assemble()` cannot reproduce it. This gates `seat_party` at `party.len() == 2`
+/// (party ordering, per-seat codex/`encountered`, GM = first seat) AND byte-checks
+/// construct branches no other fixture exercises: a material cache
+/// (`MaterialCacheSnapshot`), a room light (`room(..., { lights })`), a one-way exit,
+/// and a two-way DIAGONAL exit (`reverse_direction` for `northeast`/`southwest`).
+#[test]
+fn two_pc_genesis_golden() {
+    let party = vec![
+        Seat { name: "Ada".into(), archetype: Some("delver".into()) },
+        Seat { name: "Ben".into(), archetype: Some("delver".into()) },
+    ];
+    gate("two-pc", "two-pc.genesis.json", Some("two-pc"), &party);
+}
+
 #[test]
 fn hollow_house_pristine() {
     gate("hollow-house", "hollow-house.snapshot.json", Some("hollow-house"), &[]);
