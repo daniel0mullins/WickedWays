@@ -9,12 +9,28 @@
 //! reproduced here, because the pre-begin genesis carries them:
 //!   * `Character.move` records a budgeted `move` history entry and ticks
 //!     `actionsThisRound` to 1 (`character.ts:1091-1108`, `recordAction`).
-//!   * `PlayerCharacter.move` then runs `NOTE_ENCOUNTERS` (records every non-party,
-//!     non-KO start-room occupant into the codex as a `mob` entry — NPCs included —
-//!     and into `campaign.encountered` as `"{pc}:{occ}"`) followed by
+//!   * `PlayerCharacter.move` then runs `NOTE_ENCOUNTERS` (records every non-party
+//!     start-room occupant into the codex as a `mob` entry — NPCs included — and into
+//!     `campaign.encountered` as `"{pc}:{occ}"`) followed by
 //!     `RECORD_ENCOUNTER({kind:"room"})` (`player-character.ts:172-178`,
 //!     `campaign.ts:823-860`). So the codex discovery order is
 //!     `[occupants in occupant order..., room]`, first-write-wins per `kind::key`.
+//!
+//! DEFERRED — the KO-occupant skip. `NOTE_ENCOUNTERS` (`campaign.ts:827`) skips
+//! occupants whose `status` includes `Status.KO`, for BOTH the codex entry and the
+//! `encountered` push. This crate does NOT implement that skip, and deliberately so:
+//! KO is DERIVED from stats/afflictions by a *reconcile* (`character.ts:377`,
+//! `applyFromStats`), which runs only on `takeDamage`/`startTurn`/`endTurn` — all
+//! post-begin. A character constructed by the assembler never reconciles, so its
+//! `afflictions` are empty at genesis EVEN IF authored with `health: 0` (verified:
+//! a health-0 mob's genesis `afflictions.active` is `{}`, and the TS engine records
+//! it in both `encountered` and the codex). No occupant is ever KO in a pre-begin
+//! snapshot, so the skip is a no-op here and no fixture can exercise it. This is
+//! fail-loud: were a genuinely-KO-at-genesis occupant ever to become expressible,
+//! the TS oracle would drop it while this code would keep it, and the byte-parity
+//! gate would fire — at which point the skip must be implemented (compute KO from the
+//! occupant snapshot as `applyFromStats` does, and skip both the codex entry and the
+//! `encountered` push).
 //!
 //! The serializer seeds `allCharacters` with party members BEFORE room occupants
 //! (`serializer.ts:65,90`), and a `Map` keeps first-insertion position, so seated
