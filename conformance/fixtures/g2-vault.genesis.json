@@ -95,9 +95,7 @@
         "room:Vault"
       ],
       "behaviorKey": "vault-door",
-      "state": {
-        "unlocked": false
-      }
+      "state": {}
     }
   ],
   "characters": [

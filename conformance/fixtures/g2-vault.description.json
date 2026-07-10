@@ -21,10 +21,7 @@
       "from": "Hall",
       "direction": "north",
       "to": "Vault",
-      "behaviorKey": "vault-door",
-      "initialState": {
-        "unlocked": false
-      }
+      "behaviorKey": "vault-door"
     }
   ],
   "mobs": [],

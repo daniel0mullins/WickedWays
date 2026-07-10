@@ -81,7 +81,6 @@ describe("generate g2-vault oracle fixture", () => {
       .startRoom("Hall")
       .exit("Hall", Directions.North, "Vault", {
         behaviorKey: DOOR_KEY,
-        initialState: { unlocked: false },
       })
       .loot("shelf", { room: "Hall", items: [KEY_ITEM_KEY] })
       .winWhen(WIN_KEY, { text: "You reached the vault." });
