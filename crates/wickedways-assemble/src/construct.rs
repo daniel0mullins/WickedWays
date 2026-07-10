@@ -322,8 +322,9 @@ pub fn construct(
         materials: serde_json::to_value(&materials).unwrap_or_else(|_| json!({})),
         claims,
         encountered: Vec::new(),
-        // Deliberate divergence (Task 3): the catalog carries no recipe registry,
-        // so `knownRecipes` is populated straight from `desc.recipes`.
+        // `knownRecipes` is populated straight from `desc.recipes` (the declared keys).
+        // Recipe metadata (outputName/materials) for the codex is resolved separately
+        // below from `catalog.recipes`; recipe-key *validation* is deferred to G2.
         known_recipes: desc.recipes.clone(),
         archetypes: serde_json::to_value(&desc.archetypes).unwrap_or_else(|_| json!([])),
         action_sounds: json!({}),

@@ -89,10 +89,13 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
     }
 
     // ---- recipes (assembler.ts:95-101) ----
-    // DELIBERATE DIVERGENCE: the catalog carries no recipe registry (its keys are only
-    // items/aliases/behaviors/formations), so the TS `registry.recipe(k)` existence check
-    // has no Rust counterpart. Genesis is unaffected: `knownRecipes` is populated straight
-    // from `desc.recipes`. See "Deliberate divergences" at the end of this plan.
+    // DELIBERATE DIVERGENCE: the TS `registry.recipe(k)` existence check has no Rust
+    // counterpart yet. The catalog DOES now carry a `recipes` map (added for codex
+    // reconstruction — see construct.rs), so this check is cheaply closeable in place:
+    // flag any `desc.recipes` key missing from `catalog.recipes`. It is deliberately
+    // deferred to G2, where author input becomes untrusted (modding) — under G1's trusted
+    // TS toolchain, genesis is unaffected (`knownRecipes` comes straight from `desc.recipes`).
+    // See "Deliberate divergences" in the plan.
 
     // ---- conditions (assembler.ts:103-111) ----
     // Conditions are the "victory" behavior family, NOT "condition". Verified: the

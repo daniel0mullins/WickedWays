@@ -10,8 +10,9 @@ pub enum Problem {
     DuplicateName { kind: &'static str, name: String },
     UndefinedRoom { ctx: String, room: String },
     UnregisteredItem { ctx: String, key: String },
-    // NOTE: no `UnregisteredRecipe` in G1 — the catalog carries no recipe registry.
-    // See "Deliberate divergences".
+    // NOTE: no `UnregisteredRecipe` in G1. The catalog now carries a `recipes` map
+    // (used for the codex), so this variant is cheaply addable — recipe-key validation
+    // is deliberately deferred to G2 (untrusted modding input). See "Deliberate divergences".
     UnregisteredCondition { ctx: String, key: String },
     UnregisteredScene { key: String },
     UnregisteredExit { from: String, to: String, key: String },

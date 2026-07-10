@@ -1963,11 +1963,13 @@ The PR body should state: the assembler now reproduces all 17 pre-begin goldens 
 
 Recorded so a reviewer doesn't mistake them for bugs, and so they don't get silently lost.
 
-**1. No `UnregisteredRecipe` validation.** `assembler.ts:95-101` checks `registry.recipe(k)` resolves. The Rust catalog has no recipe registry — its keys are only `items`, `aliases`, `behaviors`, `formations`, and the behavior families are `mechanic | exit | item | victory | npc | scene`, with no `recipe` among them.
+**1. No `UnregisteredRecipe` validation (but the recipe-catalog plumbing now exists).** `assembler.ts:95-101` checks `registry.recipe(k)` resolves. G1 does not yet perform this check.
 
-*Genesis bytes are unaffected*: `knownRecipes` is populated straight from `desc.recipes` (verified — `seed.snapshot.json` has `knownRecipes: ["widget"]`, and `seedTemplate` declares `.recipe("widget")`). So the gate still passes.
+> **UPDATE (during G1 execution):** the recipe-catalog infrastructure this note originally named as a G2 prerequisite was **pulled forward into G1** — `wickedways_core::world::descriptor::Catalog` now carries a `recipes: BTreeMap<String, RecipeMeta>` (`#[serde(default, skip_serializing_if = "BTreeMap::is_empty")]`, zero churn to existing catalog goldens), emitted by `catalogFromRegistry`. This was required because the seed genesis golden's `codex` carries recipe `outputName`/`materials` that live only in a registry closure — reproducing it byte-for-byte needs the metadata as an input. So the *plumbing* is shipped; only the *recipe-key existence check* remains deferred.
 
-*What is lost*: a campaign naming a nonexistent recipe key assembles cleanly and produces a `knownRecipes` entry pointing at nothing. That is acceptable in G1, where campaigns come from the trusted TS toolchain. **It is not acceptable once G2 ships modding**, because `assemble` then consumes untrusted input. Closing it means adding `recipes` to `wickedways_core::world::descriptor::Catalog` (a `BTreeMap`, `skip_serializing_if = "BTreeMap::is_empty"`, so zero churn to existing catalog goldens) and emitting it from `catalogFromRegistry`. **Track this as a G2 prerequisite.**
+*Genesis bytes are unaffected by the missing check*: `knownRecipes` is populated straight from `desc.recipes` (verified — `seed.snapshot.json` has `knownRecipes: ["widget"]`, and `seedTemplate` declares `.recipe("widget")`), and the codex resolves metadata from `catalog.recipes`. The gate passes.
+
+*What is still lost*: a campaign naming a recipe key absent from `catalog.recipes` assembles cleanly — that key stays in `knownRecipes` but is silently dropped from the `codex` (an internally-inconsistent snapshot). That is acceptable in G1, where campaigns come from the trusted TS toolchain. **It is not acceptable once G2 ships modding**, because `assemble` then consumes untrusted input. **Closing it is now cheap and in-place** (the catalog map already exists): add an `UnregisteredRecipe` `Problem` and, in `validate`, flag any `desc.recipes` key missing from `catalog.recipes`, with a negative test. **Track this remaining check as a G2 task.**
 
 **2. Validation message strings are not byte-compared.** The `Display` impls reproduce the TS strings, but nothing gates them. The gate compares genesis, not error text.
 
