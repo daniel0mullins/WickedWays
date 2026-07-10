@@ -384,13 +384,19 @@ mod tests {
 
     #[test]
     fn adjust_stat_unknown_stat_rejected() {
-        assert!(parse_stmts("emit adjustStat(actor, vigor, 6)", Span { line: 1, col: 1 }).is_err());
+        assert!(matches!(
+            parse_stmts("emit adjustStat(actor, vigor, 6)", Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }
+        ));
     }
 
     #[test]
     fn heal_effect_still_rejected() {
         // Only cue + adjustStat this slice; heal (and every other effect) still errors.
-        assert!(parse_stmts("emit heal(actor, 6)", Span { line: 1, col: 1 }).is_err());
+        assert!(matches!(
+            parse_stmts("emit heal(actor, 6)", Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }
+        ));
     }
 
     #[test]

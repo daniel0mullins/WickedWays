@@ -4,8 +4,9 @@
 //! committed oracle disagree, the compiler is wrong until proven otherwise, and
 //! the fix goes in `lower.rs`.
 //!
-//! Task 4 gates the DESCRIPTION half (`g2-vault.description.json`); the CATALOG
-//! half lands in Task 5.
+//! Both halves are gated: each fixture's DESCRIPTION (`*.description.json`) and
+//! CATALOG (`*.catalog.json`) output is compared byte-for-byte against its
+//! committed oracle, and `compile()` is checked for determinism.
 
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -182,6 +183,14 @@ fn compile_is_deterministic() {
 #[test]
 fn compile_is_deterministic_scene() {
     let src = read(&fixtures().join("g2-scene.toml"));
+    let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
+    let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
+    assert_eq!(a, b, "compile() is not deterministic");
+}
+
+#[test]
+fn compile_is_deterministic_item() {
+    let src = read(&fixtures().join("g2-item.toml"));
     let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
     let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
     assert_eq!(a, b, "compile() is not deterministic");
