@@ -121,6 +121,52 @@ fn gate(name: &str, golden: &str, catalog_name: Option<&str>, party: &[Seat]) {
     assert_json_eq(&got, &want, golden);
 }
 
+/// The single seat every facade fixture boots with: `player:Ada`, archetype
+/// `delver`. Confirmed against all 14 goldens — each carries exactly one PC,
+/// `player:Ada`, whose `archetypeId` is `delver` (the archetype's per-fixture
+/// `baseStats` drive the PC's varying stats).
+fn ada() -> Vec<Seat> {
+    vec![Seat { name: "Ada".into(), archetype: Some("delver".into()) }]
+}
+
+/// Every pre-begin `*.genesis.json` facade golden carries exactly one PC,
+/// `player:Ada` (archetype `delver`). This gates the seven whose committed
+/// `*.description.json` + `*.catalog.json` INPUTS are self-consistent with their
+/// genesis OUTPUT, proving `seat_party` byte-parity across the interesting shapes:
+/// an empty start room (`facade-loot` — codex is room-only), multiple co-located
+/// mobs (`facade-ko-piling`), NPCs recorded as codex `mob` entries
+/// (`npc-dialogue`), and a mob in a NON-start room that is therefore NOT discovered
+/// (`scripted-scene`).
+///
+/// SEVEN of the fourteen facade fixtures are EXCLUDED because their committed
+/// INPUT artifacts are corrupt/incomplete (pre-existing fixture-generation bugs,
+/// NOT a seating defect — see `.superpowers/sdd/task-7-report.md`):
+///   * post-op stat drift — the description is written AFTER the golden ops run,
+///     and `Character` stores `stats` by reference (`character.ts:551`), so damage
+///     dealt during ops leaks into `description.mobs[].stats`, contradicting the
+///     pre-op genesis: `facade-afflicted-mob` (Blocked 6≠8), `facade-legality`
+///     (Wraith 0≠1), `facade-lit-entry` (Brute 4.8≠6), `facade-mob-combat`
+///     (Brute 4.8≠6). Root cause: `conformance/fixtures/facade-gen.ts` must clone
+///     the description BEFORE `runFacadeGolden`, as it already does for `genesis`.
+///   * catalog omits an item the description references (held key lives only in the
+///     registry, never exported): `caretaker` (`cellar-key`), `npc-foundation`
+///     (`items/gate-key`).
+///   * catalog omits a referenced mechanic behavior: `facade-talk`
+///     (`conformance:dread`).
+///
+/// Assembling any of these panics with an `AssembleError` (unregistered
+/// item/mechanic) or a byte diff at the drifted stat — the gate correctly refuses
+/// to reconcile a corrupt input with a correct golden.
+#[test]
+fn facade_genesis_goldens_single_pc() {
+    for name in [
+        "facade-free-vs-advancing", "facade-ko-piling", "facade-loot",
+        "facade-open-fail", "facade-undo", "npc-dialogue", "scripted-scene",
+    ] {
+        gate(name, &format!("{name}.genesis.json"), Some(name), &ada());
+    }
+}
+
 #[test]
 fn hollow_house_pristine() {
     gate("hollow-house", "hollow-house.snapshot.json", Some("hollow-house"), &[]);
