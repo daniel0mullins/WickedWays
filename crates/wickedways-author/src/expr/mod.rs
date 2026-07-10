@@ -109,6 +109,37 @@ mod tests {
     }
 
     #[test]
+    fn has_equipped_maps_to_typed_node() {
+        assert_eq!(p("hasEquipped(actor, 'lantern')"),
+            json!({"kind":"hasEquipped","of":{"kind":"actor"},"itemKey":"lantern"}));
+    }
+
+    #[test]
+    fn or_binds_looser_than_and() {
+        // round == 1 && actor || party  parses as  ((round == 1) && actor) || party
+        assert_eq!(p("round == 1 && actor || party"), json!({
+            "kind":"bin","op":"or",
+            "left":{"kind":"bin","op":"and",
+                "left":{"kind":"bin","op":"eq","left":{"kind":"round"},"right":{"kind":"lit","value":1}},
+                "right":{"kind":"actor"}},
+            "right":{"kind":"party"}}));
+    }
+
+    #[test]
+    fn call_arity_error_is_expr_parse() {
+        // hasKey takes exactly 2 args; 1 arg is an arity error.
+        assert!(matches!(parse_expr("hasKey(actor)", Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }));
+    }
+
+    #[test]
+    fn non_string_second_arg_is_expr_parse() {
+        // The 2nd argument must be a string literal; a subject is rejected.
+        assert!(matches!(parse_expr("hasKey(actor, round)", Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }));
+    }
+
+    #[test]
     fn unknown_call_is_unknown_reference() {
         let err = parse_expr("frobnicate(actor)", Span { line: 4, col: 11 }).unwrap_err();
         assert!(matches!(err, CompileError::UnknownReference { name, .. } if name == "frobnicate"));

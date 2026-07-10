@@ -23,6 +23,9 @@ jobs:
       # The assembler gate is pure Rust -- no wasm-pack, no browser -- so it runs in
       # the fast job. It diffs Rust's assembled genesis against the committed goldens.
       - run: cargo test -p wickedways-assemble
+      # The G2 author gate is likewise pure Rust: it byte-diffs the TOML compiler's
+      # output against the committed g2-vault oracle. Runs in the fast job.
+      - run: cargo test -p wickedways-author
       # `pnpm run checks` (lint + typecheck + tests) resolves the engine types from
       # the built wasm pkg (engine-types.ts = `typeof import(pkg-node)`) and boots the
       # Authority in tests, so the pkg must be built first — pkg-node for the Node/type
