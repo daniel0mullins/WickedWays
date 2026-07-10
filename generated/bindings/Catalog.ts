@@ -7,15 +7,21 @@ import type { RecipeMeta } from "./RecipeMeta";
 export type Catalog = { items: { [key in string]?: ItemDescriptor }, aliases: { [key in string]?: Array<string> }, 
 /**
  * Campaign-authored scripted behaviors, keyed by behavior key
- * (mechanic key / exit behaviorKey / victory condition key).
+ * (mechanic key / exit behaviorKey / victory condition key). Always emitted
+ * (even when empty), byte-faithful to the TS `catalogFromRegistry` oracle,
+ * which always writes this key; `default` keeps older keyless fixtures
+ * deserializable.
  */
 behaviors: { [key in string]?: BehaviorScript }, 
 /**
  * Campaign-authored formation descriptors, keyed by encounter `behaviorKey`.
+ * Always emitted (even when empty) to match the TS oracle; `default` keeps
+ * older keyless fixtures deserializable.
  */
 formations: { [key in string]?: FormationDescriptor }, 
 /**
- * Campaign-authored crafting recipe metadata, keyed by recipe key. Absent
- * from catalogs without recipes (empty map is skipped on serialize).
+ * Campaign-authored crafting recipe metadata, keyed by recipe key. Always
+ * emitted (even when empty) to match the TS oracle; `default` keeps older
+ * keyless fixtures deserializable.
  */
 recipes: { [key in string]?: RecipeMeta }, };
