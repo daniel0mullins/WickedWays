@@ -16,6 +16,8 @@ pub struct AuthorDoc {
     #[serde(default)]
     pub loot: Vec<LootEntry>,
     #[serde(default)]
+    pub scenes: Vec<SceneEntry>,
+    #[serde(default)]
     pub behaviors: Behaviors,
     #[serde(default)]
     pub victory: Victory,
@@ -48,9 +50,36 @@ pub struct ItemEntry {
 pub struct LootEntry { pub name: String, pub room: String, pub items: Vec<String>,
     #[serde(default)] pub description: Option<String> }
 
+/// A scene attached to a room (`[[scenes]]`). Mirrors the description's
+/// `SceneDef { room, key, phase?, initialState? }`. `phase` selects the
+/// enter/exit hook the SceneDef attaches to (default `"enter"`); `initial_state`
+/// seeds the scene's state map when present.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SceneEntry {
+    pub room: String,
+    pub key: String,
+    #[serde(default)] pub phase: Option<String>,
+    #[serde(default)] pub initial_state: Option<toml::Value>,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct Behaviors { #[serde(default)] pub exit: BTreeMap<String, ExitBehaviorEntry> }
+pub struct Behaviors {
+    #[serde(default)] pub exit: BTreeMap<String, ExitBehaviorEntry>,
+    #[serde(default)] pub scene: BTreeMap<String, SceneBehaviorEntry>,
+}
+
+/// A `[behaviors.scene.<key>]` body. `can_play` is an expression string gating
+/// whether the scene may play; `on_enter`/`on_exit` are statement-block bodies
+/// (the `'''...'''` grammar). Each is optional (absent = no-op / always plays).
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SceneBehaviorEntry {
+    #[serde(default)] pub can_play: Option<String>,
+    #[serde(default)] pub on_enter: Option<String>,
+    #[serde(default)] pub on_exit: Option<String>,
+}
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -101,5 +130,38 @@ mod tests {
         assert_eq!(doc.exits[0].behavior.as_deref(), Some("vault-door"));
         assert_eq!(doc.behaviors.exit["vault-door"].can_pass, "hasKey(actor, 'vault')");
         assert_eq!(doc.victory.win["reached-vault"].test, "party[0].room.name == 'Vault'");
+    }
+
+    #[test]
+    fn parses_the_scene_surface() {
+        let src = r#"
+            title = "Scene"
+            [[scenes]]
+            room = "Threshold"
+            key = "threshold-draft"
+            phase = "enter"
+            [behaviors.scene.threshold-draft]
+            canPlay = "!stateGet('seen', false)"
+            onEnter = '''
+              guard round == 0
+              when !stateGet('revealed', false) {
+                emit cue('A cold draft stirs the dust of the threshold.')
+                set state.revealed = true
+              }
+              set state.seen = true
+            '''
+        "#;
+        let doc: AuthorDoc = toml::from_str(src).expect("parse");
+        assert_eq!(doc.scenes.len(), 1);
+        assert_eq!(doc.scenes[0].room, "Threshold");
+        assert_eq!(doc.scenes[0].key, "threshold-draft");
+        assert_eq!(doc.scenes[0].phase.as_deref(), Some("enter"));
+        assert!(doc.scenes[0].initial_state.is_none());
+        let sb = &doc.behaviors.scene["threshold-draft"];
+        assert_eq!(sb.can_play.as_deref(), Some("!stateGet('seen', false)"));
+        assert!(sb.on_enter.as_deref().unwrap().contains("guard round == 0"));
+        assert!(sb.on_enter.as_deref().unwrap().contains("emit cue("));
+        assert!(sb.on_enter.as_deref().unwrap().contains("set state.seen = true"));
+        assert!(sb.on_exit.is_none());
     }
 }

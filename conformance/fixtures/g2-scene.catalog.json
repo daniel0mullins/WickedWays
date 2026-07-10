@@ -1,0 +1,76 @@
+{
+  "items": {},
+  "aliases": {},
+  "behaviors": {
+    "scene/threshold-draft": {
+      "family": "scene",
+      "script": {
+        "canPlay": {
+          "kind": "not",
+          "expr": {
+            "kind": "stateGet",
+            "field": "seen",
+            "default": false
+          }
+        },
+        "onEnter": [
+          {
+            "kind": "guard",
+            "cond": {
+              "kind": "bin",
+              "op": "eq",
+              "left": {
+                "kind": "round"
+              },
+              "right": {
+                "kind": "lit",
+                "value": 0
+              }
+            }
+          },
+          {
+            "kind": "when",
+            "cond": {
+              "kind": "not",
+              "expr": {
+                "kind": "stateGet",
+                "field": "revealed",
+                "default": false
+              }
+            },
+            "then": [
+              {
+                "kind": "emit",
+                "effect": {
+                  "kind": "cue",
+                  "text": {
+                    "kind": "lit",
+                    "value": "A cold draft stirs the dust of the threshold."
+                  }
+                }
+              },
+              {
+                "kind": "setState",
+                "field": "revealed",
+                "value": {
+                  "kind": "lit",
+                  "value": true
+                }
+              }
+            ]
+          },
+          {
+            "kind": "setState",
+            "field": "seen",
+            "value": {
+              "kind": "lit",
+              "value": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  "formations": {},
+  "recipes": {}
+}
