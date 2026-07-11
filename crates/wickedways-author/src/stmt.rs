@@ -16,7 +16,7 @@
 //! [`parse_effects`] parses an **emit-only** block into a `Vec<EffectTemplate>`
 //! (dialogue/effect bodies): any non-`emit` statement is an error.
 
-use wickedways_core::script::ast::{EffectTemplate, Stmt};
+use wickedways_core::script::ast::{EffectTemplate, FieldTemplate, Stmt};
 use wickedways_core::stats::StatType;
 
 use crate::error::{CompileError, Span};
@@ -256,15 +256,70 @@ fn parse_emit(rest: &str, base: Span) -> Result<Stmt, CompileError> {
             let visible = parse_expr(args[1].trim(), base)?;
             Ok(Stmt::Emit { effect: EffectTemplate::SetVisible { target, visible } })
         }
-        // Every other effect (heal, damage, grantImmunity, status, …) is deferred.
+        // `status(field(<label>, <value>[, <emphasis>]), …)` — a HUD status readout.
+        // Each argument is a `field(...)` form; the whole list becomes the effect's
+        // `Vec<FieldTemplate>`.
+        "status" => {
+            let mut fields = Vec::with_capacity(args.len());
+            for arg in &args {
+                fields.push(parse_field(arg.trim(), base)?);
+            }
+            Ok(Stmt::Emit { effect: EffectTemplate::Status { fields } })
+        }
+        // Every other effect (heal, damage, grantImmunity, …) is deferred.
         _ => Err(CompileError::ExprParse {
             span: base,
             message: format!(
                 "only `emit cue(...)`, `emit adjustStat(...)`, `emit giveItem(...)`, \
-                 and `emit setVisible(...)` are supported (got `{effect_name}`)"
+                 `emit setVisible(...)`, and `emit status(...)` are supported (got `{effect_name}`)"
             ),
         }),
     }
+}
+
+/// Parse one `field(<label>, <value>[, <emphasis>])` argument of an `emit
+/// status(...)` into a [`FieldTemplate`]. `label` is a string literal; `value` and
+/// the optional `emphasis` are expressions.
+fn parse_field(src: &str, base: Span) -> Result<FieldTemplate, CompileError> {
+    let open = src.find('(').ok_or_else(|| CompileError::ExprParse {
+        span: base,
+        message: "status entries must be `field(<label>, <value>[, <emphasis>])`".into(),
+    })?;
+    if src[..open].trim() != "field" {
+        return Err(CompileError::ExprParse {
+            span: base,
+            message: format!("expected `field(...)` in status, got `{}`", src[..open].trim()),
+        });
+    }
+    let close = src.rfind(')').filter(|&c| c > open).ok_or_else(|| CompileError::ExprParse {
+        span: base,
+        message: "unterminated `field(...)` in status".into(),
+    })?;
+    // `(`/`)` are ASCII, so `open + 1`/`close` are char boundaries.
+    let field_args = split_args(&src[open + 1..close]);
+    if field_args.len() < 2 || field_args.len() > 3 {
+        return Err(CompileError::ExprParse {
+            span: base,
+            message: format!("field(...) takes 2 or 3 arguments (got {})", field_args.len()),
+        });
+    }
+    let label = match parse_expr(field_args[0].trim(), base)? {
+        wickedways_core::script::ast::Expr::Lit {
+            value: wickedways_core::script::value::Value::Str(s),
+        } => s,
+        _ => {
+            return Err(CompileError::ExprParse {
+                span: base,
+                message: "field's first argument (label) must be a string literal".into(),
+            });
+        }
+    };
+    let value = parse_expr(field_args[1].trim(), base)?;
+    let emphasis = match field_args.get(2) {
+        Some(e) => Some(parse_expr(e.trim(), base)?),
+        None => None,
+    };
+    Ok(FieldTemplate { label, value, emphasis })
 }
 
 /// Parse an **emit-only** block into its effect templates: run [`parse_stmts`],
@@ -584,6 +639,28 @@ mod tests {
             "kind":"setStateIn","mapField":"seen",
             "key":{"kind":"get","field":"name","of":{"kind":"get","field":"room","of":{"kind":"action"}}},
             "value":{"kind":"lit","value":true}}]));
+    }
+
+    #[test]
+    fn emit_status_with_fields() {
+        // The status-bar readout: a labelled Sanity field (with emphasis) + a Round
+        // field whose value is a concat. `field(label, value[, emphasis])`.
+        assert_eq!(
+            s("emit status(field('Sanity', str(actor.sanity), 'warn'), field('Round', concat(str(round), '/', str(maxRounds))))"),
+            json!([{"kind":"emit","effect":{"kind":"status","fields":[
+                {"label":"Sanity","value":{"kind":"str","num":{"kind":"get","field":"sanity","of":{"kind":"actor"}}},"emphasis":{"kind":"lit","value":"warn"}},
+                {"label":"Round","value":{"kind":"concat","parts":[
+                    {"kind":"str","num":{"kind":"round"}},
+                    {"kind":"lit","value":"/"},
+                    {"kind":"str","num":{"kind":"maxRounds"}}]}}
+            ]}}]));
+    }
+
+    #[test]
+    fn status_field_without_emphasis_omits_it() {
+        // `emphasis` is skip-when-None: a 2-arg field emits no `emphasis` key.
+        let v = s("emit status(field('Round', str(round)))");
+        assert_eq!(v[0]["effect"]["fields"][0].get("emphasis"), None);
     }
 
     #[test]

@@ -266,6 +266,15 @@ fn g2_storyteller_genesis_golden() {
     gate("g2-storyteller", "g2-storyteller.genesis.json", Some("g2-storyteller"), &party);
 }
 
+/// The G2 "status-bar forms" author oracle: the real hollow-house `status-bar`
+/// mechanic. Genesis carries the `{}`-seeded mechanic state; the onRoundStart/
+/// onTurnEnd bodies (str/concat/length/first + the Status effect) ride in the catalog.
+#[test]
+fn g2_status_bar_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-status-bar", "g2-status-bar.genesis.json", Some("g2-status-bar"), &party);
+}
+
 /// The G2 "mechanic actions + modifyDamage" author oracle, seated with a single PC
 /// that declares NO archetype (`Seat { archetype: None }`). Gates the assembler over
 /// the same `[[mechanics]]` opt-in as `g2-mechanic` — the mechanic still reaches the

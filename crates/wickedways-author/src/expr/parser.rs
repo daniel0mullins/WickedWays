@@ -377,6 +377,35 @@ impl Parser {
             });
         }
 
+        // Single-argument calls over one operand expression.
+        if matches!(name.as_str(), "str" | "length" | "first" | "defined") {
+            if args.len() != 1 {
+                return Err(CompileError::ExprParse {
+                    span: name_span,
+                    message: format!("{name} expects exactly 1 argument, got {}", args.len()),
+                });
+            }
+            let inner = Box::new(args.into_iter().next().expect("arity checked above"));
+            return Ok(match name.as_str() {
+                "str" => Expr::Str { num: inner },
+                "length" => Expr::Length { list: inner },
+                "first" => Expr::First { list: inner },
+                // The `matches!` guard restricts this arm to "defined".
+                _ => Expr::Defined { expr: inner },
+            });
+        }
+
+        // `concat(a, b, …)` — string concatenation of its (>=1) argument expressions.
+        if name == "concat" {
+            if args.is_empty() {
+                return Err(CompileError::ExprParse {
+                    span: name_span,
+                    message: "concat expects at least 1 argument".into(),
+                });
+            }
+            return Ok(Expr::Concat { parts: args });
+        }
+
         // Only these three call names are known; everything else is unknown.
         let known = matches!(name.as_str(), "hasKey" | "hasItem" | "hasEquipped");
         if !known {
