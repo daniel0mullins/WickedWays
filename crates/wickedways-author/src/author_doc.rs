@@ -20,6 +20,8 @@ pub struct AuthorDoc {
     #[serde(default)]
     pub npcs: Vec<NpcEntry>,
     #[serde(default)]
+    pub mechanics: Vec<MechanicEntryToml>,
+    #[serde(default)]
     pub behaviors: Behaviors,
     #[serde(default)]
     pub victory: Victory,
@@ -82,6 +84,34 @@ pub struct Behaviors {
     #[serde(default)] pub scene: BTreeMap<String, SceneBehaviorEntry>,
     #[serde(default)] pub item: BTreeMap<String, ItemBehaviorEntry>,
     #[serde(default)] pub npc: BTreeMap<String, NpcBehaviorEntry>,
+    #[serde(default)] pub mechanic: BTreeMap<String, MechanicBehaviorEntry>,
+}
+
+/// A `[[mechanics]]` entry: a placed mechanic. `key` names the
+/// `[behaviors.mechanic.<key>]` body (the shared-key link); `config` is inert
+/// author-data (mechanic-specific configuration), deferred this slice.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MechanicEntryToml {
+    pub key: String,
+    #[serde(default)] pub config: Option<toml::Value>,
+}
+
+/// A `[behaviors.mechanic.<key>]` body, keyed the same as its `[[mechanics]]`
+/// entry's `key`. `init` is a literal state seed (inert author-data, becomes the
+/// mechanic's `initialState`); the five `on_*` hooks are statement-block bodies
+/// (the `'''...'''` grammar) lowering to `MechanicScript` hooks. Each is optional
+/// (absent init → `{}`; absent hook → no-op). `actions`/`modifyDamage` are
+/// deferred this slice.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MechanicBehaviorEntry {
+    #[serde(default)] pub init: Option<toml::Value>,
+    #[serde(default)] pub on_round_start: Option<String>,
+    #[serde(default)] pub on_round_end: Option<String>,
+    #[serde(default)] pub on_turn_start: Option<String>,
+    #[serde(default)] pub on_turn_end: Option<String>,
+    #[serde(default)] pub on_action: Option<String>,
 }
 
 /// A `[[npcs]]` entry: a placed NPC character. `stats` is the core `Stats`
@@ -270,6 +300,39 @@ mod tests {
         let ib = &doc.behaviors.item["laudanum"];
         assert_eq!(ib.on_use.as_deref(), Some("emit adjustStat(actor, sanity, 6)"));
         assert!(ib.on_read.is_none());
+    }
+
+    #[test]
+    fn parses_the_mechanic_surface() {
+        let src = r#"
+            title = "Sanity"
+            [[mechanics]]
+            key = "dwindling-light"
+            config = { threshold = 3 }
+            [behaviors.mechanic.dwindling-light]
+            init = { turns = 0 }
+            onTurnStart = '''
+              guard !hasEquipped(actor, 'lantern')
+              emit adjustStat(actor, sanity, -1)
+            '''
+            onRoundEnd = "emit cue('The dark deepens.')"
+        "#;
+        let doc: AuthorDoc = toml::from_str(src).expect("parse");
+        assert_eq!(doc.mechanics.len(), 1);
+        let m = &doc.mechanics[0];
+        assert_eq!(m.key, "dwindling-light");
+        // config is inert author-data (deferred this slice): { threshold = 3 }.
+        let config = m.config.as_ref().expect("config present");
+        assert_eq!(config.get("threshold").and_then(toml::Value::as_integer), Some(3));
+        let mb = &doc.behaviors.mechanic["dwindling-light"];
+        let init = mb.init.as_ref().expect("init present");
+        assert_eq!(init.get("turns").and_then(toml::Value::as_integer), Some(0));
+        assert!(mb.on_turn_start.as_deref().unwrap().contains("guard !hasEquipped"));
+        assert!(mb.on_turn_start.as_deref().unwrap().contains("emit adjustStat"));
+        assert_eq!(mb.on_round_end.as_deref(), Some("emit cue('The dark deepens.')"));
+        assert!(mb.on_round_start.is_none());
+        assert!(mb.on_turn_end.is_none());
+        assert!(mb.on_action.is_none());
     }
 
     #[test]
