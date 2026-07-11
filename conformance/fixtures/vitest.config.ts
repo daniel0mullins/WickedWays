@@ -58,6 +58,7 @@ export default defineConfig({
       "conformance/fixtures/g2-archetype.gen.test.ts",
       "conformance/fixtures/g2-equipment.gen.test.ts",
       "conformance/fixtures/g2-mobs.gen.test.ts",
+      "conformance/fixtures/g2-dark-rooms.gen.test.ts",
       "conformance/fixtures/g2-door.gen.test.ts",
       "conformance/fixtures/g2-storyteller.gen.test.ts",
       "conformance/fixtures/g2-status-bar.gen.test.ts",

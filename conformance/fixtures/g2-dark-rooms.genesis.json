@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "campaign:Dark Rooms",
+    "title": "Dark Rooms",
+    "maxRounds": 100,
+    "round": 0,
+    "started": false,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "player:Ada"
+    ],
+    "actedThisRound": [],
+    "gmId": "player:Ada",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 20,
+      "visited": [
+        "room:Hall"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "room:Hall",
+      "name": "Hall",
+      "description": "A long central hall.",
+      "exits": {
+        "south": "exit:Cellar|Hall"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "player:Ada"
+      ],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "room:Cellar",
+      "name": "Cellar",
+      "description": "The cellar below.",
+      "exits": {
+        "north": "exit:Cellar|Hall"
+      },
+      "dark": true,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [
+    {
+      "id": "exit:Cellar|Hall",
+      "endpointIds": [
+        "room:Hall",
+        "room:Cellar"
+      ],
+      "state": {}
+    }
+  ],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "player:Ada",
+      "name": "Ada",
+      "stats": {
+        "health": 10,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "room:Hall",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Hall",
+            "name": "Hall"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      }
+    }
+  ],
+  "items": [],
+  "loot": [],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "room:Hall",
+      "snapshot": {
+        "name": "Hall",
+        "description": "A long central hall."
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "room:Hall"
+      }
+    }
+  ]
+}

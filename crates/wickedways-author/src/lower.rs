@@ -66,9 +66,9 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
             .map(|r| RoomDef {
                 name: r.name.clone(),
                 description: r.description.clone(),
-                dark: None,
-                spawn_modifier: None,
-                lights: Vec::new(),
+                dark: r.dark,
+                spawn_modifier: r.spawn_modifier,
+                lights: r.lights.clone(),
             })
             .collect(),
         start_room: doc.start_room.clone(),

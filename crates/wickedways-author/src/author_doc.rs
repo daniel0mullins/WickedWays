@@ -46,9 +46,19 @@ pub struct ArchetypeEntry {
     #[serde(default)] pub immunities: Vec<String>,
 }
 
+/// A `[[rooms]]` entry. `dark` marks a room unlit (the darkness mechanic);
+/// `spawn_modifier` biases its encounter roll; `lights` lists item keys that light
+/// it. Each is optional (absent `dark`/`spawnModifier` → `None`, absent `lights` →
+/// empty) — mirrors the description's `RoomDef`.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct RoomEntry { pub name: String, pub description: String }
+pub struct RoomEntry {
+    pub name: String,
+    pub description: String,
+    #[serde(default)] pub dark: Option<bool>,
+    #[serde(default)] pub spawn_modifier: Option<i64>,
+    #[serde(default)] pub lights: Vec<String>,
+}
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

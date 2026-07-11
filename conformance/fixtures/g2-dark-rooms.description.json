@@ -1,0 +1,36 @@
+{
+  "title": "Dark Rooms",
+  "opts": {},
+  "archetypes": [],
+  "rooms": [
+    {
+      "name": "Hall",
+      "description": "A long central hall.",
+      "spawnModifier": 1
+    },
+    {
+      "name": "Cellar",
+      "description": "The cellar below.",
+      "dark": true
+    }
+  ],
+  "startRoom": "Hall",
+  "exits": [
+    {
+      "from": "Hall",
+      "direction": "south",
+      "to": "Cellar"
+    }
+  ],
+  "mobs": [],
+  "loot": [],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

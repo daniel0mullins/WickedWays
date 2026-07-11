@@ -255,6 +255,14 @@ fn g2_archetype_genesis_golden() {
     gate("g2-archetype", "g2-archetype.genesis.json", Some("g2-archetype"), &party);
 }
 
+/// The G2 "room dark + spawnModifier" author oracle: a lightless Cellar + a
+/// biased-encounter Hall, proving the previously-dropped RoomDef sub-fields.
+#[test]
+fn g2_dark_rooms_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-dark-rooms", "g2-dark-rooms.genesis.json", Some("g2-dark-rooms"), &party);
+}
+
 /// The G2 "placed mobs" author oracle: the two real hollow-house mobs (Wraith,
 /// Revenant) with stats/room/drops/naturalAttack, in connected rooms.
 #[test]
