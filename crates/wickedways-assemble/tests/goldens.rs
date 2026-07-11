@@ -256,6 +256,16 @@ fn g2_door_genesis_golden() {
     gate("g2-door", "g2-door.genesis.json", Some("g2-door"), &party);
 }
 
+/// The G2 "storyteller forms" author oracle: the real hollow-house `storyteller`
+/// mechanic over a 1-entry lore map. Its genesis carries the mechanic state seeded
+/// from `init` (`{ seen: {} }`); the `onAction` guard chain (action subject, mapLit,
+/// has, lookup, stateGetIn, setStateIn) rides in the catalog.
+#[test]
+fn g2_storyteller_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-storyteller", "g2-storyteller.genesis.json", Some("g2-storyteller"), &party);
+}
+
 /// The G2 "mechanic actions + modifyDamage" author oracle, seated with a single PC
 /// that declares NO archetype (`Seat { archetype: None }`). Gates the assembler over
 /// the same `[[mechanics]]` opt-in as `g2-mechanic` — the mechanic still reaches the

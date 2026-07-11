@@ -1,0 +1,28 @@
+{
+  "title": "Storyteller",
+  "opts": {},
+  "archetypes": [],
+  "rooms": [
+    {
+      "name": "Parlor",
+      "description": "A mildewed parlor."
+    }
+  ],
+  "startRoom": "Parlor",
+  "exits": [],
+  "mobs": [],
+  "loot": [],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": [
+    {
+      "key": "storyteller"
+    }
+  ]
+}

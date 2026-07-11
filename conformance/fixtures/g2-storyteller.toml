@@ -1,0 +1,27 @@
+# g2-storyteller — the TOML twin of the g2-storyteller oracle
+# (g2-storyteller.gen.test.ts). Authors the REAL hollow-house `storyteller`
+# mechanic over a 1-entry lore map, proving this slice's forms: the `action`
+# subject, `mapLit`, `has`, `lookup`, `stateGetIn`, and the `set state.<map>[<key>]`
+# (`setStateIn`) statement. `init = { seen = {} }` seeds the genesis state.
+# ASCII only.
+
+title = "Storyteller"
+startRoom = "Parlor"
+
+[[rooms]]
+name = "Parlor"
+description = "A mildewed parlor."
+
+[[mechanics]]
+key = "storyteller"
+
+[behaviors.mechanic.storyteller]
+init = { seen = {} }
+onAction = '''
+  guard action.kind == 'move'
+  guard has(mapLit('Parlor', 'A mildewed parlor.'), action.room.name)
+  guard hasItem(actor, 'journal')
+  guard !stateGetIn('seen', action.room.name, false)
+  set state.seen[action.room.name] = true
+  emit cue(lookup(mapLit('Parlor', 'A mildewed parlor.'), action.room.name))
+'''

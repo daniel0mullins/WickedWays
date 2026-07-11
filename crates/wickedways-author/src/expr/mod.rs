@@ -172,6 +172,40 @@ mod tests {
     }
 
     #[test]
+    fn action_and_element_subjects() {
+        assert_eq!(p("action.kind"), json!({"kind":"get","field":"kind","of":{"kind":"action"}}));
+        assert_eq!(p("element.status"),
+            json!({"kind":"get","field":"status","of":{"kind":"element"}}));
+    }
+
+    #[test]
+    fn map_lit_and_has_and_lookup() {
+        // A small static table + membership/value-at over it (the storyteller's lore).
+        assert_eq!(p("mapLit('Parlor', 'A mildewed parlor.')"),
+            json!({"kind":"mapLit","entries":{"Parlor":"A mildewed parlor."}}));
+        assert_eq!(p("has(mapLit('Parlor', 'x'), action.room.name)"), json!({
+            "kind":"has",
+            "map":{"kind":"mapLit","entries":{"Parlor":"x"}},
+            "key":{"kind":"get","field":"name","of":{"kind":"get","field":"room","of":{"kind":"action"}}}}));
+        assert_eq!(p("lookup(mapLit('Parlor', 'x'), action.room.name)"), json!({
+            "kind":"lookup",
+            "map":{"kind":"mapLit","entries":{"Parlor":"x"}},
+            "key":{"kind":"get","field":"name","of":{"kind":"get","field":"room","of":{"kind":"action"}}}}));
+    }
+
+    #[test]
+    fn map_lit_odd_arity_errors() {
+        assert!(parse_expr("mapLit('a', 'b', 'c')", Span { line: 1, col: 1 }).is_err());
+    }
+
+    #[test]
+    fn state_get_in_expression() {
+        assert_eq!(p("stateGetIn('seen', action.room.name, false)"), json!({
+            "kind":"stateGetIn","mapField":"seen","default":false,
+            "key":{"kind":"get","field":"name","of":{"kind":"get","field":"room","of":{"kind":"action"}}}}));
+    }
+
+    #[test]
     fn negative_number_literal() {
         assert_eq!(p("-1"), serde_json::json!({"kind":"lit","value":-1}));
         assert_eq!(p("-1.5"), serde_json::json!({"kind":"lit","value":-1.5}));
