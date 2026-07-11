@@ -247,3 +247,11 @@ fn compile_is_deterministic_npc() {
     let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
     assert_eq!(a, b, "compile() is not deterministic");
 }
+
+#[test]
+fn compile_is_deterministic_mechanic() {
+    let src = read(&fixtures().join("g2-mechanic.toml"));
+    let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
+    let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
+    assert_eq!(a, b, "compile() is not deterministic");
+}
