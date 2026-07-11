@@ -1,0 +1,90 @@
+{
+  "items": {
+    "cellar-key": {
+      "name": "Cellar Key",
+      "type": "key",
+      "stat": "health",
+      "modifier": 0,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": false,
+        "usable": false
+      },
+      "keyCode": "cellar",
+      "consumeOnUse": false,
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    }
+  },
+  "aliases": {},
+  "behaviors": {
+    "caretaker": {
+      "family": "npc",
+      "script": {
+        "description": "A stooped caretaker in a moth-eaten coat, keys trembling at his belt.",
+        "default": {
+          "match": {
+            "kind": "exact",
+            "text": ""
+          },
+          "response": {
+            "kind": "lit",
+            "value": "Take the cellar key. I am leaving now."
+          },
+          "effects": [
+            {
+              "kind": "giveItem",
+              "from": {
+                "kind": "lit",
+                "value": "npc:Caretaker"
+              },
+              "to": {
+                "kind": "actor"
+              },
+              "item": {
+                "kind": "lit",
+                "value": "npc:Caretaker:item#0"
+              }
+            },
+            {
+              "kind": "setVisible",
+              "target": {
+                "kind": "lit",
+                "value": "npc:Caretaker"
+              },
+              "visible": {
+                "kind": "lit",
+                "value": false
+              }
+            }
+          ],
+          "once": true
+        },
+        "dialogue": [
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "key",
+                "cellar"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "It opens the cellar."
+            },
+            "effects": [],
+            "once": false
+          }
+        ]
+      }
+    }
+  },
+  "formations": {},
+  "recipes": {}
+}
