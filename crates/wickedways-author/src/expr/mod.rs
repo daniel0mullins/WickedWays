@@ -158,4 +158,22 @@ mod tests {
         assert_eq!(p("!stateGet('seen', false)"),
             json!({"kind":"not","expr":{"kind":"stateGet","field":"seen","default":false}}));
     }
+
+    #[test]
+    fn negative_number_literal() {
+        assert_eq!(p("-1"), serde_json::json!({"kind":"lit","value":-1}));
+        assert_eq!(p("-1.5"), serde_json::json!({"kind":"lit","value":-1.5}));
+    }
+
+    #[test]
+    fn minus_between_operands_is_subtraction() {
+        assert_eq!(p("round - 1"), serde_json::json!({
+            "kind":"bin","op":"sub","left":{"kind":"round"},"right":{"kind":"lit","value":1}}));
+    }
+
+    #[test]
+    fn unary_minus_on_non_number_errors() {
+        // There is no unary-negation AST node; `-` is only valid before a number literal.
+        assert!(crate::expr::parse_expr("-actor", crate::error::Span { line: 1, col: 1 }).is_err());
+    }
 }
