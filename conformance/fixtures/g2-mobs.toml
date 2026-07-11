@@ -1,0 +1,50 @@
+# g2-mobs — the TOML twin of the g2-mobs oracle (g2-mobs.gen.test.ts). Authors the
+# two real hollow-house mobs (Wraith, Revenant), proving the [[mobs]] surface:
+# name/stats/room/drops/naturalAttack -> description.mobs. The mob rooms are
+# connected to the start room so neither is pruned. ASCII only.
+
+title = "Mobs"
+startRoom = "Hall"
+
+[[rooms]]
+name = "Hall"
+description = "A long central hall."
+[[rooms]]
+name = "Nursery"
+description = "A child's room, long abandoned."
+[[rooms]]
+name = "Cellar"
+description = "The cellar below."
+
+[[exits]]
+from = "Hall"
+to = "Nursery"
+direction = "north"
+[[exits]]
+from = "Hall"
+to = "Cellar"
+direction = "south"
+
+# The dropped keys must be defined items (assemble validates mob drops).
+[[items]]
+key = "brass-key"
+name = "Brass Key"
+keyCode = "brass"
+[[items]]
+key = "iron-key"
+name = "Iron Key"
+keyCode = "iron"
+
+[[mobs]]
+name = "Wraith"
+stats = { health = 6, sanity = 5, energy = 5 }
+room = "Nursery"
+drops = ["brass-key"]
+naturalAttack = { stat = "sanity", power = 3 }
+
+[[mobs]]
+name = "Revenant"
+stats = { health = 10, sanity = 8, energy = 6 }
+room = "Cellar"
+drops = ["iron-key"]
+naturalAttack = { stat = "sanity", power = 2 }

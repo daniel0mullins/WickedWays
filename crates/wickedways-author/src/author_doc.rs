@@ -22,6 +22,8 @@ pub struct AuthorDoc {
     #[serde(default)]
     pub npcs: Vec<NpcEntry>,
     #[serde(default)]
+    pub mobs: Vec<MobEntry>,
+    #[serde(default)]
     pub mechanics: Vec<MechanicEntryToml>,
     #[serde(default)]
     pub behaviors: Behaviors,
@@ -142,6 +144,27 @@ pub struct MechanicBehaviorEntry {
     #[serde(default)] pub on_action: Option<String>,
     #[serde(default)] pub modify_damage: Option<String>,
     #[serde(default)] pub actions: BTreeMap<String, String>,
+}
+
+/// A `[[mobs]]` entry: a placed enemy. `stats` is the core `Stats` snapshot (same
+/// shape as npcs); `drops` lists item keys it drops on defeat; `natural_attack` is
+/// its `{stat, power}` unarmed attack (inert author-data, `toml::Value` →
+/// `serde_json::Value`). The remaining overrides
+/// (`inventory_slots`/`actions_per_round`/`base_escape_chance`/`material_drops`/
+/// `light_averse`) are optional; absent → the engine's mob defaults.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MobEntry {
+    pub name: String,
+    pub stats: wickedways_core::world::snapshot::Stats,
+    #[serde(default)] pub room: Option<String>,
+    #[serde(default)] pub drops: Vec<String>,
+    #[serde(default)] pub natural_attack: Option<toml::Value>,
+    #[serde(default)] pub inventory_slots: Option<i64>,
+    #[serde(default)] pub actions_per_round: Option<i64>,
+    #[serde(default)] pub base_escape_chance: Option<i64>,
+    #[serde(default)] pub material_drops: Option<toml::Value>,
+    #[serde(default)] pub light_averse: Option<bool>,
 }
 
 /// A `[[npcs]]` entry: a placed NPC character. `stats` is the core `Stats`

@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use serde_json::{Map, Value};
 use wickedways_assemble::description::{
     ArchetypeDef, CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, LootDef,
-    MechanicEntry, NpcDef, RoomDef, SceneDef,
+    MechanicEntry, MobDef, NpcDef, RoomDef, SceneDef,
 };
 use wickedways_core::script::ast::{
     BehaviorScript, ExitScript, ItemScript, SceneScript, VictoryScript,
@@ -85,7 +85,25 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 one_way: e.one_way,
             })
             .collect(),
-        mobs: Vec::new(),
+        // Each `[[mobs]]` entry → a `MobDef`. `stats` is the same core `Stats` type
+        // on both surfaces (direct clone); `natural_attack`/`material_drops` are
+        // inert author-data (toml → json; a conversion failure drops to `None`).
+        mobs: doc
+            .mobs
+            .iter()
+            .map(|m| MobDef {
+                name: m.name.clone(),
+                stats: m.stats.clone(),
+                room: m.room.clone(),
+                inventory_slots: m.inventory_slots,
+                actions_per_round: m.actions_per_round,
+                drops: m.drops.clone(),
+                base_escape_chance: m.base_escape_chance,
+                material_drops: m.material_drops.as_ref().and_then(|v| serde_json::to_value(v).ok()),
+                light_averse: m.light_averse,
+                natural_attack: m.natural_attack.as_ref().and_then(|v| serde_json::to_value(v).ok()),
+            })
+            .collect(),
         loot: doc
             .loot
             .iter()

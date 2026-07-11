@@ -255,6 +255,14 @@ fn g2_archetype_genesis_golden() {
     gate("g2-archetype", "g2-archetype.genesis.json", Some("g2-archetype"), &party);
 }
 
+/// The G2 "placed mobs" author oracle: the two real hollow-house mobs (Wraith,
+/// Revenant) with stats/room/drops/naturalAttack, in connected rooms.
+#[test]
+fn g2_mobs_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-mobs", "g2-mobs.genesis.json", Some("g2-mobs"), &party);
+}
+
 /// The G2 "full item descriptor" author oracle: three real hollow-house items
 /// (lantern/poker/journal) exercising slot/emitsLight/maxDurability/lore/equippable/
 /// droppable, seated in a Hall loot container.
