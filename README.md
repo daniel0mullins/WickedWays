@@ -2356,7 +2356,7 @@ wired, every one reusing this same parser. The one remaining permissive divergen
 always lowers to `Index` (only `first(...)` produces `First`).
 
 **The gate.** Like the assembler, the author is gated **byte-for-byte** against a committed
-oracle — the `g2-vault`/`g2-scene`/`g2-item`/`g2-npc`/`g2-mechanic`/`g2-mechanic-actions`/`g2-door`/`g2-storyteller`/`g2-status-bar`/`g2-victory`/`g2-effects` fixtures, whose `description.json`/`catalog.json`
+oracle — the `g2-vault`/`g2-scene`/`g2-item`/`g2-npc`/`g2-mechanic`/`g2-mechanic-actions`/`g2-door`/`g2-storyteller`/`g2-status-bar`/`g2-victory`/`g2-effects`/`g2-archetype`/`g2-equipment`/`g2-mobs`/`g2-dark-rooms`/`g2-exit-state`/`g2-formations`/`g2-opts`/`g2-timeout` fixtures, whose `description.json`/`catalog.json`
 are emitted by a TypeScript twin (`canonical-json.ts` canonicalization), each also checked for
 compile determinism — via `cargo test -p wickedways-author`
 (pure Rust, fast CI job; convenience alias `pnpm run checks:author`). The gate compares
@@ -2365,6 +2365,19 @@ bin's raw pretty output — where `Value::Number` emits `0.0` and catalog keys s
 `BTreeMap` order — matches the oracle under that comparison. **The gate is the authority:** when
 `compile()` and the fixture disagree, the compiler is wrong until proven otherwise — fix
 `lower.rs`/the parser, never the fixture.
+
+**The description-structure surface is now complete too.** Beyond behaviors/expressions, the author
+now emits every `CampaignDescription` field the real Hollow House needs — no longer hardcoding empties
+or defaults: **`[[archetypes]]`** (id/name/baseStats/inventorySlots/immunities — the Heir), the **full
+item descriptor** (`slot`/`emitsLight`/`maxDurability`/`lore`/`equippable`/`droppable`/`twoHanded` — the
+lantern/poker/journal), **`[[mobs]]`** (stats/room/drops/`{stat,power}` naturalAttack — Wraith/Revenant),
+room **`dark`** + **`spawnModifier`**, exit **`name`** + **`initialState`**, **`[[formations]]`** (a single
+entry carrying both the `{key,weight}` opt-in and the catalog `MobSpec` roster — the roving rats),
+**`[opts]`** (`maxRounds`/`baseEncounterChance`), and **`timeoutNarration`**. Each is proven by a bespoke
+`g2-*` oracle authoring the corresponding **real** hollow-house content byte-for-byte. Still deferred
+(no Hollow House usage, so a bespoke oracle would be needed): `endedNarration`, `chat`, `av`, `caches`,
+standalone `materials`/`recipes`, room `lights`, item `presentation`, and the mob override fields beyond
+naturalAttack/drops.
 
 **MVP scope, and forward pointers.** This started as a deliberately thin first slice — **exit**
 (`canPass` + fail/pass messages) and **victory** (a `test` expression + narration, which produces
@@ -2377,11 +2390,13 @@ number literals**, and the **mechanic** family (`[[mechanics]]` opt-in + a `[beh
 deliberate divergences from the design spec carry through: the compiler
 is permissive (no compile-time `TypeError` — the `Expr` AST is total and the TS builders type-check
 nothing, so mapping must stay permissive to byte-match), and subscript always lowers to `Index`
-(never `First` — only `first(...)` does). With the expression/effect/statement surface now complete
-(all `Expr`/`Stmt`/`EffectTemplate` nodes authorable, across all six behavior families), what remains
-is no longer language surface but packaging: **id-derivation** for `giveItem`/`setVisible` and
-computed dialogue responses, the **full Hollow House re-author**, **npx/WASM packaging** of the CLI,
-and **runtime-load** of a compiled campaign. None of those change `compile()`'s signature.
+(never `First` — only `first(...)` does). With **both** the expression/effect/statement surface and the
+description-structure surface now complete (every `Expr`/`Stmt`/`EffectTemplate` node authorable across
+all six behavior families, and every real-Hollow-House `CampaignDescription` field emitted), what remains
+is no longer author surface but the capstone + packaging: the **full Hollow House re-author** (one TOML
+gated against the whole assembled campaign — now unblocked by the surface above), **id-derivation** for
+`giveItem`/`setVisible` and computed dialogue responses, **npx/WASM packaging** of the CLI, and
+**runtime-load** of a compiled campaign. None of those change `compile()`'s signature.
 
 **Engine change this milestone made.** Authoring a key item into a loot container's initial
 contents was previously rejected by the `Loot` constructor guard; that guard was **relaxed** so
