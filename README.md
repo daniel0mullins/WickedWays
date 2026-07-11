@@ -2185,7 +2185,8 @@ script unless the condition holds), `when <expr> { <stmts> }` (a nested block ru
 `set state.<field> = <expr>` (write a scalar into scene/mechanic state), `emit cue(<expr>)`
 (surface a narration cue), and `emit adjustStat(<target>, <stat>, <delta>)` (change a character
 stat — `target`/`delta` are expressions, `stat` is a **bare keyword** ∈
-`sanity`/`health`/`energy` mapped to `StatType`). Scenes are the first family wired to this: a `[[scenes]]` room-attached
+`sanity`/`health`/`energy` mapped to `StatType`). `emit` also lowers the `giveItem`/`setVisible`
+effects the **npc** family exercises (below). Scenes are the first family wired to this: a `[[scenes]]` room-attached
 scene plus a `[behaviors.scene.<key>]` body compile to a `SceneDef` (description) and a
 `BehaviorScript::Scene { canPlay, onEnter, onExit }` (catalog), gated byte-for-byte against the
 `g2-scene` oracle. The scene's `canPlay` is a predicate (here using `stateGet`), and `onEnter`
@@ -2231,17 +2232,58 @@ emit adjustStat(actor, sanity, 6)
 '''
 ```
 
+**NPCs with dialogue trees.** An `[[npcs]]` entry (name, `stats`, `room`, an optional `holds`
+inventory, and a `behavior` key) plus a `[behaviors.npc.<key>]` table compile to an `NpcDef` in the
+description **and** a `BehaviorScript::Npc` under the **same key** in the catalog's `behaviors` map.
+The behavior table carries a `description`, a **`default`** catch-all entry (the `talk`/`match ""`
+response), and an ordered array of `[[behaviors.npc.<key>.dialogue]]` entries. Each entry is
+`{ match, response, effects, once }`: `match` is **polymorphic** — a bare TOML string is an
+`Exact` prompt match, while a `{ fuzzy = [...] }` table is a `Fuzzy` token match (this rides serde's
+`#[serde(untagged)]` on the surface `MatchToml`, and `DialogueEntry.match_` serializes back out under
+the serde-renamed `"match"` key). A dialogue `effects` body is **`emit`-only**: it reuses the
+statement parser but `parse_effects` rejects any non-`Emit` statement, so an entry's `effects` lowers
+to a `Vec<EffectTemplate>` (not a `Vec<Stmt>`). The two new effects this family exercises —
+`emit giveItem(<from>, <to>, <item>)` and `emit setVisible(<target>, <visible>)` — take **literal
+string ids** for the item/character (id-derivation from a `holds`/name reference is a later slice),
+and `response` is likewise a **literal string** (computed responses are deferred). Gated
+byte-for-byte against the `g2-npc` oracle:
+
+```toml
+[[npcs]]
+name = "Caretaker"
+stats = { health = 1, sanity = 1, energy = 1 }
+room = "Foyer"
+behavior = "caretaker"                       # -> [behaviors.npc.caretaker]
+holds = ["cellar-key"]
+
+[behaviors.npc.caretaker]
+description = "A stooped caretaker in a moth-eaten coat, keys trembling at his belt."
+
+[behaviors.npc.caretaker.default]            # the catch-all (match "")
+match = ""
+response = "Take the cellar key. I am leaving now."
+once = true
+effects = '''
+  emit giveItem('npc:Caretaker', actor, 'npc:Caretaker:item#0')
+  emit setVisible('npc:Caretaker', false)
+'''
+
+[[behaviors.npc.caretaker.dialogue]]
+match = { fuzzy = ["key", "cellar"] }        # a Fuzzy token match; a bare string is Exact
+response = "It opens the cellar."
+```
+
 **Deliberate scope of this slice.** The statement lowering is intentionally narrow so nothing lands
-without byte-parity coverage. Only the `Cue` and `AdjustStat` effects are emittable and only
-`stateGet` extends the read model; `emit` of any other effect (`Damage`/`Heal`/`GrantImmunity`/
-`Status`/`GiveItem`/`SetVisible`), the `Pass` statement (exit-script-only), and `SetStateIn`
-(dynamic `set state.m[k] = …` map writes) are **rejected with a clear `CompileError`, not
-mis-lowered** — each lands with the slice that exercises it. The **exit**, **victory**, **scene**,
-and (consumable) **item** families are wired; **mechanic** and **npc** bodies reuse this same
-statement parser in their own later slices.
+without byte-parity coverage. Only the `Cue`, `AdjustStat`, `GiveItem`, and `SetVisible` effects are
+emittable and only `stateGet` extends the read model; `emit` of any other effect (`Damage`/`Heal`/
+`GrantImmunity`/`Status`), the `Pass` statement (exit-script-only), `SetStateIn` (dynamic
+`set state.m[k] = …` map writes), and the whole **mechanic** family are **rejected with a clear
+`CompileError`, not mis-lowered** — each lands with the slice that exercises it. The **exit**,
+**victory**, **scene**, (consumable) **item**, and **npc** families are wired; the **mechanic** body
+is the final family slice, reusing this same statement parser.
 
 **The gate.** Like the assembler, the author is gated **byte-for-byte** against a committed
-oracle — the `g2-vault`/`g2-scene`/`g2-item` fixtures, whose `description.json`/`catalog.json`
+oracle — the `g2-vault`/`g2-scene`/`g2-item`/`g2-npc` fixtures, whose `description.json`/`catalog.json`
 are emitted by a TypeScript twin (`canonical-json.ts` canonicalization), each also checked for
 compile determinism — via `cargo test -p wickedways-author`
 (pure Rust, fast CI job; convenience alias `pnpm run checks:author`). The gate compares
@@ -2255,12 +2297,14 @@ bin's raw pretty output — where `Value::Number` emits `0.0` and catalog keys s
 (`canPass` + fail/pass messages) and **victory** (a `test` expression + narration, which produces
 *two* artifacts — a `winConditions` entry in the description AND a `BehaviorScript::Victory { test }`
 in the catalog) with expression-only bodies — since extended with the **statement grammar**, the
-**scene** family, the **adjustStat** effect, and (consumable) **items** with `onUse`/`onRead`
-bodies above. Two deliberate divergences from the design spec carry through: the compiler
+**scene** family, the **adjustStat**/**giveItem**/**setVisible** effects, (consumable) **items** with
+`onUse`/`onRead` bodies, and the **npc** family with polymorphic-`match` dialogue trees above. Two
+deliberate divergences from the design spec carry through: the compiler
 is permissive (no compile-time `TypeError` — the `Expr` AST is total and the TS builders type-check
 nothing, so mapping must stay permissive to byte-match), and subscript always lowers to `Index`
-(never `First`). Later G2 slices add: the **remaining effects** and the **other behavior families**
-(mob/npc/mechanic) reusing this same statement parser, **npx/WASM packaging** of the CLI, and
+(never `First`). Later G2 slices add: the **remaining effects** (`Heal`/`Damage`/`GrantImmunity`/
+`Status`) and the **mechanic** behavior family reusing this same statement parser, **id-derivation**
+for `giveItem`/`setVisible` and computed dialogue responses, **npx/WASM packaging** of the CLI, and
 **runtime-load** of a compiled campaign. None of those change `compile()`'s signature.
 
 **Engine change this milestone made.** Authoring a key item into a loot container's initial

@@ -18,6 +18,8 @@ pub struct AuthorDoc {
     #[serde(default)]
     pub scenes: Vec<SceneEntry>,
     #[serde(default)]
+    pub npcs: Vec<NpcEntry>,
+    #[serde(default)]
     pub behaviors: Behaviors,
     #[serde(default)]
     pub victory: Victory,
@@ -79,6 +81,54 @@ pub struct Behaviors {
     #[serde(default)] pub exit: BTreeMap<String, ExitBehaviorEntry>,
     #[serde(default)] pub scene: BTreeMap<String, SceneBehaviorEntry>,
     #[serde(default)] pub item: BTreeMap<String, ItemBehaviorEntry>,
+    #[serde(default)] pub npc: BTreeMap<String, NpcBehaviorEntry>,
+}
+
+/// A `[[npcs]]` entry: a placed NPC character. `stats` is the core `Stats`
+/// snapshot (`energy`/`sanity`/`health`, all `f64`); `behavior` names the
+/// `[behaviors.npc.<key>]` dialogue body; `holds` lists item keys it carries.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NpcEntry {
+    pub name: String,
+    pub stats: wickedways_core::world::snapshot::Stats,
+    #[serde(default)] pub room: Option<String>,
+    pub behavior: String,
+    #[serde(default)] pub holds: Vec<String>,
+}
+
+/// A `[behaviors.npc.<key>]` body, keyed the same as its `[[npcs]]` entry's
+/// `behavior`. A `description` (returned by `examine`), a `default` dialogue
+/// entry (bare `talk`), and ordered prompt→response `dialogue` entries. Lowers
+/// to `NpcScript`.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct NpcBehaviorEntry {
+    pub description: String,
+    pub default: DialogueEntryToml,
+    #[serde(default)] pub dialogue: Vec<DialogueEntryToml>,
+}
+
+/// One authored dialogue entry: a `match` rule (a bare string → exact, or a
+/// `{ fuzzy = [...] }` table → fuzzy), a text `response`, an optional `effects`
+/// statement-block body, and a `once` latch.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct DialogueEntryToml {
+    #[serde(rename = "match")] pub match_: MatchToml,
+    pub response: String,
+    #[serde(default)] pub once: bool,
+    #[serde(default)] pub effects: Option<String>,
+}
+
+/// The polymorphic match surface: a bare TOML string → `Exact`, a
+/// `{ fuzzy = [...] }` table → `Fuzzy`. Untagged, so `deny_unknown_fields`
+/// is NOT supported here (and intentionally omitted).
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(untagged)]
+pub enum MatchToml {
+    Exact(String),
+    Fuzzy { fuzzy: Vec<String> },
 }
 
 /// A `[behaviors.item.<key>]` body, keyed the same as its `[[items]]` entry (the
@@ -220,5 +270,52 @@ mod tests {
         let ib = &doc.behaviors.item["laudanum"];
         assert_eq!(ib.on_use.as_deref(), Some("emit adjustStat(actor, sanity, 6)"));
         assert!(ib.on_read.is_none());
+    }
+
+    #[test]
+    fn parses_the_npc_surface() {
+        let src = r#"
+            title = "Manor"
+            [[npcs]]
+            name = "The Caretaker"
+            stats = { health = 1.0, sanity = 1.0, energy = 1.0 }
+            room = "Foyer"
+            behavior = "caretaker"
+            holds = ["cellar-key"]
+            [behaviors.npc.caretaker]
+            description = "A stooped caretaker."
+            [behaviors.npc.caretaker.default]
+            match = ""
+            response = "Take the key."
+            once = true
+            effects = "emit setVisible('npc:C', false)"
+            [[behaviors.npc.caretaker.dialogue]]
+            match = { fuzzy = ["key", "cellar"] }
+            response = "It opens the cellar."
+        "#;
+        let doc: AuthorDoc = toml::from_str(src).expect("parse");
+        assert_eq!(doc.npcs.len(), 1);
+        let n = &doc.npcs[0];
+        assert_eq!(n.name, "The Caretaker");
+        assert_eq!(n.stats.health, 1.0);
+        assert_eq!(n.stats.sanity, 1.0);
+        assert_eq!(n.stats.energy, 1.0);
+        assert_eq!(n.room.as_deref(), Some("Foyer"));
+        assert_eq!(n.behavior, "caretaker");
+        assert_eq!(n.holds, ["cellar-key"]);
+        let nb = &doc.behaviors.npc["caretaker"];
+        assert_eq!(nb.description, "A stooped caretaker.");
+        assert_eq!(nb.default.response, "Take the key.");
+        assert_eq!(nb.default.match_, MatchToml::Exact(String::new()));
+        assert!(nb.default.once);
+        assert_eq!(nb.default.effects.as_deref(), Some("emit setVisible('npc:C', false)"));
+        assert_eq!(nb.dialogue.len(), 1);
+        assert_eq!(
+            nb.dialogue[0].match_,
+            MatchToml::Fuzzy { fuzzy: vec!["key".to_string(), "cellar".to_string()] }
+        );
+        assert_eq!(nb.dialogue[0].response, "It opens the cellar.");
+        assert!(!nb.dialogue[0].once);
+        assert!(nb.dialogue[0].effects.is_none());
     }
 }

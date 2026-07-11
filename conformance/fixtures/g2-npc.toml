@@ -1,0 +1,34 @@
+title = "Caretaker"
+startRoom = "Foyer"
+
+[[rooms]]
+name = "Foyer"
+description = "The gloom of the foyer."
+
+[[items]]
+key = "cellar-key"
+name = "Cellar Key"
+keyCode = "cellar"
+
+[[npcs]]
+name = "Caretaker"
+stats = { health = 1, sanity = 1, energy = 1 }
+room = "Foyer"
+behavior = "caretaker"                       # references [behaviors.npc.caretaker]
+holds = ["cellar-key"]
+
+[behaviors.npc.caretaker]
+description = "A stooped caretaker in a moth-eaten coat, keys trembling at his belt."
+
+[behaviors.npc.caretaker.default]            # the catch-all (match "")
+match = ""
+response = "Take the cellar key. I am leaving now."
+once = true
+effects = '''
+  emit giveItem('npc:Caretaker', actor, 'npc:Caretaker:item#0')
+  emit setVisible('npc:Caretaker', false)
+'''
+
+[[behaviors.npc.caretaker.dialogue]]
+match = { fuzzy = ["key", "cellar"] }
+response = "It opens the cellar."

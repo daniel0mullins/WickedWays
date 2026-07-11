@@ -220,6 +220,20 @@ fn g2_item_genesis_golden() {
     gate("g2-item", "g2-item.genesis.json", Some("g2-item"), &party);
 }
 
+/// The G2 "npc dialogue" author oracle, seated with a single PC that declares NO
+/// archetype (`Seat { archetype: None }` — the surface has no archetype concept, so
+/// `player:Ada`'s stats are the campaign defaults). Gates the assembler over a placed
+/// NPC holding a key: the `[[npcs]]` `NpcDef` (name/stats/room/behavior/holds) seats
+/// `npc:Caretaker` in the Foyer, mints its held `npc:Caretaker:item#0` cellar key, and
+/// records it as a codex `mob`; its `BehaviorScript::Npc` (description + a `default`
+/// Exact-"" entry giving the key + hiding him, plus a Fuzzy dialogue entry) rides in
+/// the catalog untouched.
+#[test]
+fn g2_npc_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-npc", "g2-npc.genesis.json", Some("g2-npc"), &party);
+}
+
 #[test]
 fn hollow_house_pristine() {
     gate("hollow-house", "hollow-house.snapshot.json", Some("hollow-house"), &[]);

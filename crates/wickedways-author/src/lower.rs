@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
 use wickedways_assemble::description::{
-    CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, LootDef, RoomDef, SceneDef,
+    CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, LootDef, NpcDef, RoomDef, SceneDef,
 };
 use wickedways_core::script::ast::{
     BehaviorScript, ExitScript, ItemScript, SceneScript, VictoryScript,
@@ -83,7 +83,21 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
             })
             .collect(),
         caches: Vec::new(),
-        npcs: Vec::new(),
+        // Each `[[npcs]]` entry → an `NpcDef`. `stats` is the same core `Stats`
+        // type on both surfaces (direct clone); `room`/`holds` carry through; the
+        // held item descriptor (e.g. `cellar-key`) comes from `[[items]]` via
+        // `lower_item`. `behavior` names the `[behaviors.npc.<key>]` catalog script.
+        npcs: doc
+            .npcs
+            .iter()
+            .map(|n| NpcDef {
+                name: n.name.clone(),
+                stats: n.stats.clone(),
+                room: n.room.clone(),
+                behavior: n.behavior.clone(),
+                holds: n.holds.clone(),
+            })
+            .collect(),
         formations: Vec::new(),
         scenes: doc
             .scenes
@@ -189,6 +203,14 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
                 .transpose()?,
         };
         behaviors.insert(key.clone(), BehaviorScript::Item { script });
+    }
+
+    // Npc behaviors: each `[behaviors.npc.<key>]` lowers to an `NpcScript` (the
+    // description + default + ordered dialogue) via the `npc` converter. Keyed by
+    // `<key>` — shared with the `[[npcs]]` entry's `behavior`.
+    for (key, entry) in &doc.behaviors.npc {
+        let script = crate::npc::to_npc_script(entry)?;
+        behaviors.insert(key.clone(), BehaviorScript::Npc { script });
     }
 
     // Victory behaviors: each win/lose condition's `test` is a parsed predicate,
