@@ -4,11 +4,13 @@
 //! failure is a [`CompileError`], never an `unwrap`/`expect`/`panic!`.
 //!
 //! Implemented so far: `guard` / `when` / `set state.<f> = …` / `emit cue(…)` /
-//! `emit adjustStat(…)` / `emit giveItem(…)` / `emit setVisible(…)`. The deferred
-//! forms — `pass`, subscripted `set state.m[k] = …` (`SetStateIn`), and `emit` of
-//! any effect other than `cue`/`adjustStat`/`giveItem`/`setVisible` — are REJECTED
-//! with a clear `CompileError` rather than silently mis-lowered, so a later slice
-//! can land them without a hidden behavior change.
+//! `emit adjustStat(…)` / `emit giveItem(…)` / `emit setVisible(…)`, plus `pass
+//! <expr>` in **script** bodies (via [`parse_script`]). The still-deferred forms —
+//! subscripted `set state.m[k] = …` (`SetStateIn`) and `emit` of any effect other
+//! than `cue`/`adjustStat`/`giveItem`/`setVisible` — are REJECTED with a clear
+//! `CompileError` rather than silently mis-lowered, so a later slice can land them
+//! without a hidden behavior change. `pass` outside a script body is likewise an
+//! error.
 //!
 //! [`parse_effects`] parses an **emit-only** block into a `Vec<EffectTemplate>`
 //! (dialogue/effect bodies): any non-`emit` statement is an error.
@@ -26,27 +28,43 @@ use crate::expr::parse_expr;
 /// lines are skipped. `base` is passed through to `parse_expr` for embedded
 /// expressions.
 pub(crate) fn parse_stmts(src: &str, base: Span) -> Result<Vec<Stmt>, CompileError> {
+    parse_body(src, base, false)
+}
+
+/// Parse a **script** body — an exit `runScript` — where `pass <expr>` (exit
+/// narration, `Stmt::Pass`) is legal. Effect/hook bodies use [`parse_stmts`],
+/// which rejects `pass`.
+pub(crate) fn parse_script(src: &str, base: Span) -> Result<Vec<Stmt>, CompileError> {
+    parse_body(src, base, true)
+}
+
+/// Parse a newline-separated block into a `Vec<Stmt>`. `allow_pass` gates the
+/// `pass` statement (legal only in script bodies), threaded through nested
+/// `when` blocks.
+fn parse_body(src: &str, base: Span, allow_pass: bool) -> Result<Vec<Stmt>, CompileError> {
     let mut stmts = Vec::new();
     for unit in split_top_level(src) {
         let trimmed = unit.trim();
         if trimmed.is_empty() {
             continue;
         }
-        stmts.push(parse_stmt(trimmed, base)?);
+        stmts.push(parse_stmt(trimmed, base, allow_pass)?);
     }
     Ok(stmts)
 }
 
 /// Dispatch a single (already-trimmed, non-empty) statement by its leading
-/// keyword. Any unrecognized keyword — INCLUDING the deferred `pass` — is an
-/// `ExprParse` error.
-fn parse_stmt(stmt: &str, base: Span) -> Result<Stmt, CompileError> {
+/// keyword. `pass` is accepted only when `allow_pass` (script bodies); anywhere
+/// else — and any other unrecognized keyword — is an `ExprParse` error.
+fn parse_stmt(stmt: &str, base: Span, allow_pass: bool) -> Result<Stmt, CompileError> {
     let (kw, rest) = split_keyword(stmt);
     match kw {
         "guard" => Ok(Stmt::Guard { cond: parse_expr(rest, base)? }),
-        "when" => parse_when(rest, base),
+        "when" => parse_when(rest, base, allow_pass),
         "set" => parse_set(rest, base),
         "emit" => parse_emit(rest, base),
+        // `pass <expr>` — exit narration (the last `Pass` wins). Script-only.
+        "pass" if allow_pass => Ok(Stmt::Pass { value: parse_expr(rest, base)? }),
         _ => Err(CompileError::ExprParse {
             span: base,
             message: format!("unknown statement keyword '{kw}'"),
@@ -65,8 +83,9 @@ fn split_keyword(s: &str) -> (&str, &str) {
 }
 
 /// `when <cond> { <stmts> }` — parse the condition (up to the first top-level
-/// `{`) and RECURSE into the brace-delimited inner block.
-fn parse_when(rest: &str, base: Span) -> Result<Stmt, CompileError> {
+/// `{`) and RECURSE into the brace-delimited inner block. `allow_pass` threads
+/// through so a `pass` inside a script-body `when` stays legal.
+fn parse_when(rest: &str, base: Span, allow_pass: bool) -> Result<Stmt, CompileError> {
     let open = find_open_brace(rest).ok_or_else(|| CompileError::ExprParse {
         span: base,
         message: "expected '{' to open a when block".into(),
@@ -77,7 +96,7 @@ fn parse_when(rest: &str, base: Span) -> Result<Stmt, CompileError> {
         message: "unterminated when block (missing '}')".into(),
     })?;
     // `open` and `close` index the ASCII `{`/`}`, so `open + 1` is a char boundary.
-    let then = parse_stmts(&rest[open + 1..close], base)?;
+    let then = parse_body(&rest[open + 1..close], base, allow_pass)?;
     Ok(Stmt::When { cond, then })
 }
 
@@ -416,9 +435,30 @@ mod tests {
     }
 
     #[test]
-    fn pass_is_rejected() {
+    fn pass_is_rejected_in_effect_bodies() {
+        // `pass` is script-only: an effect/hook body (parse_stmts) still rejects it.
         assert!(matches!(parse_stmts("pass 'x'", Span { line: 1, col: 1 }).unwrap_err(),
             CompileError::ExprParse { .. }));
+    }
+
+    #[test]
+    fn pass_is_accepted_in_script_bodies() {
+        // A script body (exit runScript) accepts `pass <expr>`, incl. nested in `when`.
+        let v = serde_json::to_value(
+            super::parse_script(
+                "when !stateGet('unlocked', false) {\n  set state.unlocked = true\n  pass 'opened'\n}",
+                Span { line: 1, col: 1 },
+            )
+            .expect("parse"),
+        )
+        .unwrap();
+        assert_eq!(v, json!([{
+            "kind":"when",
+            "cond":{"kind":"not","expr":{"kind":"stateGet","field":"unlocked","default":false}},
+            "then":[
+                {"kind":"setState","field":"unlocked","value":{"kind":"lit","value":true}},
+                {"kind":"pass","value":{"kind":"lit","value":"opened"}}
+            ]}]));
     }
 
     #[test]

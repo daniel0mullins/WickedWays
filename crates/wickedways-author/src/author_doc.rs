@@ -191,6 +191,9 @@ pub struct SceneBehaviorEntry {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ExitBehaviorEntry {
     pub can_pass: String,
+    /// Optional narration script run on a successful pass (a script body — `pass
+    /// <expr>` is legal here). Absent → an empty `run_script`.
+    #[serde(default)] pub run_script: Option<String>,
     #[serde(default)] pub pass_message: Option<String>,
     #[serde(default)] pub fail_message: Option<String>,
 }

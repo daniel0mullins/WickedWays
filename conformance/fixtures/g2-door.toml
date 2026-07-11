@@ -1,0 +1,43 @@
+# g2-door — the TOML twin of the g2-door oracle (g2-door.gen.test.ts).
+#
+# A keyed door with a narration `runScript` (the real hollow-house `doorScript`
+# shape), proving this slice's two additions: the `runScript` field on an exit
+# behavior, and the `pass <expr>` statement (legal only in a script body). On the
+# first pass the script latches `state.unlocked` and narrates the opened line; a
+# re-pass is a silent no-op (no `passMessage`). ASCII only.
+
+title = "Door"
+startRoom = "Hall"
+
+[[rooms]]
+name = "Hall"
+description = "A cold stone hall."
+[[rooms]]
+name = "Cellar"
+description = "The cellar below."
+
+[[exits]]
+from = "Hall"
+to = "Cellar"
+direction = "south"
+behavior = "cellar-door"
+
+[behaviors.exit.cellar-door]
+canPass     = "stateGet('unlocked', false) || hasKey(actor, 'cellar')"
+failMessage = "The cellar door won't budge - it's locked."
+runScript = '''
+  when !stateGet('unlocked', false) {
+    set state.unlocked = true
+    pass 'The cellar key turns; the cellar door swings open.'
+  }
+'''
+
+[[items]]
+key = "cellar-key"
+name = "Cellar Key"
+keyCode = "cellar"
+
+[[loot]]
+name = "shelf"
+room = "Hall"
+items = ["cellar-key"]
