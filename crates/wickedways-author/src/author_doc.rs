@@ -67,6 +67,11 @@ pub struct ExitEntry {
     pub to: String,
     pub direction: String,
     #[serde(default)] pub behavior: Option<String>,
+    /// A display name for the exit (e.g. "cellar door"); absent → `None`.
+    #[serde(default)] pub name: Option<String>,
+    /// Seed state for a stateful exit (e.g. a keyed door's `{ unlocked = false }`),
+    /// inert author-data (`toml::Value` → `serde_json::Value`); absent → `None`.
+    #[serde(default)] pub initial_state: Option<toml::Value>,
     #[serde(default)] pub one_way: Option<bool>,
 }
 

@@ -80,8 +80,8 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 direction: e.direction.clone(),
                 to: e.to.clone(),
                 behavior_key: e.behavior.clone(),
-                name: None,
-                initial_state: None,
+                name: e.name.clone(),
+                initial_state: e.initial_state.as_ref().and_then(|v| serde_json::to_value(v).ok()),
                 one_way: e.one_way,
             })
             .collect(),

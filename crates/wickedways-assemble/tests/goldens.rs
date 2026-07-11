@@ -255,6 +255,14 @@ fn g2_archetype_genesis_golden() {
     gate("g2-archetype", "g2-archetype.genesis.json", Some("g2-archetype"), &party);
 }
 
+/// The G2 "exit name + initialState" author oracle: a keyed door carrying a display
+/// name + `{ unlocked: false }` initial state, atop the real doorScript behavior.
+#[test]
+fn g2_exit_state_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-exit-state", "g2-exit-state.genesis.json", Some("g2-exit-state"), &party);
+}
+
 /// The G2 "room dark + spawnModifier" author oracle: a lightless Cellar + a
 /// biased-encounter Hall, proving the previously-dropped RoomDef sub-fields.
 #[test]

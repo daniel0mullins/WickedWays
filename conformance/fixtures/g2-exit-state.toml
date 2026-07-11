@@ -1,0 +1,42 @@
+# g2-exit-state — the TOML twin of the g2-exit-state oracle (g2-exit-state.gen.test.ts).
+# Proves the exit sub-fields the author previously dropped: a keyed door's `name` and
+# its `initialState` ({ unlocked = false }), atop the real doorScript behavior
+# (whose failMessage carries an em-dash, matched verbatim below).
+
+title = "Exit State"
+startRoom = "Hall"
+
+[[rooms]]
+name = "Hall"
+description = "A long central hall."
+[[rooms]]
+name = "Cellar"
+description = "The cellar below."
+
+[[exits]]
+from = "Hall"
+to = "Cellar"
+direction = "south"
+behavior = "cellar-door"
+name = "Cellar Door"
+initialState = { unlocked = false }
+
+[behaviors.exit.cellar-door]
+canPass     = "stateGet('unlocked', false) || hasKey(actor, 'cellar')"
+failMessage = "The cellar door won't budge — it's locked."
+runScript = '''
+  when !stateGet('unlocked', false) {
+    set state.unlocked = true
+    pass 'The cellar key turns; the cellar door swings open.'
+  }
+'''
+
+[[items]]
+key = "cellar-key"
+name = "Cellar Key"
+keyCode = "cellar"
+
+[[loot]]
+name = "shelf"
+room = "Hall"
+items = ["cellar-key"]
