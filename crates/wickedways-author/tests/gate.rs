@@ -577,6 +577,25 @@ fn compile_is_deterministic_opts() {
 }
 
 #[test]
+fn g2_timeout_description_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("g2-timeout.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.description).unwrap(),
+        &serde_json::from_str(&read(&dir.join("g2-timeout.description.json"))).unwrap(),
+        "g2-timeout.description.json",
+    );
+}
+
+#[test]
+fn compile_is_deterministic_timeout() {
+    let src = read(&fixtures().join("g2-timeout.toml"));
+    let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
+    let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
+    assert_eq!(a, b, "compile() is not deterministic");
+}
+
+#[test]
 fn compile_is_deterministic() {
     let src = read(&fixtures().join("g2-vault.toml"));
     let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();

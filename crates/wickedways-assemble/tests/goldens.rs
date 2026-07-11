@@ -255,6 +255,14 @@ fn g2_archetype_genesis_golden() {
     gate("g2-archetype", "g2-archetype.genesis.json", Some("g2-archetype"), &party);
 }
 
+/// The G2 "timeout narration" author oracle: the real hollow-house `.onTimeout` cue,
+/// authored as a `timeoutNarration` string lowered to the `{ text }` shape.
+#[test]
+fn g2_timeout_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-timeout", "g2-timeout.genesis.json", Some("g2-timeout"), &party);
+}
+
 /// The G2 "campaign opts" author oracle: the real hollow-house bounds (maxRounds 150,
 /// baseEncounterChance 20) via the `[opts]` table.
 #[test]

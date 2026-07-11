@@ -181,7 +181,13 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 config: m.config.as_ref().and_then(|v| serde_json::to_value(v).ok()),
             })
             .collect(),
-        timeout_narration: None,
+        // A `timeoutNarration` string lowers to the cue shape `{ "text": … }` (the
+        // same shape as a victory condition's narration).
+        timeout_narration: doc.timeout_narration.as_ref().map(|text| {
+            let mut obj = Map::new();
+            obj.insert("text".to_string(), Value::String(text.clone()));
+            Value::Object(obj)
+        }),
         ended_narration: None,
         chat: None,
         av: None,

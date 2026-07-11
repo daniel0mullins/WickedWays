@@ -36,6 +36,10 @@ pub struct AuthorDoc {
     pub behaviors: Behaviors,
     #[serde(default)]
     pub victory: Victory,
+    /// Narration shown when the campaign hits its round limit. A plain string lowers
+    /// to the cue shape `{ "text": … }` (the description's `timeout_narration`).
+    #[serde(default)]
+    pub timeout_narration: Option<String>,
 }
 
 /// A `[[archetypes]]` entry: a player-character template. `base_stats` is a
