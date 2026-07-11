@@ -285,6 +285,15 @@ fn g2_victory_genesis_golden() {
     gate("g2-victory", "g2-victory.genesis.json", Some("g2-victory"), &party);
 }
 
+/// The G2 "remaining effects" author oracle: a bespoke `hex` mechanic emitting
+/// `damage`/`heal`/`grantImmunity` behind a `defined(...)` guard. Genesis carries
+/// the `{}`-seeded mechanic state; the onTurnStart body rides in the catalog.
+#[test]
+fn g2_effects_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-effects", "g2-effects.genesis.json", Some("g2-effects"), &party);
+}
+
 /// The G2 "mechanic actions + modifyDamage" author oracle, seated with a single PC
 /// that declares NO archetype (`Seat { archetype: None }`). Gates the assembler over
 /// the same `[[mechanics]]` opt-in as `g2-mechanic` — the mechanic still reaches the

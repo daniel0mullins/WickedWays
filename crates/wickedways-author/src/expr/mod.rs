@@ -234,6 +234,12 @@ mod tests {
     }
 
     #[test]
+    fn defined_call() {
+        assert_eq!(p("defined(actor.room)"),
+            json!({"kind":"defined","expr":{"kind":"get","field":"room","of":{"kind":"actor"}}}));
+    }
+
+    #[test]
     fn subscript_zero_still_index_not_first() {
         // The deliberate MVP rule survives: `[0]` is Index, only `first(...)` is First.
         assert_eq!(p("party[0]"),

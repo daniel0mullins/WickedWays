@@ -1,0 +1,23 @@
+# g2-effects — the TOML twin of the g2-effects oracle (g2-effects.gen.test.ts).
+# A bespoke `hex` mechanic proving the three effects no committed hollow-house
+# behavior uses — `damage`, `heal`, `grantImmunity` — plus the `defined(...)` guard.
+# `init = {}` seeds the genesis state. ASCII only.
+
+title = "Effects"
+startRoom = "Hall"
+
+[[rooms]]
+name = "Hall"
+description = "A cold stone hall."
+
+[[mechanics]]
+key = "hex"
+
+[behaviors.mechanic.hex]
+init = {}
+onTurnStart = '''
+  guard defined(actor.room)
+  emit damage(actor, 2)
+  emit heal(actor, 1)
+  emit grantImmunity(actor, 3)
+'''

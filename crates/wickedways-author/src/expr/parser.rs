@@ -298,17 +298,10 @@ impl Parser {
         // (the storyteller's `seen[roomName]`): 3 args — a string-literal field, a
         // key EXPRESSION, and a literal default.
         if name == "stateGetIn" {
-            if args.len() != 3 {
-                return Err(CompileError::ExprParse {
-                    span: name_span,
-                    message: format!("stateGetIn expects exactly 3 arguments, got {}", args.len()),
-                });
-            }
-            let mut it = args.into_iter();
-            let map_field = str_lit_arg(it.next(), name_span, "stateGetIn's first argument")?;
-            let key = it.next().expect("arity checked above");
-            let default = match it.next() {
-                Some(Expr::Lit { value }) => value,
+            let [arg0, key, arg2] = take_n::<3>(args, "stateGetIn", name_span)?;
+            let map_field = str_lit_arg(Some(arg0), name_span, "stateGetIn's first argument")?;
+            let default = match arg2 {
+                Expr::Lit { value } => value,
                 _ => {
                     return Err(CompileError::ExprParse {
                         span: name_span,
@@ -361,15 +354,8 @@ impl Parser {
         // `MapLit`. Both take 2 expression arguments (the `map` is typically a
         // `mapLit(...)`; the `key` any expression).
         if name == "has" || name == "lookup" {
-            if args.len() != 2 {
-                return Err(CompileError::ExprParse {
-                    span: name_span,
-                    message: format!("{name} expects exactly 2 arguments, got {}", args.len()),
-                });
-            }
-            let mut it = args.into_iter();
-            let map = Box::new(it.next().expect("arity checked above"));
-            let key = Box::new(it.next().expect("arity checked above"));
+            let [map, key] = take_n::<2>(args, &name, name_span)?;
+            let (map, key) = (Box::new(map), Box::new(key));
             return Ok(if name == "has" {
                 Expr::Has { map, key }
             } else {
@@ -381,15 +367,8 @@ impl Parser {
         // predicate expression (which reads the current item via the `element`
         // subject); `includes` takes a list and a value.
         if matches!(name.as_str(), "some" | "every" | "includes") {
-            if args.len() != 2 {
-                return Err(CompileError::ExprParse {
-                    span: name_span,
-                    message: format!("{name} expects exactly 2 arguments, got {}", args.len()),
-                });
-            }
-            let mut it = args.into_iter();
-            let list = Box::new(it.next().expect("arity checked above"));
-            let second = Box::new(it.next().expect("arity checked above"));
+            let [list, second] = take_n::<2>(args, &name, name_span)?;
+            let (list, second) = (Box::new(list), Box::new(second));
             return Ok(match name.as_str() {
                 "some" => Expr::Some { list, pred: second },
                 "every" => Expr::Every { list, pred: second },
@@ -400,13 +379,8 @@ impl Parser {
 
         // Single-argument calls over one operand expression.
         if matches!(name.as_str(), "str" | "length" | "first" | "defined") {
-            if args.len() != 1 {
-                return Err(CompileError::ExprParse {
-                    span: name_span,
-                    message: format!("{name} expects exactly 1 argument, got {}", args.len()),
-                });
-            }
-            let inner = Box::new(args.into_iter().next().expect("arity checked above"));
+            let [arg] = take_n::<1>(args, &name, name_span)?;
+            let inner = Box::new(arg);
             return Ok(match name.as_str() {
                 "str" => Expr::Str { num: inner },
                 "length" => Expr::Length { list: inner },
@@ -475,6 +449,20 @@ impl Parser {
             _ => Expr::HasEquipped { of: Box::new(of), item_key: key },
         })
     }
+}
+
+/// Consume exactly `N` call arguments as a fixed array, or an arity `ExprParse`
+/// error reporting the actual count. Panic-free (no `unwrap`/`expect`): a length
+/// mismatch is the `Err` branch of `TryFrom<Vec<_>>`.
+fn take_n<const N: usize>(
+    args: Vec<Expr>,
+    name: &str,
+    span: Span,
+) -> Result<[Expr; N], CompileError> {
+    <[Expr; N]>::try_from(args).map_err(|args: Vec<Expr>| CompileError::ExprParse {
+        span,
+        message: format!("{name} expects exactly {N} arguments, got {}", args.len()),
+    })
 }
 
 /// Require a call argument to be a string literal, returning the inner `String`
