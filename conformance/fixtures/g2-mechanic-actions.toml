@@ -1,0 +1,41 @@
+# g2-mechanic-actions — the TOML twin of the g2-mechanic-actions oracle
+# (g2-mechanic-actions.gen.test.ts).
+#
+# Authored in the G2 mechanic surface: a `[[mechanics]]` opt-in plus a
+# `[behaviors.mechanic.<key>]` behavior that (byte-for-byte) compiles to the
+# committed g2-mechanic-actions.{description,catalog}.json. The opt-in and its
+# behavior SHARE the key `dread` (the engine resolves a mechanic's hooks via
+# `catalog.behaviors[mechanic_key]`).
+#
+# This slice lands the two fields #62 stubbed:
+#   • `modifyDamage` — the conformance dread's damage cap, in the transform grammar:
+#     `<cond> ? final <expr> : <expr>` (the `damage` subject + `.amount` read).
+#   • `[behaviors.mechanic.dread.actions]` — one budgeted custom action `brace`
+#     (a statement body: cue then +1 Sanity).
+# The `onTurnStart` hook rides along unchanged. `init = {}` seeds the genesis state.
+# ASCII only.
+
+title = "Mechanic Actions"
+startRoom = "Hall"
+
+[[rooms]]
+name = "Hall"
+description = "A lightless hall where dread gathers."
+
+[[mechanics]]
+key = "dread"
+# config optional
+
+[behaviors.mechanic.dread]
+init = {}
+onTurnStart = '''
+  guard !hasEquipped(actor, 'lantern')
+  emit adjustStat(actor, sanity, -1)
+'''
+modifyDamage = "damage.amount > 3 ? final 3 : damage.amount"
+
+[behaviors.mechanic.dread.actions]
+brace = '''
+  emit cue('You brace against the dread.')
+  emit adjustStat(actor, sanity, 1)
+'''

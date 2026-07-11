@@ -2,6 +2,7 @@
 //! Compiles the friendly TOML surface + an infix expression language into the
 //! artifacts `wickedways_assemble::assemble` consumes. Panic-free on author input.
 pub mod author_doc;
+pub(crate) mod damage_body;
 pub mod error;
 pub(crate) mod expr;
 pub(crate) mod lower;

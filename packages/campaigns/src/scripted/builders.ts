@@ -9,6 +9,7 @@ import type { Stmt } from "../../../../generated/bindings/Stmt.ts";
 import type { EffectTemplate } from "../../../../generated/bindings/EffectTemplate.ts";
 import type { FieldTemplate } from "../../../../generated/bindings/FieldTemplate.ts";
 import type { MechanicHooks } from "../../../../generated/bindings/MechanicHooks.ts";
+import type { DamageBody } from "../../../../generated/bindings/DamageBody.ts";
 import type { BehaviorScript } from "../../../../generated/bindings/BehaviorScript.ts";
 import type { ItemScript } from "../../../../generated/bindings/ItemScript.ts";
 import type { SceneScript } from "../../../../generated/bindings/SceneScript.ts";
@@ -94,6 +95,15 @@ export const setVisible = (target: Expr, visible: Expr): EffectTemplate =>
 export const status = (fields: FieldTemplate[]): EffectTemplate => ({ kind: "status", fields });
 export const field = (label: string, value: Expr, emphasis?: Expr): FieldTemplate =>
   emphasis === undefined ? { label, value } : { label, value, emphasis };
+
+// ── modifyDamage transform bodies (`DamageBody`) ────────────────────────────────
+/** A `DamageBody::Value` — the transformed amount, letting the chain continue. */
+export const dmgValue = (expr: Expr): DamageBody => ({ kind: "value", expr });
+/** A `DamageBody::Final` — the transformed amount, locking it and halting the chain. */
+export const dmgFinal = (expr: Expr): DamageBody => ({ kind: "final", expr });
+/** A `DamageBody::IfElse` — branch on `cond` between two `DamageBody` bodies. */
+export const dmgIf = (cond: Expr, then: DamageBody, els: DamageBody): DamageBody =>
+  ({ kind: "ifElse", cond, then, else: els });
 
 // ── behavior families ─────────────────────────────────────────────────────────
 export const mechanic = (def: {

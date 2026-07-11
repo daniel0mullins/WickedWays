@@ -62,6 +62,18 @@ mod tests {
         assert_eq!(p("party"), json!({"kind":"party"}));
         assert_eq!(p("round"), json!({"kind":"round"}));
         assert_eq!(p("maxRounds"), json!({"kind":"maxRounds"}));
+        assert_eq!(p("damage"), json!({"kind":"damage"}));
+    }
+
+    #[test]
+    fn damage_field_reads() {
+        // The `modify_damage` subject's fields are read via postfix `.field`.
+        assert_eq!(p("damage.amount"),
+            json!({"kind":"get","field":"amount","of":{"kind":"damage"}}));
+        assert_eq!(p("damage.amount > 3"), json!({
+            "kind":"bin","op":"gt",
+            "left":{"kind":"get","field":"amount","of":{"kind":"damage"}},
+            "right":{"kind":"lit","value":3}}));
     }
 
     #[test]

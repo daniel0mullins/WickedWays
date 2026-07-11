@@ -2288,9 +2288,9 @@ above (so `onTurnStart` can `guard !hasEquipped(actor, 'lantern')` then `emit ad
 sanity, -1)` — the `-1` delta being the negative literal). The serialized `script` shape mirrors
 the canonical TS `s.mechanic`: `init` is **always** present (no serde default — an omitted `init`
 lowers to `{}`), `actions` is **always** serialized (an empty actions map emits as `{}`, matching
-the ts-rs binding), each of the five `hooks` is emitted **only when authored** (absent hooks are
-omitted), and `modifyDamage` stays absent until a later slice adds it. Gated byte-for-byte against
-the `g2-mechanic` oracle:
+the ts-rs binding), and each `hooks` entry (the five lifecycle hooks plus `modifyDamage`) is
+emitted **only when authored** (absent ones are omitted). Gated byte-for-byte against the
+`g2-mechanic` oracle:
 
 ```toml
 [[mechanics]]
@@ -2305,24 +2305,51 @@ onTurnStart = '''
 '''
 ```
 
+**Mechanic damage transforms and custom actions.** A mechanic may also carry a **`modifyDamage`**
+transform and a table of budgeted **custom `actions`** — the two fields the scaffolding slice above
+stubbed. `modifyDamage` is a single string in its own transform grammar: a `final <expr>` value
+(which halts the transformer chain), a bare `<expr>` value (which lets it continue), or a
+`<cond> ? <thenBody> : <elseBody>` ternary between two transform bodies. It reads the incoming
+damage through the `damage` subject (e.g. `damage.amount`), so the conformance dread's "cap at 3"
+transform authors as `damage.amount > 3 ? final 3 : damage.amount`. Custom actions live in a
+`[behaviors.mechanic.<key>.actions]` table, each key mapping to a statement block reusing the
+lifecycle-hook grammar (a PC invokes one via `useMechanicAction(key, action)`; each call ticks the
+per-round budget). Gated byte-for-byte against the `g2-mechanic-actions` oracle:
+
+```toml
+[behaviors.mechanic.dread]
+init = {}
+onTurnStart = '''
+  guard !hasEquipped(actor, 'lantern')
+  emit adjustStat(actor, sanity, -1)
+'''
+modifyDamage = "damage.amount > 3 ? final 3 : damage.amount"
+
+[behaviors.mechanic.dread.actions]
+brace = '''
+  emit cue('You brace against the dread.')
+  emit adjustStat(actor, sanity, 1)
+'''
+```
+
 **Deliberate scope of this slice.** The statement lowering is intentionally narrow so nothing lands
 without byte-parity coverage. Only the `Cue`, `AdjustStat`, `GiveItem`, and `SetVisible` effects are
 emittable and only `stateGet` extends the read model; `emit` of any other effect (`Damage`/`Heal`/
 `GrantImmunity`/`Status`), the `Pass` statement (exit-script-only), and `SetStateIn` (dynamic
 `set state.m[k] = ...` map writes) are **rejected with a clear `CompileError`, not mis-lowered** —
 each lands with the slice that exercises it. Within the now-wired **mechanic** family the same
-narrowing holds: this slice authors **only** the `init` seed and the five lifecycle hooks. A
-mechanic's **`actions`** entries and its **`modifyDamage`** hook are deferred (no committed
-mechanic uses them — hence `actions` serializes as an empty `{}` and `modifyDamage` is absent), the
-dread oracle reuses `adjustStat` rather than any new effect, and the storyteller/status-bar
+narrowing holds: the mechanic family now authors the `init` seed, the five lifecycle hooks, the
+`modifyDamage` transform, and the custom `actions` map — the `modifyDamage` grammar adds the
+`damage` subject (its `.amount` read via the existing postfix `.field`) but no new effect (the
+`brace` action and the cap transform reuse `cue`/`adjustStat`). The storyteller/status-bar
 expression forms a richer mechanic would need — the `action` subject, `mapLit`, `has`, `lookup`,
-`stateGetIn`, `setStateIn`, `str`, `length`, `first`, and the `Status` effect — are **not** added
-here; each is a follow-on mechanic slice. The **exit**, **victory**, **scene**, (consumable)
+`stateGetIn`, `setStateIn`, `str`, `length`, `first`, and the `Status` effect — are still **not**
+added here; each is a follow-on mechanic slice. The **exit**, **victory**, **scene**, (consumable)
 **item**, **npc**, and **mechanic** families are now all wired, every one reusing this same
 statement parser.
 
 **The gate.** Like the assembler, the author is gated **byte-for-byte** against a committed
-oracle — the `g2-vault`/`g2-scene`/`g2-item`/`g2-npc`/`g2-mechanic` fixtures, whose `description.json`/`catalog.json`
+oracle — the `g2-vault`/`g2-scene`/`g2-item`/`g2-npc`/`g2-mechanic`/`g2-mechanic-actions` fixtures, whose `description.json`/`catalog.json`
 are emitted by a TypeScript twin (`canonical-json.ts` canonicalization), each also checked for
 compile determinism — via `cargo test -p wickedways-author`
 (pure Rust, fast CI job; convenience alias `pnpm run checks:author`). The gate compares

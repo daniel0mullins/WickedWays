@@ -100,9 +100,11 @@ pub struct MechanicEntryToml {
 /// A `[behaviors.mechanic.<key>]` body, keyed the same as its `[[mechanics]]`
 /// entry's `key`. `init` is a literal state seed (inert author-data, becomes the
 /// mechanic's `initialState`); the five `on_*` hooks are statement-block bodies
-/// (the `'''...'''` grammar) lowering to `MechanicScript` hooks. Each is optional
-/// (absent init → `{}`; absent hook → no-op). `actions`/`modifyDamage` are
-/// deferred this slice.
+/// (the `'''...'''` grammar) lowering to `MechanicScript` hooks. `modify_damage`
+/// is a `modifyDamage` transform body (its own `final`/ternary/value grammar);
+/// `actions` maps each custom-action key to a statement-block body. Each field is
+/// optional (absent init → `{}`; absent hook/transform → no-op; no `actions` → an
+/// empty map).
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct MechanicBehaviorEntry {
@@ -112,6 +114,8 @@ pub struct MechanicBehaviorEntry {
     #[serde(default)] pub on_turn_start: Option<String>,
     #[serde(default)] pub on_turn_end: Option<String>,
     #[serde(default)] pub on_action: Option<String>,
+    #[serde(default)] pub modify_damage: Option<String>,
+    #[serde(default)] pub actions: BTreeMap<String, String>,
 }
 
 /// A `[[npcs]]` entry: a placed NPC character. `stats` is the core `Stats`

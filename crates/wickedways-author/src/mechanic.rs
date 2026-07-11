@@ -1,10 +1,13 @@
 //! Lowers a `[behaviors.mechanic.<key>]` surface entry into a core
-//! [`MechanicScript`]: a literal `init` state seed plus the five parsed hook
-//! bodies. `actions`/`modifyDamage` are deferred to a later slice. Panic-free on
-//! author input.
+//! [`MechanicScript`]: a literal `init` state seed, the five parsed hook bodies,
+//! the optional `modifyDamage` transform, and the custom `actions` map.
+//! Panic-free on author input.
+use std::collections::BTreeMap;
+
 use wickedways_core::script::ast::{MechanicHooks, MechanicScript, Stmt};
 
 use crate::author_doc::MechanicBehaviorEntry;
+use crate::damage_body::parse_damage_body;
 use crate::error::{CompileError, Span};
 use crate::stmt::parse_stmts;
 
@@ -19,7 +22,9 @@ fn hook(src: &Option<String>) -> Result<Option<Vec<Stmt>>, CompileError> {
 
 /// Lower a mechanic behavior entry into a [`MechanicScript`]. `init` becomes the
 /// literal JSON state seed (absent → `{}`; a non-serializable value also falls
-/// back to `{}`); each present `on_*` hook is parsed into a statement body.
+/// back to `{}`); each present `on_*` hook and each `actions` body is parsed as a
+/// statement body; `modifyDamage` is parsed by its own transform grammar. The
+/// `actions` map preserves the surface's (`BTreeMap`) key order.
 pub(crate) fn to_mechanic_script(
     entry: &MechanicBehaviorEntry,
 ) -> Result<MechanicScript, CompileError> {
@@ -27,6 +32,14 @@ pub(crate) fn to_mechanic_script(
         Some(v) => serde_json::to_value(v).unwrap_or_else(|_| serde_json::json!({})),
         None => serde_json::json!({}),
     };
+    let modify_damage = match &entry.modify_damage {
+        Some(s) => Some(parse_damage_body(s, BASE)?),
+        None => None,
+    };
+    let mut actions: BTreeMap<String, Vec<Stmt>> = BTreeMap::new();
+    for (key, body) in &entry.actions {
+        actions.insert(key.clone(), parse_stmts(body, BASE)?);
+    }
     Ok(MechanicScript {
         init,
         hooks: MechanicHooks {
@@ -35,9 +48,9 @@ pub(crate) fn to_mechanic_script(
             on_turn_start: hook(&entry.on_turn_start)?,
             on_turn_end: hook(&entry.on_turn_end)?,
             on_action: hook(&entry.on_action)?,
-            modify_damage: None,
+            modify_damage,
         },
-        actions: Default::default(),
+        actions,
     })
 }
 
@@ -100,5 +113,37 @@ mod tests {
     fn init_defaults_to_empty_object() {
         let v = script_json("onRoundStart = \"emit cue('dawn')\"");
         assert_eq!(v["init"], json!({}));
+    }
+
+    #[test]
+    fn actions_and_modify_damage() {
+        let v = script_json(r#"
+            init = { }
+            modifyDamage = "damage.amount > 3 ? final 3 : damage.amount"
+            [actions]
+            brace = "emit cue('You brace against the dread.')\nemit adjustStat(actor, sanity, 1)"
+        "#);
+        assert_eq!(v["hooks"]["modifyDamage"], json!({
+            "kind":"ifElse",
+            "cond":{"kind":"bin","op":"gt",
+                "left":{"kind":"get","field":"amount","of":{"kind":"damage"}},
+                "right":{"kind":"lit","value":3}},
+            "then":{"kind":"final","expr":{"kind":"lit","value":3}},
+            "else":{"kind":"value","expr":{"kind":"get","field":"amount","of":{"kind":"damage"}}}
+        }));
+        assert_eq!(v["actions"], json!({
+            "brace":[
+                {"kind":"emit","effect":{"kind":"cue","text":{"kind":"lit","value":"You brace against the dread."}}},
+                {"kind":"emit","effect":{"kind":"adjustStat","target":{"kind":"actor"},"stat":"sanity","delta":{"kind":"lit","value":1}}}
+            ]
+        }));
+    }
+
+    #[test]
+    fn absent_actions_and_modify_damage_stay_empty() {
+        // No `actions`/`modifyDamage` -> empty map + absent transform (the #62 shape).
+        let v = script_json("onTurnStart = \"emit cue('x')\"");
+        assert_eq!(v["actions"], json!({}));
+        assert_eq!(v["hooks"].get("modifyDamage"), None);
     }
 }
