@@ -53,6 +53,7 @@ export default defineConfig({
       "conformance/fixtures/g2-scene.gen.test.ts",
       "conformance/fixtures/g2-item.gen.test.ts",
       "conformance/fixtures/g2-npc.gen.test.ts",
+      "conformance/fixtures/g2-mechanic.gen.test.ts",
       "conformance/fixtures/npc-matcher.test.ts",
     ],
     environment: "node",

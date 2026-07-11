@@ -5,6 +5,7 @@ pub mod author_doc;
 pub mod error;
 pub(crate) mod expr;
 pub(crate) mod lower;
+pub(crate) mod mechanic;
 pub(crate) mod npc;
 pub(crate) mod stmt;
 

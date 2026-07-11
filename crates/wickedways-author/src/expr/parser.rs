@@ -198,6 +198,29 @@ impl Parser {
             Token::Num(n) => Ok(Expr::Lit { value: Value::Number(n) }),
             Token::Str(s) => Ok(Expr::Lit { value: Value::Str(s) }),
             Token::Bool(b) => Ok(Expr::Lit { value: Value::Bool(b) }),
+            // Prefix `-`: valid ONLY immediately before a numeric literal, where
+            // it produces a negative numeric `Lit` (there is no unary-negation
+            // AST node — `-actor` is an error). A `-` *between* two operands is
+            // consumed in `parse_binary` as the `Sub` operator and never reaches
+            // `parse_primary`, so this leaves subtraction/precedence untouched.
+            Token::Minus => {
+                // Peek the following token (copying the number out) so the
+                // immutable borrow ends before we `advance` past it.
+                let num = match self.peek() {
+                    Some((Token::Num(n), _)) => Some(*n),
+                    _ => None,
+                };
+                match num {
+                    Some(n) => {
+                        self.advance(); // consume the numeric literal
+                        Ok(Expr::Lit { value: Value::Number(-n) })
+                    }
+                    None => Err(CompileError::ExprParse {
+                        span,
+                        message: "expected a number literal after unary '-'".into(),
+                    }),
+                }
+            }
             Token::LParen => {
                 let inner = self.parse_ternary()?;
                 self.expect(&Token::RParen, "')' to close a group")?;

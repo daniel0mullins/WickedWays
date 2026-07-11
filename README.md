@@ -2170,7 +2170,9 @@ narration = "You reached the vault."
 **The infix expression language.** The string values of `canPass`/`test` (and similar) are not
 opaque — they are a single-line **infix expression language** that Pratt-parses into the closed
 `wickedways_core::script::ast::Expr` AST the runtime already evaluates. It has the four read-model
-subjects (`actor`, `party`, `round`, `maxRounds`), literals, `.field` access, `[i]` subscripting,
+subjects (`actor`, `party`, `round`, `maxRounds`), literals (including **negative number
+literals** — a prefix `-` on a numeric literal parses to a negative `Lit`, distinct from a `-`
+between two operands, which stays subtraction), `.field` access, `[i]` subscripting,
 the three typed calls (`hasKey`/`hasItem`/`hasEquipped`, each 2-arg with a string-literal key),
 comparison/equality/boolean operators, unary `!`, and a ternary — precedence loosest→tightest:
 `?:` < `||` < `&&` < equality < comparison < additive < multiplicative < unary < postfix. So
@@ -2273,17 +2275,54 @@ match = { fuzzy = ["key", "cellar"] }        # a Fuzzy token match; a bare strin
 response = "It opens the cellar."
 ```
 
+**Mechanics with lifecycle hooks.** The final family slice wires **campaign mechanics** — the
+long-lived, tick-driven systems (a dread meter, a curse, a weather cycle) the runtime advances on
+its own schedule. A `[[mechanics]]` entry is a thin **opt-in** carrying a `key` (and an optional
+`config`); the behavior lives in a `[behaviors.mechanic.<key>]` table that the opt-in references
+**by the same key** — the two share the key (here `dread`), because the engine resolves a
+mechanic's hooks via `catalog.behaviors[mechanic_key]`. That table compiles to a
+`BehaviorScript::Mechanic` (`family: "mechanic"`) whose `script` is a `MechanicScript` with an
+`init` state seed plus up to five lifecycle hooks: `onRoundStart`, `onRoundEnd`, `onTurnStart`,
+`onTurnEnd`, and `onAction`. Each hook is an optional statement block reusing the exact grammar
+above (so `onTurnStart` can `guard !hasEquipped(actor, 'lantern')` then `emit adjustStat(actor,
+sanity, -1)` — the `-1` delta being the negative literal). The serialized `script` shape mirrors
+the canonical TS `s.mechanic`: `init` is **always** present (no serde default — an omitted `init`
+lowers to `{}`), `actions` is **always** serialized (an empty actions map emits as `{}`, matching
+the ts-rs binding), each of the five `hooks` is emitted **only when authored** (absent hooks are
+omitted), and `modifyDamage` stays absent until a later slice adds it. Gated byte-for-byte against
+the `g2-mechanic` oracle:
+
+```toml
+[[mechanics]]
+key = "dread"                                # -> [behaviors.mechanic.dread]
+# config optional
+
+[behaviors.mechanic.dread]
+init = {}                                    # seeds the genesis mechanic state
+onTurnStart = '''
+  guard !hasEquipped(actor, 'lantern')
+  emit adjustStat(actor, sanity, -1)
+'''
+```
+
 **Deliberate scope of this slice.** The statement lowering is intentionally narrow so nothing lands
 without byte-parity coverage. Only the `Cue`, `AdjustStat`, `GiveItem`, and `SetVisible` effects are
 emittable and only `stateGet` extends the read model; `emit` of any other effect (`Damage`/`Heal`/
-`GrantImmunity`/`Status`), the `Pass` statement (exit-script-only), `SetStateIn` (dynamic
-`set state.m[k] = …` map writes), and the whole **mechanic** family are **rejected with a clear
-`CompileError`, not mis-lowered** — each lands with the slice that exercises it. The **exit**,
-**victory**, **scene**, (consumable) **item**, and **npc** families are wired; the **mechanic** body
-is the final family slice, reusing this same statement parser.
+`GrantImmunity`/`Status`), the `Pass` statement (exit-script-only), and `SetStateIn` (dynamic
+`set state.m[k] = ...` map writes) are **rejected with a clear `CompileError`, not mis-lowered** —
+each lands with the slice that exercises it. Within the now-wired **mechanic** family the same
+narrowing holds: this slice authors **only** the `init` seed and the five lifecycle hooks. A
+mechanic's **`actions`** entries and its **`modifyDamage`** hook are deferred (no committed
+mechanic uses them — hence `actions` serializes as an empty `{}` and `modifyDamage` is absent), the
+dread oracle reuses `adjustStat` rather than any new effect, and the storyteller/status-bar
+expression forms a richer mechanic would need — the `action` subject, `mapLit`, `has`, `lookup`,
+`stateGetIn`, `setStateIn`, `str`, `length`, `first`, and the `Status` effect — are **not** added
+here; each is a follow-on mechanic slice. The **exit**, **victory**, **scene**, (consumable)
+**item**, **npc**, and **mechanic** families are now all wired, every one reusing this same
+statement parser.
 
 **The gate.** Like the assembler, the author is gated **byte-for-byte** against a committed
-oracle — the `g2-vault`/`g2-scene`/`g2-item`/`g2-npc` fixtures, whose `description.json`/`catalog.json`
+oracle — the `g2-vault`/`g2-scene`/`g2-item`/`g2-npc`/`g2-mechanic` fixtures, whose `description.json`/`catalog.json`
 are emitted by a TypeScript twin (`canonical-json.ts` canonicalization), each also checked for
 compile determinism — via `cargo test -p wickedways-author`
 (pure Rust, fast CI job; convenience alias `pnpm run checks:author`). The gate compares
@@ -2298,14 +2337,17 @@ bin's raw pretty output — where `Value::Number` emits `0.0` and catalog keys s
 *two* artifacts — a `winConditions` entry in the description AND a `BehaviorScript::Victory { test }`
 in the catalog) with expression-only bodies — since extended with the **statement grammar**, the
 **scene** family, the **adjustStat**/**giveItem**/**setVisible** effects, (consumable) **items** with
-`onUse`/`onRead` bodies, and the **npc** family with polymorphic-`match` dialogue trees above. Two
+`onUse`/`onRead` bodies, the **npc** family with polymorphic-`match` dialogue trees, **negative
+number literals**, and the **mechanic** family (`[[mechanics]]` opt-in + a `[behaviors.mechanic.<key>]`
+`init`-plus-five-hooks behavior) above. Two
 deliberate divergences from the design spec carry through: the compiler
 is permissive (no compile-time `TypeError` — the `Expr` AST is total and the TS builders type-check
 nothing, so mapping must stay permissive to byte-match), and subscript always lowers to `Index`
 (never `First`). Later G2 slices add: the **remaining effects** (`Heal`/`Damage`/`GrantImmunity`/
-`Status`) and the **mechanic** behavior family reusing this same statement parser, **id-derivation**
-for `giveItem`/`setVisible` and computed dialogue responses, **npx/WASM packaging** of the CLI, and
-**runtime-load** of a compiled campaign. None of those change `compile()`'s signature.
+`Status`), the deferred **mechanic** surface (`actions` entries, `modifyDamage`, and the richer
+storyteller forms `action`/`mapLit`/`has`/`lookup`/`stateGetIn`/`setStateIn`/`str`/`length`/`first`),
+**id-derivation** for `giveItem`/`setVisible` and computed dialogue responses, **npx/WASM packaging**
+of the CLI, and **runtime-load** of a compiled campaign. None of those change `compile()`'s signature.
 
 **Engine change this milestone made.** Authoring a key item into a loot container's initial
 contents was previously rejected by the `Loot` constructor guard; that guard was **relaxed** so

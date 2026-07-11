@@ -438,6 +438,14 @@ mod tests {
     }
 
     #[test]
+    fn adjust_stat_negative_delta() {
+        assert_eq!(s("emit adjustStat(actor, sanity, -1)"), serde_json::json!([
+            {"kind":"emit","effect":{"kind":"adjustStat","target":{"kind":"actor"},
+             "stat":"sanity","delta":{"kind":"lit","value":-1}}}
+        ]));
+    }
+
+    #[test]
     fn adjust_stat_unknown_stat_rejected() {
         assert!(matches!(
             parse_stmts("emit adjustStat(actor, vigor, 6)", Span { line: 1, col: 1 }).unwrap_err(),

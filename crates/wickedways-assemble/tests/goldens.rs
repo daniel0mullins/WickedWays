@@ -234,6 +234,19 @@ fn g2_npc_genesis_golden() {
     gate("g2-npc", "g2-npc.genesis.json", Some("g2-npc"), &party);
 }
 
+/// The G2 "mechanic scaffolding" author oracle, seated with a single PC that declares
+/// NO archetype (`Seat { archetype: None }` — the surface has no archetype concept, so
+/// `player:Ada`'s stats are the campaign defaults). Gates the assembler over a
+/// `[[mechanics]]` opt-in: the mechanic reaches the genesis as a pristine
+/// `{ key: "dread", state: {} }` entry (`state` seeded from the behavior's `init`),
+/// and its `BehaviorScript::Mechanic` (`init` + an `onTurnStart` guard/emit body, incl.
+/// the negative-`-1` `adjustStat` delta) rides in the catalog untouched.
+#[test]
+fn g2_mechanic_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-mechanic", "g2-mechanic.genesis.json", Some("g2-mechanic"), &party);
+}
+
 #[test]
 fn hollow_house_pristine() {
     gate("hollow-house", "hollow-house.snapshot.json", Some("hollow-house"), &[]);

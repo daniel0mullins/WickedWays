@@ -13,6 +13,10 @@ export type MechanicScript = {
  */
 init: unknown, hooks: MechanicHooks, 
 /**
- * Custom actions (TS `Mechanic.actions`), keyed by action key.
+ * Custom actions (TS `Mechanic.actions`), keyed by action key. Always
+ * emitted (even when empty) to match the TS `s.mechanic`/`catalogFromRegistry`
+ * oracle, which always writes `actions: {}`, and the ts-rs binding, which marks
+ * it required (not `ts(optional)`); `default` keeps older catalogs that lack
+ * `actions` deserializable.
  */
 actions: { [key in string]?: Array<Stmt> }, };

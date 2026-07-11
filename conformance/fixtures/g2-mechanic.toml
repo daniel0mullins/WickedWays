@@ -1,0 +1,30 @@
+# g2-mechanic — the TOML twin of the g2-mechanic oracle (g2-mechanic.gen.test.ts).
+#
+# Authored in the G2 mechanic surface: a `[[mechanics]]` opt-in plus a
+# `[behaviors.mechanic.<key>]` behavior (`init` + hook bodies) that (Task 4) compile
+# to the committed g2-mechanic.{description,catalog}.json byte-for-byte. The opt-in
+# and its behavior SHARE the key `dread` (the engine resolves a mechanic's hooks via
+# `catalog.behaviors[mechanic_key]`).
+#
+# The onTurnStart body stays inside the slice's subset: guard/not/hasEquipped +
+# a single `emit adjustStat` whose delta is the negative `-1` literal. No actions,
+# no modifyDamage, no other hooks. `init = {}` seeds the genesis mechanic state.
+# ASCII only.
+
+title = "Mechanic"
+startRoom = "Hall"
+
+[[rooms]]
+name = "Hall"
+description = "A lightless hall where dread gathers."
+
+[[mechanics]]
+key = "dread"
+# config optional
+
+[behaviors.mechanic.dread]
+init = {}
+onTurnStart = '''
+  guard !hasEquipped(actor, 'lantern')
+  emit adjustStat(actor, sanity, -1)
+'''
