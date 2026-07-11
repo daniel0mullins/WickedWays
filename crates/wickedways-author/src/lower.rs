@@ -9,7 +9,8 @@ use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
 use wickedways_assemble::description::{
-    CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, LootDef, NpcDef, RoomDef, SceneDef,
+    CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, LootDef, MechanicEntry, NpcDef,
+    RoomDef, SceneDef,
 };
 use wickedways_core::script::ast::{
     BehaviorScript, ExitScript, ItemScript, SceneScript, VictoryScript,
@@ -129,7 +130,18 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
             .iter()
             .map(|(key, cond)| lower_condition(key, cond))
             .collect(),
-        mechanics: Vec::new(),
+        // Each `[[mechanics]]` opt-in → a `MechanicEntry { key, config }`. `config`
+        // is inert author-data (mechanic-specific): the author's optional `toml::Value`
+        // converts to the description's `serde_json::Value`; absent (dread) → None. A
+        // conversion failure drops the config (absent) rather than panicking.
+        mechanics: doc
+            .mechanics
+            .iter()
+            .map(|m| MechanicEntry {
+                key: m.key.clone(),
+                config: m.config.as_ref().and_then(|v| serde_json::to_value(v).ok()),
+            })
+            .collect(),
         timeout_narration: None,
         ended_narration: None,
         chat: None,
@@ -211,6 +223,16 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
     for (key, entry) in &doc.behaviors.npc {
         let script = crate::npc::to_npc_script(entry)?;
         behaviors.insert(key.clone(), BehaviorScript::Npc { script });
+    }
+
+    // Mechanic behaviors: each `[behaviors.mechanic.<key>]` lowers to a
+    // `MechanicScript` (literal `init` seed + the five parsed hook bodies) via the
+    // `mechanic` converter. Keyed by `<key>` — shared with the `[[mechanics]]`
+    // opt-in's `key` (the engine resolves a mechanic's hooks via
+    // `catalog.behaviors[mechanic_key]`).
+    for (key, entry) in &doc.behaviors.mechanic {
+        let script = crate::mechanic::to_mechanic_script(entry)?;
+        behaviors.insert(key.clone(), BehaviorScript::Mechanic { script });
     }
 
     // Victory behaviors: each win/lose condition's `test` is a parsed predicate,
