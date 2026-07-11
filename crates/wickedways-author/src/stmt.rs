@@ -447,7 +447,7 @@ mod tests {
 
     #[test]
     fn heal_effect_still_rejected() {
-        // Only cue + adjustStat this slice; heal (and every other effect) still errors.
+        // Emittable effects: cue/adjustStat/giveItem/setVisible; heal (and every other effect) still errors.
         assert!(matches!(
             parse_stmts("emit heal(actor, 6)", Span { line: 1, col: 1 }).unwrap_err(),
             CompileError::ExprParse { .. }
