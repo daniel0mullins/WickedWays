@@ -1,0 +1,14 @@
+# g2-opts — the TOML twin of the g2-opts oracle (g2-opts.gen.test.ts). Proves the
+# campaign `[opts]` table (previously hardcoded to the default): the real
+# hollow-house bounds maxRounds 150 + baseEncounterChance 20. ASCII only.
+
+title = "Opts"
+startRoom = "Hall"
+
+[opts]
+maxRounds = 150
+baseEncounterChance = 20
+
+[[rooms]]
+name = "Hall"
+description = "A long central hall."

@@ -255,6 +255,14 @@ fn g2_archetype_genesis_golden() {
     gate("g2-archetype", "g2-archetype.genesis.json", Some("g2-archetype"), &party);
 }
 
+/// The G2 "campaign opts" author oracle: the real hollow-house bounds (maxRounds 150,
+/// baseEncounterChance 20) via the `[opts]` table.
+#[test]
+fn g2_opts_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-opts", "g2-opts.genesis.json", Some("g2-opts"), &party);
+}
+
 /// The G2 "formations" author oracle: the real roving rats — the `rat-single`/
 /// `rat-pair` weighted opt-ins (description) + their `MobSpec` rosters (catalog).
 #[test]

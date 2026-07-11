@@ -7,6 +7,11 @@ pub struct AuthorDoc {
     pub title: String,
     #[serde(default)]
     pub start_room: Option<String>,
+    /// Campaign bounds (`maxRounds` / `baseEncounterChance`). Deserializes straight
+    /// into the description's `CampaignOpts`; absent → its default (both `None`, so
+    /// `assemble` applies the engine defaults maxRounds 100 / baseEncounterChance 20).
+    #[serde(default)]
+    pub opts: wickedways_assemble::description::CampaignOpts,
     #[serde(default)]
     pub archetypes: Vec<ArchetypeEntry>,
     #[serde(default)]
