@@ -26,14 +26,13 @@
  * — only guard/not/hasEquipped/adjustStat + the negative `-1` literal. No actions, no
  * modifyDamage, no other hooks/effects, no storyteller/status-bar forms.
  *
- * EMPTY `actions` OMITTED: Rust's `MechanicScript.actions` is
- * `#[serde(skip_serializing_if = "BTreeMap::is_empty")]`, so an empty `actions` is
- * ABSENT from the serialized catalog (while `hooks` is `#[serde(default)]`, always
- * present). The TS `s.mechanic` builder always emits `actions: {}` (the ts-rs binding
- * marks it required, not `ts(optional)`), which would break byte-parity with the Rust
- * author compiler. So the built behavior's empty `actions` is stripped below — the
- * committed catalog matches Rust's shape (`{ init, hooks }`, no `actions`). The hook
- * body itself is built with the real `s.*` builders, so it is the faithful DSL twin.
+ * CANONICAL `actions:{}`: the TS `s.mechanic` builder always emits `actions: {}`
+ * (the ts-rs binding marks it required, not `ts(optional)`), and Rust's
+ * `MechanicScript.actions` is `#[serde(default)]` with NO `skip_serializing_if`, so
+ * Rust likewise always serializes `actions` (even when empty). The committed catalog
+ * therefore carries `actions: {}` — byte-faithful to both, matching the real
+ * hollow-house mechanics. The hook body itself is built with the real `s.*` builders,
+ * so it is the faithful DSL twin.
  *
  * Writes g2-mechanic.{description,catalog,genesis}.json. Run via: pnpm run fixtures:gen
  */
@@ -55,19 +54,6 @@ const SEED = 0x62; // "g2"; no rng draws in this pristine pre-begin genesis.
 
 // The shared key the mechanic opt-in + its behavior are both filed under.
 const MECH_KEY = "dread";
-
-/**
- * Strip an empty `actions` map so the emitted catalog matches Rust's
- * `MechanicScript` serialization (`skip_serializing_if = "BTreeMap::is_empty"`).
- * `hooks` is always kept (Rust `#[serde(default)]`, no skip). Mutates + returns.
- */
-function stripEmptyActions(b: s.BehaviorScript): s.BehaviorScript {
-  const script = b.script as { actions?: Record<string, unknown> };
-  if (script.actions !== undefined && Object.keys(script.actions).length === 0) {
-    delete script.actions;
-  }
-  return b;
-}
 
 describe("generate g2-mechanic oracle fixture", () => {
   it("writes description + catalog + pre-begin single-PC genesis", () => {
@@ -91,17 +77,15 @@ describe("generate g2-mechanic oracle fixture", () => {
     //     Reproduces the `dread` onTurnStart closure: if the actor has no lantern
     //     equipped, drain 1 Sanity. The `-1` delta is the negative `lit(-1)` literal.
     const behaviors = {
-      [MECH_KEY]: stripEmptyActions(
-        s.mechanic({
-          init: {},
-          hooks: {
-            onTurnStart: [
-              s.guard(s.not(s.hasEquipped(s.actor, "lantern"))),
-              s.emit(s.adjustStat(s.actor, "sanity", s.lit(-1))),
-            ],
-          },
-        }),
-      ),
+      [MECH_KEY]: s.mechanic({
+        init: {},
+        hooks: {
+          onTurnStart: [
+            s.guard(s.not(s.hasEquipped(s.actor, "lantern"))),
+            s.emit(s.adjustStat(s.actor, "sanity", s.lit(-1))),
+          ],
+        },
+      }),
     };
 
     // Boot the single-PC (player:Ada, NO archetype — this surface declares none)
@@ -154,14 +138,17 @@ describe("generate g2-mechanic oracle fixture", () => {
       throw new Error(`description.mechanics must be [{ key: "${MECH_KEY}" }]`);
     }
     const catalog = catalogFromRegistry(registry, {}, behaviors, {}) as unknown as {
-      behaviors: Record<string, { family: string; script: { actions?: unknown } }>;
+      behaviors: Record<string, { family: string; script: { actions?: Record<string, unknown> } }>;
     };
     const behavior = catalog.behaviors[MECH_KEY];
     if (behavior?.family !== "mechanic") {
       throw new Error(`behaviors.${MECH_KEY} must be family "mechanic"`);
     }
-    if ("actions" in behavior.script) {
-      throw new Error("empty `actions` must be omitted to match Rust serialization");
+    if (
+      behavior.script.actions === undefined ||
+      Object.keys(behavior.script.actions).length !== 0
+    ) {
+      throw new Error("mechanic script must carry canonical `actions: {}` (present, empty)");
     }
   });
 });
