@@ -255,6 +255,14 @@ fn g2_archetype_genesis_golden() {
     gate("g2-archetype", "g2-archetype.genesis.json", Some("g2-archetype"), &party);
 }
 
+/// The G2 "formations" author oracle: the real roving rats — the `rat-single`/
+/// `rat-pair` weighted opt-ins (description) + their `MobSpec` rosters (catalog).
+#[test]
+fn g2_formations_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-formations", "g2-formations.genesis.json", Some("g2-formations"), &party);
+}
+
 /// The G2 "exit name + initialState" author oracle: a keyed door carrying a display
 /// name + `{ unlocked: false }` initial state, atop the real doorScript behavior.
 #[test]

@@ -24,6 +24,8 @@ pub struct AuthorDoc {
     #[serde(default)]
     pub mobs: Vec<MobEntry>,
     #[serde(default)]
+    pub formations: Vec<FormationEntry>,
+    #[serde(default)]
     pub mechanics: Vec<MechanicEntryToml>,
     #[serde(default)]
     pub behaviors: Behaviors,
@@ -159,6 +161,19 @@ pub struct MechanicBehaviorEntry {
     #[serde(default)] pub on_action: Option<String>,
     #[serde(default)] pub modify_damage: Option<String>,
     #[serde(default)] pub actions: BTreeMap<String, String>,
+}
+
+/// A `[[formations]]` entry: a data-driven encounter formation. It carries BOTH
+/// halves of a formation — the description-side `weight` opt-in (a `FormationDef`)
+/// and the catalog-side `mobs` roster (a `FormationDescriptor` of core `MobSpec`s) —
+/// keyed the same. `mobs` deserializes straight into the core spec (same camelCase
+/// shape); absent `weight` → `None`.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FormationEntry {
+    pub key: String,
+    #[serde(default)] pub weight: Option<i64>,
+    #[serde(default)] pub mobs: Vec<wickedways_core::world::formation_descriptor::MobSpec>,
 }
 
 /// A `[[mobs]]` entry: a placed enemy. `stats` is the core `Stats` snapshot (same

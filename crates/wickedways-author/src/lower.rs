@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
 use wickedways_assemble::description::{
-    ArchetypeDef, CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, LootDef,
+    ArchetypeDef, CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, FormationDef, LootDef,
     MechanicEntry, MobDef, NpcDef, RoomDef, SceneDef,
 };
 use wickedways_core::script::ast::{
@@ -19,6 +19,7 @@ use wickedways_core::stats::StatType;
 use wickedways_core::world::descriptor::{
     Catalog, ItemDescriptor, ItemProperties, ItemType,
 };
+use wickedways_core::world::formation_descriptor::FormationDescriptor;
 
 use crate::author_doc::{AuthorDoc, ConditionEntry as AuthorCondition, ItemEntry};
 use crate::error::{CompileError, Span};
@@ -130,7 +131,14 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 holds: n.holds.clone(),
             })
             .collect(),
-        formations: Vec::new(),
+        // Each `[[formations]]` entry's description half → a `FormationDef` opt-in
+        // (`{ key, weight }`); its `mobs` roster rides in the catalog (see
+        // `lower_catalog`). Keyed the same.
+        formations: doc
+            .formations
+            .iter()
+            .map(|f| FormationDef { key: f.key.clone(), weight: f.weight })
+            .collect(),
         scenes: doc
             .scenes
             .iter()
@@ -288,11 +296,18 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
         }
     }
 
+    // Each `[[formations]]` entry's catalog half → a `FormationDescriptor` (its
+    // `mobs` roster), keyed the same as the description opt-in.
+    let mut formations = BTreeMap::new();
+    for f in &doc.formations {
+        formations.insert(f.key.clone(), FormationDescriptor { mobs: f.mobs.clone() });
+    }
+
     Ok(Catalog {
         items,
         aliases: BTreeMap::new(),
         behaviors,
-        formations: BTreeMap::new(),
+        formations,
         recipes: BTreeMap::new(),
     })
 }
