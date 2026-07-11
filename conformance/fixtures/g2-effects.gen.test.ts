@@ -1,6 +1,6 @@
 /**
  * g2-effects oracle fixture — the TS twin for the G2 "remaining effects" author
- * slice (docs/superpowers/specs/2026-07-11-rust-campaign-author-g2-effects-design.md).
+ * slice (docs/superpowers/specs/2026-07-11-rust-campaign-author-g2-expression-surface-design.md).
  * It proves the author can emit the three effects no committed hollow-house behavior
  * uses — `damage`, `heal`, `grantImmunity` — plus the `defined(...)` guard, so the
  * effect/expression surface is complete. A bespoke `hex` mechanic (there is no real

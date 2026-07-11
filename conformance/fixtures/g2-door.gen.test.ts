@@ -1,6 +1,6 @@
 /**
  * g2-door oracle fixture — the TS twin for the G2 "exit runScript + pass" author
- * slice (docs/superpowers/specs/2026-07-11-rust-campaign-author-g2-exit-runscript-design.md).
+ * slice (docs/superpowers/specs/2026-07-11-rust-campaign-author-g2-expression-surface-design.md).
  * Where `g2-vault` proved a `canPass`-only door, this proves a door with a narration
  * **`runScript`** — the real hollow-house `doorScript` shape: first pass sets
  * `state.unlocked` and returns the opened line; a re-pass is a silent no-op.

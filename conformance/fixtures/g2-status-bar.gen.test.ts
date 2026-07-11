@@ -1,6 +1,6 @@
 /**
  * g2-status-bar oracle fixture — the TS twin for the G2 "status-bar forms" author
- * slice (docs/superpowers/specs/2026-07-11-rust-campaign-author-g2-status-bar-design.md).
+ * slice (docs/superpowers/specs/2026-07-11-rust-campaign-author-g2-expression-surface-design.md).
  * It authors the REAL hollow-house `status-bar` mechanic and proves the Rust TOML
  * author reproduces its `onRoundStart`/`onTurnEnd` bodies node-for-node.
  *

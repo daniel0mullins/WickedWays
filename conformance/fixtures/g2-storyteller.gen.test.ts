@@ -1,6 +1,6 @@
 /**
  * g2-storyteller oracle fixture — the TS twin for the G2 "storyteller forms" author
- * slice (docs/superpowers/specs/2026-07-11-rust-campaign-author-g2-storyteller-design.md).
+ * slice (docs/superpowers/specs/2026-07-11-rust-campaign-author-g2-expression-surface-design.md).
  * It authors the REAL hollow-house `storyteller` mechanic (over a small 1-entry lore
  * map) and proves the Rust TOML author reproduces its `onAction` body node-for-node.
  *
