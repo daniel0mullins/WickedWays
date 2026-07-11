@@ -4,10 +4,11 @@
 //! failure is a [`CompileError`], never an `unwrap`/`expect`/`panic!`.
 //!
 //! Implemented so far: `guard` / `when` / `set state.<f> = …` / `emit cue(…)` /
-//! `emit adjustStat(…)` / `emit giveItem(…)` / `emit setVisible(…)`, plus `pass
-//! <expr>` in **script** bodies (via [`parse_script`]). The still-deferred forms —
-//! subscripted `set state.m[k] = …` (`SetStateIn`) and `emit` of any effect other
-//! than `cue`/`adjustStat`/`giveItem`/`setVisible` — are REJECTED with a clear
+//! `emit adjustStat(…)` / `emit giveItem(…)` / `emit setVisible(…)`, the plain and
+//! subscripted `set` targets (`set state.<f> = …` → `SetState`; `set state.m[k] = …`
+//! → `SetStateIn`), plus `pass <expr>` in **script** bodies (via [`parse_script`]).
+//! The still-deferred forms — `emit` of any effect other than
+//! `cue`/`adjustStat`/`giveItem`/`setVisible` — are REJECTED with a clear
 //! `CompileError` rather than silently mis-lowered, so a later slice can land them
 //! without a hidden behavior change. `pass` outside a script body is likewise an
 //! error.
@@ -100,36 +101,81 @@ fn parse_when(rest: &str, base: Span, allow_pass: bool) -> Result<Stmt, CompileE
     Ok(Stmt::When { cond, then })
 }
 
-/// `set state.<field> = <expr>` — a plain-field state write. A subscripted
-/// target (`set state.<map>[<key>] = …`, i.e. `SetStateIn`) is deferred and MUST
-/// error here rather than be silently dropped.
+/// `set state.<field> = <expr>` (a plain-field write, `SetState`) or
+/// `set state.<map>[<key>] = <expr>` (a dynamic string-keyed map write,
+/// `SetStateIn`, where `<key>` is an expression).
 fn parse_set(rest: &str, base: Span) -> Result<Stmt, CompileError> {
-    // The first `=` is the assignment: the LHS `state.<field>` never contains
-    // one, and a comparison `==` in the RHS only appears after it.
-    let eq = rest.find('=').ok_or_else(|| CompileError::ExprParse {
+    // Find the assignment `=`: a lone `=` at bracket-depth 0 (so `==` inside the
+    // RHS, or a comparison inside a `[<key>]` subscript, is not mistaken for it).
+    let eq = find_assignment_eq(rest).ok_or_else(|| CompileError::ExprParse {
         span: base,
         message: "expected '=' in a set statement".into(),
     })?;
     let lhs = rest[..eq].trim();
     // `=` is one ASCII byte, so `eq + 1` is a char boundary.
     let rhs = rest[eq + 1..].trim();
-    let field = lhs.strip_prefix("state.").ok_or_else(|| CompileError::ExprParse {
+    let target = lhs.strip_prefix("state.").ok_or_else(|| CompileError::ExprParse {
         span: base,
-        message: "set target must be `state.<field>`".into(),
+        message: "set target must be `state.<field>` or `state.<map>[<key>]`".into(),
     })?;
-    // Reject a subscripted / dotted / empty field: the deferred `SetStateIn`
-    // (`state.m[k]`) must surface as an error, never a silent drop.
-    if field.is_empty() || !field.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+    let value = parse_expr(rhs, base)?;
+
+    // Subscripted target `state.<map>[<key>]` -> SetStateIn.
+    if let Some(open) = target.find('[') {
+        let map_field = &target[..open];
+        let close = target.strip_suffix(']').map(|_| target.len() - 1).filter(|&c| c > open);
+        let close = close.ok_or_else(|| CompileError::ExprParse {
+            span: base,
+            message: "set map target must be `state.<map>[<key>]`".into(),
+        })?;
+        if map_field.is_empty()
+            || !map_field.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
+            return Err(CompileError::ExprParse {
+                span: base,
+                message: format!("set map field `{map_field}` must be a plain field"),
+            });
+        }
+        // `[`/`]` are ASCII, so `open + 1`/`close` are char boundaries.
+        let key = parse_expr(target[open + 1..close].trim(), base)?;
+        return Ok(Stmt::SetStateIn { map_field: map_field.to_string(), key, value });
+    }
+
+    // Plain field `state.<field>` -> SetState.
+    if target.is_empty() || !target.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
         return Err(CompileError::ExprParse {
             span: base,
-            message: format!(
-                "set target `state.{field}` must be a plain field \
-                 (map/subscripted `set state.m[k] = …` is not yet supported)"
-            ),
+            message: format!("set target `state.{target}` must be a plain field or `state.<map>[<key>]`"),
         });
     }
-    let value = parse_expr(rhs, base)?;
-    Ok(Stmt::SetState { field: field.to_string(), value })
+    Ok(Stmt::SetState { field: target.to_string(), value })
+}
+
+/// Byte index of the assignment `=`: a single `=` (not part of `==`/`!=`/`<=`/
+/// `>=`) at bracket-depth 0 and outside a single-quoted string. `None` if absent.
+fn find_assignment_eq(s: &str) -> Option<usize> {
+    let bytes = s.as_bytes();
+    let mut depth: i32 = 0;
+    let mut in_str = false;
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\'' => in_str = !in_str,
+            b'[' | b'(' if !in_str => depth += 1,
+            b']' | b')' if !in_str => depth -= 1,
+            b'=' if !in_str && depth <= 0 => {
+                let prev = if i > 0 { bytes[i - 1] } else { b' ' };
+                let next = if i + 1 < bytes.len() { bytes[i + 1] } else { b' ' };
+                // Skip `==`; skip the second `=` of `!=`/`<=`/`>=`/`==`.
+                if next != b'=' && !matches!(prev, b'=' | b'!' | b'<' | b'>') {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    None
 }
 
 /// `emit <effect>(<args>)` — emittable effects: `cue`, `adjustStat`, `giveItem`,
@@ -531,11 +577,18 @@ mod tests {
     }
 
     #[test]
-    fn set_state_in_map_is_rejected() {
-        // `set state.m[k] = v` (SetStateIn) is deferred; must error, not silently drop.
-        assert!(matches!(
-            parse_stmts("set state.visits[actor] = true", Span { line: 1, col: 1 }).unwrap_err(),
-            CompileError::ExprParse { .. }
-        ));
+    fn set_state_in_map_write() {
+        // `set state.<map>[<keyExpr>] = <value>` -> SetStateIn (the storyteller's
+        // `seen[action.room.name] = true`). The key is a full expression.
+        assert_eq!(s("set state.seen[action.room.name] = true"), json!([{
+            "kind":"setStateIn","mapField":"seen",
+            "key":{"kind":"get","field":"name","of":{"kind":"get","field":"room","of":{"kind":"action"}}},
+            "value":{"kind":"lit","value":true}}]));
+    }
+
+    #[test]
+    fn set_plain_field_still_works() {
+        assert_eq!(s("set state.unlocked = true"), json!([{
+            "kind":"setState","field":"unlocked","value":{"kind":"lit","value":true}}]));
     }
 }
