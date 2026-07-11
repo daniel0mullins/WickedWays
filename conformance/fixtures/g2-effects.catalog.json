@@ -1,0 +1,71 @@
+{
+  "items": {},
+  "aliases": {},
+  "behaviors": {
+    "hex": {
+      "family": "mechanic",
+      "script": {
+        "init": {},
+        "hooks": {
+          "onTurnStart": [
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "defined",
+                "expr": {
+                  "kind": "get",
+                  "of": {
+                    "kind": "actor"
+                  },
+                  "field": "room"
+                }
+              }
+            },
+            {
+              "kind": "emit",
+              "effect": {
+                "kind": "damage",
+                "target": {
+                  "kind": "actor"
+                },
+                "amount": {
+                  "kind": "lit",
+                  "value": 2
+                }
+              }
+            },
+            {
+              "kind": "emit",
+              "effect": {
+                "kind": "heal",
+                "target": {
+                  "kind": "actor"
+                },
+                "amount": {
+                  "kind": "lit",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "kind": "emit",
+              "effect": {
+                "kind": "grantImmunity",
+                "target": {
+                  "kind": "actor"
+                },
+                "turns": {
+                  "kind": "lit",
+                  "value": 3
+                }
+              }
+            }
+          ]
+        },
+        "actions": {}
+      }
+    }
+  },
+  "formations": {},
+  "recipes": {}
+}

@@ -256,6 +256,27 @@ fn parse_emit(rest: &str, base: Span) -> Result<Stmt, CompileError> {
             let visible = parse_expr(args[1].trim(), base)?;
             Ok(Stmt::Emit { effect: EffectTemplate::SetVisible { target, visible } })
         }
+        // `damage(<target>, <amount>)` / `heal(<target>, <amount>)` — adjust Health
+        // by a magnitude; `grantImmunity(<target>, <turns>)` — grant all-status
+        // immunity. Each is 2 expression arguments.
+        "damage" | "heal" | "grantImmunity" => {
+            if args.len() != 2 {
+                return Err(CompileError::ExprParse {
+                    span: base,
+                    message: format!("`{effect_name}(...)` takes 2 arguments (got {})", args.len()),
+                });
+            }
+            let target = parse_expr(args[0].trim(), base)?;
+            let second = parse_expr(args[1].trim(), base)?;
+            Ok(Stmt::Emit {
+                effect: match effect_name {
+                    "damage" => EffectTemplate::Damage { target, amount: second },
+                    "heal" => EffectTemplate::Heal { target, amount: second },
+                    // The match arm restricts this to "grantImmunity".
+                    _ => EffectTemplate::GrantImmunity { target, turns: second },
+                },
+            })
+        }
         // `status(field(<label>, <value>[, <emphasis>]), …)` — a HUD status readout.
         // Each argument is a `field(...)` form; the whole list becomes the effect's
         // `Vec<FieldTemplate>`.
@@ -266,12 +287,12 @@ fn parse_emit(rest: &str, base: Span) -> Result<Stmt, CompileError> {
             }
             Ok(Stmt::Emit { effect: EffectTemplate::Status { fields } })
         }
-        // Every other effect (heal, damage, grantImmunity, …) is deferred.
+        // The effect family is now complete; an unrecognized name is an error.
         _ => Err(CompileError::ExprParse {
             span: base,
             message: format!(
-                "only `emit cue(...)`, `emit adjustStat(...)`, `emit giveItem(...)`, \
-                 `emit setVisible(...)`, and `emit status(...)` are supported (got `{effect_name}`)"
+                "unknown effect `{effect_name}` (expected cue/adjustStat/giveItem/setVisible/\
+                 status/damage/heal/grantImmunity)"
             ),
         }),
     }
@@ -563,9 +584,10 @@ mod tests {
     }
 
     #[test]
-    fn non_cue_effect_is_rejected() {
+    fn malformed_emit_is_rejected() {
+        // A missing argument list is still a parse error.
         assert!(matches!(
-            parse_stmts("emit damage(actor, 5)", Span { line: 1, col: 1 }).unwrap_err(),
+            parse_stmts("emit cue", Span { line: 1, col: 1 }).unwrap_err(),
             CompileError::ExprParse { .. }
         ));
     }
@@ -595,10 +617,20 @@ mod tests {
     }
 
     #[test]
-    fn heal_effect_still_rejected() {
-        // Emittable effects: cue/adjustStat/giveItem/setVisible; heal (and every other effect) still errors.
+    fn damage_heal_grant_immunity_effects() {
+        assert_eq!(s("emit damage(actor, 5)"), json!([{"kind":"emit","effect":{
+            "kind":"damage","target":{"kind":"actor"},"amount":{"kind":"lit","value":5}}}]));
+        assert_eq!(s("emit heal(actor, 6)"), json!([{"kind":"emit","effect":{
+            "kind":"heal","target":{"kind":"actor"},"amount":{"kind":"lit","value":6}}}]));
+        assert_eq!(s("emit grantImmunity(actor, 2)"), json!([{"kind":"emit","effect":{
+            "kind":"grantImmunity","target":{"kind":"actor"},"turns":{"kind":"lit","value":2}}}]));
+    }
+
+    #[test]
+    fn unknown_effect_is_rejected() {
+        // The effect family is complete; an unknown effect name still errors.
         assert!(matches!(
-            parse_stmts("emit heal(actor, 6)", Span { line: 1, col: 1 }).unwrap_err(),
+            parse_stmts("emit frobnicate(actor, 6)", Span { line: 1, col: 1 }).unwrap_err(),
             CompileError::ExprParse { .. }
         ));
     }
