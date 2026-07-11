@@ -8,6 +8,8 @@ pub struct AuthorDoc {
     #[serde(default)]
     pub start_room: Option<String>,
     #[serde(default)]
+    pub archetypes: Vec<ArchetypeEntry>,
+    #[serde(default)]
     pub rooms: Vec<RoomEntry>,
     #[serde(default)]
     pub exits: Vec<ExitEntry>,
@@ -25,6 +27,21 @@ pub struct AuthorDoc {
     pub behaviors: Behaviors,
     #[serde(default)]
     pub victory: Victory,
+}
+
+/// A `[[archetypes]]` entry: a player-character template. `base_stats` is a
+/// stat-name → value map (`PartialStats`); `inventory_slots` overrides the default
+/// slot count; `immunities` lists status keys the archetype resists. Mirrors the
+/// description's `ArchetypeDef` (absent `baseStats`/`inventorySlots` → `None`,
+/// absent `immunities` → empty).
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ArchetypeEntry {
+    pub id: String,
+    pub name: String,
+    #[serde(default)] pub base_stats: Option<BTreeMap<String, f64>>,
+    #[serde(default)] pub inventory_slots: Option<i64>,
+    #[serde(default)] pub immunities: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]

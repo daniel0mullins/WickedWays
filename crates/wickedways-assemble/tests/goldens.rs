@@ -247,6 +247,14 @@ fn g2_mechanic_genesis_golden() {
     gate("g2-mechanic", "g2-mechanic.genesis.json", Some("g2-mechanic"), &party);
 }
 
+/// The G2 "archetypes" author oracle: the real hollow-house `Heir` archetype, with a
+/// PC seated AS it — so the genesis PC carries the archetype id + its statline/immunities.
+#[test]
+fn g2_archetype_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: Some("heir".into()) }];
+    gate("g2-archetype", "g2-archetype.genesis.json", Some("g2-archetype"), &party);
+}
+
 /// The G2 "exit runScript + pass" author oracle: a keyed door whose narration
 /// `runScript` (a `when` latching `unlocked` + a `pass`) rides in the catalog,
 /// seated with a single no-archetype PC.

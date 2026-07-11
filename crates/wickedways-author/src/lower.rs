@@ -9,8 +9,8 @@ use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
 use wickedways_assemble::description::{
-    CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, LootDef, MechanicEntry, NpcDef,
-    RoomDef, SceneDef,
+    ArchetypeDef, CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, LootDef,
+    MechanicEntry, NpcDef, RoomDef, SceneDef,
 };
 use wickedways_core::script::ast::{
     BehaviorScript, ExitScript, ItemScript, SceneScript, VictoryScript,
@@ -46,7 +46,20 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
         // The MVP surface exposes no `opts`; both bounds fall to the engine
         // defaults (maxRounds 100, baseEncounterChance 20) applied by `assemble`.
         opts: CampaignOpts::default(),
-        archetypes: Vec::new(),
+        // Each `[[archetypes]]` entry → an `ArchetypeDef`. `base_stats` is the same
+        // `PartialStats` (stat-name → f64) map on both surfaces (direct clone);
+        // `inventory_slots`/`immunities` carry through.
+        archetypes: doc
+            .archetypes
+            .iter()
+            .map(|a| ArchetypeDef {
+                id: a.id.clone(),
+                name: a.name.clone(),
+                base_stats: a.base_stats.clone(),
+                inventory_slots: a.inventory_slots,
+                immunities: a.immunities.clone(),
+            })
+            .collect(),
         rooms: doc
             .rooms
             .iter()
