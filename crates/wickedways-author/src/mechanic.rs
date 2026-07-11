@@ -91,7 +91,8 @@ mod tests {
             "init":{},
             "hooks":{"onTurnStart":[
                 {"kind":"guard","cond":{"kind":"not","expr":{"kind":"hasEquipped","of":{"kind":"actor"},"itemKey":"lantern"}}},
-                {"kind":"emit","effect":{"kind":"adjustStat","target":{"kind":"actor"},"stat":"sanity","delta":{"kind":"lit","value":-1}}}]}
+                {"kind":"emit","effect":{"kind":"adjustStat","target":{"kind":"actor"},"stat":"sanity","delta":{"kind":"lit","value":-1}}}]},
+            "actions":{}
         }));
     }
 
