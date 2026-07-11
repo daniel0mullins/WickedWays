@@ -113,9 +113,9 @@ fn parse_set(rest: &str, base: Span) -> Result<Stmt, CompileError> {
     Ok(Stmt::SetState { field: field.to_string(), value })
 }
 
-/// `emit <effect>(<args>)` — this slice emits only `cue` and `adjustStat`.
-/// `emit` of any other effect name (`heal`, `damage`, `giveItem`, `setVisible`,
-/// …) MUST error rather than be mis-lowered.
+/// `emit <effect>(<args>)` — emittable effects: `cue`, `adjustStat`, `giveItem`,
+/// `setVisible`. `emit` of any other effect name (`heal`, `damage`, `grantImmunity`,
+/// `status`) MUST error rather than be mis-lowered.
 fn parse_emit(rest: &str, base: Span) -> Result<Stmt, CompileError> {
     let open = rest.find('(').ok_or_else(|| CompileError::ExprParse {
         span: base,
