@@ -206,6 +206,27 @@ mod tests {
     }
 
     #[test]
+    fn str_length_first_concat() {
+        assert_eq!(p("str(actor.sanity)"),
+            json!({"kind":"str","num":{"kind":"get","field":"sanity","of":{"kind":"actor"}}}));
+        assert_eq!(p("length(party)"), json!({"kind":"length","list":{"kind":"party"}}));
+        // `first(party)` is the First node, distinct from the subscript `party[0]`→Index.
+        assert_eq!(p("first(party)"), json!({"kind":"first","list":{"kind":"party"}}));
+        assert_eq!(p("concat(str(round), '/', str(maxRounds))"), json!({
+            "kind":"concat","parts":[
+                {"kind":"str","num":{"kind":"round"}},
+                {"kind":"lit","value":"/"},
+                {"kind":"str","num":{"kind":"maxRounds"}}]}));
+    }
+
+    #[test]
+    fn subscript_zero_still_index_not_first() {
+        // The deliberate MVP rule survives: `[0]` is Index, only `first(...)` is First.
+        assert_eq!(p("party[0]"),
+            json!({"kind":"index","list":{"kind":"party"},"index":{"kind":"lit","value":0}}));
+    }
+
+    #[test]
     fn negative_number_literal() {
         assert_eq!(p("-1"), serde_json::json!({"kind":"lit","value":-1}));
         assert_eq!(p("-1.5"), serde_json::json!({"kind":"lit","value":-1.5}));

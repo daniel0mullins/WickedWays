@@ -1,0 +1,26 @@
+# g2-status-bar — the TOML twin of the g2-status-bar oracle
+# (g2-status-bar.gen.test.ts). Authors the REAL hollow-house `status-bar` mechanic,
+# proving this slice's forms: `str`, `concat`, `length`, `first`, and the `Status`
+# effect + `field(label, value[, emphasis])` sub-grammar. The Sanity emphasis is the
+# ternary ladder <=3 critical / <=6 warn / else normal; the Round field is a bare
+# concat (no emphasis). `init = {}` seeds the genesis state. ASCII only.
+
+title = "Status Bar"
+startRoom = "Hall"
+
+[[rooms]]
+name = "Hall"
+description = "A cold stone hall."
+
+[[mechanics]]
+key = "status-bar"
+
+[behaviors.mechanic.status-bar]
+init = {}
+onRoundStart = '''
+  guard length(party) > 0
+  emit status(field('Sanity', str(first(party).sanity), first(party).sanity <= 3 ? 'critical' : first(party).sanity <= 6 ? 'warn' : 'normal'), field('Round', concat(str(round), '/', str(maxRounds))))
+'''
+onTurnEnd = '''
+  emit status(field('Sanity', str(actor.sanity), actor.sanity <= 3 ? 'critical' : actor.sanity <= 6 ? 'warn' : 'normal'), field('Round', concat(str(round), '/', str(maxRounds))))
+'''
