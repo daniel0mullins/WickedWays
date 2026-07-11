@@ -255,6 +255,15 @@ fn g2_archetype_genesis_golden() {
     gate("g2-archetype", "g2-archetype.genesis.json", Some("g2-archetype"), &party);
 }
 
+/// The G2 "full item descriptor" author oracle: three real hollow-house items
+/// (lantern/poker/journal) exercising slot/emitsLight/maxDurability/lore/equippable/
+/// droppable, seated in a Hall loot container.
+#[test]
+fn g2_equipment_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-equipment", "g2-equipment.genesis.json", Some("g2-equipment"), &party);
+}
+
 /// The G2 "exit runScript + pass" author oracle: a keyed door whose narration
 /// `runScript` (a `when` latching `unlocked` + a `pass`) rides in the catalog,
 /// seated with a single no-archetype PC.

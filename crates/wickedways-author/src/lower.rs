@@ -354,17 +354,23 @@ fn lower_item(item: &ItemEntry) -> ItemDescriptor {
         stat,
         modifier: item.modifier.unwrap_or(0),
         properties: ItemProperties {
-            equippable: false,
+            equippable: item.equippable.unwrap_or(false),
+            // Descriptors are templates: nothing starts equipped (runtime state).
             equipped: false,
             destroyable: item.destroyable.unwrap_or(false),
             usable: item.usable.unwrap_or(false),
-            droppable: None,
+            droppable: item.droppable,
         },
-        slot: None,
-        two_handed: None,
-        emits_light: None,
-        max_durability: None,
-        lore: None,
+        // `slot` is a lowercase `SlotKind` string ("hand", …); an unknown value
+        // falls to `None` rather than panicking (a well-formed fixture is valid).
+        slot: item
+            .slot
+            .as_deref()
+            .and_then(|s| serde_json::from_value(Value::String(s.to_string())).ok()),
+        two_handed: item.two_handed,
+        emits_light: item.emits_light,
+        max_durability: item.max_durability,
+        lore: item.lore.clone(),
         presentation: None,
         key_code: None,
         consume_on_use: None,

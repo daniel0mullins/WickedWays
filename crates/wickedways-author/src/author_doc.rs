@@ -74,6 +74,15 @@ pub struct ItemEntry {
     #[serde(default)] pub usable: Option<bool>,
     #[serde(default)] pub destroyable: Option<bool>,
     #[serde(default)] pub recipe: Option<toml::Value>,
+    // Full-descriptor fields (equippables, light sources, durable weapons, lore).
+    // Each is optional; absent → the descriptor's skip-when-`None`/`false` default.
+    #[serde(default)] pub equippable: Option<bool>,
+    #[serde(default)] pub droppable: Option<bool>,
+    #[serde(default)] pub slot: Option<String>,
+    #[serde(default)] pub two_handed: Option<bool>,
+    #[serde(default)] pub emits_light: Option<bool>,
+    #[serde(default)] pub max_durability: Option<i64>,
+    #[serde(default)] pub lore: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
