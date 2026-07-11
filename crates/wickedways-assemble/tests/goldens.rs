@@ -275,6 +275,16 @@ fn g2_status_bar_genesis_golden() {
     gate("g2-status-bar", "g2-status-bar.genesis.json", Some("g2-status-bar"), &party);
 }
 
+/// The G2 "victory quantifiers" author oracle: the three real hollow-house win/lose
+/// conditions (reached-attic-with-journal / sanity-zero / party-down). Their keys +
+/// narration reach the genesis win/lose lists; each `test` predicate (some/every/
+/// includes/element/first/length) rides in the catalog as a `BehaviorScript::Victory`.
+#[test]
+fn g2_victory_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-victory", "g2-victory.genesis.json", Some("g2-victory"), &party);
+}
+
 /// The G2 "mechanic actions + modifyDamage" author oracle, seated with a single PC
 /// that declares NO archetype (`Seat { archetype: None }`). Gates the assembler over
 /// the same `[[mechanics]]` opt-in as `g2-mechanic` — the mechanic still reaches the

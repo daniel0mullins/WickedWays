@@ -58,6 +58,7 @@ export default defineConfig({
       "conformance/fixtures/g2-door.gen.test.ts",
       "conformance/fixtures/g2-storyteller.gen.test.ts",
       "conformance/fixtures/g2-status-bar.gen.test.ts",
+      "conformance/fixtures/g2-victory.gen.test.ts",
       "conformance/fixtures/npc-matcher.test.ts",
     ],
     environment: "node",

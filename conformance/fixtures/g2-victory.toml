@@ -1,0 +1,23 @@
+# g2-victory — the TOML twin of the g2-victory oracle (g2-victory.gen.test.ts).
+# Authors the THREE real hollow-house victory conditions, proving this slice's
+# forms: `some`, `every`, `includes`, the `element` subject (plus `first`/`length`
+# from the status-bar slice). ASCII only.
+
+title = "Victory"
+startRoom = "Hall"
+
+[[rooms]]
+name = "Hall"
+description = "A cold stone hall."
+
+[victory.win.reached-attic-with-journal]
+test = "first(party).room.name == 'Attic' && hasItem(first(party), 'journal')"
+narration = "You reach the attic, journal in hand."
+
+[victory.lose.sanity-zero]
+test = "some(party, element.sanity <= 0)"
+narration = "Your mind gives way."
+
+[victory.lose.party-down]
+test = "length(party) > 0 && every(party, includes(element.status, 'ko'))"
+narration = "The party falls."
