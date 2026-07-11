@@ -2332,24 +2332,31 @@ brace = '''
 '''
 ```
 
-**Deliberate scope of this slice.** The statement lowering is intentionally narrow so nothing lands
-without byte-parity coverage. Only the `Cue`, `AdjustStat`, `GiveItem`, and `SetVisible` effects are
-emittable and only `stateGet` extends the read model; `emit` of any other effect (`Damage`/`Heal`/
-`GrantImmunity`/`Status`), the `Pass` statement (exit-script-only), and `SetStateIn` (dynamic
-`set state.m[k] = ...` map writes) are **rejected with a clear `CompileError`, not mis-lowered** —
-each lands with the slice that exercises it. Within the now-wired **mechanic** family the same
-narrowing holds: the mechanic family now authors the `init` seed, the five lifecycle hooks, the
-`modifyDamage` transform, and the custom `actions` map — the `modifyDamage` grammar adds the
-`damage` subject (its `.amount` read via the existing postfix `.field`) but no new effect (the
-`brace` action and the cap transform reuse `cue`/`adjustStat`). The storyteller/status-bar
-expression forms a richer mechanic would need — the `action` subject, `mapLit`, `has`, `lookup`,
-`stateGetIn`, `setStateIn`, `str`, `length`, `first`, and the `Status` effect — are still **not**
-added here; each is a follow-on mechanic slice. The **exit**, **victory**, **scene**, (consumable)
-**item**, **npc**, and **mechanic** families are now all wired, every one reusing this same
-statement parser.
+**The expression/effect/statement surface is now complete.** Every node of the closed `Expr`,
+`Stmt`, and `EffectTemplate` sets is authorable, so any behavior the engine can interpret can be
+written in TOML. The final slices filled in what earlier ones deferred:
+
+- **Exit narration** — an exit behavior's `runScript` (a **script** body) plus the `pass <expr>`
+  statement, which is legal *only* in script bodies (`parse_script`/`allow_pass`) and still rejected
+  in effect/hook bodies. Proven by `g2-door` (the real `doorScript`).
+- **Storyteller forms** — the `action`/`element` subjects, `mapLit(k, v, …)`, `has(map, key)`,
+  `lookup(map, key)`, `stateGetIn(field, key, default)`, and the subscripted `set state.<map>[<key>]
+  = <v>` (`SetStateIn`) statement. Proven by `g2-storyteller` (the real storyteller mechanic).
+- **Status-bar forms** — `str(x)`, `concat(…)`, `length(x)`, `first(x)` (the `First` node, distinct
+  from the subscript `x[0]`→`Index`), and the `Status` effect with its `field(label, value[,
+  emphasis])` sub-grammar. Proven by `g2-status-bar` (the real status-bar mechanic).
+- **Victory quantifiers** — `some(list, pred)`, `every(list, pred)`, `includes(list, value)`. Proven
+  by `g2-victory` (the three real win/lose conditions). Win/lose conditions serialize in sorted
+  (`BTreeMap`) key order, faithful to the unordered TOML-table surface.
+- **The remaining effects** — `damage`, `heal`, `grantImmunity` — and `defined(x)`. No committed
+  hollow-house behavior uses them, so they are proven by the bespoke `g2-effects` oracle.
+
+All six behavior families (**exit**, **victory**, **scene**, **item**, **npc**, **mechanic**) are
+wired, every one reusing this same parser. The one remaining permissive divergence stands: subscript
+always lowers to `Index` (only `first(...)` produces `First`).
 
 **The gate.** Like the assembler, the author is gated **byte-for-byte** against a committed
-oracle — the `g2-vault`/`g2-scene`/`g2-item`/`g2-npc`/`g2-mechanic`/`g2-mechanic-actions` fixtures, whose `description.json`/`catalog.json`
+oracle — the `g2-vault`/`g2-scene`/`g2-item`/`g2-npc`/`g2-mechanic`/`g2-mechanic-actions`/`g2-door`/`g2-storyteller`/`g2-status-bar`/`g2-victory`/`g2-effects` fixtures, whose `description.json`/`catalog.json`
 are emitted by a TypeScript twin (`canonical-json.ts` canonicalization), each also checked for
 compile determinism — via `cargo test -p wickedways-author`
 (pure Rust, fast CI job; convenience alias `pnpm run checks:author`). The gate compares
@@ -2370,11 +2377,11 @@ number literals**, and the **mechanic** family (`[[mechanics]]` opt-in + a `[beh
 deliberate divergences from the design spec carry through: the compiler
 is permissive (no compile-time `TypeError` — the `Expr` AST is total and the TS builders type-check
 nothing, so mapping must stay permissive to byte-match), and subscript always lowers to `Index`
-(never `First`). Later G2 slices add: the **remaining effects** (`Heal`/`Damage`/`GrantImmunity`/
-`Status`), the deferred **mechanic** surface (`actions` entries, `modifyDamage`, and the richer
-storyteller forms `action`/`mapLit`/`has`/`lookup`/`stateGetIn`/`setStateIn`/`str`/`length`/`first`),
-**id-derivation** for `giveItem`/`setVisible` and computed dialogue responses, **npx/WASM packaging**
-of the CLI, and **runtime-load** of a compiled campaign. None of those change `compile()`'s signature.
+(never `First` — only `first(...)` does). With the expression/effect/statement surface now complete
+(all `Expr`/`Stmt`/`EffectTemplate` nodes authorable, across all six behavior families), what remains
+is no longer language surface but packaging: **id-derivation** for `giveItem`/`setVisible` and
+computed dialogue responses, the **full Hollow House re-author**, **npx/WASM packaging** of the CLI,
+and **runtime-load** of a compiled campaign. None of those change `compile()`'s signature.
 
 **Engine change this milestone made.** Authoring a key item into a loot container's initial
 contents was previously rejected by the `Loot` constructor guard; that guard was **relaxed** so

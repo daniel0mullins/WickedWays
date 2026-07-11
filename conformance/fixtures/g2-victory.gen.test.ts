@@ -1,6 +1,6 @@
 /**
  * g2-victory oracle fixture — the TS twin for the G2 "victory quantifiers" author
- * slice (docs/superpowers/specs/2026-07-11-rust-campaign-author-g2-victory-design.md).
+ * slice (docs/superpowers/specs/2026-07-11-rust-campaign-author-g2-expression-surface-design.md).
  * It authors the THREE real hollow-house victory conditions and proves the Rust TOML
  * author reproduces each `test` predicate node-for-node.
  *
