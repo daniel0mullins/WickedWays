@@ -23,7 +23,7 @@ use wickedways_core::world::descriptor::{
 use crate::author_doc::{AuthorDoc, ConditionEntry as AuthorCondition, ItemEntry};
 use crate::error::{CompileError, Span};
 use crate::expr::parse_expr;
-use crate::stmt::parse_stmts;
+use crate::stmt::{parse_script, parse_stmts};
 use crate::CompiledCampaign;
 
 /// Base span for author expressions embedded in TOML. The TOML deserializer does
@@ -160,12 +160,18 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
 
     let mut behaviors = BTreeMap::new();
 
-    // Exit behaviors: `can_pass` is a parsed predicate; `run_script` is empty for
-    // the MVP surface (no narration statements). Keyed by behavior key.
+    // Exit behaviors: `can_pass` is a parsed predicate; `run_script` is an optional
+    // narration SCRIPT body (`pass <expr>` legal — parsed via `parse_script`),
+    // empty when absent. Keyed by behavior key.
     for (key, entry) in &doc.behaviors.exit {
         let script = ExitScript {
             can_pass: parse_expr(&entry.can_pass, EXPR_BASE)?,
-            run_script: Vec::new(),
+            run_script: entry
+                .run_script
+                .as_deref()
+                .map(|s| parse_script(s, EXPR_BASE))
+                .transpose()?
+                .unwrap_or_default(),
             pass_message: entry.pass_message.clone(),
             fail_message: entry.fail_message.clone(),
         };

@@ -247,6 +247,15 @@ fn g2_mechanic_genesis_golden() {
     gate("g2-mechanic", "g2-mechanic.genesis.json", Some("g2-mechanic"), &party);
 }
 
+/// The G2 "exit runScript + pass" author oracle: a keyed door whose narration
+/// `runScript` (a `when` latching `unlocked` + a `pass`) rides in the catalog,
+/// seated with a single no-archetype PC.
+#[test]
+fn g2_door_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-door", "g2-door.genesis.json", Some("g2-door"), &party);
+}
+
 /// The G2 "mechanic actions + modifyDamage" author oracle, seated with a single PC
 /// that declares NO archetype (`Seat { archetype: None }`). Gates the assembler over
 /// the same `[[mechanics]]` opt-in as `g2-mechanic` — the mechanic still reaches the
