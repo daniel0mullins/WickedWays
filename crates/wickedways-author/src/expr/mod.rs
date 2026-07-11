@@ -220,6 +220,20 @@ mod tests {
     }
 
     #[test]
+    fn some_every_includes_quantifiers() {
+        // sanity-zero: some(party, element.sanity <= 0)
+        assert_eq!(p("some(party, element.sanity <= 0)"), json!({
+            "kind":"some","list":{"kind":"party"},
+            "pred":{"kind":"bin","op":"lte","left":{"kind":"get","field":"sanity","of":{"kind":"element"}},"right":{"kind":"lit","value":0}}}));
+        // party-down: every(party, includes(element.status, 'ko'))
+        assert_eq!(p("every(party, includes(element.status, 'ko'))"), json!({
+            "kind":"every","list":{"kind":"party"},
+            "pred":{"kind":"includes",
+                "list":{"kind":"get","field":"status","of":{"kind":"element"}},
+                "value":{"kind":"lit","value":"ko"}}}));
+    }
+
+    #[test]
     fn subscript_zero_still_index_not_first() {
         // The deliberate MVP rule survives: `[0]` is Index, only `first(...)` is First.
         assert_eq!(p("party[0]"),

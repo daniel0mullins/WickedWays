@@ -1,0 +1,44 @@
+{
+  "title": "Victory",
+  "opts": {},
+  "archetypes": [],
+  "rooms": [
+    {
+      "name": "Hall",
+      "description": "A cold stone hall."
+    }
+  ],
+  "startRoom": "Hall",
+  "exits": [],
+  "mobs": [],
+  "loot": [],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [
+    {
+      "key": "reached-attic-with-journal",
+      "narration": {
+        "text": "You reach the attic, journal in hand."
+      }
+    }
+  ],
+  "loseConditions": [
+    {
+      "key": "party-down",
+      "narration": {
+        "text": "The party falls."
+      }
+    },
+    {
+      "key": "sanity-zero",
+      "narration": {
+        "text": "Your mind gives way."
+      }
+    }
+  ],
+  "mechanics": []
+}

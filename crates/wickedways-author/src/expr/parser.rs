@@ -377,6 +377,27 @@ impl Parser {
             });
         }
 
+        // Two-argument list quantifiers/membership. `some`/`every` take a list and a
+        // predicate expression (which reads the current item via the `element`
+        // subject); `includes` takes a list and a value.
+        if matches!(name.as_str(), "some" | "every" | "includes") {
+            if args.len() != 2 {
+                return Err(CompileError::ExprParse {
+                    span: name_span,
+                    message: format!("{name} expects exactly 2 arguments, got {}", args.len()),
+                });
+            }
+            let mut it = args.into_iter();
+            let list = Box::new(it.next().expect("arity checked above"));
+            let second = Box::new(it.next().expect("arity checked above"));
+            return Ok(match name.as_str() {
+                "some" => Expr::Some { list, pred: second },
+                "every" => Expr::Every { list, pred: second },
+                // The `matches!` guard restricts this arm to "includes".
+                _ => Expr::Includes { list, value: second },
+            });
+        }
+
         // Single-argument calls over one operand expression.
         if matches!(name.as_str(), "str" | "length" | "first" | "defined") {
             if args.len() != 1 {
