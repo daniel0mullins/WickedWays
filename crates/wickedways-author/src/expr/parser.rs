@@ -11,8 +11,9 @@
 //!   - Subscript `x[i]` ALWAYS lowers to `Index` (never `First`), even for a
 //!     literal `0` — the oracle is authored to match.
 //!   - `.field` → `Get`; `name(args)` → the three typed calls only.
-//!   - Bare identifiers resolve to the four read-model subjects; any other bare
-//!     identifier or unknown call name → `UnknownReference`.
+//!   - Bare identifiers resolve to the read-model subjects (`actor`/`party`/
+//!     `round`/`maxRounds`/`damage`); any other bare identifier or unknown call
+//!     name → `UnknownReference`.
 //!
 //! Panic-free on author input: every failure is a `CompileError`. No
 //! `unwrap`/`expect`/`panic!` on the token stream.
@@ -352,6 +353,10 @@ fn resolve_subject(name: &str, span: Span) -> Result<Expr, CompileError> {
         "party" => Ok(Expr::Party),
         "round" => Ok(Expr::Round),
         "maxRounds" => Ok(Expr::MaxRounds),
+        // The damage subject (`modify_damage` context) — its `.amount`/`.target`
+        // fields are read via postfix `.field` (`Get`). Bound only inside a
+        // `modifyDamage` body; elsewhere the interpreter yields `Null`.
+        "damage" => Ok(Expr::Damage),
         _ => Err(CompileError::UnknownReference {
             span,
             name: name.to_string(),

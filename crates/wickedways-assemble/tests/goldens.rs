@@ -247,6 +247,18 @@ fn g2_mechanic_genesis_golden() {
     gate("g2-mechanic", "g2-mechanic.genesis.json", Some("g2-mechanic"), &party);
 }
 
+/// The G2 "mechanic actions + modifyDamage" author oracle, seated with a single PC
+/// that declares NO archetype (`Seat { archetype: None }`). Gates the assembler over
+/// the same `[[mechanics]]` opt-in as `g2-mechanic` — the mechanic still reaches the
+/// genesis as a pristine `{ key: "dread", state: {} }` entry — while its richer
+/// `BehaviorScript::Mechanic` (now carrying a `modifyDamage` transform and a `brace`
+/// custom action alongside the hook) rides in the catalog untouched.
+#[test]
+fn g2_mechanic_actions_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-mechanic-actions", "g2-mechanic-actions.genesis.json", Some("g2-mechanic-actions"), &party);
+}
+
 #[test]
 fn hollow_house_pristine() {
     gate("hollow-house", "hollow-house.snapshot.json", Some("hollow-house"), &[]);
