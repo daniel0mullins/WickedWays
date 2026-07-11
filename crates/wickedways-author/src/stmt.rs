@@ -4,11 +4,14 @@
 //! failure is a [`CompileError`], never an `unwrap`/`expect`/`panic!`.
 //!
 //! Implemented so far: `guard` / `when` / `set state.<f> = …` / `emit cue(…)` /
-//! `emit adjustStat(…)`. The deferred forms — `pass`, subscripted
-//! `set state.m[k] = …` (`SetStateIn`), and `emit` of any effect other than
-//! `cue`/`adjustStat` — are REJECTED with a clear `CompileError` rather than
-//! silently mis-lowered, so a later slice can land them without a hidden
-//! behavior change.
+//! `emit adjustStat(…)` / `emit giveItem(…)` / `emit setVisible(…)`. The deferred
+//! forms — `pass`, subscripted `set state.m[k] = …` (`SetStateIn`), and `emit` of
+//! any effect other than `cue`/`adjustStat`/`giveItem`/`setVisible` — are REJECTED
+//! with a clear `CompileError` rather than silently mis-lowered, so a later slice
+//! can land them without a hidden behavior change.
+//!
+//! [`parse_effects`] parses an **emit-only** block into a `Vec<EffectTemplate>`
+//! (dialogue/effect bodies): any non-`emit` statement is an error.
 
 use wickedways_core::script::ast::{EffectTemplate, Stmt};
 use wickedways_core::stats::StatType;
@@ -161,14 +164,65 @@ fn parse_emit(rest: &str, base: Span) -> Result<Stmt, CompileError> {
             let delta = parse_expr(args[2].trim(), base)?;
             Ok(Stmt::Emit { effect: EffectTemplate::AdjustStat { target, stat, delta } })
         }
-        // Every other effect (heal, damage, giveItem, setVisible, …) is deferred.
+        // `giveItem(<from>, <to>, <item>)` — 3 expression arguments. Hands `item`
+        // from `from` to `to`; all three resolve as ids at eval.
+        "giveItem" => {
+            if args.len() != 3 {
+                return Err(CompileError::ExprParse {
+                    span: base,
+                    message: format!("`giveItem(...)` takes 3 arguments (got {})", args.len()),
+                });
+            }
+            let from = parse_expr(args[0].trim(), base)?;
+            let to = parse_expr(args[1].trim(), base)?;
+            let item = parse_expr(args[2].trim(), base)?;
+            Ok(Stmt::Emit { effect: EffectTemplate::GiveItem { from, to, item } })
+        }
+        // `setVisible(<target>, <visible>)` — 2 expression arguments. Flips
+        // `target`'s visibility flag; `visible` is evaluated for JS truthiness.
+        "setVisible" => {
+            if args.len() != 2 {
+                return Err(CompileError::ExprParse {
+                    span: base,
+                    message: format!("`setVisible(...)` takes 2 arguments (got {})", args.len()),
+                });
+            }
+            let target = parse_expr(args[0].trim(), base)?;
+            let visible = parse_expr(args[1].trim(), base)?;
+            Ok(Stmt::Emit { effect: EffectTemplate::SetVisible { target, visible } })
+        }
+        // Every other effect (heal, damage, grantImmunity, status, …) is deferred.
         _ => Err(CompileError::ExprParse {
             span: base,
             message: format!(
-                "only `emit cue(...)` and `emit adjustStat(...)` are supported (got `{effect_name}`)"
+                "only `emit cue(...)`, `emit adjustStat(...)`, `emit giveItem(...)`, \
+                 and `emit setVisible(...)` are supported (got `{effect_name}`)"
             ),
         }),
     }
+}
+
+/// Parse an **emit-only** block into its effect templates: run [`parse_stmts`],
+/// then require every resulting statement be an `emit` (a
+/// [`Stmt::Emit`]), collecting the [`EffectTemplate`]s. A non-`emit` statement
+/// (`guard`/`when`/`set`/`pass`) is an `ExprParse` error — an effects body may
+/// only emit. This is how dialogue effect bodies (a `Vec<EffectTemplate>`, not a
+/// `Vec<Stmt>`) are parsed.
+pub(crate) fn parse_effects(src: &str, base: Span) -> Result<Vec<EffectTemplate>, CompileError> {
+    let mut effects = Vec::new();
+    for stmt in parse_stmts(src, base)? {
+        match stmt {
+            Stmt::Emit { effect } => effects.push(effect),
+            _ => {
+                return Err(CompileError::ExprParse {
+                    span: base,
+                    message: "an effects body may only contain `emit <effect>(...)` statements"
+                        .into(),
+                });
+            }
+        }
+    }
+    Ok(effects)
 }
 
 /// Map a bare stat keyword (`sanity`/`health`/`energy`) to [`StatType`]. An
@@ -300,7 +354,7 @@ fn matching_brace(s: &str, open: usize) -> Option<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_stmts;
+    use super::{parse_effects, parse_stmts};
     use crate::error::{CompileError, Span};
     use serde_json::json;
 
@@ -398,6 +452,34 @@ mod tests {
             parse_stmts("emit heal(actor, 6)", Span { line: 1, col: 1 }).unwrap_err(),
             CompileError::ExprParse { .. }
         ));
+    }
+
+    #[test]
+    fn emit_give_item_and_set_visible() {
+        assert_eq!(s("emit giveItem('npc:X', actor, 'npc:X:item#0')\nemit setVisible('npc:X', false)"),
+            serde_json::json!([
+            {"kind":"emit","effect":{"kind":"giveItem",
+                "from":{"kind":"lit","value":"npc:X"},"to":{"kind":"actor"},
+                "item":{"kind":"lit","value":"npc:X:item#0"}}},
+            {"kind":"emit","effect":{"kind":"setVisible",
+                "target":{"kind":"lit","value":"npc:X"},"visible":{"kind":"lit","value":false}}}
+        ]));
+    }
+
+    #[test]
+    fn parse_effects_collects_emit_only() {
+        let effs = parse_effects("emit giveItem('a', actor, 'b')\nemit setVisible('a', false)",
+            Span { line: 1, col: 1 }).expect("parse");
+        assert_eq!(serde_json::to_value(&effs).unwrap(), serde_json::json!([
+            {"kind":"giveItem","from":{"kind":"lit","value":"a"},"to":{"kind":"actor"},"item":{"kind":"lit","value":"b"}},
+            {"kind":"setVisible","target":{"kind":"lit","value":"a"},"visible":{"kind":"lit","value":false}}
+        ]));
+    }
+
+    #[test]
+    fn parse_effects_rejects_non_emit() {
+        // guard/when/set/pass are not effects — an effects body must be emit-only.
+        assert!(parse_effects("set state.x = 1", Span { line: 1, col: 1 }).is_err());
     }
 
     #[test]
