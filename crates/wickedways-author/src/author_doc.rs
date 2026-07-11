@@ -7,6 +7,13 @@ pub struct AuthorDoc {
     pub title: String,
     #[serde(default)]
     pub start_room: Option<String>,
+    /// Campaign bounds (`maxRounds` / `baseEncounterChance`). Deserializes straight
+    /// into the description's `CampaignOpts`; absent → its default (both `None`, so
+    /// `assemble` applies the engine defaults maxRounds 100 / baseEncounterChance 20).
+    #[serde(default)]
+    pub opts: wickedways_assemble::description::CampaignOpts,
+    #[serde(default)]
+    pub archetypes: Vec<ArchetypeEntry>,
     #[serde(default)]
     pub rooms: Vec<RoomEntry>,
     #[serde(default)]
@@ -20,16 +27,49 @@ pub struct AuthorDoc {
     #[serde(default)]
     pub npcs: Vec<NpcEntry>,
     #[serde(default)]
+    pub mobs: Vec<MobEntry>,
+    #[serde(default)]
+    pub formations: Vec<FormationEntry>,
+    #[serde(default)]
     pub mechanics: Vec<MechanicEntryToml>,
     #[serde(default)]
     pub behaviors: Behaviors,
     #[serde(default)]
     pub victory: Victory,
+    /// Narration shown when the campaign hits its round limit. A plain string lowers
+    /// to the cue shape `{ "text": … }` (the description's `timeout_narration`).
+    #[serde(default)]
+    pub timeout_narration: Option<String>,
 }
 
+/// A `[[archetypes]]` entry: a player-character template. `base_stats` is a
+/// stat-name → value map (`PartialStats`); `inventory_slots` overrides the default
+/// slot count; `immunities` lists status keys the archetype resists. Mirrors the
+/// description's `ArchetypeDef` (absent `baseStats`/`inventorySlots` → `None`,
+/// absent `immunities` → empty).
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct RoomEntry { pub name: String, pub description: String }
+pub struct ArchetypeEntry {
+    pub id: String,
+    pub name: String,
+    #[serde(default)] pub base_stats: Option<BTreeMap<String, f64>>,
+    #[serde(default)] pub inventory_slots: Option<i64>,
+    #[serde(default)] pub immunities: Vec<String>,
+}
+
+/// A `[[rooms]]` entry. `dark` marks a room unlit (the darkness mechanic);
+/// `spawn_modifier` biases its encounter roll; `lights` lists item keys that light
+/// it. Each is optional (absent `dark`/`spawnModifier` → `None`, absent `lights` →
+/// empty) — mirrors the description's `RoomDef`.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RoomEntry {
+    pub name: String,
+    pub description: String,
+    #[serde(default)] pub dark: Option<bool>,
+    #[serde(default)] pub spawn_modifier: Option<i64>,
+    #[serde(default)] pub lights: Vec<String>,
+}
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -38,6 +78,11 @@ pub struct ExitEntry {
     pub to: String,
     pub direction: String,
     #[serde(default)] pub behavior: Option<String>,
+    /// A display name for the exit (e.g. "cellar door"); absent → `None`.
+    #[serde(default)] pub name: Option<String>,
+    /// Seed state for a stateful exit (e.g. a keyed door's `{ unlocked = false }`),
+    /// inert author-data (`toml::Value` → `serde_json::Value`); absent → `None`.
+    #[serde(default)] pub initial_state: Option<toml::Value>,
     #[serde(default)] pub one_way: Option<bool>,
 }
 
@@ -57,6 +102,15 @@ pub struct ItemEntry {
     #[serde(default)] pub usable: Option<bool>,
     #[serde(default)] pub destroyable: Option<bool>,
     #[serde(default)] pub recipe: Option<toml::Value>,
+    // Full-descriptor fields (equippables, light sources, durable weapons, lore).
+    // Each is optional; absent → the descriptor's skip-when-`None`/`false` default.
+    #[serde(default)] pub equippable: Option<bool>,
+    #[serde(default)] pub droppable: Option<bool>,
+    #[serde(default)] pub slot: Option<String>,
+    #[serde(default)] pub two_handed: Option<bool>,
+    #[serde(default)] pub emits_light: Option<bool>,
+    #[serde(default)] pub max_durability: Option<i64>,
+    #[serde(default)] pub lore: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
@@ -116,6 +170,40 @@ pub struct MechanicBehaviorEntry {
     #[serde(default)] pub on_action: Option<String>,
     #[serde(default)] pub modify_damage: Option<String>,
     #[serde(default)] pub actions: BTreeMap<String, String>,
+}
+
+/// A `[[formations]]` entry: a data-driven encounter formation. It carries BOTH
+/// halves of a formation — the description-side `weight` opt-in (a `FormationDef`)
+/// and the catalog-side `mobs` roster (a `FormationDescriptor` of core `MobSpec`s) —
+/// keyed the same. `mobs` deserializes straight into the core spec (same camelCase
+/// shape); absent `weight` → `None`.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FormationEntry {
+    pub key: String,
+    #[serde(default)] pub weight: Option<i64>,
+    #[serde(default)] pub mobs: Vec<wickedways_core::world::formation_descriptor::MobSpec>,
+}
+
+/// A `[[mobs]]` entry: a placed enemy. `stats` is the core `Stats` snapshot (same
+/// shape as npcs); `drops` lists item keys it drops on defeat; `natural_attack` is
+/// its `{stat, power}` unarmed attack (inert author-data, `toml::Value` →
+/// `serde_json::Value`). The remaining overrides
+/// (`inventory_slots`/`actions_per_round`/`base_escape_chance`/`material_drops`/
+/// `light_averse`) are optional; absent → the engine's mob defaults.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MobEntry {
+    pub name: String,
+    pub stats: wickedways_core::world::snapshot::Stats,
+    #[serde(default)] pub room: Option<String>,
+    #[serde(default)] pub drops: Vec<String>,
+    #[serde(default)] pub natural_attack: Option<toml::Value>,
+    #[serde(default)] pub inventory_slots: Option<i64>,
+    #[serde(default)] pub actions_per_round: Option<i64>,
+    #[serde(default)] pub base_escape_chance: Option<i64>,
+    #[serde(default)] pub material_drops: Option<toml::Value>,
+    #[serde(default)] pub light_averse: Option<bool>,
 }
 
 /// A `[[npcs]]` entry: a placed NPC character. `stats` is the core `Stats`

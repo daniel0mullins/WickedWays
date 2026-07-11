@@ -1,0 +1,33 @@
+{
+  "title": "Formations",
+  "opts": {},
+  "archetypes": [],
+  "rooms": [
+    {
+      "name": "Hall",
+      "description": "A long central hall."
+    }
+  ],
+  "startRoom": "Hall",
+  "exits": [],
+  "mobs": [],
+  "loot": [],
+  "caches": [],
+  "npcs": [],
+  "formations": [
+    {
+      "key": "rat-single",
+      "weight": 3
+    },
+    {
+      "key": "rat-pair",
+      "weight": 1
+    }
+  ],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

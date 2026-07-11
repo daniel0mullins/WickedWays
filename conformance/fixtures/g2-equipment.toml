@@ -1,0 +1,52 @@
+# g2-equipment — the TOML twin of the g2-equipment oracle (g2-equipment.gen.test.ts).
+# Authors three real hollow-house items proving every full-descriptor field: a
+# weapon with a slot + light source (lantern), a durable weapon (poker), and the
+# lore-bearing, non-droppable win item (journal). The journal `lore` is the exact
+# JOURNAL_LORE (a TOML multi-line literal string preserves its bytes verbatim).
+
+title = "Equipment"
+startRoom = "Hall"
+
+[[rooms]]
+name = "Hall"
+description = "A long central hall."
+
+[[items]]
+key = "lantern"
+name = "Brass Lantern"
+type = "weapon"
+stat = "health"
+modifier = 0
+equippable = true
+destroyable = true
+slot = "hand"
+emitsLight = true
+recipe = { item = 1 }
+
+[[items]]
+key = "poker"
+name = "Iron Fire-Poker"
+type = "weapon"
+stat = "health"
+modifier = 5
+equippable = true
+destroyable = true
+slot = "hand"
+maxDurability = 8
+recipe = { metal = 1 }
+
+[[items]]
+key = "journal"
+name = "Water-Stained Journal"
+type = "consumable"
+stat = "health"
+modifier = 0
+destroyable = true
+droppable = false
+lore = '''The journal's spine cracks as you open it. The early pages are a household's ordinary griefs — debts, a failing orchard, a wife taken too young. Then the hand changes. "We buried her in the cellar because the ground outside would not hold her. By the third night she had climbed halfway back." The ink grows frantic: a child who never wept, a face in the dark that was almost hers, an iron key forged to keep the cellar door honest. The last entries are barely words — "it wears her now; it wears all of us, in time" — and beneath them, pressed flat and brown, a sprig of the lilies they laid on a coffin that never stayed shut. Whoever kept this journal loved the house once. It did not love them back.'''
+recipe = { item = 1 }
+
+[[loot]]
+name = "shelf"
+room = "Hall"
+items = ["lantern", "poker", "journal"]

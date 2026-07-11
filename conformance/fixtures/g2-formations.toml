@@ -1,0 +1,37 @@
+# g2-formations — the TOML twin of the g2-formations oracle (g2-formations.gen.test.ts).
+# Authors the real hollow-house roving rats. Each [[formations]] entry carries BOTH
+# halves: the description opt-in ({ key, weight }) and the catalog roster ({ mobs }),
+# keyed the same. `mobs` deserializes straight into the core MobSpec (materialDrops
+# omitted -> defaults to {}). The rat-tail drop is a defined item. ASCII only.
+
+title = "Formations"
+startRoom = "Hall"
+
+[[rooms]]
+name = "Hall"
+description = "A long central hall."
+
+[[formations]]
+key = "rat-single"
+weight = 3
+mobs = [
+  { name = "Rat", stats = { health = 2, sanity = 2, energy = 3 }, naturalAttack = { stat = "health", power = 1 }, drops = ["rat-tail"], baseEscapeChance = 50, lightAverse = false, actionsPerRound = 2 },
+]
+
+[[formations]]
+key = "rat-pair"
+weight = 1
+mobs = [
+  { name = "Rat", stats = { health = 2, sanity = 2, energy = 3 }, naturalAttack = { stat = "health", power = 1 }, drops = ["rat-tail"], baseEscapeChance = 50, lightAverse = false, actionsPerRound = 2 },
+  { name = "Rat", stats = { health = 2, sanity = 2, energy = 3 }, naturalAttack = { stat = "health", power = 1 }, drops = ["rat-tail"], baseEscapeChance = 50, lightAverse = false, actionsPerRound = 2 },
+]
+
+[[items]]
+key = "rat-tail"
+name = "Rat Tail"
+type = "consumable"
+stat = "sanity"
+modifier = 1
+usable = true
+destroyable = true
+recipe = { item = 1 }

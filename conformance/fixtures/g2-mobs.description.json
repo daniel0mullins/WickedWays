@@ -1,0 +1,76 @@
+{
+  "title": "Mobs",
+  "opts": {},
+  "archetypes": [],
+  "rooms": [
+    {
+      "name": "Hall",
+      "description": "A long central hall."
+    },
+    {
+      "name": "Nursery",
+      "description": "A child's room, long abandoned."
+    },
+    {
+      "name": "Cellar",
+      "description": "The cellar below."
+    }
+  ],
+  "startRoom": "Hall",
+  "exits": [
+    {
+      "from": "Hall",
+      "direction": "north",
+      "to": "Nursery"
+    },
+    {
+      "from": "Hall",
+      "direction": "south",
+      "to": "Cellar"
+    }
+  ],
+  "mobs": [
+    {
+      "name": "Wraith",
+      "stats": {
+        "health": 6,
+        "sanity": 5,
+        "energy": 5
+      },
+      "room": "Nursery",
+      "drops": [
+        "brass-key"
+      ],
+      "naturalAttack": {
+        "stat": "sanity",
+        "power": 3
+      }
+    },
+    {
+      "name": "Revenant",
+      "stats": {
+        "health": 10,
+        "sanity": 8,
+        "energy": 6
+      },
+      "room": "Cellar",
+      "drops": [
+        "iron-key"
+      ],
+      "naturalAttack": {
+        "stat": "sanity",
+        "power": 2
+      }
+    }
+  ],
+  "loot": [],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

@@ -9,8 +9,8 @@ use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
 use wickedways_assemble::description::{
-    CampaignDescription, CampaignOpts, ConditionEntry, ExitDef, LootDef, MechanicEntry, NpcDef,
-    RoomDef, SceneDef,
+    ArchetypeDef, CampaignDescription, ConditionEntry, ExitDef, FormationDef, LootDef,
+    MechanicEntry, MobDef, NpcDef, RoomDef, SceneDef,
 };
 use wickedways_core::script::ast::{
     BehaviorScript, ExitScript, ItemScript, SceneScript, VictoryScript,
@@ -19,6 +19,7 @@ use wickedways_core::stats::StatType;
 use wickedways_core::world::descriptor::{
     Catalog, ItemDescriptor, ItemProperties, ItemType,
 };
+use wickedways_core::world::formation_descriptor::FormationDescriptor;
 
 use crate::author_doc::{AuthorDoc, ConditionEntry as AuthorCondition, ItemEntry};
 use crate::error::{CompileError, Span};
@@ -43,19 +44,32 @@ pub(crate) fn lower(doc: &AuthorDoc) -> Result<CompiledCampaign, CompileError> {
 fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
     CampaignDescription {
         title: doc.title.clone(),
-        // The MVP surface exposes no `opts`; both bounds fall to the engine
-        // defaults (maxRounds 100, baseEncounterChance 20) applied by `assemble`.
-        opts: CampaignOpts::default(),
-        archetypes: Vec::new(),
+        // Campaign bounds from the `[opts]` table (absent fields fall to the engine
+        // defaults — maxRounds 100 / baseEncounterChance 20 — applied by `assemble`).
+        opts: doc.opts.clone(),
+        // Each `[[archetypes]]` entry → an `ArchetypeDef`. `base_stats` is the same
+        // `PartialStats` (stat-name → f64) map on both surfaces (direct clone);
+        // `inventory_slots`/`immunities` carry through.
+        archetypes: doc
+            .archetypes
+            .iter()
+            .map(|a| ArchetypeDef {
+                id: a.id.clone(),
+                name: a.name.clone(),
+                base_stats: a.base_stats.clone(),
+                inventory_slots: a.inventory_slots,
+                immunities: a.immunities.clone(),
+            })
+            .collect(),
         rooms: doc
             .rooms
             .iter()
             .map(|r| RoomDef {
                 name: r.name.clone(),
                 description: r.description.clone(),
-                dark: None,
-                spawn_modifier: None,
-                lights: Vec::new(),
+                dark: r.dark,
+                spawn_modifier: r.spawn_modifier,
+                lights: r.lights.clone(),
             })
             .collect(),
         start_room: doc.start_room.clone(),
@@ -67,12 +81,30 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 direction: e.direction.clone(),
                 to: e.to.clone(),
                 behavior_key: e.behavior.clone(),
-                name: None,
-                initial_state: None,
+                name: e.name.clone(),
+                initial_state: e.initial_state.as_ref().and_then(|v| serde_json::to_value(v).ok()),
                 one_way: e.one_way,
             })
             .collect(),
-        mobs: Vec::new(),
+        // Each `[[mobs]]` entry → a `MobDef`. `stats` is the same core `Stats` type
+        // on both surfaces (direct clone); `natural_attack`/`material_drops` are
+        // inert author-data (toml → json; a conversion failure drops to `None`).
+        mobs: doc
+            .mobs
+            .iter()
+            .map(|m| MobDef {
+                name: m.name.clone(),
+                stats: m.stats.clone(),
+                room: m.room.clone(),
+                inventory_slots: m.inventory_slots,
+                actions_per_round: m.actions_per_round,
+                drops: m.drops.clone(),
+                base_escape_chance: m.base_escape_chance,
+                material_drops: m.material_drops.as_ref().and_then(|v| serde_json::to_value(v).ok()),
+                light_averse: m.light_averse,
+                natural_attack: m.natural_attack.as_ref().and_then(|v| serde_json::to_value(v).ok()),
+            })
+            .collect(),
         loot: doc
             .loot
             .iter()
@@ -99,7 +131,14 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 holds: n.holds.clone(),
             })
             .collect(),
-        formations: Vec::new(),
+        // Each `[[formations]]` entry's description half → a `FormationDef` opt-in
+        // (`{ key, weight }`); its `mobs` roster rides in the catalog (see
+        // `lower_catalog`). Keyed the same.
+        formations: doc
+            .formations
+            .iter()
+            .map(|f| FormationDef { key: f.key.clone(), weight: f.weight })
+            .collect(),
         scenes: doc
             .scenes
             .iter()
@@ -142,7 +181,13 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 config: m.config.as_ref().and_then(|v| serde_json::to_value(v).ok()),
             })
             .collect(),
-        timeout_narration: None,
+        // A `timeoutNarration` string lowers to the cue shape `{ "text": … }` (the
+        // same shape as a victory condition's narration).
+        timeout_narration: doc.timeout_narration.as_ref().map(|text| {
+            let mut obj = Map::new();
+            obj.insert("text".to_string(), Value::String(text.clone()));
+            Value::Object(obj)
+        }),
         ended_narration: None,
         chat: None,
         av: None,
@@ -257,11 +302,18 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
         }
     }
 
+    // Each `[[formations]]` entry's catalog half → a `FormationDescriptor` (its
+    // `mobs` roster), keyed the same as the description opt-in.
+    let mut formations = BTreeMap::new();
+    for f in &doc.formations {
+        formations.insert(f.key.clone(), FormationDescriptor { mobs: f.mobs.clone() });
+    }
+
     Ok(Catalog {
         items,
         aliases: BTreeMap::new(),
         behaviors,
-        formations: BTreeMap::new(),
+        formations,
         recipes: BTreeMap::new(),
     })
 }
@@ -341,17 +393,23 @@ fn lower_item(item: &ItemEntry) -> ItemDescriptor {
         stat,
         modifier: item.modifier.unwrap_or(0),
         properties: ItemProperties {
-            equippable: false,
+            equippable: item.equippable.unwrap_or(false),
+            // Descriptors are templates: nothing starts equipped (runtime state).
             equipped: false,
             destroyable: item.destroyable.unwrap_or(false),
             usable: item.usable.unwrap_or(false),
-            droppable: None,
+            droppable: item.droppable,
         },
-        slot: None,
-        two_handed: None,
-        emits_light: None,
-        max_durability: None,
-        lore: None,
+        // `slot` is a lowercase `SlotKind` string ("hand", …); an unknown value
+        // falls to `None` rather than panicking (a well-formed fixture is valid).
+        slot: item
+            .slot
+            .as_deref()
+            .and_then(|s| serde_json::from_value(Value::String(s.to_string())).ok()),
+        two_handed: item.two_handed,
+        emits_light: item.emits_light,
+        max_durability: item.max_durability,
+        lore: item.lore.clone(),
         presentation: None,
         key_code: None,
         consume_on_use: None,

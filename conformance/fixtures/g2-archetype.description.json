@@ -1,0 +1,38 @@
+{
+  "title": "Archetype",
+  "opts": {},
+  "archetypes": [
+    {
+      "id": "heir",
+      "name": "Heir",
+      "baseStats": {
+        "health": 12,
+        "sanity": 16,
+        "energy": 5
+      },
+      "inventorySlots": 1,
+      "immunities": [
+        "fear"
+      ]
+    }
+  ],
+  "rooms": [
+    {
+      "name": "Hall",
+      "description": "A long central hall."
+    }
+  ],
+  "startRoom": "Hall",
+  "exits": [],
+  "mobs": [],
+  "loot": [],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}

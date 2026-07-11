@@ -247,6 +247,71 @@ fn g2_mechanic_genesis_golden() {
     gate("g2-mechanic", "g2-mechanic.genesis.json", Some("g2-mechanic"), &party);
 }
 
+/// The G2 "archetypes" author oracle: the real hollow-house `Heir` archetype, with a
+/// PC seated AS it — so the genesis PC carries the archetype id + its statline/immunities.
+#[test]
+fn g2_archetype_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: Some("heir".into()) }];
+    gate("g2-archetype", "g2-archetype.genesis.json", Some("g2-archetype"), &party);
+}
+
+/// The G2 "timeout narration" author oracle: the real hollow-house `.onTimeout` cue,
+/// authored as a `timeoutNarration` string lowered to the `{ text }` shape.
+#[test]
+fn g2_timeout_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-timeout", "g2-timeout.genesis.json", Some("g2-timeout"), &party);
+}
+
+/// The G2 "campaign opts" author oracle: the real hollow-house bounds (maxRounds 150,
+/// baseEncounterChance 20) via the `[opts]` table.
+#[test]
+fn g2_opts_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-opts", "g2-opts.genesis.json", Some("g2-opts"), &party);
+}
+
+/// The G2 "formations" author oracle: the real roving rats — the `rat-single`/
+/// `rat-pair` weighted opt-ins (description) + their `MobSpec` rosters (catalog).
+#[test]
+fn g2_formations_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-formations", "g2-formations.genesis.json", Some("g2-formations"), &party);
+}
+
+/// The G2 "exit name + initialState" author oracle: a keyed door carrying a display
+/// name + `{ unlocked: false }` initial state, atop the real doorScript behavior.
+#[test]
+fn g2_exit_state_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-exit-state", "g2-exit-state.genesis.json", Some("g2-exit-state"), &party);
+}
+
+/// The G2 "room dark + spawnModifier" author oracle: a lightless Cellar + a
+/// biased-encounter Hall, proving the previously-dropped RoomDef sub-fields.
+#[test]
+fn g2_dark_rooms_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-dark-rooms", "g2-dark-rooms.genesis.json", Some("g2-dark-rooms"), &party);
+}
+
+/// The G2 "placed mobs" author oracle: the two real hollow-house mobs (Wraith,
+/// Revenant) with stats/room/drops/naturalAttack, in connected rooms.
+#[test]
+fn g2_mobs_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-mobs", "g2-mobs.genesis.json", Some("g2-mobs"), &party);
+}
+
+/// The G2 "full item descriptor" author oracle: three real hollow-house items
+/// (lantern/poker/journal) exercising slot/emitsLight/maxDurability/lore/equippable/
+/// droppable, seated in a Hall loot container.
+#[test]
+fn g2_equipment_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-equipment", "g2-equipment.genesis.json", Some("g2-equipment"), &party);
+}
+
 /// The G2 "exit runScript + pass" author oracle: a keyed door whose narration
 /// `runScript` (a `when` latching `unlocked` + a `pass`) rides in the catalog,
 /// seated with a single no-archetype PC.

@@ -1,0 +1,27 @@
+{
+  "title": "Opts",
+  "opts": {
+    "maxRounds": 150,
+    "baseEncounterChance": 20
+  },
+  "archetypes": [],
+  "rooms": [
+    {
+      "name": "Hall",
+      "description": "A long central hall."
+    }
+  ],
+  "startRoom": "Hall",
+  "exits": [],
+  "mobs": [],
+  "loot": [],
+  "caches": [],
+  "npcs": [],
+  "formations": [],
+  "scenes": [],
+  "recipes": [],
+  "materials": [],
+  "winConditions": [],
+  "loseConditions": [],
+  "mechanics": []
+}
