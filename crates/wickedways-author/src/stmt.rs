@@ -4,16 +4,19 @@
 //! failure is a [`CompileError`], never an `unwrap`/`expect`/`panic!`.
 //!
 //! Implemented so far: `guard` / `when` / `set state.<f> = …` / `emit cue(…)` /
-//! `emit adjustStat(…)` / `emit giveItem(…)` / `emit setVisible(…)`. The deferred
-//! forms — `pass`, subscripted `set state.m[k] = …` (`SetStateIn`), and `emit` of
-//! any effect other than `cue`/`adjustStat`/`giveItem`/`setVisible` — are REJECTED
-//! with a clear `CompileError` rather than silently mis-lowered, so a later slice
-//! can land them without a hidden behavior change.
+//! `emit adjustStat(…)` / `emit giveItem(…)` / `emit setVisible(…)`, the plain and
+//! subscripted `set` targets (`set state.<f> = …` → `SetState`; `set state.m[k] = …`
+//! → `SetStateIn`), plus `pass <expr>` in **script** bodies (via [`parse_script`]).
+//! The still-deferred forms — `emit` of any effect other than
+//! `cue`/`adjustStat`/`giveItem`/`setVisible` — are REJECTED with a clear
+//! `CompileError` rather than silently mis-lowered, so a later slice can land them
+//! without a hidden behavior change. `pass` outside a script body is likewise an
+//! error.
 //!
 //! [`parse_effects`] parses an **emit-only** block into a `Vec<EffectTemplate>`
 //! (dialogue/effect bodies): any non-`emit` statement is an error.
 
-use wickedways_core::script::ast::{EffectTemplate, Stmt};
+use wickedways_core::script::ast::{EffectTemplate, FieldTemplate, Stmt};
 use wickedways_core::stats::StatType;
 
 use crate::error::{CompileError, Span};
@@ -26,27 +29,43 @@ use crate::expr::parse_expr;
 /// lines are skipped. `base` is passed through to `parse_expr` for embedded
 /// expressions.
 pub(crate) fn parse_stmts(src: &str, base: Span) -> Result<Vec<Stmt>, CompileError> {
+    parse_body(src, base, false)
+}
+
+/// Parse a **script** body — an exit `runScript` — where `pass <expr>` (exit
+/// narration, `Stmt::Pass`) is legal. Effect/hook bodies use [`parse_stmts`],
+/// which rejects `pass`.
+pub(crate) fn parse_script(src: &str, base: Span) -> Result<Vec<Stmt>, CompileError> {
+    parse_body(src, base, true)
+}
+
+/// Parse a newline-separated block into a `Vec<Stmt>`. `allow_pass` gates the
+/// `pass` statement (legal only in script bodies), threaded through nested
+/// `when` blocks.
+fn parse_body(src: &str, base: Span, allow_pass: bool) -> Result<Vec<Stmt>, CompileError> {
     let mut stmts = Vec::new();
     for unit in split_top_level(src) {
         let trimmed = unit.trim();
         if trimmed.is_empty() {
             continue;
         }
-        stmts.push(parse_stmt(trimmed, base)?);
+        stmts.push(parse_stmt(trimmed, base, allow_pass)?);
     }
     Ok(stmts)
 }
 
 /// Dispatch a single (already-trimmed, non-empty) statement by its leading
-/// keyword. Any unrecognized keyword — INCLUDING the deferred `pass` — is an
-/// `ExprParse` error.
-fn parse_stmt(stmt: &str, base: Span) -> Result<Stmt, CompileError> {
+/// keyword. `pass` is accepted only when `allow_pass` (script bodies); anywhere
+/// else — and any other unrecognized keyword — is an `ExprParse` error.
+fn parse_stmt(stmt: &str, base: Span, allow_pass: bool) -> Result<Stmt, CompileError> {
     let (kw, rest) = split_keyword(stmt);
     match kw {
         "guard" => Ok(Stmt::Guard { cond: parse_expr(rest, base)? }),
-        "when" => parse_when(rest, base),
+        "when" => parse_when(rest, base, allow_pass),
         "set" => parse_set(rest, base),
         "emit" => parse_emit(rest, base),
+        // `pass <expr>` — exit narration (the last `Pass` wins). Script-only.
+        "pass" if allow_pass => Ok(Stmt::Pass { value: parse_expr(rest, base)? }),
         _ => Err(CompileError::ExprParse {
             span: base,
             message: format!("unknown statement keyword '{kw}'"),
@@ -65,8 +84,9 @@ fn split_keyword(s: &str) -> (&str, &str) {
 }
 
 /// `when <cond> { <stmts> }` — parse the condition (up to the first top-level
-/// `{`) and RECURSE into the brace-delimited inner block.
-fn parse_when(rest: &str, base: Span) -> Result<Stmt, CompileError> {
+/// `{`) and RECURSE into the brace-delimited inner block. `allow_pass` threads
+/// through so a `pass` inside a script-body `when` stays legal.
+fn parse_when(rest: &str, base: Span, allow_pass: bool) -> Result<Stmt, CompileError> {
     let open = find_open_brace(rest).ok_or_else(|| CompileError::ExprParse {
         span: base,
         message: "expected '{' to open a when block".into(),
@@ -77,40 +97,85 @@ fn parse_when(rest: &str, base: Span) -> Result<Stmt, CompileError> {
         message: "unterminated when block (missing '}')".into(),
     })?;
     // `open` and `close` index the ASCII `{`/`}`, so `open + 1` is a char boundary.
-    let then = parse_stmts(&rest[open + 1..close], base)?;
+    let then = parse_body(&rest[open + 1..close], base, allow_pass)?;
     Ok(Stmt::When { cond, then })
 }
 
-/// `set state.<field> = <expr>` — a plain-field state write. A subscripted
-/// target (`set state.<map>[<key>] = …`, i.e. `SetStateIn`) is deferred and MUST
-/// error here rather than be silently dropped.
+/// `set state.<field> = <expr>` (a plain-field write, `SetState`) or
+/// `set state.<map>[<key>] = <expr>` (a dynamic string-keyed map write,
+/// `SetStateIn`, where `<key>` is an expression).
 fn parse_set(rest: &str, base: Span) -> Result<Stmt, CompileError> {
-    // The first `=` is the assignment: the LHS `state.<field>` never contains
-    // one, and a comparison `==` in the RHS only appears after it.
-    let eq = rest.find('=').ok_or_else(|| CompileError::ExprParse {
+    // Find the assignment `=`: a lone `=` at bracket-depth 0 (so `==` inside the
+    // RHS, or a comparison inside a `[<key>]` subscript, is not mistaken for it).
+    let eq = find_assignment_eq(rest).ok_or_else(|| CompileError::ExprParse {
         span: base,
         message: "expected '=' in a set statement".into(),
     })?;
     let lhs = rest[..eq].trim();
     // `=` is one ASCII byte, so `eq + 1` is a char boundary.
     let rhs = rest[eq + 1..].trim();
-    let field = lhs.strip_prefix("state.").ok_or_else(|| CompileError::ExprParse {
+    let target = lhs.strip_prefix("state.").ok_or_else(|| CompileError::ExprParse {
         span: base,
-        message: "set target must be `state.<field>`".into(),
+        message: "set target must be `state.<field>` or `state.<map>[<key>]`".into(),
     })?;
-    // Reject a subscripted / dotted / empty field: the deferred `SetStateIn`
-    // (`state.m[k]`) must surface as an error, never a silent drop.
-    if field.is_empty() || !field.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+    let value = parse_expr(rhs, base)?;
+
+    // Subscripted target `state.<map>[<key>]` -> SetStateIn.
+    if let Some(open) = target.find('[') {
+        let map_field = &target[..open];
+        let close = target.strip_suffix(']').map(|_| target.len() - 1).filter(|&c| c > open);
+        let close = close.ok_or_else(|| CompileError::ExprParse {
+            span: base,
+            message: "set map target must be `state.<map>[<key>]`".into(),
+        })?;
+        if map_field.is_empty()
+            || !map_field.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
+            return Err(CompileError::ExprParse {
+                span: base,
+                message: format!("set map field `{map_field}` must be a plain field"),
+            });
+        }
+        // `[`/`]` are ASCII, so `open + 1`/`close` are char boundaries.
+        let key = parse_expr(target[open + 1..close].trim(), base)?;
+        return Ok(Stmt::SetStateIn { map_field: map_field.to_string(), key, value });
+    }
+
+    // Plain field `state.<field>` -> SetState.
+    if target.is_empty() || !target.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
         return Err(CompileError::ExprParse {
             span: base,
-            message: format!(
-                "set target `state.{field}` must be a plain field \
-                 (map/subscripted `set state.m[k] = …` is not yet supported)"
-            ),
+            message: format!("set target `state.{target}` must be a plain field or `state.<map>[<key>]`"),
         });
     }
-    let value = parse_expr(rhs, base)?;
-    Ok(Stmt::SetState { field: field.to_string(), value })
+    Ok(Stmt::SetState { field: target.to_string(), value })
+}
+
+/// Byte index of the assignment `=`: a single `=` (not part of `==`/`!=`/`<=`/
+/// `>=`) at bracket-depth 0 and outside a single-quoted string. `None` if absent.
+fn find_assignment_eq(s: &str) -> Option<usize> {
+    let bytes = s.as_bytes();
+    let mut depth: i32 = 0;
+    let mut in_str = false;
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'\'' => in_str = !in_str,
+            b'[' | b'(' if !in_str => depth += 1,
+            b']' | b')' if !in_str => depth -= 1,
+            b'=' if !in_str && depth <= 0 => {
+                let prev = if i > 0 { bytes[i - 1] } else { b' ' };
+                let next = if i + 1 < bytes.len() { bytes[i + 1] } else { b' ' };
+                // Skip `==`; skip the second `=` of `!=`/`<=`/`>=`/`==`.
+                if next != b'=' && !matches!(prev, b'=' | b'!' | b'<' | b'>') {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    None
 }
 
 /// `emit <effect>(<args>)` — emittable effects: `cue`, `adjustStat`, `giveItem`,
@@ -191,15 +256,91 @@ fn parse_emit(rest: &str, base: Span) -> Result<Stmt, CompileError> {
             let visible = parse_expr(args[1].trim(), base)?;
             Ok(Stmt::Emit { effect: EffectTemplate::SetVisible { target, visible } })
         }
-        // Every other effect (heal, damage, grantImmunity, status, …) is deferred.
+        // `damage(<target>, <amount>)` / `heal(<target>, <amount>)` — adjust Health
+        // by a magnitude; `grantImmunity(<target>, <turns>)` — grant all-status
+        // immunity. Each is 2 expression arguments.
+        "damage" | "heal" | "grantImmunity" => {
+            if args.len() != 2 {
+                return Err(CompileError::ExprParse {
+                    span: base,
+                    message: format!("`{effect_name}(...)` takes 2 arguments (got {})", args.len()),
+                });
+            }
+            let target = parse_expr(args[0].trim(), base)?;
+            let second = parse_expr(args[1].trim(), base)?;
+            Ok(Stmt::Emit {
+                effect: match effect_name {
+                    "damage" => EffectTemplate::Damage { target, amount: second },
+                    "heal" => EffectTemplate::Heal { target, amount: second },
+                    // The match arm restricts this to "grantImmunity".
+                    _ => EffectTemplate::GrantImmunity { target, turns: second },
+                },
+            })
+        }
+        // `status(field(<label>, <value>[, <emphasis>]), …)` — a HUD status readout.
+        // Each argument is a `field(...)` form; the whole list becomes the effect's
+        // `Vec<FieldTemplate>`.
+        "status" => {
+            let mut fields = Vec::with_capacity(args.len());
+            for arg in &args {
+                fields.push(parse_field(arg.trim(), base)?);
+            }
+            Ok(Stmt::Emit { effect: EffectTemplate::Status { fields } })
+        }
+        // The effect family is now complete; an unrecognized name is an error.
         _ => Err(CompileError::ExprParse {
             span: base,
             message: format!(
-                "only `emit cue(...)`, `emit adjustStat(...)`, `emit giveItem(...)`, \
-                 and `emit setVisible(...)` are supported (got `{effect_name}`)"
+                "unknown effect `{effect_name}` (expected cue/adjustStat/giveItem/setVisible/\
+                 status/damage/heal/grantImmunity)"
             ),
         }),
     }
+}
+
+/// Parse one `field(<label>, <value>[, <emphasis>])` argument of an `emit
+/// status(...)` into a [`FieldTemplate`]. `label` is a string literal; `value` and
+/// the optional `emphasis` are expressions.
+fn parse_field(src: &str, base: Span) -> Result<FieldTemplate, CompileError> {
+    let open = src.find('(').ok_or_else(|| CompileError::ExprParse {
+        span: base,
+        message: "status entries must be `field(<label>, <value>[, <emphasis>])`".into(),
+    })?;
+    if src[..open].trim() != "field" {
+        return Err(CompileError::ExprParse {
+            span: base,
+            message: format!("expected `field(...)` in status, got `{}`", src[..open].trim()),
+        });
+    }
+    let close = src.rfind(')').filter(|&c| c > open).ok_or_else(|| CompileError::ExprParse {
+        span: base,
+        message: "unterminated `field(...)` in status".into(),
+    })?;
+    // `(`/`)` are ASCII, so `open + 1`/`close` are char boundaries.
+    let field_args = split_args(&src[open + 1..close]);
+    if field_args.len() < 2 || field_args.len() > 3 {
+        return Err(CompileError::ExprParse {
+            span: base,
+            message: format!("field(...) takes 2 or 3 arguments (got {})", field_args.len()),
+        });
+    }
+    let label = match parse_expr(field_args[0].trim(), base)? {
+        wickedways_core::script::ast::Expr::Lit {
+            value: wickedways_core::script::value::Value::Str(s),
+        } => s,
+        _ => {
+            return Err(CompileError::ExprParse {
+                span: base,
+                message: "field's first argument (label) must be a string literal".into(),
+            });
+        }
+    };
+    let value = parse_expr(field_args[1].trim(), base)?;
+    let emphasis = match field_args.get(2) {
+        Some(e) => Some(parse_expr(e.trim(), base)?),
+        None => None,
+    };
+    Ok(FieldTemplate { label, value, emphasis })
 }
 
 /// Parse an **emit-only** block into its effect templates: run [`parse_stmts`],
@@ -416,15 +557,37 @@ mod tests {
     }
 
     #[test]
-    fn pass_is_rejected() {
+    fn pass_is_rejected_in_effect_bodies() {
+        // `pass` is script-only: an effect/hook body (parse_stmts) still rejects it.
         assert!(matches!(parse_stmts("pass 'x'", Span { line: 1, col: 1 }).unwrap_err(),
             CompileError::ExprParse { .. }));
     }
 
     #[test]
-    fn non_cue_effect_is_rejected() {
+    fn pass_is_accepted_in_script_bodies() {
+        // A script body (exit runScript) accepts `pass <expr>`, incl. nested in `when`.
+        let v = serde_json::to_value(
+            super::parse_script(
+                "when !stateGet('unlocked', false) {\n  set state.unlocked = true\n  pass 'opened'\n}",
+                Span { line: 1, col: 1 },
+            )
+            .expect("parse"),
+        )
+        .unwrap();
+        assert_eq!(v, json!([{
+            "kind":"when",
+            "cond":{"kind":"not","expr":{"kind":"stateGet","field":"unlocked","default":false}},
+            "then":[
+                {"kind":"setState","field":"unlocked","value":{"kind":"lit","value":true}},
+                {"kind":"pass","value":{"kind":"lit","value":"opened"}}
+            ]}]));
+    }
+
+    #[test]
+    fn malformed_emit_is_rejected() {
+        // A missing argument list is still a parse error.
         assert!(matches!(
-            parse_stmts("emit damage(actor, 5)", Span { line: 1, col: 1 }).unwrap_err(),
+            parse_stmts("emit cue", Span { line: 1, col: 1 }).unwrap_err(),
             CompileError::ExprParse { .. }
         ));
     }
@@ -454,10 +617,20 @@ mod tests {
     }
 
     #[test]
-    fn heal_effect_still_rejected() {
-        // Emittable effects: cue/adjustStat/giveItem/setVisible; heal (and every other effect) still errors.
+    fn damage_heal_grant_immunity_effects() {
+        assert_eq!(s("emit damage(actor, 5)"), json!([{"kind":"emit","effect":{
+            "kind":"damage","target":{"kind":"actor"},"amount":{"kind":"lit","value":5}}}]));
+        assert_eq!(s("emit heal(actor, 6)"), json!([{"kind":"emit","effect":{
+            "kind":"heal","target":{"kind":"actor"},"amount":{"kind":"lit","value":6}}}]));
+        assert_eq!(s("emit grantImmunity(actor, 2)"), json!([{"kind":"emit","effect":{
+            "kind":"grantImmunity","target":{"kind":"actor"},"turns":{"kind":"lit","value":2}}}]));
+    }
+
+    #[test]
+    fn unknown_effect_is_rejected() {
+        // The effect family is complete; an unknown effect name still errors.
         assert!(matches!(
-            parse_stmts("emit heal(actor, 6)", Span { line: 1, col: 1 }).unwrap_err(),
+            parse_stmts("emit frobnicate(actor, 6)", Span { line: 1, col: 1 }).unwrap_err(),
             CompileError::ExprParse { .. }
         ));
     }
@@ -491,11 +664,40 @@ mod tests {
     }
 
     #[test]
-    fn set_state_in_map_is_rejected() {
-        // `set state.m[k] = v` (SetStateIn) is deferred; must error, not silently drop.
-        assert!(matches!(
-            parse_stmts("set state.visits[actor] = true", Span { line: 1, col: 1 }).unwrap_err(),
-            CompileError::ExprParse { .. }
-        ));
+    fn set_state_in_map_write() {
+        // `set state.<map>[<keyExpr>] = <value>` -> SetStateIn (the storyteller's
+        // `seen[action.room.name] = true`). The key is a full expression.
+        assert_eq!(s("set state.seen[action.room.name] = true"), json!([{
+            "kind":"setStateIn","mapField":"seen",
+            "key":{"kind":"get","field":"name","of":{"kind":"get","field":"room","of":{"kind":"action"}}},
+            "value":{"kind":"lit","value":true}}]));
+    }
+
+    #[test]
+    fn emit_status_with_fields() {
+        // The status-bar readout: a labelled Sanity field (with emphasis) + a Round
+        // field whose value is a concat. `field(label, value[, emphasis])`.
+        assert_eq!(
+            s("emit status(field('Sanity', str(actor.sanity), 'warn'), field('Round', concat(str(round), '/', str(maxRounds))))"),
+            json!([{"kind":"emit","effect":{"kind":"status","fields":[
+                {"label":"Sanity","value":{"kind":"str","num":{"kind":"get","field":"sanity","of":{"kind":"actor"}}},"emphasis":{"kind":"lit","value":"warn"}},
+                {"label":"Round","value":{"kind":"concat","parts":[
+                    {"kind":"str","num":{"kind":"round"}},
+                    {"kind":"lit","value":"/"},
+                    {"kind":"str","num":{"kind":"maxRounds"}}]}}
+            ]}}]));
+    }
+
+    #[test]
+    fn status_field_without_emphasis_omits_it() {
+        // `emphasis` is skip-when-None: a 2-arg field emits no `emphasis` key.
+        let v = s("emit status(field('Round', str(round)))");
+        assert_eq!(v[0]["effect"]["fields"][0].get("emphasis"), None);
+    }
+
+    #[test]
+    fn set_plain_field_still_works() {
+        assert_eq!(s("set state.unlocked = true"), json!([{
+            "kind":"setState","field":"unlocked","value":{"kind":"lit","value":true}}]));
     }
 }

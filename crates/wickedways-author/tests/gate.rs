@@ -239,6 +239,156 @@ fn g2_mechanic_actions_catalog_matches() {
 }
 
 #[test]
+fn g2_door_description_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("g2-door.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.description).unwrap(),
+        &serde_json::from_str(&read(&dir.join("g2-door.description.json"))).unwrap(),
+        "g2-door.description.json",
+    );
+}
+
+#[test]
+fn g2_door_catalog_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("g2-door.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.catalog).unwrap(),
+        &serde_json::from_str(&read(&dir.join("g2-door.catalog.json"))).unwrap(),
+        "g2-door.catalog.json",
+    );
+}
+
+#[test]
+fn compile_is_deterministic_door() {
+    let src = read(&fixtures().join("g2-door.toml"));
+    let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
+    let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
+    assert_eq!(a, b, "compile() is not deterministic");
+}
+
+#[test]
+fn g2_storyteller_description_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("g2-storyteller.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.description).unwrap(),
+        &serde_json::from_str(&read(&dir.join("g2-storyteller.description.json"))).unwrap(),
+        "g2-storyteller.description.json",
+    );
+}
+
+#[test]
+fn g2_storyteller_catalog_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("g2-storyteller.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.catalog).unwrap(),
+        &serde_json::from_str(&read(&dir.join("g2-storyteller.catalog.json"))).unwrap(),
+        "g2-storyteller.catalog.json",
+    );
+}
+
+#[test]
+fn compile_is_deterministic_storyteller() {
+    let src = read(&fixtures().join("g2-storyteller.toml"));
+    let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
+    let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
+    assert_eq!(a, b, "compile() is not deterministic");
+}
+
+#[test]
+fn g2_status_bar_description_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("g2-status-bar.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.description).unwrap(),
+        &serde_json::from_str(&read(&dir.join("g2-status-bar.description.json"))).unwrap(),
+        "g2-status-bar.description.json",
+    );
+}
+
+#[test]
+fn g2_status_bar_catalog_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("g2-status-bar.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.catalog).unwrap(),
+        &serde_json::from_str(&read(&dir.join("g2-status-bar.catalog.json"))).unwrap(),
+        "g2-status-bar.catalog.json",
+    );
+}
+
+#[test]
+fn compile_is_deterministic_status_bar() {
+    let src = read(&fixtures().join("g2-status-bar.toml"));
+    let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
+    let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
+    assert_eq!(a, b, "compile() is not deterministic");
+}
+
+#[test]
+fn g2_victory_description_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("g2-victory.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.description).unwrap(),
+        &serde_json::from_str(&read(&dir.join("g2-victory.description.json"))).unwrap(),
+        "g2-victory.description.json",
+    );
+}
+
+#[test]
+fn g2_victory_catalog_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("g2-victory.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.catalog).unwrap(),
+        &serde_json::from_str(&read(&dir.join("g2-victory.catalog.json"))).unwrap(),
+        "g2-victory.catalog.json",
+    );
+}
+
+#[test]
+fn compile_is_deterministic_victory() {
+    let src = read(&fixtures().join("g2-victory.toml"));
+    let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
+    let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
+    assert_eq!(a, b, "compile() is not deterministic");
+}
+
+#[test]
+fn g2_effects_description_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("g2-effects.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.description).unwrap(),
+        &serde_json::from_str(&read(&dir.join("g2-effects.description.json"))).unwrap(),
+        "g2-effects.description.json",
+    );
+}
+
+#[test]
+fn g2_effects_catalog_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("g2-effects.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.catalog).unwrap(),
+        &serde_json::from_str(&read(&dir.join("g2-effects.catalog.json"))).unwrap(),
+        "g2-effects.catalog.json",
+    );
+}
+
+#[test]
+fn compile_is_deterministic_effects() {
+    let src = read(&fixtures().join("g2-effects.toml"));
+    let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
+    let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
+    assert_eq!(a, b, "compile() is not deterministic");
+}
+
+#[test]
 fn compile_is_deterministic() {
     let src = read(&fixtures().join("g2-vault.toml"));
     let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();

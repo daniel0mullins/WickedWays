@@ -1,0 +1,139 @@
+{
+  "items": {},
+  "aliases": {},
+  "behaviors": {
+    "storyteller": {
+      "family": "mechanic",
+      "script": {
+        "init": {
+          "seen": {}
+        },
+        "hooks": {
+          "onAction": [
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "bin",
+                "op": "eq",
+                "left": {
+                  "kind": "get",
+                  "of": {
+                    "kind": "action"
+                  },
+                  "field": "kind"
+                },
+                "right": {
+                  "kind": "lit",
+                  "value": "move"
+                }
+              }
+            },
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "has",
+                "map": {
+                  "kind": "mapLit",
+                  "entries": {
+                    "Parlor": "A mildewed parlor."
+                  }
+                },
+                "key": {
+                  "kind": "get",
+                  "of": {
+                    "kind": "get",
+                    "of": {
+                      "kind": "action"
+                    },
+                    "field": "room"
+                  },
+                  "field": "name"
+                }
+              }
+            },
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "hasItem",
+                "of": {
+                  "kind": "actor"
+                },
+                "itemKey": "journal"
+              }
+            },
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "not",
+                "expr": {
+                  "kind": "stateGetIn",
+                  "mapField": "seen",
+                  "key": {
+                    "kind": "get",
+                    "of": {
+                      "kind": "get",
+                      "of": {
+                        "kind": "action"
+                      },
+                      "field": "room"
+                    },
+                    "field": "name"
+                  },
+                  "default": false
+                }
+              }
+            },
+            {
+              "kind": "setStateIn",
+              "mapField": "seen",
+              "key": {
+                "kind": "get",
+                "of": {
+                  "kind": "get",
+                  "of": {
+                    "kind": "action"
+                  },
+                  "field": "room"
+                },
+                "field": "name"
+              },
+              "value": {
+                "kind": "lit",
+                "value": true
+              }
+            },
+            {
+              "kind": "emit",
+              "effect": {
+                "kind": "cue",
+                "text": {
+                  "kind": "lookup",
+                  "map": {
+                    "kind": "mapLit",
+                    "entries": {
+                      "Parlor": "A mildewed parlor."
+                    }
+                  },
+                  "key": {
+                    "kind": "get",
+                    "of": {
+                      "kind": "get",
+                      "of": {
+                        "kind": "action"
+                      },
+                      "field": "room"
+                    },
+                    "field": "name"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "actions": {}
+      }
+    }
+  },
+  "formations": {},
+  "recipes": {}
+}

@@ -172,6 +172,81 @@ mod tests {
     }
 
     #[test]
+    fn action_and_element_subjects() {
+        assert_eq!(p("action.kind"), json!({"kind":"get","field":"kind","of":{"kind":"action"}}));
+        assert_eq!(p("element.status"),
+            json!({"kind":"get","field":"status","of":{"kind":"element"}}));
+    }
+
+    #[test]
+    fn map_lit_and_has_and_lookup() {
+        // A small static table + membership/value-at over it (the storyteller's lore).
+        assert_eq!(p("mapLit('Parlor', 'A mildewed parlor.')"),
+            json!({"kind":"mapLit","entries":{"Parlor":"A mildewed parlor."}}));
+        assert_eq!(p("has(mapLit('Parlor', 'x'), action.room.name)"), json!({
+            "kind":"has",
+            "map":{"kind":"mapLit","entries":{"Parlor":"x"}},
+            "key":{"kind":"get","field":"name","of":{"kind":"get","field":"room","of":{"kind":"action"}}}}));
+        assert_eq!(p("lookup(mapLit('Parlor', 'x'), action.room.name)"), json!({
+            "kind":"lookup",
+            "map":{"kind":"mapLit","entries":{"Parlor":"x"}},
+            "key":{"kind":"get","field":"name","of":{"kind":"get","field":"room","of":{"kind":"action"}}}}));
+    }
+
+    #[test]
+    fn map_lit_odd_arity_errors() {
+        assert!(parse_expr("mapLit('a', 'b', 'c')", Span { line: 1, col: 1 }).is_err());
+    }
+
+    #[test]
+    fn state_get_in_expression() {
+        assert_eq!(p("stateGetIn('seen', action.room.name, false)"), json!({
+            "kind":"stateGetIn","mapField":"seen","default":false,
+            "key":{"kind":"get","field":"name","of":{"kind":"get","field":"room","of":{"kind":"action"}}}}));
+    }
+
+    #[test]
+    fn str_length_first_concat() {
+        assert_eq!(p("str(actor.sanity)"),
+            json!({"kind":"str","num":{"kind":"get","field":"sanity","of":{"kind":"actor"}}}));
+        assert_eq!(p("length(party)"), json!({"kind":"length","list":{"kind":"party"}}));
+        // `first(party)` is the First node, distinct from the subscript `party[0]`→Index.
+        assert_eq!(p("first(party)"), json!({"kind":"first","list":{"kind":"party"}}));
+        assert_eq!(p("concat(str(round), '/', str(maxRounds))"), json!({
+            "kind":"concat","parts":[
+                {"kind":"str","num":{"kind":"round"}},
+                {"kind":"lit","value":"/"},
+                {"kind":"str","num":{"kind":"maxRounds"}}]}));
+    }
+
+    #[test]
+    fn some_every_includes_quantifiers() {
+        // sanity-zero: some(party, element.sanity <= 0)
+        assert_eq!(p("some(party, element.sanity <= 0)"), json!({
+            "kind":"some","list":{"kind":"party"},
+            "pred":{"kind":"bin","op":"lte","left":{"kind":"get","field":"sanity","of":{"kind":"element"}},"right":{"kind":"lit","value":0}}}));
+        // party-down: every(party, includes(element.status, 'ko'))
+        assert_eq!(p("every(party, includes(element.status, 'ko'))"), json!({
+            "kind":"every","list":{"kind":"party"},
+            "pred":{"kind":"includes",
+                "list":{"kind":"get","field":"status","of":{"kind":"element"}},
+                "value":{"kind":"lit","value":"ko"}}}));
+    }
+
+    #[test]
+    fn defined_call() {
+        assert_eq!(p("defined(actor.room)"),
+            json!({"kind":"defined","expr":{"kind":"get","field":"room","of":{"kind":"actor"}}}));
+    }
+
+    #[test]
+    fn subscript_zero_still_index_not_first() {
+        // The deliberate MVP rule survives: `[0]` is Index, only `first(...)` is First.
+        assert_eq!(p("party[0]"),
+            json!({"kind":"index","list":{"kind":"party"},"index":{"kind":"lit","value":0}}));
+    }
+
+    #[test]
     fn negative_number_literal() {
         assert_eq!(p("-1"), serde_json::json!({"kind":"lit","value":-1}));
         assert_eq!(p("-1.5"), serde_json::json!({"kind":"lit","value":-1.5}));

@@ -294,6 +294,113 @@ impl Parser {
             return Ok(Expr::StateGet { field, default });
         }
 
+        // `stateGetIn(map_field, key, default)` — dynamic string-keyed state read
+        // (the storyteller's `seen[roomName]`): 3 args — a string-literal field, a
+        // key EXPRESSION, and a literal default.
+        if name == "stateGetIn" {
+            let [arg0, key, arg2] = take_n::<3>(args, "stateGetIn", name_span)?;
+            let map_field = str_lit_arg(Some(arg0), name_span, "stateGetIn's first argument")?;
+            let default = match arg2 {
+                Expr::Lit { value } => value,
+                _ => {
+                    return Err(CompileError::ExprParse {
+                        span: name_span,
+                        message: "stateGetIn's third argument must be a literal".into(),
+                    });
+                }
+            };
+            return Ok(Expr::StateGetIn { map_field, key: Box::new(key), default });
+        }
+
+        // `mapLit(k1, v1, k2, v2, …)` — a static string→value table (the storyteller's
+        // `lore`), authored as an even-length list of alternating string-literal keys
+        // and literal values. Only legal as the `map` operand of `has`/`lookup`
+        // (enforced at load, engine-side); here it just builds the `MapLit` node.
+        if name == "mapLit" {
+            if args.len() % 2 != 0 {
+                return Err(CompileError::ExprParse {
+                    span: name_span,
+                    message: "mapLit expects alternating key/value arguments (an even count)".into(),
+                });
+            }
+            let mut entries: std::collections::BTreeMap<String, Value> =
+                std::collections::BTreeMap::new();
+            let mut it = args.into_iter();
+            while let Some(k) = it.next() {
+                let key = match k {
+                    Expr::Lit { value: Value::Str(s) } => s,
+                    _ => {
+                        return Err(CompileError::ExprParse {
+                            span: name_span,
+                            message: "mapLit keys must be string literals".into(),
+                        });
+                    }
+                };
+                let value = match it.next() {
+                    Some(Expr::Lit { value }) => value,
+                    _ => {
+                        return Err(CompileError::ExprParse {
+                            span: name_span,
+                            message: "mapLit values must be literals".into(),
+                        });
+                    }
+                };
+                entries.insert(key, value);
+            }
+            return Ok(Expr::MapLit { entries });
+        }
+
+        // `has(map, key)` / `lookup(map, key)` — membership / value-at over a static
+        // `MapLit`. Both take 2 expression arguments (the `map` is typically a
+        // `mapLit(...)`; the `key` any expression).
+        if name == "has" || name == "lookup" {
+            let [map, key] = take_n::<2>(args, &name, name_span)?;
+            let (map, key) = (Box::new(map), Box::new(key));
+            return Ok(if name == "has" {
+                Expr::Has { map, key }
+            } else {
+                Expr::Lookup { map, key }
+            });
+        }
+
+        // Two-argument list quantifiers/membership. `some`/`every` take a list and a
+        // predicate expression (which reads the current item via the `element`
+        // subject); `includes` takes a list and a value.
+        if matches!(name.as_str(), "some" | "every" | "includes") {
+            let [list, second] = take_n::<2>(args, &name, name_span)?;
+            let (list, second) = (Box::new(list), Box::new(second));
+            return Ok(match name.as_str() {
+                "some" => Expr::Some { list, pred: second },
+                "every" => Expr::Every { list, pred: second },
+                // The `matches!` guard restricts this arm to "includes".
+                _ => Expr::Includes { list, value: second },
+            });
+        }
+
+        // Single-argument calls over one operand expression.
+        if matches!(name.as_str(), "str" | "length" | "first" | "defined") {
+            let [arg] = take_n::<1>(args, &name, name_span)?;
+            let inner = Box::new(arg);
+            return Ok(match name.as_str() {
+                "str" => Expr::Str { num: inner },
+                "length" => Expr::Length { list: inner },
+                "first" => Expr::First { list: inner },
+                // The `matches!` guard restricts this arm to "defined".
+                _ => Expr::Defined { expr: inner },
+            });
+        }
+
+        // `concat(a, b, …)` — string concatenation of its (>=1) argument expressions.
+        if name == "concat" {
+            if args.is_empty() {
+                return Err(CompileError::ExprParse {
+                    span: name_span,
+                    message: "concat expects at least 1 argument".into(),
+                });
+            }
+            return Ok(Expr::Concat { parts: args });
+        }
+
         // Only these three call names are known; everything else is unknown.
         let known = matches!(name.as_str(), "hasKey" | "hasItem" | "hasEquipped");
         if !known {
@@ -344,9 +451,34 @@ impl Parser {
     }
 }
 
-/// Resolve a bare identifier to one of the four read-model subjects, else an
-/// `UnknownReference`. (Keywords `true`/`false` are lexed as `Bool`, so they
-/// never reach here.)
+/// Consume exactly `N` call arguments as a fixed array, or an arity `ExprParse`
+/// error reporting the actual count. Panic-free (no `unwrap`/`expect`): a length
+/// mismatch is the `Err` branch of `TryFrom<Vec<_>>`.
+fn take_n<const N: usize>(
+    args: Vec<Expr>,
+    name: &str,
+    span: Span,
+) -> Result<[Expr; N], CompileError> {
+    <[Expr; N]>::try_from(args).map_err(|args: Vec<Expr>| CompileError::ExprParse {
+        span,
+        message: format!("{name} expects exactly {N} arguments, got {}", args.len()),
+    })
+}
+
+/// Require a call argument to be a string literal, returning the inner `String`
+/// (used for the `field`/`map_field` arguments that must be compile-time keys).
+fn str_lit_arg(arg: Option<Expr>, span: Span, what: &str) -> Result<String, CompileError> {
+    match arg {
+        Some(Expr::Lit { value: Value::Str(s) }) => Ok(s),
+        _ => Err(CompileError::ExprParse {
+            span,
+            message: format!("{what} must be a string literal"),
+        }),
+    }
+}
+
+/// Resolve a bare identifier to a read-model subject, else an `UnknownReference`.
+/// (Keywords `true`/`false` are lexed as `Bool`, so they never reach here.)
 fn resolve_subject(name: &str, span: Span) -> Result<Expr, CompileError> {
     match name {
         "actor" => Ok(Expr::Actor),
@@ -357,6 +489,11 @@ fn resolve_subject(name: &str, span: Span) -> Result<Expr, CompileError> {
         // fields are read via postfix `.field` (`Get`). Bound only inside a
         // `modifyDamage` body; elsewhere the interpreter yields `Null`.
         "damage" => Ok(Expr::Damage),
+        // The action subject (action contexts, e.g. a mechanic `onAction` hook):
+        // `.kind`/`.room` read via postfix `.field`. `Null` outside an action ctx.
+        "action" => Ok(Expr::Action),
+        // The bound quantifier element (`some`/`every` predicate bodies).
+        "element" => Ok(Expr::Element),
         _ => Err(CompileError::UnknownReference {
             span,
             name: name.to_string(),

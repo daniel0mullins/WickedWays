@@ -247,6 +247,53 @@ fn g2_mechanic_genesis_golden() {
     gate("g2-mechanic", "g2-mechanic.genesis.json", Some("g2-mechanic"), &party);
 }
 
+/// The G2 "exit runScript + pass" author oracle: a keyed door whose narration
+/// `runScript` (a `when` latching `unlocked` + a `pass`) rides in the catalog,
+/// seated with a single no-archetype PC.
+#[test]
+fn g2_door_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-door", "g2-door.genesis.json", Some("g2-door"), &party);
+}
+
+/// The G2 "storyteller forms" author oracle: the real hollow-house `storyteller`
+/// mechanic over a 1-entry lore map. Its genesis carries the mechanic state seeded
+/// from `init` (`{ seen: {} }`); the `onAction` guard chain (action subject, mapLit,
+/// has, lookup, stateGetIn, setStateIn) rides in the catalog.
+#[test]
+fn g2_storyteller_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-storyteller", "g2-storyteller.genesis.json", Some("g2-storyteller"), &party);
+}
+
+/// The G2 "status-bar forms" author oracle: the real hollow-house `status-bar`
+/// mechanic. Genesis carries the `{}`-seeded mechanic state; the onRoundStart/
+/// onTurnEnd bodies (str/concat/length/first + the Status effect) ride in the catalog.
+#[test]
+fn g2_status_bar_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-status-bar", "g2-status-bar.genesis.json", Some("g2-status-bar"), &party);
+}
+
+/// The G2 "victory quantifiers" author oracle: the three real hollow-house win/lose
+/// conditions (reached-attic-with-journal / sanity-zero / party-down). Their keys +
+/// narration reach the genesis win/lose lists; each `test` predicate (some/every/
+/// includes/element/first/length) rides in the catalog as a `BehaviorScript::Victory`.
+#[test]
+fn g2_victory_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-victory", "g2-victory.genesis.json", Some("g2-victory"), &party);
+}
+
+/// The G2 "remaining effects" author oracle: a bespoke `hex` mechanic emitting
+/// `damage`/`heal`/`grantImmunity` behind a `defined(...)` guard. Genesis carries
+/// the `{}`-seeded mechanic state; the onTurnStart body rides in the catalog.
+#[test]
+fn g2_effects_genesis_golden() {
+    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    gate("g2-effects", "g2-effects.genesis.json", Some("g2-effects"), &party);
+}
+
 /// The G2 "mechanic actions + modifyDamage" author oracle, seated with a single PC
 /// that declares NO archetype (`Seat { archetype: None }`). Gates the assembler over
 /// the same `[[mechanics]]` opt-in as `g2-mechanic` — the mechanic still reaches the
