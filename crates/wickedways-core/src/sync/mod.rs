@@ -7,8 +7,12 @@
 //!
 //! See `docs/superpowers/specs/2026-07-14-rust-phase-2c-a-command-vocabulary-design.md`.
 
+pub mod authority;
 pub mod authorize;
 pub mod command;
+pub mod delta;
 
+pub use authority::{AuthorityOpts, LogEntry, SubmitResult, SyncAuthority};
 pub use authorize::{authorize, AuthResult};
 pub use command::{Command, EquipmentSlot};
+pub use delta::{diff, CampaignCoreDelta, Delta, EntitySnapshot};
