@@ -1,214 +1,169 @@
-# `@wickedways/tabletop` — Simulator Surface Spec (P1)
+# `@wickedways/tabletop` — Physical Tabletop Client Spec
 
-> Companion to [`tabletop-display-design.md`](./tabletop-display-design.md). That doc is the
-> "why" and the concept survey; this is the "how" for the first buildable slice: a
-> hardware-free, CI-testable **simulator surface** that proves cue/view → tiles and
-> piece-drag → intent entirely in the browser.
+> Companion to [`tabletop-display-design.md`](./tabletop-display-design.md) (the concept
+> survey). **Reconciled against** the Phase 2c program design
+> ([`docs/superpowers/specs/2026-07-14-rust-phase-2c-multiplayer-dioxus-program-design.md`](./superpowers/specs/2026-07-14-rust-phase-2c-multiplayer-dioxus-program-design.md)),
+> which sets the endgame as **Rust everywhere + a single Dioxus web client**, with the
+> TypeScript surfaces retired (sub-project D) and then deleted (step F). This spec targets the
+> **durable seam**, not the retiring one.
 
 ## Context
 
-We want to drive a physical e-ink tabletop from the engine. The design doc established that
-a tabletop is *just another `PlaySurface`* — the browser play stack is a pull-model surface
-contract with `Intent` in and `PresentationCue[]` + `ViewModel` out, and `MapModel` already
-derives a 2D grid from the compass graph. P1 builds the surface + a swappable **transport**
-whose first implementation is a browser tile grid, so all the bridge logic (view→tiles,
-drag→intent, cue→effects) is provable before any firmware exists. The *same* surface later
-drives real tiles by swapping the transport.
+We want to drive a physical e-ink tabletop (color e-ink map tiles + player pieces) from the
+engine. The original design doc showed a tabletop is "just another presentation surface." But
+Phase 2c changes *which layer* that surface should attach to: the TS `PlaySurface` /
+`play-runtime` / `play-surface` stack is being ported to Dioxus and then deleted, and the
+engine is going multi-seat (Authority/Replica + Delta + append-log over an axum WebSocket room
+server). Building a permanent TS surface on the old stack would be building on ground that
+step F removes. This spec re-anchors the tabletop on the seam that survives the migration.
 
-## Scope & assumptions (P1)
+## The durable seam (what to build against)
 
-- **Single player.** `GameSession.start` boots exactly one `PlayerCharacter`
-  (`packages/play-runtime/src/session.ts:74`). So P1 = **one draggable PC piece** plus
-  **engine-driven mob pieces** (rendered, not dragged). Multi-piece / multi-seat play is a
-  separate engine question (see design doc "Who is the GM") and is explicitly out of scope.
-- **Reference campaign: Hollow House** (`packages/campaigns/src/hollow-house`) — it has dark
-  rooms, a keyed door, a resident mob, and a **status-bar mechanic** (needed for the PC
-  self-stats dashboard; see the status-cue note below).
-- **No engine changes.** P1 rides the existing `PlaySurface` seam. The two engine gaps from
-  the design doc (`placeLight` intent, dice-supply rng seam) are **not** P1 work.
+Phase 2c fixes a **serializable-only boundary** (master-design invariant 4): the engine and
+surfaces know the concrete `Command` / `Delta` / `ViewModel` types; the transport
+(`packages/transport-shared`) relays them as **opaque bytes**. Two roles share one
+`wickedways-core` crate:
 
-## The seams we build on (verified signatures)
+- **`Authority`** (server / single-player) — resolves commands, mutates state, computes deltas.
+- **`Replica`** (multiplayer client) — applies authoritative `Delta`s and projects `ViewModel`s.
+  Never resolves commands locally (no optimistic mutation, no rollback).
 
-- **`PlaySurface`** (`packages/play-runtime/src/surface.ts:64`): `{ id, label, description?,
-  defaultTheme, mount(args: MountArgs): SurfaceHandle }`. `MountArgs` gives `app: HTMLElement`,
-  `session: GameSession`, `manifest`, `themes`, `audio`, `onExit()`, theme hooks. The surface
-  owns input→intent, the turn loop, and rendering; the runtime owns the session/audio.
-- **`GameSession`** (`packages/play-runtime/src/session.ts`) — the *only* engine handle, all
-  pull:
-  - `execute(intent): { cues: PresentationCue[]; mobAttacks?: MobAttack[]; error?: string }`
-  - `view(): ViewModel` (overlays host-side room/occupant images)
-  - `takeStartupCues(): PresentationCue[]` (boot/round-0 reveals)
-  - `read(itemId)`, `examine(targetId)` — free, cue-producing
-  - `save(slot, surface?: SurfaceState)`, `restore(slot): { ok, surface? }`, `undo()`,
-    `restart()`, `finished`, `outcome`
-- **`Intent`** (`packages/play-runtime/src/intent.ts`): kinds `move / take / drop / use /
-  attack / wait / talk / equip / unequip / open`. Time-advancing = `move take drop use attack
-  wait` (`isTimeAdvancing`). Observed shapes (from `pnc/affordances.ts`): `{kind:"move", dir}`,
-  `{kind:"attack", targetId}`, `{kind:"talk", npcId}`, `{kind:"open", targetId}`,
-  `{kind:"take"|"drop"|"equip"|"unequip"|"use", targetId}`.
-- **`ViewModel`** (`packages/play-runtime/src/viewmodel.ts`): `room {id, name, description,
-  isLit, image?}`, `occupants: ScopeEntity[]`, `scope: ScopeEntity[]`, `loot: LootView[]`,
-  `inventory {items, keys, slots}`, `exits: ExitView[]` (`{dir, toName}` — **direction +
-  destination *name* only, no dest id**), `lockedDoors: LockedDoorView[]` (`{dir, name}`),
-  `status: StatusView {turn, maxTurns, …}`, `outcome`. `ScopeEntity`: `{id, name, aliases,
-  kind, health?, image?, equippable?, usable?, hasLore?, droppable?, defeated?, talkable?}`.
-- **`MapModel`** (`packages/play-runtime/src/map-model.ts`): `observe(view)`,
-  `recordMove(fromId, dir, toId)`, `rooms()/edges()/stubsFor()`, `serialize()/hydrate()/
-  reset()`, `currentId`, and the exported `DIRECTION_DELTA` (compass → `{dx,dy}`).
-- **`layoutMap(model)`** (`packages/play-surface/src/shared/map-view.ts:15`): pure grid→pixel
-  layout (`{width, height, boxes, links, stubs}`) — reused for tile placement.
+**A physical tabletop is a `Replica` with a physical projection.** It:
+1. receives authoritative `Delta`s / `ViewModel`s and renders them onto tiles/pieces/LEDs, and
+2. submits **actor-tagged `Command`s** (a piece move = a `move` command carrying that seat's
+   `actorId`) up to the Authority via the same opaque transport a Dioxus client uses.
 
-## Reuse (do not re-implement)
+That is the integration contract. Everything below is organized around it.
 
-- **`sceneHotspots(vm)` and `inventoryActions(item, equipped)`** from
-  `packages/play-surface/src/pnc/affordances.ts` — these already turn a `ViewModel` into the
-  exact set of legal actions + their `Intent`s (exits→move, occupant→attack/talk, loot→open,
-  floor item→take, inventory→equip/use/drop). The simulator's per-tile action buttons come
-  straight from these; **no new capability-gating logic**.
-- **`MapModel` + `DIRECTION_DELTA` + `layoutMap`** for placement.
-- **The controller turn-loop *order*** from `packages/play-surface/src/{crt,pnc}/controller.ts`:
-  skim `status` cues into the HUD, hold `resolution` cues until *after* mob attacks, play
-  cue audio via `audio.playCue`. We mirror this ordering.
-- **`audio: AudioRuntime`** from `MountArgs` — call `playCue(cue)` / `playMobAttack(...)`;
-  the whole procedural audio layer is free.
+> **Naming hazard (from #70):** "Authority" means *both* the single-player WASM engine handle
+> (`crates/wickedways-wasm/src/authority.rs`) **and** the multiplayer sync authority
+> (`src/lib/sync/authority.ts`, to become `SyncAuthority` in Rust, sub-project B). This spec
+> means the **sync/server Authority** unless it says "engine Authority."
 
-## Architecture
+## Multiplayer is the fit, not a limitation
 
-```
-TabletopSurface (implements PlaySurface)
-  ├─ owns the turn loop + MapModel + last-ViewModel
-  ├─ TileMapper      ViewModel + MapModel → TileState[] (+ collision resolution)
-  ├─ ViewDiffer      (before, after) ViewModel → DeviceCommand[] deltas
-  ├─ IntentResolver  DeviceEvent (directional piece drag) → Intent | reject
-  └─ DeviceTransport (the swappable boundary)
-        ├─ SimulatorTransport   DOM tile grid + draggable PC piece  ← P1
-        └─ Serial/WebSocketTransport   same protocol → firmware      ← P2/P3
-```
+The tabletop maps onto the multi-seat model cleanly, and it resolves the single-player ceiling
+the earlier draft apologized for:
 
-The **transport** is the whole point: `TabletopSurface` never touches the DOM or a serial
-port directly — it emits `DeviceCommand`s and consumes `DeviceEvent`s. P1 ships
-`SimulatorTransport` (renders into `MountArgs.app`); hardware later swaps in a different
-transport with zero surface-logic change.
+- **Each player piece = a seat/actor.** Moving a piece submits a command tagged with that
+  piece's `actorId` (sub-project A: the actor-tagged `Command` union in `src/lib/sync/types.ts`,
+  with `selectArchetype` / `joinCampaign` / `leaveCampaign` / `transferGM` / `mobEscape` /
+  `mobAttack` / `beginCampaign` arms and the `commandActorId` / `isTurnAction` / `isGmCommand`
+  classifiers).
+- **The table is one shared Replica.** All pieces render from the same authoritative view; there
+  is no per-seat client — the physical board *is* the shared surface. (A GM tablet, if used, is a
+  second Replica with GM-gated commands.)
+- **GM model** (design-doc thread 2) now has a concrete home: engine-as-GM = no human GM seat;
+  human GM = a GM-privileged actor whose commands pass the `isGmCommand` gate.
 
-### The protocol (`protocol.ts`)
+Because the board is a single shared Replica rather than N private clients, it sidesteps the
+per-seat optimistic-UI concerns entirely — it only ever renders authoritative state.
 
-```ts
-// Surface → device
-type DeviceCommand =
-  | { kind: "tile";      tileId: string; roomId: string; label: string; image?: string; lit: boolean; concealed: boolean }
-  | { kind: "tileLamp";  tileId: string; on: boolean }              // dark-room reveal
-  | { kind: "led";       tileId: string; effect: "encounter" | "combat" | "reject" | "off" }
-  | { kind: "piece";     pieceId: string; tileId: string | null; glow?: "normal" | "fear" | "panic" | "ko" }
-  | { kind: "dashboard"; seat: string; fields: StatusField[]; turn: number; maxTurns: number }
-  | { kind: "sound";     ref: string }                              // resolved cue audio
-  | { kind: "resolution"; outcome: string };
-// Device → surface
-type DeviceEvent =
-  | { kind: "pieceDrag";   pieceId: string; dir: Direction }        // directional drag off current tile
-  | { kind: "tileAction";  entityId: string; action: Intent }       // action button on a tile/entity
-  | { kind: "lantern";     tileId: string; placed: boolean };       // future: light prop
-```
+## Consume `Delta`, don't re-diff `ViewModel`s
 
-Design notes:
-- **Input is *directional*, not tile-to-tile.** Exits are keyed by `Direction`, and
-  `ExitView` has no destination id — the dest tile may not exist yet (unexplored stub). So a
-  piece drag resolves to the nearest compass `Direction`; `IntentResolver` checks it against
-  `vm.exits`/`vm.lockedDoors` and emits `{kind:"move", dir}`. The destination tile id is
-  learned *after* execution from the new `view().room.id`.
-- **`led "reject"`** is the physical "you can't do that" — fired when the engine returns
-  `result.error` (e.g. locked door, dark-room targeting gate).
+The earlier draft hand-rolled a before/after `ViewModel` diff to compute tile updates. Phase 2c
+makes that redundant and slightly wrong: the sync core **already** computes authoritative
+`Delta`s (`src/lib/sync/delta-computer.ts` → the Rust `Delta`, sub-project B) as
+per-collection created/changed/removed classifications. The tabletop Replica should **apply the
+`Delta` stream** and read the projected `ViewModel`, mapping deltas → device commands. No
+client-side re-diffing.
 
-### `IntentResolver`
+- **Caveat / today's gap:** the *single-player* engine Authority
+  (`authority.rs`) returns `ExecuteResult { cues }` with **no delta/log** (per #70's
+  reconciliation table). So a *pre-sub-project-B* prototype has no `Delta` to consume and must
+  fall back to `ViewModel` diffing. Treat that fallback as scaffolding, not the design.
 
-- `deltaToDirection(dx, dy): Direction | null` — invert `DIRECTION_DELTA` (unit steps only).
-- On `pieceDrag{dir}`: reject unless `vm.exits.some(e => e.dir === dir)`. A `dir` that is only
-  in `vm.lockedDoors` → still emit `{kind:"move", dir}` and let the **engine** reject
-  (surfacing `led "reject"`), so lock logic stays authoritative in the core.
-- `tileAction` carries a ready `Intent` (built by `sceneHotspots`), passed through as-is.
+## Transport-agnostic bridge logic (the durable, portable core)
 
-### `TileMapper` + collision resolution
+Independent of TS-vs-Rust and DOM-vs-Dioxus, the tabletop needs bridge logic that is pure and
+language-portable (it will ultimately live in Rust/Dioxus, sub-project D-adjacent):
 
-- Placement comes from `MapModel` grid coords. **Known imperfection:** compass-delta placement
-  can drop two rooms on one cell. `resolveCollisions(rooms: MapRoom[]): Map<roomId,{col,row}>`
-  nudges a colliding room to the nearest free cell, deterministic by discovery order, keeping
-  traversed-edge adjacency best-effort. Log any nudge (no silent overlap).
-- Per tile, `TileMapper` emits a `tile` command with `lit = vm.room.isLit` and
-  `concealed = room.dark && !isLit`. A concealed tile hides label/occupants (mirror the
-  Narrator's dark short-circuit) until a `visibility {lit:true}` flips it.
+- **`protocol`** — the device message union (surface ↔ device), unchanged in spirit:
+  - Surface→device: `tile {tileId, roomId, label, image?, lit, concealed}`,
+    `tileLamp {tileId, on}`, `led {tileId, effect: encounter|combat|reject|off}`,
+    `piece {pieceId, tileId|null, glow: normal|fear|panic|ko}`,
+    `dashboard {seat, fields: StatusField[], turn, maxTurns}`, `sound {ref}`,
+    `resolution {outcome}`.
+  - Device→surface: `pieceDrag {pieceId, dir}`, `tileAction {actorId, command}`,
+    `lantern {tileId, placed}` (future light prop).
+- **`TileMapper`** — `ViewModel` + map grid → tile render state, incl. a **collision-resolution
+  pass**: the compass-delta embedding (`DIRECTION_DELTA`) can drop two rooms on one cell, so
+  nudge deterministically to the nearest free cell and **log the nudge** (no silent overlap). A
+  tile is `concealed` when `room.dark && !room.isLit` (mirror the dark short-circuit) until a
+  `visibility {lit:true}` flips it.
+- **`IntentResolver` → `CommandBuilder`** — **directional** input (input is directional, not
+  tile-to-tile, because `ExitView` carries only `{dir, toName}` and the destination tile may be
+  an unexplored stub). Resolve a `pieceDrag` to the nearest compass `Direction`; if it matches a
+  `vm.exits` / `vm.lockedDoors` dir, emit a **`move` command tagged with the piece's `actorId`**;
+  a locked-door dir still submits and lets the engine reject (surfacing `led "reject"`), keeping
+  lock logic authoritative in the core.
+- **`DeviceTransport`** — the swappable boundary; `SimulatorTransport` (screen) now,
+  `Serial`/`WebSocketTransport` (firmware) later. This is *device* transport, distinct from the
+  *sync* transport that carries `Command`/`Delta` to the Authority.
 
-### `ViewDiffer`
+`sceneHotspots(vm)` / `inventoryActions(...)` (`packages/play-surface/src/pnc/affordances.ts`)
+remain the right reference for deriving per-tile action affordances — but note they will be
+re-expressed in the Dioxus client (D); reference them as the behavioral oracle, not a permanent
+import.
 
-Terse cues mean meaning lives in the view delta (same trick as `Narrator.renderAction`). Diff
-`before`/`after` `ViewModel`s to emit: piece moves (PC + mobs by `scope`/`occupants` id set),
-`tileLamp` on room-lit change, `led "encounter"` when a live non-defeated occupant appears,
-`piece glow` from status thresholds, loot-opened reveals. Cue kinds map alongside:
-`visibility`→`tileLamp`, `encounter`→`led`+`sound`, `status`→`dashboard`, `resolution`→
-`resolution` (held until after `mobAttacks`), `action`→`sound`.
+## Rendering target: Dioxus web (per sub-project D)
 
-### The turn loop (`TabletopSurface`)
+The client is Dioxus web (DOM/CSS carryover keeps campaign-owned theming). The tabletop's
+on-screen simulator therefore belongs as a **Dioxus component / route**, alongside the CRT and
+point-and-click surfaces D reproduces — *not* a new permanent TS/Lit surface package that F
+would delete.
 
-1. **Mount:** `takeStartupCues()` → transport (initial reveals/audio); `view()` seeds
-   `MapModel.observe` + initial `tile` commands + PC `piece` placement + `dashboard`.
-2. **On `pieceDrag`:** resolve → `Intent{move,dir}`. `before = view()`; `execute(intent)`.
-   - `result.error` → `led "reject"`, snap piece back, stop.
-   - else `after = view()`; `mapModel.recordMove(before.room.id, dir, after.room.id)`;
-     `mapModel.observe(after)`; `ViewDiffer(before, after)` → commands; play cue audio;
-     apply `mobAttacks`; then flush `resolution`.
-3. **On `tileAction`:** same execute→diff pipeline (covers attack/take/open/equip/use so the
-   sim exercises the full engine, not just movement).
-4. **Persistence:** `save(slot, surfaceState)` / `restore` carry a
-   `TabletopSurfaceState { map: MapSnapshot; tiles: {tileId, roomId}[]; piece: {tileId} }`
-   in the existing `SurfaceState` payload — same mechanism the browser map uses today.
+## PC self-stats dependency (unchanged, still true)
 
-### PC self-stats note (dependency to surface honestly)
+A character's own Health/Sanity/Energy are not in the `ViewModel` (occupants/scope are *others*)
+— they arrive via the **`status` cue** emitted by a campaign's status mechanic. So the seat
+dashboard is fed by `status` cues; a campaign without a status mechanic shows only `vm.status`
+(turn/location). This is why the reference campaign is **Hollow House**
+(`packages/campaigns/src/hollow-house`) — dark rooms, a keyed door, a resident mob, *and* a
+status-bar mechanic.
 
-The PC's own Health/Sanity/Energy are **not** in the `ViewModel` directly (occupants/scope are
-*others*). They arrive via the **`status` cue**, emitted by a campaign's status mechanic. So
-the seat dashboard is populated by skimming `status` cues (like `absorbStatusCues`); a campaign
-without a status mechanic shows only `vm.status` (turn/location). This is why P1 tests against
-Hollow House (which has the status-bar mechanic) — and it's a real constraint to document, not
-paper over.
+## Phasing (aligned to the A–F program)
 
-## Package skeleton
+The tabletop is **not** one of A–F; it is a new physical-client track that *depends on* them.
 
-`packages/tabletop/` following the `packages/campaigns` convention exactly:
-- `package.json`: `"@wickedways/tabletop"`, `version 0.0.1`, `private`, `type module`,
-  `exports { "./*": "./src/*/index.ts" }`, `scripts.typecheck = "tsc --noEmit"`; deps
-  `wickedways`, `@wickedways/play-runtime`, `@wickedways/play-surface` (all `workspace:*`);
-  devDep `@types/node`.
-- `tsconfig.json`: copy `packages/campaigns/tsconfig.json` verbatim (`lib` includes `DOM`,
-  which `SimulatorTransport` needs).
-- Source: `src/surface.ts` (`TabletopSurface`), `src/protocol.ts`, `src/transport.ts`
-  (interface), `src/simulator-transport.ts`, `src/tile-mapper.ts`, `src/view-differ.ts`,
-  `src/intent-resolver.ts`, plus `src/index.ts` re-exporting `tabletopSurface`.
-- Picked up automatically by the `packages/*` workspace glob and the root vitest runner.
+- **P0 — optional throwaway prototype (now, explicitly scaffolding).** A minimal TS/DOM
+  simulator driving the **engine `GameSession`** (single-player, `ViewModel`-diff fallback since
+  there's no `Delta` yet) to de-risk the *device* concerns only: tile placement + collision
+  resolution, directional piece-drag → move, dark/lit reveal, dashboard from `status` cues. Built
+  and discarded like the "throwaway Dioxus spike" #70 describes — **do not** land a permanent
+  `packages/tabletop` on the retiring stack.
+- **P1 — the real client (after A/B + D).** Implement the tabletop as a **Dioxus physical-Replica
+  client**: apply the `Delta` stream, submit actor-tagged `Command`s over the sync transport,
+  render via the `DeviceTransport` boundary. Each piece is a seat.
+- **P2 — hardware transport.** `SerialTransport` to one ESP32 + one e-ink tile (device protocol
+  over the wire; the Replica logic is unchanged).
+- **P3 — full board.** N tiles + NFC piece/lantern sensing; and the two engine-gap decisions from
+  the design doc — the `placeLight` command arm and the **dice-supply rng seam** — which now also
+  have to hold under the **determinism invariant** #70 leans on (same seed + command sequence ⇒
+  identical deltas), so a host-supplied roll must enter through the seeded rng, not around it.
 
 ## Verification
 
-- **Unit (`*.test.ts`, colocated):** `deltaToDirection` inversion; `IntentResolver`
-  (directional drag → intent, non-exit direction rejected, locked-door direction still emits +
-  engine rejects); `resolveCollisions` (two rooms one cell → distinct cells, edge adjacency
-  kept); `ViewDiffer` against fixture before/after ViewModels; protocol message shape.
-- **Integration:** a `FakeTransport` (records `DeviceCommand`s, scripts `DeviceEvent`s) drives
-  `TabletopSurface` against a **real `GameSession`** booted on Hollow House. Assert: startup
-  reveal commands; a move emits `move` intent + a `tile`/`tileLamp` reveal on entering a lit
-  room; a dark room stays `concealed` until a light action; encounter → `led`+`sound`; an
-  illegal move → `led "reject"` and piece snap-back; `save`→`restore` round-trips the
-  `MapSnapshot` + tile assignments via `SurfaceState`.
-- **End-to-end / DOM:** mount `SimulatorTransport` (Playwright, the repo's existing `e2e` job)
-  and drag the PC piece through one reveal; keep this thin — logic is covered by `FakeTransport`.
-- `pnpm checks` green (lint + typecheck + test). Update `README.md` to document the new
-  surface once it lands (repo convention).
+- **P0 prototype:** `FakeTransport` (records device commands, scripts device events) drives the
+  prototype against a real single-player `GameSession` on Hollow House. Assert: startup reveal;
+  directional drag → `move`; dark room stays `concealed` until a light action; encounter →
+  `led`+`sound`; illegal move → `led "reject"` + piece snap-back; dashboard from `status` cues.
+- **P1 client:** gated the Phase-2c way — a **differential harness**: same seed + actor-tagged
+  command sequence yields identical `Delta`s / projected `ViewModel` whether driven through the
+  tabletop Replica or the frozen `src/lib/sync/` oracle. Device-command mapping unit-tested off
+  fixture deltas. Visual/e2e parity for the Dioxus simulator component.
+- `pnpm checks` (and, for Rust, the differential gate) green. Update `README.md` when a real
+  surface lands.
 
-## Wiring to run it
+## Open questions (for the user)
 
-Register `tabletopSurface` in the `surfaces` array passed to `bootLauncher`
-(`packages/play/src/main.ts`) and add a `SurfaceChoice { id: "tabletop-sim" }` to a campaign
-`manifest.surfaces` (Hollow House for the demo). A minimal Vite dev entry (mirroring
-`packages/play`) mounts it standalone for iteration.
-
-## Out of scope (later phases)
-
-- P2: `SerialTransport` to one ESP32 + one e-ink tile.
-- P3: N tiles + NFC piece/lantern sensing; the `placeLight` intent + dice-supply rng seam
-  decisions; multi-seat / multi-piece (needs the engine's GM-model work).
+1. **Build the P0 throwaway now, or wait for D?** P0 de-risks the *physical* interaction model
+   (tiles, pieces, light) independently of the Rust/Dioxus migration, at the cost of throwaway TS.
+   The alternative is to fold the tabletop entirely into the D (Dioxus client) spec and build
+   nothing until A/B/D exist.
+2. **Where does the tabletop track slot into A–F?** Naturally after D, but its *engine-gap* asks
+   (the `placeLight` command arm, the dice-supply seam) touch sub-project A's command union — so
+   they may want to be raised as A-spec inputs rather than deferred to P3.
+3. **GM model for the physical table** (engine-as-GM vs. a GM-privileged actor with a tablet
+   Replica) — this is a seat-model decision that belongs in the A spec, and it changes whether the
+   board needs any GM hardware.
