@@ -10,14 +10,18 @@ startRoom = "Hall"
 name = "Hall"
 description = "A cold stone hall."
 
-[victory.win.reached-attic-with-journal]
+[[victory.win]]
+key = "reached-attic-with-journal"
 test = "first(party).room.name == 'Attic' && hasItem(first(party), 'journal')"
 narration = "You reach the attic, journal in hand."
 
-[victory.lose.sanity-zero]
-test = "some(party, element.sanity <= 0)"
-narration = "Your mind gives way."
-
-[victory.lose.party-down]
+# Authored in the golden's (declaration) order: party-down before sanity-zero.
+[[victory.lose]]
+key = "party-down"
 test = "length(party) > 0 && every(party, includes(element.status, 'ko'))"
 narration = "The party falls."
+
+[[victory.lose]]
+key = "sanity-zero"
+test = "some(party, element.sanity <= 0)"
+narration = "Your mind gives way."

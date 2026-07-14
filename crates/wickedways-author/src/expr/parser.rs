@@ -32,7 +32,7 @@ pub fn parse_expr(src: &str, base: Span) -> Result<Expr, CompileError> {
     let tokens = tokenize(src, base)?;
     // Span used for "unexpected end of input": one past the last char.
     let eof_span = Span { line: base.line, col: base.col + src.chars().count() };
-    let mut p = Parser { tokens, pos: 0, eof_span };
+    let mut p = Parser { tokens, pos: 0, eof_span, depth: 0, nodes: 0 };
     let expr = p.parse_ternary()?;
     // Nothing may trail a complete expression.
     if let Some((_tok, span)) = p.peek() {
@@ -44,13 +44,59 @@ pub fn parse_expr(src: &str, base: Span) -> Result<Expr, CompileError> {
     Ok(expr)
 }
 
+/// Recursion-depth ceiling for the expression parser. A modding trust boundary:
+/// deeply-nested author input (`((((…))))`, `!!!!…`, chained ternaries) would
+/// otherwise overflow the stack and abort. Real expressions nest a handful deep;
+/// this is a comfortable margin well below the stack limit.
+const MAX_EXPR_DEPTH: usize = 256;
+
+/// Ceiling on the number of *chain-nesting* nodes a single expression may build —
+/// the `Bin` chain from `a+a+a+…` and the `Get`/`Index` chain from `a.x.x…` / `a[0][0]…`.
+/// Those grow via LOOPS (not recursion), so the depth guard does not bound them, yet
+/// a deep `Get`/`Index`/`Bin` tree overflows the stack on its recursive drop/serialize.
+/// Real expressions build a handful; this is a comfortable margin low enough that a
+/// tree AT the cap is itself safe to drop/serialize recursively (a partial tree is
+/// still dropped when the cap-exceeded error unwinds).
+const MAX_EXPR_NODES: usize = 1024;
+
 struct Parser {
     tokens: Vec<(Token, Span)>,
     pos: usize,
     eof_span: Span,
+    /// Current recursion depth (guarded against parse-time stack overflow).
+    depth: usize,
+    /// Monotonic count of loop-built chain nodes (guarded against a deep tree
+    /// overflowing the stack on drop/serialize).
+    nodes: usize,
 }
 
 impl Parser {
+    /// Enter a recursive step: bump the depth and reject input nested past
+    /// [`MAX_EXPR_DEPTH`] (panic-free — an `ExprParse` error, not a stack abort).
+    fn enter(&mut self) -> Result<(), CompileError> {
+        self.depth += 1;
+        if self.depth > MAX_EXPR_DEPTH {
+            return Err(CompileError::ExprParse {
+                span: self.eof_span,
+                message: "expression nested too deeply".into(),
+            });
+        }
+        Ok(())
+    }
+
+    /// Account for one loop-built chain node (a `Bin`/`Get`/`Index`), rejecting an
+    /// expression whose chains would build a drop-unsafe deep tree.
+    fn add_node(&mut self) -> Result<(), CompileError> {
+        self.nodes += 1;
+        if self.nodes > MAX_EXPR_NODES {
+            return Err(CompileError::ExprParse {
+                span: self.eof_span,
+                message: "expression too large".into(),
+            });
+        }
+        Ok(())
+    }
+
     /// The current token + its span, without consuming.
     fn peek(&self) -> Option<(&Token, Span)> {
         self.tokens.get(self.pos).map(|(t, s)| (t, *s))
@@ -86,9 +132,18 @@ impl Parser {
     }
 
     // ── ternary (loosest) ───────────────────────────────────────────────────
+    /// Depth-guarded wrapper around [`parse_ternary_inner`] — the head of the
+    /// recursion cycle (grouping, calls, index, ternary branches all re-enter here).
+    fn parse_ternary(&mut self) -> Result<Expr, CompileError> {
+        self.enter()?;
+        let r = self.parse_ternary_inner();
+        self.depth -= 1;
+        r
+    }
+
     /// `cond ? then : else`, right-associative. `cond` is a full binary
     /// expression; both branches recurse into `parse_ternary`.
-    fn parse_ternary(&mut self) -> Result<Expr, CompileError> {
+    fn parse_ternary_inner(&mut self) -> Result<Expr, CompileError> {
         let cond = self.parse_binary(0)?;
         if matches!(self.peek(), Some((Token::Question, _))) {
             self.advance(); // consume '?'
@@ -132,13 +187,23 @@ impl Parser {
             self.advance(); // consume the operator
             // Left-assoc: the right operand only takes strictly-tighter ops.
             let right = self.parse_binary(bp + 1)?;
+            self.add_node()?; // bound the left-nested `Bin` chain length
             left = Expr::Bin { op, left: Box::new(left), right: Box::new(right) };
         }
         Ok(left)
     }
 
     // ── unary `!` ───────────────────────────────────────────────────────────
+    /// Depth-guarded wrapper: `!` self-recurses here without passing through
+    /// `parse_ternary`, so it needs its own guard against `!!!!…` overflow.
     fn parse_unary(&mut self) -> Result<Expr, CompileError> {
+        self.enter()?;
+        let r = self.parse_unary_inner();
+        self.depth -= 1;
+        r
+    }
+
+    fn parse_unary_inner(&mut self) -> Result<Expr, CompileError> {
         if matches!(self.peek(), Some((Token::Bang, _))) {
             self.advance(); // consume '!'
             let inner = self.parse_unary()?;
@@ -151,6 +216,10 @@ impl Parser {
     fn parse_postfix(&mut self) -> Result<Expr, CompileError> {
         let mut expr = self.parse_primary()?;
         loop {
+            // Bound the `Get`/`Index` chain length (`.field`/`[i]` grow the tree here).
+            if matches!(self.peek(), Some((Token::Dot, _)) | Some((Token::LBracket, _))) {
+                self.add_node()?;
+            }
             match self.peek() {
                 Some((Token::Dot, _)) => {
                     self.advance(); // consume '.'

@@ -4,7 +4,8 @@
 //! Span)>`. The MVP keeps expressions single-line, so each token's span is
 //! `base` offset by the token's starting char index (`line = base.line`,
 //! `col = base.col + char_index`) — this points diagnostics back into the TOML
-//! file. Strings use SINGLE quotes (`'...'`), matching the TOML-embedded style.
+//! file. Strings use single OR double quotes (`'...'` / `"..."`), matching the
+//! TOML-embedded style; a string containing one quote kind is written with the other.
 //! Panic-free: an unrecognized character or unterminated string is an
 //! `ExprParse` error, never a panic.
 
@@ -105,14 +106,17 @@ pub fn tokenize(src: &str, base: Span) -> Result<Vec<(Token, Span)>, CompileErro
             continue;
         }
 
-        // single-quoted string literal
-        if c == '\'' {
+        // String literal, delimited by either `'` or `"`. No escapes: a string
+        // containing an apostrophe is written with double quotes, and vice versa
+        // (the real storyteller lore uses `'…'` inside, so it authors with `"`).
+        if c == '\'' || c == '"' {
+            let quote = c;
             let mut s = String::new();
             i += 1; // consume opening quote
             let mut terminated = false;
             while i < chars.len() {
                 let ch = chars[i];
-                if ch == '\'' {
+                if ch == quote {
                     i += 1; // consume closing quote
                     terminated = true;
                     break;

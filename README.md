@@ -2162,10 +2162,15 @@ behavior = "vault-door"          # -> [behaviors.exit.vault-door]
 canPass     = "hasKey(actor, 'vault')"
 failMessage = "The vault door is locked."
 
-[victory.win.reached-vault]
+[[victory.win]]
+key = "reached-vault"
 test = "party[0].room.name == 'Vault'"
 narration = "You reached the vault."
 ```
+
+Win/lose conditions are an **array of tables** (`[[victory.win]]` / `[[victory.lose]]` with an explicit
+`key`), not a `[victory.win.<key>]` map, so the author controls their **order** — the description's
+`winConditions`/`loseConditions` are ordered arrays and a real campaign's order need not be alphabetical.
 
 **The infix expression language.** The string values of `canPass`/`test` (and similar) are not
 opaque — they are a single-line **infix expression language** that Pratt-parses into the closed
@@ -2390,13 +2395,16 @@ number literals**, and the **mechanic** family (`[[mechanics]]` opt-in + a `[beh
 deliberate divergences from the design spec carry through: the compiler
 is permissive (no compile-time `TypeError` — the `Expr` AST is total and the TS builders type-check
 nothing, so mapping must stay permissive to byte-match), and subscript always lowers to `Index`
-(never `First` — only `first(...)` does). With **both** the expression/effect/statement surface and the
-description-structure surface now complete (every `Expr`/`Stmt`/`EffectTemplate` node authorable across
-all six behavior families, and every real-Hollow-House `CampaignDescription` field emitted), what remains
-is no longer author surface but the capstone + packaging: the **full Hollow House re-author** (one TOML
-gated against the whole assembled campaign — now unblocked by the surface above), **id-derivation** for
-`giveItem`/`setVisible` and computed dialogue responses, **npx/WASM packaging** of the CLI, and
-**runtime-load** of a compiled campaign. None of those change `compile()`'s signature.
+(never `First` — only `first(...)` does). Both the expression/effect/statement surface and the
+description-structure surface are complete, and the **capstone is done**: the ENTIRE real campaign is
+re-authored in one `hollow-house.toml` whose `compile()` reproduces the committed
+`hollow-house.{description,catalog}.json` — the whole shipped campaign (9 rooms, 13 exits, 2 mobs, 4 loot
+containers, an NPC, 2 formations, 3 mechanics incl. the full-lore storyteller, 3 victory conditions, 8
+items, 3 keyed doors) — **byte-for-byte**. Two small surface additions fell out of it: string literals may
+use single OR double quotes (so the storyteller lore's embedded apostrophes author cleanly), and items
+carry `aliases`. What remains is only **packaging**: **id-derivation** for `giveItem`/`setVisible` and
+computed dialogue responses, **npx/WASM packaging** of the CLI, and **runtime-load** of a compiled
+campaign. None of those change `compile()`'s signature.
 
 **Engine change this milestone made.** Authoring a key item into a loot container's initial
 contents was previously rejected by the `Loot` constructor guard; that guard was **relaxed** so

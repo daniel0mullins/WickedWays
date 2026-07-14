@@ -157,18 +157,8 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
             .collect(),
         recipes: Vec::new(),
         materials: Vec::new(),
-        win_conditions: doc
-            .victory
-            .win
-            .iter()
-            .map(|(key, cond)| lower_condition(key, cond))
-            .collect(),
-        lose_conditions: doc
-            .victory
-            .lose
-            .iter()
-            .map(|(key, cond)| lower_condition(key, cond))
-            .collect(),
+        win_conditions: doc.victory.win.iter().map(lower_condition).collect(),
+        lose_conditions: doc.victory.lose.iter().map(lower_condition).collect(),
         // Each `[[mechanics]]` opt-in → a `MechanicEntry { key, config }`. `config`
         // is inert author-data (mechanic-specific): the author's optional `toml::Value`
         // converts to the description's `serde_json::Value`; absent (dread) → None. A
@@ -199,8 +189,13 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
 /// the MVP surface, matching the oracle catalog.
 fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
     let mut items = BTreeMap::new();
+    // Each item's `aliases` (if any) → a `catalog.aliases[<key>]` entry.
+    let mut aliases = BTreeMap::new();
     for item in &doc.items {
         items.insert(item.key.clone(), lower_item(item));
+        if !item.aliases.is_empty() {
+            aliases.insert(item.key.clone(), item.aliases.clone());
+        }
     }
 
     let mut behaviors = BTreeMap::new();
@@ -288,9 +283,9 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
 
     // Victory behaviors: each win/lose condition's `test` is a parsed predicate,
     // keyed by the condition key (shared with the description's condition entry).
-    for (key, cond) in doc.victory.win.iter().chain(doc.victory.lose.iter()) {
+    for cond in doc.victory.win.iter().chain(doc.victory.lose.iter()) {
         let script = VictoryScript { test: parse_expr(&cond.test, EXPR_BASE)? };
-        behaviors.insert(key.clone(), BehaviorScript::Victory { script });
+        behaviors.insert(cond.key.clone(), BehaviorScript::Victory { script });
     }
 
     // Every exit's `behavior` must name a defined `behaviors.exit` entry.
@@ -311,7 +306,7 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
 
     Ok(Catalog {
         items,
-        aliases: BTreeMap::new(),
+        aliases,
         behaviors,
         formations,
         recipes: BTreeMap::new(),
@@ -421,11 +416,11 @@ fn lower_item(item: &ItemEntry) -> ItemDescriptor {
 }
 
 /// The description victory entry carries only the condition KEY + optional
-/// narration. The `test` expression lives in the catalog behaviors (Task 5).
-/// A narration string lowers to the object shape `{ "text": "..." }`.
-fn lower_condition(key: &str, cond: &AuthorCondition) -> ConditionEntry {
+/// narration. The `test` expression lives in the catalog behaviors. A narration
+/// string lowers to the object shape `{ "text": "..." }`.
+fn lower_condition(cond: &AuthorCondition) -> ConditionEntry {
     ConditionEntry {
-        key: key.to_string(),
+        key: cond.key.clone(),
         narration: cond.narration.as_ref().map(|text| {
             let mut obj = Map::new();
             obj.insert("text".to_string(), Value::String(text.clone()));

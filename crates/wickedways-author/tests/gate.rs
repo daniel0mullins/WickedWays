@@ -596,6 +596,36 @@ fn compile_is_deterministic_timeout() {
 }
 
 #[test]
+fn hollow_house_description_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("hollow-house.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.description).unwrap(),
+        &serde_json::from_str(&read(&dir.join("hollow-house.description.json"))).unwrap(),
+        "hollow-house.description.json",
+    );
+}
+
+#[test]
+fn hollow_house_catalog_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("hollow-house.toml"))).expect("compile");
+    assert_json_eq(
+        &serde_json::to_value(&compiled.catalog).unwrap(),
+        &serde_json::from_str(&read(&dir.join("hollow-house.catalog.json"))).unwrap(),
+        "hollow-house.catalog.json",
+    );
+}
+
+#[test]
+fn compile_is_deterministic_hollow_house() {
+    let src = read(&fixtures().join("hollow-house.toml"));
+    let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
+    let b = serde_json::to_value(&compile(&src).expect("b")).unwrap();
+    assert_eq!(a, b, "compile() is not deterministic");
+}
+
+#[test]
 fn compile_is_deterministic() {
     let src = read(&fixtures().join("g2-vault.toml"));
     let a = serde_json::to_value(&compile(&src).expect("a")).unwrap();
