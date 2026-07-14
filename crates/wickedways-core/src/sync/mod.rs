@@ -9,6 +9,8 @@
 
 pub mod authorize;
 pub mod command;
+pub mod delta;
 
 pub use authorize::{authorize, AuthResult};
 pub use command::{Command, EquipmentSlot};
+pub use delta::{diff, CampaignCoreDelta, Delta, EntitySnapshot};
