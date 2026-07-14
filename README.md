@@ -1444,6 +1444,14 @@ const replica = SyncCoordinator.join({ registry, transport });
 replica.start();
 ```
 
+**Rust port (Phase 2c, in progress).** The sync layer is being ported to Rust alongside the engine
+(see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). The first slice landed the command model in
+[`crates/wickedways-core/src/sync/`](crates/wickedways-core/src/sync/): the actor-tagged
+[`Command`](crates/wickedways-core/src/sync/command.rs) union (mirroring `src/lib/sync/types.ts`
+byte-for-byte) and the [`authorize`](crates/wickedways-core/src/sync/authorize.rs) gate (mirroring
+`resolver.ts`). The `Authority` + `Delta` diff/apply + `Replica` follow; until the goldens replay
+against Rust, `src/lib/sync/` remains the authoritative oracle.
+
 ## Notable patterns
 
 - **Branded ID types** ([`brand.d.ts`](src/lib/brand.d.ts)) give `CampaignId`, `CharacterId`,
