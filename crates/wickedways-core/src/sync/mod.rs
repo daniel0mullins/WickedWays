@@ -11,10 +11,12 @@ pub mod applier;
 pub mod authority;
 pub mod authorize;
 pub mod command;
+pub mod coordinator;
 pub mod delta;
 
 pub use applier::apply as apply_delta;
 pub use authority::{AuthorityOpts, LogEntry, SubmitResult, SyncAuthority};
 pub use authorize::{authorize, AuthResult};
 pub use command::{Command, EquipmentSlot};
+pub use coordinator::{InProcessTransport, SyncCoordinator, SyncTransport};
 pub use delta::{diff, CampaignCoreDelta, Delta, EntitySnapshot};
