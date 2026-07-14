@@ -111,6 +111,9 @@ pub struct ItemEntry {
     #[serde(default)] pub emits_light: Option<bool>,
     #[serde(default)] pub max_durability: Option<i64>,
     #[serde(default)] pub lore: Option<String>,
+    /// Name aliases the play surface resolves this item by (e.g. `lamp`/`light` for
+    /// the lantern). Lowered into `catalog.aliases[<key>]`; absent → no alias entry.
+    #[serde(default)] pub aliases: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
@@ -289,13 +292,22 @@ pub struct ExitBehaviorEntry {
 #[derive(Clone, Debug, Default, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Victory {
-    #[serde(default)] pub win: BTreeMap<String, ConditionEntry>,
-    #[serde(default)] pub lose: BTreeMap<String, ConditionEntry>,
+    #[serde(default)] pub win: Vec<ConditionEntry>,
+    #[serde(default)] pub lose: Vec<ConditionEntry>,
 }
 
+/// A `[[victory.win]]` / `[[victory.lose]]` entry. An ARRAY of tables (not a
+/// `[victory.win.<key>]` map) so the author controls the win/lose ORDER — the
+/// description's `winConditions`/`loseConditions` are ordered arrays, and a real
+/// campaign's order need not be alphabetical. `key` names the condition (shared
+/// with its catalog `BehaviorScript::Victory`); `test` is the predicate expression.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ConditionEntry { pub test: String, #[serde(default)] pub narration: Option<String> }
+pub struct ConditionEntry {
+    pub key: String,
+    pub test: String,
+    #[serde(default)] pub narration: Option<String>,
+}
 
 #[cfg(test)]
 mod tests {
@@ -317,7 +329,8 @@ mod tests {
             [behaviors.exit.vault-door]
             canPass = "hasKey(actor, 'vault')"
             failMessage = "Locked."
-            [victory.win.reached-vault]
+            [[victory.win]]
+            key = "reached-vault"
             test = "party[0].room.name == 'Vault'"
         "#;
         let doc: AuthorDoc = toml::from_str(src).expect("parse");
@@ -326,7 +339,8 @@ mod tests {
         assert_eq!(doc.rooms.len(), 1);
         assert_eq!(doc.exits[0].behavior.as_deref(), Some("vault-door"));
         assert_eq!(doc.behaviors.exit["vault-door"].can_pass, "hasKey(actor, 'vault')");
-        assert_eq!(doc.victory.win["reached-vault"].test, "party[0].room.name == 'Vault'");
+        assert_eq!(doc.victory.win[0].key, "reached-vault");
+        assert_eq!(doc.victory.win[0].test, "party[0].room.name == 'Vault'");
     }
 
     #[test]

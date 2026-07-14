@@ -151,19 +151,30 @@ fn parse_set(rest: &str, base: Span) -> Result<Stmt, CompileError> {
     Ok(Stmt::SetState { field: target.to_string(), value })
 }
 
+/// String-state tracker shared by the top-level scanners: `None` outside a string,
+/// `Some(q)` inside one opened by quote `q` (`'` or `"`). The other quote kind inside
+/// a string is a literal character — so a double-quoted string may contain
+/// apostrophes (the storyteller lore) and a single-quoted one may contain `"`.
+fn track_quote(state: Option<char>, c: char) -> Option<char> {
+    match state {
+        None if c == '\'' || c == '"' => Some(c),
+        Some(q) if q == c => None,
+        other => other,
+    }
+}
+
 /// Byte index of the assignment `=`: a single `=` (not part of `==`/`!=`/`<=`/
-/// `>=`) at bracket-depth 0 and outside a single-quoted string. `None` if absent.
+/// `>=`) at bracket-depth 0 and outside a string. `None` if absent.
 fn find_assignment_eq(s: &str) -> Option<usize> {
-    let bytes = s.as_bytes();
     let mut depth: i32 = 0;
-    let mut in_str = false;
-    let mut i = 0;
-    while i < bytes.len() {
-        match bytes[i] {
-            b'\'' => in_str = !in_str,
-            b'[' | b'(' if !in_str => depth += 1,
-            b']' | b')' if !in_str => depth -= 1,
-            b'=' if !in_str && depth <= 0 => {
+    let mut quote: Option<char> = None;
+    let bytes = s.as_bytes();
+    for (i, c) in s.char_indices() {
+        match c {
+            '\'' | '"' => quote = track_quote(quote, c),
+            '[' | '(' if quote.is_none() => depth += 1,
+            ']' | ')' if quote.is_none() => depth -= 1,
+            '=' if quote.is_none() && depth <= 0 => {
                 let prev = if i > 0 { bytes[i - 1] } else { b' ' };
                 let next = if i + 1 < bytes.len() { bytes[i + 1] } else { b' ' };
                 // Skip `==`; skip the second `=` of `!=`/`<=`/`>=`/`==`.
@@ -173,7 +184,6 @@ fn find_assignment_eq(s: &str) -> Option<usize> {
             }
             _ => {}
         }
-        i += 1;
     }
     None
 }
@@ -384,7 +394,7 @@ fn parse_stat_keyword(kw: &str, base: Span) -> Result<StatType, CompileError> {
 }
 
 /// Split an argument list on top-level commas, tracking `(`/`[` nesting and
-/// single-quoted string state so a comma inside a nested expression or string
+/// string state (both quote kinds) so a comma inside a nested expression or string
 /// literal does not separate arguments. An empty source yields no arguments.
 fn split_args(src: &str) -> Vec<String> {
     if src.trim().is_empty() {
@@ -393,22 +403,22 @@ fn split_args(src: &str) -> Vec<String> {
     let mut args = Vec::new();
     let mut current = String::new();
     let mut depth: i32 = 0;
-    let mut in_str = false;
+    let mut quote: Option<char> = None;
     for c in src.chars() {
         match c {
-            '\'' => {
-                in_str = !in_str;
+            '\'' | '"' => {
+                quote = track_quote(quote, c);
                 current.push(c);
             }
-            '(' | '[' if !in_str => {
+            '(' | '[' if quote.is_none() => {
                 depth += 1;
                 current.push(c);
             }
-            ')' | ']' if !in_str => {
+            ')' | ']' if quote.is_none() => {
                 depth -= 1;
                 current.push(c);
             }
-            ',' if !in_str && depth <= 0 => {
+            ',' if quote.is_none() && depth <= 0 => {
                 args.push(std::mem::take(&mut current));
             }
             _ => current.push(c),
@@ -418,29 +428,29 @@ fn split_args(src: &str) -> Vec<String> {
     args
 }
 
-/// Split `src` into statement units on newlines at brace-depth 0, tracking
-/// single-quoted string state (so `{`/`}`/newlines inside a literal don't count).
+/// Split `src` into statement units on newlines at brace-depth 0, tracking string
+/// state (both quote kinds) so `{`/`}`/newlines inside a literal don't count.
 /// Blank units are dropped.
 fn split_top_level(src: &str) -> Vec<String> {
     let mut units = Vec::new();
     let mut current = String::new();
     let mut depth: i32 = 0;
-    let mut in_str = false;
+    let mut quote: Option<char> = None;
     for c in src.chars() {
         match c {
-            '\'' => {
-                in_str = !in_str;
+            '\'' | '"' => {
+                quote = track_quote(quote, c);
                 current.push(c);
             }
-            '{' if !in_str => {
+            '{' if quote.is_none() => {
                 depth += 1;
                 current.push(c);
             }
-            '}' if !in_str => {
+            '}' if quote.is_none() => {
                 depth -= 1;
                 current.push(c);
             }
-            '\n' if !in_str && depth <= 0 => {
+            '\n' if quote.is_none() && depth <= 0 => {
                 if !current.trim().is_empty() {
                     units.push(std::mem::take(&mut current));
                 } else {
@@ -456,32 +466,32 @@ fn split_top_level(src: &str) -> Vec<String> {
     units
 }
 
-/// Byte index of the first `{` not inside a single-quoted string, if any.
+/// Byte index of the first `{` not inside a string, if any.
 fn find_open_brace(s: &str) -> Option<usize> {
-    let mut in_str = false;
+    let mut quote: Option<char> = None;
     for (i, c) in s.char_indices() {
         match c {
-            '\'' => in_str = !in_str,
-            '{' if !in_str => return Some(i),
+            '\'' | '"' => quote = track_quote(quote, c),
+            '{' if quote.is_none() => return Some(i),
             _ => {}
         }
     }
     None
 }
 
-/// Byte index of the `}` matching the `{` at `open`, tracking nesting and
-/// single-quoted strings, if any.
+/// Byte index of the `}` matching the `{` at `open`, tracking nesting and string
+/// state (both quote kinds), if any.
 fn matching_brace(s: &str, open: usize) -> Option<usize> {
     let mut depth: i32 = 0;
-    let mut in_str = false;
+    let mut quote: Option<char> = None;
     for (i, c) in s.char_indices() {
         if i < open {
             continue;
         }
         match c {
-            '\'' => in_str = !in_str,
-            '{' if !in_str => depth += 1,
-            '}' if !in_str => {
+            '\'' | '"' => quote = track_quote(quote, c),
+            '{' if quote.is_none() => depth += 1,
+            '}' if quote.is_none() => {
                 depth -= 1;
                 if depth == 0 {
                     return Some(i);

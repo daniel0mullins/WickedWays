@@ -234,6 +234,14 @@ mod tests {
     }
 
     #[test]
+    fn double_quoted_string_with_apostrophes() {
+        // A double-quoted string carries embedded apostrophes verbatim (the real
+        // storyteller lore, e.g. `'They would not...'`).
+        assert_eq!(p("\"A page clears: 'They would not.'\""),
+            json!({"kind":"lit","value":"A page clears: 'They would not.'"}));
+    }
+
+    #[test]
     fn defined_call() {
         assert_eq!(p("defined(actor.room)"),
             json!({"kind":"defined","expr":{"kind":"get","field":"room","of":{"kind":"actor"}}}));

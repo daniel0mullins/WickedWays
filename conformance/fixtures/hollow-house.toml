@@ -1,0 +1,369 @@
+# The Hollow House — the full campaign, re-authored in the TOML surface. The
+# CAPSTONE of the G2 author: `compile(hollow-house.toml)` must reproduce the
+# committed hollow-house.{description,catalog}.json (the real shipped campaign)
+# byte-for-byte. Every surface the author has grown across the G2 slices is
+# exercised here at once.
+
+title = "The Hollow House"
+startRoom = "Foyer"
+timeoutNarration = "Dawn never comes. You realize, slowly, that it never will — and that you stopped looking for the door some hours ago."
+
+[opts]
+maxRounds = 150
+baseEncounterChance = 20
+
+[[archetypes]]
+id = "heir"
+name = "Heir"
+baseStats = { health = 12, sanity = 16, energy = 5 }
+inventorySlots = 1
+immunities = ["fear"]
+
+# ── Rooms ─────────────────────────────────────────────────────────────────────
+[[rooms]]
+name = "Foyer"
+description = "The entrance hall of the Hollow House. Dust sheets shroud the furniture; the front door has locked itself behind you."
+[[rooms]]
+name = "Cellar"
+description = "A low brick cellar, black as a throat. Water seeps somewhere unseen."
+dark = true
+[[rooms]]
+name = "Hall"
+description = "A long central hall. Portraits watch from the walls, their eyes scratched out."
+spawnModifier = 1
+[[rooms]]
+name = "Kitchen"
+description = "A cold scullery. Copper pots hang in rows; one still sways."
+spawnModifier = 1
+[[rooms]]
+name = "Parlor"
+description = "A receiving parlor gone to mildew. A piano sits with its lid nailed shut."
+spawnModifier = 1
+[[rooms]]
+name = "Landing"
+description = "The upstairs landing. Two doors face you — one to the west, one leading further up — and a nursery stands open to the east."
+spawnModifier = 1
+[[rooms]]
+name = "Study"
+description = "A cramped study, papers everywhere, as if someone left mid-sentence."
+[[rooms]]
+name = "Nursery"
+description = "A child's nursery. A rocking horse moves, very slightly, on its own."
+dark = true
+[[rooms]]
+name = "Attic"
+description = "The attic, under the bare ribs of the roof. This is where the journal ends."
+
+# ── Exits ─────────────────────────────────────────────────────────────────────
+[[exits]]
+from = "Foyer"
+to = "Hall"
+direction = "north"
+[[exits]]
+from = "Hall"
+to = "Foyer"
+direction = "south"
+[[exits]]
+from = "Foyer"
+to = "Cellar"
+direction = "south"
+behavior = "cellar-door"
+name = "cellar door"
+initialState = { unlocked = false }
+[[exits]]
+from = "Hall"
+to = "Kitchen"
+direction = "west"
+[[exits]]
+from = "Kitchen"
+to = "Hall"
+direction = "east"
+[[exits]]
+from = "Hall"
+to = "Parlor"
+direction = "east"
+[[exits]]
+from = "Parlor"
+to = "Hall"
+direction = "west"
+[[exits]]
+from = "Hall"
+to = "Landing"
+direction = "north"
+[[exits]]
+from = "Landing"
+to = "Hall"
+direction = "south"
+[[exits]]
+from = "Landing"
+to = "Nursery"
+direction = "east"
+[[exits]]
+from = "Nursery"
+to = "Landing"
+direction = "west"
+[[exits]]
+from = "Landing"
+to = "Study"
+direction = "west"
+behavior = "study-door"
+name = "study door"
+initialState = { unlocked = false }
+[[exits]]
+from = "Landing"
+to = "Attic"
+direction = "north"
+behavior = "attic-door"
+name = "attic door"
+initialState = { unlocked = false }
+
+# ── Mobs ──────────────────────────────────────────────────────────────────────
+[[mobs]]
+name = "Wraith"
+stats = { health = 6, sanity = 5, energy = 5 }
+room = "Nursery"
+drops = ["brass-key"]
+naturalAttack = { stat = "sanity", power = 3 }
+[[mobs]]
+name = "Revenant"
+stats = { health = 10, sanity = 8, energy = 6 }
+room = "Cellar"
+drops = ["iron-key"]
+naturalAttack = { stat = "sanity", power = 2 }
+
+# ── Loot ──────────────────────────────────────────────────────────────────────
+[[loot]]
+name = "foyer-table"
+room = "Foyer"
+items = ["journal"]
+description = "A hall table with a single drawer."
+[[loot]]
+name = "hall-stand"
+room = "Hall"
+items = ["poker"]
+description = "A fireplace stand."
+[[loot]]
+name = "kitchen-hook"
+room = "Kitchen"
+items = ["lantern"]
+description = "A lantern hangs from a hook."
+[[loot]]
+name = "study-desk"
+room = "Study"
+items = ["laudanum"]
+description = "A writing desk with a locked-open drawer."
+
+# ── NPCs ──────────────────────────────────────────────────────────────────────
+[[npcs]]
+name = "Caretaker"
+stats = { health = 1, sanity = 1, energy = 1 }
+room = "Foyer"
+behavior = "caretaker"
+holds = ["cellar-key"]
+
+# ── Formations ────────────────────────────────────────────────────────────────
+[[formations]]
+key = "rat-single"
+weight = 3
+mobs = [
+  { name = "Rat", stats = { health = 2, sanity = 2, energy = 3 }, naturalAttack = { stat = "health", power = 1 }, drops = ["rat-tail"], baseEscapeChance = 50, lightAverse = false, actionsPerRound = 2 },
+]
+[[formations]]
+key = "rat-pair"
+weight = 1
+mobs = [
+  { name = "Rat", stats = { health = 2, sanity = 2, energy = 3 }, naturalAttack = { stat = "health", power = 1 }, drops = ["rat-tail"], baseEscapeChance = 50, lightAverse = false, actionsPerRound = 2 },
+  { name = "Rat", stats = { health = 2, sanity = 2, energy = 3 }, naturalAttack = { stat = "health", power = 1 }, drops = ["rat-tail"], baseEscapeChance = 50, lightAverse = false, actionsPerRound = 2 },
+]
+
+# ── Scenes ────────────────────────────────────────────────────────────────────
+[[scenes]]
+room = "Foyer"
+key = "caretaker-intro"
+phase = "enter"
+
+# ── Victory conditions ────────────────────────────────────────────────────────
+[[victory.win]]
+key = "reached-attic-with-journal"
+test = "first(party).room.name == 'Attic' && hasItem(first(party), 'journal')"
+narration = "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
+
+[[victory.lose]]
+key = "sanity-zero"
+test = "some(party, element.sanity <= 0)"
+narration = "The dark gets in. Your thoughts come apart like wet paper, and the Hollow House keeps what is left of you."
+
+[[victory.lose]]
+key = "party-down"
+test = "length(party) > 0 && every(party, includes(element.status, 'ko'))"
+narration = "You fall, and do not rise. The house is patient. It has all the time there is."
+
+# ── Mechanic opt-ins ──────────────────────────────────────────────────────────
+[[mechanics]]
+key = "dread"
+[[mechanics]]
+key = "storyteller"
+[[mechanics]]
+key = "status-bar"
+
+# ── Items ─────────────────────────────────────────────────────────────────────
+[[items]]
+key = "lantern"
+name = "Brass Lantern"
+type = "weapon"
+stat = "health"
+modifier = 0
+equippable = true
+destroyable = true
+slot = "hand"
+emitsLight = true
+recipe = { item = 1 }
+aliases = ["lantern", "lamp", "light"]
+
+[[items]]
+key = "journal"
+name = "Water-Stained Journal"
+type = "consumable"
+stat = "health"
+modifier = 0
+destroyable = true
+droppable = false
+recipe = { item = 1 }
+aliases = ["journal", "diary", "book"]
+lore = '''The journal's spine cracks as you open it. The early pages are a household's ordinary griefs — debts, a failing orchard, a wife taken too young. Then the hand changes. "We buried her in the cellar because the ground outside would not hold her. By the third night she had climbed halfway back." The ink grows frantic: a child who never wept, a face in the dark that was almost hers, an iron key forged to keep the cellar door honest. The last entries are barely words — "it wears her now; it wears all of us, in time" — and beneath them, pressed flat and brown, a sprig of the lilies they laid on a coffin that never stayed shut. Whoever kept this journal loved the house once. It did not love them back.'''
+
+[[items]]
+key = "poker"
+name = "Iron Fire-Poker"
+type = "weapon"
+stat = "health"
+modifier = 5
+equippable = true
+destroyable = true
+slot = "hand"
+maxDurability = 8
+recipe = { metal = 1 }
+aliases = ["poker", "fire-poker", "iron"]
+
+[[items]]
+key = "laudanum"
+name = "Vial of Laudanum"
+type = "consumable"
+stat = "sanity"
+modifier = 6
+usable = true
+destroyable = true
+recipe = { healing = 1 }
+aliases = ["laudanum", "vial", "tonic"]
+
+[[items]]
+key = "rat-tail"
+name = "Rat Tail"
+type = "consumable"
+stat = "sanity"
+modifier = 1
+usable = true
+destroyable = true
+recipe = { item = 1 }
+
+[[items]]
+key = "brass-key"
+name = "Brass Key"
+keyCode = "brass"
+aliases = ["brass key", "brass", "key"]
+
+[[items]]
+key = "iron-key"
+name = "Iron Key"
+keyCode = "iron"
+aliases = ["iron key", "iron", "key"]
+
+[[items]]
+key = "cellar-key"
+name = "Cellar Key"
+keyCode = "cellar"
+aliases = ["cellar key", "cellar", "key"]
+
+# ── Behaviors: exit doors ─────────────────────────────────────────────────────
+[behaviors.exit.cellar-door]
+canPass = "stateGet('unlocked', false) || hasKey(actor, 'cellar')"
+failMessage = "The cellar door won't budge — it's locked."
+runScript = '''
+  when !stateGet('unlocked', false) {
+    set state.unlocked = true
+    pass 'The cellar key turns; the cellar door swings open.'
+  }
+'''
+
+[behaviors.exit.study-door]
+canPass = "stateGet('unlocked', false) || hasKey(actor, 'brass')"
+failMessage = "The study door won't budge — it's locked."
+runScript = '''
+  when !stateGet('unlocked', false) {
+    set state.unlocked = true
+    pass 'The brass key turns; the study door swings open.'
+  }
+'''
+
+[behaviors.exit.attic-door]
+canPass = "stateGet('unlocked', false) || hasKey(actor, 'iron')"
+failMessage = "The attic door won't budge — it's locked."
+runScript = '''
+  when !stateGet('unlocked', false) {
+    set state.unlocked = true
+    pass 'The iron key grinds in the lock; the attic stairs open above you.'
+  }
+'''
+
+# ── Behaviors: item onUse ─────────────────────────────────────────────────────
+[behaviors.item.laudanum]
+onUse = "emit adjustStat(actor, sanity, 6)"
+
+[behaviors.item.rat-tail]
+onUse = "emit adjustStat(actor, sanity, 1)"
+
+# ── Behaviors: NPC ────────────────────────────────────────────────────────────
+[behaviors.npc.caretaker]
+description = "A stooped caretaker in a moth-eaten coat, a ring of iron keys trembling at his belt. He will not meet your eyes."
+
+[behaviors.npc.caretaker.default]
+match = ""
+response = "Take the cellar key. I have no more use for it, nor for this house. I am leaving now, and I will not come back."
+once = true
+effects = '''
+  emit giveItem('npc:Caretaker', actor, 'npc:Caretaker:item#0')
+  emit setVisible('npc:Caretaker', false)
+'''
+
+# ── Behaviors: scene ──────────────────────────────────────────────────────────
+[behaviors.scene.caretaker-intro]
+onEnter = "emit cue('The front door thuds shut behind you and will not open again. In the gloom of the foyer, a stooped figure waits, a ring of keys shaking in his hand.')"
+
+# ── Behaviors: mechanics ──────────────────────────────────────────────────────
+[behaviors.mechanic.dread]
+init = {}
+onTurnStart = '''
+  guard !hasEquipped(actor, 'lantern')
+  emit adjustStat(actor, sanity, -1)
+'''
+
+[behaviors.mechanic.storyteller]
+init = { seen = {} }
+onAction = '''
+  guard action.kind == 'move'
+  guard has(mapLit('Parlor', "A page of the journal clears: 'They would not let me bury her properly. The parlor still smells of lilies.'", 'Study', "The journal's hand grows frantic here: 'The thing in the cellar wears her face now. The iron key keeps it down.'", 'Nursery', "An entry, water-blurred: 'The child never cried. That was the first wrong thing.'", 'Cellar', "The last legible page: 'If you are reading this in the dark, you have already lost the light. I am sorry.'", 'Attic', "The final entry is unfinished — but you understand it now, standing where it ends."), action.room.name)
+  guard hasItem(actor, 'journal')
+  guard !stateGetIn('seen', action.room.name, false)
+  set state.seen[action.room.name] = true
+  emit cue(lookup(mapLit('Parlor', "A page of the journal clears: 'They would not let me bury her properly. The parlor still smells of lilies.'", 'Study', "The journal's hand grows frantic here: 'The thing in the cellar wears her face now. The iron key keeps it down.'", 'Nursery', "An entry, water-blurred: 'The child never cried. That was the first wrong thing.'", 'Cellar', "The last legible page: 'If you are reading this in the dark, you have already lost the light. I am sorry.'", 'Attic', "The final entry is unfinished — but you understand it now, standing where it ends."), action.room.name))
+'''
+
+[behaviors.mechanic.status-bar]
+init = {}
+onRoundStart = '''
+  guard length(party) > 0
+  emit status(field('Sanity', str(first(party).sanity), first(party).sanity <= 3 ? 'critical' : first(party).sanity <= 6 ? 'warn' : 'normal'), field('Round', concat(str(round), '/', str(maxRounds))))
+'''
+onTurnEnd = '''
+  emit status(field('Sanity', str(actor.sanity), actor.sanity <= 3 ? 'critical' : actor.sanity <= 6 ? 'warn' : 'normal'), field('Round', concat(str(round), '/', str(maxRounds))))
+'''

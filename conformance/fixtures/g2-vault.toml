@@ -29,6 +29,7 @@ name = "shelf"
 room = "Hall"
 items = ["vault-key"]
 
-[victory.win.reached-vault]
+[[victory.win]]
+key = "reached-vault"
 test = "party[0].room.name == 'Vault'"
 narration = "You reached the vault."

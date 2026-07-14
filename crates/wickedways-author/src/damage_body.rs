@@ -57,17 +57,27 @@ pub(crate) fn parse_damage_body(src: &str, base: Span) -> Result<DamageBody, Com
     Ok(DamageBody::Value { expr: parse_expr(src, base)? })
 }
 
-/// Byte index of the first `?` at bracket-depth 0 and outside a single-quoted
-/// string, if any — the opener of the outermost ternary.
+/// String-state tracker (both quote kinds): `None` outside a string, `Some(q)`
+/// inside one opened by `q`. The other quote kind inside is a literal character.
+fn track_quote(state: Option<char>, c: char) -> Option<char> {
+    match state {
+        None if c == '\'' || c == '"' => Some(c),
+        Some(q) if q == c => None,
+        other => other,
+    }
+}
+
+/// Byte index of the first `?` at bracket-depth 0 and outside a string, if any —
+/// the opener of the outermost ternary.
 fn top_level_question(s: &str) -> Option<usize> {
     let mut depth: i32 = 0;
-    let mut in_str = false;
+    let mut quote: Option<char> = None;
     for (i, c) in s.char_indices() {
         match c {
-            '\'' => in_str = !in_str,
-            '(' | '[' if !in_str => depth += 1,
-            ')' | ']' if !in_str => depth -= 1,
-            '?' if !in_str && depth <= 0 => return Some(i),
+            '\'' | '"' => quote = track_quote(quote, c),
+            '(' | '[' if quote.is_none() => depth += 1,
+            ')' | ']' if quote.is_none() => depth -= 1,
+            '?' if quote.is_none() && depth <= 0 => return Some(i),
             _ => {}
         }
     }
@@ -80,14 +90,14 @@ fn top_level_question(s: &str) -> Option<usize> {
 fn matching_colon(s: &str) -> Option<usize> {
     let mut ternary_depth: i32 = 0;
     let mut bracket_depth: i32 = 0;
-    let mut in_str = false;
+    let mut quote: Option<char> = None;
     for (i, c) in s.char_indices() {
         match c {
-            '\'' => in_str = !in_str,
-            '(' | '[' if !in_str => bracket_depth += 1,
-            ')' | ']' if !in_str => bracket_depth -= 1,
-            '?' if !in_str && bracket_depth <= 0 => ternary_depth += 1,
-            ':' if !in_str && bracket_depth <= 0 => {
+            '\'' | '"' => quote = track_quote(quote, c),
+            '(' | '[' if quote.is_none() => bracket_depth += 1,
+            ')' | ']' if quote.is_none() => bracket_depth -= 1,
+            '?' if quote.is_none() && bracket_depth <= 0 => ternary_depth += 1,
+            ':' if quote.is_none() && bracket_depth <= 0 => {
                 if ternary_depth == 0 {
                     return Some(i);
                 }
