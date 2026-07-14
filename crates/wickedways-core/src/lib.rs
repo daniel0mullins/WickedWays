@@ -26,3 +26,5 @@ pub mod world;
 pub use world::{World, snapshot::CampaignSnapshot};
 
 pub mod script;
+
+pub mod sync;
