@@ -60,8 +60,11 @@ pub struct Delta {
     pub changed: Vec<EntitySnapshot>,
     pub created: Vec<EntitySnapshot>,
     pub removed: Vec<String>,
+    // Boxed: a `CampaignCoreDelta` embeds a full `CampaignCoreSnapshot` (~500 bytes), which would
+    // otherwise make every `Delta` (and `LogEntry`/`SubmitResult` carrying one) that large even
+    // when the core is unchanged. serde treats `Option<Box<T>>` transparently.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub campaign_core: Option<CampaignCoreDelta>,
+    pub campaign_core: Option<Box<CampaignCoreDelta>>,
 }
 
 /// Diffs two full campaign snapshots into a minimal entity-delta. Mirrors the TS
@@ -78,9 +81,11 @@ pub fn diff(before: &CampaignSnapshot, after: &CampaignSnapshot) -> Delta {
     diff_collection(&before.material_caches, &after.material_caches, cache_id, |m| EntitySnapshot::MaterialCache(Box::new(m)), &mut changed, &mut created, &mut removed);
 
     let core_changed = before.campaign != after.campaign || before.codex != after.codex;
-    let campaign_core = core_changed.then(|| CampaignCoreDelta {
-        core: after.campaign.clone(),
-        codex: after.codex.clone(),
+    let campaign_core = core_changed.then(|| {
+        Box::new(CampaignCoreDelta {
+            core: after.campaign.clone(),
+            codex: after.codex.clone(),
+        })
     });
 
     Delta { changed, created, removed, campaign_core }
