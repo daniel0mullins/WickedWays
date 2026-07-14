@@ -22,9 +22,25 @@ use wickedways_core::script::ast::DamageBody;
 use crate::error::{CompileError, Span};
 use crate::expr::parse_expr;
 
+/// Recursion-depth ceiling for the `modifyDamage` ternary. A modding trust
+/// boundary: a deeply-chained `a ? … : b ? … : …` transform would otherwise
+/// overflow the stack (and blow up the per-level rescans). Real transforms nest
+/// one or two deep.
+const MAX_DAMAGE_DEPTH: usize = 128;
+
 /// Parse a `modifyDamage` body into a [`DamageBody`]. `base` is threaded through
 /// to [`parse_expr`] so embedded-expression error spans point into the source.
 pub(crate) fn parse_damage_body(src: &str, base: Span) -> Result<DamageBody, CompileError> {
+    parse_damage_body_at(src, base, 0)
+}
+
+fn parse_damage_body_at(src: &str, base: Span, depth: usize) -> Result<DamageBody, CompileError> {
+    if depth > MAX_DAMAGE_DEPTH {
+        return Err(CompileError::ExprParse {
+            span: base,
+            message: "modifyDamage nested too deeply".into(),
+        });
+    }
     let src = src.trim();
     if src.is_empty() {
         return Err(CompileError::ExprParse {
@@ -44,9 +60,9 @@ pub(crate) fn parse_damage_body(src: &str, base: Span) -> Result<DamageBody, Com
             span: base,
             message: "modifyDamage ternary is missing its ':'".into(),
         })?;
-        let then = parse_damage_body(&rest[..colon], base)?;
+        let then = parse_damage_body_at(&rest[..colon], base, depth + 1)?;
         // `:` is one ASCII byte, so `colon + 1` is a char boundary.
-        let els = parse_damage_body(&rest[colon + 1..], base)?;
+        let els = parse_damage_body_at(&rest[colon + 1..], base, depth + 1)?;
         return Ok(DamageBody::IfElse { cond, then: Box::new(then), r#else: Box::new(els) });
     }
     // `final <expr>` -> Final (the value that halts the transformer chain).
@@ -215,6 +231,15 @@ mod tests {
             parse_damage_body("   ", BASE).unwrap_err(),
             CompileError::ExprParse { .. }
         ));
+    }
+
+    #[test]
+    fn deeply_nested_ternary_errors_not_panics() {
+        // A deeply-chained transform is a clean error, not a stack-overflow abort
+        // (or a quadratic hang).
+        let body = format!("{}final 0{}", "damage.amount > 1 ? ".repeat(4000), " : final 1".repeat(4000));
+        assert!(matches!(parse_damage_body(&body, BASE).unwrap_err(),
+            CompileError::ExprParse { .. }));
     }
 
     #[test]

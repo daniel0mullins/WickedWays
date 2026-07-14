@@ -28,28 +28,39 @@ use crate::expr::parse_expr;
 /// `when … { … }` stays one unit), then dispatched by leading keyword. Blank
 /// lines are skipped. `base` is passed through to `parse_expr` for embedded
 /// expressions.
+/// Recursion-depth ceiling for nested `when` blocks. A modding trust boundary:
+/// deeply-nested `when { when { … } }` author input would otherwise overflow the
+/// stack and abort. Real bodies nest a level or two; this is a comfortable margin.
+const MAX_STMT_DEPTH: usize = 128;
+
 pub(crate) fn parse_stmts(src: &str, base: Span) -> Result<Vec<Stmt>, CompileError> {
-    parse_body(src, base, false)
+    parse_body(src, base, false, 0)
 }
 
 /// Parse a **script** body — an exit `runScript` — where `pass <expr>` (exit
 /// narration, `Stmt::Pass`) is legal. Effect/hook bodies use [`parse_stmts`],
 /// which rejects `pass`.
 pub(crate) fn parse_script(src: &str, base: Span) -> Result<Vec<Stmt>, CompileError> {
-    parse_body(src, base, true)
+    parse_body(src, base, true, 0)
 }
 
 /// Parse a newline-separated block into a `Vec<Stmt>`. `allow_pass` gates the
-/// `pass` statement (legal only in script bodies), threaded through nested
-/// `when` blocks.
-fn parse_body(src: &str, base: Span, allow_pass: bool) -> Result<Vec<Stmt>, CompileError> {
+/// `pass` statement (legal only in script bodies); `depth` is the nested-`when`
+/// recursion depth, capped at [`MAX_STMT_DEPTH`] against stack overflow.
+fn parse_body(src: &str, base: Span, allow_pass: bool, depth: usize) -> Result<Vec<Stmt>, CompileError> {
+    if depth > MAX_STMT_DEPTH {
+        return Err(CompileError::ExprParse {
+            span: base,
+            message: "statement body nested too deeply".into(),
+        });
+    }
     let mut stmts = Vec::new();
     for unit in split_top_level(src) {
         let trimmed = unit.trim();
         if trimmed.is_empty() {
             continue;
         }
-        stmts.push(parse_stmt(trimmed, base, allow_pass)?);
+        stmts.push(parse_stmt(trimmed, base, allow_pass, depth)?);
     }
     Ok(stmts)
 }
@@ -57,11 +68,11 @@ fn parse_body(src: &str, base: Span, allow_pass: bool) -> Result<Vec<Stmt>, Comp
 /// Dispatch a single (already-trimmed, non-empty) statement by its leading
 /// keyword. `pass` is accepted only when `allow_pass` (script bodies); anywhere
 /// else — and any other unrecognized keyword — is an `ExprParse` error.
-fn parse_stmt(stmt: &str, base: Span, allow_pass: bool) -> Result<Stmt, CompileError> {
+fn parse_stmt(stmt: &str, base: Span, allow_pass: bool, depth: usize) -> Result<Stmt, CompileError> {
     let (kw, rest) = split_keyword(stmt);
     match kw {
         "guard" => Ok(Stmt::Guard { cond: parse_expr(rest, base)? }),
-        "when" => parse_when(rest, base, allow_pass),
+        "when" => parse_when(rest, base, allow_pass, depth),
         "set" => parse_set(rest, base),
         "emit" => parse_emit(rest, base),
         // `pass <expr>` — exit narration (the last `Pass` wins). Script-only.
@@ -86,7 +97,7 @@ fn split_keyword(s: &str) -> (&str, &str) {
 /// `when <cond> { <stmts> }` — parse the condition (up to the first top-level
 /// `{`) and RECURSE into the brace-delimited inner block. `allow_pass` threads
 /// through so a `pass` inside a script-body `when` stays legal.
-fn parse_when(rest: &str, base: Span, allow_pass: bool) -> Result<Stmt, CompileError> {
+fn parse_when(rest: &str, base: Span, allow_pass: bool, depth: usize) -> Result<Stmt, CompileError> {
     let open = find_open_brace(rest).ok_or_else(|| CompileError::ExprParse {
         span: base,
         message: "expected '{' to open a when block".into(),
@@ -97,7 +108,7 @@ fn parse_when(rest: &str, base: Span, allow_pass: bool) -> Result<Stmt, CompileE
         message: "unterminated when block (missing '}')".into(),
     })?;
     // `open` and `close` index the ASCII `{`/`}`, so `open + 1` is a char boundary.
-    let then = parse_body(&rest[open + 1..close], base, allow_pass)?;
+    let then = parse_body(&rest[open + 1..close], base, allow_pass, depth + 1)?;
     Ok(Stmt::When { cond, then })
 }
 
@@ -564,6 +575,15 @@ mod tests {
             {"kind":"when","cond":{"kind":"bin","op":"eq","left":{"kind":"round"},"right":{"kind":"lit","value":1}},
              "then":[{"kind":"emit","effect":{"kind":"cue","text":{"kind":"lit","value":"x"}}}]}
         ]));
+    }
+
+    #[test]
+    fn deeply_nested_when_errors_not_panics() {
+        // Nested `when { when { … } }` past the depth cap is a clean error, not a
+        // stack-overflow abort.
+        let body = format!("{}emit cue('x')\n{}", "when actor {\n".repeat(4000), "}\n".repeat(4000));
+        assert!(matches!(parse_stmts(&body, Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }));
     }
 
     #[test]

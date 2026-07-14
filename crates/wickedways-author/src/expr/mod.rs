@@ -234,6 +234,32 @@ mod tests {
     }
 
     #[test]
+    fn deeply_nested_input_errors_not_panics() {
+        // A modding trust boundary: pathological nesting must be a clean
+        // `CompileError`, never a stack-overflow abort.
+        let parens = format!("{}actor{}", "(".repeat(5000), ")".repeat(5000));
+        assert!(matches!(parse_expr(&parens, Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }));
+        let bangs = format!("{}actor", "!".repeat(5000));
+        assert!(matches!(parse_expr(&bangs, Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }));
+        let ternary = format!("{}actor{}", "actor ? ".repeat(5000), " : actor".repeat(5000));
+        assert!(matches!(parse_expr(&ternary, Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }));
+        // Loop-built chains (Get/Index/Bin) grow the tree without recursing — they
+        // must be capped too, else the deep tree overflows on drop/serialize.
+        let gets = format!("party{}", ".x".repeat(5000));
+        assert!(matches!(parse_expr(&gets, Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }));
+        let indexes = format!("party{}", "[0]".repeat(5000));
+        assert!(matches!(parse_expr(&indexes, Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }));
+        let bins = format!("round{}", " + 1".repeat(5000));
+        assert!(matches!(parse_expr(&bins, Span { line: 1, col: 1 }).unwrap_err(),
+            CompileError::ExprParse { .. }));
+    }
+
+    #[test]
     fn double_quoted_string_with_apostrophes() {
         // A double-quoted string carries embedded apostrophes verbatim (the real
         // storyteller lore, e.g. `'They would not...'`).
