@@ -102,6 +102,12 @@ impl SyncAuthority {
         &self.checkpoint
     }
 
+    /// The current authoritative state as a snapshot. Used to seed replicas and, in the
+    /// differential gate, to assert a delta-driven replica converges to the authority.
+    pub fn snapshot(&self) -> CampaignSnapshot {
+        self.world.to_snapshot()
+    }
+
     /// Committed entries with `seq >= from_seq`, in order.
     pub fn entries_since(&self, from_seq: u64) -> Vec<LogEntry> {
         self.log.iter().filter(|e| e.seq >= from_seq).cloned().collect()
