@@ -605,6 +605,91 @@ impl World {
         self.consume_from_inventory(actor, target, &resolved.name.clone(), cat, cues)
     }
 
+    /// Stow held items into a co-located loot container. Mirrors
+    /// `player-character.ts:251-276` (`putInLootBox`): affliction-gated (Confused → fumble,
+    /// no-op); rejects keys outright; moves only currently-held, non-key items, capped to the
+    /// container's free space; each moved item is removed via the shared inventory tail (budget
+    /// tick + `drop` history) and appended to the container's contents.
+    ///
+    /// # Errors
+    /// [`ProceduralViolation`] if the actor is roomless, the container is not in the actor's room,
+    /// or any requested item is a key.
+    pub fn put_in_loot_box(
+        &mut self,
+        actor: &CharacterId,
+        loot_id: &LootId,
+        item_ids: &[ItemId],
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
+        // 0. Affliction gate (not budgeted). Fizzle → fumble, no-op (TS returns []).
+        match self.gate(actor, false) {
+            crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
+            crate::world::gate::GateVerdict::Fizzle => {
+                self.record_fumble(actor, "putInLootBox", false, cat, cues)?;
+                return Ok(());
+            }
+            crate::world::gate::GateVerdict::Allow => {}
+        }
+
+        // 1. Co-location: the container must be in the actor's current room.
+        let room_id = self
+            .characters
+            .get(actor)
+            .and_then(|c| c.current_room_id.clone())
+            .ok_or_else(|| ProceduralViolation("Cannot store: actor is not in any room.".into()))?;
+        let co_located = self
+            .rooms
+            .get(&room_id)
+            .map(|r| r.loot_ids.contains(loot_id))
+            .unwrap_or(false);
+        if !co_located {
+            return Err(ProceduralViolation("The loot container is not here.".into()));
+        }
+
+        // 2. Reject keys for the WHOLE op before moving anything (mirrors `requested.some(key)`).
+        for id in item_ids {
+            if matches!(self.items.get(id), Some(crate::world::snapshot::ItemSnapshot::Key { .. })) {
+                return Err(ProceduralViolation(
+                    "Keys cannot be stored in a loot container.".into(),
+                ));
+            }
+        }
+
+        // 3. Keep only requested items the actor actually holds, in requested order.
+        let held: Vec<ItemId> = self
+            .characters
+            .get(actor)
+            .map(|c| c.inventory.item_ids.clone())
+            .unwrap_or_default();
+        let present = item_ids.iter().filter(|id| held.contains(id)).cloned();
+
+        // 4. Cap to the container's free space.
+        let free = {
+            let loot = self
+                .loot
+                .get(loot_id)
+                .ok_or_else(|| ProceduralViolation("Loot container not found.".into()))?;
+            (loot.capacity - loot.content_ids.len() as i64).max(0) as usize
+        };
+        let to_put: Vec<ItemId> = present.take(free).collect();
+
+        // 5. Move each: remove via the shared inventory tail (budget + `drop` history), then stow.
+        for id in &to_put {
+            let item_snap = self
+                .items
+                .get(id)
+                .ok_or_else(|| ProceduralViolation("Item snapshot not found.".into()))?
+                .clone();
+            let name = resolve_item(&item_snap, cat)?.name;
+            self.consume_from_inventory(actor, id, &name, cat, cues)?;
+            if let Some(loot) = self.loot.get_mut(loot_id) {
+                loot.content_ids.push(id.clone());
+            }
+        }
+        Ok(())
+    }
+
     /// Use (consume) `target` from the actor's inventory. **Budgeted** — ticks
     /// `actions_this_round` and records a `drop` history entry (mirroring
     /// `CONSUME_VIA_USE → removeFromInventory`).
@@ -1187,6 +1272,76 @@ mod tests {
         world.rooms.insert(rid("room1"), room);
 
         (world, pc_id)
+    }
+
+    /// A world where the pc holds `items/coin` and stands in a room with an empty chest (capacity 2).
+    fn put_world() -> (World, CharacterId, Catalog) {
+        let cat = simple_cat_with("items/coin", non_equippable_desc());
+        let (mut world, pc) = world_with_items(&[("coin-1", "items/coin")], &cat);
+        world.characters.get_mut(&pc).unwrap().current_room_id = Some(rid("room1"));
+        let chest = lid("chest");
+        world.loot.insert(
+            chest.clone(),
+            LootSnapshot { id: chest.clone(), description: "A chest".into(), capacity: 2, content_ids: alloc::vec![] },
+        );
+        world.rooms.insert(
+            rid("room1"),
+            RoomSnapshot {
+                id: rid("room1"),
+                name: "Room".into(),
+                description: String::new(),
+                exits: BTreeMap::new(),
+                dark: false,
+                spawn_modifier: 0,
+                occupant_ids: alloc::vec![pc.clone()],
+                loot_ids: alloc::vec![chest],
+                material_cache_ids: alloc::vec![],
+                light_source_ids: alloc::vec![],
+                scenes: alloc::vec![],
+            },
+        );
+        (world, pc, cat)
+    }
+
+    #[test]
+    fn put_moves_a_held_item_into_a_co_located_container() {
+        let (mut world, pc, cat) = put_world();
+        let mut cues = Vec::new();
+        world.put_in_loot_box(&pc, &lid("chest"), &[iid("coin-1")], &cat, &mut cues).unwrap();
+        assert!(world.characters[&pc].inventory.item_ids.is_empty(), "item left the inventory");
+        assert_eq!(world.loot[&lid("chest")].content_ids, alloc::vec![iid("coin-1")], "item in the chest");
+    }
+
+    #[test]
+    fn put_rejects_a_key_and_moves_nothing() {
+        let (mut world, pc, cat) = put_world();
+        let key = iid("key-1");
+        world.items.insert(
+            key.clone(),
+            ItemSnapshot::Key { id: key.clone(), name: "Brass Key".into(), key_code: "crypt".into(), consume_on_use: false },
+        );
+        world.characters.get_mut(&pc).unwrap().inventory.item_ids.push(key.clone());
+        let mut cues = Vec::new();
+        assert!(world.put_in_loot_box(&pc, &lid("chest"), &[key], &cat, &mut cues).is_err());
+        assert!(world.loot[&lid("chest")].content_ids.is_empty(), "nothing stored on rejection");
+    }
+
+    #[test]
+    fn put_caps_at_the_container_free_space() {
+        let (mut world, pc, cat) = put_world();
+        // Fill the chest to capacity (2): no room for the coin.
+        world.loot.get_mut(&lid("chest")).unwrap().content_ids = alloc::vec![iid("x"), iid("y")];
+        let mut cues = Vec::new();
+        world.put_in_loot_box(&pc, &lid("chest"), &[iid("coin-1")], &cat, &mut cues).unwrap();
+        assert!(world.characters[&pc].inventory.item_ids.contains(&iid("coin-1")), "coin stays: no free space");
+    }
+
+    #[test]
+    fn put_requires_co_location_with_the_container() {
+        let (mut world, pc, cat) = put_world();
+        world.characters.get_mut(&pc).unwrap().current_room_id = Some(rid("elsewhere"));
+        let mut cues = Vec::new();
+        assert!(world.put_in_loot_box(&pc, &lid("chest"), &[iid("coin-1")], &cat, &mut cues).is_err());
     }
 
     #[test]

@@ -170,6 +170,9 @@ fn apply_command(
             }
             Ok(())
         }
+        Command::PutInLootBox { actor_id, loot_id, item_ids } => {
+            world.put_in_loot_box(actor_id, loot_id, item_ids, cat, &mut cues)
+        }
         Command::SelectArchetype { actor_id, archetype_id } => {
             world.select_archetype(actor_id, archetype_id)
         }
