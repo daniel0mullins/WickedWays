@@ -1,0 +1,65 @@
+{
+  "commands": [
+    {
+      "kind": "selectArchetype",
+      "actorId": "469e10d2-a2f2-4710-a6a6-c46a3d804aa0",
+      "archetypeId": "delver"
+    }
+  ],
+  "steps": [
+    {
+      "command": {
+        "kind": "selectArchetype",
+        "actorId": "469e10d2-a2f2-4710-a6a6-c46a3d804aa0",
+        "archetypeId": "delver"
+      },
+      "seq": 1,
+      "delta": {
+        "changed": [
+          {
+            "type": "character",
+            "data": {
+              "kind": "player",
+              "id": "469e10d2-a2f2-4710-a6a6-c46a3d804aa0",
+              "name": "Ada",
+              "stats": {
+                "health": 2,
+                "sanity": 10,
+                "energy": 10
+              },
+              "actionsPerRound": 3,
+              "actionsThisRound": 1,
+              "currentRoomId": "1fe929b1-b030-4cb4-99a8-0929e3eeaa64",
+              "inventory": {
+                "slots": 5,
+                "itemIds": [],
+                "keyIds": []
+              },
+              "equipment": {},
+              "history": [
+                {
+                  "kind": "move",
+                  "room": {
+                    "id": "1fe929b1-b030-4cb4-99a8-0929e3eeaa64",
+                    "name": "Start"
+                  },
+                  "round": 0
+                }
+              ],
+              "archetypeImmunities": [],
+              "afflictions": {
+                "active": {},
+                "turnsActive": {},
+                "shakenOff": [],
+                "immunity": {}
+              },
+              "archetypeId": "delver"
+            }
+          }
+        ],
+        "created": [],
+        "removed": []
+      }
+    }
+  ]
+}

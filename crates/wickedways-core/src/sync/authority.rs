@@ -170,6 +170,9 @@ fn apply_command(
             }
             Ok(())
         }
+        Command::SelectArchetype { actor_id, archetype_id } => {
+            world.select_archetype(actor_id, archetype_id)
+        }
         Command::BeginCampaign => world.begin_campaign(cat, &mut cues),
         Command::EndCampaign => world.end_campaign(&mut cues),
         Command::NextPlayer => world.next_player(cat, &mut cues),
