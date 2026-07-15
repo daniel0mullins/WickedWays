@@ -276,7 +276,7 @@ impl World {
         list.iter().find(|c| c.key.as_str() == reason).and_then(|c| c.narration.clone())
     }
 
-    fn assert_running(&self) -> Result<(), ProceduralViolation> {
+    pub(crate) fn assert_running(&self) -> Result<(), ProceduralViolation> {
         if !self.campaign.started || self.campaign.outcome != CampaignOutcome::Ongoing {
             return Err(ProceduralViolation("campaign is not running".into()));
         }

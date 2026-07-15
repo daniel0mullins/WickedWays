@@ -110,3 +110,16 @@ fn sync_move_deltas_match_the_ts_oracle() {
 fn sync_archetype_delta_matches_the_ts_oracle() {
     run_gate("sync-archetype");
 }
+
+/// `transferGM` over a started two-player campaign (A2's first lifecycle-command port).
+#[test]
+fn sync_transfergm_delta_matches_the_ts_oracle() {
+    run_gate("sync-transfergm");
+}
+
+/// `leaveCampaign` over a started two-player campaign — settles the departed-player reachability
+/// question against the oracle.
+#[test]
+fn sync_leave_delta_matches_the_ts_oracle() {
+    run_gate("sync-leave");
+}

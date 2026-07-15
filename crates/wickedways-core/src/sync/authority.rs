@@ -173,6 +173,8 @@ fn apply_command(
         Command::SelectArchetype { actor_id, archetype_id } => {
             world.select_archetype(actor_id, archetype_id)
         }
+        Command::TransferGm { character_id } => world.transfer_gm(character_id),
+        Command::LeaveCampaign { character_id } => world.leave_campaign(character_id),
         Command::BeginCampaign => world.begin_campaign(cat, &mut cues),
         Command::EndCampaign => world.end_campaign(&mut cues),
         Command::NextPlayer => world.next_player(cat, &mut cues),
