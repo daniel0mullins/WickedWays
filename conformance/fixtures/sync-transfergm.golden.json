@@ -1,0 +1,112 @@
+{
+  "commands": [
+    {
+      "kind": "transferGM",
+      "characterId": "ab67fa6a-6cc2-4b83-a616-364197f3280b"
+    }
+  ],
+  "steps": [
+    {
+      "command": {
+        "kind": "transferGM",
+        "characterId": "ab67fa6a-6cc2-4b83-a616-364197f3280b"
+      },
+      "seq": 1,
+      "delta": {
+        "changed": [],
+        "created": [],
+        "removed": [],
+        "campaignCore": {
+          "core": {
+            "id": "0da557ba-c32a-42c7-9c58-14d9172d0bc5",
+            "title": "Crypt",
+            "maxRounds": 10,
+            "round": 0,
+            "started": true,
+            "outcome": "ongoing",
+            "winConditions": [],
+            "loseConditions": [],
+            "activeCharacterIndex": 0,
+            "partyIds": [
+              "912a7493-1103-44a0-86e5-73199bb30c9f",
+              "ab67fa6a-6cc2-4b83-a616-364197f3280b"
+            ],
+            "actedThisRound": [],
+            "gmId": "ab67fa6a-6cc2-4b83-a616-364197f3280b",
+            "materials": {
+              "metal": 2
+            },
+            "claims": [
+              "seed"
+            ],
+            "encountered": [],
+            "knownRecipes": [
+              "widget"
+            ],
+            "archetypes": [
+              {
+                "id": "delver",
+                "name": "Delver",
+                "baseStats": {
+                  "health": 2
+                }
+              }
+            ],
+            "actionSounds": {},
+            "encounterTable": {
+              "baseChance": 20,
+              "visited": [
+                "74a3e9fa-98b7-417d-9a78-3bde94f1041c"
+              ],
+              "formations": []
+            },
+            "chatPolicy": {
+              "enabled": true,
+              "whisper": true,
+              "edit": true,
+              "reactions": true,
+              "readReceipts": true,
+              "typing": true,
+              "backfillWindow": 200
+            },
+            "avPolicy": {
+              "enabled": true,
+              "video": true,
+              "maxParticipants": 6
+            },
+            "mechanics": []
+          },
+          "codex": [
+            {
+              "kind": "room",
+              "key": "74a3e9fa-98b7-417d-9a78-3bde94f1041c",
+              "snapshot": {
+                "name": "Start",
+                "description": "the entrance"
+              },
+              "firstSeen": {
+                "round": 0,
+                "characterId": "912a7493-1103-44a0-86e5-73199bb30c9f",
+                "roomId": "74a3e9fa-98b7-417d-9a78-3bde94f1041c"
+              }
+            },
+            {
+              "kind": "recipe",
+              "key": "widget",
+              "snapshot": {
+                "id": "widget",
+                "outputName": "Widget",
+                "materials": {
+                  "metal": 2
+                }
+              },
+              "firstSeen": {
+                "round": 0
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -6,6 +6,7 @@ export default defineConfig({
       "conformance/fixtures/generate-snapshots.test.ts",
       "conformance/fixtures/sync-move.gen.test.ts",
       "conformance/fixtures/sync-archetype.gen.test.ts",
+      "conformance/fixtures/sync-transfergm.gen.test.ts",
       "conformance/fixtures/turn-movement.gen.test.ts",
       "conformance/fixtures/items-projection.gen.test.ts",
       "conformance/fixtures/items-actions.gen.test.ts",
