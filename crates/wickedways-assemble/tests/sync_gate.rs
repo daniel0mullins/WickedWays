@@ -83,7 +83,18 @@ fn entity_id(entity: &Value) -> &str {
 fn run_gate(name: &str) {
     let genesis: CampaignSnapshot =
         serde_json::from_str(&read(&format!("{name}.genesis.json"))).expect("parse genesis");
-    let world = World::from_snapshot(genesis);
+    let mut world = World::from_snapshot(genesis);
+
+    let golden: Value =
+        serde_json::from_str(&read(&format!("{name}.golden.json"))).expect("parse golden");
+
+    // A rng-drawing fixture (e.g. combat) records the `seed` the TS side fed its Authority as
+    // `mulberry32(seed)`; seed the Rust World's rng with the same value so both draw the identical
+    // stream. Rust's `Rng::seeded` is the verified mulberry32 twin.
+    if let Some(seed) = golden.get("seed").and_then(Value::as_u64) {
+        world.rng = wickedways_core::world::rng::Rng::seeded(seed as u32);
+    }
+
     // Load a per-fixture catalog when present (commands that resolve item behaviour/names need it);
     // otherwise a default catalog suffices (move/setup/lifecycle commands never touch it).
     let catalog: Catalog = catalog_path(name)
@@ -91,8 +102,6 @@ fn run_gate(name: &str) {
         .unwrap_or_default();
     let mut auth = SyncAuthority::new(world, catalog, AuthorityOpts::default());
 
-    let golden: Value =
-        serde_json::from_str(&read(&format!("{name}.golden.json"))).expect("parse golden");
     let steps = golden["steps"].as_array().expect("golden.steps is an array");
 
     for (i, step) in steps.iter().enumerate() {
@@ -140,4 +149,11 @@ fn sync_leave_delta_matches_the_ts_oracle() {
 #[test]
 fn sync_loot_delta_matches_the_ts_oracle() {
     run_gate("sync-loot");
+}
+
+/// `mobAttack` — the first rng-drawing sync fixture; combat mitigation must land identically once
+/// both sides seed the same mulberry32 stream.
+#[test]
+fn sync_mobattack_delta_matches_the_ts_oracle() {
+    run_gate("sync-mobattack");
 }
