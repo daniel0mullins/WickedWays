@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "a52f9bca-71cd-4938-b050-31026c9d6ed7",
+    "title": "Setup",
+    "maxRounds": 10,
+    "round": 0,
+    "started": false,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "469e10d2-a2f2-4710-a6a6-c46a3d804aa0"
+    ],
+    "actedThisRound": [],
+    "gmId": null,
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "delver",
+        "name": "Delver",
+        "baseStats": {
+          "health": 2
+        }
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 20,
+      "visited": [
+        "1fe929b1-b030-4cb4-99a8-0929e3eeaa64"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "1fe929b1-b030-4cb4-99a8-0929e3eeaa64",
+      "name": "Start",
+      "description": "the entrance",
+      "exits": {},
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "469e10d2-a2f2-4710-a6a6-c46a3d804aa0"
+      ],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "469e10d2-a2f2-4710-a6a6-c46a3d804aa0",
+      "name": "Ada",
+      "stats": {
+        "health": 10,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "1fe929b1-b030-4cb4-99a8-0929e3eeaa64",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "1fe929b1-b030-4cb4-99a8-0929e3eeaa64",
+            "name": "Start"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      }
+    }
+  ],
+  "items": [],
+  "loot": [],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "1fe929b1-b030-4cb4-99a8-0929e3eeaa64",
+      "snapshot": {
+        "name": "Start",
+        "description": "the entrance"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "469e10d2-a2f2-4710-a6a6-c46a3d804aa0",
+        "roomId": "1fe929b1-b030-4cb4-99a8-0929e3eeaa64"
+      }
+    }
+  ]
+}

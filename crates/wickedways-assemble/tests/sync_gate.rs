@@ -72,14 +72,16 @@ fn entity_id(entity: &Value) -> &str {
     entity["data"]["id"].as_str().unwrap_or("")
 }
 
-#[test]
-fn sync_move_deltas_match_the_ts_oracle() {
+/// Replay `<name>.genesis.json` + `<name>.golden.json` through the native `SyncAuthority`, asserting
+/// each committed `{ seq, delta }` matches the TS oracle (canonicalized).
+fn run_gate(name: &str) {
     let genesis: CampaignSnapshot =
-        serde_json::from_str(&read("sync-move.genesis.json")).expect("parse genesis");
+        serde_json::from_str(&read(&format!("{name}.genesis.json"))).expect("parse genesis");
     let world = World::from_snapshot(genesis);
     let mut auth = SyncAuthority::new(world, Catalog::default(), AuthorityOpts::default());
 
-    let golden: Value = serde_json::from_str(&read("sync-move.golden.json")).expect("parse golden");
+    let golden: Value =
+        serde_json::from_str(&read(&format!("{name}.golden.json"))).expect("parse golden");
     let steps = golden["steps"].as_array().expect("golden.steps is an array");
 
     for (i, step) in steps.iter().enumerate() {
@@ -87,12 +89,24 @@ fn sync_move_deltas_match_the_ts_oracle() {
             serde_json::from_value(step["command"].clone()).expect("parse command");
         match auth.submit(command) {
             SubmitResult::Committed { seq, delta } => {
-                assert_eq!(seq, step["seq"].as_u64().unwrap(), "step {i}: seq");
+                assert_eq!(seq, step["seq"].as_u64().unwrap(), "{name} step {i}: seq");
                 let got = canon_delta(&serde_json::to_value(&delta).unwrap());
                 let want = canon_delta(&step["delta"]);
-                assert_eq!(got, want, "step {i}: delta must match the TS oracle");
+                assert_eq!(got, want, "{name} step {i}: delta must match the TS oracle");
             }
-            SubmitResult::Denied { reason } => panic!("step {i}: unexpectedly denied: {reason}"),
+            SubmitResult::Denied { reason } => panic!("{name} step {i}: unexpectedly denied: {reason}"),
         }
     }
+}
+
+/// Move / nextPlayer over a started two-player campaign.
+#[test]
+fn sync_move_deltas_match_the_ts_oracle() {
+    run_gate("sync-move");
+}
+
+/// `selectArchetype` over a pre-start single-player campaign (A1's first engine-action port).
+#[test]
+fn sync_archetype_delta_matches_the_ts_oracle() {
+    run_gate("sync-archetype");
 }
