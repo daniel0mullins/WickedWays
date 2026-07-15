@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "2c8ec10c-99e3-4248-a326-5965bc321f0d",
+    "title": "Crypt",
+    "maxRounds": 10,
+    "round": 0,
+    "started": true,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+      "e6b4cedd-e04f-4eeb-bf1e-6e05a7f14b08"
+    ],
+    "actedThisRound": [],
+    "gmId": "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+    "materials": {
+      "metal": 2
+    },
+    "claims": [
+      "seed"
+    ],
+    "encountered": [],
+    "knownRecipes": [
+      "widget"
+    ],
+    "archetypes": [
+      {
+        "id": "delver",
+        "name": "Delver",
+        "baseStats": {
+          "health": 2
+        }
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 20,
+      "visited": [
+        "5e05226d-3077-4507-854d-15c5bfff6288"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "5e05226d-3077-4507-854d-15c5bfff6288",
+      "name": "Start",
+      "description": "the entrance",
+      "exits": {
+        "north": "e969c70f-1a47-4fc7-965e-7b0298c30b3d"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+        "e6b4cedd-e04f-4eeb-bf1e-6e05a7f14b08"
+      ],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0",
+      "name": "Next",
+      "description": "an adjoining chamber",
+      "exits": {
+        "south": "e969c70f-1a47-4fc7-965e-7b0298c30b3d"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [
+    {
+      "id": "e969c70f-1a47-4fc7-965e-7b0298c30b3d",
+      "endpointIds": [
+        "5e05226d-3077-4507-854d-15c5bfff6288",
+        "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0"
+      ],
+      "state": {}
+    }
+  ],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+      "name": "Ada",
+      "stats": {
+        "health": 2,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "5e05226d-3077-4507-854d-15c5bfff6288",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "5e05226d-3077-4507-854d-15c5bfff6288",
+            "name": "Start"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "delver"
+    },
+    {
+      "kind": "player",
+      "id": "e6b4cedd-e04f-4eeb-bf1e-6e05a7f14b08",
+      "name": "Ben",
+      "stats": {
+        "health": 2,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "5e05226d-3077-4507-854d-15c5bfff6288",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "5e05226d-3077-4507-854d-15c5bfff6288",
+            "name": "Start"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "delver"
+    }
+  ],
+  "items": [],
+  "loot": [],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "5e05226d-3077-4507-854d-15c5bfff6288",
+      "snapshot": {
+        "name": "Start",
+        "description": "the entrance"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+        "roomId": "5e05226d-3077-4507-854d-15c5bfff6288"
+      }
+    },
+    {
+      "kind": "recipe",
+      "key": "widget",
+      "snapshot": {
+        "id": "widget",
+        "outputName": "Widget",
+        "materials": {
+          "metal": 2
+        }
+      },
+      "firstSeen": {
+        "round": 0
+      }
+    }
+  ]
+}

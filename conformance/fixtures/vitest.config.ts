@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     include: [
       "conformance/fixtures/generate-snapshots.test.ts",
+      "conformance/fixtures/sync-move.gen.test.ts",
       "conformance/fixtures/turn-movement.gen.test.ts",
       "conformance/fixtures/items-projection.gen.test.ts",
       "conformance/fixtures/items-actions.gen.test.ts",
