@@ -1,0 +1,443 @@
+{
+  "commands": [
+    {
+      "kind": "move",
+      "actorId": "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+      "roomId": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0"
+    },
+    {
+      "kind": "nextPlayer"
+    },
+    {
+      "kind": "move",
+      "actorId": "e6b4cedd-e04f-4eeb-bf1e-6e05a7f14b08",
+      "roomId": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0"
+    }
+  ],
+  "steps": [
+    {
+      "command": {
+        "kind": "move",
+        "actorId": "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+        "roomId": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0"
+      },
+      "seq": 1,
+      "delta": {
+        "changed": [
+          {
+            "type": "room",
+            "data": {
+              "id": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0",
+              "name": "Next",
+              "description": "an adjoining chamber",
+              "exits": {
+                "south": "e969c70f-1a47-4fc7-965e-7b0298c30b3d"
+              },
+              "dark": false,
+              "spawnModifier": 1,
+              "occupantIds": [
+                "ffc61507-358f-496f-8d71-c2aafcfa5ade"
+              ],
+              "lootIds": [],
+              "materialCacheIds": [],
+              "lightSourceIds": [],
+              "scenes": []
+            }
+          },
+          {
+            "type": "room",
+            "data": {
+              "id": "5e05226d-3077-4507-854d-15c5bfff6288",
+              "name": "Start",
+              "description": "the entrance",
+              "exits": {
+                "north": "e969c70f-1a47-4fc7-965e-7b0298c30b3d"
+              },
+              "dark": false,
+              "spawnModifier": 1,
+              "occupantIds": [
+                "e6b4cedd-e04f-4eeb-bf1e-6e05a7f14b08"
+              ],
+              "lootIds": [],
+              "materialCacheIds": [],
+              "lightSourceIds": [],
+              "scenes": []
+            }
+          },
+          {
+            "type": "character",
+            "data": {
+              "kind": "player",
+              "id": "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+              "name": "Ada",
+              "stats": {
+                "health": 2,
+                "sanity": 10,
+                "energy": 10
+              },
+              "actionsPerRound": 3,
+              "actionsThisRound": 2,
+              "currentRoomId": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0",
+              "inventory": {
+                "slots": 5,
+                "itemIds": [],
+                "keyIds": []
+              },
+              "equipment": {},
+              "history": [
+                {
+                  "kind": "move",
+                  "room": {
+                    "id": "5e05226d-3077-4507-854d-15c5bfff6288",
+                    "name": "Start"
+                  },
+                  "round": 0
+                },
+                {
+                  "kind": "move",
+                  "room": {
+                    "id": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0",
+                    "name": "Next"
+                  },
+                  "round": 0
+                }
+              ],
+              "archetypeImmunities": [],
+              "afflictions": {
+                "active": {},
+                "turnsActive": {},
+                "shakenOff": [],
+                "immunity": {}
+              },
+              "archetypeId": "delver"
+            }
+          }
+        ],
+        "created": [],
+        "removed": [],
+        "campaignCore": {
+          "core": {
+            "id": "2c8ec10c-99e3-4248-a326-5965bc321f0d",
+            "title": "Crypt",
+            "maxRounds": 10,
+            "round": 0,
+            "started": true,
+            "outcome": "ongoing",
+            "winConditions": [],
+            "loseConditions": [],
+            "activeCharacterIndex": 0,
+            "partyIds": [
+              "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+              "e6b4cedd-e04f-4eeb-bf1e-6e05a7f14b08"
+            ],
+            "actedThisRound": [],
+            "gmId": "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+            "materials": {
+              "metal": 2
+            },
+            "claims": [
+              "seed"
+            ],
+            "encountered": [],
+            "knownRecipes": [
+              "widget"
+            ],
+            "archetypes": [
+              {
+                "id": "delver",
+                "name": "Delver",
+                "baseStats": {
+                  "health": 2
+                }
+              }
+            ],
+            "actionSounds": {},
+            "encounterTable": {
+              "baseChance": 20,
+              "visited": [
+                "5e05226d-3077-4507-854d-15c5bfff6288",
+                "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0"
+              ],
+              "formations": []
+            },
+            "chatPolicy": {
+              "enabled": true,
+              "whisper": true,
+              "edit": true,
+              "reactions": true,
+              "readReceipts": true,
+              "typing": true,
+              "backfillWindow": 200
+            },
+            "avPolicy": {
+              "enabled": true,
+              "video": true,
+              "maxParticipants": 6
+            },
+            "mechanics": []
+          },
+          "codex": [
+            {
+              "kind": "room",
+              "key": "5e05226d-3077-4507-854d-15c5bfff6288",
+              "snapshot": {
+                "name": "Start",
+                "description": "the entrance"
+              },
+              "firstSeen": {
+                "round": 0,
+                "characterId": "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+                "roomId": "5e05226d-3077-4507-854d-15c5bfff6288"
+              }
+            },
+            {
+              "kind": "recipe",
+              "key": "widget",
+              "snapshot": {
+                "id": "widget",
+                "outputName": "Widget",
+                "materials": {
+                  "metal": 2
+                }
+              },
+              "firstSeen": {
+                "round": 0
+              }
+            },
+            {
+              "kind": "room",
+              "key": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0",
+              "snapshot": {
+                "name": "Next",
+                "description": "an adjoining chamber"
+              },
+              "firstSeen": {
+                "round": 0,
+                "characterId": "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+                "roomId": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "command": {
+        "kind": "nextPlayer"
+      },
+      "seq": 2,
+      "delta": {
+        "changed": [],
+        "created": [],
+        "removed": [],
+        "campaignCore": {
+          "core": {
+            "id": "2c8ec10c-99e3-4248-a326-5965bc321f0d",
+            "title": "Crypt",
+            "maxRounds": 10,
+            "round": 0,
+            "started": true,
+            "outcome": "ongoing",
+            "winConditions": [],
+            "loseConditions": [],
+            "activeCharacterIndex": 1,
+            "partyIds": [
+              "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+              "e6b4cedd-e04f-4eeb-bf1e-6e05a7f14b08"
+            ],
+            "actedThisRound": [
+              "ffc61507-358f-496f-8d71-c2aafcfa5ade"
+            ],
+            "gmId": "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+            "materials": {
+              "metal": 2
+            },
+            "claims": [
+              "seed"
+            ],
+            "encountered": [],
+            "knownRecipes": [
+              "widget"
+            ],
+            "archetypes": [
+              {
+                "id": "delver",
+                "name": "Delver",
+                "baseStats": {
+                  "health": 2
+                }
+              }
+            ],
+            "actionSounds": {},
+            "encounterTable": {
+              "baseChance": 20,
+              "visited": [
+                "5e05226d-3077-4507-854d-15c5bfff6288",
+                "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0"
+              ],
+              "formations": []
+            },
+            "chatPolicy": {
+              "enabled": true,
+              "whisper": true,
+              "edit": true,
+              "reactions": true,
+              "readReceipts": true,
+              "typing": true,
+              "backfillWindow": 200
+            },
+            "avPolicy": {
+              "enabled": true,
+              "video": true,
+              "maxParticipants": 6
+            },
+            "mechanics": []
+          },
+          "codex": [
+            {
+              "kind": "room",
+              "key": "5e05226d-3077-4507-854d-15c5bfff6288",
+              "snapshot": {
+                "name": "Start",
+                "description": "the entrance"
+              },
+              "firstSeen": {
+                "round": 0,
+                "characterId": "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+                "roomId": "5e05226d-3077-4507-854d-15c5bfff6288"
+              }
+            },
+            {
+              "kind": "recipe",
+              "key": "widget",
+              "snapshot": {
+                "id": "widget",
+                "outputName": "Widget",
+                "materials": {
+                  "metal": 2
+                }
+              },
+              "firstSeen": {
+                "round": 0
+              }
+            },
+            {
+              "kind": "room",
+              "key": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0",
+              "snapshot": {
+                "name": "Next",
+                "description": "an adjoining chamber"
+              },
+              "firstSeen": {
+                "round": 0,
+                "characterId": "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+                "roomId": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "command": {
+        "kind": "move",
+        "actorId": "e6b4cedd-e04f-4eeb-bf1e-6e05a7f14b08",
+        "roomId": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0"
+      },
+      "seq": 3,
+      "delta": {
+        "changed": [
+          {
+            "type": "room",
+            "data": {
+              "id": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0",
+              "name": "Next",
+              "description": "an adjoining chamber",
+              "exits": {
+                "south": "e969c70f-1a47-4fc7-965e-7b0298c30b3d"
+              },
+              "dark": false,
+              "spawnModifier": 1,
+              "occupantIds": [
+                "ffc61507-358f-496f-8d71-c2aafcfa5ade",
+                "e6b4cedd-e04f-4eeb-bf1e-6e05a7f14b08"
+              ],
+              "lootIds": [],
+              "materialCacheIds": [],
+              "lightSourceIds": [],
+              "scenes": []
+            }
+          },
+          {
+            "type": "room",
+            "data": {
+              "id": "5e05226d-3077-4507-854d-15c5bfff6288",
+              "name": "Start",
+              "description": "the entrance",
+              "exits": {
+                "north": "e969c70f-1a47-4fc7-965e-7b0298c30b3d"
+              },
+              "dark": false,
+              "spawnModifier": 1,
+              "occupantIds": [],
+              "lootIds": [],
+              "materialCacheIds": [],
+              "lightSourceIds": [],
+              "scenes": []
+            }
+          },
+          {
+            "type": "character",
+            "data": {
+              "kind": "player",
+              "id": "e6b4cedd-e04f-4eeb-bf1e-6e05a7f14b08",
+              "name": "Ben",
+              "stats": {
+                "health": 2,
+                "sanity": 10,
+                "energy": 10
+              },
+              "actionsPerRound": 3,
+              "actionsThisRound": 2,
+              "currentRoomId": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0",
+              "inventory": {
+                "slots": 5,
+                "itemIds": [],
+                "keyIds": []
+              },
+              "equipment": {},
+              "history": [
+                {
+                  "kind": "move",
+                  "room": {
+                    "id": "5e05226d-3077-4507-854d-15c5bfff6288",
+                    "name": "Start"
+                  },
+                  "round": 0
+                },
+                {
+                  "kind": "move",
+                  "room": {
+                    "id": "edcaeddd-18f8-4f25-9fbc-f99b00fbd2a0",
+                    "name": "Next"
+                  },
+                  "round": 0
+                }
+              ],
+              "archetypeImmunities": [],
+              "afflictions": {
+                "active": {},
+                "turnsActive": {},
+                "shakenOff": [],
+                "immunity": {}
+              },
+              "archetypeId": "delver"
+            }
+          }
+        ],
+        "created": [],
+        "removed": []
+      }
+    }
+  ]
+}
