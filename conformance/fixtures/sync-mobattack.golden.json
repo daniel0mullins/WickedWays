@@ -1,0 +1,123 @@
+{
+  "seed": 1,
+  "commands": [
+    {
+      "kind": "mobAttack",
+      "mobId": "mob:Rat",
+      "targetId": "player:Ada"
+    }
+  ],
+  "steps": [
+    {
+      "command": {
+        "kind": "mobAttack",
+        "mobId": "mob:Rat",
+        "targetId": "player:Ada"
+      },
+      "seq": 1,
+      "delta": {
+        "changed": [
+          {
+            "type": "character",
+            "data": {
+              "kind": "player",
+              "id": "player:Ada",
+              "name": "Ada",
+              "stats": {
+                "health": 10,
+                "sanity": 10,
+                "energy": 10
+              },
+              "actionsPerRound": 3,
+              "actionsThisRound": 1,
+              "currentRoomId": "room:Hall",
+              "inventory": {
+                "slots": 5,
+                "itemIds": [],
+                "keyIds": []
+              },
+              "equipment": {},
+              "history": [
+                {
+                  "kind": "move",
+                  "room": {
+                    "id": "room:Hall",
+                    "name": "Hall"
+                  },
+                  "round": 0
+                },
+                {
+                  "kind": "takeDamage",
+                  "amount": 0,
+                  "stat": "health",
+                  "round": 0
+                }
+              ],
+              "archetypeImmunities": [],
+              "afflictions": {
+                "active": {},
+                "turnsActive": {
+                  "panic": 0,
+                  "fear": 0,
+                  "confused": 0
+                },
+                "shakenOff": [],
+                "immunity": {}
+              },
+              "archetypeId": "fighter"
+            }
+          },
+          {
+            "type": "character",
+            "data": {
+              "kind": "mob",
+              "id": "mob:Rat",
+              "name": "Rat",
+              "stats": {
+                "health": 5,
+                "sanity": 5,
+                "energy": 5
+              },
+              "actionsPerRound": 2,
+              "actionsThisRound": 1,
+              "currentRoomId": "room:Hall",
+              "inventory": {
+                "slots": 2,
+                "itemIds": [],
+                "keyIds": []
+              },
+              "equipment": {},
+              "history": [
+                {
+                  "kind": "attack",
+                  "target": {
+                    "id": "player:Ada",
+                    "name": "Ada"
+                  },
+                  "round": 0
+                }
+              ],
+              "archetypeImmunities": [],
+              "afflictions": {
+                "active": {},
+                "turnsActive": {},
+                "shakenOff": [],
+                "immunity": {}
+              },
+              "origin": "room",
+              "baseEscapeChance": 50,
+              "materialDrops": {},
+              "lightAverse": false,
+              "naturalAttack": {
+                "stat": "health",
+                "power": 4
+              }
+            }
+          }
+        ],
+        "created": [],
+        "removed": []
+      }
+    }
+  ]
+}
