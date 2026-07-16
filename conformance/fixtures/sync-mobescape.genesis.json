@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 6,
+  "campaign": {
+    "id": "c04c6872-f268-4a07-a8b5-17eebfa423d5",
+    "title": "Sync MobEscape",
+    "maxRounds": 20,
+    "round": 0,
+    "started": true,
+    "outcome": "ongoing",
+    "winConditions": [],
+    "loseConditions": [],
+    "activeCharacterIndex": 0,
+    "partyIds": [
+      "player:Ada"
+    ],
+    "actedThisRound": [],
+    "gmId": "player:Ada",
+    "materials": {},
+    "claims": [],
+    "encountered": [],
+    "knownRecipes": [],
+    "archetypes": [
+      {
+        "id": "fighter",
+        "name": "Fighter",
+        "baseStats": {
+          "health": 10
+        }
+      }
+    ],
+    "actionSounds": {},
+    "encounterTable": {
+      "baseChance": 20,
+      "visited": [
+        "5b3009ca-4d23-4eac-b919-306ada63a971"
+      ],
+      "formations": []
+    },
+    "chatPolicy": {
+      "enabled": true,
+      "whisper": true,
+      "edit": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "backfillWindow": 200
+    },
+    "avPolicy": {
+      "enabled": true,
+      "video": true,
+      "maxParticipants": 6
+    },
+    "mechanics": []
+  },
+  "rooms": [
+    {
+      "id": "5b3009ca-4d23-4eac-b919-306ada63a971",
+      "name": "Cell",
+      "description": "a cold cell",
+      "exits": {
+        "north": "54b433af-8503-4e6b-8e74-85e015a83ac9"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [
+        "player:Ada",
+        "mob:Rat"
+      ],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    },
+    {
+      "id": "a218c0bf-eed5-4ada-8abe-dcfdded3feaf",
+      "name": "Hall",
+      "description": "a stone hall",
+      "exits": {
+        "south": "54b433af-8503-4e6b-8e74-85e015a83ac9"
+      },
+      "dark": false,
+      "spawnModifier": 1,
+      "occupantIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "lightSourceIds": [],
+      "scenes": []
+    }
+  ],
+  "exits": [
+    {
+      "id": "54b433af-8503-4e6b-8e74-85e015a83ac9",
+      "endpointIds": [
+        "5b3009ca-4d23-4eac-b919-306ada63a971",
+        "a218c0bf-eed5-4ada-8abe-dcfdded3feaf"
+      ],
+      "state": {}
+    }
+  ],
+  "characters": [
+    {
+      "kind": "player",
+      "id": "player:Ada",
+      "name": "Ada",
+      "stats": {
+        "health": 10,
+        "sanity": 10,
+        "energy": 10
+      },
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "currentRoomId": "5b3009ca-4d23-4eac-b919-306ada63a971",
+      "inventory": {
+        "slots": 5,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "5b3009ca-4d23-4eac-b919-306ada63a971",
+            "name": "Cell"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "archetypeId": "fighter"
+    },
+    {
+      "kind": "mob",
+      "id": "mob:Rat",
+      "name": "Rat",
+      "stats": {
+        "health": 5,
+        "sanity": 5,
+        "energy": 5
+      },
+      "actionsPerRound": 2,
+      "actionsThisRound": 0,
+      "currentRoomId": "5b3009ca-4d23-4eac-b919-306ada63a971",
+      "inventory": {
+        "slots": 2,
+        "itemIds": [],
+        "keyIds": []
+      },
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "5b3009ca-4d23-4eac-b919-306ada63a971",
+            "name": "Cell"
+          },
+          "round": 0
+        }
+      ],
+      "archetypeImmunities": [],
+      "afflictions": {
+        "active": {},
+        "turnsActive": {},
+        "shakenOff": [],
+        "immunity": {}
+      },
+      "origin": "unbound",
+      "baseEscapeChance": 100,
+      "materialDrops": {},
+      "lightAverse": false,
+      "naturalAttack": {
+        "stat": "health",
+        "power": 1
+      }
+    }
+  ],
+  "items": [],
+  "loot": [],
+  "materialCaches": [],
+  "codex": [
+    {
+      "kind": "room",
+      "key": "5b3009ca-4d23-4eac-b919-306ada63a971",
+      "snapshot": {
+        "name": "Cell",
+        "description": "a cold cell"
+      },
+      "firstSeen": {
+        "round": 0,
+        "characterId": "player:Ada",
+        "roomId": "5b3009ca-4d23-4eac-b919-306ada63a971"
+      }
+    }
+  ]
+}

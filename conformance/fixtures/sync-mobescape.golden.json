@@ -1,0 +1,124 @@
+{
+  "seed": 1,
+  "commands": [
+    {
+      "kind": "mobEscape",
+      "mobId": "mob:Rat"
+    }
+  ],
+  "steps": [
+    {
+      "command": {
+        "kind": "mobEscape",
+        "mobId": "mob:Rat"
+      },
+      "seq": 1,
+      "delta": {
+        "changed": [
+          {
+            "type": "room",
+            "data": {
+              "id": "5b3009ca-4d23-4eac-b919-306ada63a971",
+              "name": "Cell",
+              "description": "a cold cell",
+              "exits": {
+                "north": "54b433af-8503-4e6b-8e74-85e015a83ac9"
+              },
+              "dark": false,
+              "spawnModifier": 1,
+              "occupantIds": [
+                "player:Ada"
+              ],
+              "lootIds": [],
+              "materialCacheIds": [],
+              "lightSourceIds": [],
+              "scenes": []
+            }
+          },
+          {
+            "type": "room",
+            "data": {
+              "id": "a218c0bf-eed5-4ada-8abe-dcfdded3feaf",
+              "name": "Hall",
+              "description": "a stone hall",
+              "exits": {
+                "south": "54b433af-8503-4e6b-8e74-85e015a83ac9"
+              },
+              "dark": false,
+              "spawnModifier": 1,
+              "occupantIds": [
+                "mob:Rat"
+              ],
+              "lootIds": [],
+              "materialCacheIds": [],
+              "lightSourceIds": [],
+              "scenes": []
+            }
+          },
+          {
+            "type": "character",
+            "data": {
+              "kind": "mob",
+              "id": "mob:Rat",
+              "name": "Rat",
+              "stats": {
+                "health": 5,
+                "sanity": 5,
+                "energy": 5
+              },
+              "actionsPerRound": 2,
+              "actionsThisRound": 1,
+              "currentRoomId": "a218c0bf-eed5-4ada-8abe-dcfdded3feaf",
+              "inventory": {
+                "slots": 2,
+                "itemIds": [],
+                "keyIds": []
+              },
+              "equipment": {},
+              "history": [
+                {
+                  "kind": "move",
+                  "room": {
+                    "id": "5b3009ca-4d23-4eac-b919-306ada63a971",
+                    "name": "Cell"
+                  },
+                  "round": 0
+                },
+                {
+                  "kind": "move",
+                  "room": {
+                    "id": "a218c0bf-eed5-4ada-8abe-dcfdded3feaf",
+                    "name": "Hall"
+                  },
+                  "round": 0
+                },
+                {
+                  "kind": "escape",
+                  "success": true,
+                  "round": 0
+                }
+              ],
+              "archetypeImmunities": [],
+              "afflictions": {
+                "active": {},
+                "turnsActive": {},
+                "shakenOff": [],
+                "immunity": {}
+              },
+              "origin": "unbound",
+              "baseEscapeChance": 100,
+              "materialDrops": {},
+              "lightAverse": false,
+              "naturalAttack": {
+                "stat": "health",
+                "power": 1
+              }
+            }
+          }
+        ],
+        "created": [],
+        "removed": []
+      }
+    }
+  ]
+}

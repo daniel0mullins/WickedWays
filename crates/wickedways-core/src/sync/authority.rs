@@ -175,6 +175,7 @@ fn apply_command(
         }
         // A GM-issued mob strike is the actor-agnostic attack with a mob as the actor.
         Command::MobAttack { mob_id, target_id } => world.attack(mob_id, target_id, cat, &mut cues),
+        Command::MobEscape { mob_id } => world.mob_escape(mob_id, cat, &mut cues),
         Command::SelectArchetype { actor_id, archetype_id } => {
             world.select_archetype(actor_id, archetype_id)
         }

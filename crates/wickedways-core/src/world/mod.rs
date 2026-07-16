@@ -13,6 +13,7 @@ pub mod history;
 pub mod ids;
 pub mod intent;
 pub mod lifecycle;
+pub mod mob_actions;
 pub mod mechanics;
 pub mod resolve;
 pub mod rng;
