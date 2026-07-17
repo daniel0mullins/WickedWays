@@ -157,3 +157,10 @@ fn sync_loot_delta_matches_the_ts_oracle() {
 fn sync_mobattack_delta_matches_the_ts_oracle() {
     run_gate("sync-mobattack");
 }
+
+/// `mobEscape` — the final A2 command and the one genuinely-new mechanic (escape roll → flee through
+/// an exit). Exercises the full success path: two rng draws + relocation + the `escape` history.
+#[test]
+fn sync_mobescape_delta_matches_the_ts_oracle() {
+    run_gate("sync-mobescape");
+}

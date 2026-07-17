@@ -10,6 +10,7 @@ export default defineConfig({
       "conformance/fixtures/sync-leave.gen.test.ts",
       "conformance/fixtures/sync-loot.gen.test.ts",
       "conformance/fixtures/sync-mobattack.gen.test.ts",
+      "conformance/fixtures/sync-mobescape.gen.test.ts",
       "conformance/fixtures/turn-movement.gen.test.ts",
       "conformance/fixtures/items-projection.gen.test.ts",
       "conformance/fixtures/items-actions.gen.test.ts",
