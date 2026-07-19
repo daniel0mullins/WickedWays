@@ -26,8 +26,12 @@
 // the server crate rather than reaching into `wickedways_core` directly.
 pub use wickedways_core::sync;
 
+// The wire protocol now lives in the shared `wickedways-transport` crate (extracted in D slice 1 so
+// the web client speaks the same types). Re-exported as `transport` so `crate::transport::*` — used
+// throughout `table`/`server` — keeps resolving unchanged.
+pub use wickedways_transport as transport;
+
 pub mod membership;
 pub mod server;
 pub mod store;
 pub mod table;
-pub mod transport;

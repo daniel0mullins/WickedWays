@@ -1,18 +1,20 @@
-//! The room-server wire protocol (Phase 2c, sub-project C — slice 1).
+//! The multiplayer wire protocol (Phase 2c) — shared by the room server (C) and the web client (D).
 //!
 //! Ports the multiplayer arms of `packages/transport-shared/src/index.ts`: the `t`-tagged
 //! [`ClientMsg`]/[`ServerMsg`] unions, [`WireLogEntry`], [`Actor`], and the presence/roster
 //! structs. `command`, `delta`, and `snapshot` are **opaque** ([`serde_json::Value`]) — the server
 //! relays and orders them without understanding the engine, exactly as the TS package does with
-//! `unknown`. The one exception is `submit.command`, which a later slice deserializes into a
-//! [`sync::Command`](wickedways_core::sync::Command) *only* to derive the acting seat.
+//! `unknown`. The one exception is `submit.command`, which the server deserializes into a
+//! `sync::Command` *only* to derive the acting seat.
 //!
 //! The tag key is `t` and every field is camelCase, so these serialize byte-identically to the TS
 //! union (the wire contract — see the shape tests below). The chat and A/V arms
 //! (`chatSend`/`callJoin`/`signal`/…) are **sub-project E**: they are deliberately omitted here and
 //! added as new variants when E lands (additive — a Rust `#[serde(tag = "t")]` enum simply rejects
-//! an unknown tag until then). Extracting this module to a shared `wickedways-transport` crate is
-//! deferred to D, which will reuse it for the web client.
+//! an unknown tag until then).
+//!
+//! This crate is engine-free (serde only): both `wickedways-server` and `wickedways-web` depend on
+//! it so client and server can never drift on the wire shape.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

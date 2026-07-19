@@ -2493,6 +2493,15 @@ dependencies = [
  "tokio",
  "tokio-tungstenite",
  "wickedways-core",
+ "wickedways-transport",
+]
+
+[[package]]
+name = "wickedways-transport"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2512,6 +2521,7 @@ dependencies = [
  "dioxus",
  "serde_json",
  "wickedways-core",
+ "wickedways-transport",
 ]
 
 [[package]]
