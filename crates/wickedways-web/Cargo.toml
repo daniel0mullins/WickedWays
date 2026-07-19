@@ -1,0 +1,25 @@
+[package]
+name = "wickedways-web"
+version = "0.0.1"
+edition = "2021"
+
+# The Dioxus web client (Phase 2c, sub-project D). Slice 0 is the CSS-carryover
+# spike + skeleton: it proves a Dioxus app compiles to wasm32 in this environment,
+# that the campaign CRT theming (CSS custom properties) carries from Lit to RSX,
+# and that `wickedways-core` links DIRECTLY (rlib, no wasm-pack/JS boundary) and
+# runs on wasm. The real transport + surfaces land in slices 1-5.
+#
+# This crate targets wasm32-unknown-unknown; build it with
+#   cargo build -p wickedways-web --target wasm32-unknown-unknown
+# (see the D plan for the bundling step).
+
+[[bin]]
+name = "wickedways-web"
+path = "src/main.rs"
+
+[dependencies]
+dioxus = { version = "0.6", features = ["web"] }
+# The engine, linked directly as a Rust crate (both compile to the same wasm
+# target) — no JS interop. The default `std` feature is available on wasm32.
+wickedways-core = { path = "../wickedways-core" }
+serde_json = "1"
