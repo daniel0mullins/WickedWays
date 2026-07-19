@@ -49,6 +49,23 @@ pub enum SubmitOutcome {
     NotCommitted,
 }
 
+/// A GM seat-control mutation, applied to the membership and persisted atomically by
+/// [`Table::gm_mutate`]. Mirrors the `assignSeat`/`unassignSeat`/`transferGM` arms of `server.ts`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum GmOp {
+    Assign { character_id: String, identity: String },
+    Unassign { character_id: String },
+    TransferGm { identity: String },
+}
+
+/// A read-only view of a table's seat ownership, for building presence/roster without holding the
+/// actor. Snapshotted under the actor's serialization.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MembershipView {
+    pub gm_identity: String,
+    pub seats: Vec<(String, String)>,
+}
+
 /// The server-side coordinator for one campaign's session — the virtual tabletop.
 pub struct Table {
     authority: SyncAuthority,
@@ -196,6 +213,31 @@ impl Table {
         SubmitOutcome::Committed { seq }
     }
 
+    /// Applies a GM seat-control mutation and persists it atomically (the mutation + the current
+    /// snapshot land in one `save`). On a persist failure, reloads the last durable record
+    /// (discarding the mutation) and returns `Err`. Mirrors the TS `assignSeat`/… → persist →
+    /// reload-on-failure sequence, done under the actor so it cannot interleave with a submit.
+    pub async fn gm_mutate(&mut self, op: GmOp) -> Result<(), ()> {
+        match op {
+            GmOp::Assign { character_id, identity } => self.membership.assign(&character_id, identity),
+            GmOp::Unassign { character_id } => self.membership.unassign(&character_id),
+            GmOp::TransferGm { identity } => self.membership.transfer_gm(identity),
+        }
+        if self.persist().await.is_err() {
+            self.reload().await;
+            return Err(());
+        }
+        Ok(())
+    }
+
+    /// A snapshot of the seat map for presence/roster.
+    pub fn membership_view(&self) -> MembershipView {
+        MembershipView {
+            gm_identity: self.membership.gm_identity().to_string(),
+            seats: self.membership.seats().to_vec(),
+        }
+    }
+
     /// Writes the current durable record (no-op without a store). Snapshot + membership are written
     /// in one `save`, so they land atomically. Runs on the blocking pool (rusqlite is synchronous).
     pub async fn persist(&self) -> Result<(), StoreError> {
@@ -262,16 +304,23 @@ where
 /// A message to a running [`Table`] actor. Processed strictly in arrival order by the single task,
 /// so submit → persist → ack is atomic per campaign for free.
 pub enum TableMsg {
-    Join { conn: ConnId, sub: Subscriber, from_seq: u64 },
-    Leave { conn: ConnId },
+    // Join/Leave/GetSnapshot/Broadcast carry an ack `reply` so their handle methods resolve only
+    // once the actor has actually processed them — deterministic ordering for callers and tests,
+    // rather than relying on a later round-trip to drain the queue.
+    Join { conn: ConnId, sub: Subscriber, from_seq: u64, reply: oneshot::Sender<()> },
+    Leave { conn: ConnId, reply: oneshot::Sender<()> },
     Submit { command: Command, sender: Subscriber, on_commit: Option<OnCommit>, reply: oneshot::Sender<SubmitOutcome> },
-    GetSnapshot { requester: Subscriber },
-    Broadcast { msg: ServerMsg },
+    GetSnapshot { requester: Subscriber, reply: oneshot::Sender<()> },
+    Broadcast { msg: ServerMsg, reply: oneshot::Sender<()> },
     Head { reply: oneshot::Sender<u64> },
     CurrentSnapshot { reply: oneshot::Sender<CampaignSnapshot> },
-    /// Run a closure against the seat map (GM control messages, presence reads) under the actor's
-    /// serialization, with an optional follow-up reply.
+    /// Run a closure against the seat map (join seat-claims etc.) under the actor's serialization,
+    /// with a follow-up reply.
     WithMembership { f: Box<dyn FnOnce(&mut Membership) + Send>, reply: oneshot::Sender<()> },
+    /// Apply a GM seat-control mutation and persist it atomically.
+    GmMutate { op: GmOp, reply: oneshot::Sender<Result<(), ()>> },
+    /// Snapshot the seat map for presence/roster.
+    MembershipView { reply: oneshot::Sender<MembershipView> },
 }
 
 /// A handle to a running [`Table`] actor: cloneable, cheap, and the only way to reach the campaign's
@@ -282,14 +331,20 @@ pub struct TableHandle {
 }
 
 impl TableHandle {
-    /// Registers a participant and backfills entries after `from_seq`.
+    /// Registers a participant and backfills entries after `from_seq`; resolves once done.
     pub async fn join(&self, conn: ConnId, sub: Subscriber, from_seq: u64) {
-        let _ = self.tx.send(TableMsg::Join { conn, sub, from_seq }).await;
+        let (reply, rx) = oneshot::channel();
+        if self.tx.send(TableMsg::Join { conn, sub, from_seq, reply }).await.is_ok() {
+            let _ = rx.await;
+        }
     }
 
-    /// Removes a participant.
+    /// Removes a participant; resolves once done.
     pub async fn leave(&self, conn: ConnId) {
-        let _ = self.tx.send(TableMsg::Leave { conn }).await;
+        let (reply, rx) = oneshot::channel();
+        if self.tx.send(TableMsg::Leave { conn, reply }).await.is_ok() {
+            let _ = rx.await;
+        }
     }
 
     /// Submits a command; resolves once the actor has committed-or-denied (and persisted) it.
@@ -306,14 +361,20 @@ impl TableHandle {
         rx.await.unwrap_or(SubmitOutcome::NotCommitted)
     }
 
-    /// Sends the latest checkpoint to `requester`.
+    /// Sends the latest checkpoint to `requester`; resolves once sent.
     pub async fn get_snapshot(&self, requester: Subscriber) {
-        let _ = self.tx.send(TableMsg::GetSnapshot { requester }).await;
+        let (reply, rx) = oneshot::channel();
+        if self.tx.send(TableMsg::GetSnapshot { requester, reply }).await.is_ok() {
+            let _ = rx.await;
+        }
     }
 
-    /// Broadcasts a message to every participant.
+    /// Broadcasts a message to every participant; resolves once sent.
     pub async fn broadcast(&self, msg: ServerMsg) {
-        let _ = self.tx.send(TableMsg::Broadcast { msg }).await;
+        let (reply, rx) = oneshot::channel();
+        if self.tx.send(TableMsg::Broadcast { msg, reply }).await.is_ok() {
+            let _ = rx.await;
+        }
     }
 
     /// The current committed head.
@@ -342,6 +403,25 @@ impl TableHandle {
         }
         let _ = rx.await;
     }
+
+    /// Applies a GM seat-control mutation, persisting atomically. `Err(())` means the mutation was
+    /// rejected (persist failure → reloaded) or the actor is gone.
+    pub async fn gm_mutate(&self, op: GmOp) -> Result<(), ()> {
+        let (reply, rx) = oneshot::channel();
+        if self.tx.send(TableMsg::GmMutate { op, reply }).await.is_err() {
+            return Err(());
+        }
+        rx.await.unwrap_or(Err(()))
+    }
+
+    /// Snapshots the seat map for presence/roster.
+    pub async fn membership_view(&self) -> Option<MembershipView> {
+        let (reply, rx) = oneshot::channel();
+        if self.tx.send(TableMsg::MembershipView { reply }).await.is_err() {
+            return None;
+        }
+        rx.await.ok()
+    }
 }
 
 /// Spawns `table` as a per-campaign actor and returns a handle to it. The task ends when every
@@ -352,14 +432,26 @@ pub fn spawn_table(table: Table) -> TableHandle {
         let mut table = table;
         while let Some(msg) = rx.recv().await {
             match msg {
-                TableMsg::Join { conn, sub, from_seq } => table.join(conn, sub, from_seq),
-                TableMsg::Leave { conn } => table.leave(conn),
+                TableMsg::Join { conn, sub, from_seq, reply } => {
+                    table.join(conn, sub, from_seq);
+                    let _ = reply.send(());
+                }
+                TableMsg::Leave { conn, reply } => {
+                    table.leave(conn);
+                    let _ = reply.send(());
+                }
                 TableMsg::Submit { command, sender, on_commit, reply } => {
                     let out = table.submit(command, &sender, on_commit).await;
                     let _ = reply.send(out);
                 }
-                TableMsg::GetSnapshot { requester } => table.send_snapshot(&requester),
-                TableMsg::Broadcast { msg } => table.broadcast(msg),
+                TableMsg::GetSnapshot { requester, reply } => {
+                    table.send_snapshot(&requester);
+                    let _ = reply.send(());
+                }
+                TableMsg::Broadcast { msg, reply } => {
+                    table.broadcast(msg);
+                    let _ = reply.send(());
+                }
                 TableMsg::Head { reply } => {
                     let _ = reply.send(table.head());
                 }
@@ -369,6 +461,13 @@ pub fn spawn_table(table: Table) -> TableHandle {
                 TableMsg::WithMembership { f, reply } => {
                     f(table.membership_mut());
                     let _ = reply.send(());
+                }
+                TableMsg::GmMutate { op, reply } => {
+                    let out = table.gm_mutate(op).await;
+                    let _ = reply.send(out);
+                }
+                TableMsg::MembershipView { reply } => {
+                    let _ = reply.send(table.membership_view());
                 }
             }
         }
