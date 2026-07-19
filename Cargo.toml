@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["crates/wickedways-core", "crates/wickedways-wasm", "crates/wickedways-assemble", "crates/wickedways-author", "crates/wickedways-server"]
+members = ["crates/wickedways-core", "crates/wickedways-wasm", "crates/wickedways-assemble", "crates/wickedways-author", "crates/wickedways-server", "crates/wickedways-web"]
