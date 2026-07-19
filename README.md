@@ -1444,13 +1444,26 @@ const replica = SyncCoordinator.join({ registry, transport });
 replica.start();
 ```
 
-**Rust port (Phase 2c, in progress).** The sync layer is being ported to Rust alongside the engine
-(see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). The first slice landed the command model in
-[`crates/wickedways-core/src/sync/`](crates/wickedways-core/src/sync/): the actor-tagged
-[`Command`](crates/wickedways-core/src/sync/command.rs) union (mirroring `src/lib/sync/types.ts`
-byte-for-byte) and the [`authorize`](crates/wickedways-core/src/sync/authorize.rs) gate (mirroring
-`resolver.ts`). The `Authority` + `Delta` diff/apply + `Replica` follow; until the goldens replay
-against Rust, `src/lib/sync/` remains the authoritative oracle.
+**Rust port (Phase 2c, in progress).** The sync layer and room server are being ported to Rust
+alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). Landed so far:
+
+- **The sync core** in [`crates/wickedways-core/src/sync/`](crates/wickedways-core/src/sync/): the
+  actor-tagged [`Command`](crates/wickedways-core/src/sync/command.rs) union (mirroring
+  `src/lib/sync/types.ts` byte-for-byte), the [`authorize`](crates/wickedways-core/src/sync/authorize.rs)
+  gate, and the native [`SyncAuthority`](crates/wickedways-core/src/sync/authority.rs) (submit →
+  authorize → apply → `Delta` diff → ordered log) + `Delta` apply + `SyncCoordinator`. A **differential
+  gate** ([`crates/wickedways-assemble/tests/sync_gate.rs`](crates/wickedways-assemble/tests/sync_gate.rs))
+  replays committed command sequences through the Rust authority and asserts each `{ seq, delta }`
+  matches the TS oracle byte-for-byte.
+- **The room server** in [`crates/wickedways-server/`](crates/wickedways-server/): a Rust/axum port of
+  `packages/server`. A `RoomServer` hosts a native `SyncAuthority` per campaign behind a per-campaign
+  tokio actor (`Table`) that serializes submit → persist → ack (flush-before-ack), gates appends by
+  seat ownership (`Membership`), persists to SQLite (`SqliteStore`), and speaks the `transport-shared`
+  wire protocol over a `/ws` WebSocket endpoint. A two-client convergence e2e proves two replicas
+  converge over a real socket.
+
+Until the goldens replay against Rust everywhere, `src/lib/sync/` remains the authoritative oracle for
+the sync core.
 
 ## Notable patterns
 
