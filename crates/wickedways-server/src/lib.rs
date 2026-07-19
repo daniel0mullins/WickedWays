@@ -28,4 +28,5 @@ pub use wickedways_core::sync;
 
 pub mod membership;
 pub mod store;
+pub mod table;
 pub mod transport;

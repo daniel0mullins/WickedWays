@@ -40,11 +40,13 @@ pub struct CampaignRecord {
     pub membership: MembershipState,
 }
 
-/// A store failure — either the SQLite driver or (de)serialization of the JSON columns.
+/// A store failure — the SQLite driver, (de)serialization of the JSON columns, or the blocking task
+/// that ran the store call failing to complete (e.g. a panic on the blocking pool).
 #[derive(Debug)]
 pub enum StoreError {
     Db(rusqlite::Error),
     Serde(serde_json::Error),
+    Task(String),
 }
 
 impl fmt::Display for StoreError {
@@ -52,6 +54,7 @@ impl fmt::Display for StoreError {
         match self {
             StoreError::Db(e) => write!(f, "store db error: {e}"),
             StoreError::Serde(e) => write!(f, "store serde error: {e}"),
+            StoreError::Task(e) => write!(f, "store task error: {e}"),
         }
     }
 }
