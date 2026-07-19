@@ -25,3 +25,7 @@
 // Re-export the core sync surface this crate hosts, so downstream slices (and D) name it through
 // the server crate rather than reaching into `wickedways_core` directly.
 pub use wickedways_core::sync;
+
+pub mod membership;
+pub mod store;
+pub mod transport;
