@@ -1,0 +1,26 @@
+[package]
+name = "wickedways-server"
+version = "0.0.1"
+edition = "2021"
+
+# The Rust room server (Phase 2c, sub-project C). Hosts a native `SyncAuthority`
+# per campaign, gates appends by seat ownership, persists durably, and speaks the
+# `transport-shared` wire protocol. Native-only (std) — not a wasm target.
+
+[[bin]]
+name = "wickedways-server"
+path = "src/main.rs"
+
+[dependencies]
+wickedways-core = { path = "../wickedways-core", features = ["std"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+axum = { version = "0.8", features = ["ws"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+# rusqlite is synchronous; the per-campaign Table actor serializes access and
+# drives store calls via tokio::task::spawn_blocking (see the C plan). `bundled`
+# compiles SQLite in-tree so there is no system-lib dependency.
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# NOTE: rand/uuid are deliberately absent, mirroring the other crates — ids are
+# derived by the core, never generated here.
