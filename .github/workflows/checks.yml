@@ -26,6 +26,7 @@ jobs:
       # The G2 author gate is likewise pure Rust: it byte-diffs the TOML compiler's
       # output against the committed g2-vault oracle. Runs in the fast job.
       - run: cargo test -p wickedways-author
+      - run: cargo test -p wickedways-server
       # Regenerate the ts-rs bindings and fail if the committed ones drifted from the
       # Rust source of truth. Pure Rust + git diff, so it lives in the fast job.
       - run: pnpm run bindings:check
