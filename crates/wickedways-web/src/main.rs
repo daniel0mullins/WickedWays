@@ -1,17 +1,21 @@
 //! The WickedWays Dioxus web client (Phase 2c, sub-project D) — the CRT game shell (slice 2).
 //!
 //! Drives the multiplayer loop against the C axum server (slice 1), renders the real engine
-//! [`ViewModel`] the core projects from the replica (slice 2a), and now takes typed commands through
-//! the ported [`parse`](wickedways_web::parser::parse)r (slice 2b): the prompt turns a line of input
-//! into an [`Intent`], which the shell resolves into a sync `Command` (a `move`'s direction becomes
-//! the destination room id via the replica's exit graph) and submits; informational queries
-//! (look/exits/inventory/help) render locally against the current view. The narrator (cue → prose)
-//! and the SVG map are later slices.
+//! [`ViewModel`] the core projects from the replica (slice 2a), and takes typed commands through the
+//! ported [`parse`](wickedways_web::parser::parse)r (slice 2b): the prompt turns a line of input into
+//! an [`Intent`], which the shell resolves into a sync `Command` (a `move`'s direction becomes the
+//! destination room id via the replica's exit graph) and submits; informational queries
+//! (look/exits/inventory/help) render locally against the current view. This slice adds the
+//! [`Narrator`] (cue/query/intent → prose) and the shared [`MapModel`]/SVG map: room entry and action
+//! confirmations print through the narrator, `map` opens an explored-map overlay, and `help` opens a
+//! command-list overlay (mirroring `crt-game.ts`'s `openMap`/`openHelp`).
 //!
 //! Connection is configured from the page URL query (`?ws=…&campaign=…&token=…`).
 //!
 //! [`ViewModel`]: wickedways_core::world::view::ViewModel
 //! [`Intent`]: wickedways_core::world::intent::Intent
+//! [`Narrator`]: wickedways_web::narrator::Narrator
+//! [`MapModel`]: wickedways_web::map::MapModel
 
 use std::collections::BTreeSet;
 
@@ -24,11 +28,14 @@ use wickedways_core::world::ids::{CharacterId, ItemId};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
 use wickedways_core::World;
-use wickedways_web::parser::{parse, ParseResult, Query};
+use wickedways_web::map::{layout_map, map_svg, MapModel};
+use wickedways_web::narrator::Narrator;
+use wickedways_web::parser::{parse, Meta, ParseResult, Query};
 use wickedways_web::transport::WsTransport;
 
 const CRT_CSS: &str = include_str!("../assets/crt.css");
 const THEME_VARS: &str = "--color-bg:#0b0e0a; --color-text:#9be89b; --color-accent:#d7ffd7; \
+    --color-muted:#8a8f80; --color-border:#2a281f; --color-chip-bg:#25241d; --color-error:#e86b6b; \
     --font-body:'VT323',monospace; --base-size:26px; --crt-scanline:0.35; \
     --plastic:#c9c4b4; --plastic-light:#e6e1d2; --plastic-dark:#8f8b7d; --plastic-shadow:#5f5c52;";
 
@@ -36,6 +43,14 @@ const THEME_VARS: &str = "--color-bg:#0b0e0a; --color-text:#9be89b; --color-acce
 enum Action {
     NextPlayer,
     Input(String),
+}
+
+/// The one-at-a-time overlay (map or help), mirroring `crt-game.ts`'s `openMap`/`openHelp`.
+#[derive(Clone, Debug, PartialEq)]
+enum Overlay {
+    None,
+    Help(Vec<String>),
+    Map,
 }
 
 struct Config {
@@ -65,7 +80,7 @@ fn project(coord: &SyncCoordinator) -> Option<ViewModel> {
 /// Resolves a parser [`Intent`] into a sync [`Command`] against the replica — the key step is a
 /// `move`, whose compass direction becomes the destination room id via the active character's room
 /// and the exit graph. Intents with no sync command (open/talk/wait) return a note.
-fn intent_to_command(world: &World, intent: Intent) -> Result<Command, String> {
+fn intent_to_command(world: &World, intent: &Intent) -> Result<Command, String> {
     let actor = world.active_character_id().map_err(|e| e.0)?;
     match intent {
         Intent::Move { dir } => {
@@ -84,39 +99,15 @@ fn intent_to_command(world: &World, intent: Intent) -> Result<Command, String> {
             };
             Ok(Command::Move { actor_id: actor, room_id: dest })
         }
-        Intent::Take { target_id } => Ok(Command::PickUp { actor_id: actor, item_ids: vec![ItemId(target_id)] }),
-        Intent::Drop { target_id } => Ok(Command::Drop { actor_id: actor, item_ids: vec![ItemId(target_id)] }),
-        Intent::Attack { target_id } => Ok(Command::Attack { actor_id: actor, target_id: CharacterId(target_id) }),
-        Intent::Equip { target_id } => Ok(Command::Equip { actor_id: actor, item_id: ItemId(target_id), slot: None }),
-        Intent::Unequip { target_id } => Ok(Command::Unequip { actor_id: actor, item_id: ItemId(target_id) }),
-        Intent::Use { target_id } => Ok(Command::Use { actor_id: actor, item_id: ItemId(target_id) }),
+        Intent::Take { target_id } => Ok(Command::PickUp { actor_id: actor, item_ids: vec![ItemId(target_id.clone())] }),
+        Intent::Drop { target_id } => Ok(Command::Drop { actor_id: actor, item_ids: vec![ItemId(target_id.clone())] }),
+        Intent::Attack { target_id } => Ok(Command::Attack { actor_id: actor, target_id: CharacterId(target_id.clone()) }),
+        Intent::Equip { target_id } => Ok(Command::Equip { actor_id: actor, item_id: ItemId(target_id.clone()), slot: None }),
+        Intent::Unequip { target_id } => Ok(Command::Unequip { actor_id: actor, item_id: ItemId(target_id.clone()) }),
+        Intent::Use { target_id } => Ok(Command::Use { actor_id: actor, item_id: ItemId(target_id.clone()) }),
         Intent::Open { .. } => Err("(opening is a local view action — not yet wired)".into()),
         Intent::Talk { .. } => Err("(dialogue is a later slice)".into()),
         Intent::Wait => Err("(wait is not yet wired)".into()),
-    }
-}
-
-/// Renders an informational query against the current view as a narration line.
-fn narrate_query(q: Query, v: &ViewModel) -> String {
-    match q {
-        Query::Look => format!("{} — {}", v.room.name, v.room.description),
-        Query::Exits => {
-            if v.exits.is_empty() {
-                "No obvious exits.".into()
-            } else {
-                let list = v.exits.iter().map(|e| format!("{} → {}", e.dir.as_key(), e.to_name)).collect::<Vec<_>>();
-                format!("Exits: {}", list.join(", "))
-            }
-        }
-        Query::Inventory => {
-            let names: Vec<String> = v.inventory.items.iter().chain(v.inventory.keys.iter()).map(|e| e.name.clone()).collect();
-            if names.is_empty() {
-                "You carry nothing.".into()
-            } else {
-                format!("Carrying: {}", names.join(", "))
-            }
-        }
-        Query::Help => "Try: look · exits · inventory · a direction (north/n) · take/attack/use <thing>.".into(),
     }
 }
 
@@ -129,6 +120,9 @@ fn app() -> Element {
     let mut vm = use_signal(|| None::<ViewModel>);
     let mut narration = use_signal(Vec::<String>::new);
     let mut draft = use_signal(String::new);
+    let mut narrator = use_signal(Narrator::new);
+    let mut map_model = use_signal(MapModel::new);
+    let mut overlay = use_signal(|| Overlay::None);
 
     let driver = use_coroutine(move |mut rx: UnboundedReceiver<Action>| async move {
         let cfg = read_config();
@@ -140,29 +134,48 @@ fn app() -> Element {
             Ok(transport) => {
                 let mut coord = SyncCoordinator::join(&transport);
                 status.set("connected".into());
-                vm.set(project(&coord));
+                let initial = project(&coord);
+                if let Some(v) = &initial {
+                    map_model.write().observe(v);
+                    narration.write().extend(narrator.write().render_room(v));
+                }
+                vm.set(initial);
+
                 while let Some(action) = rx.next().await {
+                    let mut intent_for_narration: Option<Intent> = None;
+                    let mut before_view: Option<ViewModel> = None;
                     let command = match action {
                         Action::NextPlayer => Some(Command::NextPlayer),
                         Action::Input(text) => {
                             let view = project(&coord);
+                            before_view = view.clone();
                             let scope = view.as_ref().map(|v| v.scope.as_slice()).unwrap_or(&[]);
                             match parse(&text, scope) {
                                 ParseResult::Query(q) => {
                                     if let Some(v) = &view {
-                                        narration.write().push(narrate_query(q, v));
+                                        if matches!(q, Query::Help) {
+                                            let rows = narrator.write().render_query(q, v);
+                                            overlay.set(Overlay::Help(rows));
+                                        } else {
+                                            let lines = narrator.write().render_query(q, v);
+                                            narration.write().extend(lines);
+                                        }
                                     }
                                     None
                                 }
-                                ParseResult::Intent(intent) => match intent_to_command(coord.replica(), intent) {
-                                    Ok(cmd) => Some(cmd),
+                                ParseResult::Intent(intent) => match intent_to_command(coord.replica(), &intent) {
+                                    Ok(cmd) => {
+                                        intent_for_narration = Some(intent);
+                                        Some(cmd)
+                                    }
                                     Err(note) => {
                                         narration.write().push(note);
                                         None
                                     }
                                 },
                                 ParseResult::Examine(t) => {
-                                    narration.write().push(format!("You look at the {}.", t.name));
+                                    let lines = narrator.write().render_examine(&t);
+                                    narration.write().extend(lines);
                                     None
                                 }
                                 ParseResult::Ambiguous(cands) => {
@@ -170,8 +183,11 @@ fn app() -> Element {
                                     narration.write().push(format!("Which do you mean: {names}?"));
                                     None
                                 }
-                                ParseResult::Meta(_) => {
-                                    narration.write().push("(that's not available here yet)".into());
+                                ParseResult::Meta(meta) => {
+                                    match meta {
+                                        Meta::Map => overlay.set(Overlay::Map),
+                                        _ => narration.write().push("(that's not available here yet)".into()),
+                                    }
                                     None
                                 }
                                 ParseResult::Error(msg) => {
@@ -185,7 +201,20 @@ fn app() -> Element {
                         match transport.submit_async(cmd).await {
                             SubmitResult::Committed { seq, .. } => {
                                 coord.sync(&transport);
-                                vm.set(project(&coord));
+                                let after = project(&coord);
+                                if let Some(a) = &after {
+                                    map_model.write().observe(a);
+                                }
+                                if let (Some(intent), Some(b), Some(a)) = (intent_for_narration, &before_view, &after) {
+                                    let action_lines = narrator.write().render_action(&intent, b, a);
+                                    narration.write().extend(action_lines);
+                                    if let Intent::Move { dir } = intent {
+                                        map_model.write().record_move(&b.room.id, dir, &a.room.id);
+                                        let room_lines = narrator.write().render_room(a);
+                                        narration.write().extend(room_lines);
+                                    }
+                                }
+                                vm.set(after);
                                 status.set(format!("committed seq {seq}"));
                             }
                             SubmitResult::Denied { reason } => {
@@ -234,6 +263,30 @@ fn app() -> Element {
                         }
                     }
                     div { class: "crt-overlay" }
+                }
+            }
+        }
+        if overlay() != Overlay::None {
+            div { class: "overlay", onclick: move |_| overlay.set(Overlay::None),
+                div { class: "overlay-frame",
+                    match overlay() {
+                        Overlay::Help(rows) => rsx! {
+                            div { class: "help-list",
+                                for (i, row) in rows.iter().enumerate() {
+                                    div { key: "help-{i}", class: "help-row", "{row}" }
+                                }
+                            }
+                        },
+                        Overlay::Map => rsx! { {map_svg(&layout_map(&map_model.read()))} },
+                        Overlay::None => rsx! {},
+                    }
+                }
+                div { class: "overlay-legend",
+                    if overlay() == Overlay::Map {
+                        "─ open   ╌ locked   ? unexplored   ✕ remains   ▣ here   ·   click to close"
+                    } else {
+                        "click to close"
+                    }
                 }
             }
         }

@@ -5,6 +5,8 @@
 //! bin and later modules). Slice 1 lands [`mirror`] — the warm-local-mirror half of the WebSocket
 //! transport, ported from `packages/client/src/websocket-transport.ts`.
 
+pub mod map;
 pub mod mirror;
+pub mod narrator;
 pub mod parser;
 pub mod transport;

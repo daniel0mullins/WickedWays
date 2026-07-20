@@ -4,7 +4,7 @@ The Dioxus **web** client (Phase 2c, sub-project D). See the design
 ([`docs/superpowers/specs/2026-07-14-rust-phase-2c-d-dioxus-web-client-design.md`](../../docs/superpowers/specs/2026-07-14-rust-phase-2c-d-dioxus-web-client-design.md))
 and plan ([`docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.md`](../../docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.md)).
 
-## Status: slice 2 — the CRT game view + command parser
+## Status: slice 2 — the CRT game view + command parser + narrator + map
 
 The client renders the **real engine `ViewModel`** the core projects from the replica — the room,
 its exits and locked doors, the occupants (with health / defeated), the player's inventory, and the
@@ -17,8 +17,23 @@ The **prompt** takes typed commands through the ported [`parser`](src/parser.rs)
 `crt/parser.ts`, unit-tested on the host): a line becomes an `Intent`, which the shell resolves into a
 sync `Command` — a `move`'s compass direction becomes the destination room id via the replica's exit
 graph — and submits; informational queries (`look`/`exits`/`inventory`/`help`) render locally against
-the current view, and unresolved/denied input narrates back. The narrator (cue → prose) and the SVG
-map are later slices.
+the current view, and unresolved/denied input narrates back.
+
+The **[`narrator`](src/narrator.rs)** (a 1:1 port of `shared/narrator.ts`, unit-tested on the host)
+turns room entry, queries, examine, and resolved intents into prose: room header/description/occupant
+lines, `look`/`inventory`/`exits`/`help` text, an examine blurb, and — synthesized from the before/after
+`ViewModel` an intent produced, since the multiplayer sync layer doesn't carry `PresentationCue`s over
+the wire (mirrors the TS transport, which doesn't either) — action confirmations like "You take the
+…"/"You hit the … for N Health." `render_cues`/`render_mob_attacks` are ported and tested against the
+engine's `PresentationCue`/`MobAttack` types for when a cue-carrying path (single-player's future
+`World::submit`, or a widened wire protocol) feeds them real data.
+
+The **[`map`](src/map.rs)** module ports `map-model.ts`'s `MapModel` (fog-of-war rooms/edges/stubs,
+built incrementally from `observe`/`record_move`) and `map-view.ts`'s pure grid layout, plus a Dioxus
+RSX SVG renderer styled via the `.map-*` CSS classes carried over from `crt-game.ts`. The `map` command
+opens an overlay (mirroring `openMap`/`openHelp`); `help` opens the same overlay with the command list.
+Dismissal is click-to-close (the Lit surface's "any key closes" isn't replicated — no global keydown
+listener is wired up yet).
 
 ## Slice 1 — the multiplayer transport + shell
 
