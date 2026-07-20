@@ -58,9 +58,15 @@ The **audio subtree** begins with its pure mapping layer, the analog of the affo
 [`audio`](src/audio.rs) (a 1:1 port of `audio/cue-sound.ts`) turns an engine `PresentationCue` /
 `MobAttack` into a backend-agnostic `SynthVoice` (waveform-or-noise + freq glide + gain envelope) —
 attack/takeDamage/pickUp/drop/move/encounter/visibility/win/loss, plus a deterministic per-actor
-pitch jitter (`detune_factor`, byte-faithful to the TS hash). No Web Audio yet, so it is host-tested
-exhaustively; the Web Audio runtime that renders these voices (an `AudioContext` oscillator/noise +
-envelope), the ambient drone, and soundpack selection are the follow-up slices.
+pitch jitter (`detune_factor`, byte-faithful to the TS hash).
+
+[`audio_engine`](src/audio_engine.rs) (a port of `audio/engine.ts`) is the **Web Audio renderer** that
+turns a `SynthVoice` into sound: a lazily-created `AudioContext` (built on the first `resume`, a user
+gesture), an oscillator (or a white-noise buffer) through a gain node with a linear-attack /
+exponential-decay envelope, and `resume`/`suspend`/`close` lifecycle. Best-effort throughout (a failed
+node call never crashes the game). The pure pseudo-noise fill is host-tested; the `web-sys` calls are
+exercised by the wasm build. Still to come: wiring the surfaces' cue / mob-attack / error paths and an
+audio toggle to this engine, then the ViewModel-driven ambient drone and soundpack selection.
 
 ## Status: slice 3 — the point-and-click surface
 

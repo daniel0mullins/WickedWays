@@ -40,4 +40,8 @@ futures-util = "0.3"
 web-sys = { version = "0.3", features = [
   "WebSocket", "MessageEvent", "Event", "CloseEvent", "BinaryType",
   "Window", "Location", "UrlSearchParams", "Storage",
+  # Web Audio — the AudioEngine renders a SynthVoice as one-shot oscillator/noise + gain envelope.
+  "AudioContext", "BaseAudioContext", "AudioContextState", "AudioNode", "AudioParam",
+  "GainNode", "OscillatorNode", "OscillatorType", "AudioDestinationNode",
+  "AudioBuffer", "AudioBufferSourceNode", "AudioScheduledSourceNode",
 ] }
