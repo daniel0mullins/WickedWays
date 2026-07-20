@@ -27,11 +27,10 @@ use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
 
 use crate::affordances::{inventory_actions, scene_hotspots, ActionDescriptor, HotspotKind};
-use crate::driver::{intent_to_command, project, read_config};
+use crate::driver::{intent_to_command, project, read_config, AppTransport};
 use crate::map::{layout_map, map_svg, MapModel};
 use crate::narrator::Narrator;
 use crate::scene_layout::{body_position, dir_position, partition_hotspots};
-use crate::transport::WsTransport;
 
 const PNC_CSS: &str = include_str!("../assets/pnc.css");
 
@@ -98,7 +97,7 @@ pub fn pnc_app() -> Element {
 
     let driver = use_coroutine(move |mut rx: UnboundedReceiver<PncAction>| async move {
         let cfg = read_config();
-        match WsTransport::connect(&cfg.ws, &cfg.campaign, &cfg.token).await {
+        match AppTransport::connect(&cfg).await {
             Err(e) => {
                 status.set("error".into());
                 log.write().push(LogLine::error(format!("connect failed: {e}")));
@@ -263,7 +262,7 @@ pub fn pnc_app() -> Element {
 /// Submit a command; on a denial push the reason to the log. Returns whether it committed (so the
 /// caller knows to re-project + narrate).
 async fn submit(
-    transport: &WsTransport,
+    transport: &AppTransport,
     coord: &mut SyncCoordinator,
     command: Command,
     mut log: Signal<Vec<LogLine>>,

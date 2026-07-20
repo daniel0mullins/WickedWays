@@ -27,11 +27,10 @@ use futures_util::StreamExt;
 use wickedways_core::sync::{Command, SubmitResult, SyncCoordinator};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
-use wickedways_web::driver::{intent_to_command, project, read_config, read_surface, Surface};
+use wickedways_web::driver::{intent_to_command, project, read_config, read_surface, AppTransport, Surface};
 use wickedways_web::map::{layout_map, map_svg, MapModel};
 use wickedways_web::narrator::Narrator;
 use wickedways_web::parser::{parse, Meta, ParseResult, Query};
-use wickedways_web::transport::WsTransport;
 
 const CRT_CSS: &str = include_str!("../assets/crt.css");
 const THEME_VARS: &str = "--color-bg:#0b0e0a; --color-text:#9be89b; --color-accent:#d7ffd7; \
@@ -71,7 +70,7 @@ fn crt_app() -> Element {
 
     let driver = use_coroutine(move |mut rx: UnboundedReceiver<Action>| async move {
         let cfg = read_config();
-        match WsTransport::connect(&cfg.ws, &cfg.campaign, &cfg.token).await {
+        match AppTransport::connect(&cfg).await {
             Err(e) => {
                 status.set("error".into());
                 narration.write().push(format!("connect failed: {e}"));
