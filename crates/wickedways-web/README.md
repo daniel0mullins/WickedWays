@@ -4,9 +4,19 @@ The Dioxus **web** client (Phase 2c, sub-project D). See the design
 ([`docs/superpowers/specs/2026-07-14-rust-phase-2c-d-dioxus-web-client-design.md`](../../docs/superpowers/specs/2026-07-14-rust-phase-2c-d-dioxus-web-client-design.md))
 and plan ([`docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.md`](../../docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.md)).
 
-## Status: slice 1 — the multiplayer transport + shell
+## Status: slice 2 — the CRT game view
 
-The client now drives the **real multiplayer loop** end-to-end against the C axum server:
+The client renders the **real engine `ViewModel`** the core projects from the replica — the room,
+its exits and locked doors, the occupants (with health / defeated), the player's inventory, and the
+turn/health/sanity HUD. `World::view()` is called on the `SyncCoordinator`'s replica after every
+commit, so the terminal shows exactly what the authority sees; a GM `nextPlayer` flips the active
+character and the whole view re-projects (occupant list, HUD) from the new perspective. The full CRT
+surface (parser → intents, narrator, SVG map) layers on in later slices; this slice lands the game
+*view* at structural parity. Verified in a real browser against a live server (see `e2e/`).
+
+## Slice 1 — the multiplayer transport + shell
+
+The client drives the **real multiplayer loop** end-to-end against the C axum server:
 
 - **`mirror`** — the warm local mirror (log/head/snapshot + gap-buffer), the browser-free heart of the
   transport, ported from `websocket-transport.ts` and unit-tested on the host.

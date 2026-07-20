@@ -87,6 +87,35 @@
   font: inherit;
 }
 
+/* ── game view (slice 2): HUD + room + exits + occupants + inventory ── */
+.hud {
+  display: flex; flex-wrap: wrap; gap: 0.2em 1.2em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
+  color: var(--color-accent);
+  font-size: 0.8em;
+}
+.hud .sep { opacity: 0.5; }
+
+.room-name {
+  font-family: var(--font-display, var(--font-body));
+  letter-spacing: 0.06em;
+  color: var(--color-accent);
+  margin-top: 0.3em;
+}
+.room-desc { margin: 0.1em 0 0.3em; }
+.room-desc.dark { opacity: 0.5; font-style: italic; }
+
+.section { margin-top: 0.25em; }
+.section-label {
+  font-size: 0.72em; letter-spacing: 0.12em; text-transform: uppercase;
+  opacity: 0.65;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 0.3em 0.6em; }
+.chip { white-space: nowrap; }
+.chip .meta { opacity: 0.6; font-size: 0.82em; }
+.chip.defeated { opacity: 0.45; text-decoration: line-through; }
+
 .controls { display: flex; gap: 0.5em; margin-top: 0.4em; }
 .controls button {
   font: inherit;
