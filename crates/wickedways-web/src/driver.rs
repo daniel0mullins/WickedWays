@@ -84,17 +84,29 @@ pub enum AppTransport {
     Single(Box<SinglePlayerTransport>),
 }
 
+/// The bundled demo campaign genesis snapshot. Used to boot single-player and to `restart` it.
+pub fn demo_genesis() -> Result<CampaignSnapshot, String> {
+    serde_json::from_str(DEMO_GENESIS).map_err(|e| format!("bundled genesis is malformed: {e}"))
+}
+
+/// Build a fresh offline transport + a coordinator joined to it, from an authoritative snapshot.
+/// Shared by single-player boot, `restore` (from a save), and `restart` (from the bundled genesis) —
+/// the local analog of the room server's "reset the authority to a snapshot".
+pub fn rebuild_single(snapshot: CampaignSnapshot) -> (AppTransport, SyncCoordinator) {
+    let transport = AppTransport::Single(Box::new(SinglePlayerTransport::new(
+        World::from_snapshot(snapshot),
+        Catalog::default(),
+    )));
+    let coord = SyncCoordinator::join(&transport);
+    (transport, coord)
+}
+
 impl AppTransport {
     /// Connect per [`Config::mode`]: build the offline authority from the bundled genesis, or open a
     /// WebSocket to the room server.
     pub async fn connect(cfg: &Config) -> Result<AppTransport, String> {
         match cfg.mode {
-            Mode::Single => {
-                let snapshot: CampaignSnapshot = serde_json::from_str(DEMO_GENESIS)
-                    .map_err(|e| format!("bundled genesis is malformed: {e}"))?;
-                let genesis = World::from_snapshot(snapshot);
-                Ok(AppTransport::Single(Box::new(SinglePlayerTransport::new(genesis, Catalog::default()))))
-            }
+            Mode::Single => Ok(rebuild_single(demo_genesis()?).0),
             Mode::Multi => {
                 Ok(AppTransport::Multi(WsTransport::connect(&cfg.ws, &cfg.campaign, &cfg.token).await?))
             }

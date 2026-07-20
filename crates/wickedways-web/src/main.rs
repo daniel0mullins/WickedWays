@@ -25,18 +25,16 @@ use dioxus::prelude::*;
 use futures_util::StreamExt;
 
 use wickedways_core::sync::{Command, SubmitResult, SyncCoordinator};
-use wickedways_core::world::descriptor::Catalog;
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
-use wickedways_core::World;
 use wickedways_web::driver::{
-    intent_to_command, project, read_config, read_surface, AppTransport, Mode, Surface,
+    demo_genesis, intent_to_command, project, read_config, read_surface, rebuild_single, AppTransport,
+    Mode, Surface,
 };
 use wickedways_web::map::{layout_map, map_svg, MapModel};
 use wickedways_web::narrator::Narrator;
 use wickedways_web::parser::{parse, Meta, ParseResult, Query};
 use wickedways_web::savestore::{self, SaveBlob};
-use wickedways_web::single_player::SinglePlayerTransport;
 
 const CRT_CSS: &str = include_str!("../assets/crt.css");
 const THEME_VARS: &str = "--color-bg:#0b0e0a; --color-text:#9be89b; --color-accent:#d7ffd7; \
@@ -55,6 +53,7 @@ enum Action {
 enum MetaEffect {
     Save,
     Restore,
+    Restart,
 }
 
 /// The one-at-a-time overlay (map or help), mirroring `crt-game.ts`'s `openMap`/`openHelp`.
@@ -148,6 +147,7 @@ fn crt_app() -> Element {
                                         Meta::Map => overlay.set(Overlay::Map),
                                         Meta::Save => meta_effect = Some(MetaEffect::Save),
                                         Meta::Restore => meta_effect = Some(MetaEffect::Restore),
+                                        Meta::Restart => meta_effect = Some(MetaEffect::Restart),
                                         _ => narration.write().push("(that's not available here yet)".into()),
                                     }
                                     None
@@ -208,15 +208,11 @@ fn crt_app() -> Element {
                         Some(MetaEffect::Restore) if cfg.mode == Mode::Single => {
                             match savestore::load("slot1") {
                                 Some(blob) => {
-                                    // Rebuild the offline authority from the saved snapshot (the local
-                                    // analog of the server's "reset the authority to a snapshot"),
-                                    // re-join the coordinator, and hydrate the map.
-                                    let genesis = World::from_snapshot(blob.snapshot);
-                                    transport = AppTransport::Single(Box::new(SinglePlayerTransport::new(
-                                        genesis,
-                                        Catalog::default(),
-                                    )));
-                                    coord = SyncCoordinator::join(&transport);
+                                    // Rebuild the offline authority from the saved snapshot and hydrate
+                                    // the saved fog-of-war map.
+                                    let (t, c) = rebuild_single(blob.snapshot);
+                                    transport = t;
+                                    coord = c;
                                     map_model.write().hydrate(blob.map);
                                     let restored = project(&coord);
                                     narration.write().push("Restored.".into());
@@ -229,7 +225,29 @@ fn crt_app() -> Element {
                                 None => narration.write().push("No save found.".into()),
                             }
                         }
-                        Some(_) => narration.write().push("(save/restore is single-player only)".into()),
+                        Some(MetaEffect::Restart) if cfg.mode == Mode::Single => {
+                            match demo_genesis() {
+                                Ok(snapshot) => {
+                                    // Rebuild from the pristine bundled genesis and reset the surface
+                                    // state (map, narrator's visited-rooms, transcript) — begin again.
+                                    let (t, c) = rebuild_single(snapshot);
+                                    transport = t;
+                                    coord = c;
+                                    map_model.write().reset();
+                                    narrator.set(Narrator::new());
+                                    narration.write().clear();
+                                    let fresh = project(&coord);
+                                    if let Some(v) = &fresh {
+                                        map_model.write().observe(v);
+                                        let lines = narrator.write().render_room(v);
+                                        narration.write().extend(lines);
+                                    }
+                                    vm.set(fresh);
+                                }
+                                Err(e) => narration.write().push(format!("Restart failed: {e}")),
+                            }
+                        }
+                        Some(_) => narration.write().push("(save/restore/restart is single-player only)".into()),
                         None => {}
                     }
                 }
