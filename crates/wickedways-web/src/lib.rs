@@ -7,6 +7,7 @@
 
 pub mod affordances;
 pub mod audio;
+pub mod audio_engine;
 pub mod driver;
 pub mod map;
 pub mod mirror;
