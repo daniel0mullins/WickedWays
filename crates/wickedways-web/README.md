@@ -32,8 +32,12 @@ narrator / transcript. All three are gated to single-player (multiplayer state l
 Verified offline in a browser: save → move → `restore` reverts, and move → `restart` returns to the
 start. The `SaveBlob` JSON format is host-tested.
 
+Both surfaces expose the lifecycle verbs: the CRT via its `save`/`restore`/`restart` commands, the PnC
+via a single-player-only **settings menu** (the ⚙ topbar button) whose Save/Restore/Restart route
+through the same seam. Verified offline in a browser on both surfaces.
+
 Remaining slice-4 work: the launcher (`?campaign=`/`?theme=`, real manifest-driven genesis in place of
-the single bundled demo), wiring the lifecycle verbs into the PnC menu, and the audio subtree.
+the single bundled demo) and the audio subtree.
 
 ## Status: slice 3 — the point-and-click surface
 
