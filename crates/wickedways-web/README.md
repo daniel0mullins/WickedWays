@@ -67,14 +67,16 @@ exponential-decay envelope, and `resume`/`suspend`/`close` lifecycle. Best-effor
 node call never crashes the game). The pure pseudo-noise fill is host-tested; the `web-sys` calls are
 exercised by the wasm build.
 
-The **CRT surface plays sound**: the `audio` command toggles an `AudioEngine` (the Enter keypress is
-the user gesture that starts the `AudioContext`), narrating "Audio on/off." While enabled, committed
-action intents voice through the shared cue→voice mapping (`voice_for_intent` synthesizes a
-`PresentationCue::Action` — the wire doesn't carry cues, so the surface reconstructs the action from
-the intent: attack/move/take/drop), and a denied or unparseable command buzzes `error_sound`. Verified
-offline in a browser: enabling audio creates the `AudioContext` lazily (none before), and
-move/attack/error commands play with no page error. Still to come: the PnC audio toggle, and the
-ViewModel-driven ambient drone + soundpack selection (the `AudioRuntime`/director layer).
+**Both surfaces play sound.** The CRT `audio` command (the Enter keypress is the user gesture) and the
+PnC topbar 🔊 toggle (the button click is the gesture) each flip an `AudioEngine`. While enabled,
+committed action intents voice through the shared cue→voice mapping — `voice_for_intent` (in
+[`audio`](src/audio.rs), used by both surfaces) synthesizes a `PresentationCue::Action` since the wire
+doesn't carry cues, reconstructing the action from the intent: attack/move/take/drop — and a denied
+command (or, on the CRT, an unparseable one) buzzes `error_sound`. Toggling off `suspend`s the context
+without tearing it down. Verified offline in a browser on both surfaces: audio enables lazily (no
+`AudioContext` before the toggle), a committed move schedules a source node, and re-toggling doesn't
+recreate the context — all with no page error. Still to come: the ViewModel-driven ambient drone +
+soundpack selection (the `AudioRuntime`/director layer).
 
 ## Status: slice 3 — the point-and-click surface
 
