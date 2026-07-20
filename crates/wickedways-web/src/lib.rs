@@ -10,4 +10,5 @@ pub mod map;
 pub mod mirror;
 pub mod narrator;
 pub mod parser;
+pub mod scene_layout;
 pub mod transport;
