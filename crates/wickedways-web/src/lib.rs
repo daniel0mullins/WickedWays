@@ -6,6 +6,7 @@
 //! transport, ported from `packages/client/src/websocket-transport.ts`.
 
 pub mod affordances;
+pub mod audio;
 pub mod driver;
 pub mod map;
 pub mod mirror;

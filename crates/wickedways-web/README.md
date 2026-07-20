@@ -54,7 +54,13 @@ default. Host-tested (each bundled campaign boots, begins, and projects) and ver
 `?mode=single&campaign=caretaker` boots the Foyer with its Caretaker NPC + cellar door,
 `facade-free-vs-advancing` boots the Hall with its Lurker + chest.
 
-Remaining slice-4 work: the audio subtree.
+The **audio subtree** begins with its pure mapping layer, the analog of the affordances/scene logic:
+[`audio`](src/audio.rs) (a 1:1 port of `audio/cue-sound.ts`) turns an engine `PresentationCue` /
+`MobAttack` into a backend-agnostic `SynthVoice` (waveform-or-noise + freq glide + gain envelope) —
+attack/takeDamage/pickUp/drop/move/encounter/visibility/win/loss, plus a deterministic per-actor
+pitch jitter (`detune_factor`, byte-faithful to the TS hash). No Web Audio yet, so it is host-tested
+exhaustively; the Web Audio runtime that renders these voices (an `AudioContext` oscillator/noise +
+envelope), the ambient drone, and soundpack selection are the follow-up slices.
 
 ## Status: slice 3 — the point-and-click surface
 
