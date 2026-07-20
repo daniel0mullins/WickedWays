@@ -116,6 +116,12 @@
 .chip .meta { opacity: 0.6; font-size: 0.82em; }
 .chip.defeated { opacity: 0.45; text-decoration: line-through; }
 
+.narration {
+  margin-top: 0.5em; padding-top: 0.35em;
+  border-top: 1px solid color-mix(in srgb, var(--color-text) 20%, transparent);
+  opacity: 0.92;
+}
+
 .controls { display: flex; gap: 0.5em; margin-top: 0.4em; }
 .controls button {
   font: inherit;

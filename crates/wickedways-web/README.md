@@ -4,15 +4,21 @@ The Dioxus **web** client (Phase 2c, sub-project D). See the design
 ([`docs/superpowers/specs/2026-07-14-rust-phase-2c-d-dioxus-web-client-design.md`](../../docs/superpowers/specs/2026-07-14-rust-phase-2c-d-dioxus-web-client-design.md))
 and plan ([`docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.md`](../../docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.md)).
 
-## Status: slice 2 — the CRT game view
+## Status: slice 2 — the CRT game view + command parser
 
 The client renders the **real engine `ViewModel`** the core projects from the replica — the room,
 its exits and locked doors, the occupants (with health / defeated), the player's inventory, and the
 turn/health/sanity HUD. `World::view()` is called on the `SyncCoordinator`'s replica after every
 commit, so the terminal shows exactly what the authority sees; a GM `nextPlayer` flips the active
-character and the whole view re-projects (occupant list, HUD) from the new perspective. The full CRT
-surface (parser → intents, narrator, SVG map) layers on in later slices; this slice lands the game
-*view* at structural parity. Verified in a real browser against a live server (see `e2e/`).
+character and the whole view re-projects (occupant list, HUD) from the new perspective. Verified in a
+real browser against a live server (see `e2e/`).
+
+The **prompt** takes typed commands through the ported [`parser`](src/parser.rs) (a 1:1 port of
+`crt/parser.ts`, unit-tested on the host): a line becomes an `Intent`, which the shell resolves into a
+sync `Command` — a `move`'s compass direction becomes the destination room id via the replica's exit
+graph — and submits; informational queries (`look`/`exits`/`inventory`/`help`) render locally against
+the current view, and unresolved/denied input narrates back. The narrator (cue → prose) and the SVG
+map are later slices.
 
 ## Slice 1 — the multiplayer transport + shell
 
