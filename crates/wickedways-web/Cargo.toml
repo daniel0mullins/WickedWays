@@ -40,8 +40,10 @@ futures-util = "0.3"
 web-sys = { version = "0.3", features = [
   "WebSocket", "MessageEvent", "Event", "CloseEvent", "BinaryType",
   "Window", "Location", "UrlSearchParams", "Storage",
-  # Web Audio — the AudioEngine renders a SynthVoice as one-shot oscillator/noise + gain envelope.
+  # Web Audio — the AudioEngine renders a SynthVoice as one-shot oscillator/noise + gain envelope,
+  # and the AmbientBed runs a sanity-reactive drone (two sawtooths → biquad low-pass → gain).
   "AudioContext", "BaseAudioContext", "AudioContextState", "AudioNode", "AudioParam",
   "GainNode", "OscillatorNode", "OscillatorType", "AudioDestinationNode",
   "AudioBuffer", "AudioBufferSourceNode", "AudioScheduledSourceNode",
+  "BiquadFilterNode", "BiquadFilterType",
 ] }

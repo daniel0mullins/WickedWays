@@ -67,16 +67,37 @@ exponential-decay envelope, and `resume`/`suspend`/`close` lifecycle. Best-effor
 node call never crashes the game). The pure pseudo-noise fill is host-tested; the `web-sys` calls are
 exercised by the wasm build.
 
-**Both surfaces play sound.** The CRT `audio` command (the Enter keypress is the user gesture) and the
-PnC topbar 🔊 toggle (the button click is the gesture) each flip an `AudioEngine`. While enabled,
-committed action intents voice through the shared cue→voice mapping — `voice_for_intent` (in
-[`audio`](src/audio.rs), used by both surfaces) synthesizes a `PresentationCue::Action` since the wire
-doesn't carry cues, reconstructing the action from the intent: attack/move/take/drop — and a denied
-command (or, on the CRT, an unparseable one) buzzes `error_sound`. Toggling off `suspend`s the context
-without tearing it down. Verified offline in a browser on both surfaces: audio enables lazily (no
-`AudioContext` before the toggle), a committed move schedules a source node, and re-toggling doesn't
-recreate the context — all with no page error. Still to come: the ViewModel-driven ambient drone +
-soundpack selection (the `AudioRuntime`/director layer).
+The **runtime / director layer** ties the four layers together (`AudioDirector → SoundPack → SoundSpec
+→ AudioBackend`). [`audio_pack`](src/audio_pack.rs) (ports `contracts.ts` + `default-pack.ts` +
+`tension.ts`) holds the pure brains: an `AudioDirector` turns a `PresentationCue` into discrete
+`AudioCue`s and reads continuous **tension** (0–1) off the `ViewModel` DTO, and a `SoundPack` maps an
+`AudioCue` to a `SoundSpec` (or silence) and tension to an ambient directive. The shipped
+`default_chiptune_pack` covers every base cue by reusing the `audio` voices (timbre unchanged); the
+`sanity_director` normalizes sanity against a session high-water mark (calm at the top, tense as it
+drains), the analog of hollow-house's director — `wickedways_campaign_audio()` wires it for the bundled
+campaigns. All host-tested (every base cue voices; tension clamps and tracks its high-water mark).
+
+[`ambient`](src/ambient.rs) (ports `ambient.ts`) is the **sanity-reactive drone**: two detuned sawtooth
+oscillators through a fixed dark low-pass + gain. Dread is expressed purely as BEAT RATE — the partner
+oscillator drifts further from the fundamental as tension rises, so the pulse quickens (slow calm throb
+→ anxious throb) while loudness and timbre stay fixed. [`audio_runtime`](src/audio_runtime.rs) (ports
+`audio-runtime.ts`) is the session-lived orchestrator that owns the engine + bed + active director/pack:
+`set_enabled` resumes the engine and starts the bed on the same context, `play_cue` routes cue → director
+→ pack → engine, `update(view)` drives the bed's tension, `reset` rebuilds the director on restart, and
+`note_error`/`play_mob_attack` are the fixed voices. Its disabled-gating / soundpack-list / dispose paths
+are host-tested; the `web-sys` glue is browser-verified.
+
+**Both surfaces play sound** through the runtime. The CRT `audio` command (the Enter keypress is the user
+gesture) and the PnC topbar 🔊 toggle (the button click is the gesture) each `set_enabled` the shared
+`AudioRuntime`. While enabled, committed action intents voice through director → pack (the wire doesn't
+carry cues, so `cue_for_intent` in [`audio`](src/audio.rs) reconstructs a `PresentationCue::Action` from
+the intent: attack/move/take/drop), a denied command (or, on the CRT, an unparseable one) buzzes the
+error voice, and every view change drives the ambient bed. Verified offline in a browser on **both**
+surfaces: enabling opens one `AudioContext` and starts the drone (two oscillators through a biquad
+low-pass), a committed move fires SFX and drives another tension ramp, and toggling off suspends without
+recreating the context (re-enabling resumes it and restarts the bed) — all with no page error. Still to
+come (deferred, architecture-only): sampled/scored audio (the `SoundSpec::Sample` arm) and a multi-pack
+soundpack switcher (the runtime already carries the list; the surface shows it only at ≥ 2 packs).
 
 ## Status: slice 3 — the point-and-click surface
 
