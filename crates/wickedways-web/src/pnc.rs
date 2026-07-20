@@ -27,9 +27,12 @@ use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
 
 use crate::affordances::{inventory_actions, scene_hotspots, ActionDescriptor, HotspotKind};
-use crate::driver::{intent_to_command, project, read_config, AppTransport};
+use crate::driver::{
+    demo_genesis, intent_to_command, project, read_config, rebuild_single, AppTransport, Mode,
+};
 use crate::map::{layout_map, map_svg, MapModel};
 use crate::narrator::Narrator;
+use crate::savestore::{self, SaveBlob};
 use crate::scene_layout::{body_position, dir_position, partition_hotspots};
 
 const PNC_CSS: &str = include_str!("../assets/pnc.css");
@@ -70,6 +73,10 @@ enum PncAction {
     Run(ActionDescriptor),
     /// GM: advance to the next seat (dev affordance, mirrors the CRT control).
     NextPlayer,
+    /// Single-player lifecycle verbs from the settings menu (mirror the CRT `save`/`restore`/`restart`).
+    Save,
+    Restore,
+    Restart,
 }
 
 /// Append the room heading + description/body to the log (mirrors the controller's `printRoom`).
@@ -88,12 +95,15 @@ pub fn pnc_app() -> Element {
     let mut status = use_signal(|| "connecting…".to_string());
     let mut vm = use_signal(|| None::<ViewModel>);
     let mut log = use_signal(Vec::<LogLine>::new);
-    let narrator = use_signal(Narrator::new);
+    let mut narrator = use_signal(Narrator::new);
     let mut map_model = use_signal(MapModel::new);
     let mut menu = use_signal(|| None::<ActionMenu>);
     let mut map_open = use_signal(|| false);
     let mut started = use_signal(|| false);
+    let mut settings_open = use_signal(|| false);
     let inv_tab_items = use_signal(|| true); // true = Inventory tab, false = Key Items tab
+    // The boot mode, read once — the settings menu (save/restore/restart) shows only in single-player.
+    let mode = use_hook(|| read_config().mode);
 
     let driver = use_coroutine(move |mut rx: UnboundedReceiver<PncAction>| async move {
         let cfg = read_config();
@@ -103,6 +113,8 @@ pub fn pnc_app() -> Element {
                 log.write().push(LogLine::error(format!("connect failed: {e}")));
             }
             Ok(transport) => {
+                // Mutable so `restore`/`restart` can rebind to a fresh offline authority mid-session.
+                let mut transport = transport;
                 let mut coord = SyncCoordinator::join(&transport);
                 status.set("connected".into());
                 let initial = project(&coord);
@@ -121,6 +133,65 @@ pub fn pnc_app() -> Element {
                                 map_model.write().observe(a);
                             }
                             vm.set(after);
+                            continue;
+                        }
+                        // ── Single-player lifecycle (mirrors the CRT verbs, same rebuild seam) ──
+                        PncAction::Save => {
+                            if cfg.mode == Mode::Single {
+                                let blob = SaveBlob { snapshot: coord.snapshot(), map: map_model.read().serialize() };
+                                match savestore::save("slot1", &blob) {
+                                    Ok(()) => log.write().push(LogLine::plain("Saved.".into())),
+                                    Err(e) => log.write().push(LogLine::error(format!("Save failed: {e}"))),
+                                }
+                            } else {
+                                log.write().push(LogLine::plain("(save is single-player only)".into()));
+                            }
+                            continue;
+                        }
+                        PncAction::Restore => {
+                            if cfg.mode == Mode::Single {
+                                match savestore::load("slot1") {
+                                    Some(blob) => {
+                                        let (t, c) = rebuild_single(blob.snapshot);
+                                        transport = t;
+                                        coord = c;
+                                        map_model.write().hydrate(blob.map);
+                                        let restored = project(&coord);
+                                        log.write().push(LogLine::plain("Restored.".into()));
+                                        if let Some(v) = &restored {
+                                            print_room(log, narrator, v);
+                                        }
+                                        vm.set(restored);
+                                    }
+                                    None => log.write().push(LogLine::plain("No save found.".into())),
+                                }
+                            } else {
+                                log.write().push(LogLine::plain("(restore is single-player only)".into()));
+                            }
+                            continue;
+                        }
+                        PncAction::Restart => {
+                            if cfg.mode == Mode::Single {
+                                match demo_genesis() {
+                                    Ok(snapshot) => {
+                                        let (t, c) = rebuild_single(snapshot);
+                                        transport = t;
+                                        coord = c;
+                                        map_model.write().reset();
+                                        narrator.set(Narrator::new());
+                                        log.write().clear();
+                                        let fresh = project(&coord);
+                                        if let Some(v) = &fresh {
+                                            map_model.write().observe(v);
+                                            print_room(log, narrator, v);
+                                        }
+                                        vm.set(fresh);
+                                    }
+                                    Err(e) => log.write().push(LogLine::error(format!("Restart failed: {e}"))),
+                                }
+                            } else {
+                                log.write().push(LogLine::plain("(restart is single-player only)".into()));
+                            }
                             continue;
                         }
                         PncAction::Run(ActionDescriptor::Examine { target_id, .. })
@@ -190,6 +261,9 @@ pub fn pnc_app() -> Element {
                     span { class: "topbar-status", "{status}" }
                     button { class: "topbar-btn", title: "Map", onclick: move |_| map_open.set(true), "🗺" }
                     button { class: "topbar-btn", title: "GM: next player", onclick: move |_| driver.send(PncAction::NextPlayer), "⏭" }
+                    if mode == Mode::Single {
+                        button { class: "topbar-btn", title: "Menu", onclick: move |_| settings_open.set(true), "⚙" }
+                    }
                 }
             }
 
@@ -243,6 +317,17 @@ pub fn pnc_app() -> Element {
                     }
                     div { class: "overlay-legend",
                         "─ open   ╌ locked   ? unexplored   ✕ remains   ▣ here   ·   click to close"
+                    }
+                }
+            }
+
+            // ── Settings menu (single-player lifecycle) ─────────────────────────
+            if settings_open() {
+                div { class: "pnc-menu-backdrop", onclick: move |_| settings_open.set(false),
+                    div { class: "settings-menu", onclick: move |e| e.stop_propagation(),
+                        button { class: "menu-btn", onclick: move |_| { settings_open.set(false); driver.send(PncAction::Save); }, "Save" }
+                        button { class: "menu-btn", onclick: move |_| { settings_open.set(false); driver.send(PncAction::Restore); }, "Restore" }
+                        button { class: "menu-btn", onclick: move |_| { settings_open.set(false); driver.send(PncAction::Restart); }, "Restart" }
                     }
                 }
             }
