@@ -18,6 +18,10 @@ export default tseslint.config(
       "**/pkg-web/",
       // Generated TS bindings (already gitignore-adjacent; covers generated/bindings/).
       "generated/",
+      // The Rust crates are not part of the TS project; their only JS is ad-hoc
+      // dev harnesses (e.g. crates/wickedways-web/e2e/*.mjs) with node/browser
+      // globals, not linted here.
+      "crates/**",
     ],
   },
 
