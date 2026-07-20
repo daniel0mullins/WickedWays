@@ -4,7 +4,26 @@ The Dioxus **web** client (Phase 2c, sub-project D). See the design
 ([`docs/superpowers/specs/2026-07-14-rust-phase-2c-d-dioxus-web-client-design.md`](../../docs/superpowers/specs/2026-07-14-rust-phase-2c-d-dioxus-web-client-design.md))
 and plan ([`docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.md`](../../docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.md)).
 
-## Status: slice 2 — the CRT game view + command parser + narrator + map
+## Status: slice 3 (in progress) — the point-and-click surface
+
+The point-and-click surface begins with its pure logic layer, the analog of the CRT `parser`:
+**[`affordances`](src/affordances.rs)** (a 1:1 port of `pnc/affordances.ts`, unit-tested on the host)
+derives what the player can click in a scene and which verbs each thing offers, straight from the
+engine `ViewModel` — no framework, no DOM:
+
+- `scene_hotspots(vm)` → the clickable elements in scene order (exits, locked doors, occupants, loot
+  containers, floor items), each with its `ActionDescriptor` verbs. Verbs are capability-gated so the
+  menu never offers a move the engine would reject: a defeated occupant loses Attack, only a
+  `talkable` NPC gets Talk, only a *closed* container's contents stay hidden (opening it turns them
+  into takeable floor items).
+- `inventory_actions(item, equipped)` → an inventory item's verbs (Examine, Read if it has lore,
+  Equip/Unequip by state, Use if usable, Drop unless it's a required quest item).
+
+The PnC UI components (scene / action-menu / topbar / inventory / log) and their controller — which
+turn these descriptors into DOM and drive the turn loop — are the remaining slice-3 work; they reuse
+the already-ported [`narrator`](src/narrator.rs) and [`map`](src/map.rs).
+
+## Slice 2 — the CRT game view + command parser + narrator + map
 
 The client renders the **real engine `ViewModel`** the core projects from the replica — the room,
 its exits and locked doors, the occupants (with health / defeated), the player's inventory, and the
