@@ -34,6 +34,7 @@ use crate::map::{layout_map, map_svg, MapModel};
 use crate::narrator::Narrator;
 use crate::savestore::{self, SaveBlob};
 use crate::scene_layout::{body_position, dir_position, partition_hotspots};
+use crate::theme::pnc_theme_vars;
 
 const PNC_CSS: &str = include_str!("../assets/pnc.css");
 
@@ -102,8 +103,10 @@ pub fn pnc_app() -> Element {
     let mut started = use_signal(|| false);
     let mut settings_open = use_signal(|| false);
     let inv_tab_items = use_signal(|| true); // true = Inventory tab, false = Key Items tab
-    // The boot mode, read once — the settings menu (save/restore/restart) shows only in single-player.
+    // The boot mode + launcher palette, read once. The settings menu (save/restore/restart) shows
+    // only in single-player; the palette (`?theme=`) overrides the pnc.css defaults on `.pnc-app`.
     let mode = use_hook(|| read_config().mode);
+    let theme_vars = use_hook(|| pnc_theme_vars(&read_config().theme));
 
     let driver = use_coroutine(move |mut rx: UnboundedReceiver<PncAction>| async move {
         let cfg = read_config();
@@ -253,7 +256,7 @@ pub fn pnc_app() -> Element {
 
     rsx! {
         style { "{PNC_CSS}" }
-        div { class: "pnc-app",
+        div { class: "pnc-app", style: "{theme_vars}",
             // ── Topbar ──────────────────────────────────────────────────────────
             div { class: "pnc-topbar",
                 div { class: "topbar-left", span { class: "room-name", "{room_name}" } }

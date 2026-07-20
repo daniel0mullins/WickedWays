@@ -35,12 +35,9 @@ use wickedways_web::map::{layout_map, map_svg, MapModel};
 use wickedways_web::narrator::Narrator;
 use wickedways_web::parser::{parse, Meta, ParseResult, Query};
 use wickedways_web::savestore::{self, SaveBlob};
+use wickedways_web::theme::crt_theme_vars;
 
 const CRT_CSS: &str = include_str!("../assets/crt.css");
-const THEME_VARS: &str = "--color-bg:#0b0e0a; --color-text:#9be89b; --color-accent:#d7ffd7; \
-    --color-muted:#8a8f80; --color-border:#2a281f; --color-chip-bg:#25241d; --color-error:#e86b6b; \
-    --font-body:'VT323',monospace; --base-size:26px; --crt-scanline:0.35; \
-    --plastic:#c9c4b4; --plastic-light:#e6e1d2; --plastic-dark:#8f8b7d; --plastic-shadow:#5f5c52;";
 
 /// A driver request from the UI to the (non-Send, Rc-backed) transport coroutine.
 enum Action {
@@ -79,6 +76,8 @@ fn crt_app() -> Element {
     let mut narrator = use_signal(Narrator::new);
     let mut map_model = use_signal(MapModel::new);
     let mut overlay = use_signal(|| Overlay::None);
+    // The launcher palette (`?theme=`), read once and applied to the CRT root.
+    let theme_vars = use_hook(|| crt_theme_vars(&read_config().theme));
 
     let driver = use_coroutine(move |mut rx: UnboundedReceiver<Action>| async move {
         let cfg = read_config();
@@ -265,7 +264,7 @@ fn crt_app() -> Element {
 
     rsx! {
         style { "{CRT_CSS}" }
-        div { class: "backdrop", style: "{THEME_VARS}",
+        div { class: "backdrop", style: "{theme_vars}",
             div { class: "monitor",
                 div { class: "monitor-screen",
                     div { class: "screen",
