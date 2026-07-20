@@ -8,12 +8,15 @@
 //! status / inventory / running log. Ported from `packages/play-surface/src/pnc` (controller +
 //! components), reusing the already-ported [`Narrator`] and [`MapModel`].
 //!
-//! Parity notes vs. the Lit surface: the campaign manifest (title/intro/themes) and the audio /
-//! save-restore / settings menu are runtime pieces the web client gets in slice 4, so this surface
-//! shows a generic welcome, a basic status line projected from the `ViewModel` (the campaign
-//! `StatusField` cues aren't carried over the multiplayer wire — same as the CRT surface), and a
-//! dev `nextPlayer` control. `examine`/`read` render the generic look line, since per-entity lore /
-//! descriptions ride `PresentationCue`s the wire doesn't carry yet.
+//! Parity notes vs. the Lit surface: save-restore / settings menu and procedural audio are wired
+//! (slice 4) — a topbar 🔊 toggle enables the shared [`AudioEngine`], which voices committed actions
+//! and denials just like the CRT surface. The campaign manifest (title/intro/themes) is not carried
+//! over the multiplayer wire, so this surface shows a generic welcome, a basic status line projected
+//! from the `ViewModel` (the campaign `StatusField` cues aren't carried either — same as the CRT
+//! surface), and a dev `nextPlayer` control. `examine`/`read` render the generic look line, since
+//! per-entity lore / descriptions ride `PresentationCue`s the wire doesn't carry yet.
+//!
+//! [`AudioEngine`]: crate::audio_engine::AudioEngine
 //!
 //! [`intent_to_command`]: crate::driver::intent_to_command
 //! [`Narrator`]: crate::narrator::Narrator
@@ -27,6 +30,8 @@ use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
 
 use crate::affordances::{inventory_actions, scene_hotspots, ActionDescriptor, HotspotKind};
+use crate::audio::{error_sound, voice_for_intent};
+use crate::audio_engine::AudioEngine;
 use crate::driver::{
     boot, boot_single, intent_to_command, project, read_config, rebuild_single, AppTransport, Mode,
 };
@@ -78,6 +83,8 @@ enum PncAction {
     Save,
     Restore,
     Restart,
+    /// Toggle procedural audio (the click is the user gesture that lets the `AudioContext` start).
+    ToggleAudio,
 }
 
 /// Append the room heading + description/body to the log (mirrors the controller's `printRoom`).
@@ -102,6 +109,7 @@ pub fn pnc_app() -> Element {
     let mut map_open = use_signal(|| false);
     let mut started = use_signal(|| false);
     let mut settings_open = use_signal(|| false);
+    let mut audio_on = use_signal(|| false);
     let inv_tab_items = use_signal(|| true); // true = Inventory tab, false = Key Items tab
     // The boot mode + launcher palette, read once. The settings menu (save/restore/restart) shows
     // only in single-player; the palette (`?theme=`) overrides the pnc.css defaults on `.pnc-app`.
@@ -120,6 +128,8 @@ pub fn pnc_app() -> Element {
                 // `catalog` is the campaign's, held for the session and used for every projection.
                 let mut transport = transport;
                 let mut coord = coord;
+                // The Web Audio backend, lazily created when the player enables sound via the toggle.
+                let mut audio = AudioEngine::new();
                 status.set("connected".into());
                 let initial = project(&coord, &catalog);
                 if let Some(v) = &initial {
@@ -197,6 +207,18 @@ pub fn pnc_app() -> Element {
                             }
                             continue;
                         }
+                        PncAction::ToggleAudio => {
+                            // The button click is the user gesture that lets the AudioContext start.
+                            if audio_on() {
+                                audio.suspend();
+                                audio_on.set(false);
+                            } else if audio.resume() {
+                                audio_on.set(true);
+                            } else {
+                                log.write().push(LogLine::plain("Audio is unavailable.".into()));
+                            }
+                            continue;
+                        }
                         PncAction::Run(ActionDescriptor::Examine { target_id, .. })
                         | PncAction::Run(ActionDescriptor::Read { target_id, .. }) => {
                             if let Some(v) = project(&coord, &catalog) {
@@ -221,6 +243,9 @@ pub fn pnc_app() -> Element {
                         }
                     };
                     if !submit(&transport, &mut coord, command, log).await {
+                        if audio_on() {
+                            audio.play(&error_sound());
+                        }
                         continue;
                     }
                     let after = project(&coord, &catalog);
@@ -244,6 +269,12 @@ pub fn pnc_app() -> Element {
                             log.write().push(LogLine::end("— THE END —".into()));
                         }
                     }
+                    // Voice the committed action (attack/move/take/drop have a sound).
+                    if audio_on() {
+                        if let Some(voice) = voice_for_intent(&intent) {
+                            audio.play(&voice);
+                        }
+                    }
                     vm.set(after);
                 }
             }
@@ -262,6 +293,12 @@ pub fn pnc_app() -> Element {
                 div { class: "topbar-left", span { class: "room-name", "{room_name}" } }
                 div { class: "topbar-controls",
                     span { class: "topbar-status", "{status}" }
+                    button {
+                        class: "topbar-btn",
+                        title: if audio_on() { "Sound on" } else { "Sound off" },
+                        onclick: move |_| driver.send(PncAction::ToggleAudio),
+                        if audio_on() { "🔊" } else { "🔇" }
+                    }
                     button { class: "topbar-btn", title: "Map", onclick: move |_| map_open.set(true), "🗺" }
                     button { class: "topbar-btn", title: "GM: next player", onclick: move |_| driver.send(PncAction::NextPlayer), "⏭" }
                     if mode == Mode::Single {

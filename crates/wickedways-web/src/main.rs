@@ -24,11 +24,10 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 
-use wickedways_core::presentation::{ActionKind, EntityRef, PresentationCue};
 use wickedways_core::sync::{Command, SubmitResult};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
-use wickedways_web::audio::{error_sound, sound_for_cue, SynthVoice};
+use wickedways_web::audio::{error_sound, voice_for_intent};
 use wickedways_web::audio_engine::AudioEngine;
 use wickedways_web::driver::{
     boot, boot_single, intent_to_command, project, read_config, read_surface, rebuild_single, Mode,
@@ -69,22 +68,6 @@ fn main() {
         Surface::Crt => dioxus::launch(crt_app),
         Surface::Pnc => dioxus::launch(wickedways_web::pnc::pnc_app),
     }
-}
-
-/// The one-shot sound a committed action intent makes, if any (attack/move/take/drop). Synthesized
-/// through the shared cue→voice mapping via a `PresentationCue::Action` — the multiplayer wire
-/// doesn't carry cues, so the surface reconstructs the action from the intent. The noun id seeds the
-/// per-actor pitch jitter (attack), giving different foes distinct hits.
-fn voice_for_intent(intent: &Intent) -> Option<SynthVoice> {
-    let entity = |id: &str| EntityRef { id: id.into(), name: String::new() };
-    let cue = match intent {
-        Intent::Attack { target_id } => PresentationCue::Action { action: ActionKind::Attack, actor: entity(target_id), sound: None },
-        Intent::Move { .. } => PresentationCue::Action { action: ActionKind::Move, actor: entity("move"), sound: None },
-        Intent::Take { target_id } => PresentationCue::Action { action: ActionKind::PickUp, actor: entity(target_id), sound: None },
-        Intent::Drop { target_id } => PresentationCue::Action { action: ActionKind::Drop, actor: entity(target_id), sound: None },
-        _ => return None,
-    };
-    sound_for_cue(&cue)
 }
 
 fn crt_app() -> Element {

@@ -7,7 +7,8 @@
 //! envelope). This is the foundation of the audio subtree, the audio analog of the affordances/scene
 //! logic that landed before their DOM.
 
-use wickedways_core::presentation::{ActionKind, CampaignOutcome, PresentationCue};
+use wickedways_core::presentation::{ActionKind, CampaignOutcome, EntityRef, PresentationCue};
+use wickedways_core::world::intent::Intent;
 use wickedways_core::world::submit::MobAttack;
 
 /// The sound source a [`SynthVoice`] renders: an oscillator waveform, or a white-noise burst.
@@ -102,10 +103,28 @@ pub fn error_sound() -> SynthVoice {
     SynthVoice { source: Source::Square, freq: 90.0, end_freq: None, duration: 0.12, gain: 0.1, attack: 0.001 }
 }
 
+/// The one-shot sound a committed action intent makes, if any (attack/move/take/drop). Synthesized
+/// through the shared cue→voice mapping via a `PresentationCue::Action` — the multiplayer wire
+/// doesn't carry cues, so a surface reconstructs the action from the intent it just submitted. The
+/// noun id seeds the per-actor pitch jitter (attack), giving different foes distinct hits. Shared by
+/// both surfaces (the CRT terminal and the point-and-click scene).
+pub fn voice_for_intent(intent: &Intent) -> Option<SynthVoice> {
+    let entity = |id: &str| EntityRef { id: id.into(), name: String::new() };
+    let cue = match intent {
+        Intent::Attack { target_id } => PresentationCue::Action { action: ActionKind::Attack, actor: entity(target_id), sound: None },
+        Intent::Move { .. } => PresentationCue::Action { action: ActionKind::Move, actor: entity("move"), sound: None },
+        Intent::Take { target_id } => PresentationCue::Action { action: ActionKind::PickUp, actor: entity(target_id), sound: None },
+        Intent::Drop { target_id } => PresentationCue::Action { action: ActionKind::Drop, actor: entity(target_id), sound: None },
+        _ => return None,
+    };
+    sound_for_cue(&cue)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use wickedways_core::presentation::{EntityRef, MechanicCue};
+    use wickedways_core::world::direction::Direction;
     use wickedways_core::StatType;
 
     fn actor(id: &str) -> EntityRef {
@@ -204,6 +223,21 @@ mod tests {
         // Byte-parity spot check against the TS hash for "p1":
         // h = ('p'=112)*31 + ('1'=49) = 3521 → 3521 % 1000 = 521 → 0.97 + 0.521*0.06 = 1.00126.
         assert!((detune_factor("p1") - 1.00126).abs() < 1e-9);
+    }
+
+    #[test]
+    fn voice_for_intent_covers_the_four_voiced_actions_and_is_silent_otherwise() {
+        // The four intents that make a sound map onto their cue's waveform.
+        assert_eq!(voice_for_intent(&Intent::Attack { target_id: "m".into() }).unwrap().source, Source::Square);
+        assert_eq!(voice_for_intent(&Intent::Move { dir: Direction::North }).unwrap().source, Source::Noise);
+        assert_eq!(voice_for_intent(&Intent::Take { target_id: "i".into() }).unwrap().source, Source::Triangle);
+        assert_eq!(voice_for_intent(&Intent::Drop { target_id: "i".into() }).unwrap().source, Source::Triangle);
+        // The attack pitch still jitters by the target id (same path as `sound_for_cue`).
+        let a = voice_for_intent(&Intent::Attack { target_id: "a".into() }).unwrap();
+        let b = voice_for_intent(&Intent::Attack { target_id: "b".into() }).unwrap();
+        assert_ne!(a.freq, b.freq);
+        // A non-action intent is silent.
+        assert_eq!(voice_for_intent(&Intent::Wait), None);
     }
 
     #[test]
