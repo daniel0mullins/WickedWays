@@ -24,9 +24,12 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 
+use wickedways_core::presentation::{ActionKind, EntityRef, PresentationCue};
 use wickedways_core::sync::{Command, SubmitResult};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
+use wickedways_web::audio::{error_sound, sound_for_cue, SynthVoice};
+use wickedways_web::audio_engine::AudioEngine;
 use wickedways_web::driver::{
     boot, boot_single, intent_to_command, project, read_config, read_surface, rebuild_single, Mode,
     Surface,
@@ -68,6 +71,22 @@ fn main() {
     }
 }
 
+/// The one-shot sound a committed action intent makes, if any (attack/move/take/drop). Synthesized
+/// through the shared cue→voice mapping via a `PresentationCue::Action` — the multiplayer wire
+/// doesn't carry cues, so the surface reconstructs the action from the intent. The noun id seeds the
+/// per-actor pitch jitter (attack), giving different foes distinct hits.
+fn voice_for_intent(intent: &Intent) -> Option<SynthVoice> {
+    let entity = |id: &str| EntityRef { id: id.into(), name: String::new() };
+    let cue = match intent {
+        Intent::Attack { target_id } => PresentationCue::Action { action: ActionKind::Attack, actor: entity(target_id), sound: None },
+        Intent::Move { .. } => PresentationCue::Action { action: ActionKind::Move, actor: entity("move"), sound: None },
+        Intent::Take { target_id } => PresentationCue::Action { action: ActionKind::PickUp, actor: entity(target_id), sound: None },
+        Intent::Drop { target_id } => PresentationCue::Action { action: ActionKind::Drop, actor: entity(target_id), sound: None },
+        _ => return None,
+    };
+    sound_for_cue(&cue)
+}
+
 fn crt_app() -> Element {
     let mut status = use_signal(|| "connecting…".to_string());
     let mut vm = use_signal(|| None::<ViewModel>);
@@ -91,6 +110,9 @@ fn crt_app() -> Element {
                 // `catalog` is the campaign's, held for the session and used for every projection.
                 let mut transport = transport;
                 let mut coord = coord;
+                // The Web Audio backend, lazily created when the player enables sound via `audio`.
+                let mut audio = AudioEngine::new();
+                let mut audio_on = false;
                 status.set("connected".into());
                 let initial = project(&coord, &catalog);
                 if let Some(v) = &initial {
@@ -148,12 +170,29 @@ fn crt_app() -> Element {
                                         Meta::Save => meta_effect = Some(MetaEffect::Save),
                                         Meta::Restore => meta_effect = Some(MetaEffect::Restore),
                                         Meta::Restart => meta_effect = Some(MetaEffect::Restart),
+                                        // The Enter keypress that submitted this line is the user
+                                        // gesture that lets the AudioContext start.
+                                        Meta::Audio => {
+                                            if audio_on {
+                                                audio.suspend();
+                                                audio_on = false;
+                                                narration.write().push("Audio off.".into());
+                                            } else if audio.resume() {
+                                                audio_on = true;
+                                                narration.write().push("Audio on.".into());
+                                            } else {
+                                                narration.write().push("Audio is unavailable.".into());
+                                            }
+                                        }
                                         _ => narration.write().push("(that's not available here yet)".into()),
                                     }
                                     None
                                 }
                                 ParseResult::Error(msg) => {
                                     narration.write().push(msg);
+                                    if audio_on {
+                                        audio.play(&error_sound());
+                                    }
                                     None
                                 }
                             }
@@ -185,12 +224,21 @@ fn crt_app() -> Element {
                                         let room_lines = narrator.write().render_room(a);
                                         narration.write().extend(room_lines);
                                     }
+                                    // Voice the action (attack/move/take/drop have a sound).
+                                    if audio_on {
+                                        if let Some(v) = voice_for_intent(&intent) {
+                                            audio.play(&v);
+                                        }
+                                    }
                                 }
                                 vm.set(after);
                                 status.set(format!("committed seq {seq}"));
                             }
                             SubmitResult::Denied { reason } => {
                                 narration.write().push(format!("✗ {reason}"));
+                                if audio_on {
+                                    audio.play(&error_sound());
+                                }
                             }
                         }
                     }

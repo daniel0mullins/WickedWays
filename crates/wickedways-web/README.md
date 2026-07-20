@@ -65,8 +65,16 @@ turns a `SynthVoice` into sound: a lazily-created `AudioContext` (built on the f
 gesture), an oscillator (or a white-noise buffer) through a gain node with a linear-attack /
 exponential-decay envelope, and `resume`/`suspend`/`close` lifecycle. Best-effort throughout (a failed
 node call never crashes the game). The pure pseudo-noise fill is host-tested; the `web-sys` calls are
-exercised by the wasm build. Still to come: wiring the surfaces' cue / mob-attack / error paths and an
-audio toggle to this engine, then the ViewModel-driven ambient drone and soundpack selection.
+exercised by the wasm build.
+
+The **CRT surface plays sound**: the `audio` command toggles an `AudioEngine` (the Enter keypress is
+the user gesture that starts the `AudioContext`), narrating "Audio on/off." While enabled, committed
+action intents voice through the shared cue→voice mapping (`voice_for_intent` synthesizes a
+`PresentationCue::Action` — the wire doesn't carry cues, so the surface reconstructs the action from
+the intent: attack/move/take/drop), and a denied or unparseable command buzzes `error_sound`. Verified
+offline in a browser: enabling audio creates the `AudioContext` lazily (none before), and
+move/attack/error commands play with no page error. Still to come: the PnC audio toggle, and the
+ViewModel-driven ambient drone + soundpack selection (the `AudioRuntime`/director layer).
 
 ## Status: slice 3 — the point-and-click surface
 
