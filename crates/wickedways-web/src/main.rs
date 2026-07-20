@@ -1,106 +1,112 @@
-//! The WickedWays Dioxus web client (Phase 2c, sub-project D) — slice-0 spike.
+//! The WickedWays Dioxus web client (Phase 2c, sub-project D) — the slice-1 multiplayer shell.
 //!
-//! This is the program-mandated **CSS-carryover spike** plus the crate skeleton. It is deliberately
-//! small and proves the three things D's toolchain hinges on, before any real surface work:
+//! A bare shell that drives the real multiplayer loop end-to-end against the C axum server: on mount
+//! it opens a [`WsTransport`](wickedways_web::transport::WsTransport), seeds a
+//! [`SyncCoordinator`](wickedways_core::sync::SyncCoordinator) from the handshake snapshot, and lets
+//! the GM submit `nextPlayer` — applying the server's authoritative delta to the local replica and
+//! showing the head advance. The CRT housing CSS from slice 0 is reused so the shell looks like the
+//! terminal it will become; the full CRT surface (parser/narrator/map) is slice 2.
 //!
-//! 1. **A Dioxus app compiles to `wasm32-unknown-unknown`** in this environment (verified).
-//! 2. **Campaign CRT theming carries from Lit to RSX** — the housing/monitor/screen/scanline CSS from
-//!    `packages/play-surface/src/crt` rides on CSS custom properties set on the root, so swapping the
-//!    theme (the button below) reskins the terminal with no framework-specific machinery.
-//! 3. **`wickedways-core` links directly and runs on wasm** — the "GM: nextPlayer" button builds a
-//!    real [`Command`](wickedways_core::sync::Command) and serializes it with `serde_json`, all native
-//!    Rust in the browser (no wasm-pack/JS boundary).
-//!
-//! The real transport (`WebSocketTransport` → `SyncCoordinator`) and the full CRT/PnC surfaces land in
-//! slices 1-5. This file is a spike: throwaway once slice 2 renders the CRT surface for real.
+//! Connection is configured from the page URL query (`?ws=…&campaign=…&token=…`) so the e2e can point
+//! it at a live server; sensible localhost defaults otherwise.
 
 use dioxus::prelude::*;
-use wickedways_core::sync::Command;
+use futures_util::StreamExt;
+
+use wickedways_core::sync::{Command, SubmitResult, SyncCoordinator, SyncTransport};
+use wickedways_web::transport::WsTransport;
 
 const CRT_CSS: &str = include_str!("../assets/crt.css");
+const THEME_VARS: &str = "--color-bg:#0b0e0a; --color-text:#9be89b; --color-accent:#d7ffd7; \
+    --font-body:'VT323',monospace; --base-size:26px; --crt-scanline:0.35; \
+    --plastic:#c9c4b4; --plastic-light:#e6e1d2; --plastic-dark:#8f8b7d; --plastic-shadow:#5f5c52;";
 
-/// A campaign theme = a set of CSS custom properties applied to the housing root. Two presets here
-/// stand in for campaign-owned themes; the carryover claim is that swapping these reskins everything.
-struct Theme {
-    label: &'static str,
-    vars: &'static str,
+struct Config {
+    ws: String,
+    campaign: String,
+    token: String,
 }
 
-const THEMES: &[Theme] = &[
-    Theme {
-        label: "Phosphor",
-        vars: "--color-bg:#0b0e0a; --color-text:#9be89b; --color-accent:#d7ffd7; \
-               --font-body:'VT323',monospace; --base-size:26px; --crt-scanline:0.35; \
-               --plastic:#c9c4b4; --plastic-light:#e6e1d2; --plastic-dark:#8f8b7d; --plastic-shadow:#5f5c52;",
-    },
-    Theme {
-        label: "Amber",
-        vars: "--color-bg:#160f04; --color-text:#f0b552; --color-accent:#ffd591; \
-               --font-body:'VT323',monospace; --base-size:26px; --crt-scanline:0.28; \
-               --plastic:#b8b0a0; --plastic-light:#d8d2c2; --plastic-dark:#837d6f; --plastic-shadow:#524e45;",
-    },
-];
+/// Reads `?ws=&campaign=&token=` from the page URL, with localhost defaults.
+fn read_config() -> Config {
+    let params = web_sys::window()
+        .and_then(|w| w.location().search().ok())
+        .and_then(|s| web_sys::UrlSearchParams::new_with_str(&s).ok());
+    let get = |k: &str, default: &str| {
+        params.as_ref().and_then(|p| p.get(k)).filter(|v| !v.is_empty()).unwrap_or_else(|| default.into())
+    };
+    Config {
+        ws: get("ws", "ws://127.0.0.1:9000/ws"),
+        campaign: get("campaign", "demo"),
+        token: get("token", "gm"),
+    }
+}
 
 fn main() {
     dioxus::launch(app);
 }
 
 fn app() -> Element {
-    let mut theme = use_signal(|| 0usize);
-    let mut lines = use_signal(|| {
-        vec![
-            (true, "WICKEDWAYS TERMINAL — Dioxus CRT spike".to_string()),
-            (false, "The glass, the scanlines, and the type are all CSS custom properties.".to_string()),
-            (false, "Type below, toggle the theme, or emit a GM command.".to_string()),
-        ]
+    let mut status = use_signal(|| "connecting…".to_string());
+    let mut head = use_signal(|| 0u64);
+    let mut log = use_signal(Vec::<String>::new);
+
+    // The driver coroutine owns the (non-Send, Rc-backed) transport + coordinator and talks to the UI
+    // only through signals; the button sends a unit message to request a submit.
+    let submitter = use_coroutine(move |mut rx: UnboundedReceiver<()>| async move {
+        let cfg = read_config();
+        log.write().push(format!("→ {}  [{}]", cfg.ws, cfg.campaign));
+        match WsTransport::connect(&cfg.ws, &cfg.campaign, &cfg.token).await {
+            Err(e) => {
+                status.set("error".into());
+                log.write().push(format!("connect failed: {e}"));
+            }
+            Ok(transport) => {
+                let mut coord = SyncCoordinator::join(&transport);
+                status.set("connected".into());
+                head.set(transport.head());
+                log.write().push(format!(
+                    "joined at head {} — {} characters in the replica",
+                    transport.head(),
+                    coord.replica().characters.len()
+                ));
+                while (rx.next().await).is_some() {
+                    match transport.submit_async(Command::NextPlayer).await {
+                        SubmitResult::Committed { seq, .. } => {
+                            coord.sync(&transport);
+                            head.set(transport.head());
+                            status.set(format!("committed seq {seq}"));
+                            log.write().push(format!("GM » nextPlayer committed → seq {seq}"));
+                        }
+                        SubmitResult::Denied { reason } => {
+                            status.set("denied".into());
+                            log.write().push(format!("denied: {reason}"));
+                        }
+                    }
+                }
+            }
+        }
     });
-    let mut draft = use_signal(String::new);
-
-    // The engine, on wasm: build a real sync Command and serialize it.
-    let emit_next_player = move |_| {
-        let cmd = Command::NextPlayer;
-        let json = serde_json::to_string(&cmd).unwrap_or_else(|_| "<serialize error>".into());
-        lines.write().push((true, format!("GM » {json}")));
-    };
-
-    let toggle_theme = move |_| {
-        let next = (theme() + 1) % THEMES.len();
-        theme.set(next);
-        lines.write().push((true, format!("theme → {}", THEMES[next].label)));
-    };
 
     rsx! {
         style { "{CRT_CSS}" }
-        div { class: "backdrop", style: "{THEMES[theme()].vars}",
+        div { class: "backdrop", style: "{THEME_VARS}",
             div { class: "monitor",
                 div { class: "monitor-screen",
                     div { class: "screen",
                         div { class: "transcript",
-                            for (i, (system, text)) in lines().iter().enumerate() {
-                                div {
-                                    key: "{i}",
-                                    class: if *system { "line system" } else { "line" },
-                                    "{text}"
-                                }
-                            }
-                        }
-                        div { class: "prompt",
-                            span { class: "caret", "›" }
-                            input {
-                                value: "{draft}",
-                                oninput: move |e| draft.set(e.value()),
-                                onkeydown: move |e| if e.key() == Key::Enter {
-                                    let text = draft.read().trim().to_string();
-                                    if !text.is_empty() {
-                                        lines.write().push((false, format!("> {text}")));
-                                        draft.set(String::new());
-                                    }
-                                },
+                            div { class: "line system", "WICKEDWAYS — multiplayer shell (D slice 1)" }
+                            div { class: "line", "status: {status}  ·  head: {head}" }
+                            for (i, entry) in log().iter().enumerate() {
+                                div { key: "{i}", class: "line", "{entry}" }
                             }
                         }
                         div { class: "controls",
-                            button { onclick: emit_next_player, "GM: nextPlayer" }
-                            button { onclick: toggle_theme, "theme: {THEMES[theme()].label}" }
+                            button {
+                                id: "submit",
+                                onclick: move |_| submitter.send(()),
+                                "GM: nextPlayer"
+                            }
                         }
                     }
                     div { class: "crt-overlay" }

@@ -29,3 +29,14 @@ wickedways-core = { path = "../wickedways-core" }
 # The shared wire protocol — the same types the room server speaks.
 wickedways-transport = { path = "../wickedways-transport" }
 serde_json = "1"
+
+# Browser bindings for the WebSocket transport (compile on host too — they are just
+# extern declarations — so the mirror's host tests are unaffected).
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+futures-channel = "0.3"
+futures-util = "0.3"
+web-sys = { version = "0.3", features = [
+  "WebSocket", "MessageEvent", "Event", "CloseEvent", "BinaryType",
+  "Window", "Location", "UrlSearchParams",
+] }

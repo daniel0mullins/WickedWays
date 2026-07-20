@@ -4,13 +4,17 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>WickedWays</title>
-    <!--
-      The bundle host page. Dioxus mounts the app into <body> (or `#main`) once the wasm loads.
-      The bundler's JS glue (wasm-bindgen output) is injected here at build time — see README.md
-      for the bundling step (finalized in slice 1, served by the C axum binary on one port).
-    -->
   </head>
   <body>
     <div id="main"></div>
+    <!--
+      Loads the wasm-bindgen `--target web` output that `build-web.sh` emits next to this file.
+      Dioxus mounts the app into <body>. Served static (same-origin with /ws) by the C axum binary
+      or any static server — see README.md.
+    -->
+    <script type="module">
+      import init from "./wickedways-web.js";
+      init();
+    </script>
   </body>
 </html>
