@@ -27,8 +27,9 @@ use futures_util::StreamExt;
 use wickedways_core::sync::{Command, SubmitResult};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
-use wickedways_web::audio::{error_sound, voice_for_intent};
-use wickedways_web::audio_engine::AudioEngine;
+use wickedways_web::audio::cue_for_intent;
+use wickedways_web::audio_pack::wickedways_campaign_audio;
+use wickedways_web::audio_runtime::AudioRuntime;
 use wickedways_web::driver::{
     boot, boot_single, intent_to_command, project, read_config, read_surface, rebuild_single, Mode,
     Surface,
@@ -93,14 +94,15 @@ fn crt_app() -> Element {
                 // `catalog` is the campaign's, held for the session and used for every projection.
                 let mut transport = transport;
                 let mut coord = coord;
-                // The Web Audio backend, lazily created when the player enables sound via `audio`.
-                let mut audio = AudioEngine::new();
-                let mut audio_on = false;
+                // The audio runtime (engine + sanity-reactive ambient bed + chiptune pack), lazily
+                // opening its AudioContext when the player enables sound via `audio`.
+                let mut audio = AudioRuntime::for_campaign(Some(wickedways_campaign_audio()));
                 status.set("connected".into());
                 let initial = project(&coord, &catalog);
                 if let Some(v) = &initial {
                     map_model.write().observe(v);
                     narration.write().extend(narrator.write().render_room(v));
+                    audio.update(v);
                 }
                 vm.set(initial);
 
@@ -156,15 +158,20 @@ fn crt_app() -> Element {
                                         // The Enter keypress that submitted this line is the user
                                         // gesture that lets the AudioContext start.
                                         Meta::Audio => {
-                                            if audio_on {
-                                                audio.suspend();
-                                                audio_on = false;
+                                            if audio.enabled() {
+                                                audio.set_enabled(false);
                                                 narration.write().push("Audio off.".into());
-                                            } else if audio.resume() {
-                                                audio_on = true;
-                                                narration.write().push("Audio on.".into());
                                             } else {
-                                                narration.write().push("Audio is unavailable.".into());
+                                                audio.set_enabled(true);
+                                                if audio.enabled() {
+                                                    narration.write().push("Audio on.".into());
+                                                    // Seed the ambient bed with the current tension.
+                                                    if let Some(v) = project(&coord, &catalog) {
+                                                        audio.update(&v);
+                                                    }
+                                                } else {
+                                                    narration.write().push("Audio is unavailable.".into());
+                                                }
                                             }
                                         }
                                         _ => narration.write().push("(that's not available here yet)".into()),
@@ -173,9 +180,7 @@ fn crt_app() -> Element {
                                 }
                                 ParseResult::Error(msg) => {
                                     narration.write().push(msg);
-                                    if audio_on {
-                                        audio.play(&error_sound());
-                                    }
+                                    audio.note_error();
                                     None
                                 }
                             }
@@ -208,20 +213,21 @@ fn crt_app() -> Element {
                                         narration.write().extend(room_lines);
                                     }
                                     // Voice the action (attack/move/take/drop have a sound).
-                                    if audio_on {
-                                        if let Some(v) = voice_for_intent(&intent) {
-                                            audio.play(&v);
-                                        }
+                                    if let Some(cue) = cue_for_intent(&intent) {
+                                        audio.play_cue(&cue, a);
                                     }
+                                }
+                                // Drive the ambient bed from the new view (also covers nextPlayer,
+                                // which has no intent to voice).
+                                if let Some(a) = &after {
+                                    audio.update(a);
                                 }
                                 vm.set(after);
                                 status.set(format!("committed seq {seq}"));
                             }
                             SubmitResult::Denied { reason } => {
                                 narration.write().push(format!("✗ {reason}"));
-                                if audio_on {
-                                    audio.play(&error_sound());
-                                }
+                                audio.note_error();
                             }
                         }
                     }
@@ -250,6 +256,7 @@ fn crt_app() -> Element {
                                     if let Some(v) = &restored {
                                         let lines = narrator.write().render_room(v);
                                         narration.write().extend(lines);
+                                        audio.update(v);
                                     }
                                     vm.set(restored);
                                 }
@@ -266,11 +273,14 @@ fn crt_app() -> Element {
                                     map_model.write().reset();
                                     narrator.set(Narrator::new());
                                     narration.write().clear();
+                                    // Fresh session: rebuild the director so tension's high-water mark resets.
+                                    audio.reset();
                                     let fresh = project(&coord, &catalog);
                                     if let Some(v) = &fresh {
                                         map_model.write().observe(v);
                                         let lines = narrator.write().render_room(v);
                                         narration.write().extend(lines);
+                                        audio.update(v);
                                     }
                                     vm.set(fresh);
                                 }

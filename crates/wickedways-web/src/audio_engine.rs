@@ -58,6 +58,13 @@ impl AudioEngine {
         true
     }
 
+    /// The live `AudioContext`, if one has been created (a clone of the handle — Web Audio nodes are
+    /// interior-mutable JS objects, so the clone drives the same context). `None` until the first
+    /// `resume`. The runtime uses this to start the ambient bed on the same context that plays SFX.
+    pub fn context(&self) -> Option<AudioContext> {
+        self.ctx.clone()
+    }
+
     /// Suspend the context to release audio hardware while muted. No-op if none.
     pub fn suspend(&self) {
         if let Some(ctx) = &self.ctx {

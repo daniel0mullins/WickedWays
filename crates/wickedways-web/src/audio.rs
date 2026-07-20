@@ -103,21 +103,20 @@ pub fn error_sound() -> SynthVoice {
     SynthVoice { source: Source::Square, freq: 90.0, end_freq: None, duration: 0.12, gain: 0.1, attack: 0.001 }
 }
 
-/// The one-shot sound a committed action intent makes, if any (attack/move/take/drop). Synthesized
-/// through the shared cue→voice mapping via a `PresentationCue::Action` — the multiplayer wire
-/// doesn't carry cues, so a surface reconstructs the action from the intent it just submitted. The
-/// noun id seeds the per-actor pitch jitter (attack), giving different foes distinct hits. Shared by
-/// both surfaces (the CRT terminal and the point-and-click scene).
-pub fn voice_for_intent(intent: &Intent) -> Option<SynthVoice> {
+/// Reconstruct the `PresentationCue` a committed action intent stands for, if any
+/// (attack/move/take/drop). The multiplayer wire doesn't carry cues, so a surface rebuilds one from
+/// the intent it just submitted and feeds it to the audio runtime (director → pack → voice) — the
+/// noun id rides along as the actor id so the per-actor pitch jitter (attack) still distinguishes
+/// foes. Shared by both surfaces (the CRT terminal and the point-and-click scene).
+pub fn cue_for_intent(intent: &Intent) -> Option<PresentationCue> {
     let entity = |id: &str| EntityRef { id: id.into(), name: String::new() };
-    let cue = match intent {
+    Some(match intent {
         Intent::Attack { target_id } => PresentationCue::Action { action: ActionKind::Attack, actor: entity(target_id), sound: None },
         Intent::Move { .. } => PresentationCue::Action { action: ActionKind::Move, actor: entity("move"), sound: None },
         Intent::Take { target_id } => PresentationCue::Action { action: ActionKind::PickUp, actor: entity(target_id), sound: None },
         Intent::Drop { target_id } => PresentationCue::Action { action: ActionKind::Drop, actor: entity(target_id), sound: None },
         _ => return None,
-    };
-    sound_for_cue(&cue)
+    })
 }
 
 #[cfg(test)]
@@ -226,18 +225,22 @@ mod tests {
     }
 
     #[test]
-    fn voice_for_intent_covers_the_four_voiced_actions_and_is_silent_otherwise() {
-        // The four intents that make a sound map onto their cue's waveform.
-        assert_eq!(voice_for_intent(&Intent::Attack { target_id: "m".into() }).unwrap().source, Source::Square);
-        assert_eq!(voice_for_intent(&Intent::Move { dir: Direction::North }).unwrap().source, Source::Noise);
-        assert_eq!(voice_for_intent(&Intent::Take { target_id: "i".into() }).unwrap().source, Source::Triangle);
-        assert_eq!(voice_for_intent(&Intent::Drop { target_id: "i".into() }).unwrap().source, Source::Triangle);
-        // The attack pitch still jitters by the target id (same path as `sound_for_cue`).
-        let a = voice_for_intent(&Intent::Attack { target_id: "a".into() }).unwrap();
-        let b = voice_for_intent(&Intent::Attack { target_id: "b".into() }).unwrap();
+    fn cue_for_intent_covers_the_four_voiced_actions_and_is_silent_otherwise() {
+        // Each voiced intent reconstructs an Action cue that maps onto the expected waveform when run
+        // back through `sound_for_cue` (the path the runtime's default pack takes).
+        fn voice(intent: &Intent) -> Option<SynthVoice> {
+            cue_for_intent(intent).as_ref().and_then(sound_for_cue)
+        }
+        assert_eq!(voice(&Intent::Attack { target_id: "m".into() }).unwrap().source, Source::Square);
+        assert_eq!(voice(&Intent::Move { dir: Direction::North }).unwrap().source, Source::Noise);
+        assert_eq!(voice(&Intent::Take { target_id: "i".into() }).unwrap().source, Source::Triangle);
+        assert_eq!(voice(&Intent::Drop { target_id: "i".into() }).unwrap().source, Source::Triangle);
+        // The attack's actor id rides through, so the pitch still jitters by target.
+        let a = voice(&Intent::Attack { target_id: "a".into() }).unwrap();
+        let b = voice(&Intent::Attack { target_id: "b".into() }).unwrap();
         assert_ne!(a.freq, b.freq);
-        // A non-action intent is silent.
-        assert_eq!(voice_for_intent(&Intent::Wait), None);
+        // A non-action intent has no cue.
+        assert!(cue_for_intent(&Intent::Wait).is_none());
     }
 
     #[test]

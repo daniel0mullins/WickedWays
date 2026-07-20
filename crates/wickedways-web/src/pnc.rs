@@ -9,14 +9,15 @@
 //! components), reusing the already-ported [`Narrator`] and [`MapModel`].
 //!
 //! Parity notes vs. the Lit surface: save-restore / settings menu and procedural audio are wired
-//! (slice 4) — a topbar 🔊 toggle enables the shared [`AudioEngine`], which voices committed actions
-//! and denials just like the CRT surface. The campaign manifest (title/intro/themes) is not carried
-//! over the multiplayer wire, so this surface shows a generic welcome, a basic status line projected
-//! from the `ViewModel` (the campaign `StatusField` cues aren't carried either — same as the CRT
-//! surface), and a dev `nextPlayer` control. `examine`/`read` render the generic look line, since
-//! per-entity lore / descriptions ride `PresentationCue`s the wire doesn't carry yet.
+//! (slice 4) — a topbar 🔊 toggle enables the shared [`AudioRuntime`], which voices committed actions
+//! and denials and runs the sanity-reactive ambient bed, just like the CRT surface. The campaign
+//! manifest (title/intro/themes) is not carried over the multiplayer wire, so this surface shows a
+//! generic welcome, a basic status line projected from the `ViewModel` (the campaign `StatusField`
+//! cues aren't carried either — same as the CRT surface), and a dev `nextPlayer` control.
+//! `examine`/`read` render the generic look line, since per-entity lore / descriptions ride
+//! `PresentationCue`s the wire doesn't carry yet.
 //!
-//! [`AudioEngine`]: crate::audio_engine::AudioEngine
+//! [`AudioRuntime`]: crate::audio_runtime::AudioRuntime
 //!
 //! [`intent_to_command`]: crate::driver::intent_to_command
 //! [`Narrator`]: crate::narrator::Narrator
@@ -30,8 +31,9 @@ use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
 
 use crate::affordances::{inventory_actions, scene_hotspots, ActionDescriptor, HotspotKind};
-use crate::audio::{error_sound, voice_for_intent};
-use crate::audio_engine::AudioEngine;
+use crate::audio::cue_for_intent;
+use crate::audio_pack::wickedways_campaign_audio;
+use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
     boot, boot_single, intent_to_command, project, read_config, rebuild_single, AppTransport, Mode,
 };
@@ -128,13 +130,15 @@ pub fn pnc_app() -> Element {
                 // `catalog` is the campaign's, held for the session and used for every projection.
                 let mut transport = transport;
                 let mut coord = coord;
-                // The Web Audio backend, lazily created when the player enables sound via the toggle.
-                let mut audio = AudioEngine::new();
+                // The audio runtime (engine + sanity-reactive ambient bed + chiptune pack), lazily
+                // opening its AudioContext when the player enables sound via the topbar toggle.
+                let mut audio = AudioRuntime::for_campaign(Some(wickedways_campaign_audio()));
                 status.set("connected".into());
                 let initial = project(&coord, &catalog);
                 if let Some(v) = &initial {
                     map_model.write().observe(v);
                     print_room(log, narrator, v);
+                    audio.update(v);
                 }
                 vm.set(initial);
 
@@ -145,6 +149,7 @@ pub fn pnc_app() -> Element {
                             let after = project(&coord, &catalog);
                             if let Some(a) = &after {
                                 map_model.write().observe(a);
+                                audio.update(a);
                             }
                             vm.set(after);
                             continue;
@@ -174,6 +179,7 @@ pub fn pnc_app() -> Element {
                                         log.write().push(LogLine::plain("Restored.".into()));
                                         if let Some(v) = &restored {
                                             print_room(log, narrator, v);
+                                            audio.update(v);
                                         }
                                         vm.set(restored);
                                     }
@@ -193,10 +199,13 @@ pub fn pnc_app() -> Element {
                                         map_model.write().reset();
                                         narrator.set(Narrator::new());
                                         log.write().clear();
+                                        // Fresh session: rebuild the director so tension's high-water mark resets.
+                                        audio.reset();
                                         let fresh = project(&coord, &catalog);
                                         if let Some(v) = &fresh {
                                             map_model.write().observe(v);
                                             print_room(log, narrator, v);
+                                            audio.update(v);
                                         }
                                         vm.set(fresh);
                                     }
@@ -209,13 +218,20 @@ pub fn pnc_app() -> Element {
                         }
                         PncAction::ToggleAudio => {
                             // The button click is the user gesture that lets the AudioContext start.
-                            if audio_on() {
-                                audio.suspend();
+                            if audio.enabled() {
+                                audio.set_enabled(false);
                                 audio_on.set(false);
-                            } else if audio.resume() {
-                                audio_on.set(true);
                             } else {
-                                log.write().push(LogLine::plain("Audio is unavailable.".into()));
+                                audio.set_enabled(true);
+                                audio_on.set(audio.enabled());
+                                if audio.enabled() {
+                                    // Seed the ambient bed with the current tension.
+                                    if let Some(v) = project(&coord, &catalog) {
+                                        audio.update(&v);
+                                    }
+                                } else {
+                                    log.write().push(LogLine::plain("Audio is unavailable.".into()));
+                                }
                             }
                             continue;
                         }
@@ -243,9 +259,7 @@ pub fn pnc_app() -> Element {
                         }
                     };
                     if !submit(&transport, &mut coord, command, log).await {
-                        if audio_on() {
-                            audio.play(&error_sound());
-                        }
+                        audio.note_error();
                         continue;
                     }
                     let after = project(&coord, &catalog);
@@ -269,11 +283,13 @@ pub fn pnc_app() -> Element {
                             log.write().push(LogLine::end("— THE END —".into()));
                         }
                     }
-                    // Voice the committed action (attack/move/take/drop have a sound).
-                    if audio_on() {
-                        if let Some(voice) = voice_for_intent(&intent) {
-                            audio.play(&voice);
+                    if let Some(a) = &after {
+                        // Voice the committed action (attack/move/take/drop have a sound) and drive
+                        // the ambient bed from the new view.
+                        if let Some(cue) = cue_for_intent(&intent) {
+                            audio.play_cue(&cue, a);
                         }
+                        audio.update(a);
                     }
                     vm.set(after);
                 }
