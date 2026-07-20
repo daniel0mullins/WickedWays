@@ -202,14 +202,24 @@ fn app() -> Element {
                             SubmitResult::Committed { seq, .. } => {
                                 coord.sync(&transport);
                                 let after = project(&coord);
+                                // A move must be recorded BEFORE `observe`: `record_move` places the
+                                // newly-entered room relative to the one we left and adds the
+                                // traversed edge, whereas `observe` seeds any unseen room at the
+                                // grid origin and (relying on that edge) suppresses the back-stub.
+                                // Observe-first would pin every new room at (0,0) and keep a
+                                // spurious `?` stub pointing back the way the player came.
+                                if let (Some(Intent::Move { dir }), Some(b), Some(a)) =
+                                    (&intent_for_narration, &before_view, &after)
+                                {
+                                    map_model.write().record_move(&b.room.id, *dir, &a.room.id);
+                                }
                                 if let Some(a) = &after {
                                     map_model.write().observe(a);
                                 }
                                 if let (Some(intent), Some(b), Some(a)) = (intent_for_narration, &before_view, &after) {
                                     let action_lines = narrator.write().render_action(&intent, b, a);
                                     narration.write().extend(action_lines);
-                                    if let Intent::Move { dir } = intent {
-                                        map_model.write().record_move(&b.room.id, dir, &a.room.id);
+                                    if matches!(intent, Intent::Move { .. }) {
                                         let room_lines = narrator.write().render_room(a);
                                         narration.write().extend(room_lines);
                                     }
@@ -268,7 +278,10 @@ fn app() -> Element {
         }
         if overlay() != Overlay::None {
             div { class: "overlay", onclick: move |_| overlay.set(Overlay::None),
-                div { class: "overlay-frame",
+                // Clicks on the framed content don't dismiss (only the backdrop does) — matches the
+                // `.overlay-frame { cursor: default }` affordance and `crt-game.ts`, where frame
+                // clicks never close the overlay.
+                div { class: "overlay-frame", onclick: move |e| e.stop_propagation(),
                     match overlay() {
                         Overlay::Help(rows) => rsx! {
                             div { class: "help-list",
