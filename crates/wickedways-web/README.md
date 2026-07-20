@@ -36,8 +36,15 @@ Both surfaces expose the lifecycle verbs: the CRT via its `save`/`restore`/`rest
 via a single-player-only **settings menu** (the ⚙ topbar button) whose Save/Restore/Restart route
 through the same seam. Verified offline in a browser on both surfaces.
 
-Remaining slice-4 work: the launcher (`?campaign=`/`?theme=`, real manifest-driven genesis in place of
-the single bundled demo) and the audio subtree.
+The launcher's **`?theme=`** picks a built-in palette per surface ([`theme`](src/theme.rs)): the CRT
+gets `green` (default) / `amber` / `ice` via the `.backdrop` `--color-*` vars; the PnC gets its
+parchment default / `green` / `ice` via `--pnc-*` overrides on `.pnc-app`. Pure string lookups
+(host-tested), read once from the URL. Verified in a browser: `?theme=amber` recolors the CRT,
+`?theme=green` recolors the PnC.
+
+Remaining slice-4 work: `?campaign=` selecting among multiple bundled campaigns (needs per-campaign
+catalog threading through the projection + an auto-begin for non-`started` genesis — a larger change
+than the single bundled demo), and the audio subtree.
 
 ## Status: slice 3 — the point-and-click surface
 

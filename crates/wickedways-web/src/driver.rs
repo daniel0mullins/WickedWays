@@ -39,6 +39,8 @@ pub struct Config {
     pub ws: String,
     pub campaign: String,
     pub token: String,
+    /// Built-in palette id (`?theme=`), applied by the surface. Empty = each surface's default.
+    pub theme: String,
 }
 
 /// Which surface to boot. The launcher's fuller `?campaign=`/`?theme=` handling is slice 4; this is
@@ -69,6 +71,7 @@ pub fn read_config() -> Config {
         ws: query_param("ws").unwrap_or_else(|| "ws://127.0.0.1:9000/ws".into()),
         campaign: query_param("campaign").unwrap_or_else(|| "demo".into()),
         token: query_param("token").unwrap_or_else(|| "gm".into()),
+        theme: query_param("theme").unwrap_or_default(),
     }
 }
 
