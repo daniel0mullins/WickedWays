@@ -9,15 +9,33 @@
 
 use std::collections::BTreeSet;
 
-use wickedways_core::sync::{Command, SyncCoordinator};
+use wickedways_core::sync::{Command, LogEntry, SubmitResult, SyncCoordinator, SyncTransport};
 use wickedways_core::world::descriptor::Catalog;
 use wickedways_core::world::ids::{CharacterId, ItemId};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
-use wickedways_core::World;
+use wickedways_core::{CampaignSnapshot, World};
 
-/// The WebSocket connection config, read from the page URL query.
+use crate::single_player::SinglePlayerTransport;
+use crate::transport::WsTransport;
+
+/// The bundled demo campaign genesis, used when booting single-player without a server. The same
+/// committed `started` snapshot the room server serves as `demo` and the transport tests seed. The
+/// launcher's real manifest-driven assembly (`?campaign=`) is a later slice-4 increment.
+const DEMO_GENESIS: &str = include_str!("../../../conformance/fixtures/sync-move.genesis.json");
+
+/// Which authority the client drives: an offline in-process authority, or a room server over WS.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Mode {
+    /// Offline: a local [`SinglePlayerTransport`] over the bundled genesis (`?mode=single`).
+    Single,
+    /// Multiplayer: a [`WsTransport`] to the room server (the default).
+    Multi,
+}
+
+/// The connection config, read from the page URL query.
 pub struct Config {
+    pub mode: Mode,
     pub ws: String,
     pub campaign: String,
     pub token: String,
@@ -39,12 +57,84 @@ fn query_param(key: &str) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-/// Read `?ws=…&campaign=…&token=…`, falling back to the local-dev defaults.
+/// Read `?mode=&ws=…&campaign=…&token=…`, falling back to the local-dev defaults. `?mode=single`
+/// (or `?mode=offline`) selects the offline single-player authority; anything else is multiplayer.
 pub fn read_config() -> Config {
+    let mode = match query_param("mode").as_deref() {
+        Some("single") | Some("offline") | Some("solo") => Mode::Single,
+        _ => Mode::Multi,
+    };
     Config {
+        mode,
         ws: query_param("ws").unwrap_or_else(|| "ws://127.0.0.1:9000/ws".into()),
         campaign: query_param("campaign").unwrap_or_else(|| "demo".into()),
         token: query_param("token").unwrap_or_else(|| "gm".into()),
+    }
+}
+
+/// The transport the surfaces drive, abstracting the two modes so the driver loop is
+/// transport-agnostic: `SyncCoordinator::join` + the coordinator's synchronous reads go through the
+/// [`SyncTransport`] impl, and each surface submits via [`submit_async`](AppTransport::submit_async).
+/// "Single-player is multiplayer with one seat and an in-process authority" — the same coordinator,
+/// only the transport changes.
+pub enum AppTransport {
+    Multi(WsTransport),
+    // Boxed: a `SinglePlayerTransport` owns the whole authority `World`, far larger than the
+    // pointer-sized `WsTransport`, so inlining it would bloat every `AppTransport`.
+    Single(Box<SinglePlayerTransport>),
+}
+
+impl AppTransport {
+    /// Connect per [`Config::mode`]: build the offline authority from the bundled genesis, or open a
+    /// WebSocket to the room server.
+    pub async fn connect(cfg: &Config) -> Result<AppTransport, String> {
+        match cfg.mode {
+            Mode::Single => {
+                let snapshot: CampaignSnapshot = serde_json::from_str(DEMO_GENESIS)
+                    .map_err(|e| format!("bundled genesis is malformed: {e}"))?;
+                let genesis = World::from_snapshot(snapshot);
+                Ok(AppTransport::Single(Box::new(SinglePlayerTransport::new(genesis, Catalog::default()))))
+            }
+            Mode::Multi => {
+                Ok(AppTransport::Multi(WsTransport::connect(&cfg.ws, &cfg.campaign, &cfg.token).await?))
+            }
+        }
+    }
+
+    /// Submit a command, awaiting the authoritative verdict (the socket round-trip in multiplayer, an
+    /// immediate resolve offline).
+    pub async fn submit_async(&self, command: Command) -> SubmitResult {
+        match self {
+            AppTransport::Multi(t) => t.submit_async(command).await,
+            AppTransport::Single(t) => t.submit_async(command).await,
+        }
+    }
+}
+
+impl SyncTransport for AppTransport {
+    fn head(&self) -> u64 {
+        match self {
+            AppTransport::Multi(t) => t.head(),
+            AppTransport::Single(t) => t.head(),
+        }
+    }
+    fn submit(&mut self, command: Command) -> SubmitResult {
+        match self {
+            AppTransport::Multi(t) => t.submit(command),
+            AppTransport::Single(t) => t.submit(command),
+        }
+    }
+    fn entries_since(&self, from_seq: u64) -> Vec<LogEntry> {
+        match self {
+            AppTransport::Multi(t) => t.entries_since(from_seq),
+            AppTransport::Single(t) => t.entries_since(from_seq),
+        }
+    }
+    fn load_snapshot(&self) -> (u64, CampaignSnapshot) {
+        match self {
+            AppTransport::Multi(t) => t.load_snapshot(),
+            AppTransport::Single(t) => t.load_snapshot(),
+        }
     }
 }
 

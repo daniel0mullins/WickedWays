@@ -6,16 +6,23 @@ and plan ([`docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.
 
 ## Status: slice 4 (in progress) — runtime glue + single-player unification
 
-Single-player begins with the transport seam that unifies it with multiplayer: **"single-player is
+Single-player runs on the transport seam that unifies it with multiplayer: **"single-player is
 multiplayer with one seat and an in-process authority."** [`single_player`](src/single_player.rs)'s
-`SinglePlayerTransport` wraps a local `SyncAuthority` and exposes the *same* seam the surfaces already
-drive — the synchronous `SyncTransport` reads the coordinator drains, plus an async `submit_async`
-matching `WsTransport`'s signature — so the driver loop is transport-agnostic: multiplayer injects the
-WebSocket transport, single-player injects this one, and nothing else changes. It resolves in-process
-(no socket, no server), so `submit_async` completes without yielding. Host-tested for offline commit +
-replica convergence + denial against the `demo` genesis (no server). Wiring the surfaces to pick a
-transport (offline vs. `?ws=`), plus the launcher (`?campaign=`/`?theme=`), LocalStorage save/restore,
-and the audio subtree, are the rest of slice 4.
+`SinglePlayerTransport` wraps a local `SyncAuthority` and exposes the *same* seam the surfaces drive —
+the synchronous `SyncTransport` reads the coordinator drains, plus an async `submit_async` matching
+`WsTransport`'s signature. [`driver::AppTransport`](src/driver.rs) selects between them from
+`?mode=` — `?mode=single` builds the offline authority from a bundled genesis (`Catalog::default()`,
+exactly what the demo server uses), anything else opens a WebSocket — and both surfaces
+(`crt_app`/`pnc_app`) drive it through one transport-agnostic loop (`AppTransport::connect` →
+`SyncCoordinator::join` → `submit_async` → `sync`), so nothing above the transport knows the mode.
+
+Verified offline in a real browser with **no server**: `?surface=pnc&mode=single` boots the local
+authority, renders the scene from the bundled genesis, commits a GM `nextPlayer`, and opens an
+occupant's action menu — all in-process. The transport itself is host-tested for offline commit +
+replica convergence + denial.
+
+Remaining slice-4 work: the launcher (`?campaign=`/`?theme=`, real manifest-driven genesis in place of
+the single bundled demo), LocalStorage save/restore, and the audio subtree.
 
 ## Status: slice 3 — the point-and-click surface
 
