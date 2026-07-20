@@ -21,16 +21,19 @@ authority, renders the scene from the bundled genesis, commits a GM `nextPlayer`
 occupant's action menu — all in-process. The transport itself is host-tested for offline commit +
 replica convergence + denial.
 
-**Save/restore** (single-player) persists to `localStorage`: [`savestore`](src/savestore.rs) stores a
-`SaveBlob` — the authoritative `CampaignSnapshot` + the surface's fog-of-war `MapSnapshot` — under a
-slot key. The CRT `save`/`restore` verbs are wired to it; `restore` rebuilds a fresh offline authority
-from the saved snapshot (the local analog of the server's "reset the authority to a snapshot"),
-re-joins the coordinator, and hydrates the map. Gated to single-player (multiplayer state lives on the
-server). Verified offline in a browser: save at the start room, move away, `restore` reverts to the
-saved room. The `SaveBlob` JSON format is host-tested.
+**Save / restore / restart** (single-player) share one rebuild seam. `driver::rebuild_single(snapshot)`
+builds a fresh offline transport + a joined coordinator from any authoritative snapshot — the local
+analog of the room server's "reset the authority to a snapshot" — and boot, `restore`, and `restart`
+all go through it. [`savestore`](src/savestore.rs) persists a `SaveBlob` (the `CampaignSnapshot` + the
+fog-of-war `MapSnapshot`) to `localStorage` under a slot key. The CRT `save`/`restore`/`restart` verbs
+are wired: `save` serializes the coordinator snapshot + map; `restore` rebuilds from the saved snapshot
+and hydrates the saved map; `restart` rebuilds from the pristine bundled genesis and resets the map /
+narrator / transcript. All three are gated to single-player (multiplayer state lives on the server).
+Verified offline in a browser: save → move → `restore` reverts, and move → `restart` returns to the
+start. The `SaveBlob` JSON format is host-tested.
 
 Remaining slice-4 work: the launcher (`?campaign=`/`?theme=`, real manifest-driven genesis in place of
-the single bundled demo), wiring save/restore into the PnC menu, and the audio subtree.
+the single bundled demo), wiring the lifecycle verbs into the PnC menu, and the audio subtree.
 
 ## Status: slice 3 — the point-and-click surface
 
