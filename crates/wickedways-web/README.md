@@ -4,6 +4,19 @@ The Dioxus **web** client (Phase 2c, sub-project D). See the design
 ([`docs/superpowers/specs/2026-07-14-rust-phase-2c-d-dioxus-web-client-design.md`](../../docs/superpowers/specs/2026-07-14-rust-phase-2c-d-dioxus-web-client-design.md))
 and plan ([`docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.md`](../../docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.md)).
 
+## Status: slice 4 (in progress) — runtime glue + single-player unification
+
+Single-player begins with the transport seam that unifies it with multiplayer: **"single-player is
+multiplayer with one seat and an in-process authority."** [`single_player`](src/single_player.rs)'s
+`SinglePlayerTransport` wraps a local `SyncAuthority` and exposes the *same* seam the surfaces already
+drive — the synchronous `SyncTransport` reads the coordinator drains, plus an async `submit_async`
+matching `WsTransport`'s signature — so the driver loop is transport-agnostic: multiplayer injects the
+WebSocket transport, single-player injects this one, and nothing else changes. It resolves in-process
+(no socket, no server), so `submit_async` completes without yielding. Host-tested for offline commit +
+replica convergence + denial against the `demo` genesis (no server). Wiring the surfaces to pick a
+transport (offline vs. `?ws=`), plus the launcher (`?campaign=`/`?theme=`), LocalStorage save/restore,
+and the audio subtree, are the rest of slice 4.
+
 ## Status: slice 3 — the point-and-click surface
 
 The client now has **two surfaces**, chosen by `?surface=` ([`driver::read_surface`](src/driver.rs)):

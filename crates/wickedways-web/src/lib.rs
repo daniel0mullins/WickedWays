@@ -13,4 +13,5 @@ pub mod narrator;
 pub mod parser;
 pub mod pnc;
 pub mod scene_layout;
+pub mod single_player;
 pub mod transport;
