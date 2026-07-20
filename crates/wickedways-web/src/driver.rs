@@ -19,10 +19,43 @@ use wickedways_core::{CampaignSnapshot, World};
 use crate::single_player::SinglePlayerTransport;
 use crate::transport::WsTransport;
 
-/// The bundled demo campaign genesis, used when booting single-player without a server. The same
-/// committed `started` snapshot the room server serves as `demo` and the transport tests seed. The
-/// launcher's real manifest-driven assembly (`?campaign=`) is a later slice-4 increment.
+// ── Bundled single-player campaigns (`?campaign=`) ───────────────────────────────
+// Each is a committed genesis snapshot + its authored catalog (item/behavior/formation data the
+// authority resolves commands against). `demo` is pre-`started` and catalog-free (the same snapshot
+// the room server serves and the transport tests seed); the others are `started: false` and carry a
+// catalog, so booting them auto-`BeginCampaign`s. Real manifest-driven assembly (in place of these
+// bundled snapshots) is a later increment.
 const DEMO_GENESIS: &str = include_str!("../../../conformance/fixtures/sync-move.genesis.json");
+const CARETAKER_GENESIS: &str = include_str!("../../../conformance/fixtures/caretaker.genesis.json");
+const CARETAKER_CATALOG: &str = include_str!("../../../conformance/fixtures/caretaker.catalog.json");
+const FACADE_GENESIS: &str = include_str!("../../../conformance/fixtures/facade-free-vs-advancing.genesis.json");
+const FACADE_CATALOG: &str = include_str!("../../../conformance/fixtures/facade-free-vs-advancing.catalog.json");
+
+/// The default single-player campaign id when `?campaign=` is absent or unknown.
+pub const DEFAULT_CAMPAIGN: &str = "demo";
+
+/// Resolve a bundled campaign id to `(genesis, catalog)` JSON, or `None` for an unknown id. A `None`
+/// catalog means the default (empty) catalog.
+fn bundled(id: &str) -> Option<(&'static str, Option<&'static str>)> {
+    match id {
+        "demo" | "crypt" => Some((DEMO_GENESIS, None)),
+        "caretaker" => Some((CARETAKER_GENESIS, Some(CARETAKER_CATALOG))),
+        "facade" | "facade-free-vs-advancing" => Some((FACADE_GENESIS, Some(FACADE_CATALOG))),
+        _ => None,
+    }
+}
+
+/// The parsed genesis snapshot + catalog for a bundled campaign id, falling back to
+/// [`DEFAULT_CAMPAIGN`] for an unknown id.
+pub fn bundled_campaign(id: &str) -> Result<(CampaignSnapshot, Catalog), String> {
+    let (genesis, catalog) = bundled(id).or_else(|| bundled(DEFAULT_CAMPAIGN)).ok_or("no campaign")?;
+    let snapshot = serde_json::from_str(genesis).map_err(|e| format!("genesis '{id}' malformed: {e}"))?;
+    let catalog = match catalog {
+        None => Catalog::default(),
+        Some(json) => serde_json::from_str(json).map_err(|e| format!("catalog '{id}' malformed: {e}"))?,
+    };
+    Ok((snapshot, catalog))
+}
 
 /// Which authority the client drives: an offline in-process authority, or a room server over WS.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -87,35 +120,50 @@ pub enum AppTransport {
     Single(Box<SinglePlayerTransport>),
 }
 
-/// The bundled demo campaign genesis snapshot. Used to boot single-player and to `restart` it.
-pub fn demo_genesis() -> Result<CampaignSnapshot, String> {
-    serde_json::from_str(DEMO_GENESIS).map_err(|e| format!("bundled genesis is malformed: {e}"))
-}
-
-/// Build a fresh offline transport + a coordinator joined to it, from an authoritative snapshot.
-/// Shared by single-player boot, `restore` (from a save), and `restart` (from the bundled genesis) —
-/// the local analog of the room server's "reset the authority to a snapshot".
-pub fn rebuild_single(snapshot: CampaignSnapshot) -> (AppTransport, SyncCoordinator) {
+/// Build a fresh offline transport + a coordinator joined to it, from an authoritative snapshot and
+/// its catalog. Shared by single-player boot, `restore` (from a save), and `restart` (from a pristine
+/// genesis) — the local analog of the room server's "reset the authority to a snapshot".
+pub fn rebuild_single(snapshot: CampaignSnapshot, catalog: Catalog) -> (AppTransport, SyncCoordinator) {
     let transport = AppTransport::Single(Box::new(SinglePlayerTransport::new(
         World::from_snapshot(snapshot),
-        Catalog::default(),
+        catalog,
     )));
     let coord = SyncCoordinator::join(&transport);
     (transport, coord)
 }
 
-impl AppTransport {
-    /// Connect per [`Config::mode`]: build the offline authority from the bundled genesis, or open a
-    /// WebSocket to the room server.
-    pub async fn connect(cfg: &Config) -> Result<AppTransport, String> {
-        match cfg.mode {
-            Mode::Single => Ok(rebuild_single(demo_genesis()?).0),
-            Mode::Multi => {
-                Ok(AppTransport::Multi(WsTransport::connect(&cfg.ws, &cfg.campaign, &cfg.token).await?))
-            }
+/// Boot the offline single-player authority for a bundled campaign: build it, and `BeginCampaign` if
+/// the genesis hasn't started yet (single-player is the sole GM). Returns the transport, the joined
+/// coordinator, and the campaign catalog the surface projects with. Shared by boot and `restart`.
+pub async fn boot_single(campaign: &str) -> Result<(AppTransport, SyncCoordinator, Catalog), String> {
+    let (snapshot, catalog) = bundled_campaign(campaign)?;
+    let started = snapshot.campaign.started;
+    let (transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+    if !started {
+        match transport.submit_async(Command::BeginCampaign).await {
+            SubmitResult::Committed { .. } => coord.sync(&transport),
+            SubmitResult::Denied { reason } => return Err(format!("begin campaign: {reason}")),
         }
     }
+    Ok((transport, coord, catalog))
+}
 
+/// Boot per [`Config::mode`]: the offline single-player authority (with its catalog), or a WebSocket
+/// to the room server (which projects with the default catalog — the server owns the real one).
+/// Returns everything the surface's driver loop needs: the transport, the joined coordinator, and the
+/// catalog to [`project`] with.
+pub async fn boot(cfg: &Config) -> Result<(AppTransport, SyncCoordinator, Catalog), String> {
+    match cfg.mode {
+        Mode::Single => boot_single(&cfg.campaign).await,
+        Mode::Multi => {
+            let transport = AppTransport::Multi(WsTransport::connect(&cfg.ws, &cfg.campaign, &cfg.token).await?);
+            let coord = SyncCoordinator::join(&transport);
+            Ok((transport, coord, Catalog::default()))
+        }
+    }
+}
+
+impl AppTransport {
     /// Submit a command, awaiting the authoritative verdict (the socket round-trip in multiplayer, an
     /// immediate resolve offline).
     pub async fn submit_async(&self, command: Command) -> SubmitResult {
@@ -161,9 +209,11 @@ pub fn read_surface() -> Surface {
     }
 }
 
-/// Project the coordinator's replica into a [`ViewModel`] (the default catalog, no opened-loot set).
-pub fn project(coord: &SyncCoordinator) -> Option<ViewModel> {
-    coord.replica().view(&Catalog::default(), &BTreeSet::new()).ok()
+/// Project the coordinator's replica into a [`ViewModel`] against the campaign catalog (no opened-loot
+/// set). The catalog resolves item names/behaviors and exit passability, so a campaign with authored
+/// items/doors must project with its own catalog (multiplayer uses the default — the server owns it).
+pub fn project(coord: &SyncCoordinator, catalog: &Catalog) -> Option<ViewModel> {
+    coord.replica().view(catalog, &BTreeSet::new()).ok()
 }
 
 /// Resolve a parser [`Intent`] into a sync [`Command`] against the replica. The key step is a
@@ -198,5 +248,37 @@ pub fn intent_to_command(world: &World, intent: &Intent) -> Result<Command, Stri
         Intent::Open { .. } => Err("(opening is a local view action — not yet wired)".into()),
         Intent::Talk { .. } => Err("(dialogue is a later slice)".into()),
         Intent::Wait => Err("(wait is not yet wired)".into()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every bundled campaign parses, boots an offline authority, `BeginCampaign`s when it hasn't
+    /// started, and projects a view against its catalog — the offline path `?campaign=` drives. This
+    /// is the sync equivalent of `boot_single` (host tests can't await), exercising the same
+    /// build → begin → project sequence.
+    #[test]
+    fn every_bundled_campaign_boots_begins_and_projects() {
+        for id in ["demo", "caretaker", "facade-free-vs-advancing"] {
+            let (snapshot, catalog) = bundled_campaign(id).unwrap_or_else(|e| panic!("{id}: {e}"));
+            let started = snapshot.campaign.started;
+            let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+            if !started {
+                let res = coord.submit(&mut transport, Command::BeginCampaign);
+                assert!(matches!(res, SubmitResult::Committed { .. }), "{id}: begin should commit, got {res:?}");
+            }
+            assert!(project(&coord, &catalog).is_some(), "{id}: should project a view");
+        }
+    }
+
+    #[test]
+    fn an_unknown_campaign_falls_back_to_the_default() {
+        // Unknown ids resolve to DEFAULT_CAMPAIGN rather than erroring, so a stray `?campaign=` still
+        // boots something playable.
+        let (snapshot, _) = bundled_campaign("does-not-exist").unwrap();
+        let (expected, _) = bundled_campaign(DEFAULT_CAMPAIGN).unwrap();
+        assert_eq!(snapshot.campaign.title, expected.campaign.title);
     }
 }

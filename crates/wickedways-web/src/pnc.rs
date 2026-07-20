@@ -28,7 +28,7 @@ use wickedways_core::world::view::ViewModel;
 
 use crate::affordances::{inventory_actions, scene_hotspots, ActionDescriptor, HotspotKind};
 use crate::driver::{
-    demo_genesis, intent_to_command, project, read_config, rebuild_single, AppTransport, Mode,
+    boot, boot_single, intent_to_command, project, read_config, rebuild_single, AppTransport, Mode,
 };
 use crate::map::{layout_map, map_svg, MapModel};
 use crate::narrator::Narrator;
@@ -110,17 +110,18 @@ pub fn pnc_app() -> Element {
 
     let driver = use_coroutine(move |mut rx: UnboundedReceiver<PncAction>| async move {
         let cfg = read_config();
-        match AppTransport::connect(&cfg).await {
+        match boot(&cfg).await {
             Err(e) => {
                 status.set("error".into());
                 log.write().push(LogLine::error(format!("connect failed: {e}")));
             }
-            Ok(transport) => {
+            Ok((transport, coord, catalog)) => {
                 // Mutable so `restore`/`restart` can rebind to a fresh offline authority mid-session.
+                // `catalog` is the campaign's, held for the session and used for every projection.
                 let mut transport = transport;
-                let mut coord = SyncCoordinator::join(&transport);
+                let mut coord = coord;
                 status.set("connected".into());
-                let initial = project(&coord);
+                let initial = project(&coord, &catalog);
                 if let Some(v) = &initial {
                     map_model.write().observe(v);
                     print_room(log, narrator, v);
@@ -131,7 +132,7 @@ pub fn pnc_app() -> Element {
                     let intent = match action {
                         PncAction::NextPlayer => {
                             submit(&transport, &mut coord, Command::NextPlayer, log).await;
-                            let after = project(&coord);
+                            let after = project(&coord, &catalog);
                             if let Some(a) = &after {
                                 map_model.write().observe(a);
                             }
@@ -155,11 +156,11 @@ pub fn pnc_app() -> Element {
                             if cfg.mode == Mode::Single {
                                 match savestore::load("slot1") {
                                     Some(blob) => {
-                                        let (t, c) = rebuild_single(blob.snapshot);
+                                        let (t, c) = rebuild_single(blob.snapshot, catalog.clone());
                                         transport = t;
                                         coord = c;
                                         map_model.write().hydrate(blob.map);
-                                        let restored = project(&coord);
+                                        let restored = project(&coord, &catalog);
                                         log.write().push(LogLine::plain("Restored.".into()));
                                         if let Some(v) = &restored {
                                             print_room(log, narrator, v);
@@ -175,15 +176,14 @@ pub fn pnc_app() -> Element {
                         }
                         PncAction::Restart => {
                             if cfg.mode == Mode::Single {
-                                match demo_genesis() {
-                                    Ok(snapshot) => {
-                                        let (t, c) = rebuild_single(snapshot);
+                                match boot_single(&cfg.campaign).await {
+                                    Ok((t, c, _cat)) => {
                                         transport = t;
                                         coord = c;
                                         map_model.write().reset();
                                         narrator.set(Narrator::new());
                                         log.write().clear();
-                                        let fresh = project(&coord);
+                                        let fresh = project(&coord, &catalog);
                                         if let Some(v) = &fresh {
                                             map_model.write().observe(v);
                                             print_room(log, narrator, v);
@@ -199,7 +199,7 @@ pub fn pnc_app() -> Element {
                         }
                         PncAction::Run(ActionDescriptor::Examine { target_id, .. })
                         | PncAction::Run(ActionDescriptor::Read { target_id, .. }) => {
-                            if let Some(v) = project(&coord) {
+                            if let Some(v) = project(&coord, &catalog) {
                                 if let Some(e) = v.scope.iter().find(|e| e.id == target_id) {
                                     let lines = narrator.read().render_examine(e);
                                     for line in lines {
@@ -212,7 +212,7 @@ pub fn pnc_app() -> Element {
                         PncAction::Run(ActionDescriptor::Intent { intent, .. }) => intent,
                     };
 
-                    let before = project(&coord);
+                    let before = project(&coord, &catalog);
                     let command = match intent_to_command(coord.replica(), &intent) {
                         Ok(cmd) => cmd,
                         Err(note) => {
@@ -223,7 +223,7 @@ pub fn pnc_app() -> Element {
                     if !submit(&transport, &mut coord, command, log).await {
                         continue;
                     }
-                    let after = project(&coord);
+                    let after = project(&coord, &catalog);
                     // Record a move BEFORE observe so the newly-entered room is placed relative to
                     // the one we left (observe would otherwise pin it at the grid origin).
                     if let (Intent::Move { dir }, Some(b), Some(a)) = (&intent, &before, &after) {

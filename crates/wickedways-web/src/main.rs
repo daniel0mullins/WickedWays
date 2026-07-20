@@ -24,12 +24,12 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 
-use wickedways_core::sync::{Command, SubmitResult, SyncCoordinator};
+use wickedways_core::sync::{Command, SubmitResult};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
 use wickedways_web::driver::{
-    demo_genesis, intent_to_command, project, read_config, read_surface, rebuild_single, AppTransport,
-    Mode, Surface,
+    boot, boot_single, intent_to_command, project, read_config, read_surface, rebuild_single, Mode,
+    Surface,
 };
 use wickedways_web::map::{layout_map, map_svg, MapModel};
 use wickedways_web::narrator::Narrator;
@@ -81,17 +81,18 @@ fn crt_app() -> Element {
 
     let driver = use_coroutine(move |mut rx: UnboundedReceiver<Action>| async move {
         let cfg = read_config();
-        match AppTransport::connect(&cfg).await {
+        match boot(&cfg).await {
             Err(e) => {
                 status.set("error".into());
                 narration.write().push(format!("connect failed: {e}"));
             }
-            Ok(transport) => {
-                // Mutable so `restore` can rebind them to a fresh offline authority mid-session.
+            Ok((transport, coord, catalog)) => {
+                // Mutable so `restore`/`restart` can rebind to a fresh offline authority mid-session.
+                // `catalog` is the campaign's, held for the session and used for every projection.
                 let mut transport = transport;
-                let mut coord = SyncCoordinator::join(&transport);
+                let mut coord = coord;
                 status.set("connected".into());
-                let initial = project(&coord);
+                let initial = project(&coord, &catalog);
                 if let Some(v) = &initial {
                     map_model.write().observe(v);
                     narration.write().extend(narrator.write().render_room(v));
@@ -105,7 +106,7 @@ fn crt_app() -> Element {
                     let command = match action {
                         Action::NextPlayer => Some(Command::NextPlayer),
                         Action::Input(text) => {
-                            let view = project(&coord);
+                            let view = project(&coord, &catalog);
                             before_view = view.clone();
                             let scope = view.as_ref().map(|v| v.scope.as_slice()).unwrap_or(&[]);
                             match parse(&text, scope) {
@@ -162,7 +163,7 @@ fn crt_app() -> Element {
                         match transport.submit_async(cmd).await {
                             SubmitResult::Committed { seq, .. } => {
                                 coord.sync(&transport);
-                                let after = project(&coord);
+                                let after = project(&coord, &catalog);
                                 // A move must be recorded BEFORE `observe`: `record_move` places the
                                 // newly-entered room relative to the one we left and adds the
                                 // traversed edge, whereas `observe` seeds any unseen room at the
@@ -207,13 +208,13 @@ fn crt_app() -> Element {
                         Some(MetaEffect::Restore) if cfg.mode == Mode::Single => {
                             match savestore::load("slot1") {
                                 Some(blob) => {
-                                    // Rebuild the offline authority from the saved snapshot and hydrate
-                                    // the saved fog-of-war map.
-                                    let (t, c) = rebuild_single(blob.snapshot);
+                                    // Rebuild the offline authority from the saved snapshot (with the
+                                    // campaign catalog) and hydrate the saved fog-of-war map.
+                                    let (t, c) = rebuild_single(blob.snapshot, catalog.clone());
                                     transport = t;
                                     coord = c;
                                     map_model.write().hydrate(blob.map);
-                                    let restored = project(&coord);
+                                    let restored = project(&coord, &catalog);
                                     narration.write().push("Restored.".into());
                                     if let Some(v) = &restored {
                                         let lines = narrator.write().render_room(v);
@@ -225,17 +226,16 @@ fn crt_app() -> Element {
                             }
                         }
                         Some(MetaEffect::Restart) if cfg.mode == Mode::Single => {
-                            match demo_genesis() {
-                                Ok(snapshot) => {
-                                    // Rebuild from the pristine bundled genesis and reset the surface
-                                    // state (map, narrator's visited-rooms, transcript) — begin again.
-                                    let (t, c) = rebuild_single(snapshot);
+                            // Re-boot the campaign from its pristine genesis (auto-begins if needed)
+                            // and reset the surface state (map, narrator's visited-rooms, transcript).
+                            match boot_single(&cfg.campaign).await {
+                                Ok((t, c, _cat)) => {
                                     transport = t;
                                     coord = c;
                                     map_model.write().reset();
                                     narrator.set(Narrator::new());
                                     narration.write().clear();
-                                    let fresh = project(&coord);
+                                    let fresh = project(&coord, &catalog);
                                     if let Some(v) = &fresh {
                                         map_model.write().observe(v);
                                         let lines = narrator.write().render_room(v);

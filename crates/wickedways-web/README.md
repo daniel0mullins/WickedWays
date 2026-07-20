@@ -42,9 +42,19 @@ parchment default / `green` / `ice` via `--pnc-*` overrides on `.pnc-app`. Pure 
 (host-tested), read once from the URL. Verified in a browser: `?theme=amber` recolors the CRT,
 `?theme=green` recolors the PnC.
 
-Remaining slice-4 work: `?campaign=` selecting among multiple bundled campaigns (needs per-campaign
-catalog threading through the projection + an auto-begin for non-`started` genesis — a larger change
-than the single bundled demo), and the audio subtree.
+The launcher's **`?campaign=`** selects among bundled campaigns ([`driver::bundled_campaign`](src/driver.rs)):
+`demo` (the pre-`started`, catalog-free Crypt), `caretaker` (an NPC/dialogue campaign), and
+`facade-free-vs-advancing` — each a genesis snapshot + its authored catalog. `driver::boot` builds the
+offline authority and auto-`BeginCampaign`s a non-`started` genesis (single-player is the sole GM),
+returning the campaign catalog the surface then **projects with** (so authored items/NPCs/locked doors
+resolve — `project(coord, &catalog)` now threads the session catalog through every projection;
+multiplayer still projects with the default, since the server owns the real catalog). `restart` reboots
+the same campaign; `restore` reuses its catalog with the saved snapshot. An unknown id falls back to the
+default. Host-tested (each bundled campaign boots, begins, and projects) and verified in a browser:
+`?mode=single&campaign=caretaker` boots the Foyer with its Caretaker NPC + cellar door,
+`facade-free-vs-advancing` boots the Hall with its Lurker + chest.
+
+Remaining slice-4 work: the audio subtree.
 
 ## Status: slice 3 — the point-and-click surface
 
