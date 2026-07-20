@@ -28,6 +28,7 @@ dioxus = { version = "0.6", features = ["web"] }
 wickedways-core = { path = "../wickedways-core" }
 # The shared wire protocol — the same types the room server speaks.
 wickedways-transport = { path = "../wickedways-transport" }
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # Browser bindings for the WebSocket transport (compile on host too — they are just
@@ -38,5 +39,5 @@ futures-channel = "0.3"
 futures-util = "0.3"
 web-sys = { version = "0.3", features = [
   "WebSocket", "MessageEvent", "Event", "CloseEvent", "BinaryType",
-  "Window", "Location", "UrlSearchParams",
+  "Window", "Location", "UrlSearchParams", "Storage",
 ] }

@@ -2521,6 +2521,7 @@ dependencies = [
  "dioxus",
  "futures-channel",
  "futures-util",
+ "serde",
  "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-futures",

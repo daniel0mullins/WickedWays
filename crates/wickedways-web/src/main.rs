@@ -25,12 +25,18 @@ use dioxus::prelude::*;
 use futures_util::StreamExt;
 
 use wickedways_core::sync::{Command, SubmitResult, SyncCoordinator};
+use wickedways_core::world::descriptor::Catalog;
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
-use wickedways_web::driver::{intent_to_command, project, read_config, read_surface, AppTransport, Surface};
+use wickedways_core::World;
+use wickedways_web::driver::{
+    intent_to_command, project, read_config, read_surface, AppTransport, Mode, Surface,
+};
 use wickedways_web::map::{layout_map, map_svg, MapModel};
 use wickedways_web::narrator::Narrator;
 use wickedways_web::parser::{parse, Meta, ParseResult, Query};
+use wickedways_web::savestore::{self, SaveBlob};
+use wickedways_web::single_player::SinglePlayerTransport;
 
 const CRT_CSS: &str = include_str!("../assets/crt.css");
 const THEME_VARS: &str = "--color-bg:#0b0e0a; --color-text:#9be89b; --color-accent:#d7ffd7; \
@@ -42,6 +48,13 @@ const THEME_VARS: &str = "--color-bg:#0b0e0a; --color-text:#9be89b; --color-acce
 enum Action {
     NextPlayer,
     Input(String),
+}
+
+/// A side-effecting meta command deferred out of the parse match so it runs after the command path,
+/// where the transport/coordinator can be rebound (restore swaps in a fresh offline authority).
+enum MetaEffect {
+    Save,
+    Restore,
 }
 
 /// The one-at-a-time overlay (map or help), mirroring `crt-game.ts`'s `openMap`/`openHelp`.
@@ -76,6 +89,8 @@ fn crt_app() -> Element {
                 narration.write().push(format!("connect failed: {e}"));
             }
             Ok(transport) => {
+                // Mutable so `restore` can rebind them to a fresh offline authority mid-session.
+                let mut transport = transport;
                 let mut coord = SyncCoordinator::join(&transport);
                 status.set("connected".into());
                 let initial = project(&coord);
@@ -88,6 +103,7 @@ fn crt_app() -> Element {
                 while let Some(action) = rx.next().await {
                     let mut intent_for_narration: Option<Intent> = None;
                     let mut before_view: Option<ViewModel> = None;
+                    let mut meta_effect: Option<MetaEffect> = None;
                     let command = match action {
                         Action::NextPlayer => Some(Command::NextPlayer),
                         Action::Input(text) => {
@@ -130,6 +146,8 @@ fn crt_app() -> Element {
                                 ParseResult::Meta(meta) => {
                                     match meta {
                                         Meta::Map => overlay.set(Overlay::Map),
+                                        Meta::Save => meta_effect = Some(MetaEffect::Save),
+                                        Meta::Restore => meta_effect = Some(MetaEffect::Restore),
                                         _ => narration.write().push("(that's not available here yet)".into()),
                                     }
                                     None
@@ -175,6 +193,44 @@ fn crt_app() -> Element {
                                 narration.write().push(format!("✗ {reason}"));
                             }
                         }
+                    }
+
+                    // Save/restore run after the command path so `transport`/`coord` are free to
+                    // rebind. Both are single-player only — multiplayer state lives on the server.
+                    match meta_effect {
+                        Some(MetaEffect::Save) if cfg.mode == Mode::Single => {
+                            let blob = SaveBlob { snapshot: coord.snapshot(), map: map_model.read().serialize() };
+                            match savestore::save("slot1", &blob) {
+                                Ok(()) => narration.write().push("Saved.".into()),
+                                Err(e) => narration.write().push(format!("Save failed: {e}")),
+                            }
+                        }
+                        Some(MetaEffect::Restore) if cfg.mode == Mode::Single => {
+                            match savestore::load("slot1") {
+                                Some(blob) => {
+                                    // Rebuild the offline authority from the saved snapshot (the local
+                                    // analog of the server's "reset the authority to a snapshot"),
+                                    // re-join the coordinator, and hydrate the map.
+                                    let genesis = World::from_snapshot(blob.snapshot);
+                                    transport = AppTransport::Single(Box::new(SinglePlayerTransport::new(
+                                        genesis,
+                                        Catalog::default(),
+                                    )));
+                                    coord = SyncCoordinator::join(&transport);
+                                    map_model.write().hydrate(blob.map);
+                                    let restored = project(&coord);
+                                    narration.write().push("Restored.".into());
+                                    if let Some(v) = &restored {
+                                        let lines = narrator.write().render_room(v);
+                                        narration.write().extend(lines);
+                                    }
+                                    vm.set(restored);
+                                }
+                                None => narration.write().push("No save found.".into()),
+                            }
+                        }
+                        Some(_) => narration.write().push("(save/restore is single-player only)".into()),
+                        None => {}
                     }
                 }
             }

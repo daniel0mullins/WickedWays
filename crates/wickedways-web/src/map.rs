@@ -9,11 +9,12 @@
 use std::collections::BTreeMap;
 
 use dioxus::prelude::*;
+use serde::{Deserialize, Serialize};
 use wickedways_core::world::direction::Direction;
 use wickedways_core::world::view::ViewModel;
 
 /// A room placed on the fog-of-war grid.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MapRoom {
     pub id: String,
     pub name: String,
@@ -23,7 +24,7 @@ pub struct MapRoom {
 }
 
 /// A traversed connection between two rooms (`dir` is from `a` to `b`).
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MapEdge {
     pub a: String,
     pub b: String,
@@ -32,14 +33,14 @@ pub struct MapEdge {
 }
 
 /// An exit seen but not yet walked through.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MapStub {
     pub dir: Direction,
     pub locked: bool,
 }
 
 /// Plain-data snapshot of the whole map, for save/restore.
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Default, Serialize, Deserialize)]
 pub struct MapSnapshot {
     pub rooms: Vec<MapRoom>,
     pub edges: Vec<MapEdge>,
