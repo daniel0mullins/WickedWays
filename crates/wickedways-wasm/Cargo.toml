@@ -6,6 +6,19 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+# Skip wasm-opt in the wasm-pack build. Recent stable rustc enables the wasm
+# `reference-types`/`multivalue` features by default, so wasm-bindgen emits a module
+# wasm-pack's bundled wasm-opt (binaryen, MVP-only) rejects
+# ("Only 1 table definition allowed in MVP"). Skipping wasm-opt sidesteps the stale
+# optimizer; the wasm-bindgen output is already valid for every modern target
+# (browsers + Node). Re-enable with `wasm-opt = ['-O', '--enable-reference-types',
+# '--enable-multivalue']` once wasm-pack ships a newer binaryen.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false
+
+[package.metadata.wasm-pack.profile.profiling]
+wasm-opt = false
+
 [features]
 # Compiles the first-party conformance mechanic op (`conformance:dread`) into the
 # core registry. Enabled by the conformance-gate wasm build (`pnpm run wasm:build`)
