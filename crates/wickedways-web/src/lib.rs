@@ -6,4 +6,5 @@
 //! transport, ported from `packages/client/src/websocket-transport.ts`.
 
 pub mod mirror;
+pub mod parser;
 pub mod transport;
