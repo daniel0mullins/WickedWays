@@ -26,6 +26,17 @@ pub enum ActionDescriptor {
     Read { label: String, target_id: String },
 }
 
+impl ActionDescriptor {
+    /// The button text for this action (the `label` field of every variant).
+    pub fn label(&self) -> &str {
+        match self {
+            ActionDescriptor::Intent { label, .. }
+            | ActionDescriptor::Examine { label, .. }
+            | ActionDescriptor::Read { label, .. } => label,
+        }
+    }
+}
+
 /// The kind of scene hotspot — drives which glyph/affordance the PnC scene renders.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum HotspotKind {
@@ -481,7 +492,7 @@ mod tests {
 
     /// Collect an item's action labels in order, for the ordering assertions below.
     fn labels(item: &ScopeEntity, equipped: bool) -> Vec<String> {
-        inventory_actions(item, equipped).iter().map(|a| label_of(a).to_string()).collect()
+        inventory_actions(item, equipped).iter().map(|a| a.label().to_string()).collect()
     }
 
     #[test]
@@ -530,14 +541,5 @@ mod tests {
             kinds,
             [HotspotKind::Exit, HotspotKind::Locked, HotspotKind::Occupant, HotspotKind::Loot, HotspotKind::Item]
         );
-    }
-
-    /// The label text of an [`ActionDescriptor`], for order assertions.
-    fn label_of(a: &ActionDescriptor) -> &str {
-        match a {
-            ActionDescriptor::Intent { label, .. }
-            | ActionDescriptor::Examine { label, .. }
-            | ActionDescriptor::Read { label, .. } => label,
-        }
     }
 }

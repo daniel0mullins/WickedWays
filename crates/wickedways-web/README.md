@@ -4,24 +4,37 @@ The Dioxus **web** client (Phase 2c, sub-project D). See the design
 ([`docs/superpowers/specs/2026-07-14-rust-phase-2c-d-dioxus-web-client-design.md`](../../docs/superpowers/specs/2026-07-14-rust-phase-2c-d-dioxus-web-client-design.md))
 and plan ([`docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.md`](../../docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.md)).
 
-## Status: slice 3 (in progress) — the point-and-click surface
+## Status: slice 3 — the point-and-click surface
 
-The point-and-click surface begins with its pure logic layer, the analog of the CRT `parser`:
-**[`affordances`](src/affordances.rs)** (a 1:1 port of `pnc/affordances.ts`, unit-tested on the host)
-derives what the player can click in a scene and which verbs each thing offers, straight from the
-engine `ViewModel` — no framework, no DOM:
+The client now has **two surfaces**, chosen by `?surface=` ([`driver::read_surface`](src/driver.rs)):
+the CRT terminal (default) and the point-and-click surface ([`pnc::pnc_app`](src/pnc.rs)). Both drive
+the same multiplayer loop through the shared [`driver`](src/driver.rs) (connect → project →
+`intent_to_command` → submit → narrate → map), extracted from the CRT `main.rs` so the two can't drift.
 
-- `scene_hotspots(vm)` → the clickable elements in scene order (exits, locked doors, occupants, loot
-  containers, floor items), each with its `ActionDescriptor` verbs. Verbs are capability-gated so the
-  menu never offers a move the engine would reject: a defeated occupant loses Attack, only a
-  `talkable` NPC gets Talk, only a *closed* container's contents stay hidden (opening it turns them
-  into takeable floor items).
-- `inventory_actions(item, equipped)` → an inventory item's verbs (Examine, Read if it has lore,
-  Equip/Unequip by state, Use if usable, Drop unless it's a required quest item).
+The PnC surface's pure logic landed first, the analog of the CRT `parser`:
 
-The PnC UI components (scene / action-menu / topbar / inventory / log) and their controller — which
-turn these descriptors into DOM and drive the turn loop — are the remaining slice-3 work; they reuse
-the already-ported [`narrator`](src/narrator.rs) and [`map`](src/map.rs).
+- **[`affordances`](src/affordances.rs)** — `scene_hotspots(vm)` derives the clickable elements in
+  scene order (exits, locked doors, occupants, loot, floor items), each with capability-gated
+  `ActionDescriptor` verbs (a defeated occupant loses Attack, only a `talkable` NPC gets Talk, a
+  *closed* container's contents stay hidden until opened); `inventory_actions(item, equipped)` derives
+  an item's verbs (Examine, Read if lore, Equip/Unequip, Use, Drop unless a required quest item).
+- **[`scene_layout`](src/scene_layout.rs)** — `dir_position`/`body_position`/`partition_hotspots`: the
+  perimeter-by-bearing + central-band placement the scene renders (the scene analog of `layout_map`).
+
+The **[`pnc`](src/pnc.rs)** Dioxus surface wires these into DOM: a topbar (room name + map), the scene
+(clickable hotspots + a contextual action menu — a lone move fires immediately, otherwise a verb menu
+opens at the click point), a sidebar (status projected from the `ViewModel` · a tabbed inventory ·
+the running log), a map overlay, and a welcome screen. A click becomes an `Intent`, resolves to a sync
+`Command`, and commits over the same transport as the CRT; the narrator prints the outcome and the map
+records moves. Verified in a real browser against a live server: the scene projects the room and its
+occupant/exit hotspots, clicking an occupant opens `Examine`/`Attack`, and choosing a verb runs it.
+
+Parity gaps carried to slice 4 (runtime glue): the audio / soundpack / theme controls and the
+save-restore / undo / restart menu (they need the audio runtime + savestore), the campaign manifest
+title/intro/themes (the launcher), and the richer campaign `StatusField` readout + per-entity
+examine/read lore (they ride `PresentationCue`s the multiplayer wire doesn't carry yet — the CRT
+surface has the same gap). The `pnc-scene`'s procedural room art is carried; the CSS reproduces the
+Lit component sheets in light DOM.
 
 ## Slice 2 — the CRT game view + command parser + narrator + map
 

@@ -1,6 +1,10 @@
-//! The WickedWays Dioxus web client (Phase 2c, sub-project D) — the CRT game shell (slice 2).
+//! The WickedWays Dioxus web client (Phase 2c, sub-project D) — the binary entry + the CRT surface.
 //!
-//! Drives the multiplayer loop against the C axum server (slice 1), renders the real engine
+//! [`main`] reads `?surface=` and launches either this CRT terminal ([`crt_app`]) or the
+//! point-and-click surface ([`wickedways_web::pnc::pnc_app`], slice 3); both share the connect →
+//! project → [`intent_to_command`] → narrate → map driver in [`wickedways_web::driver`].
+//!
+//! The CRT surface drives the multiplayer loop against the C axum server (slice 1), renders the real engine
 //! [`ViewModel`] the core projects from the replica (slice 2a), and takes typed commands through the
 //! ported [`parse`](wickedways_web::parser::parse)r (slice 2b): the prompt turns a line of input into
 //! an [`Intent`], which the shell resolves into a sync `Command` (a `move`'s direction becomes the
@@ -17,17 +21,13 @@
 //! [`Narrator`]: wickedways_web::narrator::Narrator
 //! [`MapModel`]: wickedways_web::map::MapModel
 
-use std::collections::BTreeSet;
-
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 
 use wickedways_core::sync::{Command, SubmitResult, SyncCoordinator};
-use wickedways_core::world::descriptor::Catalog;
-use wickedways_core::world::ids::{CharacterId, ItemId};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
-use wickedways_core::World;
+use wickedways_web::driver::{intent_to_command, project, read_config, read_surface, Surface};
 use wickedways_web::map::{layout_map, map_svg, MapModel};
 use wickedways_web::narrator::Narrator;
 use wickedways_web::parser::{parse, Meta, ParseResult, Query};
@@ -53,69 +53,14 @@ enum Overlay {
     Map,
 }
 
-struct Config {
-    ws: String,
-    campaign: String,
-    token: String,
-}
-
-fn read_config() -> Config {
-    let params = web_sys::window()
-        .and_then(|w| w.location().search().ok())
-        .and_then(|s| web_sys::UrlSearchParams::new_with_str(&s).ok());
-    let get = |k: &str, default: &str| {
-        params.as_ref().and_then(|p| p.get(k)).filter(|v| !v.is_empty()).unwrap_or_else(|| default.into())
-    };
-    Config {
-        ws: get("ws", "ws://127.0.0.1:9000/ws"),
-        campaign: get("campaign", "demo"),
-        token: get("token", "gm"),
-    }
-}
-
-fn project(coord: &SyncCoordinator) -> Option<ViewModel> {
-    coord.replica().view(&Catalog::default(), &BTreeSet::new()).ok()
-}
-
-/// Resolves a parser [`Intent`] into a sync [`Command`] against the replica — the key step is a
-/// `move`, whose compass direction becomes the destination room id via the active character's room
-/// and the exit graph. Intents with no sync command (open/talk/wait) return a note.
-fn intent_to_command(world: &World, intent: &Intent) -> Result<Command, String> {
-    let actor = world.active_character_id().map_err(|e| e.0)?;
-    match intent {
-        Intent::Move { dir } => {
-            let room_id = world
-                .characters
-                .get(&actor)
-                .and_then(|c| c.current_room_id.clone())
-                .ok_or("you are nowhere")?;
-            let room = world.rooms.get(&room_id).ok_or("room not found")?;
-            let exit_id = room.exits.get(dir.as_key()).ok_or_else(|| format!("no exit {}", dir.as_key()))?;
-            let ex = world.exits.get(exit_id).ok_or("exit not found")?;
-            let dest = if ex.endpoint_ids[0] == room_id {
-                ex.endpoint_ids[1].clone()
-            } else {
-                ex.endpoint_ids[0].clone()
-            };
-            Ok(Command::Move { actor_id: actor, room_id: dest })
-        }
-        Intent::Take { target_id } => Ok(Command::PickUp { actor_id: actor, item_ids: vec![ItemId(target_id.clone())] }),
-        Intent::Drop { target_id } => Ok(Command::Drop { actor_id: actor, item_ids: vec![ItemId(target_id.clone())] }),
-        Intent::Attack { target_id } => Ok(Command::Attack { actor_id: actor, target_id: CharacterId(target_id.clone()) }),
-        Intent::Equip { target_id } => Ok(Command::Equip { actor_id: actor, item_id: ItemId(target_id.clone()), slot: None }),
-        Intent::Unequip { target_id } => Ok(Command::Unequip { actor_id: actor, item_id: ItemId(target_id.clone()) }),
-        Intent::Use { target_id } => Ok(Command::Use { actor_id: actor, item_id: ItemId(target_id.clone()) }),
-        Intent::Open { .. } => Err("(opening is a local view action — not yet wired)".into()),
-        Intent::Talk { .. } => Err("(dialogue is a later slice)".into()),
-        Intent::Wait => Err("(wait is not yet wired)".into()),
-    }
-}
-
 fn main() {
-    dioxus::launch(app);
+    match read_surface() {
+        Surface::Crt => dioxus::launch(crt_app),
+        Surface::Pnc => dioxus::launch(wickedways_web::pnc::pnc_app),
+    }
 }
 
-fn app() -> Element {
+fn crt_app() -> Element {
     let mut status = use_signal(|| "connecting…".to_string());
     let mut vm = use_signal(|| None::<ViewModel>);
     let mut narration = use_signal(Vec::<String>::new);
