@@ -27,9 +27,22 @@ client-side `campaign_registry` keyed by `?campaign=` ([`driver::welcome_for`](s
 generic fallback for a campaign not bundled here) — the same registry the launcher menu reads. The PnC
 welcome overlay and a new CRT welcome gate (a port of `crt-welcome`; the transport connects underneath
 while it's up) both render it. Host-tested (registry title/intro, the default `Enter <title>` button,
-the generic fallback). The campaign's authored `StatusField` readouts remain a wire gap — they ride
-`PresentationCue::Status` cues that neither the wire nor the `ViewModel` projection carries, so the
-status line stays the basic `ViewModel` (turn/HP/SAN) on both surfaces.
+the generic fallback).
+
+The campaign's authored **`StatusField` readouts** now reach the surfaces — the piece the delta model
+otherwise drops. StatusFields are emitted imperatively by campaign mechanics (`Effect::Status` on turn
+hooks), so they can't be re-derived from state. The engine now **carries them over the wire**: the
+sync authority attaches each command's presentation cues to the `Delta` (`delta.cues`, which rides the
+opaque wire `delta` and is skipped when empty, so the envelope and state goldens are unchanged — the
+sync gate compares state only), and [`SyncCoordinator`] absorbs the latest `Status` cue from every
+applied delta, exposing it as `status_fields()`. Both surfaces mirror it into a signal and render a
+color-coded status bar (emphasis `normal`/`warn`/`critical`). The bundled **`status-bar`** campaign (a
+compiled `g2-status-bar`) demonstrates it with a live Sanity / Round readout. Host-tested end-to-end
+(BeginCampaign → `status_fields()` shows Sanity + Round) and browser-verified on both surfaces; a
+campaign with no status mechanic shows no bar. (A late-joining multiplayer client sees the readout from
+the next emitting hook onward, since cues are transient and not replayed from a snapshot.)
+
+[`SyncCoordinator`]: ../wickedways-core/src/sync/coordinator.rs
 
 **Clickable nouns** (CRT) — [`link_nouns`](src/link_nouns.rs), a port of `crt/link-nouns.ts`, splits
 the room description and each narration line into plain / noun segments against the current scope's

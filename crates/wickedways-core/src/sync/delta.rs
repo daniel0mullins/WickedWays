@@ -25,6 +25,7 @@ use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::presentation::PresentationCue;
 use crate::world::snapshot::{
     CampaignCoreSnapshot, CampaignSnapshot, CharacterSnapshot, ItemSnapshot, LootSnapshot,
     MaterialCacheSnapshot, RoomSnapshot,
@@ -65,6 +66,13 @@ pub struct Delta {
     // when the core is unchanged. serde treats `Option<Box<T>>` transparently.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub campaign_core: Option<Box<CampaignCoreDelta>>,
+    /// Presentation cues produced alongside this state change (e.g. a campaign `Status` readout from
+    /// a turn hook). Not state — the delta model otherwise discards cues and re-derives presentation
+    /// client-side, but campaign-authored cues like `Status` fields can't be re-derived, so they ride
+    /// here (inside the opaque wire `delta`). Empty for most deltas; skipped when empty so the wire
+    /// envelope and existing goldens are unchanged.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cues: Vec<PresentationCue>,
 }
 
 /// Diffs two full campaign snapshots into a minimal entity-delta. Mirrors the TS
@@ -88,7 +96,7 @@ pub fn diff(before: &CampaignSnapshot, after: &CampaignSnapshot) -> Delta {
         })
     });
 
-    Delta { changed, created, removed, campaign_core }
+    Delta { changed, created, removed, campaign_core, cues: Vec::new() }
 }
 
 /// Compares one entity collection between `before` and `after`, classifying each `after`

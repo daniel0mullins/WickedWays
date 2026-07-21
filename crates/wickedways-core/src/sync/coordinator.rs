@@ -14,6 +14,7 @@
 
 use alloc::vec::Vec;
 
+use crate::presentation::{PresentationCue, StatusField};
 use crate::world::snapshot::CampaignSnapshot;
 use crate::world::World;
 
@@ -71,15 +72,28 @@ impl SyncTransport for InProcessTransport {
 pub struct SyncCoordinator {
     replica: World,
     last_applied: u64,
+    /// The most recent campaign `Status` readout absorbed from an applied delta's cues, or empty
+    /// until one arrives. Surfaces render it as the status bar (the delta model can't re-derive it).
+    latest_status: Vec<StatusField>,
 }
 
 impl SyncCoordinator {
     /// Builds a replica from the transport's latest checkpoint, then catches it up to head.
     pub fn join<T: SyncTransport>(transport: &T) -> Self {
         let (seq, snap) = transport.load_snapshot();
-        let mut coord = SyncCoordinator { replica: World::from_snapshot(snap), last_applied: seq };
+        let mut coord = SyncCoordinator {
+            replica: World::from_snapshot(snap),
+            last_applied: seq,
+            latest_status: Vec::new(),
+        };
         coord.sync(transport);
         coord
+    }
+
+    /// The most recent campaign `Status` fields (empty until a `Status` cue has been applied). Kept
+    /// live from every applied delta's cues, so it reflects the current turn's readout.
+    pub fn status_fields(&self) -> &[StatusField] {
+        &self.latest_status
     }
 
     /// The current replica state as a snapshot.
@@ -110,6 +124,13 @@ impl SyncCoordinator {
             }
             if entry.seq == self.last_applied + 1 {
                 apply(&mut self.replica, &entry.delta);
+                // Absorb the delta's presentation cues: keep the latest campaign `Status` readout so
+                // surfaces can render the status bar (state alone can't reconstruct it).
+                for cue in &entry.delta.cues {
+                    if let PresentationCue::Status { fields } = cue {
+                        self.latest_status = fields.clone();
+                    }
+                }
                 self.last_applied = entry.seq;
             }
         }

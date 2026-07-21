@@ -163,6 +163,18 @@
 .map-svg .map-remains { fill: var(--color-error); font: 0.5em var(--font-body); }
 .overlay-legend { font-family: var(--font-body); font-size: 0.7em; color: var(--color-muted); text-align: center; }
 
+/* Campaign status bar — the authored `StatusField` readout, color-coded by emphasis. */
+.campaign-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1rem;
+  padding: 0.15rem 0;
+  font-size: 0.85em;
+  color: var(--color-muted);
+}
+.campaign-status .status-field.status-warn { color: var(--color-warn, #d9c27a); }
+.campaign-status .status-field.status-critical { color: var(--color-error); }
+
 /* Clickable nouns in prose (room description + narration) — click fills `examine <noun>`. */
 .noun {
   color: var(--color-accent);

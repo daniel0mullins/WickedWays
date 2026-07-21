@@ -12,11 +12,11 @@
 //! (slice 4) — a topbar 🔊 toggle enables the shared [`AudioRuntime`], which voices committed actions
 //! and denials and runs the sanity-reactive ambient bed, just like the CRT surface. The welcome
 //! screen shows the campaign's title + intro from the client-side registry
-//! ([`welcome_for`](crate::driver::welcome_for)) — the manifest passthrough — but the campaign's
-//! authored `StatusField` cues aren't carried over the multiplayer wire, so the status line is the
-//! basic `ViewModel` projection. A dev `nextPlayer` control remains; `examine`/`read` render the
-//! generic look line, since per-entity lore / descriptions ride `PresentationCue`s the wire doesn't
-//! carry yet.
+//! ([`welcome_for`](crate::driver::welcome_for)) — the manifest passthrough — and the campaign's
+//! authored `StatusField` readout now rides the sync delta's cues (absorbed by the coordinator), so
+//! the status line shows it alongside the basic `ViewModel` projection. A dev `nextPlayer` control
+//! remains; `examine`/`read` render the generic look line, since per-entity lore / descriptions ride
+//! `PresentationCue`s the wire doesn't carry yet.
 //!
 //! [`AudioRuntime`]: crate::audio_runtime::AudioRuntime
 //!
@@ -27,6 +27,7 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 
+use wickedways_core::presentation::StatusField;
 use wickedways_core::sync::{Command, SubmitResult, SyncCoordinator};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
@@ -106,6 +107,8 @@ fn print_room(mut log: Signal<Vec<LogLine>>, mut narrator: Signal<Narrator>, vm:
 pub fn pnc_app() -> Element {
     let mut status = use_signal(|| "connecting…".to_string());
     let mut vm = use_signal(|| None::<ViewModel>);
+    // The campaign's live `Status` readout, absorbed from the coordinator after each sync.
+    let mut status_fields = use_signal(Vec::<StatusField>::new);
     let mut log = use_signal(Vec::<LogLine>::new);
     let mut narrator = use_signal(Narrator::new);
     let mut map_model = use_signal(MapModel::new);
@@ -145,6 +148,7 @@ pub fn pnc_app() -> Element {
                     audio.update(v);
                 }
                 vm.set(initial);
+                status_fields.set(coord.status_fields().to_vec());
 
                 while let Some(action) = rx.next().await {
                     let intent = match action {
@@ -156,6 +160,7 @@ pub fn pnc_app() -> Element {
                                 audio.update(a);
                             }
                             vm.set(after);
+                            status_fields.set(coord.status_fields().to_vec());
                             continue;
                         }
                         // ── Single-player lifecycle (mirrors the CRT verbs, same rebuild seam) ──
@@ -186,6 +191,7 @@ pub fn pnc_app() -> Element {
                                             audio.update(v);
                                         }
                                         vm.set(restored);
+                                        status_fields.set(coord.status_fields().to_vec());
                                     }
                                     None => log.write().push(LogLine::plain("No save found.".into())),
                                 }
@@ -212,6 +218,7 @@ pub fn pnc_app() -> Element {
                                             audio.update(v);
                                         }
                                         vm.set(fresh);
+                                        status_fields.set(coord.status_fields().to_vec());
                                     }
                                     Err(e) => log.write().push(LogLine::error(format!("Restart failed: {e}"))),
                                 }
@@ -296,6 +303,7 @@ pub fn pnc_app() -> Element {
                         audio.update(a);
                     }
                     vm.set(after);
+                    status_fields.set(coord.status_fields().to_vec());
                 }
             }
         }
@@ -333,7 +341,7 @@ pub fn pnc_app() -> Element {
                     {scene_view(view.as_ref(), finished, menu, driver)}
                 }
                 aside { class: "pnc-sidebar",
-                    {status_view(view.as_ref())}
+                    {status_view(view.as_ref(), &status_fields())}
                     {inventory_view(view.as_ref(), finished, inv_tab_items, menu)}
                     div { class: "pnc-log",
                         div { class: "log",
@@ -507,9 +515,18 @@ fn offer(
     menu.set(Some(ActionMenu { actions: actions.to_vec(), x: coords.x, y: coords.y }));
 }
 
-/// A basic status line projected from the `ViewModel` (location · turn · HP · SAN). The campaign's
-/// richer `StatusField` cues aren't carried over the multiplayer wire yet (slice 4).
-fn status_view(view: Option<&ViewModel>) -> Element {
+/// The CSS class for a campaign status field by its (optional) emphasis.
+fn status_field_class(field: &StatusField) -> &'static str {
+    match field.emphasis.as_deref() {
+        Some("critical") => "field status-critical",
+        Some("warn") => "field status-warn",
+        _ => "field",
+    }
+}
+
+/// The status line: the `ViewModel` projection (turn · HP · SAN) plus the campaign's live `StatusField`
+/// readout when present (the manifest status passthrough — carried on the delta's cues).
+fn status_view(view: Option<&ViewModel>, fields: &[StatusField]) -> Element {
     let Some(v) = view else {
         return rsx! { div { class: "pnc-status" } };
     };
@@ -520,6 +537,18 @@ fn status_view(view: Option<&ViewModel>) -> Element {
                 span { class: "field", span { class: "field-label", "Turn" } " " span { class: "field-value", "{s.turn}/{s.max_turns}" } }
                 span { class: "field", span { class: "field-label", "HP" } " " span { class: "field-value", "{s.health}" } }
                 span { class: "field", span { class: "field-label", "SAN" } " " span { class: "field-value", "{s.sanity}" } }
+            }
+            if !fields.is_empty() {
+                div { class: "status campaign-status",
+                    for f in fields.iter() {
+                        span {
+                            key: "sf-{f.label}",
+                            class: status_field_class(f),
+                            span { class: "field-label", "{f.label}" } " "
+                            span { class: "field-value", "{f.value}" }
+                        }
+                    }
+                }
             }
         }
     }
