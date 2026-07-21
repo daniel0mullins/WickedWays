@@ -88,8 +88,24 @@ fn query_param(key: &str) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-/// Read `?mode=&ws=…&campaign=…&token=…`, falling back to the local-dev defaults. `?mode=single`
-/// (or `?mode=offline`) selects the offline single-player authority; anything else is multiplayer.
+/// The default multiplayer socket URL: **same-origin and scheme-aware**, derived from the page
+/// (`wss://<host>/ws` on HTTPS, `ws://<host>/ws` otherwise) so a deployed client connects back to the
+/// one binary that served it — no hardcoded host/port, no mixed-content block over HTTPS. Falls back
+/// to the local-dev server when there's no page origin (non-browser / `file:`).
+fn default_ws() -> String {
+    web_sys::window()
+        .map(|w| w.location())
+        .and_then(|loc| {
+            let host = loc.host().ok().filter(|h| !h.is_empty())?;
+            let scheme = if loc.protocol().ok().as_deref() == Some("https:") { "wss" } else { "ws" };
+            Some(format!("{scheme}://{host}/ws"))
+        })
+        .unwrap_or_else(|| "ws://127.0.0.1:9000/ws".into())
+}
+
+/// Read `?mode=&ws=…&campaign=…&token=…`, falling back to the same-origin socket + local-dev defaults.
+/// `?mode=single` (or `?mode=offline`) selects the offline single-player authority; anything else is
+/// multiplayer.
 pub fn read_config() -> Config {
     let mode = match query_param("mode").as_deref() {
         Some("single") | Some("offline") | Some("solo") => Mode::Single,
@@ -97,7 +113,7 @@ pub fn read_config() -> Config {
     };
     Config {
         mode,
-        ws: query_param("ws").unwrap_or_else(|| "ws://127.0.0.1:9000/ws".into()),
+        ws: query_param("ws").unwrap_or_else(default_ws),
         campaign: query_param("campaign").unwrap_or_else(|| "demo".into()),
         token: query_param("token").unwrap_or_else(|| "gm".into()),
         theme: query_param("theme").unwrap_or_default(),
