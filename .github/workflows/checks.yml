@@ -11,6 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          # wasm32 target + clippy for the Dioxus web client (wickedways-web) gate below.
+          targets: wasm32-unknown-unknown
+          components: clippy
       - uses: jetli/wasm-pack-action@v0.4.0
       - uses: pnpm/action-setup@v4
         with:
@@ -27,6 +31,13 @@ jobs:
       # output against the committed g2-vault oracle. Runs in the fast job.
       - run: cargo test -p wickedways-author
       - run: cargo test -p wickedways-server
+      # The Dioxus web client (sub-project D): host tests, clippy on host + wasm32,
+      # and the wasm build. Mirrors the per-slice local gate. Browser-level checks
+      # (wasm-bindgen bundling + Playwright) are heavier and stay out of this fast job.
+      - run: cargo test -p wickedways-web
+      - run: cargo clippy -p wickedways-web --all-targets -- -D warnings
+      - run: cargo clippy -p wickedways-web --all-targets --target wasm32-unknown-unknown -- -D warnings
+      - run: cargo build -p wickedways-web --target wasm32-unknown-unknown
       # Regenerate the ts-rs bindings and fail if the committed ones drifted from the
       # Rust source of truth. Pure Rust + git diff, so it lives in the fast job.
       - run: pnpm run bindings:check
