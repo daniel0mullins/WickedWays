@@ -216,12 +216,19 @@ pub fn surface_info(id: &str) -> Option<&'static SurfaceInfo> {
     SURFACE_INFOS.iter().find(|s| s.id == id)
 }
 
-/// Display + surface metadata for one bundled campaign, shown in the launcher menu.
+/// Display + surface metadata for one bundled campaign, shown in the launcher menu and carried
+/// through to each surface's welcome screen (the `CampaignManifest` passthrough — see [`welcome_for`]).
 pub struct CampaignInfo {
     /// `?campaign=` deep-link value and registry key (matches a [`bundled`] id).
     pub slug: &'static str,
+    /// Campaign name — the launcher-menu heading and the welcome-screen title.
     pub title: &'static str,
+    /// One-line description under the title in the launcher menu.
     pub blurb: &'static str,
+    /// Welcome-screen body prose shown before the player enters the campaign.
+    pub intro: &'static str,
+    /// Welcome start-button label; empty → the default `"Enter <title>"`.
+    pub button_text: &'static str,
     /// Surface ids this campaign offers; `surfaces[0]` is the default. ≥ 2 → the picker is shown.
     pub surfaces: &'static [&'static str],
 }
@@ -236,18 +243,24 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             slug: "demo",
             title: "The Crypt",
             blurb: "A two-room sync demo — cross from the crypt to the vault.",
+            intro: "You wake on cold stone. A vault waits beyond the far door — cross to it and find the way out.",
+            button_text: "",
             surfaces: BOTH_SURFACES,
         },
         CampaignInfo {
             slug: "caretaker",
             title: "The Caretaker",
             blurb: "A foyer with a watchful NPC and a locked cellar door.",
+            intro: "The foyer is still but for the Caretaker's watchful eyes. The cellar door is locked; the way down is not freely given.",
+            button_text: "",
             surfaces: BOTH_SURFACES,
         },
         CampaignInfo {
             slug: "facade-free-vs-advancing",
             title: "Façade: Free vs. Advancing",
             blurb: "A hall stalked by a lurking mob, with a chest to plunder.",
+            intro: "The hall stretches long and watched. Something lurks between you and the chest at its end.",
+            button_text: "",
             surfaces: BOTH_SURFACES,
         },
     ];
@@ -258,6 +271,34 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
 pub fn resolve_campaign_info(slug: Option<&str>) -> Option<&'static CampaignInfo> {
     let slug = slug?;
     campaign_registry().iter().find(|c| c.slug == slug)
+}
+
+/// A campaign's welcome-screen text — the `CampaignManifest` display passthrough consumed by both
+/// surfaces' welcome screens (ported from `crt-welcome` / `pnc-welcome`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WelcomeText {
+    pub title: String,
+    pub intro: String,
+    /// Start-button label, already resolved (a campaign's `button_text`, or `"Enter <title>"`).
+    pub button: String,
+}
+
+/// The welcome text for a campaign id, from the [`campaign_registry`]. The client knows `?campaign=`
+/// in both modes, so this carries the manifest's title/intro/button that the multiplayer wire can't.
+/// An unknown campaign (e.g. a multiplayer campaign not bundled here) gets a generic fallback.
+pub fn welcome_for(campaign: &str) -> WelcomeText {
+    match resolve_campaign_info(Some(campaign)) {
+        Some(i) => WelcomeText {
+            title: i.title.into(),
+            intro: i.intro.into(),
+            button: if i.button_text.is_empty() { format!("Enter {}", i.title) } else { i.button_text.into() },
+        },
+        None => WelcomeText {
+            title: "WICKEDWAYS".into(),
+            intro: "A house that does not want to let you leave.".into(),
+            button: "Enter".into(),
+        },
+    }
 }
 
 /// Where the launcher should be: the campaign menu, a surface picker, or a mounted surface.
@@ -437,6 +478,19 @@ mod tests {
         assert_eq!(resolve_route(Some("demo"), None), LauncherRoute::Picker { slug: "demo".into() });
         // An invalid surface id is ignored → picker (not a bogus mount).
         assert_eq!(resolve_route(Some("demo"), Some("hologram")), LauncherRoute::Picker { slug: "demo".into() });
+    }
+
+    #[test]
+    fn welcome_text_comes_from_the_registry_with_a_default_button_and_a_generic_fallback() {
+        // A registered campaign carries its title + intro; an empty button_text → "Enter <title>".
+        let demo = welcome_for("demo");
+        assert_eq!(demo.title, "The Crypt");
+        assert!(!demo.intro.is_empty(), "intro should be the campaign's prose");
+        assert_eq!(demo.button, "Enter The Crypt");
+        // An unknown campaign (e.g. a multiplayer one not bundled here) → the generic welcome.
+        let unknown = welcome_for("some-server-campaign");
+        assert_eq!(unknown.title, "WICKEDWAYS");
+        assert_eq!(unknown.button, "Enter");
     }
 
     #[test]

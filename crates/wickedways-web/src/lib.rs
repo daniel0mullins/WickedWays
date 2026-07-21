@@ -14,6 +14,7 @@ pub mod audio_runtime;
 pub mod crt;
 pub mod driver;
 pub mod launcher;
+pub mod link_nouns;
 pub mod map;
 pub mod mirror;
 pub mod narrator;
