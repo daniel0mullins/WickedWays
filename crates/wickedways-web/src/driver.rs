@@ -33,6 +33,11 @@ const FACADE_GENESIS: &str = include_str!("../../../conformance/fixtures/facade-
 const FACADE_CATALOG: &str = include_str!("../../../conformance/fixtures/facade-free-vs-advancing.catalog.json");
 const STATUS_BAR_GENESIS: &str = include_str!("../../../conformance/fixtures/g2-status-bar.genesis.json");
 const STATUS_BAR_CATALOG: &str = include_str!("../../../conformance/fixtures/g2-status-bar.catalog.json");
+// The Hollow House — the full authored campaign (TOML → author → assemble). The genesis is the
+// pristine snapshot seated with one Heir PC (the GM); its catalog carries the scripted mechanics
+// (dread/sanity status bar/victory conditions) the core runs.
+const HOLLOW_GENESIS: &str = include_str!("../../../conformance/fixtures/hollow-house.genesis.json");
+const HOLLOW_CATALOG: &str = include_str!("../../../conformance/fixtures/hollow-house.catalog.json");
 
 /// The default single-player campaign id when `?campaign=` is absent or unknown.
 pub const DEFAULT_CAMPAIGN: &str = "demo";
@@ -45,6 +50,7 @@ fn bundled(id: &str) -> Option<(&'static str, Option<&'static str>)> {
         "caretaker" => Some((CARETAKER_GENESIS, Some(CARETAKER_CATALOG))),
         "facade" | "facade-free-vs-advancing" => Some((FACADE_GENESIS, Some(FACADE_CATALOG))),
         "status-bar" | "g2-status-bar" => Some((STATUS_BAR_GENESIS, Some(STATUS_BAR_CATALOG))),
+        "hollow-house" | "hollow" => Some((HOLLOW_GENESIS, Some(HOLLOW_CATALOG))),
         _ => None,
     }
 }
@@ -86,6 +92,20 @@ fn query_param(key: &str) -> Option<String> {
         .and_then(|s| web_sys::UrlSearchParams::new_with_str(&s).ok())
         .and_then(|p| p.get(key))
         .filter(|v| !v.is_empty())
+}
+
+/// Whether a bare flag param is present (regardless of value) — `?debug`, `?debug=1`, etc.
+fn has_flag(key: &str) -> bool {
+    web_sys::window()
+        .and_then(|w| w.location().search().ok())
+        .and_then(|s| web_sys::UrlSearchParams::new_with_str(&s).ok())
+        .map(|p| p.has(key))
+        .unwrap_or(false)
+}
+
+/// Whether the page carries `?debug` — unlocks the demo/conformance campaigns in the launcher.
+pub fn debug_enabled() -> bool {
+    has_flag("debug")
 }
 
 /// The default multiplayer socket URL: **same-origin and scheme-aware**, derived from the page
@@ -250,6 +270,9 @@ pub struct CampaignInfo {
     pub button_text: &'static str,
     /// Surface ids this campaign offers; `surfaces[0]` is the default. ≥ 2 → the picker is shown.
     pub surfaces: &'static [&'static str],
+    /// Debug-only: hidden from the launcher menu and not resolvable unless the page has `?debug`
+    /// (the demo/conformance campaigns). The shipped campaign (Hollow House) is always visible.
+    pub debug: bool,
 }
 
 /// Both surfaces, offered by every bundled campaign (so the surface picker is always reachable).
@@ -265,6 +288,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             intro: "You wake on cold stone. A vault waits beyond the far door — cross to it and find the way out.",
             button_text: "",
             surfaces: BOTH_SURFACES,
+            debug: true,
         },
         CampaignInfo {
             slug: "caretaker",
@@ -273,6 +297,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             intro: "The foyer is still but for the Caretaker's watchful eyes. The cellar door is locked; the way down is not freely given.",
             button_text: "",
             surfaces: BOTH_SURFACES,
+            debug: true,
         },
         CampaignInfo {
             slug: "facade-free-vs-advancing",
@@ -281,6 +306,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             intro: "The hall stretches long and watched. Something lurks between you and the chest at its end.",
             button_text: "",
             surfaces: BOTH_SURFACES,
+            debug: true,
         },
         CampaignInfo {
             slug: "status-bar",
@@ -289,6 +315,16 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             intro: "A cold stone hall. Watch the status bar — the campaign paints your Sanity and the round as you play.",
             button_text: "",
             surfaces: BOTH_SURFACES,
+            debug: true,
+        },
+        CampaignInfo {
+            slug: "hollow-house",
+            title: "The Hollow House",
+            blurb: "A nine-room haunted estate. Reach the attic with the journal before the dark takes your mind.",
+            intro: "Word came that the last of your kin had died alone in the old estate — and that the house would not give the body back. You arrive at dusk to settle what remains. The Hollow House has been waiting, and it remembers everything. Find the truth it keeps — before the dark finds you first.",
+            button_text: "Enter Hollow House",
+            surfaces: BOTH_SURFACES,
+            debug: false,
         },
     ];
     REGISTRY
@@ -298,6 +334,18 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
 pub fn resolve_campaign_info(slug: Option<&str>) -> Option<&'static CampaignInfo> {
     let slug = slug?;
     campaign_registry().iter().find(|c| c.slug == slug)
+}
+
+/// Whether a campaign is selectable given the debug flag: the shipped campaign always is; debug-only
+/// ones require `?debug`.
+fn visible(info: &CampaignInfo, debug: bool) -> bool {
+    !info.debug || debug
+}
+
+/// The campaigns the launcher menu should list, in order: the shipped Hollow House always, plus the
+/// debug/conformance campaigns when `?debug` is present.
+pub fn menu_campaigns(debug: bool) -> Vec<&'static CampaignInfo> {
+    campaign_registry().iter().filter(|c| visible(c, debug)).collect()
 }
 
 /// A campaign's welcome-screen text — the `CampaignManifest` display passthrough consumed by both
@@ -355,18 +403,19 @@ fn choose(slug: &str, surfaces: &[&str], surface: Option<&str>) -> LauncherRoute
     }
 }
 
-/// Resolve the launcher route from the `?campaign=` / `?surface=` params: an unknown/absent campaign
-/// → [`LauncherRoute::Menu`]; a known campaign follows [`choose`]. Mirrors the TS `bootLauncher` boot.
-pub fn resolve_route(campaign: Option<&str>, surface: Option<&str>) -> LauncherRoute {
+/// Resolve the launcher route from the `?campaign=` / `?surface=` params: an absent/unknown campaign
+/// — or a debug-only one without `debug` — → [`LauncherRoute::Menu`]; an available campaign follows
+/// [`choose`]. Mirrors the TS `bootLauncher` boot, plus the `?debug` gate.
+pub fn resolve_route(campaign: Option<&str>, surface: Option<&str>, debug: bool) -> LauncherRoute {
     match resolve_campaign_info(campaign) {
-        Some(info) => choose(info.slug, info.surfaces, surface),
-        None => LauncherRoute::Menu,
+        Some(info) if visible(info, debug) => choose(info.slug, info.surfaces, surface),
+        _ => LauncherRoute::Menu,
     }
 }
 
-/// Read the launcher route from the page URL (`?campaign=` / `?surface=`).
+/// Read the launcher route from the page URL (`?campaign=` / `?surface=` / `?debug`).
 pub fn read_route() -> LauncherRoute {
-    resolve_route(query_param("campaign").as_deref(), query_param("surface").as_deref())
+    resolve_route(query_param("campaign").as_deref(), query_param("surface").as_deref(), debug_enabled())
 }
 
 /// Mutate the current URL's query in place via `history.replaceState` (no reload), applying `f` to a
@@ -469,7 +518,7 @@ mod tests {
 
     #[test]
     fn every_bundled_campaign_boots_begins_and_projects() {
-        for id in ["demo", "caretaker", "facade-free-vs-advancing", "status-bar"] {
+        for id in ["demo", "caretaker", "facade-free-vs-advancing", "status-bar", "hollow-house"] {
             let (snapshot, catalog) = bundled_campaign(id).unwrap_or_else(|e| panic!("{id}: {e}"));
             let started = snapshot.campaign.started;
             let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
@@ -504,23 +553,46 @@ mod tests {
 
     #[test]
     fn resolve_route_shows_the_menu_for_an_absent_or_unknown_campaign() {
-        assert_eq!(resolve_route(None, None), LauncherRoute::Menu);
-        assert_eq!(resolve_route(Some("no-such-campaign"), None), LauncherRoute::Menu);
+        assert_eq!(resolve_route(None, None, false), LauncherRoute::Menu);
+        assert_eq!(resolve_route(Some("no-such-campaign"), None, false), LauncherRoute::Menu);
         // A dangling `?surface=` without a campaign is still the menu.
-        assert_eq!(resolve_route(None, Some("crt-terminal")), LauncherRoute::Menu);
+        assert_eq!(resolve_route(None, Some("crt-terminal"), false), LauncherRoute::Menu);
+    }
+
+    #[test]
+    fn the_menu_lists_only_the_shipped_campaign_unless_debug() {
+        let shipped: Vec<_> = menu_campaigns(false).iter().map(|c| c.slug).collect();
+        assert_eq!(shipped, vec!["hollow-house"], "default menu shows only Hollow House");
+        assert_eq!(menu_campaigns(true).len(), campaign_registry().len(), "?debug shows every campaign");
+        assert!(menu_campaigns(true).iter().any(|c| c.slug == "demo"), "?debug includes the demo campaigns");
+    }
+
+    #[test]
+    fn resolve_route_gates_debug_only_campaigns_behind_the_debug_flag() {
+        // The shipped campaign is always available.
+        assert_eq!(resolve_route(Some("hollow-house"), None, false), LauncherRoute::Picker { slug: "hollow-house".into() });
+        // A debug-only campaign is hidden (→ menu) without `?debug`, even with a valid surface…
+        assert_eq!(resolve_route(Some("demo"), Some("crt-terminal"), false), LauncherRoute::Menu);
+        assert_eq!(resolve_route(Some("demo"), None, false), LauncherRoute::Menu);
+        // …and available with it.
+        assert_eq!(resolve_route(Some("demo"), None, true), LauncherRoute::Picker { slug: "demo".into() });
+        assert_eq!(
+            resolve_route(Some("demo"), Some("crt-terminal"), true),
+            LauncherRoute::Surface { slug: "demo".into(), surface: "crt-terminal".into() }
+        );
     }
 
     #[test]
     fn resolve_route_deep_links_a_valid_surface_and_pickers_otherwise() {
-        // A known campaign + valid surface mounts directly.
+        // A known, available campaign + valid surface mounts directly.
         assert_eq!(
-            resolve_route(Some("demo"), Some("point-and-click")),
-            LauncherRoute::Surface { slug: "demo".into(), surface: "point-and-click".into() }
+            resolve_route(Some("hollow-house"), Some("point-and-click"), false),
+            LauncherRoute::Surface { slug: "hollow-house".into(), surface: "point-and-click".into() }
         );
-        // Known campaign, no surface → picker (every bundled campaign offers ≥ 2).
-        assert_eq!(resolve_route(Some("demo"), None), LauncherRoute::Picker { slug: "demo".into() });
+        // Available campaign, no surface → picker (every bundled campaign offers ≥ 2).
+        assert_eq!(resolve_route(Some("hollow-house"), None, false), LauncherRoute::Picker { slug: "hollow-house".into() });
         // An invalid surface id is ignored → picker (not a bogus mount).
-        assert_eq!(resolve_route(Some("demo"), Some("hologram")), LauncherRoute::Picker { slug: "demo".into() });
+        assert_eq!(resolve_route(Some("hollow-house"), Some("hologram"), false), LauncherRoute::Picker { slug: "hollow-house".into() });
     }
 
     #[test]

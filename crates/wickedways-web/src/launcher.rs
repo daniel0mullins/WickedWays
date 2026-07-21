@@ -21,8 +21,8 @@ use dioxus::prelude::*;
 
 use crate::crt::crt_app;
 use crate::driver::{
-    campaign_registry, clear_params, read_route, resolve_campaign_info, resolve_route, set_params,
-    surface_info, LauncherRoute,
+    clear_params, debug_enabled, menu_campaigns, read_route, resolve_campaign_info, resolve_route,
+    set_params, surface_info, LauncherRoute,
 };
 use crate::pnc::pnc_app;
 
@@ -31,10 +31,13 @@ const LAUNCHER_CSS: &str = include_str!("../assets/launcher.css");
 /// The root app: reads the initial route from the URL, then renders menu / picker / surface.
 pub fn launcher_app() -> Element {
     let route = use_signal(read_route);
+    // `?debug` unlocks the demo/conformance campaigns; read once (it persists in the URL across
+    // navigation, which only rewrites campaign/surface/theme).
+    let debug = use_hook(debug_enabled);
     rsx! {
         style { "{LAUNCHER_CSS}" }
         match route() {
-            LauncherRoute::Menu => menu_view(route),
+            LauncherRoute::Menu => menu_view(route, debug),
             LauncherRoute::Picker { slug } => picker_view(slug, route),
             LauncherRoute::Surface { slug, surface } => surface_view(slug, surface, route),
         }
@@ -55,19 +58,19 @@ fn navigate(mut route: Signal<LauncherRoute>, next: LauncherRoute) {
     route.set(next);
 }
 
-/// The campaign menu: one entry per registered campaign. Selecting one follows [`resolve_route`]
-/// (straight to the surface, or the picker if the campaign offers ≥ 2).
-fn menu_view(route: Signal<LauncherRoute>) -> Element {
+/// The campaign menu: the shipped Hollow House, plus the debug/conformance campaigns when `?debug`.
+/// Selecting one follows [`resolve_route`] (straight to the surface, or the picker if it offers ≥ 2).
+fn menu_view(route: Signal<LauncherRoute>, debug: bool) -> Element {
     rsx! {
         div { class: "launcher",
             div { class: "launcher-menu",
                 h1 { class: "launcher-heading", "WICKEDWAYS" }
                 p { class: "launcher-sub", "Choose a campaign" }
-                for c in campaign_registry() {
+                for c in menu_campaigns(debug) {
                     button {
                         key: "{c.slug}",
                         class: "launcher-entry",
-                        onclick: move |_| navigate(route, resolve_route(Some(c.slug), None)),
+                        onclick: move |_| navigate(route, resolve_route(Some(c.slug), None, debug)),
                         span { class: "launcher-title", "{c.title}" }
                         span { class: "launcher-blurb", "{c.blurb}" }
                     }

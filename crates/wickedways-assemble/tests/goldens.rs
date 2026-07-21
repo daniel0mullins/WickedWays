@@ -376,6 +376,20 @@ fn hollow_house_pristine() {
     gate("hollow-house", "hollow-house.snapshot.json", Some("hollow-house"), &[]);
 }
 
+/// The **playable** genesis the web-client launcher bundles: the pristine campaign seated with one
+/// Heir PC (who becomes the GM), so single-player boot can `BeginCampaign`. Same `assemble` path as
+/// the pristine snapshot above, just with a party — this gates that the committed genesis stays a
+/// faithful assembly.
+#[test]
+fn hollow_house_playable_genesis() {
+    gate(
+        "hollow-house",
+        "hollow-house.genesis.json",
+        Some("hollow-house"),
+        &[Seat { name: "Heir".into(), archetype: Some("heir".into()) }],
+    );
+}
+
 #[test]
 fn seed_pristine() {
     gate("seed", "seed.snapshot.json", Some("seed"), &[]);
