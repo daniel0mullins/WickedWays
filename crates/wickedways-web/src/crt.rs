@@ -10,7 +10,9 @@
 //! [`Narrator`](crate::narrator::Narrator) turns cues/queries/intents into prose, the shared
 //! [`MapModel`](crate::map::MapModel) tracks the explored map (`map` opens it as an overlay, `help` a
 //! command list), procedural audio plays through the shared [`AudioRuntime`] (the `audio` command
-//! toggles it), and `save`/`restore`/`restart` drive the single-player lifecycle.
+//! toggles it), and `save`/`restore`/`restart` drive the single-player lifecycle. A welcome gate
+//! shows the campaign's title + intro ([`welcome_for`](crate::driver::welcome_for) — the manifest
+//! passthrough) until the player presses Enter; the transport connects underneath while it's up.
 //!
 //! Mounted directly (deep-link) or by the [`launcher`](crate::launcher); connection is configured from
 //! the page URL query (`?ws=…&campaign=…&token=…&mode=…&theme=…`).
@@ -29,7 +31,7 @@ use crate::audio::cue_for_intent;
 use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
-    boot, boot_single, intent_to_command, project, read_config, rebuild_single, Mode,
+    boot, boot_single, intent_to_command, project, read_config, rebuild_single, welcome_for, Mode,
 };
 use crate::map::{layout_map, map_svg, MapModel};
 use crate::narrator::Narrator;
@@ -69,6 +71,10 @@ pub fn crt_app() -> Element {
     let mut narrator = use_signal(Narrator::new);
     let mut map_model = use_signal(MapModel::new);
     let mut overlay = use_signal(|| Overlay::None);
+    // The welcome gate: the campaign's title/intro/button (manifest passthrough), shown until the
+    // player presses Enter. The transport coroutine connects underneath while it's up.
+    let mut started = use_signal(|| false);
+    let welcome = use_hook(|| welcome_for(&read_config().campaign));
     // The launcher palette (`?theme=`), read once and applied to the CRT root.
     let theme_vars = use_hook(|| crt_theme_vars(&read_config().theme));
 
@@ -322,6 +328,14 @@ pub fn crt_app() -> Element {
                     }
                     div { class: "crt-overlay" }
                 }
+            }
+        }
+        // ── Welcome gate (campaign manifest: title / intro / start button) ──
+        if !started() {
+            div { class: "crt-welcome",
+                h1 { class: "welcome-title", "{welcome.title}" }
+                p { class: "welcome-intro", "{welcome.intro}" }
+                button { class: "enter-btn", onclick: move |_| started.set(true), "{welcome.button}" }
             }
         }
         if overlay() != Overlay::None {

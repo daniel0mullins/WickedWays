@@ -10,12 +10,13 @@
 //!
 //! Parity notes vs. the Lit surface: save-restore / settings menu and procedural audio are wired
 //! (slice 4) — a topbar 🔊 toggle enables the shared [`AudioRuntime`], which voices committed actions
-//! and denials and runs the sanity-reactive ambient bed, just like the CRT surface. The campaign
-//! manifest (title/intro/themes) is not carried over the multiplayer wire, so this surface shows a
-//! generic welcome, a basic status line projected from the `ViewModel` (the campaign `StatusField`
-//! cues aren't carried either — same as the CRT surface), and a dev `nextPlayer` control.
-//! `examine`/`read` render the generic look line, since per-entity lore / descriptions ride
-//! `PresentationCue`s the wire doesn't carry yet.
+//! and denials and runs the sanity-reactive ambient bed, just like the CRT surface. The welcome
+//! screen shows the campaign's title + intro from the client-side registry
+//! ([`welcome_for`](crate::driver::welcome_for)) — the manifest passthrough — but the campaign's
+//! authored `StatusField` cues aren't carried over the multiplayer wire, so the status line is the
+//! basic `ViewModel` projection. A dev `nextPlayer` control remains; `examine`/`read` render the
+//! generic look line, since per-entity lore / descriptions ride `PresentationCue`s the wire doesn't
+//! carry yet.
 //!
 //! [`AudioRuntime`]: crate::audio_runtime::AudioRuntime
 //!
@@ -35,7 +36,8 @@ use crate::audio::cue_for_intent;
 use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
-    boot, boot_single, intent_to_command, project, read_config, rebuild_single, AppTransport, Mode,
+    boot, boot_single, intent_to_command, project, read_config, rebuild_single, welcome_for,
+    AppTransport, Mode,
 };
 use crate::map::{layout_map, map_svg, MapModel};
 use crate::narrator::Narrator;
@@ -117,6 +119,8 @@ pub fn pnc_app() -> Element {
     // only in single-player; the palette (`?theme=`) overrides the pnc.css defaults on `.pnc-app`.
     let mode = use_hook(|| read_config().mode);
     let theme_vars = use_hook(|| pnc_theme_vars(&read_config().theme));
+    // The campaign's welcome text (title/intro/button) — the manifest passthrough, read once.
+    let welcome = use_hook(|| welcome_for(&read_config().campaign));
 
     let driver = use_coroutine(move |mut rx: UnboundedReceiver<PncAction>| async move {
         let cfg = read_config();
@@ -388,12 +392,12 @@ pub fn pnc_app() -> Element {
                 }
             }
 
-            // ── Welcome overlay ─────────────────────────────────────────────────
+            // ── Welcome overlay (campaign manifest: title / intro / start button) ─
             if !started() {
                 div { class: "pnc-welcome",
-                    h1 { class: "welcome-title", "WICKEDWAYS" }
-                    p { class: "welcome-intro", "A house that does not want to let you leave. Point, click, and find the way out." }
-                    button { class: "enter-btn", onclick: move |_| started.set(true), "Enter" }
+                    h1 { class: "welcome-title", "{welcome.title}" }
+                    p { class: "welcome-intro", "{welcome.intro}" }
+                    button { class: "enter-btn", onclick: move |_| started.set(true), "{welcome.button}" }
                 }
             }
         }
