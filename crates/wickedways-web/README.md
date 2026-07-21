@@ -99,6 +99,18 @@ default. Host-tested (each bundled campaign boots, begins, and projects) and ver
 `?mode=single&campaign=caretaker` boots the Foyer with its Caretaker NPC + cellar door,
 `facade-free-vs-advancing` boots the Hall with its Lurker + chest.
 
+The shipped campaign is **The Hollow House** — the full authored campaign, faithfully re-authored in
+the TOML surface (`conformance/fixtures/hollow-house.toml`, the G2 author capstone) and compiled
+through `wickedways-author` → `wickedways-assemble` to the committed genesis + catalog (a gate
+re-assembles the playable genesis — the pristine snapshot seated with one Heir PC as GM — so it stays
+faithful). Its catalog carries the scripted mechanics (dread / the sanity status bar / victory
+conditions) the core runs. The **launcher lists only Hollow House** by default; the demo/conformance
+campaigns (`demo`/`caretaker`/`facade`/`status-bar`) are **debug-only** — hidden and not resolvable
+unless the page carries **`?debug`** ([`driver::menu_campaigns`](src/driver.rs) filters the menu,
+`resolve_route` gates deep-links). Verified in a browser: the default menu shows only Hollow House,
+`?debug` unlocks all five, a `?campaign=demo` deep-link without `?debug` stays on the menu, and Hollow
+House plays — Foyer start, its live Sanity/Round status bar, traversable rooms.
+
 The **audio subtree** begins with its pure mapping layer, the analog of the affordances/scene logic:
 [`audio`](src/audio.rs) (a 1:1 port of `audio/cue-sound.ts`) turns an engine `PresentationCue` /
 `MobAttack` into a backend-agnostic `SynthVoice` (waveform-or-noise + freq glide + gain envelope) —
