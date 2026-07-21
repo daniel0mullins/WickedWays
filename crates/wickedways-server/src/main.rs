@@ -8,6 +8,7 @@
 //! - `GM_IDENTITY`  — the GM identity seeded into a fresh campaign's membership (default `gm`).
 //! - `GENESIS_DIR`  — directory of `<campaignId>.json` genesis snapshots (default `./genesis`).
 //! - `CATALOG_PATH` — optional JSON [`Catalog`] the authority resolves item behaviour against.
+//! - `WEB_DIR`      — directory of the bundled Dioxus web client served as a fallback under `/ws` (default `./dist`; empty ⇒ off). Unmatched paths fall back to `index.html` so `?campaign=…`/`?surface=…` deep-links load.
 //!
 //! `verify_token` here is the development default (identity = the token string, empty rejected) —
 //! a real deployment injects a proper verifier. Chat/AV are sub-project E.
@@ -58,7 +59,19 @@ async fn main() {
         rng_seed: None,
     };
 
-    let app = router(RoomServer::new(opts));
+    // Serve the bundled Dioxus web client as a fallback under `/ws`: any non-`/ws` request tries a
+    // file in `WEB_DIR`, and anything unmatched falls back to `index.html` (SPA deep-links). Absent
+    // or empty `WEB_DIR` leaves the server socket-only (unchanged behaviour).
+    let web_dir = std::env::var("WEB_DIR").unwrap_or_else(|_| "./dist".into());
+    let mut app = router(RoomServer::new(opts));
+    if !web_dir.is_empty() {
+        let index = std::path::Path::new(&web_dir).join("index.html");
+        app = app.fallback_service(
+            tower_http::services::ServeDir::new(&web_dir)
+                .fallback(tower_http::services::ServeFile::new(index)),
+        );
+    }
+
     let listener = match tokio::net::TcpListener::bind(("0.0.0.0", port)).await {
         Ok(l) => l,
         Err(e) => {
@@ -68,8 +81,9 @@ async fn main() {
     };
     let addr = listener.local_addr().map(|a| a.to_string()).unwrap_or_else(|_| format!("0.0.0.0:{port}"));
     println!(
-        "wickedways-server listening on ws://{addr}/ws ({})",
-        if durable { "durable" } else { "ephemeral" }
+        "wickedways-server listening on {addr} — /ws ({}), web client: {}",
+        if durable { "durable" } else { "ephemeral" },
+        if web_dir.is_empty() { "disabled".to_string() } else { format!("{web_dir}/") }
     );
     if let Err(e) = axum::serve(listener, app).await {
         eprintln!("wickedways-server: serve error: {e}");

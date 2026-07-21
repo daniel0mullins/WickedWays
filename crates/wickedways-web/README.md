@@ -255,3 +255,27 @@ crates/wickedways-web/build-web.sh                                     # → cra
 
 Verified end-to-end: the bundle loads and the Dioxus app renders + is interactive in headless Chromium.
 `dist/` is gitignored (build output). `index.html` is the mount host page.
+
+## Deployment
+
+The repo-root [`Dockerfile`](../../Dockerfile) builds **one image** that realizes the fullstack
+one-port target: the [`wickedways-server`](../wickedways-server) binary serves the bundled Dioxus app
+(static WASM + assets) **and** the multiplayer `/ws` endpoint on a single `$PORT`. A builder stage
+compiles the bundle (`build-web.sh`) + the server (release); the slim runtime stage runs the server
+with the bundle in `WEB_DIR`.
+
+- **One port → one deploy resource.** The client derives its socket URL **same-origin and
+  scheme-aware** from `window.location` (`wss://<host>/ws` on HTTPS), so nothing hardcodes a host/port
+  and HTTPS isn't mixed-content-blocked.
+- **Ephemeral by default** — no `DB_PATH`/volume, so each deploy boots a clean slate. The image seeds
+  the demo genesis (`?campaign=demo`); single-player campaigns are bundled in the client and need no
+  server genesis.
+- **Env:** `PORT` (platform-injected), `WEB_DIR=/app/dist`, `GENESIS_DIR=/app/genesis`, `GM_IDENTITY`.
+  Unset/empty `WEB_DIR` leaves the server socket-only; `/ws` always takes precedence over the static
+  fallback, and unmatched paths fall back to `index.html` (client deep-links).
+
+Verified by running the release server with `WEB_DIR=dist` locally: `/` serves `index.html`, the WASM
+asset serves as `application/wasm`, deep-links fall back to the app, and `/ws` upgrades. (The
+`docker build` itself can't run in every sandbox — some block Docker Hub egress — but the build steps
+and the runtime topology are the same ones verified here.) Supersedes the legacy TypeScript-SPA image
+at `packages/play/Dockerfile` for the Rust stack.
