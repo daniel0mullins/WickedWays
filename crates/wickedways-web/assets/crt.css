@@ -163,6 +163,19 @@
 .map-svg .map-remains { fill: var(--color-error); font: 0.5em var(--font-body); }
 .overlay-legend { font-family: var(--font-body); font-size: 0.7em; color: var(--color-muted); text-align: center; }
 
+/* Clickable nouns in prose (room description + narration) — click fills `examine <noun>`. */
+.noun {
+  color: var(--color-accent);
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.noun:hover,
+.noun:focus-visible {
+  text-shadow: 0 0 6px var(--color-accent);
+  outline: none;
+}
+
 /* Welcome gate — the campaign manifest's title / intro / start button, over the screen. */
 .crt-welcome {
   position: fixed;

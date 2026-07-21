@@ -9,7 +9,9 @@
 //! informational queries (look/exits/inventory/help) render locally against the current view. The
 //! [`Narrator`](crate::narrator::Narrator) turns cues/queries/intents into prose, the shared
 //! [`MapModel`](crate::map::MapModel) tracks the explored map (`map` opens it as an overlay, `help` a
-//! command list), procedural audio plays through the shared [`AudioRuntime`] (the `audio` command
+//! command list), and nouns in the room description and narration are clickable — a click fills the
+//! prompt with `examine <noun>` ([`link_nouns`](crate::link_nouns), against the current scope's names
+//! and aliases). Procedural audio plays through the shared [`AudioRuntime`] (the `audio` command
 //! toggles it), and `save`/`restore`/`restart` drive the single-player lifecycle. A welcome gate
 //! shows the campaign's title + intro ([`welcome_for`](crate::driver::welcome_for) — the manifest
 //! passthrough) until the player presses Enter; the transport connects underneath while it's up.
@@ -33,6 +35,7 @@ use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
     boot, boot_single, intent_to_command, project, read_config, rebuild_single, welcome_for, Mode,
 };
+use crate::link_nouns::{link_nouns, Segment};
 use crate::map::{layout_map, map_svg, MapModel};
 use crate::narrator::Narrator;
 use crate::parser::{parse, Meta, ParseResult, Query};
@@ -292,7 +295,7 @@ pub fn crt_app() -> Element {
     });
 
     let screen = match vm() {
-        Some(v) => game_view(v, narration),
+        Some(v) => game_view(v, narration, draft),
         None => rsx! {
             div { class: "line system", "WICKEDWAYS" }
             div { class: "line", "status: {status}" }
@@ -368,10 +371,49 @@ pub fn crt_app() -> Element {
     }
 }
 
+/// Render one line of prose with the current scope's nouns as clickable spans; clicking a noun fills
+/// the prompt with `examine <noun>` (ported from `crt-transcript`/`crt-hud`'s noun linking).
+fn linked_line(line: &str, nouns: &[String], draft: Signal<String>) -> Element {
+    rsx! {
+        for (i, seg) in link_nouns(line, nouns).into_iter().enumerate() {
+            {
+                let Segment { text, noun } = seg;
+                match noun {
+                    Some(n) => rsx! {
+                        span {
+                            key: "seg{i}",
+                            class: "noun",
+                            onclick: move |_| { let mut d = draft; d.set(format!("examine {n}")); },
+                            "{text}"
+                        }
+                    },
+                    None => rsx! { span { key: "seg{i}", "{text}" } },
+                }
+            }
+        }
+    }
+}
+
+/// The scope's clickable nouns — each entity's name + aliases, de-duplicated case-insensitively
+/// (mirrors the controller's `computeClickableNouns`).
+fn clickable_nouns(v: &ViewModel) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for e in &v.scope {
+        for name in std::iter::once(&e.name).chain(e.aliases.iter()) {
+            if seen.insert(name.to_ascii_lowercase()) {
+                out.push(name.clone());
+            }
+        }
+    }
+    out
+}
+
 /// Renders the engine's `ViewModel` as the CRT game view — HUD, room, exits, occupants, inventory,
-/// plus the running narration log.
-fn game_view(v: ViewModel, narration: Signal<Vec<String>>) -> Element {
+/// plus the running narration log. The room description and narration lines link the scope's nouns.
+fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>) -> Element {
     let s = &v.status;
+    let nouns = clickable_nouns(&v);
     rsx! {
         div { class: "hud",
             span { "{s.location_name}" }
@@ -385,7 +427,11 @@ fn game_view(v: ViewModel, narration: Signal<Vec<String>>) -> Element {
         div { class: "room-name", "{v.room.name}" }
         div {
             class: if v.room.is_lit { "room-desc" } else { "room-desc dark" },
-            if v.room.is_lit { "{v.room.description}" } else { "It is too dark to see." }
+            if v.room.is_lit {
+                {linked_line(&v.room.description, &nouns, draft)}
+            } else {
+                "It is too dark to see."
+            }
         }
 
         if !v.exits.is_empty() || !v.locked_doors.is_empty() {
@@ -448,7 +494,7 @@ fn game_view(v: ViewModel, narration: Signal<Vec<String>>) -> Element {
         if !narration().is_empty() {
             div { class: "section narration",
                 for (i, line) in narration().iter().enumerate() {
-                    div { key: "n{i}", class: "line", "{line}" }
+                    div { key: "n{i}", class: "line", {linked_line(line, &nouns, draft)} }
                 }
             }
         }

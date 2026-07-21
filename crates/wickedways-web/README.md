@@ -31,6 +31,13 @@ the generic fallback). The campaign's authored `StatusField` readouts remain a w
 `PresentationCue::Status` cues that neither the wire nor the `ViewModel` projection carries, so the
 status line stays the basic `ViewModel` (turn/HP/SAN) on both surfaces.
 
+**Clickable nouns** (CRT) — [`link_nouns`](src/link_nouns.rs), a port of `crt/link-nouns.ts`, splits
+the room description and each narration line into plain / noun segments against the current scope's
+names + aliases (≥ 3 chars, longest-phrase-first, word-boundary, case-insensitive but surface-casing
+preserved). Noun segments render as `.noun` spans; clicking one fills the prompt with `examine <noun>`
+(no auto-submit). Host-tested (the full `link-nouns` suite ported) and browser-verified: the caretaker
+room's "You see Caretaker." links "Caretaker", and clicking it sets the prompt to `examine Caretaker`.
+
 Single-player runs on the transport seam that unifies it with multiplayer: **"single-player is
 multiplayer with one seat and an in-process authority."** [`single_player`](src/single_player.rs)'s
 `SinglePlayerTransport` wraps a local `SyncAuthority` and exposes the *same* seam the surfaces drive —
