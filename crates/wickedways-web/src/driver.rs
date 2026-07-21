@@ -2,10 +2,11 @@
 //! point-and-click Dioxus apps use to talk to the engine over the multiplayer transport.
 //!
 //! Extracted from the CRT `main.rs` when the PnC surface (slice 3) needed the same pieces: reading
-//! the page-URL config ([`read_config`]) and the chosen surface ([`read_surface`]), projecting the
-//! replica into a [`ViewModel`] ([`project`]), and resolving a parser [`Intent`] into a sync
-//! [`Command`] against the replica ([`intent_to_command`]). Keeping these in the lib means the two
-//! surfaces can never drift on how a click/line becomes a committed command.
+//! the page-URL config ([`read_config`]), projecting the replica into a [`ViewModel`] ([`project`]),
+//! and resolving a parser [`Intent`] into a sync [`Command`] against the replica
+//! ([`intent_to_command`]). Keeping these in the lib means the two surfaces can never drift on how a
+//! click/line becomes a committed command. It also owns the launcher's campaign registry + route
+//! resolution ([`resolve_route`]) and the URL-query writers ([`set_params`] / [`clear_params`]).
 
 use std::collections::BTreeSet;
 
@@ -74,14 +75,6 @@ pub struct Config {
     pub token: String,
     /// Built-in palette id (`?theme=`), applied by the surface. Empty = each surface's default.
     pub theme: String,
-}
-
-/// Which surface to boot. The launcher's fuller `?campaign=`/`?theme=` handling is slice 4; this is
-/// the minimal `?surface=` switch the CRT/PnC split needs now.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Surface {
-    Crt,
-    Pnc,
 }
 
 fn query_param(key: &str) -> Option<String> {
@@ -201,12 +194,143 @@ impl SyncTransport for AppTransport {
     }
 }
 
-/// Read `?surface=pnc` → [`Surface::Pnc`]; anything else (including absent) → [`Surface::Crt`].
-pub fn read_surface() -> Surface {
-    match query_param("surface").as_deref() {
-        Some("pnc") | Some("point-and-click") => Surface::Pnc,
-        _ => Surface::Crt,
+// ── Launcher registry + routing ──────────────────────────────────────────────────
+// The launcher menu/picker present the bundled campaigns and the surfaces each offers. This is the
+// display metadata parallel to `bundled` (the genesis/catalog): a campaign appears in the launcher
+// iff it's listed here, and its `slug` is the canonical `?campaign=` deep-link value.
+
+/// A surface a campaign can run on, with its launcher label + one-line description.
+pub struct SurfaceInfo {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub description: &'static str,
+}
+
+const SURFACE_INFOS: &[SurfaceInfo] = &[
+    SurfaceInfo { id: "crt-terminal", label: "CRT Terminal", description: "Classic green-screen text adventure." },
+    SurfaceInfo { id: "point-and-click", label: "Point & Click", description: "Visual scene with clickable hotspots." },
+];
+
+/// Look up a surface's launcher metadata by id.
+pub fn surface_info(id: &str) -> Option<&'static SurfaceInfo> {
+    SURFACE_INFOS.iter().find(|s| s.id == id)
+}
+
+/// Display + surface metadata for one bundled campaign, shown in the launcher menu.
+pub struct CampaignInfo {
+    /// `?campaign=` deep-link value and registry key (matches a [`bundled`] id).
+    pub slug: &'static str,
+    pub title: &'static str,
+    pub blurb: &'static str,
+    /// Surface ids this campaign offers; `surfaces[0]` is the default. ≥ 2 → the picker is shown.
+    pub surfaces: &'static [&'static str],
+}
+
+/// Both surfaces, offered by every bundled campaign (so the surface picker is always reachable).
+const BOTH_SURFACES: &[&str] = &["crt-terminal", "point-and-click"];
+
+/// The bundled campaigns the launcher presents, in menu order.
+pub fn campaign_registry() -> &'static [CampaignInfo] {
+    const REGISTRY: &[CampaignInfo] = &[
+        CampaignInfo {
+            slug: "demo",
+            title: "The Crypt",
+            blurb: "A two-room sync demo — cross from the crypt to the vault.",
+            surfaces: BOTH_SURFACES,
+        },
+        CampaignInfo {
+            slug: "caretaker",
+            title: "The Caretaker",
+            blurb: "A foyer with a watchful NPC and a locked cellar door.",
+            surfaces: BOTH_SURFACES,
+        },
+        CampaignInfo {
+            slug: "facade-free-vs-advancing",
+            title: "Façade: Free vs. Advancing",
+            blurb: "A hall stalked by a lurking mob, with a chest to plunder.",
+            surfaces: BOTH_SURFACES,
+        },
+    ];
+    REGISTRY
+}
+
+/// Resolve a `?campaign=` slug to its launcher metadata, or `None` for an absent/unknown slug (→ menu).
+pub fn resolve_campaign_info(slug: Option<&str>) -> Option<&'static CampaignInfo> {
+    let slug = slug?;
+    campaign_registry().iter().find(|c| c.slug == slug)
+}
+
+/// Where the launcher should be: the campaign menu, a surface picker, or a mounted surface.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum LauncherRoute {
+    /// No (valid) campaign selected — show the campaign menu.
+    Menu,
+    /// A campaign with ≥ 2 surfaces and no chosen surface — show the surface picker.
+    Picker { slug: String },
+    /// A resolved campaign + surface — mount that surface.
+    Surface { slug: String, surface: String },
+}
+
+/// The surface-choice decision for a known campaign: an explicit valid `surface` mounts directly;
+/// otherwise ≥ 2 surfaces show the picker and a lone surface mounts directly. Pure (over the slug +
+/// its surface list) so the launcher boot flow is host-tested without a DOM.
+fn choose(slug: &str, surfaces: &[&str], surface: Option<&str>) -> LauncherRoute {
+    if let Some(sid) = surface {
+        if surfaces.contains(&sid) {
+            return LauncherRoute::Surface { slug: slug.into(), surface: sid.into() };
+        }
     }
+    if surfaces.len() >= 2 {
+        LauncherRoute::Picker { slug: slug.into() }
+    } else {
+        LauncherRoute::Surface { slug: slug.into(), surface: surfaces.first().copied().unwrap_or("crt-terminal").into() }
+    }
+}
+
+/// Resolve the launcher route from the `?campaign=` / `?surface=` params: an unknown/absent campaign
+/// → [`LauncherRoute::Menu`]; a known campaign follows [`choose`]. Mirrors the TS `bootLauncher` boot.
+pub fn resolve_route(campaign: Option<&str>, surface: Option<&str>) -> LauncherRoute {
+    match resolve_campaign_info(campaign) {
+        Some(info) => choose(info.slug, info.surfaces, surface),
+        None => LauncherRoute::Menu,
+    }
+}
+
+/// Read the launcher route from the page URL (`?campaign=` / `?surface=`).
+pub fn read_route() -> LauncherRoute {
+    resolve_route(query_param("campaign").as_deref(), query_param("surface").as_deref())
+}
+
+/// Mutate the current URL's query in place via `history.replaceState` (no reload), applying `f` to a
+/// live [`UrlSearchParams`]. Best-effort — silently skips in non-http environments. Shared by
+/// [`set_params`] / [`clear_params`].
+fn replace_query(f: impl FnOnce(&web_sys::UrlSearchParams)) {
+    let Some(win) = web_sys::window() else { return };
+    let Ok(href) = win.location().href() else { return };
+    let Ok(url) = web_sys::Url::new(&href) else { return };
+    // `url.searchParams` is spec-linked to `url.search`, so mutating it updates `url.href`.
+    f(&url.search_params());
+    if let Ok(history) = win.history() {
+        let _ = history.replace_state_with_url(&wasm_bindgen::JsValue::NULL, "", Some(&url.href()));
+    }
+}
+
+/// Merge `pairs` into the page URL's query (no reload), so the launcher's route is deep-linkable.
+pub fn set_params(pairs: &[(&str, &str)]) {
+    replace_query(|p| {
+        for (k, v) in pairs {
+            p.set(k, v);
+        }
+    });
+}
+
+/// Remove `keys` from the page URL's query (no reload) — used when returning to the menu.
+pub fn clear_params(keys: &[&str]) {
+    replace_query(|p| {
+        for k in keys {
+            p.delete(k);
+        }
+    });
 }
 
 /// Project the coordinator's replica into a [`ViewModel`] against the campaign catalog (no opened-loot
@@ -280,5 +404,52 @@ mod tests {
         let (snapshot, _) = bundled_campaign("does-not-exist").unwrap();
         let (expected, _) = bundled_campaign(DEFAULT_CAMPAIGN).unwrap();
         assert_eq!(snapshot.campaign.title, expected.campaign.title);
+    }
+
+    #[test]
+    fn every_registered_campaign_is_bootable_and_its_surfaces_are_known() {
+        // The launcher must never present a campaign it can't boot or a surface it can't mount.
+        for c in campaign_registry() {
+            assert!(bundled(c.slug).is_some(), "{}: registry slug must be a bundled campaign", c.slug);
+            assert!(!c.surfaces.is_empty(), "{}: must offer at least one surface", c.slug);
+            for sid in c.surfaces {
+                assert!(surface_info(sid).is_some(), "{}: surface '{sid}' must have metadata", c.slug);
+            }
+        }
+    }
+
+    #[test]
+    fn resolve_route_shows_the_menu_for_an_absent_or_unknown_campaign() {
+        assert_eq!(resolve_route(None, None), LauncherRoute::Menu);
+        assert_eq!(resolve_route(Some("no-such-campaign"), None), LauncherRoute::Menu);
+        // A dangling `?surface=` without a campaign is still the menu.
+        assert_eq!(resolve_route(None, Some("crt-terminal")), LauncherRoute::Menu);
+    }
+
+    #[test]
+    fn resolve_route_deep_links_a_valid_surface_and_pickers_otherwise() {
+        // A known campaign + valid surface mounts directly.
+        assert_eq!(
+            resolve_route(Some("demo"), Some("point-and-click")),
+            LauncherRoute::Surface { slug: "demo".into(), surface: "point-and-click".into() }
+        );
+        // Known campaign, no surface → picker (every bundled campaign offers ≥ 2).
+        assert_eq!(resolve_route(Some("demo"), None), LauncherRoute::Picker { slug: "demo".into() });
+        // An invalid surface id is ignored → picker (not a bogus mount).
+        assert_eq!(resolve_route(Some("demo"), Some("hologram")), LauncherRoute::Picker { slug: "demo".into() });
+    }
+
+    #[test]
+    fn choose_mounts_directly_when_only_one_surface_is_offered() {
+        // The <2-surface branch (no bundled campaign exercises it, so test `choose` directly).
+        assert_eq!(
+            choose("solo", &["crt-terminal"], None),
+            LauncherRoute::Surface { slug: "solo".into(), surface: "crt-terminal".into() }
+        );
+        // A single-surface campaign with no surfaces at all still yields a safe default.
+        assert_eq!(
+            choose("empty", &[], None),
+            LauncherRoute::Surface { slug: "empty".into(), surface: "crt-terminal".into() }
+        );
     }
 }

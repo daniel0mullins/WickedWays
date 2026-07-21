@@ -6,6 +6,21 @@ and plan ([`docs/superpowers/plans/2026-07-19-rust-phase-2c-d-dioxus-web-client.
 
 ## Status: slice 4 (in progress) — runtime glue + single-player unification
 
+The **launcher** ([`launcher`](src/launcher.rs), ported from `play-runtime/launcher.ts` +
+`campaign-menu.ts` + `surface-picker.ts`) is now the root app — `main` just
+`dioxus::launch(launcher_app)`. It reads `?campaign=` / `?surface=` and routes
+([`driver::resolve_route`](src/driver.rs)): no valid campaign → the **campaign menu** (the bundled
+[`campaign_registry`](src/driver.rs) — title + blurb per campaign); a campaign offering ≥ 2 surfaces
+with none chosen → the **surface picker**; a campaign + surface → mounts that surface. Navigation
+writes the route into the URL query (`history.replaceState`, no reload) so every state is
+deep-linkable, and returning to the menu (a floating "☰" control layered over the surface) clears
+those params; the mounted surface reads the freshly-set params through `read_config` and is keyed on
+`campaign+surface` so switching remounts a clean session. Both surfaces now live in the library
+([`crt`](src/crt.rs) / [`pnc`](src/pnc.rs)) so the launcher can mount either. The routing decision is
+host-tested (menu on unknown campaign, deep-link vs. picker, the lone-surface branch); the flow is
+browser-verified: menu → picker → mount, the floating back-to-menu unmounts and clears params, and
+both deep-link forms (`?campaign=&surface=` → mount, `?campaign=` → picker) resolve — all offline.
+
 Single-player runs on the transport seam that unifies it with multiplayer: **"single-player is
 multiplayer with one seat and an in-process authority."** [`single_player`](src/single_player.rs)'s
 `SinglePlayerTransport` wraps a local `SyncAuthority` and exposes the *same* seam the surfaces drive —
