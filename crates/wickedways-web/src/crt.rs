@@ -25,6 +25,7 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 
+use wickedways_core::presentation::StatusField;
 use wickedways_core::sync::{Command, SubmitResult};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
@@ -69,6 +70,8 @@ enum Overlay {
 pub fn crt_app() -> Element {
     let mut status = use_signal(|| "connecting…".to_string());
     let mut vm = use_signal(|| None::<ViewModel>);
+    // The campaign's live `Status` readout, absorbed from the coordinator after each sync.
+    let mut status_fields = use_signal(Vec::<StatusField>::new);
     let mut narration = use_signal(Vec::<String>::new);
     let mut draft = use_signal(String::new);
     let mut narrator = use_signal(Narrator::new);
@@ -104,6 +107,7 @@ pub fn crt_app() -> Element {
                     audio.update(v);
                 }
                 vm.set(initial);
+                status_fields.set(coord.status_fields().to_vec());
 
                 while let Some(action) = rx.next().await {
                     let mut intent_for_narration: Option<Intent> = None;
@@ -222,6 +226,7 @@ pub fn crt_app() -> Element {
                                     audio.update(a);
                                 }
                                 vm.set(after);
+                                status_fields.set(coord.status_fields().to_vec());
                                 status.set(format!("committed seq {seq}"));
                             }
                             SubmitResult::Denied { reason } => {
@@ -258,6 +263,7 @@ pub fn crt_app() -> Element {
                                         audio.update(v);
                                     }
                                     vm.set(restored);
+                                    status_fields.set(coord.status_fields().to_vec());
                                 }
                                 None => narration.write().push("No save found.".into()),
                             }
@@ -282,6 +288,7 @@ pub fn crt_app() -> Element {
                                         audio.update(v);
                                     }
                                     vm.set(fresh);
+                                    status_fields.set(coord.status_fields().to_vec());
                                 }
                                 Err(e) => narration.write().push(format!("Restart failed: {e}")),
                             }
@@ -295,7 +302,7 @@ pub fn crt_app() -> Element {
     });
 
     let screen = match vm() {
-        Some(v) => game_view(v, narration, draft),
+        Some(v) => game_view(v, narration, draft, status_fields()),
         None => rsx! {
             div { class: "line system", "WICKEDWAYS" }
             div { class: "line", "status: {status}" }
@@ -409,9 +416,19 @@ fn clickable_nouns(v: &ViewModel) -> Vec<String> {
     out
 }
 
+/// The CSS class for a status field by its (optional) emphasis (mirrors `crt-status`'s color-coding).
+fn emphasis_class(field: &StatusField) -> &'static str {
+    match field.emphasis.as_deref() {
+        Some("critical") => "status-field status-critical",
+        Some("warn") => "status-field status-warn",
+        _ => "status-field",
+    }
+}
+
 /// Renders the engine's `ViewModel` as the CRT game view — HUD, room, exits, occupants, inventory,
-/// plus the running narration log. The room description and narration lines link the scope's nouns.
-fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>) -> Element {
+/// plus the running narration log. The room description and narration lines link the scope's nouns;
+/// `fields` are the campaign's live `Status` readout, shown as a color-coded status bar when present.
+fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>, fields: Vec<StatusField>) -> Element {
     let s = &v.status;
     let nouns = clickable_nouns(&v);
     rsx! {
@@ -423,6 +440,13 @@ fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>
             span { "HP {s.health}" }
             span { class: "sep", "·" }
             span { "SAN {s.sanity}" }
+        }
+        if !fields.is_empty() {
+            div { class: "campaign-status",
+                for f in fields.iter() {
+                    span { key: "sf-{f.label}", class: emphasis_class(f), "{f.label} {f.value}" }
+                }
+            }
         }
         div { class: "room-name", "{v.room.name}" }
         div {

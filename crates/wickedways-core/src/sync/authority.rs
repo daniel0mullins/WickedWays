@@ -126,13 +126,19 @@ impl SyncAuthority {
         // direct clone is guaranteed faithful, where a snapshot round-trip need not be.
         let backup = self.world.clone();
         let before = self.world.to_snapshot();
-        if let Err(v) = apply_command(&mut self.world, &command, &self.catalog) {
-            self.world = backup;
-            return SubmitResult::Denied { reason: v.0 };
-        }
+        let cues = match apply_command(&mut self.world, &command, &self.catalog) {
+            Ok(cues) => cues,
+            Err(v) => {
+                self.world = backup;
+                return SubmitResult::Denied { reason: v.0 };
+            }
+        };
 
         let after = self.world.to_snapshot();
-        let delta = diff(&before, &after);
+        let mut delta = diff(&before, &after);
+        // Carry the command's presentation cues (e.g. campaign `Status` readouts) on the delta so
+        // they reach clients — the delta model otherwise discards them.
+        delta.cues = cues;
         let seq = self.head() + 1;
         self.log.push(LogEntry { seq, base_seq: seq - 1, command, delta: delta.clone() });
         if seq.is_multiple_of(self.snapshot_every) {
@@ -143,16 +149,17 @@ impl SyncAuthority {
 }
 
 /// Dispatches an authorized command to the engine. Mirrors `resolver.ts` `apply` for the supported
-/// subset; the engine resolves ids internally, so no separate entity index is needed. Cues are
-/// collected into a throwaway buffer — they are not part of the state delta. Unsupported command
-/// kinds return a [`ProceduralViolation`] (the caller turns it into a clean denial).
+/// subset; the engine resolves ids internally, so no separate entity index is needed. Returns the
+/// presentation cues the command produced (e.g. campaign `Status` readouts), which [`submit`] carries
+/// on the delta. Unsupported command kinds return a [`ProceduralViolation`] (the caller turns it into
+/// a clean denial).
 fn apply_command(
     world: &mut World,
     command: &Command,
     cat: &Catalog,
-) -> Result<(), ProceduralViolation> {
+) -> Result<Vec<PresentationCue>, ProceduralViolation> {
     let mut cues: Vec<PresentationCue> = Vec::new();
-    match command {
+    let result: Result<(), ProceduralViolation> = match command {
         Command::Move { actor_id, room_id } => world.move_to(actor_id, room_id.clone(), cat, &mut cues),
         Command::Attack { actor_id, target_id } => world.attack(actor_id, target_id, cat, &mut cues),
         Command::Equip { actor_id, item_id, .. } => world.equip(actor_id, item_id, cat, &mut cues),
@@ -189,7 +196,9 @@ fn apply_command(
         _ => Err(ProceduralViolation(
             "command kind not yet supported by the Rust sync port".into(),
         )),
-    }
+    };
+    result?;
+    Ok(cues)
 }
 
 #[cfg(test)]

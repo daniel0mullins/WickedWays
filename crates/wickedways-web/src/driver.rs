@@ -31,6 +31,8 @@ const CARETAKER_GENESIS: &str = include_str!("../../../conformance/fixtures/care
 const CARETAKER_CATALOG: &str = include_str!("../../../conformance/fixtures/caretaker.catalog.json");
 const FACADE_GENESIS: &str = include_str!("../../../conformance/fixtures/facade-free-vs-advancing.genesis.json");
 const FACADE_CATALOG: &str = include_str!("../../../conformance/fixtures/facade-free-vs-advancing.catalog.json");
+const STATUS_BAR_GENESIS: &str = include_str!("../../../conformance/fixtures/g2-status-bar.genesis.json");
+const STATUS_BAR_CATALOG: &str = include_str!("../../../conformance/fixtures/g2-status-bar.catalog.json");
 
 /// The default single-player campaign id when `?campaign=` is absent or unknown.
 pub const DEFAULT_CAMPAIGN: &str = "demo";
@@ -42,6 +44,7 @@ fn bundled(id: &str) -> Option<(&'static str, Option<&'static str>)> {
         "demo" | "crypt" => Some((DEMO_GENESIS, None)),
         "caretaker" => Some((CARETAKER_GENESIS, Some(CARETAKER_CATALOG))),
         "facade" | "facade-free-vs-advancing" => Some((FACADE_GENESIS, Some(FACADE_CATALOG))),
+        "status-bar" | "g2-status-bar" => Some((STATUS_BAR_GENESIS, Some(STATUS_BAR_CATALOG))),
         _ => None,
     }
 }
@@ -263,6 +266,14 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "",
             surfaces: BOTH_SURFACES,
         },
+        CampaignInfo {
+            slug: "status-bar",
+            title: "Status Bar",
+            blurb: "A bare hall that shows a live Sanity / Round status readout.",
+            intro: "A cold stone hall. Watch the status bar — the campaign paints your Sanity and the round as you play.",
+            button_text: "",
+            surfaces: BOTH_SURFACES,
+        },
     ];
     REGISTRY
 }
@@ -425,8 +436,24 @@ mod tests {
     /// is the sync equivalent of `boot_single` (host tests can't await), exercising the same
     /// build → begin → project sequence.
     #[test]
+    fn the_status_bar_campaign_emits_status_fields_on_begin() {
+        // End-to-end through the engine: the g2-status-bar mechanic emits a `Status` cue on the
+        // round-start hook (fired by BeginCampaign); it rides the delta's cues and the coordinator
+        // absorbs it, so `status_fields()` reflects the campaign's live readout.
+        let (snapshot, catalog) = bundled_campaign("status-bar").unwrap();
+        assert!(!snapshot.campaign.started, "status-bar boots pre-started so BeginCampaign fires onRoundStart");
+        let (mut transport, mut coord) = rebuild_single(snapshot, catalog);
+        assert!(coord.status_fields().is_empty(), "no status before BeginCampaign");
+        let res = coord.submit(&mut transport, Command::BeginCampaign);
+        assert!(matches!(res, SubmitResult::Committed { .. }), "begin should commit, got {res:?}");
+        let fields = coord.status_fields();
+        assert!(fields.iter().any(|f| f.label == "Sanity"), "status bar paints Sanity, got {fields:?}");
+        assert!(fields.iter().any(|f| f.label == "Round"), "status bar paints Round, got {fields:?}");
+    }
+
+    #[test]
     fn every_bundled_campaign_boots_begins_and_projects() {
-        for id in ["demo", "caretaker", "facade-free-vs-advancing"] {
+        for id in ["demo", "caretaker", "facade-free-vs-advancing", "status-bar"] {
             let (snapshot, catalog) = bundled_campaign(id).unwrap_or_else(|e| panic!("{id}: {e}"));
             let started = snapshot.campaign.started;
             let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());

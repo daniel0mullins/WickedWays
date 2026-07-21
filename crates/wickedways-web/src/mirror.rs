@@ -112,7 +112,7 @@ mod tests {
             seq,
             base_seq: seq - 1,
             command: Command::NextPlayer,
-            delta: Delta { created: vec![], changed: vec![], removed: vec![], campaign_core: None },
+            delta: Delta { created: vec![], changed: vec![], removed: vec![], campaign_core: None, cues: vec![] },
         }
     }
 

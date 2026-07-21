@@ -147,6 +147,11 @@ body {
 .field-label { color: var(--color-muted); }
 .field-value { font-weight: 500; }
 
+/* Campaign status readout (authored StatusField cues), color-coded by emphasis. */
+.campaign-status { margin-top: 0.3rem; }
+.field.status-warn .field-value { color: var(--color-warn); }
+.field.status-critical .field-value { color: var(--color-error); }
+
 /* ── Inventory ──────────────────────────────────────────────────────────────── */
 .pnc-inventory .tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--color-muted); }
 .pnc-inventory .tab {

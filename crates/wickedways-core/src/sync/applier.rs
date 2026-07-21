@@ -100,6 +100,7 @@ mod tests {
             changed: vec![EntitySnapshot::Character(Box::new(changed))],
             removed: vec![],
             campaign_core: None,
+            cues: vec![],
         };
         apply(&mut replica, &delta);
         assert_eq!(replica.items[&ItemId("new".into())], new_item, "created item inserted");
@@ -117,7 +118,7 @@ mod tests {
             ItemId("gone".into()),
             ItemSnapshot::Item { id: ItemId("gone".into()), behavior_key: "k".into(), durability: None, modifier: 0 },
         );
-        let delta = Delta { created: vec![], changed: vec![], removed: vec!["gone".into()], campaign_core: None };
+        let delta = Delta { created: vec![], changed: vec![], removed: vec!["gone".into()], campaign_core: None, cues: vec![] };
         apply(&mut replica, &delta);
         assert!(!replica.items.contains_key(&ItemId("gone".into())), "removed id is gone");
     }

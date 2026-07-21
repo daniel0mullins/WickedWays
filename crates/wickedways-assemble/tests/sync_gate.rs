@@ -62,6 +62,11 @@ fn canon_numbers(v: &Value) -> Value {
 fn canon_delta(v: &Value) -> Value {
     let mut d = canon_numbers(v);
     if let Some(obj) = d.as_object_mut() {
+        // `cues` is a Rust-side extension of `Delta` (presentation cues ride the delta so surfaces
+        // can render campaign `Status` readouts the delta model otherwise discards). It is NOT state
+        // and the TS oracle has no such field — this gate asserts *state*-delta parity, so drop it
+        // before comparing.
+        obj.remove("cues");
         for key in ["changed", "created"] {
             if let Some(Value::Array(arr)) = obj.get_mut(key) {
                 arr.sort_by(|a, b| entity_id(a).cmp(entity_id(b)));
