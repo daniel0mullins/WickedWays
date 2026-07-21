@@ -42,6 +42,11 @@ pub type VerifyToken = Box<dyn Fn(&str) -> Option<String> + Send + Sync>;
 pub type GmIdentityFor = Box<dyn Fn(&str) -> String + Send + Sync>;
 /// Host-supplied genesis for a campaign, or `None` to reject it as unknown.
 pub type GenesisFor = Box<dyn Fn(&str) -> Option<CampaignSnapshot> + Send + Sync>;
+/// Optional host-supplied per-campaign catalog resolver. `Some(catalog)` overrides the shared
+/// [`ServerOptions::catalog`] for that campaign; `None` falls back to it. Lets one server host
+/// several authored campaigns whose behaviors (victory scripts, item/exit/mechanic bodies) live in
+/// their own catalogs, instead of forcing every campaign through a single global catalog.
+pub type CatalogFor = Box<dyn Fn(&str) -> Option<Catalog> + Send + Sync>;
 /// Optional display-name resolver for the `players` roster; defaults to the identity string.
 pub type DisplayNameFor = Box<dyn Fn(&str) -> String + Send + Sync>;
 
@@ -52,8 +57,13 @@ pub struct ServerOptions {
     pub gm_identity_for: GmIdentityFor,
     pub genesis_for: GenesisFor,
     pub display_name_for: Option<DisplayNameFor>,
-    /// The catalog every campaign's authority resolves commands against.
+    /// The catalog a campaign's authority resolves commands against when [`catalog_for`] returns
+    /// `None` for it (or is unset) — the shared default.
+    ///
+    /// [`catalog_for`]: ServerOptions::catalog_for
     pub catalog: Catalog,
+    /// Optional per-campaign catalog override; falls back to [`catalog`](ServerOptions::catalog).
+    pub catalog_for: Option<CatalogFor>,
     /// Optional durable store; `None` = ephemeral (in-memory only).
     pub store: Option<Arc<dyn CampaignStore>>,
     /// Optional fixed rng seed for every campaign's authority (determinism in tests / replay).
@@ -90,6 +100,16 @@ impl RoomServer {
 
     fn next_conn_id(&self) -> ConnId {
         self.next_conn.fetch_add(1, Ordering::Relaxed)
+    }
+
+    /// The catalog a campaign's authority resolves against: the per-campaign override if
+    /// [`ServerOptions::catalog_for`] provides one, else the shared [`ServerOptions::catalog`].
+    fn catalog_for(&self, campaign_id: &str) -> Catalog {
+        self.opts
+            .catalog_for
+            .as_ref()
+            .and_then(|f| f(campaign_id))
+            .unwrap_or_else(|| self.opts.catalog.clone())
     }
 
     /// A loaded campaign's handle, or `None` if not yet loaded. Brief lock, never held across await.
@@ -148,12 +168,13 @@ impl RoomServer {
         if let Some(seed) = self.opts.rng_seed {
             world.rng = Rng::seeded(seed);
         }
+        let catalog = self.catalog_for(campaign_id);
         let authority = SyncAuthority::new(
             world,
-            self.opts.catalog.clone(),
+            catalog.clone(),
             AuthorityOpts { snapshot_every, start_seq: seq },
         );
-        let mut table = Table::new(authority, membership, campaign_id, self.opts.catalog.clone(), snapshot_every);
+        let mut table = Table::new(authority, membership, campaign_id, catalog, snapshot_every);
         if let Some(store) = &self.opts.store {
             table.set_store(store.clone());
         }

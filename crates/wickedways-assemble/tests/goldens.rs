@@ -390,6 +390,23 @@ fn hollow_house_playable_genesis() {
     );
 }
 
+/// The **multiplayer** Covenant genesis the room server seeds: the pristine campaign
+/// seated with FOUR Wardens (the first, `Keeper`, becomes the GM), so the room supports
+/// two-to-four players. Gates `seat_party` at `party.len() == 4` for an archetype'd party,
+/// and holds the co-op `twin-wards-held` win condition (a `some(party, element.room.name
+/// == 'North Ward') && some(party, ... 'South Ward')` scripted victory) faithful to its
+/// authored, committed catalog.
+#[test]
+fn covenant_playable_genesis() {
+    let party = vec![
+        Seat { name: "Keeper".into(), archetype: Some("warden".into()) },
+        Seat { name: "Acolyte".into(), archetype: Some("warden".into()) },
+        Seat { name: "Pilgrim".into(), archetype: Some("warden".into()) },
+        Seat { name: "Seeker".into(), archetype: Some("warden".into()) },
+    ];
+    gate("covenant", "covenant.genesis.json", Some("covenant"), &party);
+}
+
 #[test]
 fn seed_pristine() {
     gate("seed", "seed.snapshot.json", Some("seed"), &[]);

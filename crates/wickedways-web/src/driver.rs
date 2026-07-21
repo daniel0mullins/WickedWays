@@ -38,6 +38,12 @@ const STATUS_BAR_CATALOG: &str = include_str!("../../../conformance/fixtures/g2-
 // (dread/sanity status bar/victory conditions) the core runs.
 const HOLLOW_GENESIS: &str = include_str!("../../../conformance/fixtures/hollow-house.genesis.json");
 const HOLLOW_CATALOG: &str = include_str!("../../../conformance/fixtures/hollow-house.catalog.json");
+// The Covenant — the co-op MULTIPLAYER campaign (TOML → author → assemble, seated with four Wardens,
+// the first is GM). Its `twin-wards-held` victory needs two players in two different rooms at once, so
+// it's designed for the room server; the bundle here is the single-player fallback (unwinnable solo)
+// the launcher's `?campaign=` boot path requires.
+const COVENANT_GENESIS: &str = include_str!("../../../conformance/fixtures/covenant.genesis.json");
+const COVENANT_CATALOG: &str = include_str!("../../../conformance/fixtures/covenant.catalog.json");
 
 /// The default single-player campaign id when `?campaign=` is absent or unknown.
 pub const DEFAULT_CAMPAIGN: &str = "demo";
@@ -51,6 +57,7 @@ fn bundled(id: &str) -> Option<(&'static str, Option<&'static str>)> {
         "facade" | "facade-free-vs-advancing" => Some((FACADE_GENESIS, Some(FACADE_CATALOG))),
         "status-bar" | "g2-status-bar" => Some((STATUS_BAR_GENESIS, Some(STATUS_BAR_CATALOG))),
         "hollow-house" | "hollow" => Some((HOLLOW_GENESIS, Some(HOLLOW_CATALOG))),
+        "covenant" => Some((COVENANT_GENESIS, Some(COVENANT_CATALOG))),
         _ => None,
     }
 }
@@ -325,6 +332,15 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "Enter Hollow House",
             surfaces: BOTH_SURFACES,
             debug: false,
+        },
+        CampaignInfo {
+            slug: "covenant",
+            title: "The Covenant",
+            blurb: "A co-op multiplayer rite for two to four. The seal only breaks when two of you hold the twin wards at once.",
+            intro: "You descend into the sealed sanctum together. An old rite bars the only way out, and it answers to no one alone: one Warden must take the North Ward and another the South, in the same moment, or the way stays shut. Split up. Trust each other. Leave together, or not at all.",
+            button_text: "Join the Covenant",
+            surfaces: BOTH_SURFACES,
+            debug: true,
         },
     ];
     REGISTRY

@@ -111,6 +111,24 @@ unless the page carries **`?debug`** ([`driver::menu_campaigns`](src/driver.rs) 
 `?debug` unlocks all five, a `?campaign=demo` deep-link without `?debug` stays on the menu, and Hollow
 House plays — Foyer start, its live Sanity/Round status bar, traversable rooms.
 
+**The Covenant** is the **co-op multiplayer** campaign, authored the same way
+(`conformance/fixtures/covenant.toml` → `wickedways-author` → `wickedways-assemble`). Its genesis is
+seated with **four Wardens** — the first (`Keeper`) becomes the GM — so the room takes **two to four
+players**, and its `twin-wards-held` victory (a scripted `some(party, element.room.name == 'North
+Ward') && some(party, … 'South Ward')`) only fires when **two players hold the two wards at once**, so
+one player can never win alone (two is the floor). It's designed for the room server: the client
+defaults to multiplayer, so `?campaign=covenant` connects to `/ws`, and the server seeds
+`covenant.json` + `covenant.catalog.json` (see below). Two gates hold it faithful — `goldens.rs`
+re-assembles the four-seat genesis, and `covenant_playable.rs` drives the real authority to prove the
+twin-ward rite wins while a lone Warden shuttling between the wards never does. It is **debug-only** in
+the launcher (like the demo campaigns), reachable via `?debug` or the deep-link.
+
+Because the room server previously resolved every campaign against one global catalog, an authored
+multiplayer campaign like The Covenant needs its behaviors server-side: `ServerOptions::catalog_for`
+now supplies a **per-campaign catalog** (the deployment loads `<GENESIS_DIR>/<id>.catalog.json` beside
+the genesis, falling back to the shared `CATALOG_PATH` catalog when absent), so the server fires the
+scripted victory instead of rejecting it as an unregistered key.
+
 The **audio subtree** begins with its pure mapping layer, the analog of the affordances/scene logic:
 [`audio`](src/audio.rs) (a 1:1 port of `audio/cue-sound.ts`) turns an engine `PresentationCue` /
 `MobAttack` into a backend-agnostic `SynthVoice` (waveform-or-noise + freq glide + gain envelope) —

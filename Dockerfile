@@ -50,6 +50,11 @@ COPY --from=builder /app/dist ./dist
 # Seed the ephemeral multiplayer demo campaign (the client's default `?campaign=demo`).
 # Single-player campaigns are bundled in the client and need no server-side genesis.
 COPY conformance/fixtures/sync-move.genesis.json ./genesis/demo.json
+# The Covenant — the co-op multiplayer campaign (`?campaign=covenant`). Ships its own catalog beside
+# the genesis so the server resolves its `twin-wards-held` victory (a scripted behavior); the server's
+# `catalog_for` picks up `<id>.catalog.json` automatically.
+COPY conformance/fixtures/covenant.genesis.json ./genesis/covenant.json
+COPY conformance/fixtures/covenant.catalog.json ./genesis/covenant.catalog.json
 
 # PORT is injected by the platform (Coolify); the rest wire the one-binary topology.
 # No DB_PATH → the store is ephemeral (a clean slate per deploy).

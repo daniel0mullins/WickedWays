@@ -1,0 +1,106 @@
+# The Covenant — a co-op multiplayer campaign authored in the TOML surface.
+#
+# The point of this campaign is that it CANNOT be finished alone. An old seal bars
+# the way out of a buried sanctum, and it only breaks when two of the covenant stand
+# on the twin wards AT THE SAME TIME — one at the North Ward, one at the South Ward.
+# A single delver can never hold both. The genesis is seated with four characters
+# (the first is the GM), so the room supports between two and four players; the
+# victory needs two of them in two different rooms at once, so two is the floor.
+#
+# Authored with the same G2 forms the rest of the fixtures use (opts, archetypes,
+# rooms, exits, loot, items, and a `some(...)`-quantified scripted victory). ASCII only.
+
+title = "The Covenant"
+startRoom = "Antechamber"
+timeoutNarration = "The lamps gutter out one by one. Whatever the covenant was meant to do here, it will not be done tonight — and the sanctum keeps those it is done with."
+
+[opts]
+maxRounds = 60
+baseEncounterChance = 0
+
+# One shared archetype: everyone who descends is a Warden of the covenant.
+[[archetypes]]
+id = "warden"
+name = "Warden"
+baseStats = { health = 10, sanity = 10, energy = 12 }
+inventorySlots = 1
+
+# -- Rooms --------------------------------------------------------------------
+[[rooms]]
+name = "Antechamber"
+description = "The mouth of the sanctum, where the covenant gathers. A stair of black glass leads down into the dark, and the way you came in has already sealed behind you."
+[[rooms]]
+name = "Crossing"
+description = "A four-way crossing beneath a vaulted ceiling. Passages run to a warded chamber on either hand, and an altar room lies ahead. The air hums, as if the stone is waiting to be answered."
+[[rooms]]
+name = "North Ward"
+description = "A narrow chamber ending in a disc of pale iron set flush with the floor -- the North Ward. It thrums faintly underfoot, but nothing you do alone will hold it."
+[[rooms]]
+name = "South Ward"
+description = "The twin of the far chamber: a disc of pale iron set into the floor -- the South Ward. It answers the tread of a single Warden with silence."
+[[rooms]]
+name = "Reliquary"
+description = "A low altar room, its walls carved with two figures standing apart, hands raised toward a seal between them. A cracked altar stone holds what the covenant left behind."
+
+# -- Exits (two-way; from the Crossing: N=Reliquary, S=Antechamber, W=North Ward, E=South Ward) --
+[[exits]]
+from = "Antechamber"
+to = "Crossing"
+direction = "north"
+[[exits]]
+from = "Crossing"
+to = "Antechamber"
+direction = "south"
+[[exits]]
+from = "Crossing"
+to = "North Ward"
+direction = "west"
+[[exits]]
+from = "North Ward"
+to = "Crossing"
+direction = "east"
+[[exits]]
+from = "Crossing"
+to = "South Ward"
+direction = "east"
+[[exits]]
+from = "South Ward"
+to = "Crossing"
+direction = "west"
+[[exits]]
+from = "Crossing"
+to = "Reliquary"
+direction = "north"
+[[exits]]
+from = "Reliquary"
+to = "Crossing"
+direction = "south"
+
+# -- Loot ---------------------------------------------------------------------
+[[loot]]
+name = "altar-stone"
+room = "Reliquary"
+items = ["rite-tablet"]
+description = "A cracked altar stone with a single tablet resting in its hollow."
+
+# -- Victory: the two-ward covenant rite --------------------------------------
+# The seal breaks only when the North Ward AND the South Ward are each occupied by
+# some Warden this round. One character cannot stand in two rooms, so this requires
+# at least two players, in two different rooms, at the same time.
+[[victory.win]]
+key = "twin-wards-held"
+test = "some(party, element.room.name == 'North Ward') && some(party, element.room.name == 'South Ward')"
+narration = "Two Wardens take the twin discs in the same breath, and the sanctum answers at last. The seal between the wards splits with a sound like a held note released -- and above you, the way out grinds open. You leave together, or not at all; tonight, it is together."
+
+# -- Items --------------------------------------------------------------------
+[[items]]
+key = "rite-tablet"
+name = "Rite Tablet"
+type = "consumable"
+stat = "health"
+modifier = 0
+destroyable = false
+droppable = false
+recipe = { item = 1 }
+aliases = ["tablet", "rite", "stone"]
+lore = '''The tablet is worn almost smooth, but the rite is still legible where a patient thumb has traced it a thousand times. "The seal was set by two and is broken by two. Let one Warden stand upon the North Ward and another upon the South, in the same moment, and the way will open to them both. Do not send one alone into the wards hoping to hold both discs by running between them -- the sanctum is older than your legs, and it counts. It has always counted. Go together, or remain."'''
