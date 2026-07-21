@@ -341,15 +341,18 @@ pub fn crt_app() -> Element {
             }
         }
         // ── Welcome gate (campaign manifest: title / intro / start button) ──
+        // Carries `theme_vars` because it renders OUTSIDE `.backdrop` (which holds the palette vars),
+        // so it must set them itself or `var(--color-*)` is undefined → transparent bg + black text.
         if !started() {
-            div { class: "crt-welcome",
+            div { class: "crt-welcome", style: "{theme_vars}",
                 h1 { class: "welcome-title", "{welcome.title}" }
                 p { class: "welcome-intro", "{welcome.intro}" }
                 button { class: "enter-btn", onclick: move |_| started.set(true), "{welcome.button}" }
             }
         }
         if overlay() != Overlay::None {
-            div { class: "overlay", onclick: move |_| overlay.set(Overlay::None),
+            // Same as the welcome gate: this renders outside `.backdrop`, so it carries the palette vars.
+            div { class: "overlay", style: "{theme_vars}", onclick: move |_| overlay.set(Overlay::None),
                 // Clicks on the framed content don't dismiss (only the backdrop does) — matches the
                 // `.overlay-frame { cursor: default }` affordance and `crt-game.ts`, where frame
                 // clicks never close the overlay.
