@@ -24,7 +24,7 @@ use wickedways_core::sync::{Command, SyncCoordinator, SyncTransport};
 use wickedways_core::world::ids::CharacterId;
 use wickedways_core::world::snapshot::{CampaignSnapshot, CharacterKind, CharacterSnapshot};
 
-use crate::driver::{ensure_player_identity, read_config, welcome_for};
+use crate::driver::{ensure_player_identity, read_config, set_params, welcome_for};
 use crate::transport::{Roster, WsTransport};
 
 /// One archetype a joiner can pick, from the campaign's `campaign.archetypes` catalogue.
@@ -165,6 +165,7 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
     });
 
     let you_are_gm = roster().gm.as_ref().is_some_and(|g| g.identity == identity);
+    let gm_online = roster().gm.as_ref().is_some_and(|g| g.online);
     let can_enter = started() && (you_joined() || you_are_gm);
     let seats = roster().seats;
     let players = roster().players;
@@ -240,6 +241,21 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
                     }
                     if you_are_gm {
                         button { class: "lobby-btn", onclick: do_start, "Start the campaign (GM)" }
+                    } else if !gm_online {
+                        // No GM is present, so no one can begin — offer to host. Reconnecting as the
+                        // GM identity (`?token=gm`) makes this client the GM; a reload re-derives the
+                        // identity and rejoins with the campaign/surface params intact.
+                        p { class: "lobby-note", "No GM is here to start the campaign." }
+                        button {
+                            class: "lobby-btn primary",
+                            onclick: move |_| {
+                                set_params(&[("token", "gm")]);
+                                if let Some(w) = web_sys::window() {
+                                    let _ = w.location().reload();
+                                }
+                            },
+                            "Start as host (become GM)"
+                        }
                     }
                 }
 
