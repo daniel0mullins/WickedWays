@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # Multi-stage image for the WickedWays **Dioxus** web client + room server: one
 # binary serves the bundled Dioxus app (static WASM + assets) AND the multiplayer
 # `/ws` endpoint on one port, so a deploy is a single Coolify resource / preview URL.
@@ -35,8 +36,21 @@ COPY conformance/fixtures ./conformance/fixtures
 
 # Bundle the Dioxus web client (cargo → wasm32 → wasm-bindgen --target web → /app/dist),
 # then build the room server that serves it. `--locked` pins the committed Cargo.lock.
-RUN crates/wickedways-web/build-web.sh /app/dist
-RUN cargo build -p wickedways-server --release --locked
+#
+# The cache mounts persist the cargo registry/git + the `target/` dir ACROSS builds (BuildKit), so a
+# rebuild only recompiles the workspace crates that changed instead of the whole dependency tree.
+# `sharing=locked` on `target` serializes the two build steps (they share one cache). Because a cache
+# mount is NOT part of the image layer, the server binary is copied OUT of `target/` to a real path in
+# the same step so the runtime stage can `COPY --from` it. `/app/dist` is already a real path.
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/target,sharing=locked \
+    crates/wickedways-web/build-web.sh /app/dist
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/target,sharing=locked \
+    cargo build -p wickedways-server --release --locked \
+ && cp target/release/wickedways-server /usr/local/bin/wickedways-server
 
 # ---- runtime: slim glibc base ----
 FROM debian:bookworm-slim AS runtime
@@ -45,7 +59,8 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates \
  && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/wickedways-server /usr/local/bin/wickedways-server
+# The server binary was cp'd out of the cache-mounted `target/` to `/usr/local/bin` in the builder.
+COPY --from=builder /usr/local/bin/wickedways-server /usr/local/bin/wickedways-server
 COPY --from=builder /app/dist ./dist
 # Seed the ephemeral multiplayer demo campaign (the client's default `?campaign=demo`).
 # Single-player campaigns are bundled in the client and need no server-side genesis.
