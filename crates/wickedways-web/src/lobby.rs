@@ -232,33 +232,43 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
                     code { class: "lobby-id", "{slug}" }
                 }
 
-                if !started() {
-                    if you_joined() {
-                        p { class: "lobby-note", "You're in as \"{name}\". Waiting for the GM to begin…" }
-                    } else {
-                        div { class: "lobby-form",
-                            label { class: "lobby-label", "Character name" }
-                            input {
+                // The join form: whenever a non-GM player hasn't taken a character — including a LATE
+                // join into a game that already started. The archetype pick is pre-start only
+                // (SelectArchetype must run before the campaign begins); a late joiner keeps the
+                // default statline. (The GM plays its own pre-seated character — see the server's
+                // GM-seat claim — so it doesn't use this form.)
+                if !you_joined() && !you_are_gm {
+                    div { class: "lobby-form",
+                        label { class: "lobby-label", "Character name" }
+                        input {
+                            class: "lobby-input",
+                            value: "{name}",
+                            placeholder: "Name your Warden",
+                            oninput: move |e| name.set(e.value()),
+                        }
+                        if !started() && !archetypes().is_empty() {
+                            label { class: "lobby-label", "Archetype" }
+                            select {
                                 class: "lobby-input",
-                                value: "{name}",
-                                placeholder: "Name your Warden",
-                                oninput: move |e| name.set(e.value()),
-                            }
-                            if !archetypes().is_empty() {
-                                label { class: "lobby-label", "Archetype" }
-                                select {
-                                    class: "lobby-input",
-                                    value: "{archetype}",
-                                    onchange: move |e| archetype.set(e.value()),
-                                    option { value: "", "— choose an archetype —" }
-                                    for a in archetypes() {
-                                        option { key: "{a.id}", value: "{a.id}", "{a.name}" }
-                                    }
+                                value: "{archetype}",
+                                onchange: move |e| archetype.set(e.value()),
+                                option { value: "", "— choose an archetype —" }
+                                for a in archetypes() {
+                                    option { key: "{a.id}", value: "{a.id}", "{a.name}" }
                                 }
                             }
-                            button { class: "lobby-btn primary", onclick: do_join, "Join the campaign" }
+                        }
+                        button { class: "lobby-btn primary", onclick: do_join,
+                            if started() { "Join the game in progress" } else { "Join the campaign" }
                         }
                     }
+                }
+
+                if you_joined() && !started() && !you_are_gm {
+                    p { class: "lobby-note", "You're in as \"{name}\". Waiting for the GM to begin…" }
+                }
+
+                if !started() {
                     if you_are_gm {
                         button { class: "lobby-btn", onclick: do_start, "Start the campaign (GM)" }
                     } else if !gm_online {

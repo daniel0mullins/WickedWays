@@ -158,7 +158,15 @@ impl RoomServer {
             }
             None => {
                 let genesis = (self.opts.genesis_for)(campaign_id)?;
-                (genesis, 0, Membership::new((self.opts.gm_identity_for)(campaign_id)))
+                let gm_identity = (self.opts.gm_identity_for)(campaign_id);
+                let mut membership = Membership::new(gm_identity.clone());
+                // The GM plays its own pre-seated character (the genesis `gmId`), not just narrates:
+                // give the GM identity that seat so it can take turns, while other players self-join
+                // theirs. Without this the GM could issue GM commands but never move.
+                if let Some(gm_char) = genesis.campaign.gm_id.as_ref() {
+                    membership.assign(&gm_char.0, gm_identity);
+                }
+                (genesis, 0, membership)
             }
         };
 
