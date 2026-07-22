@@ -37,8 +37,8 @@ use crate::audio::cue_for_intent;
 use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
-    boot, boot_single, intent_to_command, project, read_config, rebuild_single, welcome_for,
-    AppTransport, Mode,
+    boot, boot_single, intent_to_command, is_gm, is_my_turn, project, read_config, rebuild_single,
+    welcome_for, AppTransport, Mode, GM_IDENTITY,
 };
 use crate::map::{layout_map, map_svg, MapModel};
 use crate::narrator::Narrator;
@@ -104,6 +104,13 @@ fn print_room(mut log: Signal<Vec<LogLine>>, mut narrator: Signal<Narrator>, vm:
     }
 }
 
+/// An event the transport coroutine loops over: a UI [`PncAction`], or a `Refresh` tick from a server
+/// push (another client's committed action) so the surface re-syncs + re-projects reactively.
+enum PncEv {
+    Act(PncAction),
+    Refresh,
+}
+
 pub fn pnc_app() -> Element {
     let mut status = use_signal(|| "connecting…".to_string());
     let mut vm = use_signal(|| None::<ViewModel>);
@@ -114,7 +121,8 @@ pub fn pnc_app() -> Element {
     let mut map_model = use_signal(MapModel::new);
     let mut menu = use_signal(|| None::<ActionMenu>);
     let mut map_open = use_signal(|| false);
-    let mut started = use_signal(|| false);
+    // In multiplayer the launcher lobby already gated entry, so skip the surface's own welcome screen.
+    let mut started = use_signal(|| matches!(read_config().mode, Mode::Multi));
     let mut settings_open = use_signal(|| false);
     let mut audio_on = use_signal(|| false);
     let inv_tab_items = use_signal(|| true); // true = Inventory tab, false = Key Items tab
@@ -124,9 +132,14 @@ pub fn pnc_app() -> Element {
     let theme_vars = use_hook(|| pnc_theme_vars(&read_config().theme));
     // The campaign's welcome text (title/intro/button) — the manifest passthrough, read once.
     let welcome = use_hook(|| welcome_for(&read_config().campaign));
+    // GM gate for the turn-advance control, and the "your turn" indicator (refreshed by the coroutine).
+    let is_gm = use_hook(is_gm);
+    let mut my_turn = use_signal(|| false);
 
-    let driver = use_coroutine(move |mut rx: UnboundedReceiver<PncAction>| async move {
+    let driver = use_coroutine(move |rx: UnboundedReceiver<PncAction>| async move {
         let cfg = read_config();
+        let single = matches!(cfg.mode, Mode::Single);
+        let gm = single || cfg.token == GM_IDENTITY;
         match boot(&cfg).await {
             Err(e) => {
                 status.set("error".into());
@@ -149,8 +162,29 @@ pub fn pnc_app() -> Element {
                 }
                 vm.set(initial);
                 status_fields.set(coord.status_fields().to_vec());
+                my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
 
-                while let Some(action) = rx.next().await {
+                // Loop over UI actions AND server pushes: a pushed entry (another client's move, or the
+                // GM advancing the turn) re-syncs + re-projects, so play stays live and `my_turn` flips
+                // when the turn reaches this client — no polling.
+                let pushes = transport.push_notifications();
+                let mut events = futures_util::stream::select(rx.map(PncEv::Act), pushes.map(|_| PncEv::Refresh));
+                while let Some(ev) = events.next().await {
+                    let action = match ev {
+                        PncEv::Act(a) => a,
+                        PncEv::Refresh => {
+                            coord.sync(&transport);
+                            let after = project(&coord, &catalog);
+                            if let Some(a) = &after {
+                                map_model.write().observe(a);
+                                audio.update(a);
+                            }
+                            vm.set(after);
+                            status_fields.set(coord.status_fields().to_vec());
+                            my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                            continue;
+                        }
+                    };
                     let intent = match action {
                         PncAction::NextPlayer => {
                             submit(&transport, &mut coord, Command::NextPlayer, log).await;
@@ -161,6 +195,7 @@ pub fn pnc_app() -> Element {
                             }
                             vm.set(after);
                             status_fields.set(coord.status_fields().to_vec());
+                            my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                             continue;
                         }
                         // ── Single-player lifecycle (mirrors the CRT verbs, same rebuild seam) ──
@@ -304,6 +339,7 @@ pub fn pnc_app() -> Element {
                     }
                     vm.set(after);
                     status_fields.set(coord.status_fields().to_vec());
+                    my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                 }
             }
         }
@@ -320,6 +356,9 @@ pub fn pnc_app() -> Element {
             div { class: "pnc-topbar",
                 div { class: "topbar-left", span { class: "room-name", "{room_name}" } }
                 div { class: "topbar-controls",
+                    if my_turn() {
+                        span { class: "turn-indicator", "● Your turn" }
+                    }
                     span { class: "topbar-status", "{status}" }
                     button {
                         class: "topbar-btn",
@@ -328,7 +367,10 @@ pub fn pnc_app() -> Element {
                         if audio_on() { "🔊" } else { "🔇" }
                     }
                     button { class: "topbar-btn", title: "Map", onclick: move |_| map_open.set(true), "🗺" }
-                    button { class: "topbar-btn", title: "GM: next player", onclick: move |_| driver.send(PncAction::NextPlayer), "⏭" }
+                    // The turn-advance control is the GM's only.
+                    if is_gm {
+                        button { class: "topbar-btn", title: "GM: next player", onclick: move |_| driver.send(PncAction::NextPlayer), "⏭" }
+                    }
                     if mode == Mode::Single {
                         button { class: "topbar-btn", title: "Menu", onclick: move |_| settings_open.set(true), "⚙" }
                     }

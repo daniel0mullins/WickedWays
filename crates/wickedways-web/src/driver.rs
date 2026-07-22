@@ -169,9 +169,40 @@ pub fn read_config() -> Config {
         mode,
         ws: query_param("ws").unwrap_or_else(default_ws),
         campaign: query_param("campaign").unwrap_or_else(|| "demo".into()),
-        token: query_param("token").unwrap_or_else(|| "gm".into()),
+        token: query_param("token").unwrap_or_else(|| GM_IDENTITY.into()),
         theme: query_param("theme").unwrap_or_default(),
     }
+}
+
+/// The GM's identity in the dev model: the host mints `?token=gm`, matching the server's default
+/// `GM_IDENTITY`. Whoever presents this token is the GM.
+pub const GM_IDENTITY: &str = "gm";
+
+/// Whether this client is the GM: the sole GM in single-player, or the `gm` identity in multiplayer
+/// (the host mints `?token=gm`; joiners get a random `player-*` identity via [`ensure_player_identity`]).
+pub fn is_gm() -> bool {
+    let cfg = read_config();
+    matches!(cfg.mode, Mode::Single) || cfg.token == GM_IDENTITY
+}
+
+/// Whether it's this client's turn to act. Not started → no. Single-player → always (you drive every
+/// seat). Multiplayer → the active character is the one you control: the GM controls the campaign's
+/// `gmId`; a joined player controls `player:<identity>`.
+pub fn is_my_turn(snapshot: &CampaignSnapshot, token: &str, is_gm: bool, single: bool) -> bool {
+    let c = &snapshot.campaign;
+    if !c.started {
+        return false;
+    }
+    if single {
+        return true;
+    }
+    let active = c.party_ids.get(c.active_character_index.max(0) as usize);
+    let mine = if is_gm {
+        c.gm_id.clone()
+    } else {
+        Some(CharacterId(format!("player:{token}")))
+    };
+    active == mine.as_ref()
 }
 
 /// The transport the surfaces drive, abstracting the two modes so the driver loop is
@@ -236,6 +267,17 @@ impl AppTransport {
         match self {
             AppTransport::Multi(t) => t.submit_async(command).await,
             AppTransport::Single(t) => t.submit_async(command).await,
+        }
+    }
+
+    /// A stream that ticks on every server push (another client's committed action, or a presence
+    /// change), so a surface can re-sync + re-project reactively — e.g. to show other players' moves
+    /// live and flip the "your turn" indicator when the turn reaches you. Single-player has no server,
+    /// so its stream is empty (the sender is dropped immediately).
+    pub fn push_notifications(&self) -> futures_channel::mpsc::UnboundedReceiver<()> {
+        match self {
+            AppTransport::Multi(t) => t.push_notifications(),
+            AppTransport::Single(_) => futures_channel::mpsc::unbounded().1,
         }
     }
 }
@@ -618,6 +660,20 @@ mod tests {
                 assert!(surface_info(sid).is_some(), "{}: surface '{sid}' must have metadata", c.slug);
             }
         }
+    }
+
+    #[test]
+    fn is_my_turn_tracks_the_active_seat() {
+        let (mut snap, _) = bundled_campaign("covenant").unwrap();
+        // Not started → never your turn.
+        assert!(!is_my_turn(&snap, "gm", true, false));
+        // Started; active seat 0 is the GM host (the campaign's gmId character).
+        snap.campaign.started = true;
+        snap.campaign.active_character_index = 0;
+        assert!(is_my_turn(&snap, "gm", true, false), "the GM's turn when its own seat is active");
+        assert!(!is_my_turn(&snap, "player-x", false, false), "not a joiner's turn while the GM seat is active");
+        // Single-player drives every seat → always your turn once started.
+        assert!(is_my_turn(&snap, "whatever", true, true));
     }
 
     #[test]

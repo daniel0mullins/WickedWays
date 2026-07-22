@@ -34,7 +34,8 @@ use crate::audio::cue_for_intent;
 use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
-    boot, boot_single, intent_to_command, project, read_config, rebuild_single, welcome_for, Mode,
+    boot, boot_single, intent_to_command, is_gm, is_my_turn, project, read_config, rebuild_single,
+    welcome_for, Mode, GM_IDENTITY,
 };
 use crate::link_nouns::{link_nouns, Segment};
 use crate::map::{layout_map, map_svg, MapModel};
@@ -44,6 +45,13 @@ use crate::savestore::{self, SaveBlob};
 use crate::theme::crt_theme_vars;
 
 const CRT_CSS: &str = include_str!("../assets/crt.css");
+
+/// An event the transport coroutine loops over: a UI [`Action`], or a `Refresh` tick from a server
+/// push (another client's committed action) so the surface re-syncs + re-projects reactively.
+enum Ev {
+    Act(Action),
+    Refresh,
+}
 
 /// A driver request from the UI to the (non-Send, Rc-backed) transport coroutine.
 enum Action {
@@ -78,14 +86,21 @@ pub fn crt_app() -> Element {
     let mut map_model = use_signal(MapModel::new);
     let mut overlay = use_signal(|| Overlay::None);
     // The welcome gate: the campaign's title/intro/button (manifest passthrough), shown until the
-    // player presses Enter. The transport coroutine connects underneath while it's up.
-    let mut started = use_signal(|| false);
+    // player presses Enter. The transport coroutine connects underneath while it's up. In multiplayer
+    // the launcher lobby already gated entry, so skip this second welcome and show the game directly.
+    let mut started = use_signal(|| matches!(read_config().mode, Mode::Multi));
     let welcome = use_hook(|| welcome_for(&read_config().campaign));
     // The launcher palette (`?theme=`), read once and applied to the CRT root.
     let theme_vars = use_hook(|| crt_theme_vars(&read_config().theme));
+    // Whether this client is the GM (gates the `nextPlayer` control), and whether it's this client's
+    // turn (the "your turn" indicator) — the coroutine refreshes `my_turn` as the turn moves.
+    let is_gm = use_hook(is_gm);
+    let mut my_turn = use_signal(|| false);
 
-    let driver = use_coroutine(move |mut rx: UnboundedReceiver<Action>| async move {
+    let driver = use_coroutine(move |rx: UnboundedReceiver<Action>| async move {
         let cfg = read_config();
+        let single = matches!(cfg.mode, Mode::Single);
+        let gm = single || cfg.token == GM_IDENTITY;
         match boot(&cfg).await {
             Err(e) => {
                 status.set("error".into());
@@ -108,8 +123,29 @@ pub fn crt_app() -> Element {
                 }
                 vm.set(initial);
                 status_fields.set(coord.status_fields().to_vec());
+                my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
 
-                while let Some(action) = rx.next().await {
+                // Loop over UI actions AND server pushes: a pushed entry (another client's move, or the
+                // GM advancing the turn) re-syncs + re-projects, so play stays live and `my_turn` flips
+                // when the turn reaches this client — no polling.
+                let pushes = transport.push_notifications();
+                let mut events = futures_util::stream::select(rx.map(Ev::Act), pushes.map(|_| Ev::Refresh));
+                while let Some(ev) = events.next().await {
+                    let action = match ev {
+                        Ev::Act(a) => a,
+                        Ev::Refresh => {
+                            coord.sync(&transport);
+                            let after = project(&coord, &catalog);
+                            if let Some(a) = &after {
+                                map_model.write().observe(a);
+                                audio.update(a);
+                            }
+                            vm.set(after);
+                            status_fields.set(coord.status_fields().to_vec());
+                            my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                            continue;
+                        }
+                    };
                     let mut intent_for_narration: Option<Intent> = None;
                     let mut before_view: Option<ViewModel> = None;
                     let mut meta_effect: Option<MetaEffect> = None;
@@ -296,6 +332,9 @@ pub fn crt_app() -> Element {
                         Some(_) => narration.write().push("(save/restore/restart is single-player only)".into()),
                         None => {}
                     }
+
+                    // Recompute whose turn it is after the action (a nextPlayer/move can move the seat).
+                    my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                 }
             }
         }
@@ -333,7 +372,13 @@ pub fn crt_app() -> Element {
                             }
                         }
                         div { class: "controls",
-                            button { id: "submit", onclick: move |_| driver.send(Action::NextPlayer), "GM: nextPlayer" }
+                            if my_turn() {
+                                span { class: "turn-indicator", "● Your turn" }
+                            }
+                            // The turn-advance control is the GM's only.
+                            if is_gm {
+                                button { id: "submit", onclick: move |_| driver.send(Action::NextPlayer), "GM: nextPlayer" }
+                            }
                         }
                     }
                     div { class: "crt-overlay" }

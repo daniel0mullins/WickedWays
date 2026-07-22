@@ -122,7 +122,14 @@
   opacity: 0.92;
 }
 
-.controls { display: flex; gap: 0.5em; margin-top: 0.4em; }
+.controls { display: flex; align-items: center; gap: 0.5em; margin-top: 0.4em; }
+.turn-indicator {
+  font: inherit;
+  color: var(--color-accent);
+  font-weight: bold;
+  animation: turn-pulse 1.4s ease-in-out infinite;
+}
+@keyframes turn-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 .controls button {
   font: inherit;
   color: var(--color-bg);
