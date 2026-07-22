@@ -15,6 +15,7 @@ pub mod crt;
 pub mod driver;
 pub mod launcher;
 pub mod link_nouns;
+pub mod lobby;
 pub mod map;
 pub mod mirror;
 pub mod narrator;

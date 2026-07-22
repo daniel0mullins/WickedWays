@@ -21,10 +21,7 @@
     },
     "activeCharacterIndex": 0,
     "partyIds": [
-      "player:Keeper",
-      "player:Acolyte",
-      "player:Pilgrim",
-      "player:Seeker"
+      "player:Keeper"
     ],
     "actedThisRound": [],
     "gmId": "player:Keeper",
@@ -79,10 +76,7 @@
       "dark": false,
       "spawnModifier": 1,
       "occupantIds": [
-        "player:Keeper",
-        "player:Acolyte",
-        "player:Pilgrim",
-        "player:Seeker"
+        "player:Keeper"
       ],
       "lootIds": [],
       "materialCacheIds": [],
@@ -194,117 +188,6 @@
       "kind": "player",
       "id": "player:Keeper",
       "name": "Keeper",
-      "stats": {
-        "energy": 12.0,
-        "sanity": 10.0,
-        "health": 10.0
-      },
-      "actionsPerRound": 3,
-      "actionsThisRound": 1,
-      "currentRoomId": "room:Antechamber",
-      "inventory": {
-        "slots": 6,
-        "itemIds": [],
-        "keyIds": []
-      },
-      "equipment": {},
-      "history": [
-        {
-          "kind": "move",
-          "round": 0,
-          "room": {
-            "id": "room:Antechamber",
-            "name": "Antechamber"
-          }
-        }
-      ],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
-      },
-      "archetypeId": "warden"
-    },
-    {
-      "kind": "player",
-      "id": "player:Acolyte",
-      "name": "Acolyte",
-      "stats": {
-        "energy": 12.0,
-        "sanity": 10.0,
-        "health": 10.0
-      },
-      "actionsPerRound": 3,
-      "actionsThisRound": 1,
-      "currentRoomId": "room:Antechamber",
-      "inventory": {
-        "slots": 6,
-        "itemIds": [],
-        "keyIds": []
-      },
-      "equipment": {},
-      "history": [
-        {
-          "kind": "move",
-          "round": 0,
-          "room": {
-            "id": "room:Antechamber",
-            "name": "Antechamber"
-          }
-        }
-      ],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
-      },
-      "archetypeId": "warden"
-    },
-    {
-      "kind": "player",
-      "id": "player:Pilgrim",
-      "name": "Pilgrim",
-      "stats": {
-        "energy": 12.0,
-        "sanity": 10.0,
-        "health": 10.0
-      },
-      "actionsPerRound": 3,
-      "actionsThisRound": 1,
-      "currentRoomId": "room:Antechamber",
-      "inventory": {
-        "slots": 6,
-        "itemIds": [],
-        "keyIds": []
-      },
-      "equipment": {},
-      "history": [
-        {
-          "kind": "move",
-          "round": 0,
-          "room": {
-            "id": "room:Antechamber",
-            "name": "Antechamber"
-          }
-        }
-      ],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
-      },
-      "archetypeId": "warden"
-    },
-    {
-      "kind": "player",
-      "id": "player:Seeker",
-      "name": "Seeker",
       "stats": {
         "energy": 12.0,
         "sanity": 10.0,

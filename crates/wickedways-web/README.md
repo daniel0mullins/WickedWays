@@ -112,16 +112,34 @@ unless the page carries **`?debug`** ([`driver::menu_campaigns`](src/driver.rs) 
 House plays — Foyer start, its live Sanity/Round status bar, traversable rooms.
 
 **The Covenant** is the **co-op multiplayer** campaign, authored the same way
-(`conformance/fixtures/covenant.toml` → `wickedways-author` → `wickedways-assemble`). Its genesis is
-seated with **four Wardens** — the first (`Keeper`) becomes the GM — so the room takes **two to four
-players**, and its `twin-wards-held` victory (a scripted `some(party, element.room.name == 'North
-Ward') && some(party, … 'South Ward')`) only fires when **two players hold the two wards at once**, so
-one player can never win alone (two is the floor). It's designed for the room server: the client
-defaults to multiplayer, so `?campaign=covenant` connects to `/ws`, and the server seeds
-`covenant.json` + `covenant.catalog.json` (see below). Two gates hold it faithful — `goldens.rs`
-re-assembles the four-seat genesis, and `covenant_playable.rs` drives the real authority to prove the
-twin-ward rite wins while a lone Warden shuttling between the wards never does. It is **debug-only** in
-the launcher (like the demo campaigns), reachable via `?debug` or the deep-link.
+(`conformance/fixtures/covenant.toml` → `wickedways-author` → `wickedways-assemble`). It is a
+**GM-host + self-join** campaign: the genesis seats only the GM/host (`Keeper`), and players **create
+their own characters and join at runtime** (see the lobby below). Its `twin-wards-held` victory (a
+scripted `some(party, element.room.name == 'North Ward') && some(party, … 'South Ward')`) only fires
+when **two players hold the two wards at once** — one of them may be the GM — so one player can never
+win alone (two is the floor); the room takes **two to four players including the GM**. It's a shipped,
+non-debug launcher entry. The client defaults to multiplayer, so `?campaign=covenant` connects to
+`/ws`, and the server seeds `covenant.json` + `covenant.catalog.json` (see below). Gates hold it
+faithful: `goldens.rs` re-assembles the lone-GM genesis, and `covenant_playable.rs` drives the real
+authority through a self-join (name + `warden` archetype) to a GM-plus-joiner win, with a lone-Warden
+negative control.
+
+**Self-service join** (`JoinCampaign`) is the engine port under all of this: a player submits their
+own bare player character, which the core inserts into the world + party (`World::join_campaign`), and
+the sync **delta pushes the new character to every connected client** — no polling. A following
+`SelectArchetype` applies the chosen archetype's statline. Server e2e proves both the round-trip and
+the push (`a_self_join_is_pushed_to_the_other_clients`).
+
+The **multiplayer join lobby** ([`lobby`](src/lobby.rs)) is the pre-game screen the launcher shows for
+any multiplayer campaign before the surface mounts: the player **names their character**, **picks an
+archetype** (from the campaign's `archetypes`, when it has them), and joins; the GM gets a **Start**
+control (`BeginCampaign`); and a live **roster** refreshes off the transport's push signal
+([`WsTransport::push_notifications`]) rather than a poll. Each browser gets a **distinct identity**
+(`driver::ensure_player_identity` — a random `player-XXXX` persisted to `?token=`, or an explicit
+`?token=gm` for the GM). The menu also offers **Join by ID** to deep-link an arbitrary running
+campaign. On "Enter", the lobby hands off to the surface, which reconnects with the same identity so
+the joined seat carries over. The pure pieces (archetype options, building the joining character,
+command sequencing) are host-tested; the Dioxus shell is browser-verified.
 
 Because the room server previously resolved every campaign against one global catalog, an authored
 multiplayer campaign like The Covenant needs its behaviors server-side: `ServerOptions::catalog_for`

@@ -1,0 +1,131 @@
+/* Multiplayer join lobby (Phase 2c, sub-project D). Shares the launcher's dark aesthetic. */
+
+.lobby {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: sans-serif;
+  background: #111;
+  color: #eee;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.lobby-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 2rem;
+  max-width: 32rem;
+  width: 100%;
+  border: 1px solid #333;
+  border-radius: 0.5rem;
+  background: #161616;
+}
+
+.lobby-title {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.06em;
+}
+
+.lobby-subtitle {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #999;
+}
+
+.lobby-status {
+  margin: 0;
+  color: #9ab;
+  font-size: 0.85rem;
+}
+
+.lobby-note {
+  margin: 0;
+  color: #aaa;
+  font-size: 0.9rem;
+}
+
+.lobby-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lobby-label {
+  font-size: 0.8rem;
+  color: #bbb;
+}
+
+.lobby-input {
+  padding: 0.55rem 0.7rem;
+  background: #0c0c0c;
+  border: 1px solid #333;
+  border-radius: 0.35rem;
+  color: #eee;
+  font-size: 0.95rem;
+}
+
+.lobby-btn {
+  padding: 0.6rem 1rem;
+  background: transparent;
+  border: 1px solid #444;
+  border-radius: 0.35rem;
+  color: #eee;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.lobby-btn:hover {
+  border-color: #7a9;
+}
+
+.lobby-btn.primary {
+  border-color: #4a7;
+  background: #143;
+}
+
+.lobby-btn.primary:hover {
+  background: #1a5;
+}
+
+.lobby-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid #262626;
+  padding-top: 0.75rem;
+}
+
+.lobby-seat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.lobby-owner {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.lobby-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  flex: none;
+}
+
+.lobby-dot.on {
+  background: #4a7;
+}
+
+.lobby-dot.off {
+  background: #555;
+}

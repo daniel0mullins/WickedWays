@@ -145,11 +145,58 @@ async fn start_covenant_server(with_catalog: bool) -> u16 {
     port
 }
 
-/// The GM begins the Covenant, then advances the four Warden seats until the round wraps — which runs
-/// the campaign's victory resolver. With the campaign's own catalog wired in via `catalog_for`, the
+/// A `joinCampaign` command carrying a fresh Warden built from the genesis's GM host as a field
+/// template (so every tail field is valid), with a new id/name and no archetype yet — the wire form of
+/// a player naming their character and joining.
+fn warden_join_command(id: &str, name: &str) -> Value {
+    let genesis = serde_json::to_value(covenant_genesis()).expect("genesis to value");
+    let mut character = genesis["characters"][0].clone();
+    character["id"] = json!(id);
+    character["name"] = json!(name);
+    character["archetypeId"] = Value::Null;
+    json!({ "kind": "joinCampaign", "character": character })
+}
+
+/// A player self-joins the Covenant over the socket, and the join is PUSHED to the already-connected
+/// GM as a log entry carrying the newly-created character — the "server replicates the new snapshot via
+/// a websocket push, not a poll" contract. The joiner owns its new seat (the server claims it on the
+/// join commit), so it could then act as that character.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_self_join_is_pushed_to_the_other_clients() {
+    let port = start_covenant_server(true).await;
+
+    // The GM is already in the room and caught up to the head.
+    let mut gm = Client::connect(port).await;
+    let _ = gm.join_and_seed("covenant", "gm").await;
+
+    // A player connects and self-joins their own named Warden.
+    let mut rowan = Client::connect(port).await;
+    let _ = rowan.join_and_seed("covenant", "rowan").await;
+    rowan
+        .send(ClientMsg::Submit { campaign_id: "covenant".into(), command: warden_join_command("player:Rowan", "Rowan") })
+        .await;
+
+    // The joiner's own submit is acknowledged as committed…
+    let committed = rowan.recv_until("join committed", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
+    assert!(matches!(committed, ServerMsg::Committed { .. }), "join should commit, got {committed:?}");
+
+    // …and the GM — who took no action — is PUSHED the same join as a log entry whose delta creates
+    // the new character. No polling: the server replicated it over the live subscription.
+    let entry = gm.recv_until("pushed join entry", |m| matches!(m, ServerMsg::Entry { .. })).await;
+    let ServerMsg::Entry { entry } = entry else { unreachable!() };
+    // A created entity rides as `{ "type": "character", "data": { ...snapshot } }`.
+    let created = entry.delta["created"].as_array().cloned().unwrap_or_default();
+    assert!(
+        created.iter().any(|e| e["data"]["id"] == json!("player:Rowan")),
+        "the pushed delta creates the joined character, got created={created:?}",
+    );
+}
+
+/// The GM begins the Covenant and advances past the lone seat so the round wraps — which runs the
+/// campaign's victory resolver. With the campaign's own catalog wired in via `catalog_for`, the
 /// `twin-wards-held` scripted victory resolves (to `false`, since no one holds a ward yet), so the
-/// round-wrapping `nextPlayer` COMMITS. This is the end-to-end proof that a per-campaign catalog reaches
-/// the room server's authority — the plumbing an authored multiplayer campaign needs.
+/// round-wrapping `nextPlayer` COMMITS. End-to-end proof that a per-campaign catalog reaches the room
+/// server's authority — the plumbing an authored multiplayer campaign needs.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn covenant_round_resolves_with_its_per_campaign_catalog() {
     let port = start_covenant_server(true).await;
@@ -160,15 +207,13 @@ async fn covenant_round_resolves_with_its_per_campaign_catalog() {
     let begun = gm.recv_until("begin committed", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
     assert!(matches!(begun, ServerMsg::Committed { .. }), "beginCampaign should commit, got {begun:?}");
 
-    // Four seats: nextPlayer advances 0→1→2→3, and the fourth wraps the round → resolve_outcome.
-    for i in 0..4 {
-        gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "nextPlayer" }) }).await;
-        let m = gm.recv_until("next", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
-        assert!(
-            matches!(m, ServerMsg::Committed { .. }),
-            "nextPlayer #{i} should commit (the round-wrap resolves twin-wards-held), got {m:?}",
-        );
-    }
+    // The lone GM seat: a single nextPlayer wraps the round → resolve_outcome runs the victory.
+    gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "nextPlayer" }) }).await;
+    let wrap = gm.recv_until("wrap", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
+    assert!(
+        matches!(wrap, ServerMsg::Committed { .. }),
+        "the round-wrap resolves twin-wards-held and commits, got {wrap:?}",
+    );
 }
 
 /// The negative control: WITHOUT the campaign's catalog, the authority resolves against the empty
@@ -183,13 +228,6 @@ async fn without_its_catalog_the_covenant_round_wrap_is_denied() {
     gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "beginCampaign" }) }).await;
     let _ = gm.recv_until("begin", |m| matches!(m, ServerMsg::Committed { .. })).await;
 
-    // The first three advances just move the active seat; the fourth wraps the round and trips the
-    // unresolved victory key.
-    for _ in 0..3 {
-        gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "nextPlayer" }) }).await;
-        let m = gm.recv_until("next", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
-        assert!(matches!(m, ServerMsg::Committed { .. }), "pre-wrap nextPlayer should commit, got {m:?}");
-    }
     gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "nextPlayer" }) }).await;
     let wrap = gm.recv_until("wrap", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
     assert!(

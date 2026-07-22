@@ -8,6 +8,7 @@ use alloc::format;
 
 use crate::error::ProceduralViolation;
 use crate::world::ids::CharacterId;
+use crate::world::snapshot::{CharacterKind, CharacterSnapshot};
 use crate::world::World;
 
 impl World {
@@ -60,6 +61,38 @@ impl World {
         }
         Ok(())
     }
+
+    /// Adds a self-service joining player to the campaign. Mirrors the TS `resolver.ts` `joinCampaign`
+    /// case + `PlayerCharacter.joinCampaign`: only players may join, a duplicate id is rejected (it
+    /// would let a joiner shadow or hijack an existing seat), and the character is inserted and
+    /// appended to the party. The created character propagates to every replica through the sync
+    /// delta, which already diffs the characters map (`sync::delta`) — no extra wiring, no poll.
+    ///
+    /// The joining snapshot carries its own identity, spawn room (`current_room_id`), and starting
+    /// stats; a following `select_archetype` (pre-begin) applies an archetype's statline on top.
+    ///
+    /// # Errors
+    /// [`ProceduralViolation`] if `character` is not a player, or its id already exists in the campaign.
+    pub fn join_campaign(&mut self, character: CharacterSnapshot) -> Result<(), ProceduralViolation> {
+        if character.kind != CharacterKind::Player {
+            return Err(ProceduralViolation(
+                "Only player characters can join a campaign.".into(),
+            ));
+        }
+        if self.characters.contains_key(&character.id) {
+            return Err(ProceduralViolation(format!(
+                "Character id '{}' already exists in this campaign.",
+                character.id.0
+            )));
+        }
+        let id = character.id.clone();
+        self.characters.insert(id.clone(), character);
+        // `PlayerCharacter.joinCampaign`: append to the party, ignoring a repeated join.
+        if !self.campaign.party_ids.contains(&id) {
+            self.campaign.party_ids.push(id);
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -98,6 +131,37 @@ mod tests {
         let mut w = started_with_gm();
         w.campaign.outcome = CampaignOutcome::Won;
         assert!(w.transfer_gm(&CharacterId("b".into())).is_err());
+    }
+
+    #[test]
+    fn join_adds_a_player_to_the_characters_and_party() {
+        let mut w = world_with_party(&["a"], 10);
+        let mut newbie = w.characters.get(&CharacterId("a".into())).unwrap().clone();
+        newbie.id = CharacterId("b".into());
+        newbie.name = "Ben".into();
+        w.join_campaign(newbie).unwrap();
+        assert!(w.characters.contains_key(&CharacterId("b".into())), "joined character is in the world");
+        assert!(w.campaign.party_ids.contains(&CharacterId("b".into())), "joined character is in the party");
+    }
+
+    #[test]
+    fn join_is_idempotent_on_the_party_but_rejects_a_duplicate_id() {
+        // A duplicate character id is refused (it would let a joiner shadow an existing seat), and
+        // nothing about the existing seat changes.
+        let mut w = world_with_party(&["a"], 10);
+        let dup = w.characters.get(&CharacterId("a".into())).unwrap().clone();
+        assert!(w.join_campaign(dup).is_err());
+        assert_eq!(w.campaign.party_ids, alloc::vec![CharacterId("a".into())], "party unchanged on a rejected join");
+    }
+
+    #[test]
+    fn join_rejects_a_non_player() {
+        let mut w = world_with_party(&["a"], 10);
+        let mut mob = w.characters.get(&CharacterId("a".into())).unwrap().clone();
+        mob.id = CharacterId("m".into());
+        mob.kind = CharacterKind::Mob;
+        assert!(w.join_campaign(mob).is_err(), "only players may join");
+        assert!(!w.characters.contains_key(&CharacterId("m".into())), "a rejected join inserts nothing");
     }
 
     #[test]

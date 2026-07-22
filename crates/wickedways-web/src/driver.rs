@@ -130,6 +130,33 @@ fn default_ws() -> String {
         .unwrap_or_else(|| "ws://127.0.0.1:9000/ws".into())
 }
 
+/// A distinct per-tab player identity for multiplayer. An explicit `?token=` wins (so a GM joins as
+/// the configured GM identity — `?token=gm` — and a link can pin an identity); otherwise this mints a
+/// random `player-XXXXXX` and persists it to the URL, so the lobby and the surface it hands off to
+/// connect as ONE identity (and the same seat). Not a security token — real auth maps a signed-in user
+/// to an identity server-side.
+pub fn ensure_player_identity() -> String {
+    if let Some(t) = query_param("token") {
+        return t;
+    }
+    let id = format!("player-{}", random_suffix());
+    set_params(&[("token", &id)]);
+    id
+}
+
+/// Six base-36 chars from `Math.random()` — enough to tell tabs apart, not a secret.
+fn random_suffix() -> String {
+    let n = (js_sys::Math::random() * 2_176_782_336.0) as u64; // 36^6
+    let mut x = n;
+    let mut s = String::new();
+    for _ in 0..6 {
+        let d = (x % 36) as u32;
+        s.push(char::from_digit(d, 36).unwrap_or('0'));
+        x /= 36;
+    }
+    s
+}
+
 /// Read `?mode=&ws=…&campaign=…&token=…`, falling back to the same-origin socket + local-dev defaults.
 /// `?mode=single` (or `?mode=offline`) selects the offline single-player authority; anything else is
 /// multiplayer.
@@ -340,7 +367,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             intro: "You descend into the sealed sanctum together. An old rite bars the only way out, and it answers to no one alone: one Warden must take the North Ward and another the South, in the same moment, or the way stays shut. Split up. Trust each other. Leave together, or not at all.",
             button_text: "Join the Covenant",
             surfaces: BOTH_SURFACES,
-            debug: true,
+            debug: false,
         },
     ];
     REGISTRY
@@ -576,9 +603,11 @@ mod tests {
     }
 
     #[test]
-    fn the_menu_lists_only_the_shipped_campaign_unless_debug() {
+    fn the_menu_lists_the_shipped_campaigns_and_debug_adds_the_rest() {
+        // The default menu shows the shipped campaigns: Hollow House (single-player) and The Covenant
+        // (multiplayer). The demo/conformance campaigns stay behind `?debug`.
         let shipped: Vec<_> = menu_campaigns(false).iter().map(|c| c.slug).collect();
-        assert_eq!(shipped, vec!["hollow-house"], "default menu shows only Hollow House");
+        assert_eq!(shipped, vec!["hollow-house", "covenant"], "default menu shows the shipped campaigns");
         assert_eq!(menu_campaigns(true).len(), campaign_registry().len(), "?debug shows every campaign");
         assert!(menu_campaigns(true).iter().any(|c| c.slug == "demo"), "?debug includes the demo campaigns");
     }
