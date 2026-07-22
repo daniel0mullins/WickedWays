@@ -53,6 +53,67 @@
   outline: none;
 }
 
+.launcher-joinbyid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #333;
+}
+
+.launcher-joinlabel {
+  margin: 0;
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+.launcher-joinrow {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.launcher-joininput {
+  flex: 1;
+  min-width: 0;
+  padding: 0.7rem 1rem;
+  background: #0c0c0c;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #eee;
+  font-size: 0.95rem;
+}
+
+.launcher-joininput::placeholder {
+  color: #777;
+}
+
+.launcher-joinbtn {
+  padding: 0.7rem 1.2rem;
+  flex: none;
+  background: #143;
+  color: #eee;
+  border: 1px solid #4a7;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.launcher-joinbtn:hover:not(:disabled) {
+  background: #1a5;
+}
+
+.launcher-joinbtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.launcher-joinerr {
+  margin: 0.15rem 0 0;
+  color: #e88;
+  font-size: 0.85rem;
+}
+
 .launcher-title {
   font-size: 1.1rem;
   font-weight: 600;

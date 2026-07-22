@@ -99,6 +99,20 @@ fn join_by_id(route: Signal<LauncherRoute>, id: &str, debug: bool) {
 #[component]
 fn MenuView(route: Signal<LauncherRoute>, debug: bool) -> Element {
     let join_id = use_signal(String::new);
+    let mut join_err = use_signal(String::new);
+    // Try to join the id in the box; set a visible message instead of silently doing nothing when it's
+    // empty or isn't a known game. A `use_callback` is Copy, so both handlers can call it.
+    let try_join = use_callback(move |()| {
+        let id = join_id().trim().to_string();
+        if id.is_empty() {
+            join_err.set("Enter a game ID to join.".into());
+        } else if resolve_campaign_info(Some(&id)).is_none() {
+            join_err.set(format!("No game found for \u{201c}{id}\u{201d}."));
+        } else {
+            join_err.set(String::new());
+            join_by_id(route, &id, debug);
+        }
+    });
     rsx! {
         div { class: "launcher",
             div { class: "launcher-menu",
@@ -114,19 +128,24 @@ fn MenuView(route: Signal<LauncherRoute>, debug: bool) -> Element {
                     }
                 }
                 div { class: "launcher-joinbyid",
-                    input {
-                        class: "launcher-joininput",
-                        value: "{join_id}",
-                        placeholder: "…or join a multiplayer campaign by ID",
-                        oninput: move |e| { let mut j = join_id; j.set(e.value()); },
-                        onkeydown: move |e| {
-                            if e.key() == Key::Enter { join_by_id(route, join_id().trim(), debug); }
-                        },
+                    p { class: "launcher-joinlabel", "Have a game ID from a host? Join their game:" }
+                    div { class: "launcher-joinrow",
+                        input {
+                            class: "launcher-joininput",
+                            value: "{join_id}",
+                            placeholder: "paste game ID (e.g. covenant~a5f3)",
+                            oninput: move |e| { let mut j = join_id; j.set(e.value()); if !join_err().is_empty() { join_err.set(String::new()); } },
+                            onkeydown: move |e| { if e.key() == Key::Enter { try_join(()); } },
+                        }
+                        button {
+                            class: "launcher-joinbtn",
+                            disabled: join_id().trim().is_empty(),
+                            onclick: move |_| try_join(()),
+                            "Join"
+                        }
                     }
-                    button {
-                        class: "launcher-entry",
-                        onclick: move |_| join_by_id(route, join_id().trim(), debug),
-                        span { class: "launcher-title", "Join by ID" }
+                    if !join_err().is_empty() {
+                        p { class: "launcher-joinerr", "{join_err}" }
                     }
                 }
             }
