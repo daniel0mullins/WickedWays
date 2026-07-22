@@ -307,6 +307,10 @@ pub struct CampaignInfo {
     /// Debug-only: hidden from the launcher menu and not resolvable unless the page has `?debug`
     /// (the demo/conformance campaigns). The shipped campaign (Hollow House) is always visible.
     pub debug: bool,
+    /// Multiplayer: selecting it from the menu **hosts a new room** (a unique `<slug>~<token>` id) with
+    /// this client as GM, and mounts the join lobby. A single-player campaign launches offline
+    /// (`?mode=single`) with no lobby.
+    pub multiplayer: bool,
 }
 
 /// Both surfaces, offered by every bundled campaign (so the surface picker is always reachable).
@@ -323,6 +327,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "",
             surfaces: BOTH_SURFACES,
             debug: true,
+            multiplayer: true,
         },
         CampaignInfo {
             slug: "caretaker",
@@ -332,6 +337,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "",
             surfaces: BOTH_SURFACES,
             debug: true,
+            multiplayer: false,
         },
         CampaignInfo {
             slug: "facade-free-vs-advancing",
@@ -341,6 +347,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "",
             surfaces: BOTH_SURFACES,
             debug: true,
+            multiplayer: false,
         },
         CampaignInfo {
             slug: "status-bar",
@@ -350,6 +357,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "",
             surfaces: BOTH_SURFACES,
             debug: true,
+            multiplayer: false,
         },
         CampaignInfo {
             slug: "hollow-house",
@@ -359,6 +367,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "Enter Hollow House",
             surfaces: BOTH_SURFACES,
             debug: false,
+            multiplayer: false,
         },
         CampaignInfo {
             slug: "covenant",
@@ -368,14 +377,29 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "Join the Covenant",
             surfaces: BOTH_SURFACES,
             debug: false,
+            multiplayer: true,
         },
     ];
     REGISTRY
 }
 
-/// Resolve a `?campaign=` slug to its launcher metadata, or `None` for an absent/unknown slug (→ menu).
+/// The base campaign of a room id: a multiplayer room is `<slug>~<token>` (a unique per-host session),
+/// so `covenant~a5f3` resolves to the `covenant` registry entry. An id with no `~` is its own base.
+pub fn base_campaign(id: &str) -> &str {
+    id.split('~').next().unwrap_or(id)
+}
+
+/// Mint a unique room id for hosting a fresh session of `slug`: `<slug>~<token>`. The token
+/// distinguishes concurrent games so separate hosts don't collide; the server maps it back to `slug`.
+pub fn mint_room_id(slug: &str) -> String {
+    format!("{slug}~{}", random_suffix())
+}
+
+/// Resolve a `?campaign=` value to its launcher metadata, or `None` for an absent/unknown one (→ menu).
+/// Accepts a room id (`<slug>~<token>`) and resolves it to its base campaign, so a shared/hosted room
+/// still shows the right title, surfaces, and welcome.
 pub fn resolve_campaign_info(slug: Option<&str>) -> Option<&'static CampaignInfo> {
-    let slug = slug?;
+    let slug = base_campaign(slug?);
     campaign_registry().iter().find(|c| c.slug == slug)
 }
 
@@ -451,7 +475,9 @@ fn choose(slug: &str, surfaces: &[&str], surface: Option<&str>) -> LauncherRoute
 /// [`choose`]. Mirrors the TS `bootLauncher` boot, plus the `?debug` gate.
 pub fn resolve_route(campaign: Option<&str>, surface: Option<&str>, debug: bool) -> LauncherRoute {
     match resolve_campaign_info(campaign) {
-        Some(info) if visible(info, debug) => choose(info.slug, info.surfaces, surface),
+        // Route on the ORIGINAL id (a room id `<slug>~<token>` stays intact for the connection); the
+        // surfaces/visibility come from its base campaign via `resolve_campaign_info`.
+        Some(info) if visible(info, debug) => choose(campaign.unwrap_or(info.slug), info.surfaces, surface),
         _ => LauncherRoute::Menu,
     }
 }
@@ -592,6 +618,22 @@ mod tests {
                 assert!(surface_info(sid).is_some(), "{}: surface '{sid}' must have metadata", c.slug);
             }
         }
+    }
+
+    #[test]
+    fn a_room_id_resolves_to_its_base_campaign_but_keeps_the_room_in_the_route() {
+        // A hosted/shared room id `<slug>~<token>` resolves to its base campaign's metadata…
+        assert_eq!(base_campaign("covenant~a5f3"), "covenant");
+        assert_eq!(resolve_campaign_info(Some("covenant~a5f3")).map(|c| c.slug), Some("covenant"));
+        // …while the route keeps the FULL room id so the connection targets that specific room.
+        assert_eq!(
+            resolve_route(Some("covenant~a5f3"), Some("crt-terminal"), false),
+            LauncherRoute::Surface { slug: "covenant~a5f3".into(), surface: "crt-terminal".into() }
+        );
+        // A room id with two surfaces and none chosen still routes to the picker (keeping the room id).
+        assert_eq!(resolve_route(Some("covenant~a5f3"), None, false), LauncherRoute::Picker { slug: "covenant~a5f3".into() });
+        // An unknown base still falls back to the menu.
+        assert_eq!(resolve_route(Some("nope~x"), None, false), LauncherRoute::Menu);
     }
 
     #[test]

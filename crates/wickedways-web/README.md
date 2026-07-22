@@ -130,16 +130,25 @@ the sync **delta pushes the new character to every connected client** — no pol
 `SelectArchetype` applies the chosen archetype's statline. Server e2e proves both the round-trip and
 the push (`a_self_join_is_pushed_to_the_other_clients`).
 
-The **multiplayer join lobby** ([`lobby`](src/lobby.rs)) is the pre-game screen the launcher shows for
-any multiplayer campaign before the surface mounts: the player **names their character**, **picks an
-archetype** (from the campaign's `archetypes`, when it has them), and joins; the GM gets a **Start**
-control (`BeginCampaign`); and a live **roster** refreshes off the transport's push signal
+**Hosting vs. joining.** Each `CampaignInfo` carries a `multiplayer` flag. Selecting a **single-player**
+campaign from the menu launches it offline (`?mode=single`, no lobby). Selecting a **multiplayer**
+campaign **hosts a new room**: the launcher mints a unique room id `<slug>~<token>` (`driver::mint_room_id`)
+and makes this client the GM (`token=gm`). Others join that room with the menu's **Join by ID** (as a
+player — a fresh identity). A room id resolves to its base campaign for display/routing
+(`driver::base_campaign` / `resolve_campaign_info`) while the full id rides the connection, and the room
+server maps `<slug>~<token>` back to the base campaign's genesis + catalog (`load_genesis`/`load_catalog`
+try the exact id, then the base). So separate hosts get **isolated games**, each with its own shareable ID.
+
+The **multiplayer join lobby** ([`lobby`](src/lobby.rs)) is the pre-game screen the launcher shows for a
+multiplayer room before the surface mounts. It displays the **Game ID to share**; a player **names their
+character**, **picks an archetype** (from the campaign's `archetypes`, when it has them), and joins; the
+GM gets a **Start** control (`BeginCampaign`), and if a room has no GM present a player can **Start as
+host**. A live **roster** (names resolved from the snapshot) refreshes off the transport's push signal
 ([`WsTransport::push_notifications`]) rather than a poll. Each browser gets a **distinct identity**
-(`driver::ensure_player_identity` — a random `player-XXXX` persisted to `?token=`, or an explicit
-`?token=gm` for the GM). The menu also offers **Join by ID** to deep-link an arbitrary running
-campaign. On "Enter", the lobby hands off to the surface, which reconnects with the same identity so
-the joined seat carries over. The pure pieces (archetype options, building the joining character,
-command sequencing) are host-tested; the Dioxus shell is browser-verified.
+(`driver::ensure_player_identity` — a random `player-XXXX` persisted to `?token=`, or `?token=gm` for the
+GM). On "Enter", the lobby hands off to the surface, which reconnects with the same identity + room so the
+joined seat carries over. The pure pieces (archetype options, building the joining character, command
+sequencing, room-id resolution) are host-tested; the Dioxus shell is browser-verified.
 
 Because the room server previously resolved every campaign against one global catalog, an authored
 multiplayer campaign like The Covenant needs its behaviors server-side: `ServerOptions::catalog_for`

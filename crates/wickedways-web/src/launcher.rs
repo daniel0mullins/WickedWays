@@ -21,8 +21,8 @@ use dioxus::prelude::*;
 
 use crate::crt::crt_app;
 use crate::driver::{
-    clear_params, debug_enabled, menu_campaigns, read_config, read_route, resolve_campaign_info,
-    resolve_route, set_params, surface_info, LauncherRoute, Mode,
+    clear_params, debug_enabled, menu_campaigns, mint_room_id, read_config, read_route,
+    resolve_campaign_info, resolve_route, set_params, surface_info, LauncherRoute, Mode,
 };
 use crate::lobby::MultiplayerLobby;
 use crate::pnc::pnc_app;
@@ -58,9 +58,38 @@ fn navigate(mut route: Signal<LauncherRoute>, next: LauncherRoute) {
             set_params(&[("campaign", slug)]);
             clear_params(&["surface"]);
         }
-        LauncherRoute::Menu => clear_params(&["campaign", "surface", "theme"]),
+        // Returning to the menu also clears the per-selection mode/token so the next pick starts clean
+        // (a previous host's `token=gm` or a single-player `mode=single` must not leak into it).
+        LauncherRoute::Menu => clear_params(&["campaign", "surface", "theme", "mode", "token"]),
     }
     route.set(next);
+}
+
+/// Select a campaign from the menu. A **multiplayer** campaign hosts a fresh room (`<slug>~<token>`)
+/// with this client as GM (`token=gm`); a **single-player** campaign launches offline (`?mode=single`).
+/// Either way the selection's params are set before [`navigate`] so the mounted lobby/surface reads them.
+fn select_campaign(route: Signal<LauncherRoute>, slug: &str, multiplayer: bool, debug: bool) {
+    if multiplayer {
+        set_params(&[("token", "gm")]);
+        clear_params(&["mode"]);
+        let room = mint_room_id(slug);
+        navigate(route, resolve_route(Some(&room), None, debug));
+    } else {
+        set_params(&[("mode", "single")]);
+        clear_params(&["token"]);
+        navigate(route, resolve_route(Some(slug), None, debug));
+    }
+}
+
+/// Join an existing multiplayer room by the id a host shared — as a PLAYER, not the GM. Clears any host
+/// `token=gm` / single-player `mode` so this client joins with a fresh player identity over the wire.
+fn join_by_id(route: Signal<LauncherRoute>, id: &str, debug: bool) {
+    let id = id.trim();
+    if id.is_empty() {
+        return;
+    }
+    clear_params(&["token", "mode"]);
+    navigate(route, resolve_route(Some(id), None, debug));
 }
 
 /// The campaign menu: the shipped Hollow House, plus the debug/conformance campaigns when `?debug`.
@@ -79,7 +108,7 @@ fn MenuView(route: Signal<LauncherRoute>, debug: bool) -> Element {
                     button {
                         key: "{c.slug}",
                         class: "launcher-entry",
-                        onclick: move |_| navigate(route, resolve_route(Some(c.slug), None, debug)),
+                        onclick: move |_| select_campaign(route, c.slug, c.multiplayer, debug),
                         span { class: "launcher-title", "{c.title}" }
                         span { class: "launcher-blurb", "{c.blurb}" }
                     }
@@ -91,18 +120,12 @@ fn MenuView(route: Signal<LauncherRoute>, debug: bool) -> Element {
                         placeholder: "…or join a multiplayer campaign by ID",
                         oninput: move |e| { let mut j = join_id; j.set(e.value()); },
                         onkeydown: move |e| {
-                            if e.key() == Key::Enter {
-                                let id = join_id().trim().to_string();
-                                if !id.is_empty() { navigate(route, LauncherRoute::Surface { slug: id, surface: "crt-terminal".into() }); }
-                            }
+                            if e.key() == Key::Enter { join_by_id(route, join_id().trim(), debug); }
                         },
                     }
                     button {
                         class: "launcher-entry",
-                        onclick: move |_| {
-                            let id = join_id().trim().to_string();
-                            if !id.is_empty() { navigate(route, LauncherRoute::Surface { slug: id, surface: "crt-terminal".into() }); }
-                        },
+                        onclick: move |_| join_by_id(route, join_id().trim(), debug),
                         span { class: "launcher-title", "Join by ID" }
                     }
                 }

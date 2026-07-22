@@ -99,22 +99,51 @@ async fn main() {
     }
 }
 
-/// Loads `<dir>/<id>.json` as a genesis snapshot, or `None` if absent/unreadable. Rejects any id that
-/// could escape `dir` (path traversal), since the id comes from the wire.
-fn load_genesis(dir: &str, id: &str) -> Option<CampaignSnapshot> {
-    if id.is_empty() || id.contains('/') || id.contains('\\') || id.contains("..") {
-        return None;
-    }
-    let path = std::path::Path::new(dir).join(format!("{id}.json"));
-    serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()
+/// The base campaign an id belongs to: a **room id** is `<base>~<token>` (a unique per-host session of
+/// `<base>`), so `covenant~a5f3` shares the `covenant` genesis/catalog. An id with no `~` is its own
+/// base. This is how a GM's shareable room id resolves to a seeded campaign.
+fn base_campaign(id: &str) -> &str {
+    id.split('~').next().unwrap_or(id)
 }
 
-/// Loads a campaign's own catalog from `<dir>/<id>.catalog.json`, or `None` if absent/unreadable (→
-/// the server's shared catalog). Same path-traversal guard as [`load_genesis`]: the id is off the wire.
-fn load_catalog(dir: &str, id: &str) -> Option<Catalog> {
+/// Read + parse `<dir>/<key>.<suffix>` for the id, trying the exact id first, then its
+/// [`base_campaign`] (so an unseeded per-host room id resolves to its base). Rejects any id that could
+/// escape `dir` (path traversal), since the id comes from the wire.
+fn read_campaign_file<T: serde::de::DeserializeOwned>(dir: &str, id: &str, suffix: &str) -> Option<T> {
     if id.is_empty() || id.contains('/') || id.contains('\\') || id.contains("..") {
         return None;
     }
-    let path = std::path::Path::new(dir).join(format!("{id}.catalog.json"));
-    serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()
+    for key in [id, base_campaign(id)] {
+        let path = std::path::Path::new(dir).join(format!("{key}.{suffix}"));
+        if let Ok(s) = std::fs::read_to_string(&path) {
+            if let Ok(v) = serde_json::from_str(&s) {
+                return Some(v);
+            }
+        }
+    }
+    None
+}
+
+/// Loads a genesis snapshot for a room id (exact, else its base campaign), or `None`.
+fn load_genesis(dir: &str, id: &str) -> Option<CampaignSnapshot> {
+    read_campaign_file(dir, id, "json")
+}
+
+/// Loads a campaign's own catalog (exact id, else its base campaign), or `None` (→ the server's shared
+/// catalog).
+fn load_catalog(dir: &str, id: &str) -> Option<Catalog> {
+    read_campaign_file(dir, id, "catalog.json")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::base_campaign;
+
+    #[test]
+    fn base_campaign_strips_the_per_host_room_token() {
+        assert_eq!(base_campaign("covenant"), "covenant");
+        assert_eq!(base_campaign("covenant~a5f3"), "covenant");
+        assert_eq!(base_campaign("covenant~a~b"), "covenant", "only the first segment is the base");
+        assert_eq!(base_campaign("demo"), "demo");
+    }
 }

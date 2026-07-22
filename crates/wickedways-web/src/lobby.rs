@@ -167,8 +167,22 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
     let you_are_gm = roster().gm.as_ref().is_some_and(|g| g.identity == identity);
     let gm_online = roster().gm.as_ref().is_some_and(|g| g.online);
     let can_enter = started() && (you_joined() || you_are_gm);
-    let seats = roster().seats;
     let players = roster().players;
+    // Resolve each seat's character id to its display name from the snapshot, so the roster reads
+    // "Rowan" rather than the raw "player:player-xxxx" id.
+    let snap = snapshot();
+    let seat_rows: Vec<(String, Option<String>, bool)> = roster()
+        .seats
+        .iter()
+        .map(|s| {
+            let name = snap
+                .as_ref()
+                .and_then(|sn| sn.characters.iter().find(|c| c.id.0 == s.character_id))
+                .map(|c| c.name.clone())
+                .unwrap_or_else(|| s.character_id.clone());
+            (name, s.owner.clone(), s.online)
+        })
+        .collect();
 
     // Submit the join: build a bare character from the snapshot, then the join (+ archetype) commands.
     let do_join = {
@@ -211,6 +225,12 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
             div { class: "lobby-card",
                 h1 { class: "lobby-title", "{welcome.title}" }
                 p { class: "lobby-status", "{status}" }
+
+                // The room id the GM hands out — others paste it into the menu's "Join by ID".
+                div { class: "lobby-share",
+                    span { class: "lobby-label", "Game ID — share so others can Join by ID" }
+                    code { class: "lobby-id", "{slug}" }
+                }
 
                 if !started() {
                     if you_joined() {
@@ -265,14 +285,14 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
 
                 div { class: "lobby-roster",
                     h2 { class: "lobby-subtitle", "In the sanctum" }
-                    if seats.is_empty() && players.is_empty() {
+                    if seat_rows.is_empty() && players.is_empty() {
                         p { class: "lobby-note", "No one has taken a seat yet." }
                     }
-                    for s in seats {
+                    for (name, owner, online) in seat_rows {
                         div { class: "lobby-seat",
-                            span { class: "lobby-dot", class: if s.online { "on" } else { "off" } }
-                            span { "{s.character_id}" }
-                            span { class: "lobby-owner", { if let Some(o) = &s.owner { format!("— {o}") } else { "— open".into() } } }
+                            span { class: "lobby-dot", class: if online { "on" } else { "off" } }
+                            span { "{name}" }
+                            span { class: "lobby-owner", { if owner.is_some() { "— joined" } else { "— open" } } }
                         }
                     }
                 }
