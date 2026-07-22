@@ -37,10 +37,14 @@ pub fn launcher_app() -> Element {
     let debug = use_hook(debug_enabled);
     rsx! {
         style { "{LAUNCHER_CSS}" }
+        // `MenuView` / `SurfaceView` are components (not inline calls) so their hooks live in their own
+        // scopes — the `match` mounts/unmounts them by route without perturbing this shell's hook order
+        // (calling a hook-bearing fn conditionally here would violate the rules of hooks). `picker_view`
+        // has no hooks, so it stays a plain builder.
         match route() {
-            LauncherRoute::Menu => menu_view(route, debug),
+            LauncherRoute::Menu => rsx! { MenuView { route, debug } },
             LauncherRoute::Picker { slug } => picker_view(slug, route),
-            LauncherRoute::Surface { slug, surface } => surface_view(slug, surface, route),
+            LauncherRoute::Surface { slug, surface } => rsx! { SurfaceView { slug, surface, route } },
         }
     }
 }
@@ -60,8 +64,11 @@ fn navigate(mut route: Signal<LauncherRoute>, next: LauncherRoute) {
 }
 
 /// The campaign menu: the shipped Hollow House, plus the debug/conformance campaigns when `?debug`.
-/// Selecting one follows [`resolve_route`] (straight to the surface, or the picker if it offers ≥ 2).
-fn menu_view(route: Signal<LauncherRoute>, debug: bool) -> Element {
+/// Selecting one follows [`resolve_route`] (straight to the surface, or the picker if it offers ≥ 2). A
+/// component (not an inline builder) because it owns a hook (`join_id`) — see the `match` in
+/// [`launcher_app`].
+#[component]
+fn MenuView(route: Signal<LauncherRoute>, debug: bool) -> Element {
     let join_id = use_signal(String::new);
     rsx! {
         div { class: "launcher",
@@ -145,8 +152,10 @@ fn picker_view(slug: String, route: Signal<LauncherRoute>) -> Element {
 /// on `campaign+surface` so switching either remounts a fresh surface session. In multiplayer, the
 /// [`MultiplayerLobby`] gates the surface first — the player joins a character (name + archetype) and
 /// the GM starts — and `on_enter` hands off to the actual surface (which reconnects with the same
-/// identity, so the joined seat carries over).
-fn surface_view(slug: String, surface: String, route: Signal<LauncherRoute>) -> Element {
+/// identity, so the joined seat carries over). A component (not an inline builder) because it owns
+/// hooks (`mode`, `entered`) — see the `match` in [`launcher_app`].
+#[component]
+fn SurfaceView(slug: String, surface: String, route: Signal<LauncherRoute>) -> Element {
     let mode = use_hook(|| read_config().mode);
     let mut entered = use_signal(|| false);
     let key = format!("{slug}-{surface}");
