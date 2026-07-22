@@ -6,8 +6,11 @@
 //! - `PORT`         — listen port (default `8080`).
 //! - `DB_PATH`      — SQLite path for durable campaigns; unset/empty ⇒ **ephemeral** (in-memory).
 //! - `GM_IDENTITY`  — the GM identity seeded into a fresh campaign's membership (default `gm`).
-//! - `GENESIS_DIR`  — directory of `<campaignId>.json` genesis snapshots (default `./genesis`).
-//! - `CATALOG_PATH` — optional JSON [`Catalog`] the authority resolves item behaviour against.
+//! - `GENESIS_DIR`  — directory of `<campaignId>.json` genesis snapshots (default `./genesis`). A
+//!   campaign may ship its own `<campaignId>.catalog.json` beside its genesis; that per-campaign
+//!   catalog resolves its authored behaviours (victory scripts, item/exit/mechanic bodies), so one
+//!   server can host several authored campaigns. Absent ⇒ the shared `CATALOG_PATH` catalog.
+//! - `CATALOG_PATH` — optional JSON [`Catalog`], the shared default when a campaign ships no catalog.
 //! - `WEB_DIR`      — directory of the bundled Dioxus web client served as a fallback under `/ws` (default `./dist`; empty ⇒ off). Unmatched paths fall back to `index.html` so `?campaign=…`/`?surface=…` deep-links load.
 //!
 //! `verify_token` here is the development default (identity = the token string, empty rejected) —
@@ -49,10 +52,15 @@ async fn main() {
         _ => Catalog::default(),
     };
 
+    // A campaign may ship its own catalog beside its genesis (`<id>.catalog.json`), so several
+    // authored campaigns (each with their own victory/item/mechanic behaviors) can be hosted at once.
+    // Absent → the shared `CATALOG_PATH` catalog above.
+    let genesis_dir_for_catalog = genesis_dir.clone();
     let opts = ServerOptions {
         verify_token: Box::new(|t: &str| (!t.is_empty()).then(|| t.to_string())),
         gm_identity_for: Box::new(move |_| gm_identity.clone()),
         genesis_for: Box::new(move |id: &str| load_genesis(&genesis_dir, id)),
+        catalog_for: Some(Box::new(move |id: &str| load_catalog(&genesis_dir_for_catalog, id))),
         display_name_for: None,
         catalog,
         store,
@@ -98,5 +106,15 @@ fn load_genesis(dir: &str, id: &str) -> Option<CampaignSnapshot> {
         return None;
     }
     let path = std::path::Path::new(dir).join(format!("{id}.json"));
+    serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()
+}
+
+/// Loads a campaign's own catalog from `<dir>/<id>.catalog.json`, or `None` if absent/unreadable (→
+/// the server's shared catalog). Same path-traversal guard as [`load_genesis`]: the id is off the wire.
+fn load_catalog(dir: &str, id: &str) -> Option<Catalog> {
+    if id.is_empty() || id.contains('/') || id.contains('\\') || id.contains("..") {
+        return None;
+    }
+    let path = std::path::Path::new(dir).join(format!("{id}.catalog.json"));
     serde_json::from_str(&std::fs::read_to_string(path).ok()?).ok()
 }

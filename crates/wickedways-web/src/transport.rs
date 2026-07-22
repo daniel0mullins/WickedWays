@@ -22,6 +22,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use futures_channel::mpsc;
 use futures_channel::oneshot;
 use serde_json::Value;
 use wasm_bindgen::prelude::*;
@@ -30,9 +31,19 @@ use web_sys::{MessageEvent, WebSocket};
 
 use wickedways_core::sync::{Command, Delta, LogEntry, SubmitResult, SyncTransport};
 use wickedways_core::CampaignSnapshot;
-use wickedways_transport::{ClientMsg, ServerMsg, WireLogEntry};
+use wickedways_transport::{ClientMsg, GmPresence, PlayerEntry, PresenceEntry, ServerMsg, WireLogEntry};
 
 use crate::mirror::Mirror;
+
+/// The live lobby roster the transport absorbs from the server's `presence`/`players` pushes: each
+/// seat's owner + online state, the GM's identity, and the connected players. Read via
+/// [`WsTransport::roster`] and refreshed as the server rebroadcasts — no polling.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Roster {
+    pub seats: Vec<PresenceEntry>,
+    pub gm: Option<GmPresence>,
+    pub players: Vec<PlayerEntry>,
+}
 
 /// Shared mutable state between the app and the socket's message callback.
 struct Inner {
@@ -42,6 +53,12 @@ struct Inner {
     pending_submit: Option<(oneshot::Sender<SubmitResult>, Command)>,
     head_waiters: Vec<(u64, oneshot::Sender<()>)>,
     auth_error: Option<String>,
+    /// Latest `presence`/`players` roster, kept fresh as the server rebroadcasts.
+    roster: Roster,
+    /// A UI wake-up channel: every applied push (a log `entry` or a `presence`/`players` update) sends
+    /// a tick so a subscriber can re-read state, so the lobby/surface reacts to server pushes without
+    /// polling. `None` until a consumer registers via [`WsTransport::push_notifications`].
+    push_tx: Option<mpsc::UnboundedSender<()>>,
 }
 
 impl Inner {
@@ -53,6 +70,15 @@ impl Inner {
             pending_submit: None,
             head_waiters: Vec::new(),
             auth_error: None,
+            roster: Roster::default(),
+            push_tx: None,
+        }
+    }
+
+    /// Wake any registered push subscriber (best-effort; a closed receiver is dropped).
+    fn notify_push(&self) {
+        if let Some(tx) = &self.push_tx {
+            let _ = tx.unbounded_send(());
         }
     }
 
@@ -90,6 +116,8 @@ fn handle_message(inner: &Rc<RefCell<Inner>>, text: &str) {
         ServerMsg::Entry { entry } => {
             let _ = b.mirror.apply_wire_entry(&entry);
             b.check_head_waiters();
+            // A pushed entry (another client's action, or a join) changed the world — wake the UI.
+            b.notify_push();
         }
         ServerMsg::Committed { seq, delta } => {
             if let Some((w, command)) = b.pending_submit.take() {
@@ -110,6 +138,9 @@ fn handle_message(inner: &Rc<RefCell<Inner>>, text: &str) {
                     }
                 }
                 b.check_head_waiters();
+                // Our own committed action changed the world too — wake the UI (the lobby refreshes
+                // its roster / started state off the same push signal as external entries).
+                b.notify_push();
             }
         }
         ServerMsg::Denied { reason } => {
@@ -128,7 +159,16 @@ fn handle_message(inner: &Rc<RefCell<Inner>>, text: &str) {
                 }
             }
         }
-        // presence/roster route to callbacks in a later slice; chat/AV are E.
+        ServerMsg::Presence { seats, gm, .. } => {
+            b.roster.seats = seats;
+            b.roster.gm = Some(gm);
+            b.notify_push();
+        }
+        ServerMsg::Players { players, .. } => {
+            b.roster.players = players;
+            b.notify_push();
+        }
+        // chat/AV are sub-project E.
         _ => {}
     }
 }
@@ -235,6 +275,22 @@ impl WsTransport {
         };
         send(&self.ws, &ClientMsg::Submit { campaign_id: self.campaign_id.clone(), command: command_value });
         rx.await.unwrap_or(SubmitResult::Denied { reason: "connection lost".into() })
+    }
+
+    /// The latest lobby roster (seat ownership + online + GM + connected players), as pushed by the
+    /// server. Snapshot-in-time; combine with [`push_notifications`](Self::push_notifications) to
+    /// refresh on change.
+    pub fn roster(&self) -> Roster {
+        self.inner.borrow().roster.clone()
+    }
+
+    /// A stream that ticks whenever the server pushes a change (a committed log `entry` from another
+    /// client, or a `presence`/`players` update). Lets the lobby/surface re-read state reactively
+    /// instead of polling. Registering replaces any previous subscriber.
+    pub fn push_notifications(&self) -> mpsc::UnboundedReceiver<()> {
+        let (tx, rx) = mpsc::unbounded();
+        self.inner.borrow_mut().push_tx = Some(tx);
+        rx
     }
 
     /// Closes the socket (teardown).

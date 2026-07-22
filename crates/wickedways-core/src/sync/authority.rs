@@ -188,6 +188,7 @@ fn apply_command(
         }
         Command::TransferGm { character_id } => world.transfer_gm(character_id),
         Command::LeaveCampaign { character_id } => world.leave_campaign(character_id),
+        Command::JoinCampaign { character } => world.join_campaign((**character).clone()),
         Command::BeginCampaign => world.begin_campaign(cat, &mut cues),
         Command::EndCampaign => world.end_campaign(&mut cues),
         Command::NextPlayer => world.next_player(cat, &mut cues),

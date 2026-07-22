@@ -21,9 +21,10 @@ use dioxus::prelude::*;
 
 use crate::crt::crt_app;
 use crate::driver::{
-    clear_params, debug_enabled, menu_campaigns, read_route, resolve_campaign_info, resolve_route,
-    set_params, surface_info, LauncherRoute,
+    clear_params, debug_enabled, menu_campaigns, read_config, read_route, resolve_campaign_info,
+    resolve_route, set_params, surface_info, LauncherRoute, Mode,
 };
+use crate::lobby::MultiplayerLobby;
 use crate::pnc::pnc_app;
 
 const LAUNCHER_CSS: &str = include_str!("../assets/launcher.css");
@@ -61,6 +62,7 @@ fn navigate(mut route: Signal<LauncherRoute>, next: LauncherRoute) {
 /// The campaign menu: the shipped Hollow House, plus the debug/conformance campaigns when `?debug`.
 /// Selecting one follows [`resolve_route`] (straight to the surface, or the picker if it offers ≥ 2).
 fn menu_view(route: Signal<LauncherRoute>, debug: bool) -> Element {
+    let join_id = use_signal(String::new);
     rsx! {
         div { class: "launcher",
             div { class: "launcher-menu",
@@ -73,6 +75,28 @@ fn menu_view(route: Signal<LauncherRoute>, debug: bool) -> Element {
                         onclick: move |_| navigate(route, resolve_route(Some(c.slug), None, debug)),
                         span { class: "launcher-title", "{c.title}" }
                         span { class: "launcher-blurb", "{c.blurb}" }
+                    }
+                }
+                div { class: "launcher-joinbyid",
+                    input {
+                        class: "launcher-joininput",
+                        value: "{join_id}",
+                        placeholder: "…or join a multiplayer campaign by ID",
+                        oninput: move |e| { let mut j = join_id; j.set(e.value()); },
+                        onkeydown: move |e| {
+                            if e.key() == Key::Enter {
+                                let id = join_id().trim().to_string();
+                                if !id.is_empty() { navigate(route, LauncherRoute::Surface { slug: id, surface: "crt-terminal".into() }); }
+                            }
+                        },
+                    }
+                    button {
+                        class: "launcher-entry",
+                        onclick: move |_| {
+                            let id = join_id().trim().to_string();
+                            if !id.is_empty() { navigate(route, LauncherRoute::Surface { slug: id, surface: "crt-terminal".into() }); }
+                        },
+                        span { class: "launcher-title", "Join by ID" }
                     }
                 }
             }
@@ -118,9 +142,15 @@ fn picker_view(slug: String, route: Signal<LauncherRoute>) -> Element {
 }
 
 /// The mounted surface, with the launcher's floating "back to campaigns" chrome layered over it. Keyed
-/// on `campaign+surface` so switching either remounts a fresh surface session.
+/// on `campaign+surface` so switching either remounts a fresh surface session. In multiplayer, the
+/// [`MultiplayerLobby`] gates the surface first — the player joins a character (name + archetype) and
+/// the GM starts — and `on_enter` hands off to the actual surface (which reconnects with the same
+/// identity, so the joined seat carries over).
 fn surface_view(slug: String, surface: String, route: Signal<LauncherRoute>) -> Element {
+    let mode = use_hook(|| read_config().mode);
+    let mut entered = use_signal(|| false);
     let key = format!("{slug}-{surface}");
+    let in_lobby = matches!(mode, Mode::Multi) && !entered();
     rsx! {
         button {
             class: "launcher-exit",
@@ -128,9 +158,13 @@ fn surface_view(slug: String, surface: String, route: Signal<LauncherRoute>) -> 
             onclick: move |_| navigate(route, LauncherRoute::Menu),
             "☰"
         }
-        match surface.as_str() {
-            "point-and-click" => rsx! { PncSurface { key: "{key}" } },
-            _ => rsx! { CrtSurface { key: "{key}" } },
+        if in_lobby {
+            MultiplayerLobby { key: "lobby-{slug}", slug: slug.clone(), on_enter: move |_| entered.set(true) }
+        } else {
+            match surface.as_str() {
+                "point-and-click" => rsx! { PncSurface { key: "{key}" } },
+                _ => rsx! { CrtSurface { key: "{key}" } },
+            }
         }
     }
 }

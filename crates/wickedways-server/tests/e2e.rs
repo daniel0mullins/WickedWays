@@ -32,6 +32,7 @@ async fn start_server() -> u16 {
         verify_token: Box::new(|t: &str| (!t.is_empty()).then(|| t.to_string())),
         gm_identity_for: Box::new(|_| "gm".to_string()),
         genesis_for: Box::new(move |id: &str| (id == "demo").then(|| g.clone())),
+        catalog_for: None,
         display_name_for: None,
         catalog: Catalog::default(),
         store: None,
@@ -99,6 +100,140 @@ impl Client {
 
 fn delta_from(value: Value) -> Delta {
     serde_json::from_value(value).expect("delta")
+}
+
+fn covenant_genesis() -> CampaignSnapshot {
+    let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../conformance/fixtures/covenant.genesis.json");
+    serde_json::from_str(&std::fs::read_to_string(&p).expect("read covenant genesis")).expect("parse")
+}
+
+fn covenant_catalog() -> Catalog {
+    let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../conformance/fixtures/covenant.catalog.json");
+    serde_json::from_str(&std::fs::read_to_string(&p).expect("read covenant catalog")).expect("parse")
+}
+
+/// Binds a room server seeding the multiplayer Covenant campaign. `with_catalog` mirrors the
+/// deployment's per-campaign catalog wiring: when true, `catalog_for` supplies the campaign's own
+/// catalog (which carries the `twin-wards-held` scripted victory); when false, the authority falls back
+/// to the empty shared catalog (which does not).
+async fn start_covenant_server(with_catalog: bool) -> u16 {
+    let g = covenant_genesis();
+    let cat = covenant_catalog();
+    let catalog_for: Option<wickedways_server::server::CatalogFor> = if with_catalog {
+        Some(Box::new(move |id: &str| (id == "covenant").then(|| cat.clone())))
+    } else {
+        None
+    };
+    let opts = ServerOptions {
+        verify_token: Box::new(|t: &str| (!t.is_empty()).then(|| t.to_string())),
+        gm_identity_for: Box::new(|_| "gm".to_string()),
+        genesis_for: Box::new(move |id: &str| (id == "covenant").then(|| g.clone())),
+        catalog_for,
+        display_name_for: None,
+        catalog: Catalog::default(),
+        store: None,
+        rng_seed: None,
+    };
+    let app = router(RoomServer::new(opts));
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
+    let port = listener.local_addr().expect("addr").port();
+    tokio::spawn(async move {
+        axum::serve(listener, app).await.expect("serve");
+    });
+    port
+}
+
+/// A `joinCampaign` command carrying a fresh Warden built from the genesis's GM host as a field
+/// template (so every tail field is valid), with a new id/name and no archetype yet — the wire form of
+/// a player naming their character and joining.
+fn warden_join_command(id: &str, name: &str) -> Value {
+    let genesis = serde_json::to_value(covenant_genesis()).expect("genesis to value");
+    let mut character = genesis["characters"][0].clone();
+    character["id"] = json!(id);
+    character["name"] = json!(name);
+    character["archetypeId"] = Value::Null;
+    json!({ "kind": "joinCampaign", "character": character })
+}
+
+/// A player self-joins the Covenant over the socket, and the join is PUSHED to the already-connected
+/// GM as a log entry carrying the newly-created character — the "server replicates the new snapshot via
+/// a websocket push, not a poll" contract. The joiner owns its new seat (the server claims it on the
+/// join commit), so it could then act as that character.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_self_join_is_pushed_to_the_other_clients() {
+    let port = start_covenant_server(true).await;
+
+    // The GM is already in the room and caught up to the head.
+    let mut gm = Client::connect(port).await;
+    let _ = gm.join_and_seed("covenant", "gm").await;
+
+    // A player connects and self-joins their own named Warden.
+    let mut rowan = Client::connect(port).await;
+    let _ = rowan.join_and_seed("covenant", "rowan").await;
+    rowan
+        .send(ClientMsg::Submit { campaign_id: "covenant".into(), command: warden_join_command("player:Rowan", "Rowan") })
+        .await;
+
+    // The joiner's own submit is acknowledged as committed…
+    let committed = rowan.recv_until("join committed", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
+    assert!(matches!(committed, ServerMsg::Committed { .. }), "join should commit, got {committed:?}");
+
+    // …and the GM — who took no action — is PUSHED the same join as a log entry whose delta creates
+    // the new character. No polling: the server replicated it over the live subscription.
+    let entry = gm.recv_until("pushed join entry", |m| matches!(m, ServerMsg::Entry { .. })).await;
+    let ServerMsg::Entry { entry } = entry else { unreachable!() };
+    // A created entity rides as `{ "type": "character", "data": { ...snapshot } }`.
+    let created = entry.delta["created"].as_array().cloned().unwrap_or_default();
+    assert!(
+        created.iter().any(|e| e["data"]["id"] == json!("player:Rowan")),
+        "the pushed delta creates the joined character, got created={created:?}",
+    );
+}
+
+/// The GM begins the Covenant and advances past the lone seat so the round wraps — which runs the
+/// campaign's victory resolver. With the campaign's own catalog wired in via `catalog_for`, the
+/// `twin-wards-held` scripted victory resolves (to `false`, since no one holds a ward yet), so the
+/// round-wrapping `nextPlayer` COMMITS. End-to-end proof that a per-campaign catalog reaches the room
+/// server's authority — the plumbing an authored multiplayer campaign needs.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn covenant_round_resolves_with_its_per_campaign_catalog() {
+    let port = start_covenant_server(true).await;
+    let mut gm = Client::connect(port).await;
+    let _ = gm.join_and_seed("covenant", "gm").await;
+
+    gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "beginCampaign" }) }).await;
+    let begun = gm.recv_until("begin committed", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
+    assert!(matches!(begun, ServerMsg::Committed { .. }), "beginCampaign should commit, got {begun:?}");
+
+    // The lone GM seat: a single nextPlayer wraps the round → resolve_outcome runs the victory.
+    gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "nextPlayer" }) }).await;
+    let wrap = gm.recv_until("wrap", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
+    assert!(
+        matches!(wrap, ServerMsg::Committed { .. }),
+        "the round-wrap resolves twin-wards-held and commits, got {wrap:?}",
+    );
+}
+
+/// The negative control: WITHOUT the campaign's catalog, the authority resolves against the empty
+/// shared catalog, so the round-wrapping `nextPlayer` — which forces the victory resolver to look up
+/// `twin-wards-held` — is DENIED (no such condition registered). This is what `catalog_for` fixes.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn without_its_catalog_the_covenant_round_wrap_is_denied() {
+    let port = start_covenant_server(false).await;
+    let mut gm = Client::connect(port).await;
+    let _ = gm.join_and_seed("covenant", "gm").await;
+
+    gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "beginCampaign" }) }).await;
+    let _ = gm.recv_until("begin", |m| matches!(m, ServerMsg::Committed { .. })).await;
+
+    gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "nextPlayer" }) }).await;
+    let wrap = gm.recv_until("wrap", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
+    assert!(
+        matches!(wrap, ServerMsg::Denied { .. }),
+        "without its catalog the round-wrap can't resolve twin-wards-held, got {wrap:?}",
+    );
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

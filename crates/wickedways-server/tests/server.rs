@@ -34,6 +34,7 @@ fn server(store: Option<Arc<dyn CampaignStore>>) -> Arc<RoomServer> {
         verify_token: Box::new(|t: &str| (!t.is_empty()).then(|| t.to_string())),
         gm_identity_for: Box::new(|_| "gm".to_string()),
         genesis_for: Box::new(move |id: &str| (id == "demo").then(|| g.clone())),
+        catalog_for: None,
         display_name_for: None,
         catalog: Catalog::default(),
         store,
