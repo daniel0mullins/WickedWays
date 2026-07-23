@@ -171,6 +171,19 @@ pub fn crt_app() -> Element {
                                     }
                                     None
                                 }
+                                // Opening a container is a local reveal: list its contents from the
+                                // current view (the items are already takeable from room scope).
+                                ParseResult::Intent(Intent::Open { target_id }) => {
+                                    if let Some(v) = &view {
+                                        let lines = narrator.write().render_action(
+                                            &Intent::Open { target_id },
+                                            v,
+                                            v,
+                                        );
+                                        narration.write().extend(lines);
+                                    }
+                                    None
+                                }
                                 ParseResult::Intent(intent) => match intent_to_command(coord.replica(), &intent) {
                                     Ok(cmd) => {
                                         intent_for_narration = Some(intent);

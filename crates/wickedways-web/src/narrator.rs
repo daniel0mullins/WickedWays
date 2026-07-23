@@ -12,7 +12,6 @@ use wickedways_core::presentation::PresentationCue;
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::submit::MobAttack;
 use wickedways_core::world::view::{ScopeEntity, ViewModel};
-use wickedways_core::StatType;
 
 use crate::parser::Query;
 
@@ -238,14 +237,9 @@ impl Narrator {
     /// Renders incoming mob strikes, each naming the stat lost so the player sees what kind of harm
     /// landed (Sanity vs Health vs Energy).
     pub fn render_mob_attacks(&self, attacks: &[MobAttack]) -> Vec<String> {
-        attacks
-            .iter()
-            .map(|a| match a.stat {
-                StatType::Sanity => format!("The {} claws at your mind — you lose {} Sanity.", a.name, a.amount),
-                StatType::Energy => format!("The {} saps your strength — you lose {} Energy.", a.name, a.amount),
-                StatType::Health => format!("The {} tears into you — you lose {} Health.", a.name, a.amount),
-            })
-            .collect()
+        // Shares the single prose source with the solo turn loop (which emits the same lines as
+        // mechanic cues); see `MobAttack::narration`.
+        attacks.iter().map(|a| a.narration()).collect()
     }
 }
 
@@ -270,6 +264,7 @@ mod tests {
     use wickedways_core::world::direction::Direction;
     use wickedways_core::world::view::{ExitView, Inventory, LootView, StatusView, ThinRoom};
     use wickedways_core::presentation::CampaignOutcome;
+    use wickedways_core::StatType;
 
     fn entity(id: &str, name: &str, kind: &str) -> ScopeEntity {
         ScopeEntity {

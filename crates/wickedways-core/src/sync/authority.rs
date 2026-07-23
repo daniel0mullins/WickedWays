@@ -23,7 +23,7 @@ use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ProceduralViolation;
-use crate::presentation::PresentationCue;
+use crate::presentation::{MechanicCue, PresentationCue};
 use crate::world::descriptor::Catalog;
 use crate::world::snapshot::CampaignSnapshot;
 use crate::world::World;
@@ -59,11 +59,17 @@ pub struct AuthorityOpts {
     pub snapshot_every: u64,
     /// The seq the log starts above (for resuming a persisted campaign). Default 0.
     pub start_seq: u64,
+    /// Solo mode: run the full single-player turn loop (`start_turn` → action → mob reactions →
+    /// `next_player`) around each time-advancing command, mirroring the TS `GameSession.execute`.
+    /// The offline single-player host sets this; the multiplayer room server leaves it `false` (turn
+    /// advancement and mob strikes are the GM's explicit `nextPlayer`/`mobAttack` there). Default
+    /// `false`.
+    pub solo: bool,
 }
 
 impl Default for AuthorityOpts {
     fn default() -> Self {
-        AuthorityOpts { snapshot_every: 20, start_seq: 0 }
+        AuthorityOpts { snapshot_every: 20, start_seq: 0, solo: false }
     }
 }
 
@@ -76,6 +82,7 @@ pub struct SyncAuthority {
     checkpoint: (u64, CampaignSnapshot),
     snapshot_every: u64,
     start_seq: u64,
+    solo: bool,
 }
 
 impl SyncAuthority {
@@ -89,6 +96,7 @@ impl SyncAuthority {
             checkpoint,
             snapshot_every: opts.snapshot_every.max(1),
             start_seq: opts.start_seq,
+            solo: opts.solo,
         }
     }
 
@@ -126,7 +134,7 @@ impl SyncAuthority {
         // direct clone is guaranteed faithful, where a snapshot round-trip need not be.
         let backup = self.world.clone();
         let before = self.world.to_snapshot();
-        let cues = match apply_command(&mut self.world, &command, &self.catalog) {
+        let cues = match apply_command(&mut self.world, &command, &self.catalog, self.solo) {
             Ok(cues) => cues,
             Err(v) => {
                 self.world = backup;
@@ -148,62 +156,110 @@ impl SyncAuthority {
     }
 }
 
-/// Dispatches an authorized command to the engine. Mirrors `resolver.ts` `apply` for the supported
-/// subset; the engine resolves ids internally, so no separate entity index is needed. Returns the
-/// presentation cues the command produced (e.g. campaign `Status` readouts), which [`submit`] carries
-/// on the delta. Unsupported command kinds return a [`ProceduralViolation`] (the caller turns it into
-/// a clean denial).
+/// Resolves an authorized command against the engine and returns its presentation cues (which
+/// [`submit`] carries on the delta).
+///
+/// In `solo` mode a **time-advancing** command runs the full single-player turn loop, mirroring the
+/// TS `GameSession.execute` (`session.ts:116-140`): `start_turn` (affliction tick + dread + budget
+/// reset) → the action → light-tied mob reactions → `next_player` (round advance + outcome). Free
+/// commands (talk/equip/unequip) and the whole multiplayer path (`solo == false`) resolve the action
+/// alone — turn advancement and mob strikes are the GM's explicit `nextPlayer`/`mobAttack` there.
 fn apply_command(
     world: &mut World,
     command: &Command,
     cat: &Catalog,
+    solo: bool,
 ) -> Result<Vec<PresentationCue>, ProceduralViolation> {
     let mut cues: Vec<PresentationCue> = Vec::new();
+    if solo && command.is_time_advancing() {
+        // The active character is the actor (authorize enforced it). Wrap the action in the solo
+        // turn loop so single-player play keeps its per-turn machinery over the sync transport.
+        let actor = world.active_character_id()?;
+        world.start_turn(&actor, cat, &mut cues)?;
+        apply_action(world, command, cat, &mut cues)?;
+        // Light-tied initiative (movement.rs): a time-advancing MOVE into a LIT room gets the drop —
+        // no mob reactions. Every other advancing action (and moving into the dark) provokes.
+        let entered_lit = matches!(command, Command::Move { .. })
+            && world
+                .characters
+                .get(&actor)
+                .and_then(|c| c.current_room_id.clone())
+                .map(|rid| world.is_lit(&rid, cat))
+                .unwrap_or(false);
+        if !entered_lit {
+            let attacks = world.run_mob_reactions(&actor, cat, &mut cues);
+            // Surface each strike as prose (the wire carries no `MobAttack` list); the HUD already
+            // reflects the stat loss from the delta.
+            for attack in &attacks {
+                cues.push(PresentationCue::Mechanic {
+                    cue: MechanicCue { text: Some(attack.narration()), sound: None },
+                });
+            }
+        }
+        world.next_player(cat, &mut cues)?;
+        return Ok(cues);
+    }
+    apply_action(world, command, cat, &mut cues)?;
+    Ok(cues)
+}
+
+/// Dispatches an authorized command to the engine. Mirrors `resolver.ts` `apply` for the supported
+/// subset; the engine resolves ids internally, so no separate entity index is needed. Fills `cues`
+/// with what the action produced. Unsupported command kinds return a [`ProceduralViolation`] (the
+/// caller turns it into a clean denial).
+fn apply_action(
+    world: &mut World,
+    command: &Command,
+    cat: &Catalog,
+    cues: &mut Vec<PresentationCue>,
+) -> Result<(), ProceduralViolation> {
     let result: Result<(), ProceduralViolation> = match command {
-        Command::Move { actor_id, room_id } => world.move_to(actor_id, room_id.clone(), cat, &mut cues),
-        Command::Attack { actor_id, target_id } => world.attack(actor_id, target_id, cat, &mut cues),
-        Command::Equip { actor_id, item_id, .. } => world.equip(actor_id, item_id, cat, &mut cues),
-        Command::Unequip { actor_id, item_id } => world.unequip(actor_id, item_id, cat, &mut cues),
-        Command::Use { actor_id, item_id } => world.use_item(actor_id, item_id, cat, &mut cues),
+        Command::Move { actor_id, room_id } => world.move_to(actor_id, room_id.clone(), cat, cues),
+        Command::Attack { actor_id, target_id } => world.attack(actor_id, target_id, cat, cues),
+        Command::Equip { actor_id, item_id, .. } => world.equip(actor_id, item_id, cat, cues),
+        Command::Unequip { actor_id, item_id } => world.unequip(actor_id, item_id, cat, cues),
+        Command::Use { actor_id, item_id } => world.use_item(actor_id, item_id, cat, cues),
         // Free NPC dialogue: emits the selected entry's response + effects as cues on the delta.
         Command::Talk { actor_id, npc_id, prompt } => {
-            world.talk(actor_id, npc_id, prompt.as_deref(), cat, &mut cues)
+            world.talk(actor_id, npc_id, prompt.as_deref(), cat, cues)
         }
+        // `wait` is a pure pass: the solo turn loop (start_turn → mob reactions → next_player) around
+        // it carries the time cost; the action itself does nothing to the world.
+        Command::Wait { .. } => Ok(()),
         Command::PickUp { actor_id, item_ids } => {
             for id in item_ids {
-                world.take(actor_id, id, cat, &mut cues)?;
+                world.take(actor_id, id, cat, cues)?;
             }
             Ok(())
         }
         Command::Drop { actor_id, item_ids } => {
             for id in item_ids {
-                world.drop_item(actor_id, id, cat, &mut cues)?;
+                world.drop_item(actor_id, id, cat, cues)?;
             }
             Ok(())
         }
         Command::PutInLootBox { actor_id, loot_id, item_ids } => {
-            world.put_in_loot_box(actor_id, loot_id, item_ids, cat, &mut cues)
+            world.put_in_loot_box(actor_id, loot_id, item_ids, cat, cues)
         }
         // A GM-issued mob strike is the actor-agnostic attack with a mob as the actor.
-        Command::MobAttack { mob_id, target_id } => world.attack(mob_id, target_id, cat, &mut cues),
-        Command::MobEscape { mob_id } => world.mob_escape(mob_id, cat, &mut cues),
+        Command::MobAttack { mob_id, target_id } => world.attack(mob_id, target_id, cat, cues),
+        Command::MobEscape { mob_id } => world.mob_escape(mob_id, cat, cues),
         Command::SelectArchetype { actor_id, archetype_id } => {
             world.select_archetype(actor_id, archetype_id)
         }
         Command::TransferGm { character_id } => world.transfer_gm(character_id),
         Command::LeaveCampaign { character_id } => world.leave_campaign(character_id),
         Command::JoinCampaign { character } => world.join_campaign((**character).clone()),
-        Command::BeginCampaign => world.begin_campaign(cat, &mut cues),
-        Command::EndCampaign => world.end_campaign(&mut cues),
-        Command::NextPlayer => world.next_player(cat, &mut cues),
+        Command::BeginCampaign => world.begin_campaign(cat, cues),
+        Command::EndCampaign => world.end_campaign(cues),
+        Command::NextPlayer => world.next_player(cat, cues),
         // A1/A2 engine-action ports, join/seat handling (C), and the mob commands are not yet
         // wired — a clean denial, never a panic (the modding trust boundary).
         _ => Err(ProceduralViolation(
             "command kind not yet supported by the Rust sync port".into(),
         )),
     };
-    result?;
-    Ok(cues)
+    result
 }
 
 #[cfg(test)]
@@ -289,6 +345,86 @@ mod tests {
         assert_eq!(auth.entries_since(1).len(), 2);
     }
 
+    /// Seed the always-registered `conformance:dread` mechanic so `start_turn` has an onTurnStart
+    /// hook to fire ("The dread watches.").
+    fn with_dread(mut world: World) -> World {
+        world.campaign.mechanics.push(crate::world::snapshot::MechanicSnapshot {
+            key: "conformance:dread".into(),
+            state: serde_json::json!({ "ticks": 0 }),
+        });
+        world
+    }
+
+    fn solo_authority(world: World) -> SyncAuthority {
+        SyncAuthority::new(world, Catalog::default(), AuthorityOpts { solo: true, ..Default::default() })
+    }
+
+    #[test]
+    fn solo_wait_runs_the_full_turn_loop() {
+        // Solo mode wraps a time-advancing command in start_turn → action → mob reactions →
+        // next_player. A `wait` (a pure pass) therefore fires the onTurnStart hook (dread) and
+        // advances the solo round — the single-player turn machinery the sync path otherwise skips.
+        let mut world = with_dread(world_with_party(&["pc"], 10));
+        world.campaign.gm_id = Some(CharacterId("pc".into()));
+        let round_before = world.campaign.round;
+        let mut auth = solo_authority(world);
+        let res = auth.submit(Command::Wait { actor_id: CharacterId("pc".into()) });
+        let SubmitResult::Committed { delta, .. } = res else {
+            panic!("solo wait should commit, got {res:?}");
+        };
+        assert!(
+            delta.cues.iter().any(|c| matches!(
+                c,
+                PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The dread watches.")
+            )),
+            "solo wait fires onTurnStart (dread), got {:?}",
+            delta.cues
+        );
+        assert_eq!(auth.snapshot().campaign.round, round_before + 1, "solo wait advances the round");
+    }
+
+    #[test]
+    fn a_non_solo_wait_is_a_pure_no_op() {
+        // Without solo mode a `wait` resolves the (empty) action alone: no start_turn, no advance —
+        // multiplayer leaves turn advancement to the GM's explicit `nextPlayer`.
+        let mut world = with_dread(world_with_party(&["pc"], 10));
+        world.campaign.gm_id = Some(CharacterId("pc".into()));
+        let round_before = world.campaign.round;
+        let mut auth = authority(world);
+        let res = auth.submit(Command::Wait { actor_id: CharacterId("pc".into()) });
+        let SubmitResult::Committed { delta, .. } = res else {
+            panic!("wait should commit, got {res:?}");
+        };
+        assert!(delta.cues.is_empty(), "a non-solo wait fires no hooks, got {:?}", delta.cues);
+        assert_eq!(auth.snapshot().campaign.round, round_before, "no solo loop → no round advance");
+    }
+
+    #[test]
+    fn a_solo_time_advancing_action_provokes_co_located_mobs() {
+        // A live mob sharing the actor's room strikes after a time-advancing action, and the strike
+        // is surfaced as prose on the delta (the wire carries no MobAttack list).
+        use crate::world::formations::conformance::seat_test_mob;
+        let mut world = world_two_rooms(false); // pc in the lit "start" room
+        seat_test_mob(&mut world, "Wraith", "start");
+        world.campaign.gm_id = Some(CharacterId("pc".into()));
+        let mut auth = solo_authority(world);
+        // A `wait` is a non-move advancing action, so the light-tied drop-in immunity never applies —
+        // the co-located mob provokes.
+        let res = auth.submit(Command::Wait { actor_id: CharacterId("pc".into()) });
+        let SubmitResult::Committed { delta, .. } = res else {
+            panic!("solo wait should commit, got {res:?}");
+        };
+        assert!(
+            delta.cues.iter().any(|c| matches!(
+                c,
+                PresentationCue::Mechanic { cue }
+                    if cue.text.as_deref().is_some_and(|t| t.contains("Wraith"))
+            )),
+            "the mob's strike is narrated on the delta, got {:?}",
+            delta.cues
+        );
+    }
+
     #[test]
     fn checkpoint_advances_on_the_snapshot_cadence() {
         let mut world = world_with_party(&["a", "b"], 100);
@@ -296,7 +432,7 @@ mod tests {
         let mut auth = SyncAuthority::new(
             world,
             Catalog::default(),
-            AuthorityOpts { snapshot_every: 2, start_seq: 0 },
+            AuthorityOpts { snapshot_every: 2, start_seq: 0, solo: false },
         );
         assert_eq!(auth.load_snapshot().0, 0, "genesis checkpoint until the cadence");
         auth.submit(Command::NextPlayer); // seq 1

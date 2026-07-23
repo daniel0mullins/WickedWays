@@ -1449,12 +1449,19 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
 
 - **The sync core** in [`crates/wickedways-core/src/sync/`](crates/wickedways-core/src/sync/): the
   actor-tagged [`Command`](crates/wickedways-core/src/sync/command.rs) union (mirroring
-  `src/lib/sync/types.ts` byte-for-byte), the [`authorize`](crates/wickedways-core/src/sync/authorize.rs)
+  `src/lib/sync/types.ts` byte-for-byte, plus two Rust-side extensions — `talk` and `wait` — that the
+  TS union expressed only as intents), the [`authorize`](crates/wickedways-core/src/sync/authorize.rs)
   gate, and the native [`SyncAuthority`](crates/wickedways-core/src/sync/authority.rs) (submit →
   authorize → apply → `Delta` diff → ordered log) + `Delta` apply + `SyncCoordinator`. A **differential
   gate** ([`crates/wickedways-assemble/tests/sync_gate.rs`](crates/wickedways-assemble/tests/sync_gate.rs))
   replays committed command sequences through the Rust authority and asserts each `{ seq, delta }`
   matches the TS oracle byte-for-byte.
+  - **Solo mode** (`AuthorityOpts.solo`) is how the offline single-player host (the browser client's
+    `SinglePlayerTransport`) recovers the full per-turn machinery the explicit multiplayer path leaves
+    to the GM: a time-advancing command (`move`/`take`/`drop`/`use`/`attack`/`wait`) runs the whole
+    `GameSession.execute` loop — `start_turn` (affliction tick + campaign `onTurnStart`, e.g. dread) →
+    the action → light-tied mob reactions → `next_player` (round advance + outcome). Mob strikes ride
+    the delta as mechanic cues (`MobAttack::narration`). The multiplayer room server leaves `solo` off.
 - **The room server** in [`crates/wickedways-server/`](crates/wickedways-server/): a Rust/axum port of
   `packages/server`. A `RoomServer` hosts a native `SyncAuthority` per campaign behind a per-campaign
   tokio actor (`Table`) that serializes submit → persist → ack (flush-before-ack), gates appends by

@@ -35,7 +35,11 @@ impl SinglePlayerTransport {
     /// Seed a fresh authority from a genesis world + catalog (the same construction the room server
     /// does per campaign: `World::from_snapshot(genesis)` → `SyncAuthority::new`).
     pub fn new(genesis: World, catalog: Catalog) -> Self {
-        let authority = SyncAuthority::new(genesis, catalog, AuthorityOpts::default());
+        // Solo mode: the offline host runs the full single-player turn loop (start_turn → action →
+        // mob reactions → next_player) around each time-advancing command, so dread ticks, mobs
+        // strike back, and rounds advance without a GM — the multiplayer server leaves this off.
+        let authority =
+            SyncAuthority::new(genesis, catalog, AuthorityOpts { solo: true, ..AuthorityOpts::default() });
         Self { authority: RefCell::new(authority) }
     }
 

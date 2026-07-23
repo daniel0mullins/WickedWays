@@ -96,6 +96,13 @@ pub enum Command {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         prompt: Option<String>,
     },
+    // ── pass the turn: a time-advancing no-op (the `wait` verb) ──
+    // Another Rust-side extension: the TS union expressed "wait" only as an `Intent`, never a wire
+    // `Command` (the solo session ran it locally). The offline single-player authority resolves it
+    // through the solo turn loop (start_turn → mob reactions → next_player); in multiplayer it is a
+    // no-op the GM's `nextPlayer` supersedes.
+    #[serde(rename_all = "camelCase")]
+    Wait { actor_id: CharacterId },
     // ── setup: pre-start, on your own character ──
     #[serde(rename_all = "camelCase")]
     SelectArchetype { actor_id: CharacterId, archetype_id: String },
@@ -174,6 +181,21 @@ impl Command {
         matches!(self, Command::Talk { .. })
     }
 
+    /// `true` for time-advancing player actions — the ones the solo turn loop wraps with
+    /// `start_turn` → action → mob reactions → `next_player`. Mirrors `intent.rs`
+    /// `is_time_advancing` (move/take/drop/use/attack/wait); equip/unequip/talk are free.
+    pub fn is_time_advancing(&self) -> bool {
+        matches!(
+            self,
+            Command::Move { .. }
+                | Command::PickUp { .. }
+                | Command::Drop { .. }
+                | Command::Use { .. }
+                | Command::Attack { .. }
+                | Command::Wait { .. }
+        )
+    }
+
     /// The acting player's id for turn/setup commands; `None` for GM/lifecycle/NPC/join
     /// commands. Mirrors `types.ts` `commandActorId`.
     pub fn actor_id(&self) -> Option<&CharacterId> {
@@ -195,6 +217,7 @@ impl Command {
             | Command::TakeLight { actor_id, .. }
             | Command::Harvest { actor_id, .. }
             | Command::Talk { actor_id, .. }
+            | Command::Wait { actor_id }
             | Command::SelectArchetype { actor_id, .. } => Some(actor_id),
             _ => None,
         }
@@ -322,6 +345,26 @@ mod tests {
         )
         .unwrap();
         assert!(matches!(with, Command::Talk { prompt: Some(p), .. } if p == "the cellar"));
+    }
+
+    #[test]
+    fn wait_round_trips_and_is_time_advancing() {
+        let wait = Command::Wait { actor_id: CharacterId("c1".into()) };
+        assert_eq!(
+            serde_json::to_value(&wait).unwrap(),
+            json!({ "kind": "wait", "actorId": "c1" })
+        );
+        // A time-advancing pass: carries an actor, but is not a turn/gm/setup/join command.
+        assert!(wait.is_time_advancing());
+        assert_eq!(wait.actor_id(), Some(&CharacterId("c1".into())));
+        assert!(!wait.is_turn_action() && !wait.is_gm_command() && !wait.is_npc_interaction());
+        // Move/pickUp/drop/use/attack are time-advancing; equip/unequip/talk are not.
+        let m = Command::Move { actor_id: CharacterId("c1".into()), room_id: RoomId("r".into()) };
+        assert!(m.is_time_advancing());
+        let e = Command::Equip { actor_id: CharacterId("c1".into()), item_id: ItemId("i".into()), slot: None };
+        assert!(!e.is_time_advancing());
+        let t = Command::Talk { actor_id: CharacterId("c1".into()), npc_id: CharacterId("n".into()), prompt: None };
+        assert!(!t.is_time_advancing());
     }
 
     #[test]

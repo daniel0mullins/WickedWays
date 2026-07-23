@@ -597,13 +597,17 @@ pub fn intent_to_command(world: &World, intent: &Intent) -> Result<Command, Stri
         Intent::Equip { target_id } => Ok(Command::Equip { actor_id: actor, item_id: ItemId(target_id.clone()), slot: None }),
         Intent::Unequip { target_id } => Ok(Command::Unequip { actor_id: actor, item_id: ItemId(target_id.clone()) }),
         Intent::Use { target_id } => Ok(Command::Use { actor_id: actor, item_id: ItemId(target_id.clone()) }),
-        Intent::Open { .. } => Err("(opening is a local view action — not yet wired)".into()),
+        // `open` is a local view reveal (list a container's contents) — the surfaces handle it
+        // directly against the current view, so it never reaches the sync layer.
+        Intent::Open { .. } => Err("(opening is a local view action)".into()),
         Intent::Talk { npc_id, prompt } => Ok(Command::Talk {
             actor_id: actor,
             npc_id: CharacterId(npc_id.clone()),
             prompt: prompt.clone(),
         }),
-        Intent::Wait => Err("(wait is not yet wired)".into()),
+        // `wait` passes the turn; in single-player the solo authority runs the full turn loop around
+        // it (dread + mob reactions + advance), in multiplayer it is a no-op the GM supersedes.
+        Intent::Wait => Ok(Command::Wait { actor_id: actor }),
     }
 }
 
@@ -695,6 +699,40 @@ mod tests {
             .map(|c| c.visible)
             .unwrap_or(true);
         assert!(!still_visible, "the caretaker vanishes after handing over the cellar key");
+    }
+
+    #[test]
+    fn a_solo_wait_advances_the_round_and_drains_dread_in_hollow_house() {
+        // The single-player turn loop over the offline transport: `wait` passes the turn, and the
+        // solo authority runs start_turn (dread drains sanity) → next_player (round advances). This
+        // is the machinery the multiplayer sync path skips and that the TS session provided.
+        use wickedways_core::world::intent::Intent;
+
+        let (snapshot, catalog) = bundled_campaign("hollow-house").unwrap();
+        let started = snapshot.campaign.started;
+        let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+        if !started {
+            assert!(matches!(
+                coord.submit(&mut transport, Command::BeginCampaign),
+                SubmitResult::Committed { .. }
+            ));
+        }
+
+        let pc = coord.replica().active_character_id().expect("a started campaign has an active seat");
+        let round_before = coord.snapshot().campaign.round;
+        let sanity_before = coord.replica().characters.get(&pc).map(|c| c.stats.sanity).unwrap();
+
+        let cmd = intent_to_command(coord.replica(), &Intent::Wait).expect("wait maps to a command");
+        let res = coord.submit(&mut transport, cmd);
+        assert!(matches!(res, SubmitResult::Committed { .. }), "solo wait commits, got {res:?}");
+
+        let round_after = coord.snapshot().campaign.round;
+        let sanity_after = coord.replica().characters.get(&pc).map(|c| c.stats.sanity).unwrap();
+        assert_eq!(round_after, round_before + 1, "a solo wait advances the round");
+        assert!(
+            sanity_after < sanity_before,
+            "dread drains sanity on turn start (was {sanity_before}, now {sanity_after})"
+        );
     }
 
     #[test]

@@ -296,6 +296,22 @@ pub fn pnc_app() -> Element {
                         PncAction::Run(ActionDescriptor::Intent { intent, .. }) => intent,
                     };
 
+                    // Opening a container is a local reveal: list its contents from the current view
+                    // (the items are already takeable from room scope).
+                    if let Intent::Open { target_id } = &intent {
+                        if let Some(v) = project(&coord, &catalog) {
+                            let lines = narrator.read().render_action(
+                                &Intent::Open { target_id: target_id.clone() },
+                                &v,
+                                &v,
+                            );
+                            for line in lines {
+                                log.write().push(LogLine::plain(line));
+                            }
+                        }
+                        continue;
+                    }
+
                     let before = project(&coord, &catalog);
                     let command = match intent_to_command(coord.replica(), &intent) {
                         Ok(cmd) => cmd,

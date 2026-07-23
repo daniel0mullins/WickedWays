@@ -37,7 +37,9 @@ pub fn authorize(world: &World, command: &Command) -> AuthResult {
     let started = world.campaign.started;
     let finished = world.campaign.outcome != CampaignOutcome::Ongoing;
 
-    if command.is_turn_action() {
+    // Turn-actions and `wait` share the same gate: the campaign is running and it's your turn.
+    // `wait` is a time-advancing pass (no world mutation) that the solo loop wraps like any action.
+    if command.is_turn_action() || matches!(command, Command::Wait { .. }) {
         if !started {
             return denied("Campaign has not begun.");
         }
