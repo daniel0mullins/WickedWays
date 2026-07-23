@@ -184,7 +184,7 @@ pub fn crt_app() -> Element {
                                     }
                                     None
                                 }
-                                ParseResult::Intent(intent) => match intent_to_command(coord.replica(), &intent) {
+                                ParseResult::Intent(intent) => match intent_to_command(coord.replica(), &catalog, &intent) {
                                     Ok(cmd) => {
                                         intent_for_narration = Some(intent);
                                         Some(cmd)

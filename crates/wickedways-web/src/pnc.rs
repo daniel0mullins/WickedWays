@@ -313,7 +313,7 @@ pub fn pnc_app() -> Element {
                     }
 
                     let before = project(&coord, &catalog);
-                    let command = match intent_to_command(coord.replica(), &intent) {
+                    let command = match intent_to_command(coord.replica(), &catalog, &intent) {
                         Ok(cmd) => cmd,
                         Err(note) => {
                             log.write().push(LogLine::plain(note));

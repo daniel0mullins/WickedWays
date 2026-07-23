@@ -572,7 +572,7 @@ pub fn project(coord: &SyncCoordinator, catalog: &Catalog) -> Option<ViewModel> 
 /// `move`, whose compass direction becomes the destination room id via the active character's room
 /// and the exit graph. Intents with no sync command in the multiplayer path (open/talk/wait) return
 /// a human-readable note the surface narrates back.
-pub fn intent_to_command(world: &World, intent: &Intent) -> Result<Command, String> {
+pub fn intent_to_command(world: &World, catalog: &Catalog, intent: &Intent) -> Result<Command, String> {
     let actor = world.active_character_id().map_err(|e| e.0)?;
     match intent {
         Intent::Move { dir } => {
@@ -584,6 +584,12 @@ pub fn intent_to_command(world: &World, intent: &Intent) -> Result<Command, Stri
             let room = world.rooms.get(&room_id).ok_or("room not found")?;
             let exit_id = room.exits.get(dir.as_key()).ok_or_else(|| format!("no exit {}", dir.as_key()))?;
             let ex = world.exits.get(exit_id).ok_or("exit not found")?;
+            // Gate the move on the exit's keyed-door behavior, the way the single-seat `go` does — the
+            // sync `move` (by room id) lands via `move_to`, which performs no door check. A locked
+            // door returns its fail message and no command is issued.
+            if let Some(reason) = world.exit_block_reason(&actor, *dir, catalog) {
+                return Err(reason);
+            }
             let dest = if ex.endpoint_ids[0] == room_id {
                 ex.endpoint_ids[1].clone()
             } else {
@@ -679,7 +685,7 @@ mod tests {
         assert!(caretaker.1, "the caretaker is visible before the first talk");
 
         let intent = Intent::Talk { npc_id: caretaker.0 .0.clone(), prompt: None };
-        let cmd = intent_to_command(coord.replica(), &intent).expect("talk maps to a Talk command");
+        let cmd = intent_to_command(coord.replica(), &catalog, &intent).expect("talk maps to a Talk command");
         let res = coord.submit(&mut transport, cmd);
         let SubmitResult::Committed { delta, .. } = res else {
             panic!("talk should commit, got {res:?}");
@@ -699,6 +705,53 @@ mod tests {
             .map(|c| c.visible)
             .unwrap_or(true);
         assert!(!still_visible, "the caretaker vanishes after handing over the cellar key");
+    }
+
+    #[test]
+    fn a_locked_door_blocks_movement_until_the_caretaker_hands_over_the_key() {
+        // Keyed doors gate movement client-side (the sync `move` by room id performs no door check).
+        // The Foyer's cellar door (south) is locked until the caretaker's dialogue hands over the
+        // cellar key — tying the dialogue fix to the door mechanic it exists to serve.
+        use wickedways_core::world::direction::Direction;
+        use wickedways_core::world::intent::Intent;
+        use wickedways_core::world::snapshot::CharacterKind;
+
+        let (snapshot, catalog) = bundled_campaign("hollow-house").unwrap();
+        let started = snapshot.campaign.started;
+        let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+        if !started {
+            assert!(matches!(
+                coord.submit(&mut transport, Command::BeginCampaign),
+                SubmitResult::Committed { .. }
+            ));
+        }
+
+        // The player starts in the Foyer; the cellar door (south) is locked without the key.
+        let blocked = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: Direction::South });
+        assert!(blocked.is_err(), "the cellar door is locked without the key, got {blocked:?}");
+
+        // Talk to the caretaker → receive the cellar key.
+        let caretaker = coord
+            .replica()
+            .characters
+            .iter()
+            .find(|(_, c)| c.kind == CharacterKind::Npc)
+            .map(|(id, _)| id.clone())
+            .expect("hollow-house seats a caretaker");
+        let talk = intent_to_command(
+            coord.replica(),
+            &catalog,
+            &Intent::Talk { npc_id: caretaker.0.clone(), prompt: None },
+        )
+        .unwrap();
+        assert!(matches!(coord.submit(&mut transport, talk), SubmitResult::Committed { .. }));
+
+        // With the cellar key in hand, the door is now passable.
+        let allowed = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: Direction::South });
+        assert!(
+            matches!(allowed, Ok(Command::Move { .. })),
+            "with the cellar key the door is passable, got {allowed:?}"
+        );
     }
 
     #[test]
@@ -722,7 +775,7 @@ mod tests {
         let round_before = coord.snapshot().campaign.round;
         let sanity_before = coord.replica().characters.get(&pc).map(|c| c.stats.sanity).unwrap();
 
-        let cmd = intent_to_command(coord.replica(), &Intent::Wait).expect("wait maps to a command");
+        let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Wait).expect("wait maps to a command");
         let res = coord.submit(&mut transport, cmd);
         assert!(matches!(res, SubmitResult::Committed { .. }), "solo wait commits, got {res:?}");
 

@@ -1462,6 +1462,12 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
     `GameSession.execute` loop — `start_turn` (affliction tick + campaign `onTurnStart`, e.g. dread) →
     the action → light-tied mob reactions → `next_player` (round advance + outcome). Mob strikes ride
     the delta as mechanic cues (`MobAttack::narration`). The multiplayer room server leaves `solo` off.
+  - **Keyed doors** are gated client-side. The sync `move` command carries a room id and lands via
+    `move_to`, which — faithful to TS `Character.move(room)` — performs no door check (the guard lives
+    only in the direction-based `go`). So the surfaces gate a `move` with `World::exit_block_reason`
+    (a pure `can_pass` query that runs no `run_script`), narrating the door's fail message and issuing
+    no command when it's locked — e.g. the Hollow House cellar door stays shut until the caretaker's
+    dialogue hands over the key.
 - **The room server** in [`crates/wickedways-server/`](crates/wickedways-server/): a Rust/axum port of
   `packages/server`. A `RoomServer` hosts a native `SyncAuthority` per campaign behind a per-campaign
   tokio actor (`Table`) that serializes submit → persist → ack (flush-before-ack), gates appends by
