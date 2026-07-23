@@ -35,7 +35,7 @@ use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
     boot, boot_single, intent_to_command, is_gm, is_my_turn, project, read_config, rebuild_single,
-    welcome_for, Mode, GM_IDENTITY,
+    toggle_fullscreen, welcome_for, Mode, GM_IDENTITY,
 };
 use crate::link_nouns::{link_nouns, Segment};
 use crate::map::{layout_map, map_svg, MapModel};
@@ -65,6 +65,7 @@ enum MetaEffect {
     Save,
     Restore,
     Restart,
+    Undo,
 }
 
 /// The one-at-a-time overlay (map or help), mirroring `crt-game.ts`'s `openMap`/`openHelp`.
@@ -114,6 +115,11 @@ pub fn crt_app() -> Element {
                 // `catalog` is the campaign's, held for the session and used for every projection.
                 let mut transport = transport;
                 let mut coord = coord;
+                // Single-player undo stack: the (snapshot + fog-of-war map) captured BEFORE each
+                // committed command, newest last. `undo` pops the last and rebuilds the offline
+                // authority from it (the same seam as `restore`). Capped so a long session can't grow
+                // it without bound.
+                let mut undo_stack: Vec<SaveBlob> = Vec::new();
                 // The audio runtime (engine + sanity-reactive ambient bed + chiptune pack), lazily
                 // opening its AudioContext when the player enables sound via `audio`.
                 let mut audio = AudioRuntime::for_campaign(Some(wickedways_campaign_audio()));
@@ -210,6 +216,15 @@ pub fn crt_app() -> Element {
                                         Meta::Save => meta_effect = Some(MetaEffect::Save),
                                         Meta::Restore => meta_effect = Some(MetaEffect::Restore),
                                         Meta::Restart => meta_effect = Some(MetaEffect::Restart),
+                                        Meta::Undo => meta_effect = Some(MetaEffect::Undo),
+                                        // The Enter keypress that submitted this line is the user
+                                        // gesture that lets the browser grant fullscreen.
+                                        Meta::Fullscreen => {
+                                            let entering = toggle_fullscreen();
+                                            narration.write().push(
+                                                if entering { "Fullscreen on." } else { "Fullscreen off." }.into(),
+                                            );
+                                        }
                                         // The Enter keypress that submitted this line is the user
                                         // gesture that lets the AudioContext start.
                                         Meta::Audio => {
@@ -229,7 +244,6 @@ pub fn crt_app() -> Element {
                                                 }
                                             }
                                         }
-                                        _ => narration.write().push("(that's not available here yet)".into()),
                                     }
                                     None
                                 }
@@ -242,8 +256,20 @@ pub fn crt_app() -> Element {
                         }
                     };
                     if let Some(cmd) = command {
+                        // Capture the pre-command state for `undo` (single-player only): a snapshot +
+                        // the current fog-of-war map, pushed onto the stack only once the command
+                        // actually commits.
+                        let undo_point = (cfg.mode == Mode::Single)
+                            .then(|| SaveBlob { snapshot: coord.snapshot(), map: map_model.read().serialize() });
                         match transport.submit_async(cmd).await {
                             SubmitResult::Committed { seq, delta } => {
+                                if let Some(point) = undo_point {
+                                    undo_stack.push(point);
+                                    // Bound the history so a marathon session can't grow it unbounded.
+                                    if undo_stack.len() > 100 {
+                                        undo_stack.remove(0);
+                                    }
+                                }
                                 coord.sync(&transport);
                                 let after = project(&coord, &catalog);
                                 // A move must be recorded BEFORE `observe`: `record_move` places the
@@ -353,7 +379,29 @@ pub fn crt_app() -> Element {
                                 Err(e) => narration.write().push(format!("Restart failed: {e}")),
                             }
                         }
-                        Some(_) => narration.write().push("(save/restore/restart is single-player only)".into()),
+                        Some(MetaEffect::Undo) if cfg.mode == Mode::Single => {
+                            match undo_stack.pop() {
+                                Some(blob) => {
+                                    // Rebuild the offline authority from the pre-command snapshot and
+                                    // hydrate its fog-of-war map — the same rebuild seam as `restore`.
+                                    let (t, c) = rebuild_single(blob.snapshot, catalog.clone());
+                                    transport = t;
+                                    coord = c;
+                                    map_model.write().hydrate(blob.map);
+                                    let reverted = project(&coord, &catalog);
+                                    narration.write().push("Undone.".into());
+                                    if let Some(v) = &reverted {
+                                        let lines = narrator.write().render_room(v);
+                                        narration.write().extend(lines);
+                                        audio.update(v);
+                                    }
+                                    vm.set(reverted);
+                                    status_fields.set(coord.status_fields().to_vec());
+                                }
+                                None => narration.write().push("Nothing to undo.".into()),
+                            }
+                        }
+                        Some(_) => narration.write().push("(save/restore/restart/undo is single-player only)".into()),
                         None => {}
                     }
 

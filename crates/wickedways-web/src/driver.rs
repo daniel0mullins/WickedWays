@@ -110,6 +110,25 @@ fn has_flag(key: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Toggle browser fullscreen for the whole page (the `fullscreen`/`fs` verb and the surfaces'
+/// fullscreen control). Enters fullscreen on the document element when none is active, else exits.
+/// Returns `true` if the page is entering fullscreen, `false` if exiting (or on no-op), so the caller
+/// can narrate the new state. A rejected request (e.g. no user gesture) is swallowed.
+pub fn toggle_fullscreen() -> bool {
+    let Some(doc) = web_sys::window().and_then(|w| w.document()) else {
+        return false;
+    };
+    if doc.fullscreen_element().is_some() {
+        doc.exit_fullscreen();
+        false
+    } else if let Some(el) = doc.document_element() {
+        let _ = el.request_fullscreen();
+        true
+    } else {
+        false
+    }
+}
+
 /// Whether the page carries `?debug` — unlocks the demo/conformance campaigns in the launcher.
 pub fn debug_enabled() -> bool {
     has_flag("debug")
@@ -786,6 +805,39 @@ mod tests {
             sanity_after < sanity_before,
             "dread drains sanity on turn start (was {sanity_before}, now {sanity_after})"
         );
+    }
+
+    #[test]
+    fn undo_rebuilds_the_authority_from_the_captured_pre_command_snapshot() {
+        // The surfaces stash `coord.snapshot()` before each committed command and, on `undo`, rebuild
+        // the offline authority from it (via `rebuild_single`). This proves that round-trip reverts a
+        // real committed change: a solo wait drains dread, and rebuilding from the pre-wait snapshot
+        // restores the sanity and round.
+        use wickedways_core::world::intent::Intent;
+
+        let (snapshot, catalog) = bundled_campaign("hollow-house").unwrap();
+        let started = snapshot.campaign.started;
+        let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+        if !started {
+            assert!(matches!(
+                coord.submit(&mut transport, Command::BeginCampaign),
+                SubmitResult::Committed { .. }
+            ));
+        }
+        let pc = coord.replica().active_character_id().unwrap();
+        let before = coord.snapshot(); // the undo point
+        let sanity_before = coord.replica().characters[&pc].stats.sanity;
+        let round_before = coord.snapshot().campaign.round;
+
+        // A committed action moves the state forward.
+        let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Wait).unwrap();
+        assert!(matches!(coord.submit(&mut transport, cmd), SubmitResult::Committed { .. }));
+        assert!(coord.replica().characters[&pc].stats.sanity < sanity_before, "the wait advanced state");
+
+        // Undo: rebuild from the captured snapshot restores the pre-command state exactly.
+        let (_t, reverted) = rebuild_single(before, catalog.clone());
+        assert_eq!(reverted.replica().characters[&pc].stats.sanity, sanity_before, "undo restores sanity");
+        assert_eq!(reverted.snapshot().campaign.round, round_before, "undo restores the round");
     }
 
     #[test]

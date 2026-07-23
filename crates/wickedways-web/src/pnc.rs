@@ -38,7 +38,7 @@ use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
     boot, boot_single, intent_to_command, is_gm, is_my_turn, project, read_config, rebuild_single,
-    welcome_for, AppTransport, Mode, GM_IDENTITY,
+    toggle_fullscreen, welcome_for, AppTransport, Mode, GM_IDENTITY,
 };
 use crate::map::{layout_map, map_svg, MapModel};
 use crate::narrator::Narrator;
@@ -88,6 +88,10 @@ enum PncAction {
     Save,
     Restore,
     Restart,
+    /// Single-player: revert the last committed command (mirrors the CRT `undo`).
+    Undo,
+    /// Toggle browser fullscreen for the page (mirrors the CRT `fullscreen`).
+    Fullscreen,
     /// Toggle procedural audio (the click is the user gesture that lets the `AudioContext` start).
     ToggleAudio,
 }
@@ -150,6 +154,9 @@ pub fn pnc_app() -> Element {
                 // `catalog` is the campaign's, held for the session and used for every projection.
                 let mut transport = transport;
                 let mut coord = coord;
+                // Single-player undo stack: the (snapshot + fog-of-war map) captured BEFORE each
+                // committed command, newest last (mirrors the CRT surface).
+                let mut undo_stack: Vec<SaveBlob> = Vec::new();
                 // The audio runtime (engine + sanity-reactive ambient bed + chiptune pack), lazily
                 // opening its AudioContext when the player enables sound via the topbar toggle.
                 let mut audio = AudioRuntime::for_campaign(Some(wickedways_campaign_audio()));
@@ -262,6 +269,39 @@ pub fn pnc_app() -> Element {
                             }
                             continue;
                         }
+                        PncAction::Undo => {
+                            if cfg.mode == Mode::Single {
+                                match undo_stack.pop() {
+                                    Some(blob) => {
+                                        // Rebuild the offline authority from the pre-command snapshot
+                                        // and hydrate its map — the same seam as `restore`.
+                                        let (t, c) = rebuild_single(blob.snapshot, catalog.clone());
+                                        transport = t;
+                                        coord = c;
+                                        map_model.write().hydrate(blob.map);
+                                        let reverted = project(&coord, &catalog);
+                                        log.write().push(LogLine::plain("Undone.".into()));
+                                        if let Some(v) = &reverted {
+                                            print_room(log, narrator, v);
+                                            audio.update(v);
+                                        }
+                                        vm.set(reverted);
+                                        status_fields.set(coord.status_fields().to_vec());
+                                    }
+                                    None => log.write().push(LogLine::plain("Nothing to undo.".into())),
+                                }
+                            } else {
+                                log.write().push(LogLine::plain("(undo is single-player only)".into()));
+                            }
+                            continue;
+                        }
+                        PncAction::Fullscreen => {
+                            let entering = toggle_fullscreen();
+                            log.write().push(LogLine::plain(
+                                if entering { "Fullscreen on." } else { "Fullscreen off." }.into(),
+                            ));
+                            continue;
+                        }
                         PncAction::ToggleAudio => {
                             // The button click is the user gesture that lets the AudioContext start.
                             if audio.enabled() {
@@ -320,10 +360,20 @@ pub fn pnc_app() -> Element {
                             continue;
                         }
                     };
+                    // Capture the pre-command state for `undo` (single-player only), pushed only once
+                    // the command commits.
+                    let undo_point = (cfg.mode == Mode::Single)
+                        .then(|| SaveBlob { snapshot: coord.snapshot(), map: map_model.read().serialize() });
                     let Some(cues) = submit(&transport, &mut coord, command, log).await else {
                         audio.note_error();
                         continue;
                     };
+                    if let Some(point) = undo_point {
+                        undo_stack.push(point);
+                        if undo_stack.len() > 100 {
+                            undo_stack.remove(0);
+                        }
+                    }
                     let after = project(&coord, &catalog);
                     // Record a move BEFORE observe so the newly-entered room is placed relative to
                     // the one we left (observe would otherwise pin it at the grid origin).
@@ -388,6 +438,7 @@ pub fn pnc_app() -> Element {
                         if audio_on() { "🔊" } else { "🔇" }
                     }
                     button { class: "topbar-btn", title: "Map", onclick: move |_| map_open.set(true), "🗺" }
+                    button { class: "topbar-btn", title: "Fullscreen", onclick: move |_| driver.send(PncAction::Fullscreen), "⛶" }
                     // The turn-advance control is the GM's only, and only in multiplayer.
                     if mode == Mode::Multi && is_gm {
                         button { class: "topbar-btn", title: "GM: next player", onclick: move |_| driver.send(PncAction::NextPlayer), "⏭" }
@@ -456,6 +507,7 @@ pub fn pnc_app() -> Element {
             if settings_open() {
                 div { class: "pnc-menu-backdrop", onclick: move |_| settings_open.set(false),
                     div { class: "settings-menu", onclick: move |e| e.stop_propagation(),
+                        button { class: "menu-btn", onclick: move |_| { settings_open.set(false); driver.send(PncAction::Undo); }, "Undo" }
                         button { class: "menu-btn", onclick: move |_| { settings_open.set(false); driver.send(PncAction::Save); }, "Save" }
                         button { class: "menu-btn", onclick: move |_| { settings_open.set(false); driver.send(PncAction::Restore); }, "Restore" }
                         button { class: "menu-btn", onclick: move |_| { settings_open.set(false); driver.send(PncAction::Restart); }, "Restart" }
