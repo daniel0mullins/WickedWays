@@ -133,7 +133,11 @@
   opacity: 0.92;
 }
 
-.controls { display: flex; align-items: center; gap: 0.5em; margin-top: 0.4em; }
+/* In-screen controls row: the multiplayer turn indicator + GM control (empty in single-player). */
+.controls {
+  flex: 0 0 auto;
+  display: flex; align-items: center; gap: 0.5em; margin-top: 0.4em;
+}
 .turn-indicator {
   font: inherit;
   color: var(--color-accent);
@@ -149,6 +153,35 @@
   padding: 0.1em 0.6em;
   cursor: pointer;
 }
+
+/* ── Molded bezel: the brand plate + physical sound toggle on the plastic chin below the screen,
+   absolutely positioned in the housing's bottom padding (outside the CRT screen). ── */
+.bezel {
+  position: absolute;
+  left: clamp(20px, 4vmin, 46px);
+  right: clamp(20px, 4vmin, 46px);
+  bottom: clamp(9px, 1.8vmin, 20px);
+  display: flex; align-items: center; justify-content: space-between;
+}
+/* Brand plate — engraved into the plastic: dark ink with a light lower highlight. */
+.brand {
+  font-family: var(--font-display, var(--font-body));
+  letter-spacing: 0.34em;
+  font-size: 0.72em;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  user-select: none;
+}
+/* Sound toggle — a bare glyph button sitting on the plastic, with a molded highlight. */
+.audio-btn {
+  border: none; background: transparent;
+  font-size: 1.15em; line-height: 1;
+  padding: 0.1em 0.2em; cursor: pointer;
+  opacity: 0.8;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.3));
+}
+.audio-btn:hover { opacity: 1; }
 
 /* ── shared overlay (map + help), ported from crt-game.ts's static styles ── */
 .overlay {

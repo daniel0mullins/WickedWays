@@ -56,6 +56,8 @@ enum Ev {
 /// A driver request from the UI to the (non-Send, Rc-backed) transport coroutine.
 enum Action {
     NextPlayer,
+    /// Toggle procedural audio (the click is the user gesture that lets the `AudioContext` start).
+    ToggleAudio,
     Input(String),
 }
 
@@ -100,6 +102,22 @@ pub fn crt_app() -> Element {
     // the GM turn-advance control nor the "your turn" indicator belong.
     let multiplayer = use_hook(|| matches!(read_config().mode, Mode::Multi));
     let mut my_turn = use_signal(|| false);
+    // Whether procedural audio is on — drives the footer's sound toggle (the coroutine owns the
+    // AudioRuntime and keeps this in sync when the state flips via the verb or the button).
+    let mut audio_on = use_signal(|| false);
+
+    // Auto-scroll the transcript to the newest line whenever the narration or view changes, so the
+    // latest output stays in view between the pinned status bar and dock.
+    use_effect(move || {
+        let _ = narration.read();
+        let _ = vm.read();
+        if let Some(el) = web_sys::window()
+            .and_then(|w| w.document())
+            .and_then(|d| d.get_element_by_id("transcript"))
+        {
+            el.set_scroll_top(el.scroll_height());
+        }
+    });
 
     let driver = use_coroutine(move |rx: UnboundedReceiver<Action>| async move {
         let cfg = read_config();
@@ -158,8 +176,13 @@ pub fn crt_app() -> Element {
                     let mut intent_for_narration: Option<Intent> = None;
                     let mut before_view: Option<ViewModel> = None;
                     let mut meta_effect: Option<MetaEffect> = None;
+                    let mut toggle_audio = false;
                     let command = match action {
                         Action::NextPlayer => Some(Command::NextPlayer),
+                        Action::ToggleAudio => {
+                            toggle_audio = true;
+                            None
+                        }
                         Action::Input(text) => {
                             let view = project(&coord, &catalog);
                             before_view = view.clone();
@@ -226,24 +249,9 @@ pub fn crt_app() -> Element {
                                             );
                                         }
                                         // The Enter keypress that submitted this line is the user
-                                        // gesture that lets the AudioContext start.
-                                        Meta::Audio => {
-                                            if audio.enabled() {
-                                                audio.set_enabled(false);
-                                                narration.write().push("Audio off.".into());
-                                            } else {
-                                                audio.set_enabled(true);
-                                                if audio.enabled() {
-                                                    narration.write().push("Audio on.".into());
-                                                    // Seed the ambient bed with the current tension.
-                                                    if let Some(v) = project(&coord, &catalog) {
-                                                        audio.update(&v);
-                                                    }
-                                                } else {
-                                                    narration.write().push("Audio is unavailable.".into());
-                                                }
-                                            }
-                                        }
+                                        // gesture that lets the AudioContext start; the actual toggle
+                                        // runs below, shared with the footer's sound button.
+                                        Meta::Audio => toggle_audio = true,
                                     }
                                     None
                                 }
@@ -255,6 +263,28 @@ pub fn crt_app() -> Element {
                             }
                         }
                     };
+
+                    // Audio toggle (from the `audio` verb or the footer button). Kept in one place so
+                    // both routes stay in sync, including the reactive `audio_on` flag for the button.
+                    if toggle_audio {
+                        if audio.enabled() {
+                            audio.set_enabled(false);
+                            narration.write().push("Audio off.".into());
+                        } else {
+                            audio.set_enabled(true);
+                            if audio.enabled() {
+                                narration.write().push("Audio on.".into());
+                                // Seed the ambient bed with the current tension.
+                                if let Some(v) = project(&coord, &catalog) {
+                                    audio.update(&v);
+                                }
+                            } else {
+                                narration.write().push("Audio is unavailable.".into());
+                            }
+                        }
+                        audio_on.set(audio.enabled());
+                    }
+
                     if let Some(cmd) = command {
                         // Capture the pre-command state for `undo` (single-player only): a snapshot +
                         // the current fog-of-war map, pushed onto the stack only once the command
@@ -435,7 +465,7 @@ pub fn crt_app() -> Element {
                 div { class: "monitor-screen",
                     div { class: "screen",
                         {hud}
-                        div { class: "transcript", {screen} }
+                        div { class: "transcript", id: "transcript", {screen} }
                         {dock}
                         div { class: "prompt",
                             span { class: "caret", "›" }
@@ -464,6 +494,17 @@ pub fn crt_app() -> Element {
                         }
                     }
                     div { class: "crt-overlay" }
+                }
+                // The molded bezel chin: the brand plate + the physical sound toggle, on the plastic
+                // housing (outside the screen), like a real CRT's front panel.
+                div { class: "bezel",
+                    span { class: "brand", "WICKEDWAYS" }
+                    button {
+                        class: "audio-btn",
+                        title: if audio_on() { "Sound on" } else { "Sound off" },
+                        onclick: move |_| driver.send(Action::ToggleAudio),
+                        if audio_on() { "🔊" } else { "🔇" }
+                    }
                 }
             }
         }
