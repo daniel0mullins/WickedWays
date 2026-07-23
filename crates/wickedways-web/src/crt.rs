@@ -95,6 +95,9 @@ pub fn crt_app() -> Element {
     // Whether this client is the GM (gates the `nextPlayer` control), and whether it's this client's
     // turn (the "your turn" indicator) — the coroutine refreshes `my_turn` as the turn moves.
     let is_gm = use_hook(is_gm);
+    // Turn-passing is a multiplayer-only concept — in single-player you drive every seat, so neither
+    // the GM turn-advance control nor the "your turn" indicator belong.
+    let multiplayer = use_hook(|| matches!(read_config().mode, Mode::Multi));
     let mut my_turn = use_signal(|| false);
 
     let driver = use_coroutine(move |rx: UnboundedReceiver<Action>| async move {
@@ -227,7 +230,7 @@ pub fn crt_app() -> Element {
                     };
                     if let Some(cmd) = command {
                         match transport.submit_async(cmd).await {
-                            SubmitResult::Committed { seq, .. } => {
+                            SubmitResult::Committed { seq, delta } => {
                                 coord.sync(&transport);
                                 let after = project(&coord, &catalog);
                                 // A move must be recorded BEFORE `observe`: `record_move` places the
@@ -255,6 +258,14 @@ pub fn crt_app() -> Element {
                                     if let Some(cue) = cue_for_intent(&intent) {
                                         audio.play_cue(&cue, a);
                                     }
+                                }
+                                // Render the delta's mechanic cues as prose: NPC dialogue (the
+                                // caretaker's lines), storyteller journal reveals, and any effect
+                                // cues the command emitted. `render_action` deliberately returns
+                                // nothing for `talk` — the dialogue cue is its whole feedback.
+                                let cue_lines = narrator.read().render_cues(&delta.cues);
+                                if !cue_lines.is_empty() {
+                                    narration.write().extend(cue_lines);
                                 }
                                 // Drive the ambient bed from the new view (also covers nextPlayer,
                                 // which has no intent to voice).
@@ -372,11 +383,11 @@ pub fn crt_app() -> Element {
                             }
                         }
                         div { class: "controls",
-                            if my_turn() {
+                            if multiplayer && my_turn() {
                                 span { class: "turn-indicator", "● Your turn" }
                             }
-                            // The turn-advance control is the GM's only.
-                            if is_gm {
+                            // The turn-advance control is the GM's only, and only in multiplayer.
+                            if multiplayer && is_gm {
                                 button { id: "submit", onclick: move |_| driver.send(Action::NextPlayer), "GM: nextPlayer" }
                             }
                         }

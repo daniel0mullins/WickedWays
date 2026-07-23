@@ -7,9 +7,9 @@
 //! (`wickedways-wasm`'s `Authority`).
 //!
 //! **Scope (MVP).** [`apply_command`] dispatches the command subset the engine already supports
-//! (move/attack/equip/unequip/use/pickUp/drop + begin/end/nextPlayer). Every other command kind
-//! is a clean [`SubmitResult::Denied`] (never a panic), pending sub-project A1/A2's engine-action
-//! ports and C's seat/GM handling.
+//! (move/attack/equip/unequip/use/pickUp/drop/talk + begin/end/nextPlayer + join/seat/gm). Every
+//! other command kind is a clean [`SubmitResult::Denied`] (never a panic), pending sub-project A1/A2's
+//! remaining engine-action ports (craft/repair/harvest/light/loot-box/key transfer).
 //!
 //! **Denial parity (deferred).** The TS `resolver.apply` resolves every argument id through an
 //! entity index that throws on a miss, so a command naming a nonexistent id is *denied*. The Rust
@@ -165,6 +165,10 @@ fn apply_command(
         Command::Equip { actor_id, item_id, .. } => world.equip(actor_id, item_id, cat, &mut cues),
         Command::Unequip { actor_id, item_id } => world.unequip(actor_id, item_id, cat, &mut cues),
         Command::Use { actor_id, item_id } => world.use_item(actor_id, item_id, cat, &mut cues),
+        // Free NPC dialogue: emits the selected entry's response + effects as cues on the delta.
+        Command::Talk { actor_id, npc_id, prompt } => {
+            world.talk(actor_id, npc_id, prompt.as_deref(), cat, &mut cues)
+        }
         Command::PickUp { actor_id, item_ids } => {
             for id in item_ids {
                 world.take(actor_id, id, cat, &mut cues)?;

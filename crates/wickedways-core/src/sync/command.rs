@@ -83,6 +83,19 @@ pub enum Command {
     TakeLight { actor_id: CharacterId, item_id: ItemId },
     #[serde(rename_all = "camelCase")]
     Harvest { actor_id: CharacterId, cache_id: MaterialCacheId },
+    // ── free NPC interaction: dialogue (non-advancing; runs on your own turn) ──
+    // A Rust-side extension beyond the TS `types.ts` union: the original engine ran NPC
+    // dialogue through the single-seat session layer, but the Rust surfaces route every
+    // action through sync, so `talk` needs a wire command to reach the authority. Free
+    // (it spends no round/budget), but classified apart from the turn-actions above so it
+    // is NOT part of the TS-mirrored `TURN_ACTION_KINDS`.
+    #[serde(rename_all = "camelCase")]
+    Talk {
+        actor_id: CharacterId,
+        npc_id: CharacterId,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        prompt: Option<String>,
+    },
     // ── setup: pre-start, on your own character ──
     #[serde(rename_all = "camelCase")]
     SelectArchetype { actor_id: CharacterId, archetype_id: String },
@@ -156,6 +169,11 @@ impl Command {
         matches!(self, Command::JoinCampaign { .. })
     }
 
+    /// `true` for free NPC interactions (`talk`) — non-advancing, permitted on your own turn.
+    pub fn is_npc_interaction(&self) -> bool {
+        matches!(self, Command::Talk { .. })
+    }
+
     /// The acting player's id for turn/setup commands; `None` for GM/lifecycle/NPC/join
     /// commands. Mirrors `types.ts` `commandActorId`.
     pub fn actor_id(&self) -> Option<&CharacterId> {
@@ -176,6 +194,7 @@ impl Command {
             | Command::PlaceLight { actor_id, .. }
             | Command::TakeLight { actor_id, .. }
             | Command::Harvest { actor_id, .. }
+            | Command::Talk { actor_id, .. }
             | Command::SelectArchetype { actor_id, .. } => Some(actor_id),
             _ => None,
         }
@@ -279,6 +298,30 @@ mod tests {
         // …and it round-trips.
         let back: Command = serde_json::from_value(v).unwrap();
         assert_eq!(back, join);
+    }
+
+    #[test]
+    fn talk_round_trips_and_classifies_as_a_free_npc_interaction() {
+        let bare = Command::Talk {
+            actor_id: CharacterId("c1".into()),
+            npc_id: CharacterId("npc:Caretaker".into()),
+            prompt: None,
+        };
+        // Prompt is omitted when absent (wire shape).
+        assert_eq!(
+            serde_json::to_value(&bare).unwrap(),
+            json!({ "kind": "talk", "actorId": "c1", "npcId": "npc:Caretaker" })
+        );
+        // A free interaction: carries an actor, but is NOT a turn/gm/setup/join command.
+        assert!(bare.is_npc_interaction());
+        assert_eq!(bare.actor_id(), Some(&CharacterId("c1".into())));
+        assert!(!bare.is_turn_action() && !bare.is_gm_command() && !bare.is_setup_command() && !bare.is_join_command());
+        // A prompt round-trips.
+        let with: Command = serde_json::from_value(
+            json!({ "kind": "talk", "actorId": "c1", "npcId": "n1", "prompt": "the cellar" }),
+        )
+        .unwrap();
+        assert!(matches!(with, Command::Talk { prompt: Some(p), .. } if p == "the cellar"));
     }
 
     #[test]

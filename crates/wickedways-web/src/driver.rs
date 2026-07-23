@@ -598,7 +598,11 @@ pub fn intent_to_command(world: &World, intent: &Intent) -> Result<Command, Stri
         Intent::Unequip { target_id } => Ok(Command::Unequip { actor_id: actor, item_id: ItemId(target_id.clone()) }),
         Intent::Use { target_id } => Ok(Command::Use { actor_id: actor, item_id: ItemId(target_id.clone()) }),
         Intent::Open { .. } => Err("(opening is a local view action — not yet wired)".into()),
-        Intent::Talk { .. } => Err("(dialogue is a later slice)".into()),
+        Intent::Talk { npc_id, prompt } => Ok(Command::Talk {
+            actor_id: actor,
+            npc_id: CharacterId(npc_id.clone()),
+            prompt: prompt.clone(),
+        }),
         Intent::Wait => Err("(wait is not yet wired)".into()),
     }
 }
@@ -639,6 +643,58 @@ mod tests {
             }
             assert!(project(&coord, &catalog).is_some(), "{id}: should project a view");
         }
+    }
+
+    #[test]
+    fn talking_to_the_hollow_house_caretaker_runs_dialogue_and_hands_over_the_key() {
+        // The full dialogue chain end-to-end against the real campaign catalog:
+        // Intent::Talk → intent_to_command → Command::Talk → authority → world.talk. The caretaker
+        // speaks (a mechanic cue), gives the cellar key, and vanishes (setVisible false).
+        use wickedways_core::presentation::PresentationCue;
+        use wickedways_core::world::intent::Intent;
+        use wickedways_core::world::snapshot::CharacterKind;
+
+        let (snapshot, catalog) = bundled_campaign("hollow-house").unwrap();
+        let started = snapshot.campaign.started;
+        let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+        if !started {
+            assert!(matches!(
+                coord.submit(&mut transport, Command::BeginCampaign),
+                SubmitResult::Committed { .. }
+            ));
+        }
+
+        // The caretaker is the campaign's lone NPC, visible before the first talk.
+        let caretaker = coord
+            .replica()
+            .characters
+            .iter()
+            .find(|(_, c)| c.kind == CharacterKind::Npc)
+            .map(|(id, c)| (id.clone(), c.visible))
+            .expect("hollow-house seats a caretaker npc");
+        assert!(caretaker.1, "the caretaker is visible before the first talk");
+
+        let intent = Intent::Talk { npc_id: caretaker.0 .0.clone(), prompt: None };
+        let cmd = intent_to_command(coord.replica(), &intent).expect("talk maps to a Talk command");
+        let res = coord.submit(&mut transport, cmd);
+        let SubmitResult::Committed { delta, .. } = res else {
+            panic!("talk should commit, got {res:?}");
+        };
+
+        // The caretaker speaks: a mechanic cue carries the dialogue response line.
+        assert!(
+            delta.cues.iter().any(|c| matches!(c, PresentationCue::Mechanic { .. })),
+            "talk emits the caretaker's dialogue as a mechanic cue, got {:?}",
+            delta.cues
+        );
+        // …and its `once` effects fire: the caretaker hands over the key and vanishes.
+        let still_visible = coord
+            .replica()
+            .characters
+            .get(&caretaker.0)
+            .map(|c| c.visible)
+            .unwrap_or(true);
+        assert!(!still_visible, "the caretaker vanishes after handing over the cellar key");
     }
 
     #[test]

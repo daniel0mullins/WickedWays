@@ -27,7 +27,7 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 
-use wickedways_core::presentation::StatusField;
+use wickedways_core::presentation::{PresentationCue, StatusField};
 use wickedways_core::sync::{Command, SubmitResult, SyncCoordinator};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
@@ -304,10 +304,10 @@ pub fn pnc_app() -> Element {
                             continue;
                         }
                     };
-                    if !submit(&transport, &mut coord, command, log).await {
+                    let Some(cues) = submit(&transport, &mut coord, command, log).await else {
                         audio.note_error();
                         continue;
-                    }
+                    };
                     let after = project(&coord, &catalog);
                     // Record a move BEFORE observe so the newly-entered room is placed relative to
                     // the one we left (observe would otherwise pin it at the grid origin).
@@ -328,6 +328,11 @@ pub fn pnc_app() -> Element {
                         if a.finished {
                             log.write().push(LogLine::end("— THE END —".into()));
                         }
+                    }
+                    // Render the delta's mechanic cues as prose: NPC dialogue (the caretaker's
+                    // lines), storyteller journal reveals, and any effect cues the command emitted.
+                    for line in narrator.read().render_cues(&cues) {
+                        log.write().push(LogLine::plain(line));
                     }
                     if let Some(a) = &after {
                         // Voice the committed action (attack/move/take/drop have a sound) and drive
@@ -356,7 +361,7 @@ pub fn pnc_app() -> Element {
             div { class: "pnc-topbar",
                 div { class: "topbar-left", span { class: "room-name", "{room_name}" } }
                 div { class: "topbar-controls",
-                    if my_turn() {
+                    if mode == Mode::Multi && my_turn() {
                         span { class: "turn-indicator", "● Your turn" }
                     }
                     span { class: "topbar-status", "{status}" }
@@ -367,8 +372,8 @@ pub fn pnc_app() -> Element {
                         if audio_on() { "🔊" } else { "🔇" }
                     }
                     button { class: "topbar-btn", title: "Map", onclick: move |_| map_open.set(true), "🗺" }
-                    // The turn-advance control is the GM's only.
-                    if is_gm {
+                    // The turn-advance control is the GM's only, and only in multiplayer.
+                    if mode == Mode::Multi && is_gm {
                         button { class: "topbar-btn", title: "GM: next player", onclick: move |_| driver.send(PncAction::NextPlayer), "⏭" }
                     }
                     if mode == Mode::Single {
@@ -454,22 +459,23 @@ pub fn pnc_app() -> Element {
     }
 }
 
-/// Submit a command; on a denial push the reason to the log. Returns whether it committed (so the
-/// caller knows to re-project + narrate).
+/// Submit a command; on a denial push the reason to the log. Returns the committed delta's
+/// presentation cues (so the caller can re-project, narrate, and render dialogue/mechanic cues), or
+/// `None` on a denial.
 async fn submit(
     transport: &AppTransport,
     coord: &mut SyncCoordinator,
     command: Command,
     mut log: Signal<Vec<LogLine>>,
-) -> bool {
+) -> Option<Vec<PresentationCue>> {
     match transport.submit_async(command).await {
-        SubmitResult::Committed { .. } => {
+        SubmitResult::Committed { delta, .. } => {
             coord.sync(transport);
-            true
+            Some(delta.cues)
         }
         SubmitResult::Denied { reason } => {
             log.write().push(LogLine::error(format!("✗ {reason}")));
-            false
+            None
         }
     }
 }
