@@ -46,8 +46,8 @@
 .screen {
   position: absolute; inset: 0;
   display: flex; flex-direction: column;
-  padding: 1.2em 1.4em;
-  gap: 0.4em;
+  padding: 1.2672em 1.4784em;
+  gap: 0.4224em;
   background: radial-gradient(ellipse at 50% 45%, #1b1a14 0%, var(--color-bg) 70%, #0c0b08 100%);
   border-radius: 14px / 18px;
 }
@@ -69,15 +69,15 @@
   flex: 1 1 auto;
   overflow-y: auto;
   display: flex; flex-direction: column;
-  gap: 0.15em;
+  gap: 0.1584em;
 }
 .line { white-space: pre-wrap; }
 .line.system { color: var(--color-accent); }
 
 .prompt {
-  display: flex; align-items: baseline; gap: 0.5em;
+  display: flex; align-items: baseline; gap: 0.528em;
   border-top: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
-  padding-top: 0.4em;
+  padding-top: 0.4224em;
 }
 .prompt .caret { color: var(--color-accent); }
 .prompt input {
@@ -90,8 +90,8 @@
 /* ── game view (slice 2): HUD + room + exits + occupants + inventory ── */
 .hud {
   flex: 0 0 auto; /* pinned to the top of the screen — never shrinks with the transcript */
-  display: flex; flex-wrap: wrap; gap: 0.2em 1.2em;
-  padding-bottom: 0.3em;
+  display: flex; flex-wrap: wrap; gap: 0.2112em 1.2672em;
+  padding-bottom: 0.3168em;
   border-bottom: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
   color: var(--color-accent);
   font-size: 0.8em;
@@ -101,8 +101,8 @@
    they stay visible as the transcript scrolls. */
 .dock {
   flex: 0 0 auto;
-  display: flex; flex-direction: column; gap: 0.1em;
-  padding-top: 0.4em;
+  display: flex; flex-direction: column; gap: 0.1056em;
+  padding-top: 0.4224em;
   border-top: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
 }
 .dock .section { margin-top: 0; }
@@ -112,23 +112,23 @@
   font-family: var(--font-display, var(--font-body));
   letter-spacing: 0.06em;
   color: var(--color-accent);
-  margin-top: 0.3em;
+  margin-top: 0.3168em;
 }
-.room-desc { margin: 0.1em 0 0.3em; }
+.room-desc { margin: 0.1056em 0 0.3168em; }
 .room-desc.dark { opacity: 0.5; font-style: italic; }
 
-.section { margin-top: 0.25em; }
+.section { margin-top: 0.264em; }
 .section-label {
   font-size: 0.72em; letter-spacing: 0.12em; text-transform: uppercase;
   opacity: 0.65;
 }
-.chips { display: flex; flex-wrap: wrap; gap: 0.3em 0.6em; }
+.chips { display: flex; flex-wrap: wrap; gap: 0.3168em 0.6336em; }
 .chip { white-space: nowrap; }
 .chip .meta { opacity: 0.6; font-size: 0.82em; }
 .chip.defeated { opacity: 0.45; text-decoration: line-through; }
 
 .narration {
-  margin-top: 0.5em; padding-top: 0.35em;
+  margin-top: 0.528em; padding-top: 0.3696em;
   border-top: 1px solid color-mix(in srgb, var(--color-text) 20%, transparent);
   opacity: 0.92;
 }
@@ -136,7 +136,7 @@
 /* In-screen controls row: the multiplayer turn indicator + GM control (empty in single-player). */
 .controls {
   flex: 0 0 auto;
-  display: flex; align-items: center; gap: 0.5em; margin-top: 0.4em;
+  display: flex; align-items: center; gap: 0.528em; margin-top: 0.4224em;
 }
 .turn-indicator {
   font: inherit;
@@ -150,7 +150,7 @@
   color: var(--color-bg);
   background: var(--color-accent);
   border: none; border-radius: 4px;
-  padding: 0.1em 0.6em;
+  padding: 0.1056em 0.6336em;
   cursor: pointer;
 }
 
@@ -177,7 +177,7 @@
 .audio-btn {
   border: none; background: transparent;
   font-size: 1.15em; line-height: 1;
-  padding: 0.1em 0.2em; cursor: pointer;
+  padding: 0.1056em 0.2112em; cursor: pointer;
   opacity: 0.8;
   filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.3));
 }
@@ -187,19 +187,19 @@
 .overlay {
   position: absolute; inset: 0; z-index: 3;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 0.6em; padding: 1rem;
+  gap: 0.6336em; padding: 0.95rem;
   background: rgba(10, 10, 8, 0.92);
   cursor: pointer;
 }
 .overlay-frame {
   max-width: 100%; max-height: 80%; overflow: auto;
-  padding: 0.8em; border-radius: 6px;
+  padding: 0.8448em; border-radius: 6px;
   border: 2px solid var(--color-accent);
   background: rgba(10, 10, 8, 0.6);
   box-shadow: 0 0 10px rgba(217, 194, 122, 0.35), inset 0 0 14px rgba(0, 0, 0, 0.5);
   cursor: default;
 }
-.help-list { display: flex; flex-direction: column; gap: 0.35em; }
+.help-list { display: flex; flex-direction: column; gap: 0.3696em; }
 .help-row { font-family: var(--font-body); font-size: 0.8em; color: var(--color-text); white-space: nowrap; }
 .map-svg { max-width: 100%; height: auto; }
 .map-svg .map-box { fill: var(--color-chip-bg); stroke: var(--color-muted); stroke-width: 1.5; }
@@ -219,8 +219,8 @@
   flex: 0 0 auto; /* pinned with the HUD at the top */
   display: flex;
   flex-wrap: wrap;
-  gap: 0.2rem 1rem;
-  padding: 0.15rem 0;
+  gap: 0.19rem 0.95rem;
+  padding: 0.1425rem 0;
   font-size: 0.85em;
   color: var(--color-muted);
 }
@@ -249,7 +249,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1.4em;
+  gap: 1.4784em;
   padding: clamp(1rem, 4%, 2.5rem);
   text-align: center;
   background: var(--color-bg);
@@ -271,11 +271,11 @@
   color: var(--color-text);
 }
 .crt-welcome .enter-btn {
-  margin-top: 0.4em;
+  margin-top: 0.4224em;
   font-family: var(--font-display);
   font-size: clamp(1em, 3vmin, 1.4em);
   letter-spacing: 0.1em;
-  padding: 0.5em 1.6em;
+  padding: 0.528em 1.6896em;
   background: transparent;
   color: var(--color-accent);
   border: 2px solid var(--color-accent);
