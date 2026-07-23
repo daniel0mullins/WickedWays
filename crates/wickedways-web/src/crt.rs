@@ -412,8 +412,16 @@ pub fn crt_app() -> Element {
         }
     });
 
-    let screen = match vm() {
-        Some(v) => game_view(v, narration, draft, status_fields()),
+    // The status bar (pinned top) and the exits/inventory dock (pinned bottom) render OUTSIDE the
+    // scrolling transcript, so they stay in view as narration grows. Only the room/occupants/narration
+    // scroll. Both empty until the first projection.
+    let vmodel = vm();
+    let (hud, dock) = match &vmodel {
+        Some(v) => (hud_bar(v, &status_fields()), dock_bar(v)),
+        None => (rsx! {}, rsx! {}),
+    };
+    let screen = match vmodel {
+        Some(v) => game_view(v, narration, draft),
         None => rsx! {
             div { class: "line system", "WICKEDWAYS" }
             div { class: "line", "status: {status}" }
@@ -426,7 +434,9 @@ pub fn crt_app() -> Element {
             div { class: "monitor",
                 div { class: "monitor-screen",
                     div { class: "screen",
+                        {hud}
                         div { class: "transcript", {screen} }
+                        {dock}
                         div { class: "prompt",
                             span { class: "caret", "›" }
                             input {
@@ -548,9 +558,10 @@ fn emphasis_class(field: &StatusField) -> &'static str {
 /// Renders the engine's `ViewModel` as the CRT game view — HUD, room, exits, occupants, inventory,
 /// plus the running narration log. The room description and narration lines link the scope's nouns;
 /// `fields` are the campaign's live `Status` readout, shown as a color-coded status bar when present.
-fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>, fields: Vec<StatusField>) -> Element {
+/// The fixed status bar pinned to the top of the CRT screen (above the scrolling transcript): the
+/// core HUD (location · turn · HP · SAN) plus the campaign's authored `StatusField` readout.
+fn hud_bar(v: &ViewModel, fields: &[StatusField]) -> Element {
     let s = &v.status;
-    let nouns = clickable_nouns(&v);
     rsx! {
         div { class: "hud",
             span { "{s.location_name}" }
@@ -568,6 +579,54 @@ fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>
                 }
             }
         }
+    }
+}
+
+/// The fixed dock pinned to the bottom of the CRT screen (between the transcript and the input): the
+/// current room's exits and the player's inventory, kept in view as the transcript scrolls.
+fn dock_bar(v: &ViewModel) -> Element {
+    let inv = &v.inventory;
+    let empty = inv.items.is_empty() && inv.keys.is_empty();
+    rsx! {
+        div { class: "dock",
+            if !v.exits.is_empty() || !v.locked_doors.is_empty() {
+                div { class: "section",
+                    div { class: "section-label", "Exits" }
+                    div { class: "chips",
+                        for e in v.exits.iter() {
+                            span { key: "{e.dir.as_key()}", class: "chip", "{e.dir.as_key()} → {e.to_name}" }
+                        }
+                        for d in v.locked_doors.iter() {
+                            span { key: "locked-{d.dir.as_key()}", class: "chip",
+                                "{d.dir.as_key()} → {d.name} "
+                                span { class: "meta", "(locked)" }
+                            }
+                        }
+                    }
+                }
+            }
+            div { class: "section",
+                div { class: "section-label", "Inventory ({inv.items.len() + inv.keys.len()}/{inv.slots})" }
+                if empty {
+                    div { class: "chip meta", "empty" }
+                } else {
+                    div { class: "chips",
+                        for it in inv.items.iter() {
+                            span { key: "{it.id}", class: "chip", "{it.name}" }
+                        }
+                        for k in inv.keys.iter() {
+                            span { key: "{k.id}", class: "chip", "{k.name} ", span { class: "meta", "(key)" } }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>) -> Element {
+    let nouns = clickable_nouns(&v);
+    rsx! {
         div { class: "room-name", "{v.room.name}" }
         div {
             class: if v.room.is_lit { "room-desc" } else { "room-desc dark" },
@@ -575,23 +634,6 @@ fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>
                 {linked_line(&v.room.description, &nouns, draft)}
             } else {
                 "It is too dark to see."
-            }
-        }
-
-        if !v.exits.is_empty() || !v.locked_doors.is_empty() {
-            div { class: "section",
-                div { class: "section-label", "Exits" }
-                div { class: "chips",
-                    for e in v.exits.iter() {
-                        span { key: "{e.dir.as_key()}", class: "chip", "{e.dir.as_key()} → {e.to_name}" }
-                    }
-                    for d in v.locked_doors.iter() {
-                        span { key: "locked-{d.dir.as_key()}", class: "chip",
-                            "{d.dir.as_key()} → {d.name} "
-                            span { class: "meta", "(locked)" }
-                        }
-                    }
-                }
             }
         }
 
@@ -606,28 +648,6 @@ fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>
                             "{o.name}"
                             if let Some(h) = o.health {
                                 span { class: "meta", " ({h} hp)" }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        {
-            let inv = &v.inventory;
-            let empty = inv.items.is_empty() && inv.keys.is_empty();
-            rsx! {
-                div { class: "section",
-                    div { class: "section-label", "Inventory ({inv.items.len() + inv.keys.len()}/{inv.slots})" }
-                    if empty {
-                        div { class: "chip meta", "empty" }
-                    } else {
-                        div { class: "chips",
-                            for it in inv.items.iter() {
-                                span { key: "{it.id}", class: "chip", "{it.name}" }
-                            }
-                            for k in inv.keys.iter() {
-                                span { key: "{k.id}", class: "chip", "{k.name} ", span { class: "meta", "(key)" } }
                             }
                         }
                     }
