@@ -33,6 +33,19 @@ pub struct MobAttack {
     pub amount: f64,
 }
 
+impl MobAttack {
+    /// One line of combat prose naming the stat lost, so the player sees what kind of harm landed.
+    /// The single prose source shared by the solo turn loop (which emits it as a mechanic cue) and
+    /// the surfaces' narrator.
+    pub fn narration(&self) -> alloc::string::String {
+        match self.stat {
+            StatType::Sanity => alloc::format!("The {} claws at your mind — you lose {} Sanity.", self.name, self.amount),
+            StatType::Energy => alloc::format!("The {} saps your strength — you lose {} Energy.", self.name, self.amount),
+            StatType::Health => alloc::format!("The {} tears into you — you lose {} Health.", self.name, self.amount),
+        }
+    }
+}
+
 impl World {
     /// Each live (non-KO) mob in the active player's current room attacks the
     /// player (the "aggro while sharing its room" rule). Returns the typed damage
@@ -335,6 +348,13 @@ impl World {
                 }
                 self.talk(actor, &target, prompt.as_deref(), cat, cues)
             }
+            // Materials & crafting — free, turn-gated verbs (see `crafting.rs`).
+            Intent::Harvest { target_id } => {
+                self.harvest(actor, &crate::world::ids::MaterialCacheId(target_id), cat, cues)
+            }
+            Intent::Craft { recipe_id } => self.craft(actor, &recipe_id, cat, cues).map(|_| ()),
+            Intent::Repair { target_id } => self.repair(actor, &ItemId(target_id), cat, cues),
+            Intent::Destroy { target_id } => self.destroy(actor, &ItemId(target_id), cat, cues),
         }
     }
 

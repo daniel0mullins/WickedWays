@@ -43,8 +43,12 @@ pub enum HotspotKind {
     Exit,
     Locked,
     Occupant,
+    /// A co-located party member (another player) — distinguished so surfaces can show who's here.
+    Player,
     Loot,
     Item,
+    /// An un-harvested material cache in the room.
+    Cache,
 }
 
 /// A clickable element in the current scene. Mirrors the TS `Hotspot`.
@@ -115,6 +119,7 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
 
     // ── Occupants ──────────────────────────────────────────────────────────────
     for occupant in &vm.occupants {
+        let is_player = occupant.player == Some(true);
         let mut actions = vec![ActionDescriptor::Examine {
             label: "Examine".into(),
             target_id: occupant.id.clone(),
@@ -125,7 +130,8 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
                 intent: Intent::Talk { npc_id: occupant.id.clone(), prompt: None },
             });
         }
-        if occupant.defeated != Some(true) {
+        // Fellow players aren't foes — no attack verb on a party member.
+        if !is_player && occupant.defeated != Some(true) {
             actions.push(ActionDescriptor::Intent {
                 label: "Attack".into(),
                 intent: Intent::Attack { target_id: occupant.id.clone() },
@@ -134,7 +140,7 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
         hotspots.push(Hotspot {
             key: occupant.id.clone(),
             label: occupant.name.clone(),
-            kind: HotspotKind::Occupant,
+            kind: if is_player { HotspotKind::Player } else { HotspotKind::Occupant },
             dir: None,
             image: occupant.image.clone(),
             actions,
@@ -154,6 +160,24 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
                 ActionDescriptor::Intent {
                     label: "Open".into(),
                     intent: Intent::Open { target_id: loot.id.clone() },
+                },
+            ],
+        });
+    }
+
+    // ── Material caches ──────────────────────────────────────────────────────────
+    for cache in &vm.caches {
+        hotspots.push(Hotspot {
+            key: cache.id.clone(),
+            label: cache.name.clone(),
+            kind: HotspotKind::Cache,
+            dir: None,
+            image: cache.image.clone(),
+            actions: vec![
+                ActionDescriptor::Examine { label: "Examine".into(), target_id: cache.id.clone() },
+                ActionDescriptor::Intent {
+                    label: "Harvest".into(),
+                    intent: Intent::Harvest { target_id: cache.id.clone() },
                 },
             ],
         });
@@ -207,7 +231,9 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
 /// - Read — only if the item carries lore.
 /// - Equip / Unequip — only if the item is equippable (swapped by the `equipped` flag).
 /// - Use — only if the item is usable (consumed on use).
+/// - Repair — only if the item is durable and worn below full (`damaged`).
 /// - Drop (always, unless the item is a required quest item — `droppable == Some(false)`).
+/// - Break down — only if the item is `destroyable` (scraps it into the material pool).
 pub fn inventory_actions(item: &ScopeEntity, equipped: bool) -> Vec<ActionDescriptor> {
     let mut actions = vec![ActionDescriptor::Examine {
         label: "Examine".into(),
@@ -235,11 +261,25 @@ pub fn inventory_actions(item: &ScopeEntity, equipped: bool) -> Vec<ActionDescri
             intent: Intent::Use { target_id: item.id.clone() },
         });
     }
+    // Repair — only a durable item worn below full (free, restores to full for a material cost).
+    if item.damaged == Some(true) {
+        actions.push(ActionDescriptor::Intent {
+            label: "Repair".into(),
+            intent: Intent::Repair { target_id: item.id.clone() },
+        });
+    }
     // Required quest items (droppable === false) can't be set down.
     if item.droppable != Some(false) {
         actions.push(ActionDescriptor::Intent {
             label: "Drop".into(),
             intent: Intent::Drop { target_id: item.id.clone() },
+        });
+    }
+    // Break down — only a destroyable item (scraps it back into the shared material pool).
+    if item.destroyable == Some(true) {
+        actions.push(ActionDescriptor::Intent {
+            label: "Break down".into(),
+            intent: Intent::Destroy { target_id: item.id.clone() },
         });
     }
     actions
@@ -260,8 +300,11 @@ mod tests {
             locked_doors: Vec::new(),
             occupants: Vec::new(),
             loot: Vec::new(),
+            caches: Vec::new(),
             inventory: Inventory { items: Vec::new(), keys: Vec::new(), equipped_names: Vec::new(), slots: 6 },
             scope: Vec::new(),
+            materials: Vec::new(),
+            recipes: Vec::new(),
             status: StatusView { location_name: "Hall".into(), turn: 1, max_turns: 150, health: 10.0, sanity: 10.0 },
             outcome: CampaignOutcome::Ongoing,
             finished: false,
@@ -280,8 +323,10 @@ mod tests {
             usable: None,
             has_lore: None,
             droppable: None,
+            destroyable: None,
+            damaged: None,
             defeated: None,
-            talkable: None,
+            talkable: None, player: None,
         }
     }
 
@@ -353,6 +398,22 @@ mod tests {
             vec![
                 ActionDescriptor::Examine { label: "Examine".into(), target_id: "mob-1".into() },
                 ActionDescriptor::Intent { label: "Attack".into(), intent: Intent::Attack { target_id: "mob-1".into() } },
+            ]
+        );
+    }
+
+    #[test]
+    fn material_cache_offers_examine_then_harvest() {
+        let mut vm = mk_vm();
+        vm.caches = vec![ent("cache:vein", "Iron Vein", "cache")];
+        let h = scene_hotspots(&vm).into_iter().find(|h| h.kind == HotspotKind::Cache).expect("cache hotspot");
+        assert_eq!(h.key, "cache:vein");
+        assert_eq!(h.label, "Iron Vein");
+        assert_eq!(
+            h.actions,
+            vec![
+                ActionDescriptor::Examine { label: "Examine".into(), target_id: "cache:vein".into() },
+                ActionDescriptor::Intent { label: "Harvest".into(), intent: Intent::Harvest { target_id: "cache:vein".into() } },
             ]
         );
     }
@@ -475,6 +536,29 @@ mod tests {
         s.equippable = Some(true);
         s.usable = Some(true);
         s
+    }
+
+    #[test]
+    fn damaged_destroyable_item_offers_repair_and_break_down() {
+        let mut s = ent("blade-1", "Iron Blade", "item");
+        s.destroyable = Some(true);
+        s.damaged = Some(true);
+        let labels = inventory_actions(&s, false).into_iter().map(|a| match a {
+            ActionDescriptor::Examine { label, .. } | ActionDescriptor::Read { label, .. } | ActionDescriptor::Intent { label, .. } => label,
+        }).collect::<Vec<_>>();
+        assert_eq!(labels, vec!["Examine", "Repair", "Drop", "Break down"]);
+    }
+
+    #[test]
+    fn an_undamaged_indestructible_item_offers_neither() {
+        // A full-durability, non-destroyable item (e.g. a quest tablet): no Repair, no Break down.
+        let mut s = ent("tablet", "Rite Tablet", "item");
+        s.destroyable = Some(false);
+        s.damaged = Some(false);
+        let labels = inventory_actions(&s, false).into_iter().map(|a| match a {
+            ActionDescriptor::Examine { label, .. } | ActionDescriptor::Read { label, .. } | ActionDescriptor::Intent { label, .. } => label,
+        }).collect::<Vec<_>>();
+        assert!(!labels.contains(&"Repair".to_string()) && !labels.contains(&"Break down".to_string()), "got {labels:?}");
     }
 
     #[test]

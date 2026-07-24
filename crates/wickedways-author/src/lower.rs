@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
 use wickedways_assemble::description::{
-    ArchetypeDef, CampaignDescription, ConditionEntry, ExitDef, FormationDef, LootDef,
+    ArchetypeDef, CacheDef, CampaignDescription, ConditionEntry, ExitDef, FormationDef, LootDef,
     MechanicEntry, MobDef, NpcDef, RoomDef, SceneDef,
 };
 use wickedways_core::script::ast::{
@@ -17,7 +17,7 @@ use wickedways_core::script::ast::{
 };
 use wickedways_core::stats::StatType;
 use wickedways_core::world::descriptor::{
-    Catalog, ItemDescriptor, ItemProperties, ItemType,
+    Catalog, ItemDescriptor, ItemProperties, ItemType, RecipeMeta,
 };
 use wickedways_core::world::formation_descriptor::FormationDescriptor;
 
@@ -115,7 +115,18 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 description: l.description.clone(),
             })
             .collect(),
-        caches: Vec::new(),
+        // Each `[[caches]]` entry → a `CacheDef`. `materials` is the same
+        // `BTreeMap<String, i64>` MaterialMap on both surfaces (direct clone);
+        // `assemble` turns it into a `cache:<name>` MaterialCacheSnapshot in the room.
+        caches: doc
+            .caches
+            .iter()
+            .map(|c| CacheDef {
+                name: c.name.clone(),
+                room: c.room.clone(),
+                materials: c.materials.clone(),
+            })
+            .collect(),
         // Each `[[npcs]]` entry → an `NpcDef`. `stats` is the same core `Stats`
         // type on both surfaces (direct clone); `room`/`holds` carry through; the
         // held item descriptor (e.g. `cellar-key`) comes from `[[items]]` via
@@ -155,7 +166,9 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                     .and_then(|v| serde_json::to_value(v).ok()),
             })
             .collect(),
-        recipes: Vec::new(),
+        // Each `[[recipes]]` id → the party's known-recipe set (the metadata rides
+        // the catalog; see `lower_catalog`).
+        recipes: doc.recipes.iter().map(|r| r.id.clone()).collect(),
         materials: Vec::new(),
         win_conditions: doc.victory.win.iter().map(lower_condition).collect(),
         lose_conditions: doc.victory.lose.iter().map(lower_condition).collect(),
@@ -304,12 +317,28 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
         formations.insert(f.key.clone(), FormationDescriptor { mobs: f.mobs.clone() });
     }
 
+    // Each `[[recipes]]` entry's catalog half → a `RecipeMeta` carrying the cost +
+    // the `outputItemKey` that `World::craft` instantiates. Keyed by recipe id (the
+    // same id the description's known-recipe set holds).
+    let mut recipes = BTreeMap::new();
+    for r in &doc.recipes {
+        recipes.insert(
+            r.id.clone(),
+            RecipeMeta {
+                id: r.id.clone(),
+                output_name: r.output_name.clone(),
+                materials: r.materials.clone(),
+                output_item_key: Some(r.output_item.clone()),
+            },
+        );
+    }
+
     Ok(Catalog {
         items,
         aliases,
         behaviors,
         formations,
-        recipes: BTreeMap::new(),
+        recipes,
     })
 }
 

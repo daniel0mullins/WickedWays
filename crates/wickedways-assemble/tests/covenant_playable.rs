@@ -39,7 +39,7 @@ fn covenant_authority() -> SyncAuthority {
     let snap: CampaignSnapshot = assemble(&desc, &catalog, &party).expect("assemble covenant");
     let world = World::from_snapshot(snap);
     // snapshot_every: 1 so `snapshot()` always reflects the latest committed state.
-    SyncAuthority::new(world, catalog, AuthorityOpts { snapshot_every: 1, start_seq: 0 })
+    SyncAuthority::new(world, catalog, AuthorityOpts { snapshot_every: 1, start_seq: 0, solo: false, manage_turns: false })
 }
 
 /// A bare joining Warden derived from the GM host's snapshot as a field template: a player-kind

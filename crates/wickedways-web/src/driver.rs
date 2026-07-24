@@ -12,7 +12,7 @@ use std::collections::BTreeSet;
 
 use wickedways_core::sync::{Command, LogEntry, SubmitResult, SyncCoordinator, SyncTransport};
 use wickedways_core::world::descriptor::Catalog;
-use wickedways_core::world::ids::{CharacterId, ItemId};
+use wickedways_core::world::ids::{CharacterId, ItemId, MaterialCacheId};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
 use wickedways_core::{CampaignSnapshot, World};
@@ -74,6 +74,18 @@ pub fn bundled_campaign(id: &str) -> Result<(CampaignSnapshot, Catalog), String>
     Ok((snapshot, catalog))
 }
 
+/// The bundled catalog for a campaign id (resolving a hosted `<slug>~<token>` room id to its base
+/// campaign), or the empty catalog when the campaign ships none / isn't bundled. Used by the
+/// multiplayer client for projection — the server holds the authoritative catalog, but the client
+/// projects its replica locally and needs the same catalog to resolve aliases/recipes.
+pub fn bundled_catalog(id: &str) -> Catalog {
+    let base = base_campaign(id);
+    match bundled(base).or_else(|| bundled(id)) {
+        Some((_, Some(json))) => serde_json::from_str(json).unwrap_or_default(),
+        _ => Catalog::default(),
+    }
+}
+
 /// Which authority the client drives: an offline in-process authority, or a room server over WS.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Mode {
@@ -108,6 +120,25 @@ fn has_flag(key: &str) -> bool {
         .and_then(|s| web_sys::UrlSearchParams::new_with_str(&s).ok())
         .map(|p| p.has(key))
         .unwrap_or(false)
+}
+
+/// Toggle browser fullscreen for the whole page (the `fullscreen`/`fs` verb and the surfaces'
+/// fullscreen control). Enters fullscreen on the document element when none is active, else exits.
+/// Returns `true` if the page is entering fullscreen, `false` if exiting (or on no-op), so the caller
+/// can narrate the new state. A rejected request (e.g. no user gesture) is swallowed.
+pub fn toggle_fullscreen() -> bool {
+    let Some(doc) = web_sys::window().and_then(|w| w.document()) else {
+        return false;
+    };
+    if doc.fullscreen_element().is_some() {
+        doc.exit_fullscreen();
+        false
+    } else if let Some(el) = doc.document_element() {
+        let _ = el.request_fullscreen();
+        true
+    } else {
+        false
+    }
 }
 
 /// Whether the page carries `?debug` — unlocks the demo/conformance campaigns in the launcher.
@@ -169,8 +200,57 @@ pub fn read_config() -> Config {
         mode,
         ws: query_param("ws").unwrap_or_else(default_ws),
         campaign: query_param("campaign").unwrap_or_else(|| "demo".into()),
-        token: query_param("token").unwrap_or_else(|| "gm".into()),
+        token: query_param("token").unwrap_or_else(|| GM_IDENTITY.into()),
         theme: query_param("theme").unwrap_or_default(),
+    }
+}
+
+/// The GM's identity in the dev model: the host mints `?token=gm`, matching the server's default
+/// `GM_IDENTITY`. Whoever presents this token is the GM.
+pub const GM_IDENTITY: &str = "gm";
+
+/// Whether this client is the GM: the sole GM in single-player, or the `gm` identity in multiplayer
+/// (the host mints `?token=gm`; joiners get a random `player-*` identity via [`ensure_player_identity`]).
+pub fn is_gm() -> bool {
+    let cfg = read_config();
+    matches!(cfg.mode, Mode::Single) || cfg.token == GM_IDENTITY
+}
+
+/// Whether it's this client's turn to act. Not started → no. Single-player → always (you drive every
+/// seat). Multiplayer → the active character is the one you control: the GM controls the campaign's
+/// `gmId`; a joined player controls `player:<identity>`.
+pub fn is_my_turn(snapshot: &CampaignSnapshot, token: &str, is_gm: bool, single: bool) -> bool {
+    let c = &snapshot.campaign;
+    if !c.started {
+        return false;
+    }
+    if single {
+        return true;
+    }
+    let active = c.party_ids.get(c.active_character_index.max(0) as usize);
+    let mine = if is_gm {
+        c.gm_id.clone()
+    } else {
+        Some(CharacterId(format!("player:{token}")))
+    };
+    active == mine.as_ref()
+}
+
+/// Whether the active player still has action budget left this turn. In single-player (and before the
+/// campaign starts) there is no client-side budget gate — returns `true`. Multiplayer managed turns
+/// refuse actions once `actionsThisRound` reaches `actionsPerRound`; the surfaces mirror that by
+/// dimming the input so the player knows to end their turn.
+pub fn has_actions_left(world: &World, single: bool) -> bool {
+    if single {
+        return true;
+    }
+    match world
+        .active_character_id()
+        .ok()
+        .and_then(|id| world.characters.get(&id).map(|c| (c.actions_this_round, c.actions_per_round)))
+    {
+        Some((used, cap)) => used < cap,
+        None => true,
     }
 }
 
@@ -224,7 +304,11 @@ pub async fn boot(cfg: &Config) -> Result<(AppTransport, SyncCoordinator, Catalo
         Mode::Multi => {
             let transport = AppTransport::Multi(WsTransport::connect(&cfg.ws, &cfg.campaign, &cfg.token).await?);
             let coord = SyncCoordinator::join(&transport);
-            Ok((transport, coord, Catalog::default()))
+            // Project against the campaign's bundled catalog (resolving a hosted `<slug>~<token>`
+            // room id to its base) so item aliases, recipes, and other catalog-derived view data
+            // render — the server owns authority, but the client owns projection. An unbundled
+            // campaign falls back to the empty catalog (unchanged behaviour).
+            Ok((transport, coord, bundled_catalog(&cfg.campaign)))
         }
     }
 }
@@ -236,6 +320,17 @@ impl AppTransport {
         match self {
             AppTransport::Multi(t) => t.submit_async(command).await,
             AppTransport::Single(t) => t.submit_async(command).await,
+        }
+    }
+
+    /// A stream that ticks on every server push (another client's committed action, or a presence
+    /// change), so a surface can re-sync + re-project reactively — e.g. to show other players' moves
+    /// live and flip the "your turn" indicator when the turn reaches you. Single-player has no server,
+    /// so its stream is empty (the sender is dropped immediately).
+    pub fn push_notifications(&self) -> futures_channel::mpsc::UnboundedReceiver<()> {
+        match self {
+            AppTransport::Multi(t) => t.push_notifications(),
+            AppTransport::Single(_) => futures_channel::mpsc::unbounded().1,
         }
     }
 }
@@ -307,6 +402,10 @@ pub struct CampaignInfo {
     /// Debug-only: hidden from the launcher menu and not resolvable unless the page has `?debug`
     /// (the demo/conformance campaigns). The shipped campaign (Hollow House) is always visible.
     pub debug: bool,
+    /// Multiplayer: selecting it from the menu **hosts a new room** (a unique `<slug>~<token>` id) with
+    /// this client as GM, and mounts the join lobby. A single-player campaign launches offline
+    /// (`?mode=single`) with no lobby.
+    pub multiplayer: bool,
 }
 
 /// Both surfaces, offered by every bundled campaign (so the surface picker is always reachable).
@@ -323,6 +422,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "",
             surfaces: BOTH_SURFACES,
             debug: true,
+            multiplayer: true,
         },
         CampaignInfo {
             slug: "caretaker",
@@ -332,6 +432,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "",
             surfaces: BOTH_SURFACES,
             debug: true,
+            multiplayer: false,
         },
         CampaignInfo {
             slug: "facade-free-vs-advancing",
@@ -341,6 +442,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "",
             surfaces: BOTH_SURFACES,
             debug: true,
+            multiplayer: false,
         },
         CampaignInfo {
             slug: "status-bar",
@@ -350,6 +452,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "",
             surfaces: BOTH_SURFACES,
             debug: true,
+            multiplayer: false,
         },
         CampaignInfo {
             slug: "hollow-house",
@@ -359,6 +462,7 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "Enter Hollow House",
             surfaces: BOTH_SURFACES,
             debug: false,
+            multiplayer: false,
         },
         CampaignInfo {
             slug: "covenant",
@@ -368,14 +472,29 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "Join the Covenant",
             surfaces: BOTH_SURFACES,
             debug: false,
+            multiplayer: true,
         },
     ];
     REGISTRY
 }
 
-/// Resolve a `?campaign=` slug to its launcher metadata, or `None` for an absent/unknown slug (→ menu).
+/// The base campaign of a room id: a multiplayer room is `<slug>~<token>` (a unique per-host session),
+/// so `covenant~a5f3` resolves to the `covenant` registry entry. An id with no `~` is its own base.
+pub fn base_campaign(id: &str) -> &str {
+    id.split('~').next().unwrap_or(id)
+}
+
+/// Mint a unique room id for hosting a fresh session of `slug`: `<slug>~<token>`. The token
+/// distinguishes concurrent games so separate hosts don't collide; the server maps it back to `slug`.
+pub fn mint_room_id(slug: &str) -> String {
+    format!("{slug}~{}", random_suffix())
+}
+
+/// Resolve a `?campaign=` value to its launcher metadata, or `None` for an absent/unknown one (→ menu).
+/// Accepts a room id (`<slug>~<token>`) and resolves it to its base campaign, so a shared/hosted room
+/// still shows the right title, surfaces, and welcome.
 pub fn resolve_campaign_info(slug: Option<&str>) -> Option<&'static CampaignInfo> {
-    let slug = slug?;
+    let slug = base_campaign(slug?);
     campaign_registry().iter().find(|c| c.slug == slug)
 }
 
@@ -451,7 +570,9 @@ fn choose(slug: &str, surfaces: &[&str], surface: Option<&str>) -> LauncherRoute
 /// [`choose`]. Mirrors the TS `bootLauncher` boot, plus the `?debug` gate.
 pub fn resolve_route(campaign: Option<&str>, surface: Option<&str>, debug: bool) -> LauncherRoute {
     match resolve_campaign_info(campaign) {
-        Some(info) if visible(info, debug) => choose(info.slug, info.surfaces, surface),
+        // Route on the ORIGINAL id (a room id `<slug>~<token>` stays intact for the connection); the
+        // surfaces/visibility come from its base campaign via `resolve_campaign_info`.
+        Some(info) if visible(info, debug) => choose(campaign.unwrap_or(info.slug), info.surfaces, surface),
         _ => LauncherRoute::Menu,
     }
 }
@@ -504,7 +625,7 @@ pub fn project(coord: &SyncCoordinator, catalog: &Catalog) -> Option<ViewModel> 
 /// `move`, whose compass direction becomes the destination room id via the active character's room
 /// and the exit graph. Intents with no sync command in the multiplayer path (open/talk/wait) return
 /// a human-readable note the surface narrates back.
-pub fn intent_to_command(world: &World, intent: &Intent) -> Result<Command, String> {
+pub fn intent_to_command(world: &World, catalog: &Catalog, intent: &Intent) -> Result<Command, String> {
     let actor = world.active_character_id().map_err(|e| e.0)?;
     match intent {
         Intent::Move { dir } => {
@@ -516,6 +637,12 @@ pub fn intent_to_command(world: &World, intent: &Intent) -> Result<Command, Stri
             let room = world.rooms.get(&room_id).ok_or("room not found")?;
             let exit_id = room.exits.get(dir.as_key()).ok_or_else(|| format!("no exit {}", dir.as_key()))?;
             let ex = world.exits.get(exit_id).ok_or("exit not found")?;
+            // Gate the move on the exit's keyed-door behavior, the way the single-seat `go` does — the
+            // sync `move` (by room id) lands via `move_to`, which performs no door check. A locked
+            // door returns its fail message and no command is issued.
+            if let Some(reason) = world.exit_block_reason(&actor, *dir, catalog) {
+                return Err(reason);
+            }
             let dest = if ex.endpoint_ids[0] == room_id {
                 ex.endpoint_ids[1].clone()
             } else {
@@ -529,9 +656,24 @@ pub fn intent_to_command(world: &World, intent: &Intent) -> Result<Command, Stri
         Intent::Equip { target_id } => Ok(Command::Equip { actor_id: actor, item_id: ItemId(target_id.clone()), slot: None }),
         Intent::Unequip { target_id } => Ok(Command::Unequip { actor_id: actor, item_id: ItemId(target_id.clone()) }),
         Intent::Use { target_id } => Ok(Command::Use { actor_id: actor, item_id: ItemId(target_id.clone()) }),
-        Intent::Open { .. } => Err("(opening is a local view action — not yet wired)".into()),
-        Intent::Talk { .. } => Err("(dialogue is a later slice)".into()),
-        Intent::Wait => Err("(wait is not yet wired)".into()),
+        // Materials & crafting — all free (turn-gated by authorize, no budget tick).
+        Intent::Harvest { target_id } => {
+            Ok(Command::Harvest { actor_id: actor, cache_id: MaterialCacheId(target_id.clone()) })
+        }
+        Intent::Craft { recipe_id } => Ok(Command::Craft { actor_id: actor, recipe_id: recipe_id.clone() }),
+        Intent::Repair { target_id } => Ok(Command::Repair { actor_id: actor, item_id: ItemId(target_id.clone()) }),
+        Intent::Destroy { target_id } => Ok(Command::Destroy { actor_id: actor, item_id: ItemId(target_id.clone()) }),
+        // `open` is a local view reveal (list a container's contents) — the surfaces handle it
+        // directly against the current view, so it never reaches the sync layer.
+        Intent::Open { .. } => Err("(opening is a local view action)".into()),
+        Intent::Talk { npc_id, prompt } => Ok(Command::Talk {
+            actor_id: actor,
+            npc_id: CharacterId(npc_id.clone()),
+            prompt: prompt.clone(),
+        }),
+        // `wait` passes the turn; in single-player the solo authority runs the full turn loop around
+        // it (dread + mob reactions + advance), in multiplayer it is a no-op the GM supersedes.
+        Intent::Wait => Ok(Command::Wait { actor_id: actor }),
     }
 }
 
@@ -574,6 +716,214 @@ mod tests {
     }
 
     #[test]
+    fn talking_to_the_hollow_house_caretaker_runs_dialogue_and_hands_over_the_key() {
+        // The full dialogue chain end-to-end against the real campaign catalog:
+        // Intent::Talk → intent_to_command → Command::Talk → authority → world.talk. The caretaker
+        // speaks (a mechanic cue), gives the cellar key, and vanishes (setVisible false).
+        use wickedways_core::presentation::PresentationCue;
+        use wickedways_core::world::intent::Intent;
+        use wickedways_core::world::snapshot::CharacterKind;
+
+        let (snapshot, catalog) = bundled_campaign("hollow-house").unwrap();
+        let started = snapshot.campaign.started;
+        let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+        if !started {
+            assert!(matches!(
+                coord.submit(&mut transport, Command::BeginCampaign),
+                SubmitResult::Committed { .. }
+            ));
+        }
+
+        // The caretaker is the campaign's lone NPC, visible before the first talk.
+        let caretaker = coord
+            .replica()
+            .characters
+            .iter()
+            .find(|(_, c)| c.kind == CharacterKind::Npc)
+            .map(|(id, c)| (id.clone(), c.visible))
+            .expect("hollow-house seats a caretaker npc");
+        assert!(caretaker.1, "the caretaker is visible before the first talk");
+
+        let intent = Intent::Talk { npc_id: caretaker.0 .0.clone(), prompt: None };
+        let cmd = intent_to_command(coord.replica(), &catalog, &intent).expect("talk maps to a Talk command");
+        let res = coord.submit(&mut transport, cmd);
+        let SubmitResult::Committed { delta, .. } = res else {
+            panic!("talk should commit, got {res:?}");
+        };
+
+        // The caretaker speaks: a mechanic cue carries the dialogue response line.
+        assert!(
+            delta.cues.iter().any(|c| matches!(c, PresentationCue::Mechanic { .. })),
+            "talk emits the caretaker's dialogue as a mechanic cue, got {:?}",
+            delta.cues
+        );
+        // …and its `once` effects fire: the caretaker hands over the key and vanishes.
+        let still_visible = coord
+            .replica()
+            .characters
+            .get(&caretaker.0)
+            .map(|c| c.visible)
+            .unwrap_or(true);
+        assert!(!still_visible, "the caretaker vanishes after handing over the cellar key");
+    }
+
+    #[test]
+    fn a_locked_door_blocks_movement_until_the_caretaker_hands_over_the_key() {
+        // Keyed doors gate movement client-side (the sync `move` by room id performs no door check).
+        // The Foyer's cellar door (south) is locked until the caretaker's dialogue hands over the
+        // cellar key — tying the dialogue fix to the door mechanic it exists to serve.
+        use wickedways_core::world::direction::Direction;
+        use wickedways_core::world::intent::Intent;
+        use wickedways_core::world::snapshot::CharacterKind;
+
+        let (snapshot, catalog) = bundled_campaign("hollow-house").unwrap();
+        let started = snapshot.campaign.started;
+        let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+        if !started {
+            assert!(matches!(
+                coord.submit(&mut transport, Command::BeginCampaign),
+                SubmitResult::Committed { .. }
+            ));
+        }
+
+        // The player starts in the Foyer; the cellar door (south) is locked without the key.
+        let blocked = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: Direction::South });
+        assert!(blocked.is_err(), "the cellar door is locked without the key, got {blocked:?}");
+
+        // Talk to the caretaker → receive the cellar key.
+        let caretaker = coord
+            .replica()
+            .characters
+            .iter()
+            .find(|(_, c)| c.kind == CharacterKind::Npc)
+            .map(|(id, _)| id.clone())
+            .expect("hollow-house seats a caretaker");
+        let talk = intent_to_command(
+            coord.replica(),
+            &catalog,
+            &Intent::Talk { npc_id: caretaker.0.clone(), prompt: None },
+        )
+        .unwrap();
+        assert!(matches!(coord.submit(&mut transport, talk), SubmitResult::Committed { .. }));
+
+        // With the cellar key in hand, the door is now passable.
+        let allowed = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: Direction::South });
+        assert!(
+            matches!(allowed, Ok(Command::Move { .. })),
+            "with the cellar key the door is passable, got {allowed:?}"
+        );
+    }
+
+    #[test]
+    fn a_solo_player_gets_its_full_action_budget_per_turn() {
+        // The turn respects `actionsPerRound`: the player takes its whole budget of actions before
+        // the turn ends (mobs react, round advances), and dread (onTurnStart) fires once per turn —
+        // not once per action. This is the fix for "a player can move unlimited times".
+        use wickedways_core::world::direction::Direction;
+        use wickedways_core::world::intent::Intent;
+
+        let (snapshot, catalog) = bundled_campaign("hollow-house").unwrap();
+        let started = snapshot.campaign.started;
+        let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+        if !started {
+            assert!(matches!(coord.submit(&mut transport, Command::BeginCampaign), SubmitResult::Committed { .. }));
+        }
+        let pc = coord.replica().active_character_id().unwrap();
+        let budget = coord.replica().characters[&pc].actions_per_round; // 3 for the Heir
+        assert!(budget >= 2, "the test needs a multi-action budget, got {budget}");
+        let round0 = coord.snapshot().campaign.round;
+        let sanity0 = coord.replica().characters[&pc].stats.sanity;
+
+        // Alternate Foyer↔Hall (both open corridors) so exits stay valid. The turn must NOT advance
+        // until the budget is spent.
+        let dir = |i: i64| if i % 2 == 0 { Direction::North } else { Direction::South };
+        for i in 0..(budget - 1) {
+            let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: dir(i) }).unwrap();
+            assert!(matches!(coord.submit(&mut transport, cmd), SubmitResult::Committed { .. }));
+            assert_eq!(
+                coord.snapshot().campaign.round, round0,
+                "the turn must not advance before the budget is spent (after move {})", i + 1
+            );
+        }
+        // The budget-spending move ends the turn → the round advances.
+        let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: dir(budget - 1) }).unwrap();
+        coord.submit(&mut transport, cmd);
+        assert_eq!(coord.snapshot().campaign.round, round0 + 1, "the turn advances once the action budget is spent");
+        // Dread fired exactly once this turn, not once per action.
+        assert_eq!(
+            coord.replica().characters[&pc].stats.sanity, sanity0 - 1.0,
+            "dread drains once per turn, not per action"
+        );
+    }
+
+    #[test]
+    fn a_solo_wait_advances_the_round_and_drains_dread_in_hollow_house() {
+        // The single-player turn loop over the offline transport: `wait` passes the turn, and the
+        // solo authority runs start_turn (dread drains sanity) → next_player (round advances). This
+        // is the machinery the multiplayer sync path skips and that the TS session provided.
+        use wickedways_core::world::intent::Intent;
+
+        let (snapshot, catalog) = bundled_campaign("hollow-house").unwrap();
+        let started = snapshot.campaign.started;
+        let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+        if !started {
+            assert!(matches!(
+                coord.submit(&mut transport, Command::BeginCampaign),
+                SubmitResult::Committed { .. }
+            ));
+        }
+
+        let pc = coord.replica().active_character_id().expect("a started campaign has an active seat");
+        let round_before = coord.snapshot().campaign.round;
+        let sanity_before = coord.replica().characters.get(&pc).map(|c| c.stats.sanity).unwrap();
+
+        let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Wait).expect("wait maps to a command");
+        let res = coord.submit(&mut transport, cmd);
+        assert!(matches!(res, SubmitResult::Committed { .. }), "solo wait commits, got {res:?}");
+
+        let round_after = coord.snapshot().campaign.round;
+        let sanity_after = coord.replica().characters.get(&pc).map(|c| c.stats.sanity).unwrap();
+        assert_eq!(round_after, round_before + 1, "a solo wait advances the round");
+        assert!(
+            sanity_after < sanity_before,
+            "dread drains sanity on turn start (was {sanity_before}, now {sanity_after})"
+        );
+    }
+
+    #[test]
+    fn undo_rebuilds_the_authority_from_the_captured_pre_command_snapshot() {
+        // The surfaces stash `coord.snapshot()` before each committed command and, on `undo`, rebuild
+        // the offline authority from it (via `rebuild_single`). This proves that round-trip reverts a
+        // real committed change: a solo wait drains dread, and rebuilding from the pre-wait snapshot
+        // restores the sanity and round.
+        use wickedways_core::world::intent::Intent;
+
+        let (snapshot, catalog) = bundled_campaign("hollow-house").unwrap();
+        let started = snapshot.campaign.started;
+        let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+        if !started {
+            assert!(matches!(
+                coord.submit(&mut transport, Command::BeginCampaign),
+                SubmitResult::Committed { .. }
+            ));
+        }
+        let pc = coord.replica().active_character_id().unwrap();
+        let before = coord.snapshot(); // the undo point
+        let sanity_before = coord.replica().characters[&pc].stats.sanity;
+        let round_before = coord.snapshot().campaign.round;
+
+        // A committed action moves the state forward.
+        let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Wait).unwrap();
+        assert!(matches!(coord.submit(&mut transport, cmd), SubmitResult::Committed { .. }));
+        assert!(coord.replica().characters[&pc].stats.sanity < sanity_before, "the wait advanced state");
+
+        // Undo: rebuild from the captured snapshot restores the pre-command state exactly.
+        let (_t, reverted) = rebuild_single(before, catalog.clone());
+        assert_eq!(reverted.replica().characters[&pc].stats.sanity, sanity_before, "undo restores sanity");
+        assert_eq!(reverted.snapshot().campaign.round, round_before, "undo restores the round");
+    }
+
+    #[test]
     fn an_unknown_campaign_falls_back_to_the_default() {
         // Unknown ids resolve to DEFAULT_CAMPAIGN rather than erroring, so a stray `?campaign=` still
         // boots something playable.
@@ -592,6 +942,36 @@ mod tests {
                 assert!(surface_info(sid).is_some(), "{}: surface '{sid}' must have metadata", c.slug);
             }
         }
+    }
+
+    #[test]
+    fn is_my_turn_tracks_the_active_seat() {
+        let (mut snap, _) = bundled_campaign("covenant").unwrap();
+        // Not started → never your turn.
+        assert!(!is_my_turn(&snap, "gm", true, false));
+        // Started; active seat 0 is the GM host (the campaign's gmId character).
+        snap.campaign.started = true;
+        snap.campaign.active_character_index = 0;
+        assert!(is_my_turn(&snap, "gm", true, false), "the GM's turn when its own seat is active");
+        assert!(!is_my_turn(&snap, "player-x", false, false), "not a joiner's turn while the GM seat is active");
+        // Single-player drives every seat → always your turn once started.
+        assert!(is_my_turn(&snap, "whatever", true, true));
+    }
+
+    #[test]
+    fn a_room_id_resolves_to_its_base_campaign_but_keeps_the_room_in_the_route() {
+        // A hosted/shared room id `<slug>~<token>` resolves to its base campaign's metadata…
+        assert_eq!(base_campaign("covenant~a5f3"), "covenant");
+        assert_eq!(resolve_campaign_info(Some("covenant~a5f3")).map(|c| c.slug), Some("covenant"));
+        // …while the route keeps the FULL room id so the connection targets that specific room.
+        assert_eq!(
+            resolve_route(Some("covenant~a5f3"), Some("crt-terminal"), false),
+            LauncherRoute::Surface { slug: "covenant~a5f3".into(), surface: "crt-terminal".into() }
+        );
+        // A room id with two surfaces and none chosen still routes to the picker (keeping the room id).
+        assert_eq!(resolve_route(Some("covenant~a5f3"), None, false), LauncherRoute::Picker { slug: "covenant~a5f3".into() });
+        // An unknown base still falls back to the menu.
+        assert_eq!(resolve_route(Some("nope~x"), None, false), LauncherRoute::Menu);
     }
 
     #[test]

@@ -141,7 +141,7 @@ impl World {
     /// Throw if the actor cannot see (unlit room and not `sees_in_dark`).
     /// Mirrors `character.ts` `requireVisibleTarget` (:266-271): checks only the
     /// actor's own visibility, not the target's location.
-    fn require_visible_target(&self, actor: &CharacterId, verb: &str, cat: &Catalog) -> Result<(), ProceduralViolation> {
+    pub(crate) fn require_visible_target(&self, actor: &CharacterId, verb: &str, cat: &Catalog) -> Result<(), ProceduralViolation> {
         if let Some(ch) = self.characters.get(actor) {
             if let Some(room_id) = &ch.current_room_id {
                 if !self.is_lit(room_id, cat) && !self.sees_in_dark(actor) {

@@ -27,17 +27,17 @@ pub fn pnc_theme_vars(id: &str) -> &'static str {
 
 const CRT_GREEN: &str = "--color-bg:#0b0e0a; --color-text:#9be89b; --color-accent:#d7ffd7; \
     --color-muted:#8a8f80; --color-border:#2a281f; --color-chip-bg:#25241d; --color-error:#e86b6b; \
-    --font-body:'VT323',monospace; --base-size:26px; --crt-scanline:0.35; \
+    --font-body:'VT323',monospace; --base-size:21px; --crt-scanline:0.35; \
     --plastic:#c9c4b4; --plastic-light:#e6e1d2; --plastic-dark:#8f8b7d; --plastic-shadow:#5f5c52;";
 
 const CRT_AMBER: &str = "--color-bg:#140f07; --color-text:#ffcf7a; --color-accent:#ffe6b0; \
     --color-muted:#9a8a68; --color-border:#2c2415; --color-chip-bg:#241d10; --color-error:#e8896b; \
-    --font-body:'VT323',monospace; --base-size:26px; --crt-scanline:0.35; \
+    --font-body:'VT323',monospace; --base-size:21px; --crt-scanline:0.35; \
     --plastic:#c9c4b4; --plastic-light:#e6e1d2; --plastic-dark:#8f8b7d; --plastic-shadow:#5f5c52;";
 
 const CRT_ICE: &str = "--color-bg:#080d13; --color-text:#9bd7e8; --color-accent:#d7f0ff; \
     --color-muted:#7f8f97; --color-border:#1f2a2e; --color-chip-bg:#101d24; --color-error:#e86b8f; \
-    --font-body:'VT323',monospace; --base-size:26px; --crt-scanline:0.35; \
+    --font-body:'VT323',monospace; --base-size:21px; --crt-scanline:0.35; \
     --plastic:#b4c2c9; --plastic-light:#d2e0e6; --plastic-dark:#7d888f; --plastic-shadow:#52595f;";
 
 // PnC overrides only need the base `--pnc-*` tokens; the derived `--color-*` aliases in pnc.css

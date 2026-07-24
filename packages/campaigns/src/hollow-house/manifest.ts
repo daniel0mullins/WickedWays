@@ -11,8 +11,6 @@ import { hollowHouseBehaviors } from "./scripted.js";
 import { ALIASES, TITLE, INTRO } from "./content.js";
 import { Archetypes } from "./ids.js";
 import { hollowHouseAudio } from "./audio.js";
-import { hollowHouseThemes } from "./themes.js";
-import { hollowHousePncThemes } from "./pnc-themes.js";
 
 export const hollowHouse: CampaignManifest = {
   slug: "hollow-house",
@@ -28,8 +26,10 @@ export const hollowHouse: CampaignManifest = {
   playerName: "Heir",
   archetype: Archetypes.Heir,
   audio: hollowHouseAudio,
+  // Surface themes lived in the retired TS play-surface; the Rust/Dioxus client owns
+  // its own theming (`theme.rs`), so the manifest just names the available surfaces.
   surfaces: [
-    { id: "crt-terminal", themes: hollowHouseThemes },
-    { id: "point-and-click", themes: hollowHousePncThemes },
+    { id: "crt-terminal" },
+    { id: "point-and-click" },
   ],
 };

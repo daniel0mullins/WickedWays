@@ -1449,12 +1449,50 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
 
 - **The sync core** in [`crates/wickedways-core/src/sync/`](crates/wickedways-core/src/sync/): the
   actor-tagged [`Command`](crates/wickedways-core/src/sync/command.rs) union (mirroring
-  `src/lib/sync/types.ts` byte-for-byte), the [`authorize`](crates/wickedways-core/src/sync/authorize.rs)
+  `src/lib/sync/types.ts` byte-for-byte, plus two Rust-side extensions — `talk` and `wait` — that the
+  TS union expressed only as intents), the [`authorize`](crates/wickedways-core/src/sync/authorize.rs)
   gate, and the native [`SyncAuthority`](crates/wickedways-core/src/sync/authority.rs) (submit →
   authorize → apply → `Delta` diff → ordered log) + `Delta` apply + `SyncCoordinator`. A **differential
   gate** ([`crates/wickedways-assemble/tests/sync_gate.rs`](crates/wickedways-assemble/tests/sync_gate.rs))
   replays committed command sequences through the Rust authority and asserts each `{ seq, delta }`
   matches the TS oracle byte-for-byte.
+  - **Solo mode** (`AuthorityOpts.solo`) is how the offline single-player host (the browser client's
+    `SinglePlayerTransport`) recovers the full per-turn machinery the explicit multiplayer path leaves
+    to the GM. A time-advancing command (`move`/`take`/`drop`/`use`/`attack`/`wait`) drives a turn that
+    respects the character's `actionsPerRound` **action budget**: the turn begins with `start_turn`
+    (affliction tick + campaign `onTurnStart`, e.g. dread) on the actor's first action, each action
+    spends a budget slot, and the turn ends — light-tied mob reactions → `next_player` (round advance +
+    outcome) — only once the budget is spent (or immediately on `wait`, a pass). So a player gets its
+    whole budget of actions per turn and dread ticks once per turn, not once per action. Mob strikes
+    ride the delta as mechanic cues (`MobAttack::narration`). The multiplayer room server leaves `solo`
+    off — mob strikes stay the GM's explicit `mobAttack` there.
+  - **Managed turns** (`AuthorityOpts.manage_turns`) is the multiplayer complement to the budget: the
+    room server turns it on so a seat's turn-actions are refused once its `actionsPerRound` budget is
+    spent (`submit` denies with "You have no actions left this turn."), and a turn-changing command
+    (`beginCampaign`/`nextPlayer`/`endTurn`) `start_turn`s the incoming player — resetting the budget
+    and firing `onTurnStart` (dread). A player ends **their own** turn with the `endTurn` command (the
+    surfaces' _End Turn_ button, which the server routes to that seat via `actorOf`); the GM's
+    `nextPlayer` still advances the turn for an unavailable player. The budget lives in `submit`, not
+    the sync `authorize` gate, and the differential gate constructs the authority with
+    `AuthorityOpts::default()` (both `solo` and `manage_turns` off), so authorize stays budget-free and
+    byte-for-byte with the TS oracle.
+  - **Keyed doors** are gated client-side. The sync `move` command carries a room id and lands via
+    `move_to`, which — faithful to TS `Character.move(room)` — performs no door check (the guard lives
+    only in the direction-based `go`). So the surfaces gate a `move` with `World::exit_block_reason`
+    (a pure `can_pass` query that runs no `run_script`), narrating the door's fail message and issuing
+    no command when it's locked — e.g. the Hollow House cellar door stays shut until the caretaker's
+    dialogue hands over the key.
+  - **Materials & crafting** are wired end to end. `harvest`/`craft`/`repair`/`destroy` are **free**
+    turn-gated commands (`authorize` requires the actor's turn; none tick the budget) that resolve
+    against the ported engine verbs — harvesting a room's `MaterialCache` into the shared pool,
+    crafting a known recipe's `outputItemKey` into a fresh item, repairing worn gear for a
+    proportional cost, and scrapping an item back into the pool. The widened `ViewModel` projects the
+    room's caches, the party's known recipes (with affordability), and the pool, so the CRT parser
+    resolves `harvest <cache>` / `craft <recipe>` and both surfaces render them. `destroy` is a
+    Rust-side wire extension (like `talk`/`wait`); the differential gate never issues these, so oracle
+    parity holds. Campaigns declare caches/recipes in the TOML authoring surface (`[[caches]]` /
+    `[[recipes]]`); the multiplayer client projects against the campaign's bundled catalog so recipes
+    and aliases resolve there too.
 - **The room server** in [`crates/wickedways-server/`](crates/wickedways-server/): a Rust/axum port of
   `packages/server`. A `RoomServer` hosts a native `SyncAuthority` per campaign behind a per-campaign
   tokio actor (`Table`) that serializes submit → persist → ack (flush-before-ack), gates appends by

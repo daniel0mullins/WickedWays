@@ -27,7 +27,7 @@
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 
-use wickedways_core::presentation::StatusField;
+use wickedways_core::presentation::{PresentationCue, StatusField};
 use wickedways_core::sync::{Command, SubmitResult, SyncCoordinator};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
@@ -37,8 +37,8 @@ use crate::audio::cue_for_intent;
 use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
-    boot, boot_single, intent_to_command, project, read_config, rebuild_single, welcome_for,
-    AppTransport, Mode,
+    boot, boot_single, has_actions_left, intent_to_command, is_gm, is_my_turn, project, read_config, rebuild_single,
+    toggle_fullscreen, welcome_for, AppTransport, Mode, GM_IDENTITY,
 };
 use crate::map::{layout_map, map_svg, MapModel};
 use crate::narrator::Narrator;
@@ -84,10 +84,16 @@ enum PncAction {
     Run(ActionDescriptor),
     /// GM: advance to the next seat (dev affordance, mirrors the CRT control).
     NextPlayer,
+    /// A player ends their own turn (multiplayer managed turns).
+    EndTurn,
     /// Single-player lifecycle verbs from the settings menu (mirror the CRT `save`/`restore`/`restart`).
     Save,
     Restore,
     Restart,
+    /// Single-player: revert the last committed command (mirrors the CRT `undo`).
+    Undo,
+    /// Toggle browser fullscreen for the page (mirrors the CRT `fullscreen`).
+    Fullscreen,
     /// Toggle procedural audio (the click is the user gesture that lets the `AudioContext` start).
     ToggleAudio,
 }
@@ -104,6 +110,13 @@ fn print_room(mut log: Signal<Vec<LogLine>>, mut narrator: Signal<Narrator>, vm:
     }
 }
 
+/// An event the transport coroutine loops over: a UI [`PncAction`], or a `Refresh` tick from a server
+/// push (another client's committed action) so the surface re-syncs + re-projects reactively.
+enum PncEv {
+    Act(PncAction),
+    Refresh,
+}
+
 pub fn pnc_app() -> Element {
     let mut status = use_signal(|| "connecting…".to_string());
     let mut vm = use_signal(|| None::<ViewModel>);
@@ -114,7 +127,8 @@ pub fn pnc_app() -> Element {
     let mut map_model = use_signal(MapModel::new);
     let mut menu = use_signal(|| None::<ActionMenu>);
     let mut map_open = use_signal(|| false);
-    let mut started = use_signal(|| false);
+    // In multiplayer the launcher lobby already gated entry, so skip the surface's own welcome screen.
+    let mut started = use_signal(|| matches!(read_config().mode, Mode::Multi));
     let mut settings_open = use_signal(|| false);
     let mut audio_on = use_signal(|| false);
     let inv_tab_items = use_signal(|| true); // true = Inventory tab, false = Key Items tab
@@ -124,9 +138,15 @@ pub fn pnc_app() -> Element {
     let theme_vars = use_hook(|| pnc_theme_vars(&read_config().theme));
     // The campaign's welcome text (title/intro/button) — the manifest passthrough, read once.
     let welcome = use_hook(|| welcome_for(&read_config().campaign));
+    // GM gate for the turn-advance control, and the "your turn" indicator (refreshed by the coroutine).
+    let is_gm = use_hook(is_gm);
+    let mut my_turn = use_signal(|| false);
+    let mut my_actions_left = use_signal(|| true);
 
-    let driver = use_coroutine(move |mut rx: UnboundedReceiver<PncAction>| async move {
+    let driver = use_coroutine(move |rx: UnboundedReceiver<PncAction>| async move {
         let cfg = read_config();
+        let single = matches!(cfg.mode, Mode::Single);
+        let gm = single || cfg.token == GM_IDENTITY;
         match boot(&cfg).await {
             Err(e) => {
                 status.set("error".into());
@@ -137,6 +157,9 @@ pub fn pnc_app() -> Element {
                 // `catalog` is the campaign's, held for the session and used for every projection.
                 let mut transport = transport;
                 let mut coord = coord;
+                // Single-player undo stack: the (snapshot + fog-of-war map) captured BEFORE each
+                // committed command, newest last (mirrors the CRT surface).
+                let mut undo_stack: Vec<SaveBlob> = Vec::new();
                 // The audio runtime (engine + sanity-reactive ambient bed + chiptune pack), lazily
                 // opening its AudioContext when the player enables sound via the topbar toggle.
                 let mut audio = AudioRuntime::for_campaign(Some(wickedways_campaign_audio()));
@@ -149,8 +172,31 @@ pub fn pnc_app() -> Element {
                 }
                 vm.set(initial);
                 status_fields.set(coord.status_fields().to_vec());
+                my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                            my_actions_left.set(has_actions_left(coord.replica(), single));
 
-                while let Some(action) = rx.next().await {
+                // Loop over UI actions AND server pushes: a pushed entry (another client's move, or the
+                // GM advancing the turn) re-syncs + re-projects, so play stays live and `my_turn` flips
+                // when the turn reaches this client — no polling.
+                let pushes = transport.push_notifications();
+                let mut events = futures_util::stream::select(rx.map(PncEv::Act), pushes.map(|_| PncEv::Refresh));
+                while let Some(ev) = events.next().await {
+                    let action = match ev {
+                        PncEv::Act(a) => a,
+                        PncEv::Refresh => {
+                            coord.sync(&transport);
+                            let after = project(&coord, &catalog);
+                            if let Some(a) = &after {
+                                map_model.write().observe(a);
+                                audio.update(a);
+                            }
+                            vm.set(after);
+                            status_fields.set(coord.status_fields().to_vec());
+                            my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                            my_actions_left.set(has_actions_left(coord.replica(), single));
+                            continue;
+                        }
+                    };
                     let intent = match action {
                         PncAction::NextPlayer => {
                             submit(&transport, &mut coord, Command::NextPlayer, log).await;
@@ -161,6 +207,24 @@ pub fn pnc_app() -> Element {
                             }
                             vm.set(after);
                             status_fields.set(coord.status_fields().to_vec());
+                            my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                            my_actions_left.set(has_actions_left(coord.replica(), single));
+                            continue;
+                        }
+                        // A player ends their OWN turn (the active character is theirs on their turn).
+                        PncAction::EndTurn => {
+                            if let Ok(actor_id) = coord.replica().active_character_id() {
+                                submit(&transport, &mut coord, Command::EndTurn { actor_id }, log).await;
+                            }
+                            let after = project(&coord, &catalog);
+                            if let Some(a) = &after {
+                                map_model.write().observe(a);
+                                audio.update(a);
+                            }
+                            vm.set(after);
+                            status_fields.set(coord.status_fields().to_vec());
+                            my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                            my_actions_left.set(has_actions_left(coord.replica(), single));
                             continue;
                         }
                         // ── Single-player lifecycle (mirrors the CRT verbs, same rebuild seam) ──
@@ -227,6 +291,39 @@ pub fn pnc_app() -> Element {
                             }
                             continue;
                         }
+                        PncAction::Undo => {
+                            if cfg.mode == Mode::Single {
+                                match undo_stack.pop() {
+                                    Some(blob) => {
+                                        // Rebuild the offline authority from the pre-command snapshot
+                                        // and hydrate its map — the same seam as `restore`.
+                                        let (t, c) = rebuild_single(blob.snapshot, catalog.clone());
+                                        transport = t;
+                                        coord = c;
+                                        map_model.write().hydrate(blob.map);
+                                        let reverted = project(&coord, &catalog);
+                                        log.write().push(LogLine::plain("Undone.".into()));
+                                        if let Some(v) = &reverted {
+                                            print_room(log, narrator, v);
+                                            audio.update(v);
+                                        }
+                                        vm.set(reverted);
+                                        status_fields.set(coord.status_fields().to_vec());
+                                    }
+                                    None => log.write().push(LogLine::plain("Nothing to undo.".into())),
+                                }
+                            } else {
+                                log.write().push(LogLine::plain("(undo is single-player only)".into()));
+                            }
+                            continue;
+                        }
+                        PncAction::Fullscreen => {
+                            let entering = toggle_fullscreen();
+                            log.write().push(LogLine::plain(
+                                if entering { "Fullscreen on." } else { "Fullscreen off." }.into(),
+                            ));
+                            continue;
+                        }
                         PncAction::ToggleAudio => {
                             // The button click is the user gesture that lets the AudioContext start.
                             if audio.enabled() {
@@ -261,17 +358,43 @@ pub fn pnc_app() -> Element {
                         PncAction::Run(ActionDescriptor::Intent { intent, .. }) => intent,
                     };
 
+                    // Opening a container is a local reveal: list its contents from the current view
+                    // (the items are already takeable from room scope).
+                    if let Intent::Open { target_id } = &intent {
+                        if let Some(v) = project(&coord, &catalog) {
+                            let lines = narrator.read().render_action(
+                                &Intent::Open { target_id: target_id.clone() },
+                                &v,
+                                &v,
+                            );
+                            for line in lines {
+                                log.write().push(LogLine::plain(line));
+                            }
+                        }
+                        continue;
+                    }
+
                     let before = project(&coord, &catalog);
-                    let command = match intent_to_command(coord.replica(), &intent) {
+                    let command = match intent_to_command(coord.replica(), &catalog, &intent) {
                         Ok(cmd) => cmd,
                         Err(note) => {
                             log.write().push(LogLine::plain(note));
                             continue;
                         }
                     };
-                    if !submit(&transport, &mut coord, command, log).await {
+                    // Capture the pre-command state for `undo` (single-player only), pushed only once
+                    // the command commits.
+                    let undo_point = (cfg.mode == Mode::Single)
+                        .then(|| SaveBlob { snapshot: coord.snapshot(), map: map_model.read().serialize() });
+                    let Some(cues) = submit(&transport, &mut coord, command, log).await else {
                         audio.note_error();
                         continue;
+                    };
+                    if let Some(point) = undo_point {
+                        undo_stack.push(point);
+                        if undo_stack.len() > 100 {
+                            undo_stack.remove(0);
+                        }
                     }
                     let after = project(&coord, &catalog);
                     // Record a move BEFORE observe so the newly-entered room is placed relative to
@@ -294,6 +417,11 @@ pub fn pnc_app() -> Element {
                             log.write().push(LogLine::end("— THE END —".into()));
                         }
                     }
+                    // Render the delta's mechanic cues as prose: NPC dialogue (the caretaker's
+                    // lines), storyteller journal reveals, and any effect cues the command emitted.
+                    for line in narrator.read().render_cues(&cues) {
+                        log.write().push(LogLine::plain(line));
+                    }
                     if let Some(a) = &after {
                         // Voice the committed action (attack/move/take/drop have a sound) and drive
                         // the ambient bed from the new view.
@@ -304,6 +432,8 @@ pub fn pnc_app() -> Element {
                     }
                     vm.set(after);
                     status_fields.set(coord.status_fields().to_vec());
+                    my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                            my_actions_left.set(has_actions_left(coord.replica(), single));
                 }
             }
         }
@@ -320,6 +450,11 @@ pub fn pnc_app() -> Element {
             div { class: "pnc-topbar",
                 div { class: "topbar-left", span { class: "room-name", "{room_name}" } }
                 div { class: "topbar-controls",
+                    if mode == Mode::Multi && my_turn() {
+                        span { class: "turn-indicator", "● Your turn" }
+                        // A player ends their own turn; the GM's ⏭ (below) ends anyone's.
+                        button { class: "topbar-btn end-turn-btn", title: "End your turn", onclick: move |_| driver.send(PncAction::EndTurn), "End Turn" }
+                    }
                     span { class: "topbar-status", "{status}" }
                     button {
                         class: "topbar-btn",
@@ -328,7 +463,11 @@ pub fn pnc_app() -> Element {
                         if audio_on() { "🔊" } else { "🔇" }
                     }
                     button { class: "topbar-btn", title: "Map", onclick: move |_| map_open.set(true), "🗺" }
-                    button { class: "topbar-btn", title: "GM: next player", onclick: move |_| driver.send(PncAction::NextPlayer), "⏭" }
+                    button { class: "topbar-btn", title: "Fullscreen", onclick: move |_| driver.send(PncAction::Fullscreen), "⛶" }
+                    // The turn-advance control is the GM's only, and only in multiplayer.
+                    if mode == Mode::Multi && is_gm {
+                        button { class: "topbar-btn", title: "GM: next player", onclick: move |_| driver.send(PncAction::NextPlayer), "⏭" }
+                    }
                     if mode == Mode::Single {
                         button { class: "topbar-btn", title: "Menu", onclick: move |_| settings_open.set(true), "⚙" }
                     }
@@ -337,12 +476,17 @@ pub fn pnc_app() -> Element {
 
             // ── Stage: scene + sidebar ──────────────────────────────────────────
             div { class: "pnc-stage",
-                div { class: "pnc-scene",
+                // Off-turn OR out of action budget (multiplayer): the scene + inventory are dimmed and
+                // non-interactive until it's your turn with actions to spend. Single-player never engages.
+                div { class: if mode == Mode::Multi && (!my_turn() || !my_actions_left()) { "pnc-scene waiting" } else { "pnc-scene" },
                     {scene_view(view.as_ref(), finished, menu, driver)}
                 }
                 aside { class: "pnc-sidebar",
                     {status_view(view.as_ref(), &status_fields())}
-                    {inventory_view(view.as_ref(), finished, inv_tab_items, menu)}
+                    div { class: if mode == Mode::Multi && (!my_turn() || !my_actions_left()) { "pnc-inv-gate waiting" } else { "pnc-inv-gate" },
+                        {inventory_view(view.as_ref(), finished, inv_tab_items, menu)}
+                        {crafting_view(view.as_ref(), finished, driver)}
+                    }
                     div { class: "pnc-log",
                         div { class: "log",
                             for (i, line) in log().iter().enumerate() {
@@ -393,6 +537,7 @@ pub fn pnc_app() -> Element {
             if settings_open() {
                 div { class: "pnc-menu-backdrop", onclick: move |_| settings_open.set(false),
                     div { class: "settings-menu", onclick: move |e| e.stop_propagation(),
+                        button { class: "menu-btn", onclick: move |_| { settings_open.set(false); driver.send(PncAction::Undo); }, "Undo" }
                         button { class: "menu-btn", onclick: move |_| { settings_open.set(false); driver.send(PncAction::Save); }, "Save" }
                         button { class: "menu-btn", onclick: move |_| { settings_open.set(false); driver.send(PncAction::Restore); }, "Restore" }
                         button { class: "menu-btn", onclick: move |_| { settings_open.set(false); driver.send(PncAction::Restart); }, "Restart" }
@@ -412,22 +557,23 @@ pub fn pnc_app() -> Element {
     }
 }
 
-/// Submit a command; on a denial push the reason to the log. Returns whether it committed (so the
-/// caller knows to re-project + narrate).
+/// Submit a command; on a denial push the reason to the log. Returns the committed delta's
+/// presentation cues (so the caller can re-project, narrate, and render dialogue/mechanic cues), or
+/// `None` on a denial.
 async fn submit(
     transport: &AppTransport,
     coord: &mut SyncCoordinator,
     command: Command,
     mut log: Signal<Vec<LogLine>>,
-) -> bool {
+) -> Option<Vec<PresentationCue>> {
     match transport.submit_async(command).await {
-        SubmitResult::Committed { .. } => {
+        SubmitResult::Committed { delta, .. } => {
             coord.sync(transport);
-            true
+            Some(delta.cues)
         }
         SubmitResult::Denied { reason } => {
             log.write().push(LogLine::error(format!("✗ {reason}")));
-            false
+            None
         }
     }
 }
@@ -474,6 +620,7 @@ fn scene_view(
                     let actions = hs.actions.clone();
                     let label = hs.label.clone();
                     let marker_cls = match hs.kind {
+                        HotspotKind::Player => "body-marker player-marker",
                         HotspotKind::Occupant => "body-marker occupant-marker",
                         HotspotKind::Loot => "body-marker loot-marker",
                         _ => "body-marker item-marker",
@@ -546,6 +693,53 @@ fn status_view(view: Option<&ViewModel>, fields: &[StatusField]) -> Element {
                             class: status_field_class(f),
                             span { class: "field-label", "{f.label}" } " "
                             span { class: "field-value", "{f.value}" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The crafting panel: the shared material pool readout plus a button per known recipe (disabled
+/// until the pool can afford it). Forging dispatches a free `Craft` intent through the shared driver.
+/// Hidden entirely when the campaign has no recipes.
+fn crafting_view(view: Option<&ViewModel>, finished: bool, driver: Coroutine<PncAction>) -> Element {
+    let Some(v) = view else { return rsx! {} };
+    if v.recipes.is_empty() && v.materials.is_empty() {
+        return rsx! {};
+    }
+    rsx! {
+        div { class: "pnc-crafting",
+            if !v.materials.is_empty() {
+                div { class: "crafting-materials",
+                    span { class: "panel-label", "Materials" }
+                    for m in v.materials.iter() {
+                        span { key: "mat-{m.component}", class: "material", "{m.component} ×{m.quantity}" }
+                    }
+                }
+            }
+            if !v.recipes.is_empty() {
+                div { class: "crafting-recipes",
+                    span { class: "panel-label", "Recipes" }
+                    for r in v.recipes.iter() {
+                        {
+                            let recipe_id = r.id.clone();
+                            let name = r.name.clone();
+                            let enabled = r.affordable && !finished;
+                            rsx! {
+                                button {
+                                    key: "recipe-{r.id}",
+                                    class: if r.affordable { "craft-btn" } else { "craft-btn unaffordable" },
+                                    disabled: !enabled,
+                                    title: if r.affordable { "Forge {name}" } else { "Not enough materials" },
+                                    onclick: move |_| driver.send(PncAction::Run(ActionDescriptor::Intent {
+                                        label: "Forge".into(),
+                                        intent: Intent::Craft { recipe_id: recipe_id.clone() },
+                                    })),
+                                    "Forge {name}"
+                                }
+                            }
                         }
                     }
                 }

@@ -21,6 +21,7 @@ pub mod scenes;
 pub mod snapshot;
 pub mod submit;
 mod combat;
+mod crafting;
 mod items_actions;
 mod movement;
 mod turn;

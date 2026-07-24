@@ -12,7 +12,6 @@ use wickedways_core::presentation::PresentationCue;
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::submit::MobAttack;
 use wickedways_core::world::view::{ScopeEntity, ViewModel};
-use wickedways_core::StatType;
 
 use crate::parser::Query;
 
@@ -231,6 +230,10 @@ impl Narrator {
                     }
                 }
             }
+            Intent::Harvest { target_id } => vec![format!("You strip the {} of its materials.", name_of(target_id))],
+            Intent::Craft { recipe_id } => vec![format!("You forge the {}.", name_of(recipe_id))],
+            Intent::Repair { target_id } => vec![format!("You mend the {}, good as new.", name_of(target_id))],
+            Intent::Destroy { target_id } => vec![format!("You break the {} down for parts.", name_of(target_id))],
             Intent::Move { .. } | Intent::Talk { .. } => Vec::new(),
         }
     }
@@ -238,14 +241,9 @@ impl Narrator {
     /// Renders incoming mob strikes, each naming the stat lost so the player sees what kind of harm
     /// landed (Sanity vs Health vs Energy).
     pub fn render_mob_attacks(&self, attacks: &[MobAttack]) -> Vec<String> {
-        attacks
-            .iter()
-            .map(|a| match a.stat {
-                StatType::Sanity => format!("The {} claws at your mind — you lose {} Sanity.", a.name, a.amount),
-                StatType::Energy => format!("The {} saps your strength — you lose {} Energy.", a.name, a.amount),
-                StatType::Health => format!("The {} tears into you — you lose {} Health.", a.name, a.amount),
-            })
-            .collect()
+        // Shares the single prose source with the solo turn loop (which emits the same lines as
+        // mechanic cues); see `MobAttack::narration`.
+        attacks.iter().map(|a| a.narration()).collect()
     }
 }
 
@@ -270,6 +268,7 @@ mod tests {
     use wickedways_core::world::direction::Direction;
     use wickedways_core::world::view::{ExitView, Inventory, LootView, StatusView, ThinRoom};
     use wickedways_core::presentation::CampaignOutcome;
+    use wickedways_core::StatType;
 
     fn entity(id: &str, name: &str, kind: &str) -> ScopeEntity {
         ScopeEntity {
@@ -283,8 +282,10 @@ mod tests {
             usable: None,
             has_lore: None,
             droppable: None,
+            destroyable: None,
+            damaged: None,
             defeated: None,
-            talkable: None,
+            talkable: None, player: None,
         }
     }
 
@@ -299,8 +300,11 @@ mod tests {
             locked_doors: Vec::new(),
             occupants: Vec::new(),
             loot: Vec::new(),
+            caches: Vec::new(),
             inventory: Inventory { items: Vec::new(), keys: Vec::new(), equipped_names: Vec::new(), slots: 0 },
             scope: Vec::new(),
+            materials: Vec::new(),
+            recipes: Vec::new(),
             status: StatusView { location_name: "Hall".into(), turn: 1, max_turns: 150, health: 10.0, sanity: 10.0 },
             outcome: CampaignOutcome::Ongoing,
             finished: false,

@@ -24,7 +24,7 @@ use wickedways_core::sync::{Command, SyncCoordinator, SyncTransport};
 use wickedways_core::world::ids::CharacterId;
 use wickedways_core::world::snapshot::{CampaignSnapshot, CharacterKind, CharacterSnapshot};
 
-use crate::driver::{ensure_player_identity, read_config, welcome_for};
+use crate::driver::{ensure_player_identity, read_config, set_params, welcome_for};
 use crate::transport::{Roster, WsTransport};
 
 /// One archetype a joiner can pick, from the campaign's `campaign.archetypes` catalogue.
@@ -165,9 +165,24 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
     });
 
     let you_are_gm = roster().gm.as_ref().is_some_and(|g| g.identity == identity);
+    let gm_online = roster().gm.as_ref().is_some_and(|g| g.online);
     let can_enter = started() && (you_joined() || you_are_gm);
-    let seats = roster().seats;
     let players = roster().players;
+    // Resolve each seat's character id to its display name from the snapshot, so the roster reads
+    // "Rowan" rather than the raw "player:player-xxxx" id.
+    let snap = snapshot();
+    let seat_rows: Vec<(String, Option<String>, bool)> = roster()
+        .seats
+        .iter()
+        .map(|s| {
+            let name = snap
+                .as_ref()
+                .and_then(|sn| sn.characters.iter().find(|c| c.id.0 == s.character_id))
+                .map(|c| c.name.clone())
+                .unwrap_or_else(|| s.character_id.clone());
+            (name, s.owner.clone(), s.online)
+        })
+        .collect();
 
     // Submit the join: build a bare character from the snapshot, then the join (+ archetype) commands.
     let do_join = {
@@ -211,35 +226,66 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
                 h1 { class: "lobby-title", "{welcome.title}" }
                 p { class: "lobby-status", "{status}" }
 
-                if !started() {
-                    if you_joined() {
-                        p { class: "lobby-note", "You're in as \"{name}\". Waiting for the GM to begin…" }
-                    } else {
-                        div { class: "lobby-form",
-                            label { class: "lobby-label", "Character name" }
-                            input {
+                // The room id the GM hands out — others paste it into the menu's "Join by ID".
+                div { class: "lobby-share",
+                    span { class: "lobby-label", "Game ID — share so others can Join by ID" }
+                    code { class: "lobby-id", "{slug}" }
+                }
+
+                // The join form: whenever a non-GM player hasn't taken a character — including a LATE
+                // join into a game that already started. The archetype pick is pre-start only
+                // (SelectArchetype must run before the campaign begins); a late joiner keeps the
+                // default statline. (The GM plays its own pre-seated character — see the server's
+                // GM-seat claim — so it doesn't use this form.)
+                if !you_joined() && !you_are_gm {
+                    div { class: "lobby-form",
+                        label { class: "lobby-label", "Character name" }
+                        input {
+                            class: "lobby-input",
+                            value: "{name}",
+                            placeholder: "Name your Warden",
+                            oninput: move |e| name.set(e.value()),
+                        }
+                        if !started() && !archetypes().is_empty() {
+                            label { class: "lobby-label", "Archetype" }
+                            select {
                                 class: "lobby-input",
-                                value: "{name}",
-                                placeholder: "Name your Warden",
-                                oninput: move |e| name.set(e.value()),
-                            }
-                            if !archetypes().is_empty() {
-                                label { class: "lobby-label", "Archetype" }
-                                select {
-                                    class: "lobby-input",
-                                    value: "{archetype}",
-                                    onchange: move |e| archetype.set(e.value()),
-                                    option { value: "", "— choose an archetype —" }
-                                    for a in archetypes() {
-                                        option { key: "{a.id}", value: "{a.id}", "{a.name}" }
-                                    }
+                                value: "{archetype}",
+                                onchange: move |e| archetype.set(e.value()),
+                                option { value: "", "— choose an archetype —" }
+                                for a in archetypes() {
+                                    option { key: "{a.id}", value: "{a.id}", "{a.name}" }
                                 }
                             }
-                            button { class: "lobby-btn primary", onclick: do_join, "Join the campaign" }
+                        }
+                        button { class: "lobby-btn primary", onclick: do_join,
+                            if started() { "Join the game in progress" } else { "Join the campaign" }
                         }
                     }
+                }
+
+                if you_joined() && !started() && !you_are_gm {
+                    p { class: "lobby-note", "You're in as \"{name}\". Waiting for the GM to begin…" }
+                }
+
+                if !started() {
                     if you_are_gm {
                         button { class: "lobby-btn", onclick: do_start, "Start the campaign (GM)" }
+                    } else if !gm_online {
+                        // No GM is present, so no one can begin — offer to host. Reconnecting as the
+                        // GM identity (`?token=gm`) makes this client the GM; a reload re-derives the
+                        // identity and rejoins with the campaign/surface params intact.
+                        p { class: "lobby-note", "No GM is here to start the campaign." }
+                        button {
+                            class: "lobby-btn primary",
+                            onclick: move |_| {
+                                set_params(&[("token", "gm")]);
+                                if let Some(w) = web_sys::window() {
+                                    let _ = w.location().reload();
+                                }
+                            },
+                            "Start as host (become GM)"
+                        }
                     }
                 }
 
@@ -249,14 +295,14 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
 
                 div { class: "lobby-roster",
                     h2 { class: "lobby-subtitle", "In the sanctum" }
-                    if seats.is_empty() && players.is_empty() {
+                    if seat_rows.is_empty() && players.is_empty() {
                         p { class: "lobby-note", "No one has taken a seat yet." }
                     }
-                    for s in seats {
+                    for (name, owner, online) in seat_rows {
                         div { class: "lobby-seat",
-                            span { class: "lobby-dot", class: if s.online { "on" } else { "off" } }
-                            span { "{s.character_id}" }
-                            span { class: "lobby-owner", { if let Some(o) = &s.owner { format!("— {o}") } else { "— open".into() } } }
+                            span { class: "lobby-dot", class: if online { "on" } else { "off" } }
+                            span { "{name}" }
+                            span { class: "lobby-owner", { if owner.is_some() { "— joined" } else { "— open" } } }
                         }
                     }
                 }

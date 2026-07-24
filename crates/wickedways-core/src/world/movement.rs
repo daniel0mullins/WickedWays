@@ -182,6 +182,34 @@ impl World {
         self.move_to(actor, dest, cat, cues)
     }
 
+    /// Whether a keyed-exit behavior blocks `actor` from moving through the exit in `dir`. Returns
+    /// the behavior's `fail_message` (or a default) when `can_pass` is false, else `None` (no exit
+    /// there, a behavior-free exit, or a passable keyed exit).
+    ///
+    /// A **pure** query — it does NOT run the exit's `run_script` or mutate door state. The sync
+    /// `move` command carries a room id and lands via [`move_to`](Self::move_to), which (mirroring
+    /// TS `Character.move(room)`) performs no door check; the surfaces call this to gate a `move` the
+    /// way the single-seat [`go`](Self::go) does, so a locked door still bars the way client-side.
+    pub fn exit_block_reason(
+        &self,
+        actor: &CharacterId,
+        dir: Direction,
+        cat: &Catalog,
+    ) -> Option<alloc::string::String> {
+        let here = self.characters.get(actor).and_then(|c| c.current_room_id.clone())?;
+        let exit_id = self.rooms.get(&here)?.exits.get(dir.as_key())?.clone();
+        let exit = self.exits.get(&exit_id)?;
+        let key = exit.behavior_key.clone()?;
+        let resolved = crate::world::exits::resolve_exit_behavior(&key, cat)?;
+        let behavior = resolved.as_behavior();
+        let actor_view = self.character_view(actor, cat)?;
+        if behavior.can_pass(&actor_view, &exit.state) {
+            None
+        } else {
+            Some(behavior.fail_message().unwrap_or("The way is blocked.").into())
+        }
+    }
+
     /// Fire every scene of the given `phase` registered on `room_id`, in snapshot
     /// order. Each firing may mutate its own `state` and returns mechanic cues,
     /// pushed onto `cues` as `PresentationCue::Mechanic`. Mirrors TS
@@ -903,6 +931,31 @@ mod tests {
         // fail message emitted
         assert!(cues.iter().any(|c| matches!(c,
             PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The door is locked."))));
+    }
+
+    #[test]
+    fn exit_block_reason_reports_locked_doors_and_clears_with_the_key() {
+        use crate::world::descriptor::Catalog;
+        let mut w = world_two_rooms(false);
+        w.make_north_exit_keyed("conformance:keyed-door");
+        for ex in w.exits.values_mut() {
+            if ex.behavior_key.is_some() {
+                ex.state = serde_json::json!({ "unlocked": false });
+            }
+        }
+        // Locked without the key → the behavior's fail message.
+        assert_eq!(
+            w.exit_block_reason(&cid("pc"), Direction::North, &Catalog::default()).as_deref(),
+            Some("The door is locked.")
+        );
+        // With the key, `can_pass` is true → no block.
+        seed_held_item(&mut w, "pc", "brass-key");
+        assert_eq!(w.exit_block_reason(&cid("pc"), Direction::North, &Catalog::default()), None);
+        // A pure query: the door state was never mutated (still locked; no run_script ran).
+        assert!(
+            w.exits.values().all(|ex| ex.state.get("unlocked") == Some(&serde_json::json!(false))),
+            "exit_block_reason must not mutate door state"
+        );
     }
 
     #[test]

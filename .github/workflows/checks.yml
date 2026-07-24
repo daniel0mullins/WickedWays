@@ -1,7 +1,8 @@
 name: Checks
 
-# Run lint, typecheck, and tests on every pull request (opened, reopened, and
-# on each new push to the PR branch).
+# Rust gate for the engine + Dioxus web client. The shipped product is the Rust
+# wasm client (see the root Dockerfile), so CI gates on Rust only; the legacy
+# TypeScript packages are no longer part of the build and are not checked here.
 on:
   pull_request:
 
@@ -15,35 +16,10 @@ jobs:
           # wasm32 target + clippy for the Dioxus web client (wickedways-web) gate below.
           targets: wasm32-unknown-unknown
           components: clippy
-      - uses: jetli/wasm-pack-action@v0.4.0
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.6
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # The assembler gate is pure Rust -- no wasm-pack, no browser -- so it runs in
-      # the fast job. It diffs Rust's assembled genesis against the committed goldens.
-      - run: cargo test -p wickedways-assemble
-      # The G2 author gate is likewise pure Rust: it byte-diffs the TOML compiler's
-      # output against the committed g2-vault oracle. Runs in the fast job.
-      - run: cargo test -p wickedways-author
-      - run: cargo test -p wickedways-server
-      # The Dioxus web client (sub-project D): host tests, clippy on host + wasm32,
-      # and the wasm build. Mirrors the per-slice local gate. Browser-level checks
-      # (wasm-bindgen bundling + Playwright) are heavier and stay out of this fast job.
-      - run: cargo test -p wickedways-web
+      # Whole-workspace tests: the engine core, the assembler + author golden gates,
+      # the differential sync gate, the server, and the Dioxus web client's host tests.
+      - run: cargo test --workspace
+      # The Dioxus web client: clippy on host + wasm32, and the wasm build itself.
       - run: cargo clippy -p wickedways-web --all-targets -- -D warnings
       - run: cargo clippy -p wickedways-web --all-targets --target wasm32-unknown-unknown -- -D warnings
       - run: cargo build -p wickedways-web --target wasm32-unknown-unknown
-      # Regenerate the ts-rs bindings and fail if the committed ones drifted from the
-      # Rust source of truth. Pure Rust + git diff, so it lives in the fast job.
-      - run: pnpm run bindings:check
-      # `pnpm run checks` (lint + typecheck + tests) resolves the engine types from
-      # the built wasm pkg (engine-types.ts = `typeof import(pkg-node)`) and boots the
-      # Authority in tests, so the pkg must be built first — pkg-node for the Node/type
-      # path, pkg-web for the bundler-target (engine-web.ts) typecheck.
-      - run: pnpm run wasm:build && pnpm run wasm:build:web
-      - run: pnpm run checks

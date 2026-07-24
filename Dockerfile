@@ -6,9 +6,7 @@
 # Build context MUST be the repo root. The Dioxus bundle and the server binary are
 # compiled inside the image (the client derives its socket URL same-origin, so no
 # host/port is baked in). The store is ephemeral by default (no DB_PATH / volume).
-#
-# (The legacy TypeScript SPA image lives at packages/play/Dockerfile; this one
-#  supersedes it for the Rust stack.)
+# This is the only shipped image; the legacy TypeScript SPA (packages/play) was retired.
 
 # ---- builder: Rust toolchain → Dioxus wasm bundle + server binary ----
 FROM rust:1-slim-bookworm AS builder

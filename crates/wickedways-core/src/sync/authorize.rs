@@ -37,7 +37,10 @@ pub fn authorize(world: &World, command: &Command) -> AuthResult {
     let started = world.campaign.started;
     let finished = world.campaign.outcome != CampaignOutcome::Ongoing;
 
-    if command.is_turn_action() {
+    // Turn-actions, `wait`, and `endTurn` share the same gate: the campaign is running and it's your
+    // turn. `wait` is a time-advancing pass; `endTurn` ends your own turn (a player may only end the
+    // turn while it is theirs — the GM ends anyone's via `nextPlayer`).
+    if command.is_turn_action() || matches!(command, Command::Wait { .. }) || command.is_end_turn() {
         if !started {
             return denied("Campaign has not begun.");
         }
@@ -46,6 +49,23 @@ pub fn authorize(world: &World, command: &Command) -> AuthResult {
         }
         // The actor must be the active character. `active_character_id` is `Ok` once
         // the campaign has started; a missing active seat fails the turn-owner check.
+        let active = world.active_character_id().ok();
+        if active.as_ref() != command.actor_id() {
+            return denied("Not the active character's turn.");
+        }
+        return AuthResult::Ok;
+    }
+
+    if command.is_npc_interaction() {
+        // Dialogue is free (spends no round) but still a live-play action: the campaign must be
+        // running and it's your own turn to speak (parity with the turn-action gate, minus the
+        // budget tick). The engine's `talk` no-ops if the NPC isn't reachable.
+        if !started {
+            return denied("Campaign has not begun.");
+        }
+        if finished {
+            return denied("Campaign has finished.");
+        }
         let active = world.active_character_id().ok();
         if active.as_ref() != command.actor_id() {
             return denied("Not the active character's turn.");
@@ -213,6 +233,32 @@ mod tests {
             authorize(&finished, &Command::JoinCampaign { character: Box::new(character) }),
             AuthResult::Denied(_)
         ));
+    }
+
+    fn talk_cmd(actor: &str) -> Command {
+        Command::Talk { actor_id: cid(actor), npc_id: cid("npc:Caretaker"), prompt: None }
+    }
+
+    #[test]
+    fn accepts_talk_from_the_active_character_in_a_running_campaign() {
+        let world = world_with_party(&["a", "b"], 10);
+        assert_eq!(authorize(&world, &talk_cmd("a")), AuthResult::Ok);
+    }
+
+    #[test]
+    fn rejects_talk_from_a_non_active_character() {
+        let world = world_with_party(&["a", "b"], 10);
+        assert!(matches!(authorize(&world, &talk_cmd("b")), AuthResult::Denied(_)));
+    }
+
+    #[test]
+    fn rejects_talk_before_the_campaign_begins() {
+        let mut world = world_with_party(&["a"], 10);
+        world.campaign.started = false;
+        assert_eq!(
+            authorize(&world, &talk_cmd("a")),
+            AuthResult::Denied("Campaign has not begun.".into())
+        );
     }
 
     #[test]

@@ -362,8 +362,11 @@ mod tests {
             locked_doors: Vec::new(),
             occupants: Vec::new(),
             loot: Vec::new(),
+            caches: Vec::new(),
             inventory: wickedways_core::world::view::Inventory { items: Vec::new(), keys: Vec::new(), equipped_names: Vec::new(), slots: 0 },
             scope: Vec::new(),
+            materials: Vec::new(),
+            recipes: Vec::new(),
             status: StatusView { location_name: name.into(), turn: 0, max_turns: 1, health: 10.0, sanity: 10.0 },
             outcome: CampaignOutcome::Ongoing,
             finished: false,
@@ -388,7 +391,7 @@ mod tests {
         v.occupants = vec![ScopeEntity {
             id: "w".into(), name: "Wraith".into(), aliases: Vec::new(), kind: "occupant".into(),
             health: Some(0.0), image: None, equippable: None, usable: None, has_lore: None,
-            droppable: None, defeated: Some(true), talkable: None,
+            droppable: None, destroyable: None, damaged: None, defeated: Some(true), talkable: None, player: None,
         }];
         m.observe(&v);
         assert!(m.rooms()[0].has_remains);

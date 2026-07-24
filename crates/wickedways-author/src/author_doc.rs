@@ -23,6 +23,10 @@ pub struct AuthorDoc {
     #[serde(default)]
     pub loot: Vec<LootEntry>,
     #[serde(default)]
+    pub caches: Vec<CacheEntry>,
+    #[serde(default)]
+    pub recipes: Vec<RecipeEntry>,
+    #[serde(default)]
     pub scenes: Vec<SceneEntry>,
     #[serde(default)]
     pub npcs: Vec<NpcEntry>,
@@ -120,6 +124,32 @@ pub struct ItemEntry {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct LootEntry { pub name: String, pub room: String, pub items: Vec<String>,
     #[serde(default)] pub description: Option<String> }
+
+/// A `[[caches]]` entry: a single-use pile of raw crafting materials placed in a
+/// room. Mirrors the description's `CacheDef { name, room, materials }`; harvesting
+/// empties it into the campaign pool. `materials` is a `{ component = qty }` table
+/// (e.g. `materials = { iron = 3, cloth = 1 }`).
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CacheEntry {
+    pub name: String,
+    pub room: String,
+    pub materials: BTreeMap<String, i64>,
+}
+
+/// A `[[recipes]]` entry: a crafting recipe the party knows from the start. `id` is
+/// the recipe key (added to the description's `recipes` known-set); `output_item`
+/// names the `[[items]]` key the recipe instantiates; `materials` is the `{ component
+/// = qty }` cost withdrawn from the shared pool. Lowers to a `catalog.recipes`
+/// `RecipeMeta { id, outputName, materials, outputItemKey }`.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RecipeEntry {
+    pub id: String,
+    pub output_name: String,
+    pub output_item: String,
+    pub materials: BTreeMap<String, i64>,
+}
 
 /// A scene attached to a room (`[[scenes]]`). Mirrors the description's
 /// `SceneDef { room, key, phase?, initialState? }`. `phase` selects the

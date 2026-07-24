@@ -112,6 +112,14 @@ pub struct RecipeMeta {
     pub id: String,
     pub output_name: String,
     pub materials: BTreeMap<String, i64>,
+    /// Catalog item key the recipe instantiates when crafted. The serialized codex
+    /// otherwise carries only display + cost (the TS `create()` factory doesn't
+    /// serialize), so `craft` needs this to build the output `ItemSnapshot` from the
+    /// catalog. Optional + `skip_serializing_if` so recipe-free catalogs stay
+    /// byte-stable; a materials recipe without it can be priced but not crafted.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub output_item_key: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]

@@ -32,7 +32,7 @@ fn table(store: Option<Arc<dyn CampaignStore>>) -> Table {
     let authority = SyncAuthority::new(
         World::from_snapshot(genesis()),
         Catalog::default(),
-        AuthorityOpts { snapshot_every, start_seq: 0 },
+        AuthorityOpts { snapshot_every, start_seq: 0, solo: false, manage_turns: false },
     );
     let mut t = Table::new(authority, Membership::new("gm"), "camp", Catalog::default(), snapshot_every);
     if let Some(s) = store {

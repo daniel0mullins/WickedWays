@@ -299,6 +299,17 @@ impl WsTransport {
     }
 }
 
+impl Drop for WsTransport {
+    /// Unregister the JS event handlers before the backing `Closure`s are freed, then close the
+    /// socket. Without this, a socket callback that fires during teardown (e.g. `onclose` as the lobby
+    /// hands off to the surface) invokes an already-dropped closure — a `wasm-bindgen` panic.
+    fn drop(&mut self) {
+        self.ws.set_onmessage(None);
+        self.ws.set_onclose(None);
+        let _ = self.ws.close();
+    }
+}
+
 /// Resolves once the mirror's head reaches `target` (immediately if already there). Mirrors
 /// `#awaitHead`.
 async fn await_head(inner: &Rc<RefCell<Inner>>, target: u64) {
