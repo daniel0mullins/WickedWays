@@ -1458,10 +1458,15 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
   matches the TS oracle byte-for-byte.
   - **Solo mode** (`AuthorityOpts.solo`) is how the offline single-player host (the browser client's
     `SinglePlayerTransport`) recovers the full per-turn machinery the explicit multiplayer path leaves
-    to the GM: a time-advancing command (`move`/`take`/`drop`/`use`/`attack`/`wait`) runs the whole
-    `GameSession.execute` loop — `start_turn` (affliction tick + campaign `onTurnStart`, e.g. dread) →
-    the action → light-tied mob reactions → `next_player` (round advance + outcome). Mob strikes ride
-    the delta as mechanic cues (`MobAttack::narration`). The multiplayer room server leaves `solo` off.
+    to the GM. A time-advancing command (`move`/`take`/`drop`/`use`/`attack`/`wait`) drives a turn that
+    respects the character's `actionsPerRound` **action budget**: the turn begins with `start_turn`
+    (affliction tick + campaign `onTurnStart`, e.g. dread) on the actor's first action, each action
+    spends a budget slot, and the turn ends — light-tied mob reactions → `next_player` (round advance +
+    outcome) — only once the budget is spent (or immediately on `wait`, a pass). So a player gets its
+    whole budget of actions per turn and dread ticks once per turn, not once per action. Mob strikes
+    ride the delta as mechanic cues (`MobAttack::narration`). The multiplayer room server leaves `solo`
+    off — turn advancement and mob strikes are the GM's explicit `nextPlayer`/`mobAttack` there, and
+    the sync authorize gate stays budget-free for byte-for-byte parity with the TS oracle.
   - **Keyed doors** are gated client-side. The sync `move` command carries a room id and lands via
     `move_to`, which — faithful to TS `Character.move(room)` — performs no door check (the guard lives
     only in the direction-based `go`). So the surfaces gate a `move` with `World::exit_block_reason`

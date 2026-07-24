@@ -83,6 +83,10 @@ pub struct SyncAuthority {
     snapshot_every: u64,
     start_seq: u64,
     solo: bool,
+    /// Solo-mode turn tracking: whether the active character's turn has begun (its `start_turn` — budget
+    /// reset + affliction tick + `onTurnStart` — has fired). Cleared when the turn ends, so the next
+    /// action starts a fresh turn. Only meaningful when `solo`.
+    solo_turn_started: bool,
 }
 
 impl SyncAuthority {
@@ -97,6 +101,7 @@ impl SyncAuthority {
             snapshot_every: opts.snapshot_every.max(1),
             start_seq: opts.start_seq,
             solo: opts.solo,
+            solo_turn_started: false,
         }
     }
 
@@ -134,7 +139,7 @@ impl SyncAuthority {
         // direct clone is guaranteed faithful, where a snapshot round-trip need not be.
         let backup = self.world.clone();
         let before = self.world.to_snapshot();
-        let cues = match apply_command(&mut self.world, &command, &self.catalog, self.solo) {
+        let cues = match apply_command(&mut self.world, &command, &self.catalog, self.solo, &mut self.solo_turn_started) {
             Ok(cues) => cues,
             Err(v) => {
                 self.world = backup;
@@ -159,44 +164,62 @@ impl SyncAuthority {
 /// Resolves an authorized command against the engine and returns its presentation cues (which
 /// [`submit`] carries on the delta).
 ///
-/// In `solo` mode a **time-advancing** command runs the full single-player turn loop, mirroring the
-/// TS `GameSession.execute` (`session.ts:116-140`): `start_turn` (affliction tick + dread + budget
-/// reset) → the action → light-tied mob reactions → `next_player` (round advance + outcome). Free
-/// commands (talk/equip/unequip) and the whole multiplayer path (`solo == false`) resolve the action
-/// alone — turn advancement and mob strikes are the GM's explicit `nextPlayer`/`mobAttack` there.
+/// In `solo` mode a **time-advancing** command runs the single-player turn loop, respecting the
+/// character's `actionsPerRound` budget: the turn begins with `start_turn` (budget reset + affliction
+/// tick + `onTurnStart`, e.g. dread) on the actor's FIRST action, each action spends a budget slot,
+/// and the turn ends — light-tied mob reactions → `next_player` (round advance + outcome) — only once
+/// the budget is spent (or immediately on `wait`, a deliberate pass). So a player gets its full budget
+/// of actions per turn rather than one. Free commands (talk/equip/unequip) and the whole multiplayer
+/// path (`solo == false`) resolve the action alone — turn advancement and mob strikes are the GM's
+/// explicit `nextPlayer`/`mobAttack` there. `turn_started` is the authority's per-turn latch.
 fn apply_command(
     world: &mut World,
     command: &Command,
     cat: &Catalog,
     solo: bool,
+    turn_started: &mut bool,
 ) -> Result<Vec<PresentationCue>, ProceduralViolation> {
     let mut cues: Vec<PresentationCue> = Vec::new();
     if solo && command.is_time_advancing() {
-        // The active character is the actor (authorize enforced it). Wrap the action in the solo
-        // turn loop so single-player play keeps its per-turn machinery over the sync transport.
+        // The active character is the actor (authorize enforced it).
         let actor = world.active_character_id()?;
-        world.start_turn(&actor, cat, &mut cues)?;
-        apply_action(world, command, cat, &mut cues)?;
-        // Light-tied initiative (movement.rs): a time-advancing MOVE into a LIT room gets the drop —
-        // no mob reactions. Every other advancing action (and moving into the dark) provokes.
-        let entered_lit = matches!(command, Command::Move { .. })
-            && world
-                .characters
-                .get(&actor)
-                .and_then(|c| c.current_room_id.clone())
-                .map(|rid| world.is_lit(&rid, cat))
-                .unwrap_or(false);
-        if !entered_lit {
-            let attacks = world.run_mob_reactions(&actor, cat, &mut cues);
-            // Surface each strike as prose (the wire carries no `MobAttack` list); the HUD already
-            // reflects the stat loss from the delta.
-            for attack in &attacks {
-                cues.push(PresentationCue::Mechanic {
-                    cue: MechanicCue { text: Some(attack.narration()), sound: None },
-                });
-            }
+        // Begin the turn on the actor's first action: reset the budget, tick afflictions, fire the
+        // onTurnStart hooks (dread). Subsequent actions in the same turn skip this.
+        if !*turn_started {
+            world.start_turn(&actor, cat, &mut cues)?;
+            *turn_started = true;
         }
-        world.next_player(cat, &mut cues)?;
+        apply_action(world, command, cat, &mut cues)?;
+        // The turn ends when the action budget is spent, or immediately on a `wait` (a pass).
+        let budget_spent = world
+            .characters
+            .get(&actor)
+            .map(|c| c.actions_this_round >= c.actions_per_round)
+            .unwrap_or(true);
+        if budget_spent || matches!(command, Command::Wait { .. }) {
+            // Light-tied initiative (movement.rs): ending the turn by moving INTO a LIT room gets the
+            // drop — no mob reactions. Every other case (and moving into the dark) provokes.
+            let entered_lit = matches!(command, Command::Move { .. })
+                && world
+                    .characters
+                    .get(&actor)
+                    .and_then(|c| c.current_room_id.clone())
+                    .map(|rid| world.is_lit(&rid, cat))
+                    .unwrap_or(false);
+            if !entered_lit {
+                let attacks = world.run_mob_reactions(&actor, cat, &mut cues);
+                // Surface each strike as prose (the wire carries no `MobAttack` list); the HUD already
+                // reflects the stat loss from the delta.
+                for attack in &attacks {
+                    cues.push(PresentationCue::Mechanic {
+                        cue: MechanicCue { text: Some(attack.narration()), sound: None },
+                    });
+                }
+            }
+            world.next_player(cat, &mut cues)?;
+            // The next actor's turn hasn't begun — it will `start_turn` on their first action.
+            *turn_started = false;
+        }
         return Ok(cues);
     }
     apply_action(world, command, cat, &mut cues)?;

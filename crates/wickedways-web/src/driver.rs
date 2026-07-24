@@ -774,6 +774,48 @@ mod tests {
     }
 
     #[test]
+    fn a_solo_player_gets_its_full_action_budget_per_turn() {
+        // The turn respects `actionsPerRound`: the player takes its whole budget of actions before
+        // the turn ends (mobs react, round advances), and dread (onTurnStart) fires once per turn —
+        // not once per action. This is the fix for "a player can move unlimited times".
+        use wickedways_core::world::direction::Direction;
+        use wickedways_core::world::intent::Intent;
+
+        let (snapshot, catalog) = bundled_campaign("hollow-house").unwrap();
+        let started = snapshot.campaign.started;
+        let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+        if !started {
+            assert!(matches!(coord.submit(&mut transport, Command::BeginCampaign), SubmitResult::Committed { .. }));
+        }
+        let pc = coord.replica().active_character_id().unwrap();
+        let budget = coord.replica().characters[&pc].actions_per_round; // 3 for the Heir
+        assert!(budget >= 2, "the test needs a multi-action budget, got {budget}");
+        let round0 = coord.snapshot().campaign.round;
+        let sanity0 = coord.replica().characters[&pc].stats.sanity;
+
+        // Alternate Foyer↔Hall (both open corridors) so exits stay valid. The turn must NOT advance
+        // until the budget is spent.
+        let dir = |i: i64| if i % 2 == 0 { Direction::North } else { Direction::South };
+        for i in 0..(budget - 1) {
+            let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: dir(i) }).unwrap();
+            assert!(matches!(coord.submit(&mut transport, cmd), SubmitResult::Committed { .. }));
+            assert_eq!(
+                coord.snapshot().campaign.round, round0,
+                "the turn must not advance before the budget is spent (after move {})", i + 1
+            );
+        }
+        // The budget-spending move ends the turn → the round advances.
+        let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: dir(budget - 1) }).unwrap();
+        coord.submit(&mut transport, cmd);
+        assert_eq!(coord.snapshot().campaign.round, round0 + 1, "the turn advances once the action budget is spent");
+        // Dread fired exactly once this turn, not once per action.
+        assert_eq!(
+            coord.replica().characters[&pc].stats.sanity, sanity0 - 1.0,
+            "dread drains once per turn, not per action"
+        );
+    }
+
+    #[test]
     fn a_solo_wait_advances_the_round_and_drains_dread_in_hollow_house() {
         // The single-player turn loop over the offline transport: `wait` passes the turn, and the
         // solo authority runs start_turn (dread drains sanity) → next_player (round advances). This
