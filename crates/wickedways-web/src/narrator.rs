@@ -282,6 +282,8 @@ mod tests {
             usable: None,
             has_lore: None,
             droppable: None,
+            destroyable: None,
+            damaged: None,
             defeated: None,
             talkable: None, player: None,
         }

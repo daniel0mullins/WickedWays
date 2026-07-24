@@ -231,7 +231,9 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
 /// - Read — only if the item carries lore.
 /// - Equip / Unequip — only if the item is equippable (swapped by the `equipped` flag).
 /// - Use — only if the item is usable (consumed on use).
+/// - Repair — only if the item is durable and worn below full (`damaged`).
 /// - Drop (always, unless the item is a required quest item — `droppable == Some(false)`).
+/// - Break down — only if the item is `destroyable` (scraps it into the material pool).
 pub fn inventory_actions(item: &ScopeEntity, equipped: bool) -> Vec<ActionDescriptor> {
     let mut actions = vec![ActionDescriptor::Examine {
         label: "Examine".into(),
@@ -259,11 +261,25 @@ pub fn inventory_actions(item: &ScopeEntity, equipped: bool) -> Vec<ActionDescri
             intent: Intent::Use { target_id: item.id.clone() },
         });
     }
+    // Repair — only a durable item worn below full (free, restores to full for a material cost).
+    if item.damaged == Some(true) {
+        actions.push(ActionDescriptor::Intent {
+            label: "Repair".into(),
+            intent: Intent::Repair { target_id: item.id.clone() },
+        });
+    }
     // Required quest items (droppable === false) can't be set down.
     if item.droppable != Some(false) {
         actions.push(ActionDescriptor::Intent {
             label: "Drop".into(),
             intent: Intent::Drop { target_id: item.id.clone() },
+        });
+    }
+    // Break down — only a destroyable item (scraps it back into the shared material pool).
+    if item.destroyable == Some(true) {
+        actions.push(ActionDescriptor::Intent {
+            label: "Break down".into(),
+            intent: Intent::Destroy { target_id: item.id.clone() },
         });
     }
     actions
@@ -307,6 +323,8 @@ mod tests {
             usable: None,
             has_lore: None,
             droppable: None,
+            destroyable: None,
+            damaged: None,
             defeated: None,
             talkable: None, player: None,
         }
@@ -518,6 +536,29 @@ mod tests {
         s.equippable = Some(true);
         s.usable = Some(true);
         s
+    }
+
+    #[test]
+    fn damaged_destroyable_item_offers_repair_and_break_down() {
+        let mut s = ent("blade-1", "Iron Blade", "item");
+        s.destroyable = Some(true);
+        s.damaged = Some(true);
+        let labels = inventory_actions(&s, false).into_iter().map(|a| match a {
+            ActionDescriptor::Examine { label, .. } | ActionDescriptor::Read { label, .. } | ActionDescriptor::Intent { label, .. } => label,
+        }).collect::<Vec<_>>();
+        assert_eq!(labels, vec!["Examine", "Repair", "Drop", "Break down"]);
+    }
+
+    #[test]
+    fn an_undamaged_indestructible_item_offers_neither() {
+        // A full-durability, non-destroyable item (e.g. a quest tablet): no Repair, no Break down.
+        let mut s = ent("tablet", "Rite Tablet", "item");
+        s.destroyable = Some(false);
+        s.damaged = Some(false);
+        let labels = inventory_actions(&s, false).into_iter().map(|a| match a {
+            ActionDescriptor::Examine { label, .. } | ActionDescriptor::Read { label, .. } | ActionDescriptor::Intent { label, .. } => label,
+        }).collect::<Vec<_>>();
+        assert!(!labels.contains(&"Repair".to_string()) && !labels.contains(&"Break down".to_string()), "got {labels:?}");
     }
 
     #[test]

@@ -79,6 +79,16 @@ pub struct ScopeEntity {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts", ts(optional))]
     pub droppable: Option<bool>,
+    /// `Some(true)` for a held item that can be scrapped (`destroyable`), so surfaces can offer the
+    /// Break-down action. `None` for non-items (occupants, loot, caches, recipes).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub destroyable: Option<bool>,
+    /// `Some(true)` for a durable item worn below full durability, so surfaces can offer Repair.
+    /// `Some(false)` for a full or non-durable item; `None` for non-items.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub damaged: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts", ts(optional))]
     pub defeated: Option<bool>,
@@ -220,6 +230,11 @@ fn item_scope_entity(
         usable: Some(resolved.properties.usable),
         has_lore: Some(resolved.lore.is_some()),
         droppable: Some(resolved.properties.droppable != Some(false)),
+        destroyable: Some(resolved.properties.destroyable),
+        damaged: Some(match (resolved.durability, resolved.max_durability) {
+            (Some(d), Some(m)) => d < m,
+            _ => false,
+        }),
         defeated: None,
         talkable: None,
         player: None,
@@ -357,6 +372,8 @@ impl World {
                     usable: None,
                     has_lore: None,
                     droppable: None,
+                    destroyable: None,
+                    damaged: None,
                     defeated: Some(self.is_ko(id)),
                     talkable,
                     player,
@@ -438,6 +455,8 @@ impl World {
                 usable: None,
                 has_lore: None,
                 droppable: None,
+                destroyable: None,
+                damaged: None,
                 defeated: None,
                 talkable: None,
                 player: None,
@@ -476,6 +495,8 @@ impl World {
                     usable: None,
                     has_lore: None,
                     droppable: None,
+                    destroyable: None,
+                    damaged: None,
                     defeated: None,
                     talkable: None,
                     player: None,
@@ -513,6 +534,8 @@ impl World {
                 usable: None,
                 has_lore: None,
                 droppable: None,
+                destroyable: None,
+                damaged: None,
                 defeated: None,
                 talkable: None,
                 player: None,

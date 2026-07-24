@@ -62,6 +62,16 @@ body {
 .pnc-inv-gate { display: flex; flex-direction: column; min-height: 0; }
 /* Off-turn (multiplayer): dim + disable the interactive surfaces until it's your turn. */
 .pnc-scene.waiting, .pnc-inv-gate.waiting { opacity: 0.5; pointer-events: none; }
+
+/* Crafting panel: the material pool readout + a forge button per known recipe. */
+.pnc-crafting { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.5rem 0.25rem 0; border-top: 1px solid rgba(184, 148, 60, 0.25); margin-top: 0.5rem; }
+.pnc-crafting .panel-label { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); }
+.crafting-materials { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.6rem; }
+.crafting-materials .material { font-size: 0.82rem; color: var(--color-text); }
+.crafting-recipes { display: flex; flex-direction: column; gap: 0.25rem; }
+.craft-btn { text-align: left; padding: 0.3rem 0.5rem; background: var(--color-panel); color: var(--color-text); border: 1px solid var(--color-accent); border-radius: 3px; cursor: pointer; font: inherit; font-size: 0.85rem; }
+.craft-btn:hover:not(:disabled) { background: var(--color-accent); color: var(--color-bg); }
+.craft-btn.unaffordable, .craft-btn:disabled { border-color: var(--color-muted); color: var(--color-muted); cursor: not-allowed; opacity: 0.7; }
 .pnc-sidebar {
   width: clamp(220px, 28%, 360px);
   display: flex;

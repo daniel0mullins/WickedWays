@@ -485,6 +485,7 @@ pub fn pnc_app() -> Element {
                     {status_view(view.as_ref(), &status_fields())}
                     div { class: if mode == Mode::Multi && (!my_turn() || !my_actions_left()) { "pnc-inv-gate waiting" } else { "pnc-inv-gate" },
                         {inventory_view(view.as_ref(), finished, inv_tab_items, menu)}
+                        {crafting_view(view.as_ref(), finished, driver)}
                     }
                     div { class: "pnc-log",
                         div { class: "log",
@@ -692,6 +693,53 @@ fn status_view(view: Option<&ViewModel>, fields: &[StatusField]) -> Element {
                             class: status_field_class(f),
                             span { class: "field-label", "{f.label}" } " "
                             span { class: "field-value", "{f.value}" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The crafting panel: the shared material pool readout plus a button per known recipe (disabled
+/// until the pool can afford it). Forging dispatches a free `Craft` intent through the shared driver.
+/// Hidden entirely when the campaign has no recipes.
+fn crafting_view(view: Option<&ViewModel>, finished: bool, driver: Coroutine<PncAction>) -> Element {
+    let Some(v) = view else { return rsx! {} };
+    if v.recipes.is_empty() && v.materials.is_empty() {
+        return rsx! {};
+    }
+    rsx! {
+        div { class: "pnc-crafting",
+            if !v.materials.is_empty() {
+                div { class: "crafting-materials",
+                    span { class: "panel-label", "Materials" }
+                    for m in v.materials.iter() {
+                        span { key: "mat-{m.component}", class: "material", "{m.component} ×{m.quantity}" }
+                    }
+                }
+            }
+            if !v.recipes.is_empty() {
+                div { class: "crafting-recipes",
+                    span { class: "panel-label", "Recipes" }
+                    for r in v.recipes.iter() {
+                        {
+                            let recipe_id = r.id.clone();
+                            let name = r.name.clone();
+                            let enabled = r.affordable && !finished;
+                            rsx! {
+                                button {
+                                    key: "recipe-{r.id}",
+                                    class: if r.affordable { "craft-btn" } else { "craft-btn unaffordable" },
+                                    disabled: !enabled,
+                                    title: if r.affordable { "Forge {name}" } else { "Not enough materials" },
+                                    onclick: move |_| driver.send(PncAction::Run(ActionDescriptor::Intent {
+                                        label: "Forge".into(),
+                                        intent: Intent::Craft { recipe_id: recipe_id.clone() },
+                                    })),
+                                    "Forge {name}"
+                                }
+                            }
                         }
                     }
                 }
