@@ -65,11 +65,18 @@ pub struct AuthorityOpts {
     /// advancement and mob strikes are the GM's explicit `nextPlayer`/`mobAttack` there). Default
     /// `false`.
     pub solo: bool,
+    /// Managed-turns mode (multiplayer): `start_turn` the active player at the start of each turn
+    /// (`beginCampaign`, and after `nextPlayer`/`endTurn`) so the action budget resets and `onTurnStart`
+    /// (dread) fires, and reject turn-actions once a player's `actionsPerRound` budget is spent. Turns
+    /// are still ended explicitly — by the player (`endTurn`) or the GM (`nextPlayer`) — not
+    /// auto-advanced. The room server sets this; the offline host (which uses `solo`) and the
+    /// differential gate leave it `false` for byte-for-byte TS parity. Default `false`.
+    pub manage_turns: bool,
 }
 
 impl Default for AuthorityOpts {
     fn default() -> Self {
-        AuthorityOpts { snapshot_every: 20, start_seq: 0, solo: false }
+        AuthorityOpts { snapshot_every: 20, start_seq: 0, solo: false, manage_turns: false }
     }
 }
 
@@ -83,6 +90,7 @@ pub struct SyncAuthority {
     snapshot_every: u64,
     start_seq: u64,
     solo: bool,
+    manage_turns: bool,
     /// Solo-mode turn tracking: whether the active character's turn has begun (its `start_turn` — budget
     /// reset + affliction tick + `onTurnStart` — has fired). Cleared when the turn ends, so the next
     /// action starts a fresh turn. Only meaningful when `solo`.
@@ -101,6 +109,7 @@ impl SyncAuthority {
             snapshot_every: opts.snapshot_every.max(1),
             start_seq: opts.start_seq,
             solo: opts.solo,
+            manage_turns: opts.manage_turns,
             solo_turn_started: false,
         }
     }
@@ -134,12 +143,29 @@ impl SyncAuthority {
             return SubmitResult::Denied { reason };
         }
 
+        // Managed-turns budget gate (multiplayer): a turn-action is refused once the active player has
+        // spent its `actionsPerRound` budget. The player then ends its turn (`endTurn`) — or the GM
+        // does (`nextPlayer`) — which `start_turn`s the next player and resets the budget.
+        if self.manage_turns && command.is_turn_action() {
+            if let Some(actor) = command.actor_id() {
+                let spent = self
+                    .world
+                    .characters
+                    .get(actor)
+                    .map(|c| c.actions_this_round >= c.actions_per_round)
+                    .unwrap_or(false);
+                if spent {
+                    return SubmitResult::Denied { reason: "You have no actions left this turn.".into() };
+                }
+            }
+        }
+
         // Keep an exact pre-apply copy of the world (rng included) to roll back to on a
         // violation — a partially-applied-then-rejected command must leave nothing behind. A
         // direct clone is guaranteed faithful, where a snapshot round-trip need not be.
         let backup = self.world.clone();
         let before = self.world.to_snapshot();
-        let cues = match apply_command(&mut self.world, &command, &self.catalog, self.solo, &mut self.solo_turn_started) {
+        let cues = match apply_command(&mut self.world, &command, &self.catalog, self.solo, self.manage_turns, &mut self.solo_turn_started) {
             Ok(cues) => cues,
             Err(v) => {
                 self.world = backup;
@@ -177,9 +203,21 @@ fn apply_command(
     command: &Command,
     cat: &Catalog,
     solo: bool,
+    manage_turns: bool,
     turn_started: &mut bool,
 ) -> Result<Vec<PresentationCue>, ProceduralViolation> {
     let mut cues: Vec<PresentationCue> = Vec::new();
+    // Managed-turns (multiplayer): a turn-changing command begins the new active player's turn —
+    // `start_turn` resets their budget, ticks afflictions, and fires `onTurnStart` (dread).
+    if manage_turns
+        && matches!(command, Command::BeginCampaign | Command::NextPlayer | Command::EndTurn { .. })
+    {
+        apply_action(world, command, cat, &mut cues)?; // begin_campaign / next_player
+        if let Ok(active) = world.active_character_id() {
+            world.start_turn(&active, cat, &mut cues)?;
+        }
+        return Ok(cues);
+    }
     if solo && command.is_time_advancing() {
         // The active character is the actor (authorize enforced it).
         let actor = world.active_character_id()?;
@@ -276,6 +314,8 @@ fn apply_action(
         Command::BeginCampaign => world.begin_campaign(cat, cues),
         Command::EndCampaign => world.end_campaign(cues),
         Command::NextPlayer => world.next_player(cat, cues),
+        // A player ending their own turn advances the active seat, exactly like the GM's nextPlayer.
+        Command::EndTurn { .. } => world.next_player(cat, cues),
         // A1/A2 engine-action ports, join/seat handling (C), and the mob commands are not yet
         // wired — a clean denial, never a panic (the modding trust boundary).
         _ => Err(ProceduralViolation(
@@ -382,6 +422,59 @@ mod tests {
         SyncAuthority::new(world, Catalog::default(), AuthorityOpts { solo: true, ..Default::default() })
     }
 
+    fn managed_authority(world: World) -> SyncAuthority {
+        SyncAuthority::new(
+            world,
+            Catalog::default(),
+            AuthorityOpts { manage_turns: true, ..Default::default() },
+        )
+    }
+
+    #[test]
+    fn managed_turns_refuse_actions_once_the_budget_is_spent() {
+        // Multiplayer managed-turns: the active player's turn-actions are refused once
+        // `actions_this_round` reaches `actions_per_round` — the seat must end its turn to act again.
+        let mut world = world_two_rooms(false);
+        if let Some(pc) = world.characters.get_mut(&CharacterId("pc".into())) {
+            pc.actions_this_round = pc.actions_per_round;
+        }
+        let mut auth = managed_authority(world);
+        let res = auth.submit(Command::Move {
+            actor_id: CharacterId("pc".into()),
+            room_id: RoomId("next".into()),
+        });
+        let SubmitResult::Denied { reason } = res else {
+            panic!("a budget-spent move should be denied, got {res:?}");
+        };
+        assert!(reason.contains("no actions left"), "budget denial reason, got {reason:?}");
+        assert_eq!(auth.head(), 0, "a denied command commits nothing");
+    }
+
+    #[test]
+    fn managed_turns_end_turn_advances_and_starts_the_next_turn() {
+        // A player's `endTurn` advances the active seat (0 → 1) and `start_turn`s the next player,
+        // firing their onTurnStart hook (dread) — the same machinery the GM's `nextPlayer` drives.
+        let mut world = with_dread(world_with_party(&["a", "b"], 10));
+        world.campaign.gm_id = Some(CharacterId("a".into()));
+        let mut auth = managed_authority(world);
+        let res = auth.submit(Command::EndTurn { actor_id: CharacterId("a".into()) });
+        let SubmitResult::Committed { delta, .. } = res else {
+            panic!("endTurn should commit, got {res:?}");
+        };
+        assert_eq!(
+            auth.snapshot().campaign.active_character_index, 1,
+            "endTurn advances to the next seat"
+        );
+        assert!(
+            delta.cues.iter().any(|c| matches!(
+                c,
+                PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The dread watches.")
+            )),
+            "start_turn fires the next player's onTurnStart hook, got {:?}",
+            delta.cues
+        );
+    }
+
     #[test]
     fn solo_wait_runs_the_full_turn_loop() {
         // Solo mode wraps a time-advancing command in start_turn → action → mob reactions →
@@ -455,7 +548,7 @@ mod tests {
         let mut auth = SyncAuthority::new(
             world,
             Catalog::default(),
-            AuthorityOpts { snapshot_every: 2, start_seq: 0, solo: false },
+            AuthorityOpts { snapshot_every: 2, start_seq: 0, solo: false, manage_turns: false },
         );
         assert_eq!(auth.load_snapshot().0, 0, "genesis checkpoint until the cadence");
         auth.submit(Command::NextPlayer); // seq 1

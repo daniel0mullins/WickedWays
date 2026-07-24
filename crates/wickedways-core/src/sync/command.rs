@@ -103,6 +103,12 @@ pub enum Command {
     // no-op the GM's `nextPlayer` supersedes.
     #[serde(rename_all = "camelCase")]
     Wait { actor_id: CharacterId },
+    // ── end-of-turn: a player ends their OWN turn ──
+    // A Rust-side extension: carries the acting player's id so the room server routes it to that
+    // player's seat (a player may only end their own turn), whereas the GM's `nextPlayer` (no actor)
+    // can end anyone's. Both advance the active seat; managed-turn mode `start_turn`s the next player.
+    #[serde(rename_all = "camelCase")]
+    EndTurn { actor_id: CharacterId },
     // ── setup: pre-start, on your own character ──
     #[serde(rename_all = "camelCase")]
     SelectArchetype { actor_id: CharacterId, archetype_id: String },
@@ -181,6 +187,12 @@ impl Command {
         matches!(self, Command::Talk { .. })
     }
 
+    /// `true` for a player ending their own turn (`endTurn`) — permitted on your own turn, advances
+    /// the active seat (like the GM's `nextPlayer`, but self-service).
+    pub fn is_end_turn(&self) -> bool {
+        matches!(self, Command::EndTurn { .. })
+    }
+
     /// `true` for time-advancing player actions — the ones the solo turn loop wraps with
     /// `start_turn` → action → mob reactions → `next_player`. Mirrors `intent.rs`
     /// `is_time_advancing` (move/take/drop/use/attack/wait); equip/unequip/talk are free.
@@ -218,6 +230,7 @@ impl Command {
             | Command::Harvest { actor_id, .. }
             | Command::Talk { actor_id, .. }
             | Command::Wait { actor_id }
+            | Command::EndTurn { actor_id }
             | Command::SelectArchetype { actor_id, .. } => Some(actor_id),
             _ => None,
         }
@@ -345,6 +358,17 @@ mod tests {
         )
         .unwrap();
         assert!(matches!(with, Command::Talk { prompt: Some(p), .. } if p == "the cellar"));
+    }
+
+    #[test]
+    fn end_turn_round_trips_and_carries_the_acting_player() {
+        let et = Command::EndTurn { actor_id: CharacterId("c1".into()) };
+        assert_eq!(serde_json::to_value(&et).unwrap(), json!({ "kind": "endTurn", "actorId": "c1" }));
+        // Carries an actor (so the room server routes it to that player's seat), but is not a
+        // turn-action / gm / setup command.
+        assert!(et.is_end_turn());
+        assert_eq!(et.actor_id(), Some(&CharacterId("c1".into())));
+        assert!(!et.is_turn_action() && !et.is_gm_command() && !et.is_time_advancing());
     }
 
     #[test]

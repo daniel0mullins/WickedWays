@@ -37,7 +37,7 @@ use crate::audio::cue_for_intent;
 use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
-    boot, boot_single, intent_to_command, is_gm, is_my_turn, project, read_config, rebuild_single,
+    boot, boot_single, has_actions_left, intent_to_command, is_gm, is_my_turn, project, read_config, rebuild_single,
     toggle_fullscreen, welcome_for, AppTransport, Mode, GM_IDENTITY,
 };
 use crate::map::{layout_map, map_svg, MapModel};
@@ -84,6 +84,8 @@ enum PncAction {
     Run(ActionDescriptor),
     /// GM: advance to the next seat (dev affordance, mirrors the CRT control).
     NextPlayer,
+    /// A player ends their own turn (multiplayer managed turns).
+    EndTurn,
     /// Single-player lifecycle verbs from the settings menu (mirror the CRT `save`/`restore`/`restart`).
     Save,
     Restore,
@@ -139,6 +141,7 @@ pub fn pnc_app() -> Element {
     // GM gate for the turn-advance control, and the "your turn" indicator (refreshed by the coroutine).
     let is_gm = use_hook(is_gm);
     let mut my_turn = use_signal(|| false);
+    let mut my_actions_left = use_signal(|| true);
 
     let driver = use_coroutine(move |rx: UnboundedReceiver<PncAction>| async move {
         let cfg = read_config();
@@ -170,6 +173,7 @@ pub fn pnc_app() -> Element {
                 vm.set(initial);
                 status_fields.set(coord.status_fields().to_vec());
                 my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                            my_actions_left.set(has_actions_left(coord.replica(), single));
 
                 // Loop over UI actions AND server pushes: a pushed entry (another client's move, or the
                 // GM advancing the turn) re-syncs + re-projects, so play stays live and `my_turn` flips
@@ -189,6 +193,7 @@ pub fn pnc_app() -> Element {
                             vm.set(after);
                             status_fields.set(coord.status_fields().to_vec());
                             my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                            my_actions_left.set(has_actions_left(coord.replica(), single));
                             continue;
                         }
                     };
@@ -203,6 +208,23 @@ pub fn pnc_app() -> Element {
                             vm.set(after);
                             status_fields.set(coord.status_fields().to_vec());
                             my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                            my_actions_left.set(has_actions_left(coord.replica(), single));
+                            continue;
+                        }
+                        // A player ends their OWN turn (the active character is theirs on their turn).
+                        PncAction::EndTurn => {
+                            if let Ok(actor_id) = coord.replica().active_character_id() {
+                                submit(&transport, &mut coord, Command::EndTurn { actor_id }, log).await;
+                            }
+                            let after = project(&coord, &catalog);
+                            if let Some(a) = &after {
+                                map_model.write().observe(a);
+                                audio.update(a);
+                            }
+                            vm.set(after);
+                            status_fields.set(coord.status_fields().to_vec());
+                            my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                            my_actions_left.set(has_actions_left(coord.replica(), single));
                             continue;
                         }
                         // ── Single-player lifecycle (mirrors the CRT verbs, same rebuild seam) ──
@@ -411,6 +433,7 @@ pub fn pnc_app() -> Element {
                     vm.set(after);
                     status_fields.set(coord.status_fields().to_vec());
                     my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                            my_actions_left.set(has_actions_left(coord.replica(), single));
                 }
             }
         }
@@ -429,6 +452,8 @@ pub fn pnc_app() -> Element {
                 div { class: "topbar-controls",
                     if mode == Mode::Multi && my_turn() {
                         span { class: "turn-indicator", "● Your turn" }
+                        // A player ends their own turn; the GM's ⏭ (below) ends anyone's.
+                        button { class: "topbar-btn end-turn-btn", title: "End your turn", onclick: move |_| driver.send(PncAction::EndTurn), "End Turn" }
                     }
                     span { class: "topbar-status", "{status}" }
                     button {
@@ -451,14 +476,14 @@ pub fn pnc_app() -> Element {
 
             // ── Stage: scene + sidebar ──────────────────────────────────────────
             div { class: "pnc-stage",
-                // Off-turn (multiplayer): the scene + inventory are dimmed and non-interactive until
-                // the turn comes to you. Single-player is always your turn, so this never engages.
-                div { class: if mode == Mode::Multi && !my_turn() { "pnc-scene waiting" } else { "pnc-scene" },
+                // Off-turn OR out of action budget (multiplayer): the scene + inventory are dimmed and
+                // non-interactive until it's your turn with actions to spend. Single-player never engages.
+                div { class: if mode == Mode::Multi && (!my_turn() || !my_actions_left()) { "pnc-scene waiting" } else { "pnc-scene" },
                     {scene_view(view.as_ref(), finished, menu, driver)}
                 }
                 aside { class: "pnc-sidebar",
                     {status_view(view.as_ref(), &status_fields())}
-                    div { class: if mode == Mode::Multi && !my_turn() { "pnc-inv-gate waiting" } else { "pnc-inv-gate" },
+                    div { class: if mode == Mode::Multi && (!my_turn() || !my_actions_left()) { "pnc-inv-gate waiting" } else { "pnc-inv-gate" },
                         {inventory_view(view.as_ref(), finished, inv_tab_items, menu)}
                     }
                     div { class: "pnc-log",

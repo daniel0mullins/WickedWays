@@ -37,9 +37,10 @@ pub fn authorize(world: &World, command: &Command) -> AuthResult {
     let started = world.campaign.started;
     let finished = world.campaign.outcome != CampaignOutcome::Ongoing;
 
-    // Turn-actions and `wait` share the same gate: the campaign is running and it's your turn.
-    // `wait` is a time-advancing pass (no world mutation) that the solo loop wraps like any action.
-    if command.is_turn_action() || matches!(command, Command::Wait { .. }) {
+    // Turn-actions, `wait`, and `endTurn` share the same gate: the campaign is running and it's your
+    // turn. `wait` is a time-advancing pass; `endTurn` ends your own turn (a player may only end the
+    // turn while it is theirs — the GM ends anyone's via `nextPlayer`).
+    if command.is_turn_action() || matches!(command, Command::Wait { .. }) || command.is_end_turn() {
         if !started {
             return denied("Campaign has not begun.");
         }

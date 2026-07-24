@@ -32,6 +32,10 @@ try {
   page.on("pageerror", (e) => console.log("  [pageerror]", e.message));
 
   await page.goto(appUrl, { waitUntil: "load" });
+  // The `demo` campaign is `?debug`-gated and multiplayer opens in the lobby: click "Enter the game"
+  // to leave the lobby for the live game view.
+  await page.waitForFunction(() => document.body.innerText.includes("Enter the game"), { timeout: 30000 });
+  await page.locator('button:has-text("Enter the game")').click();
   // The room renders once the handshake seeded the replica and the ViewModel projected. Ada is
   // active, so the "Here" occupant is Ben.
   await page.waitForFunction(() => document.body.innerText.includes("Start"), { timeout: 20000 });

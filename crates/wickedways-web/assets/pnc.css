@@ -111,6 +111,8 @@ body {
   transition: background 0.12s, color 0.12s;
 }
 .topbar-btn:hover { background: color-mix(in srgb, var(--pnc-accent) 20%, transparent); color: #fff; }
+/* The player's own End Turn: accent-tinted so it reads as an action, distinct from the icon buttons. */
+.topbar-btn.end-turn-btn { color: var(--color-accent); border-color: var(--color-accent); font-weight: 600; }
 
 /* ── Scene ──────────────────────────────────────────────────────────────────── */
 .scene {

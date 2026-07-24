@@ -180,7 +180,7 @@ impl RoomServer {
         let authority = SyncAuthority::new(
             world,
             catalog.clone(),
-            AuthorityOpts { snapshot_every, start_seq: seq, solo: false },
+            AuthorityOpts { snapshot_every, start_seq: seq, solo: false, manage_turns: true },
         );
         let mut table = Table::new(authority, membership, campaign_id, catalog, snapshot_every);
         if let Some(store) = &self.opts.store {

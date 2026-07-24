@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
-# Orchestrates the multiplayer-loop browser e2e (Phase 2c, sub-project D — slice 1):
-# bundle the client → start wickedways-server (ephemeral, `demo` genesis) → serve the bundle →
-# drive it in a browser (multiplayer-loop.mjs). Prints E2E_PASS on success.
+# Orchestrates the managed-turns browser e2e: bundle the client → start wickedways-server (ephemeral,
+# `demo` genesis, room authority runs manage_turns: true) → serve the bundle → drive it in a browser
+# (managed-turns.mjs), exercising the player End Turn button end-to-end. Prints E2E_PASS on success.
 #
-# Env: PW_CHROME (optional Playwright executablePath, for images whose bundled browser build differs
-# from Playwright's expected one). Requires: cargo, wasm-bindgen (see build-web.sh), python3, node +
-# playwright. Not part of CI — see e2e/multiplayer-loop.mjs.
+# Env: PW_CHROME (optional Playwright executablePath). Requires: cargo, wasm-bindgen (see
+# build-web.sh), python3, node + playwright. Not part of CI — see e2e/managed-turns.mjs.
 set -uo pipefail
 
 crate_dir="$(cd "$(dirname "$0")/.." && pwd)"
 repo_root="$(cd "$crate_dir/../.." && pwd)"
 work="$(mktemp -d)"
-sport=9000
-aport=8090
+sport=9001
+aport=8092
 
 cleanup() { kill "${SRV:-}" "${HTTPD:-}" 2>/dev/null; rm -rf "$work"; }
 trap cleanup EXIT
@@ -32,4 +31,4 @@ sleep 2
 echo "server: $(cat "$work/server.log")"
 
 APP_URL="http://127.0.0.1:$aport/index.html?ws=ws://127.0.0.1:$sport/ws&campaign=demo&token=gm&debug&surface=crt-terminal" \
-  node "$crate_dir/e2e/multiplayer-loop.mjs"
+  node "$crate_dir/e2e/managed-turns.mjs"

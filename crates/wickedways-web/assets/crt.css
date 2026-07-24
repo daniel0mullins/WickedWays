@@ -159,6 +159,12 @@
   padding: 0.1056em 0.6336em;
   cursor: pointer;
 }
+/* The player's own "End Turn" is outlined, distinct from the GM's filled nextPlayer control. */
+.controls button.end-turn-btn {
+  background: transparent;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+}
 
 /* ── Molded bezel: the brand plate + physical sound toggle on the plastic chin below the screen,
    absolutely positioned in the housing's bottom padding (outside the CRT screen). ── */

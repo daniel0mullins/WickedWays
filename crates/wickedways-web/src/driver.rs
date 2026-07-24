@@ -224,6 +224,24 @@ pub fn is_my_turn(snapshot: &CampaignSnapshot, token: &str, is_gm: bool, single:
     active == mine.as_ref()
 }
 
+/// Whether the active player still has action budget left this turn. In single-player (and before the
+/// campaign starts) there is no client-side budget gate — returns `true`. Multiplayer managed turns
+/// refuse actions once `actionsThisRound` reaches `actionsPerRound`; the surfaces mirror that by
+/// dimming the input so the player knows to end their turn.
+pub fn has_actions_left(world: &World, single: bool) -> bool {
+    if single {
+        return true;
+    }
+    match world
+        .active_character_id()
+        .ok()
+        .and_then(|id| world.characters.get(&id).map(|c| (c.actions_this_round, c.actions_per_round)))
+    {
+        Some((used, cap)) => used < cap,
+        None => true,
+    }
+}
+
 /// The transport the surfaces drive, abstracting the two modes so the driver loop is
 /// transport-agnostic: `SyncCoordinator::join` + the coordinator's synchronous reads go through the
 /// [`SyncTransport`] impl, and each surface submits via [`submit_async`](AppTransport::submit_async).

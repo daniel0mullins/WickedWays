@@ -270,7 +270,7 @@ impl Table {
         self.authority = SyncAuthority::new(
             World::from_snapshot(snapshot),
             self.catalog.clone(),
-            AuthorityOpts { snapshot_every: self.snapshot_every, start_seq: seq, solo: false },
+            AuthorityOpts { snapshot_every: self.snapshot_every, start_seq: seq, solo: false, manage_turns: true },
         );
         self.membership = membership;
     }

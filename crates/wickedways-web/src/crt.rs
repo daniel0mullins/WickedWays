@@ -34,8 +34,8 @@ use crate::audio::cue_for_intent;
 use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
-    boot, boot_single, intent_to_command, is_gm, is_my_turn, project, read_config, rebuild_single,
-    toggle_fullscreen, welcome_for, Mode, GM_IDENTITY,
+    boot, boot_single, has_actions_left, intent_to_command, is_gm, is_my_turn, project, read_config,
+    rebuild_single, toggle_fullscreen, welcome_for, Mode, GM_IDENTITY,
 };
 use crate::link_nouns::{link_nouns, Segment};
 use crate::map::{layout_map, map_svg, MapModel};
@@ -56,6 +56,8 @@ enum Ev {
 /// A driver request from the UI to the (non-Send, Rc-backed) transport coroutine.
 enum Action {
     NextPlayer,
+    /// A player ends their own turn (multiplayer managed turns).
+    EndTurn,
     /// Toggle procedural audio (the click is the user gesture that lets the `AudioContext` start).
     ToggleAudio,
     Input(String),
@@ -102,6 +104,9 @@ pub fn crt_app() -> Element {
     // the GM turn-advance control nor the "your turn" indicator belong.
     let multiplayer = use_hook(|| matches!(read_config().mode, Mode::Multi));
     let mut my_turn = use_signal(|| false);
+    // Whether the active player still has action budget this turn (multiplayer). Dims the input so the
+    // player knows to end their turn once the budget is spent.
+    let mut my_actions_left = use_signal(|| true);
     // Whether procedural audio is on — drives the footer's sound toggle (the coroutine owns the
     // AudioRuntime and keeps this in sync when the state flips via the verb or the button).
     let mut audio_on = use_signal(|| false);
@@ -151,6 +156,7 @@ pub fn crt_app() -> Element {
                 vm.set(initial);
                 status_fields.set(coord.status_fields().to_vec());
                 my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                                my_actions_left.set(has_actions_left(coord.replica(), single));
 
                 // Loop over UI actions AND server pushes: a pushed entry (another client's move, or the
                 // GM advancing the turn) re-syncs + re-projects, so play stays live and `my_turn` flips
@@ -170,6 +176,7 @@ pub fn crt_app() -> Element {
                             vm.set(after);
                             status_fields.set(coord.status_fields().to_vec());
                             my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                                my_actions_left.set(has_actions_left(coord.replica(), single));
                             continue;
                         }
                     };
@@ -179,6 +186,12 @@ pub fn crt_app() -> Element {
                     let mut toggle_audio = false;
                     let command = match action {
                         Action::NextPlayer => Some(Command::NextPlayer),
+                        // End the acting player's own turn (the active character is theirs on their turn).
+                        Action::EndTurn => coord
+                            .replica()
+                            .active_character_id()
+                            .ok()
+                            .map(|actor_id| Command::EndTurn { actor_id }),
                         Action::ToggleAudio => {
                             toggle_audio = true;
                             None
@@ -437,6 +450,7 @@ pub fn crt_app() -> Element {
 
                     // Recompute whose turn it is after the action (a nextPlayer/move can move the seat).
                     my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
+                                my_actions_left.set(has_actions_left(coord.replica(), single));
                 }
             }
         }
@@ -458,6 +472,16 @@ pub fn crt_app() -> Element {
         },
     };
 
+    // Prompt state: locked off-turn or once the action budget is spent (multiplayer).
+    let prompt_disabled = !my_turn() || !my_actions_left();
+    let prompt_placeholder = if !my_turn() {
+        "Waiting for your turn…"
+    } else if !my_actions_left() {
+        "No actions left — end your turn"
+    } else {
+        ""
+    };
+
     rsx! {
         style { "{CRT_CSS}" }
         div { class: "backdrop", style: "{theme_vars}",
@@ -467,15 +491,15 @@ pub fn crt_app() -> Element {
                         {hud}
                         div { class: "transcript", id: "transcript", {screen} }
                         {dock}
-                        div { class: if my_turn() { "prompt" } else { "prompt waiting" },
+                        div { class: if my_turn() && my_actions_left() { "prompt" } else { "prompt waiting" },
                             span { class: "caret", "›" }
                             input {
                                 id: "prompt",
                                 value: "{draft}",
-                                // Off-turn (multiplayer): the input is locked until the turn comes to
-                                // you. Single-player is always your turn, so it never disables.
-                                disabled: !my_turn(),
-                                placeholder: if my_turn() { "" } else { "Waiting for your turn…" },
+                                // Off-turn OR out of budget (multiplayer): the input is locked. Single-
+                                // player is always your turn with no budget gate, so it never disables.
+                                disabled: prompt_disabled,
+                                placeholder: "{prompt_placeholder}",
                                 oninput: move |e| draft.set(e.value()),
                                 onkeydown: move |e| if e.key() == Key::Enter {
                                     let text = draft.read().trim().to_string();
@@ -490,6 +514,8 @@ pub fn crt_app() -> Element {
                         div { class: "controls",
                             if multiplayer && my_turn() {
                                 span { class: "turn-indicator", "● Your turn" }
+                                // A player ends their own turn; the GM's `nextPlayer` (below) ends anyone's.
+                                button { class: "end-turn-btn", onclick: move |_| driver.send(Action::EndTurn), "End Turn" }
                             }
                             // The turn-advance control is the GM's only, and only in multiplayer.
                             if multiplayer && is_gm {

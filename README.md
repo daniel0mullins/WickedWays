@@ -1465,8 +1465,17 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
     outcome) — only once the budget is spent (or immediately on `wait`, a pass). So a player gets its
     whole budget of actions per turn and dread ticks once per turn, not once per action. Mob strikes
     ride the delta as mechanic cues (`MobAttack::narration`). The multiplayer room server leaves `solo`
-    off — turn advancement and mob strikes are the GM's explicit `nextPlayer`/`mobAttack` there, and
-    the sync authorize gate stays budget-free for byte-for-byte parity with the TS oracle.
+    off — mob strikes stay the GM's explicit `mobAttack` there.
+  - **Managed turns** (`AuthorityOpts.manage_turns`) is the multiplayer complement to the budget: the
+    room server turns it on so a seat's turn-actions are refused once its `actionsPerRound` budget is
+    spent (`submit` denies with "You have no actions left this turn."), and a turn-changing command
+    (`beginCampaign`/`nextPlayer`/`endTurn`) `start_turn`s the incoming player — resetting the budget
+    and firing `onTurnStart` (dread). A player ends **their own** turn with the `endTurn` command (the
+    surfaces' _End Turn_ button, which the server routes to that seat via `actorOf`); the GM's
+    `nextPlayer` still advances the turn for an unavailable player. The budget lives in `submit`, not
+    the sync `authorize` gate, and the differential gate constructs the authority with
+    `AuthorityOpts::default()` (both `solo` and `manage_turns` off), so authorize stays budget-free and
+    byte-for-byte with the TS oracle.
   - **Keyed doors** are gated client-side. The sync `move` command carries a room id and lands via
     `move_to`, which — faithful to TS `Character.move(room)` — performs no door check (the guard lives
     only in the direction-based `go`). So the surfaces gate a `move` with `World::exit_block_reason`
