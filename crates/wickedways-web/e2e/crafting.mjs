@@ -69,6 +69,15 @@ try {
   await waitForText(page, (t) => t.includes("Ward Charm") && /iron\s*×\s*1/.test(t), "the crafted charm");
   console.log("crafted |", (await body(page)).replace(/\n/g, " | ").slice(0, 240));
 
+  // Regression: the crafted item and its recipe share a name. A physical verb must resolve the held
+  // item without the parser reporting an ambiguity ("Which do you mean: Ward Charm, Ward Charm?").
+  await submit(page, "equip ward charm");
+  await waitForText(page, (t) => t.includes("› equip ward charm"), "the equip echo");
+  await new Promise((r) => setTimeout(r, 1000));
+  const after = await body(page);
+  if (/Which do you mean/.test(after)) throw new Error("recipe/item name still ambiguous");
+  console.log("no ambiguity on equip after craft");
+
   console.log("E2E_PASS");
 } catch (e) {
   console.log("E2E_FAIL", e.message);

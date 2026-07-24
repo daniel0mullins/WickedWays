@@ -190,7 +190,7 @@ pub fn parse(input: &str, scope: &[ScopeEntity]) -> ParseResult {
         if target.is_empty() {
             return ParseResult::Error(format!("{verb} to whom?"));
         }
-        return resolve_then(&target, scope, |t| {
+        return resolve_then(verb, &target, scope, |t| {
             ParseResult::Intent(Intent::Talk { npc_id: t.id.clone(), prompt: prompt.clone() })
         });
     }
@@ -202,7 +202,7 @@ pub fn parse(input: &str, scope: &[ScopeEntity]) -> ParseResult {
         if noun_phrase.is_empty() {
             return ParseResult::Query(Query::Look);
         }
-        return resolve_then(&noun_phrase, scope, |t| ParseResult::Examine(t.clone()));
+        return resolve_then(verb, &noun_phrase, scope, |t| ParseResult::Examine(t.clone()));
     }
 
     // Noun verbs (take/drop/attack/…).
@@ -212,16 +212,34 @@ pub fn parse(input: &str, scope: &[ScopeEntity]) -> ParseResult {
     if noun_phrase.is_empty() {
         return ParseResult::Error(format!("{verb} what?"));
     }
-    resolve_then(&noun_phrase, scope, |t| match noun_verb(verb, t) {
+    resolve_then(verb, &noun_phrase, scope, |t| match noun_verb(verb, t) {
         Some(Ok(intent)) => ParseResult::Intent(intent),
         Some(Err(msg)) => ParseResult::Error(msg),
         None => ParseResult::Error(format!("I don't know how to \"{verb}\".")),
     })
 }
 
-/// Resolve `phrase` against `scope`; 0 → error, >1 → ambiguous, 1 → `build`.
-fn resolve_then(phrase: &str, scope: &[ScopeEntity], build: impl Fn(&ScopeEntity) -> ParseResult) -> ParseResult {
-    let matches = resolve(phrase, scope);
+/// Whether a scope entity of `kind` is a legal target for `verb`. The virtual crafting scope
+/// entries (`recipe`, `cache`) are namespaced to their own verbs so they never collide with a
+/// same-named real item: only `craft` sees recipes, only `harvest` sees caches, and every physical
+/// verb ignores both (e.g. `equip ward charm` resolves the held item, not the recipe of the same
+/// name). `examine` can look at anything physical or a cache, but a recipe lives in the panel, not
+/// the room.
+fn verb_targets(verb: &str, kind: &str) -> bool {
+    match verb {
+        "craft" | "forge" | "make" => kind == "recipe",
+        "harvest" | "scavenge" | "gather" => kind == "cache",
+        "examine" | "x" | "look-at" | "read" | "look" | "l" => kind != "recipe",
+        _ => kind != "recipe" && kind != "cache",
+    }
+}
+
+/// Resolve `phrase` against the `verb`-relevant subset of `scope`; 0 → error, >1 → ambiguous,
+/// 1 → `build`. Filtering by verb before counting is what keeps a recipe and a same-named item from
+/// reading as ambiguous.
+fn resolve_then(verb: &str, phrase: &str, scope: &[ScopeEntity], build: impl Fn(&ScopeEntity) -> ParseResult) -> ParseResult {
+    let matches: Vec<&ScopeEntity> =
+        resolve(phrase, scope).into_iter().filter(|e| verb_targets(verb, &e.kind)).collect();
     match matches.len() {
         0 => ParseResult::Error("You don't see that here.".into()),
         1 => build(matches[0]),
@@ -380,11 +398,32 @@ mod tests {
     }
 
     #[test]
-    fn crafting_verbs_reject_the_wrong_kind() {
-        let s = vec![ent("i:sword", "Sword", "item", &["sword"]), ent("cache:vein", "Iron Vein", "cache", &["vein"])];
-        assert!(matches!(parse("harvest sword", &s), ParseResult::Error(m) if m.contains("nothing to harvest")));
-        assert!(matches!(parse("craft sword", &s), ParseResult::Error(m) if m.contains("don't know how to craft")));
-        assert!(matches!(parse("repair vein", &s), ParseResult::Error(m) if m.contains("can't repair")));
+    fn crafting_verbs_ignore_out_of_namespace_targets() {
+        let s = vec![
+            ent("i:sword", "Sword", "item", &["sword"]),
+            ent("cache:vein", "Iron Vein", "cache", &["vein"]),
+            ent("m:rat", "Rat", "occupant", &["rat"]),
+        ];
+        // A virtual target of the wrong verb-namespace simply isn't in scope for that verb.
+        assert!(matches!(parse("harvest sword", &s), ParseResult::Error(m) if m.contains("don't see")));
+        assert!(matches!(parse("craft sword", &s), ParseResult::Error(m) if m.contains("don't see")));
+        assert!(matches!(parse("repair vein", &s), ParseResult::Error(m) if m.contains("don't see")));
+        // A physical target of the wrong kind still gets the specific reason from `noun_verb`.
+        assert!(matches!(parse("repair rat", &s), ParseResult::Error(m) if m.contains("can't repair")));
+    }
+
+    #[test]
+    fn a_recipe_never_collides_with_a_same_named_held_item() {
+        // Regression: after crafting, the held Ward Charm (item) and the Ward Charm recipe both live
+        // in scope. A physical verb must resolve the item without ambiguity; `craft` still finds the
+        // recipe.
+        let s = vec![
+            ent("item:charm-1", "Ward Charm", "item", &["ward charm", "charm"]),
+            ent("ward-charm", "Ward Charm", "recipe", &["ward charm"]),
+        ];
+        assert_eq!(parse("equip ward charm", &s), ParseResult::Intent(Intent::Equip { target_id: "item:charm-1".into() }));
+        assert_eq!(parse("use charm", &s), ParseResult::Intent(Intent::Use { target_id: "item:charm-1".into() }));
+        assert_eq!(parse("craft ward charm", &s), ParseResult::Intent(Intent::Craft { recipe_id: "ward-charm".into() }));
     }
 
     #[test]
