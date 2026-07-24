@@ -126,10 +126,31 @@ pub struct StatusView {
     pub sanity: f64,
 }
 
+/// One component of the shared material pool, for the HUD readout.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct MaterialView {
+    pub component: String,
+    pub quantity: i64,
+}
+
+/// A recipe the party knows, with whether the pool can currently afford it. Drives
+/// the craft menu / `craft <name>` resolution.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "ts", derive(TS), ts(export))]
+#[serde(rename_all = "camelCase")]
+pub struct RecipeView {
+    pub id: String,
+    pub name: String,
+    pub affordable: bool,
+}
+
 /// The widened ViewModel (sub-plan 3a).
 ///
 /// `exits` / `lockedDoors` / `status.locationName` shipped in Phase-2 Task 6.
-/// `defeated` on occupants shipped in sub-plan 4a.
+/// `defeated` on occupants shipped in sub-plan 4a. `caches` / `recipes` / `materials`
+/// shipped with crafting.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -139,8 +160,14 @@ pub struct ViewModel {
     pub locked_doors: Vec<LockedDoorView>,
     pub occupants: Vec<ScopeEntity>,
     pub loot: Vec<LootView>,
+    /// Un-harvested material caches in the room (scope entities of kind `cache`).
+    pub caches: Vec<ScopeEntity>,
     pub inventory: Inventory,
     pub scope: Vec<ScopeEntity>,
+    /// The shared material pool, sorted by component.
+    pub materials: Vec<MaterialView>,
+    /// Recipes the party knows (with current affordability).
+    pub recipes: Vec<RecipeView>,
     pub status: StatusView,
     pub outcome: CampaignOutcome,
     pub finished: bool,
@@ -422,12 +449,98 @@ impl World {
         let loot_content_scope: Vec<ScopeEntity> =
             loot.iter().flat_map(|lv| lv.contents.clone()).collect();
 
+        // ── material caches in the room (un-harvested) ────────────────────────
+        // The cache id is `cache:<Name>`; strip the prefix for display + aliases so
+        // `harvest <name>` resolves. Depleted caches are dropped (nothing to take).
+        let caches: Vec<ScopeEntity> = room_snap
+            .material_cache_ids
+            .iter()
+            .filter_map(|cid| self.material_caches.get(cid).map(|c| (cid, c)))
+            .filter(|(_, c)| !c.depleted)
+            .map(|(cid, _)| {
+                let name = cid.0.strip_prefix("cache:").unwrap_or(&cid.0).to_string();
+                let mut aliases: Vec<String> = alloc::vec![name.to_lowercase()];
+                for word in name.to_lowercase().split_whitespace() {
+                    if !aliases.iter().any(|a| a == word) {
+                        aliases.push(word.to_string());
+                    }
+                }
+                ScopeEntity {
+                    id: cid.0.clone(),
+                    name,
+                    kind: "cache".into(),
+                    aliases,
+                    health: None,
+                    image: None,
+                    equippable: None,
+                    usable: None,
+                    has_lore: None,
+                    droppable: None,
+                    defeated: None,
+                    talkable: None,
+                    player: None,
+                }
+            })
+            .collect();
+
+        // ── known recipes (with affordability) ────────────────────────────────
+        let recipes: Vec<RecipeView> = self
+            .campaign
+            .known_recipes
+            .iter()
+            .filter_map(|id| cat.recipes.get(id).map(|meta| (id, meta)))
+            .map(|(id, meta)| RecipeView {
+                id: id.clone(),
+                name: meta.output_name.clone(),
+                affordable: self.can_afford(&meta.materials),
+            })
+            .collect();
+
+        // Recipe scope entities let `craft <name>` resolve the recipe by its output name.
+        let recipe_scope: Vec<ScopeEntity> = self
+            .campaign
+            .known_recipes
+            .iter()
+            .filter_map(|id| cat.recipes.get(id).map(|meta| (id, meta)))
+            .map(|(id, meta)| ScopeEntity {
+                id: id.clone(),
+                name: meta.output_name.clone(),
+                kind: "recipe".into(),
+                aliases: alloc::vec![meta.output_name.to_lowercase()],
+                health: None,
+                image: None,
+                equippable: None,
+                usable: None,
+                has_lore: None,
+                droppable: None,
+                defeated: None,
+                talkable: None,
+                player: None,
+            })
+            .collect();
+
+        // ── shared material pool (sorted by component) ────────────────────────
+        let mut materials: Vec<MaterialView> = self
+            .campaign
+            .materials
+            .as_object()
+            .map(|obj| {
+                obj.iter()
+                    .filter_map(|(k, v)| v.as_f64().map(|q| MaterialView { component: k.clone(), quantity: q as i64 }))
+                    .collect()
+            })
+            .unwrap_or_default();
+        materials.sort_by(|a, b| a.component.cmp(&b.component));
+
         let mut scope: Vec<ScopeEntity> = Vec::new();
         scope.extend(occupants.clone());
         scope.extend(loot_content_scope);
         scope.extend(inv_items.clone());
         scope.extend(inv_keys.clone());
         scope.extend(loot_scope);
+        // Crafting scope entities append after the TS-mirrored ordering.
+        scope.extend(caches.clone());
+        scope.extend(recipe_scope);
 
         // ── status ────────────────────────────────────────────────────────────
         let health = self.effective_stat(&active_id, StatType::Health, cat);
@@ -447,6 +560,7 @@ impl World {
             locked_doors,
             occupants,
             loot,
+            caches,
             inventory: Inventory {
                 items: inv_items,
                 keys: inv_keys,
@@ -454,6 +568,8 @@ impl World {
                 slots: active_char.inventory.slots,
             },
             scope,
+            materials,
+            recipes,
             status: StatusView {
                 location_name: room_snap.name.clone(),
                 turn: self.campaign.round,
@@ -1071,6 +1187,53 @@ mod tests {
             "alphabetical by direction key"
         );
         assert_eq!(vm.status.location_name, vm.room.name);
+    }
+
+    #[test]
+    fn view_projects_caches_recipes_and_the_material_pool() {
+        use crate::world::descriptor::RecipeMeta;
+        use crate::world::ids::MaterialCacheId;
+        use crate::world::snapshot::MaterialCacheSnapshot;
+        let mut w = build_world_for_view();
+        // A cache in the start room.
+        let cid = MaterialCacheId("cache:Iron Vein".into());
+        w.material_caches.insert(
+            cid.clone(),
+            MaterialCacheSnapshot { id: cid.clone(), contents: json!({ "iron": 3 }), depleted: false },
+        );
+        w.rooms.get_mut(&room_id("start")).unwrap().material_cache_ids.push(cid);
+        // A known recipe + a pool that can afford it.
+        w.campaign.known_recipes.push("blade".into());
+        w.campaign.materials = json!({ "iron": 5, "salt": 1 });
+        let mut cat = build_catalog();
+        cat.recipes.insert(
+            "blade".into(),
+            RecipeMeta {
+                id: "blade".into(),
+                output_name: "Iron Blade".into(),
+                materials: BTreeMap::from([("iron".to_string(), 2)]),
+                output_item_key: Some("items/sword".into()),
+            },
+        );
+
+        let vm = w.view(&cat, &BTreeSet::new()).unwrap();
+
+        // Cache: prefix stripped for display, kind "cache".
+        assert_eq!(vm.caches.len(), 1);
+        assert_eq!(vm.caches[0].name, "Iron Vein");
+        assert_eq!(vm.caches[0].kind, "cache");
+        // Recipe: known + affordable (pool has iron 5 >= 2).
+        assert_eq!(vm.recipes.len(), 1);
+        assert_eq!(vm.recipes[0].name, "Iron Blade");
+        assert!(vm.recipes[0].affordable);
+        // Materials: sorted by component.
+        assert_eq!(
+            vm.materials.iter().map(|m| (m.component.as_str(), m.quantity)).collect::<alloc::vec::Vec<_>>(),
+            alloc::vec![("iron", 5), ("salt", 1)]
+        );
+        // Both appear in the scope (so the parser can resolve `harvest`/`craft`).
+        assert!(vm.scope.iter().any(|e| e.kind == "cache" && e.name == "Iron Vein"));
+        assert!(vm.scope.iter().any(|e| e.kind == "recipe" && e.name == "Iron Blade"));
     }
 
     #[test]

@@ -650,6 +650,14 @@ fn hud_bar(v: &ViewModel, fields: &[StatusField]) -> Element {
                 }
             }
         }
+        if !v.materials.is_empty() {
+            div { class: "campaign-status materials",
+                span { class: "meta", "MATERIALS" }
+                for m in v.materials.iter() {
+                    span { key: "mat-{m.component}", "{m.component} ×{m.quantity}" }
+                }
+            }
+        }
     }
 }
 
@@ -728,6 +736,34 @@ fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>
                                         span { class: "meta", " ({h} hp)" }
                                     }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if !v.caches.is_empty() {
+            div { class: "section",
+                div { class: "section-label", "Caches" }
+                div { class: "chips",
+                    for c in v.caches.iter() {
+                        span { key: "{c.id}", class: "chip", "{c.name} ", span { class: "meta", "(harvest)" } }
+                    }
+                }
+            }
+        }
+
+        if !v.recipes.is_empty() {
+            div { class: "section",
+                div { class: "section-label", "Recipes" }
+                div { class: "chips",
+                    for r in v.recipes.iter() {
+                        {
+                            let chip_class = if r.affordable { "chip" } else { "chip meta" };
+                            let hint = if r.affordable { "(craft)" } else { "(need materials)" };
+                            rsx! {
+                                span { key: "{r.id}", class: "{chip_class}", "{r.name} ", span { class: "meta", "{hint}" } }
                             }
                         }
                     }

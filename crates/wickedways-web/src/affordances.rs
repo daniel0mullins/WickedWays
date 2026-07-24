@@ -47,6 +47,8 @@ pub enum HotspotKind {
     Player,
     Loot,
     Item,
+    /// An un-harvested material cache in the room.
+    Cache,
 }
 
 /// A clickable element in the current scene. Mirrors the TS `Hotspot`.
@@ -163,6 +165,24 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
         });
     }
 
+    // ── Material caches ──────────────────────────────────────────────────────────
+    for cache in &vm.caches {
+        hotspots.push(Hotspot {
+            key: cache.id.clone(),
+            label: cache.name.clone(),
+            kind: HotspotKind::Cache,
+            dir: None,
+            image: cache.image.clone(),
+            actions: vec![
+                ActionDescriptor::Examine { label: "Examine".into(), target_id: cache.id.clone() },
+                ActionDescriptor::Intent {
+                    label: "Harvest".into(),
+                    intent: Intent::Harvest { target_id: cache.id.clone() },
+                },
+            ],
+        });
+    }
+
     // ── Floor items ──────────────────────────────────────────────────────────────
     let mut inventory_ids: BTreeSet<&str> = BTreeSet::new();
     for i in &vm.inventory.items {
@@ -264,8 +284,11 @@ mod tests {
             locked_doors: Vec::new(),
             occupants: Vec::new(),
             loot: Vec::new(),
+            caches: Vec::new(),
             inventory: Inventory { items: Vec::new(), keys: Vec::new(), equipped_names: Vec::new(), slots: 6 },
             scope: Vec::new(),
+            materials: Vec::new(),
+            recipes: Vec::new(),
             status: StatusView { location_name: "Hall".into(), turn: 1, max_turns: 150, health: 10.0, sanity: 10.0 },
             outcome: CampaignOutcome::Ongoing,
             finished: false,
@@ -357,6 +380,22 @@ mod tests {
             vec![
                 ActionDescriptor::Examine { label: "Examine".into(), target_id: "mob-1".into() },
                 ActionDescriptor::Intent { label: "Attack".into(), intent: Intent::Attack { target_id: "mob-1".into() } },
+            ]
+        );
+    }
+
+    #[test]
+    fn material_cache_offers_examine_then_harvest() {
+        let mut vm = mk_vm();
+        vm.caches = vec![ent("cache:vein", "Iron Vein", "cache")];
+        let h = scene_hotspots(&vm).into_iter().find(|h| h.kind == HotspotKind::Cache).expect("cache hotspot");
+        assert_eq!(h.key, "cache:vein");
+        assert_eq!(h.label, "Iron Vein");
+        assert_eq!(
+            h.actions,
+            vec![
+                ActionDescriptor::Examine { label: "Examine".into(), target_id: "cache:vein".into() },
+                ActionDescriptor::Intent { label: "Harvest".into(), intent: Intent::Harvest { target_id: "cache:vein".into() } },
             ]
         );
     }

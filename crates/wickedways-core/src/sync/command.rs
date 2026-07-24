@@ -63,6 +63,12 @@ pub enum Command {
     Craft { actor_id: CharacterId, recipe_id: String },
     #[serde(rename_all = "camelCase")]
     Repair { actor_id: CharacterId, item_id: ItemId },
+    // Scrap a held item back into the shared material pool. A Rust-side extension beyond the TS
+    // `types.ts` union (the TS engine ran `destroy` through the item-action/session layer), like
+    // `talk`/`wait`: the Rust surfaces route every action through sync, so it needs a wire command.
+    // Free — turn-gated, no budget tick.
+    #[serde(rename_all = "camelCase")]
+    Destroy { actor_id: CharacterId, item_id: ItemId },
     #[serde(rename_all = "camelCase")]
     PickUp { actor_id: CharacterId, item_ids: Vec<ItemId> },
     #[serde(rename_all = "camelCase")]
@@ -145,6 +151,7 @@ impl Command {
                 | Command::Unequip { .. }
                 | Command::Craft { .. }
                 | Command::Repair { .. }
+                | Command::Destroy { .. }
                 | Command::PickUp { .. }
                 | Command::Drop { .. }
                 | Command::TakeFromLootBox { .. }
@@ -171,6 +178,7 @@ impl Command {
                     | Command::Unequip { .. }
                     | Command::Craft { .. }
                     | Command::Repair { .. }
+                    | Command::Destroy { .. }
                     | Command::Harvest { .. }
             )
     }
@@ -235,6 +243,7 @@ impl Command {
             | Command::Unequip { actor_id, .. }
             | Command::Craft { actor_id, .. }
             | Command::Repair { actor_id, .. }
+            | Command::Destroy { actor_id, .. }
             | Command::PickUp { actor_id, .. }
             | Command::Drop { actor_id, .. }
             | Command::TakeFromLootBox { actor_id, .. }
@@ -272,6 +281,7 @@ mod tests {
             json!({ "kind": "unequip", "actorId": "c1", "itemId": "i1" }),
             json!({ "kind": "craft", "actorId": "c1", "recipeId": "torch" }),
             json!({ "kind": "repair", "actorId": "c1", "itemId": "i1" }),
+            json!({ "kind": "destroy", "actorId": "c1", "itemId": "i1" }),
             json!({ "kind": "pickUp", "actorId": "c1", "itemIds": ["i1", "i2"] }),
             json!({ "kind": "drop", "actorId": "c1", "itemIds": ["i1"] }),
             json!({ "kind": "takeFromLootBox", "actorId": "c1", "lootId": "l1", "itemIds": ["i1"] }),
@@ -341,6 +351,7 @@ mod tests {
             Command::Unequip { actor_id: CharacterId("c1".into()), item_id: ItemId("i1".into()) },
             Command::Craft { actor_id: CharacterId("c1".into()), recipe_id: "r".into() },
             Command::Repair { actor_id: CharacterId("c1".into()), item_id: ItemId("i1".into()) },
+            Command::Destroy { actor_id: CharacterId("c1".into()), item_id: ItemId("i1".into()) },
             Command::Harvest {
                 actor_id: CharacterId("c1".into()),
                 cache_id: MaterialCacheId("cache1".into()),

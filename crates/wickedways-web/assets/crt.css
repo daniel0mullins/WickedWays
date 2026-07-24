@@ -238,6 +238,9 @@
 }
 .campaign-status .status-field.status-warn { color: var(--color-warn, #d9c27a); }
 .campaign-status .status-field.status-critical { color: var(--color-error); }
+/* The material-pool readout: a lighter label, then component tallies. */
+.campaign-status.materials { gap: 0.19rem 0.66rem; }
+.campaign-status.materials .meta { opacity: 0.55; letter-spacing: 0.06em; }
 
 /* Clickable nouns in prose (room description + narration) — click fills `examine <noun>`. */
 .noun {

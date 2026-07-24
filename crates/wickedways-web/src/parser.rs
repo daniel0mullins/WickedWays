@@ -73,6 +73,8 @@ fn is_noun_verb(verb: &str) -> bool {
         verb,
         "take" | "get" | "drop" | "attack" | "kill" | "hit" | "equip" | "wear" | "wield" | "light"
             | "unequip" | "remove" | "extinguish" | "use" | "open"
+            | "harvest" | "scavenge" | "gather" | "craft" | "forge" | "make"
+            | "repair" | "mend" | "fix" | "destroy" | "scrap" | "break"
     )
 }
 
@@ -98,6 +100,36 @@ fn noun_verb(verb: &str, t: &ScopeEntity) -> Option<Result<Intent, String>> {
                 Ok(Intent::Open { target_id: id })
             } else {
                 Err("You can't open that.".to_string())
+            }
+        }
+        // Materials & crafting. Each verb wants a specific kind of target: a cache to
+        // harvest, a recipe to craft, a held item to repair or scrap.
+        "harvest" | "scavenge" | "gather" => {
+            if t.kind == "cache" {
+                Ok(Intent::Harvest { target_id: id })
+            } else {
+                Err("There's nothing to harvest there.".to_string())
+            }
+        }
+        "craft" | "forge" | "make" => {
+            if t.kind == "recipe" {
+                Ok(Intent::Craft { recipe_id: id })
+            } else {
+                Err("You don't know how to craft that.".to_string())
+            }
+        }
+        "repair" | "mend" | "fix" => {
+            if t.kind == "item" {
+                Ok(Intent::Repair { target_id: id })
+            } else {
+                Err("You can't repair that.".to_string())
+            }
+        }
+        "destroy" | "scrap" | "break" => {
+            if t.kind == "item" {
+                Ok(Intent::Destroy { target_id: id })
+            } else {
+                Err("You can't break that down.".to_string())
             }
         }
         _ => return None,
@@ -330,6 +362,27 @@ mod tests {
             ParseResult::Ambiguous(c) => assert_eq!(c.len(), 2),
             other => panic!("expected ambiguous, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn crafting_verbs_resolve_by_kind() {
+        let s = vec![
+            ent("cache:vein", "Iron Vein", "cache", &["iron vein", "vein"]),
+            ent("blade", "Iron Blade", "recipe", &["iron blade"]),
+            ent("i:sword", "Sword", "item", &["sword"]),
+        ];
+        assert_eq!(parse("harvest vein", &s), ParseResult::Intent(Intent::Harvest { target_id: "cache:vein".into() }));
+        assert_eq!(parse("craft iron blade", &s), ParseResult::Intent(Intent::Craft { recipe_id: "blade".into() }));
+        assert_eq!(parse("repair sword", &s), ParseResult::Intent(Intent::Repair { target_id: "i:sword".into() }));
+        assert_eq!(parse("scrap sword", &s), ParseResult::Intent(Intent::Destroy { target_id: "i:sword".into() }));
+    }
+
+    #[test]
+    fn crafting_verbs_reject_the_wrong_kind() {
+        let s = vec![ent("i:sword", "Sword", "item", &["sword"]), ent("cache:vein", "Iron Vein", "cache", &["vein"])];
+        assert!(matches!(parse("harvest sword", &s), ParseResult::Error(m) if m.contains("nothing to harvest")));
+        assert!(matches!(parse("craft sword", &s), ParseResult::Error(m) if m.contains("don't know how to craft")));
+        assert!(matches!(parse("repair vein", &s), ParseResult::Error(m) if m.contains("can't repair")));
     }
 
     #[test]

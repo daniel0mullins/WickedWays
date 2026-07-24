@@ -267,6 +267,56 @@ impl World {
         Ok(())
     }
 
+    /// Scrap a held, destroyable item: deposit its material makeup (`recipe`) into
+    /// the shared pool and consume the item. **Free** — no budget tick, and (like the
+    /// TS `relinquishItem` path) it logs no drop. Mirrors the item `destroy` action.
+    ///
+    /// # Errors
+    /// `ProceduralViolation` if the item is not held or is not destroyable (e.g. a key).
+    pub fn destroy(
+        &mut self,
+        actor: &CharacterId,
+        item_id: &ItemId,
+        cat: &Catalog,
+        _cues: &mut [PresentationCue],
+    ) -> Result<(), ProceduralViolation> {
+        let held = self
+            .characters
+            .get(actor)
+            .map(|c| c.inventory.item_ids.iter().any(|i| i == item_id))
+            .unwrap_or(false);
+        if !held {
+            return Err(ProceduralViolation(
+                "Cannot destroy an item the character is not holding.".into(),
+            ));
+        }
+        let snap = self
+            .items
+            .get(item_id)
+            .ok_or_else(|| ProceduralViolation("Item snapshot not found.".into()))?
+            .clone();
+        let resolved = resolve_item(&snap, cat)?;
+        if !resolved.properties.destroyable {
+            return Err(ProceduralViolation("That item cannot be broken down.".into()));
+        }
+        // The item's `recipe` (material makeup) returns to the pool — the same field
+        // craft/repair price against.
+        let room = self.characters.get(actor).and_then(|c| c.current_room_id.clone());
+        let recipe = match &snap {
+            ItemSnapshot::Item { behavior_key, .. } => {
+                cat.items.get(behavior_key).map(|d| d.recipe.clone()).unwrap_or_else(|| json!({}))
+            }
+            ItemSnapshot::Key { .. } => json!({}),
+        };
+        self.deposit_materials(&recipe, Some(&actor.0), room.as_ref().map(|r| r.0.as_str()));
+        // Consume the item: pull from inventory and drop the snapshot (silent — no drop log).
+        if let Some(ch) = self.characters.get_mut(actor) {
+            ch.inventory.item_ids.retain(|i| i != item_id);
+        }
+        self.items.remove(item_id);
+        Ok(())
+    }
+
     /// Mint a fresh, unused item id. The crafted item's concrete id rides the sync
     /// delta to replicas, so this need only be unique within the authority (the TS
     /// side uses a uuid, which likewise can't be gated byte-for-byte). Drawn from the
@@ -487,6 +537,46 @@ mod tests {
         world.characters.get_mut(&pc()).unwrap().inventory.item_ids.push(bid.clone());
         let err = world.repair(&pc(), &bid, &cat, &mut Vec::new()).unwrap_err();
         assert!(err.0.contains("not damaged"), "got {err:?}");
+    }
+
+    #[test]
+    fn destroy_scraps_a_held_item_into_the_pool() {
+        let mut world = world_two_rooms(false);
+        let mut items = BTreeMap::new();
+        items.insert("items/blade".to_string(), weapon_desc(Some(4), json!({ "iron": 2, "salt": 1 })));
+        let cat = catalog_with(items, BTreeMap::new());
+        let bid = ItemId("blade-1".into());
+        world.items.insert(
+            bid.clone(),
+            ItemSnapshot::Item { id: bid.clone(), behavior_key: "items/blade".into(), durability: Some(3), modifier: 2 },
+        );
+        world.characters.get_mut(&pc()).unwrap().inventory.item_ids.push(bid.clone());
+
+        world.destroy(&pc(), &bid, &cat, &mut Vec::new()).unwrap();
+
+        // The item's makeup returned to the pool and the item is gone.
+        assert_eq!(world.campaign.materials, json!({ "iron": 2.0, "salt": 1.0 }));
+        assert!(!world.items.contains_key(&bid), "snapshot removed");
+        assert!(!world.characters[&pc()].inventory.item_ids.contains(&bid), "not held");
+    }
+
+    #[test]
+    fn destroy_a_non_destroyable_item_is_refused() {
+        let mut world = world_two_rooms(false);
+        let mut desc = weapon_desc(Some(4), json!({ "iron": 2 }));
+        desc.properties.destroyable = false;
+        let mut items = BTreeMap::new();
+        items.insert("items/anvil".to_string(), desc);
+        let cat = catalog_with(items, BTreeMap::new());
+        let bid = ItemId("anvil-1".into());
+        world.items.insert(
+            bid.clone(),
+            ItemSnapshot::Item { id: bid.clone(), behavior_key: "items/anvil".into(), durability: Some(4), modifier: 2 },
+        );
+        world.characters.get_mut(&pc()).unwrap().inventory.item_ids.push(bid.clone());
+        let err = world.destroy(&pc(), &bid, &cat, &mut Vec::new()).unwrap_err();
+        assert!(err.0.contains("cannot be broken down"), "got {err:?}");
+        assert!(world.items.contains_key(&bid), "untouched on refusal");
     }
 
     #[test]

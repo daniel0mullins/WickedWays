@@ -322,6 +322,7 @@ fn apply_action(
             world.craft(actor_id, recipe_id, cat, cues).map(|_| ())
         }
         Command::Repair { actor_id, item_id } => world.repair(actor_id, item_id, cat, cues),
+        Command::Destroy { actor_id, item_id } => world.destroy(actor_id, item_id, cat, cues),
         // A1/A2 engine-action ports, join/seat handling (C), and the mob commands are not yet
         // wired — a clean denial, never a panic (the modding trust boundary).
         _ => Err(ProceduralViolation(

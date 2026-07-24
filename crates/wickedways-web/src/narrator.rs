@@ -230,6 +230,10 @@ impl Narrator {
                     }
                 }
             }
+            Intent::Harvest { target_id } => vec![format!("You strip the {} of its materials.", name_of(target_id))],
+            Intent::Craft { recipe_id } => vec![format!("You forge the {}.", name_of(recipe_id))],
+            Intent::Repair { target_id } => vec![format!("You mend the {}, good as new.", name_of(target_id))],
+            Intent::Destroy { target_id } => vec![format!("You break the {} down for parts.", name_of(target_id))],
             Intent::Move { .. } | Intent::Talk { .. } => Vec::new(),
         }
     }
@@ -294,8 +298,11 @@ mod tests {
             locked_doors: Vec::new(),
             occupants: Vec::new(),
             loot: Vec::new(),
+            caches: Vec::new(),
             inventory: Inventory { items: Vec::new(), keys: Vec::new(), equipped_names: Vec::new(), slots: 0 },
             scope: Vec::new(),
+            materials: Vec::new(),
+            recipes: Vec::new(),
             status: StatusView { location_name: "Hall".into(), turn: 1, max_turns: 150, health: 10.0, sanity: 10.0 },
             outcome: CampaignOutcome::Ongoing,
             finished: false,

@@ -12,7 +12,7 @@ use std::collections::BTreeSet;
 
 use wickedways_core::sync::{Command, LogEntry, SubmitResult, SyncCoordinator, SyncTransport};
 use wickedways_core::world::descriptor::Catalog;
-use wickedways_core::world::ids::{CharacterId, ItemId};
+use wickedways_core::world::ids::{CharacterId, ItemId, MaterialCacheId};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
 use wickedways_core::{CampaignSnapshot, World};
@@ -72,6 +72,18 @@ pub fn bundled_campaign(id: &str) -> Result<(CampaignSnapshot, Catalog), String>
         Some(json) => serde_json::from_str(json).map_err(|e| format!("catalog '{id}' malformed: {e}"))?,
     };
     Ok((snapshot, catalog))
+}
+
+/// The bundled catalog for a campaign id (resolving a hosted `<slug>~<token>` room id to its base
+/// campaign), or the empty catalog when the campaign ships none / isn't bundled. Used by the
+/// multiplayer client for projection — the server holds the authoritative catalog, but the client
+/// projects its replica locally and needs the same catalog to resolve aliases/recipes.
+pub fn bundled_catalog(id: &str) -> Catalog {
+    let base = base_campaign(id);
+    match bundled(base).or_else(|| bundled(id)) {
+        Some((_, Some(json))) => serde_json::from_str(json).unwrap_or_default(),
+        _ => Catalog::default(),
+    }
 }
 
 /// Which authority the client drives: an offline in-process authority, or a room server over WS.
@@ -292,7 +304,11 @@ pub async fn boot(cfg: &Config) -> Result<(AppTransport, SyncCoordinator, Catalo
         Mode::Multi => {
             let transport = AppTransport::Multi(WsTransport::connect(&cfg.ws, &cfg.campaign, &cfg.token).await?);
             let coord = SyncCoordinator::join(&transport);
-            Ok((transport, coord, Catalog::default()))
+            // Project against the campaign's bundled catalog (resolving a hosted `<slug>~<token>`
+            // room id to its base) so item aliases, recipes, and other catalog-derived view data
+            // render — the server owns authority, but the client owns projection. An unbundled
+            // campaign falls back to the empty catalog (unchanged behaviour).
+            Ok((transport, coord, bundled_catalog(&cfg.campaign)))
         }
     }
 }
@@ -640,6 +656,13 @@ pub fn intent_to_command(world: &World, catalog: &Catalog, intent: &Intent) -> R
         Intent::Equip { target_id } => Ok(Command::Equip { actor_id: actor, item_id: ItemId(target_id.clone()), slot: None }),
         Intent::Unequip { target_id } => Ok(Command::Unequip { actor_id: actor, item_id: ItemId(target_id.clone()) }),
         Intent::Use { target_id } => Ok(Command::Use { actor_id: actor, item_id: ItemId(target_id.clone()) }),
+        // Materials & crafting — all free (turn-gated by authorize, no budget tick).
+        Intent::Harvest { target_id } => {
+            Ok(Command::Harvest { actor_id: actor, cache_id: MaterialCacheId(target_id.clone()) })
+        }
+        Intent::Craft { recipe_id } => Ok(Command::Craft { actor_id: actor, recipe_id: recipe_id.clone() }),
+        Intent::Repair { target_id } => Ok(Command::Repair { actor_id: actor, item_id: ItemId(target_id.clone()) }),
+        Intent::Destroy { target_id } => Ok(Command::Destroy { actor_id: actor, item_id: ItemId(target_id.clone()) }),
         // `open` is a local view reveal (list a container's contents) — the surfaces handle it
         // directly against the current view, so it never reaches the sync layer.
         Intent::Open { .. } => Err("(opening is a local view action)".into()),

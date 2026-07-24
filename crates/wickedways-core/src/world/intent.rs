@@ -32,6 +32,14 @@ pub enum Intent {
     #[serde(rename_all = "camelCase")]
     Use { target_id: String },
     #[serde(rename_all = "camelCase")]
+    Harvest { target_id: String },
+    #[serde(rename_all = "camelCase")]
+    Craft { recipe_id: String },
+    #[serde(rename_all = "camelCase")]
+    Repair { target_id: String },
+    #[serde(rename_all = "camelCase")]
+    Destroy { target_id: String },
+    #[serde(rename_all = "camelCase")]
     Talk {
         npc_id: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]

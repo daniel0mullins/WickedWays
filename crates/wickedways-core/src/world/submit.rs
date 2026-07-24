@@ -348,6 +348,13 @@ impl World {
                 }
                 self.talk(actor, &target, prompt.as_deref(), cat, cues)
             }
+            // Materials & crafting — free, turn-gated verbs (see `crafting.rs`).
+            Intent::Harvest { target_id } => {
+                self.harvest(actor, &crate::world::ids::MaterialCacheId(target_id), cat, cues)
+            }
+            Intent::Craft { recipe_id } => self.craft(actor, &recipe_id, cat, cues).map(|_| ()),
+            Intent::Repair { target_id } => self.repair(actor, &ItemId(target_id), cat, cues),
+            Intent::Destroy { target_id } => self.destroy(actor, &ItemId(target_id), cat, cues),
         }
     }
 
