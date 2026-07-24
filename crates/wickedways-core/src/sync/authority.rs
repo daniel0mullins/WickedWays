@@ -316,6 +316,12 @@ fn apply_action(
         Command::NextPlayer => world.next_player(cat, cues),
         // A player ending their own turn advances the active seat, exactly like the GM's nextPlayer.
         Command::EndTurn { .. } => world.next_player(cat, cues),
+        // Materials & crafting — all FREE actions (turn-gated by `authorize`, no budget tick).
+        Command::Harvest { actor_id, cache_id } => world.harvest(actor_id, cache_id, cat, cues),
+        Command::Craft { actor_id, recipe_id } => {
+            world.craft(actor_id, recipe_id, cat, cues).map(|_| ())
+        }
+        Command::Repair { actor_id, item_id } => world.repair(actor_id, item_id, cat, cues),
         // A1/A2 engine-action ports, join/seat handling (C), and the mob commands are not yet
         // wired — a clean denial, never a panic (the modding trust boundary).
         _ => Err(ProceduralViolation(
@@ -333,6 +339,77 @@ mod tests {
 
     fn authority(world: World) -> SyncAuthority {
         SyncAuthority::new(world, Catalog::default(), AuthorityOpts::default())
+    }
+
+    #[test]
+    fn commits_a_harvest_that_fills_the_pool() {
+        // A free, turn-gated harvest wired through apply_action: the cache in the active pc's room
+        // deposits into the shared pool and the committed delta reflects the change.
+        use crate::world::ids::MaterialCacheId;
+        use crate::world::snapshot::MaterialCacheSnapshot;
+        let mut world = world_two_rooms(false); // pc active in the lit "start" room
+        let cache_id = MaterialCacheId("cache:vein".into());
+        world.material_caches.insert(
+            cache_id.clone(),
+            MaterialCacheSnapshot { id: cache_id.clone(), contents: serde_json::json!({ "iron": 2 }), depleted: false },
+        );
+        world.rooms.get_mut(&RoomId("start".into())).unwrap().material_cache_ids.push(cache_id.clone());
+        let mut auth = authority(world);
+        let res = auth.submit(Command::Harvest { actor_id: CharacterId("pc".into()), cache_id });
+        assert!(matches!(res, SubmitResult::Committed { .. }), "harvest should commit, got {res:?}");
+        assert_eq!(auth.snapshot().campaign.materials, serde_json::json!({ "iron": 2.0 }));
+    }
+
+    #[test]
+    fn commits_a_craft_that_spends_from_the_pool() {
+        // A known recipe crafted through the sync path: the output item lands in the pc's inventory
+        // and the pool is debited — the whole materials→craft wire end to end.
+        use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType, RecipeMeta, SlotKind};
+        let mut world = world_two_rooms(false);
+        world.campaign.known_recipes.push("blade".into());
+        world.campaign.materials = serde_json::json!({ "iron": 5 });
+        let mut items = alloc::collections::BTreeMap::new();
+        items.insert(
+            "items/blade".to_string(),
+            ItemDescriptor {
+                name: "Iron Blade".into(),
+                r#type: ItemType::Weapon,
+                stat: crate::stats::StatType::Health,
+                modifier: 2,
+                properties: ItemProperties { equippable: true, equipped: false, destroyable: true, usable: false, droppable: None },
+                slot: Some(SlotKind::Hand),
+                two_handed: None,
+                emits_light: None,
+                max_durability: Some(4),
+                lore: None,
+                presentation: None,
+                key_code: None,
+                consume_on_use: None,
+                recipe: serde_json::json!({ "iron": 2 }),
+                teaches: serde_json::json!(null),
+                immunities: serde_json::json!([]),
+                grants_immunity: serde_json::json!(null),
+            },
+        );
+        let mut recipes = alloc::collections::BTreeMap::new();
+        recipes.insert(
+            "blade".to_string(),
+            RecipeMeta {
+                id: "blade".into(),
+                output_name: "Iron Blade".into(),
+                materials: alloc::collections::BTreeMap::from([("iron".to_string(), 2)]),
+                output_item_key: Some("items/blade".into()),
+            },
+        );
+        let catalog = Catalog { items, recipes, ..Catalog::default() };
+        let mut auth = SyncAuthority::new(world, catalog, AuthorityOpts::default());
+
+        let res = auth.submit(Command::Craft { actor_id: CharacterId("pc".into()), recipe_id: "blade".into() });
+        assert!(matches!(res, SubmitResult::Committed { .. }), "craft should commit, got {res:?}");
+        let snap = auth.snapshot();
+        assert_eq!(snap.campaign.materials, serde_json::json!({ "iron": 3.0 }), "pool debited by 2");
+        let pc = snap.characters.iter().find(|c| c.id == CharacterId("pc".into())).expect("pc present");
+        assert_eq!(pc.inventory.item_ids.len(), 1, "output held");
     }
 
     #[test]
