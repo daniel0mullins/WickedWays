@@ -85,6 +85,11 @@ pub struct ScopeEntity {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[cfg_attr(feature = "ts", ts(optional))]
     pub talkable: Option<bool>,
+    /// `Some(true)` when this occupant is another player character (a party member sharing the room),
+    /// so surfaces can show who you're playing alongside. `None` for mobs, NPCs, items, and loot.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "ts", ts(optional))]
+    pub player: Option<bool>,
 }
 
 /// A loot container with its resolved contents.
@@ -190,6 +195,7 @@ fn item_scope_entity(
         droppable: Some(resolved.properties.droppable != Some(false)),
         defeated: None,
         talkable: None,
+        player: None,
     })
 }
 
@@ -309,16 +315,10 @@ impl World {
                     .map(|c| c.name.clone())
                     .unwrap_or_default();
                 let health = self.effective_stat(id, StatType::Health, cat);
-                let talkable = if self
-                    .characters
-                    .get(id)
-                    .map(|c| c.kind == CharacterKind::Npc)
-                    .unwrap_or(false)
-                {
-                    Some(true)
-                } else {
-                    None
-                };
+                let is_kind = |k: CharacterKind| self.characters.get(id).map(|c| c.kind == k).unwrap_or(false);
+                let talkable = if is_kind(CharacterKind::Npc) { Some(true) } else { None };
+                // Mark co-located party members so surfaces can show who's in the room with you.
+                let player = if is_kind(CharacterKind::Player) { Some(true) } else { None };
                 ScopeEntity {
                     id: id.0.clone(),
                     name: name.clone(),
@@ -332,6 +332,7 @@ impl World {
                     droppable: None,
                     defeated: Some(self.is_ko(id)),
                     talkable,
+                    player,
                 }
             })
             .collect();
@@ -412,6 +413,7 @@ impl World {
                 droppable: None,
                 defeated: None,
                 talkable: None,
+                player: None,
             })
             .collect();
 
@@ -869,6 +871,27 @@ mod tests {
         assert_eq!(wraith.health, Some(3.0));
         assert_eq!(wraith.kind, "occupant");
         assert_eq!(wraith.aliases, alloc::vec!["wraith"]);
+    }
+
+    #[test]
+    fn view_marks_a_co_located_player_occupant() {
+        let mut w = build_world_for_view();
+        let cat = build_catalog();
+        // Seat a second player (a party member) in the start room alongside the active pc + the mob.
+        let rowan = char_id("rowan");
+        let mut snap = w.characters[&char_id("npc1")].clone();
+        snap.id = rowan.clone();
+        snap.name = "Rowan".into();
+        snap.kind = CharacterKind::Player;
+        w.characters.insert(rowan.clone(), snap);
+        w.rooms.get_mut(&room_id("start")).unwrap().occupant_ids.push(rowan);
+
+        let v = w.view(&cat, &BTreeSet::new()).unwrap();
+        let other = v.occupants.iter().find(|o| o.name == "Rowan").expect("the co-located player appears");
+        assert_eq!(other.player, Some(true), "a co-located party member is marked as a player");
+        // A mob sharing the room is not a player.
+        let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
+        assert_eq!(wraith.player, None, "a mob is not marked as a player");
     }
 
     #[test]

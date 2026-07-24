@@ -43,6 +43,8 @@ pub enum HotspotKind {
     Exit,
     Locked,
     Occupant,
+    /// A co-located party member (another player) — distinguished so surfaces can show who's here.
+    Player,
     Loot,
     Item,
 }
@@ -115,6 +117,7 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
 
     // ── Occupants ──────────────────────────────────────────────────────────────
     for occupant in &vm.occupants {
+        let is_player = occupant.player == Some(true);
         let mut actions = vec![ActionDescriptor::Examine {
             label: "Examine".into(),
             target_id: occupant.id.clone(),
@@ -125,7 +128,8 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
                 intent: Intent::Talk { npc_id: occupant.id.clone(), prompt: None },
             });
         }
-        if occupant.defeated != Some(true) {
+        // Fellow players aren't foes — no attack verb on a party member.
+        if !is_player && occupant.defeated != Some(true) {
             actions.push(ActionDescriptor::Intent {
                 label: "Attack".into(),
                 intent: Intent::Attack { target_id: occupant.id.clone() },
@@ -134,7 +138,7 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
         hotspots.push(Hotspot {
             key: occupant.id.clone(),
             label: occupant.name.clone(),
-            kind: HotspotKind::Occupant,
+            kind: if is_player { HotspotKind::Player } else { HotspotKind::Occupant },
             dir: None,
             image: occupant.image.clone(),
             actions,
@@ -281,7 +285,7 @@ mod tests {
             has_lore: None,
             droppable: None,
             defeated: None,
-            talkable: None,
+            talkable: None, player: None,
         }
     }
 

@@ -451,12 +451,16 @@ pub fn pnc_app() -> Element {
 
             // ── Stage: scene + sidebar ──────────────────────────────────────────
             div { class: "pnc-stage",
-                div { class: "pnc-scene",
+                // Off-turn (multiplayer): the scene + inventory are dimmed and non-interactive until
+                // the turn comes to you. Single-player is always your turn, so this never engages.
+                div { class: if mode == Mode::Multi && !my_turn() { "pnc-scene waiting" } else { "pnc-scene" },
                     {scene_view(view.as_ref(), finished, menu, driver)}
                 }
                 aside { class: "pnc-sidebar",
                     {status_view(view.as_ref(), &status_fields())}
-                    {inventory_view(view.as_ref(), finished, inv_tab_items, menu)}
+                    div { class: if mode == Mode::Multi && !my_turn() { "pnc-inv-gate waiting" } else { "pnc-inv-gate" },
+                        {inventory_view(view.as_ref(), finished, inv_tab_items, menu)}
+                    }
                     div { class: "pnc-log",
                         div { class: "log",
                             for (i, line) in log().iter().enumerate() {
@@ -590,6 +594,7 @@ fn scene_view(
                     let actions = hs.actions.clone();
                     let label = hs.label.clone();
                     let marker_cls = match hs.kind {
+                        HotspotKind::Player => "body-marker player-marker",
                         HotspotKind::Occupant => "body-marker occupant-marker",
                         HotspotKind::Loot => "body-marker loot-marker",
                         _ => "body-marker item-marker",

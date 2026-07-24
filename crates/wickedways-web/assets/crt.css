@@ -86,6 +86,10 @@
   color: var(--color-text);
   font: inherit;
 }
+.prompt input::placeholder { color: var(--color-muted); opacity: 0.7; font-style: italic; }
+/* Off-turn: the prompt is dimmed and the input disabled until it's your turn. */
+.prompt.waiting { opacity: 0.55; }
+.prompt input:disabled { cursor: not-allowed; }
 
 /* ── game view (slice 2): HUD + room + exits + occupants + inventory ── */
 .hud {
@@ -126,6 +130,8 @@
 .chip { white-space: nowrap; }
 .chip .meta { opacity: 0.6; font-size: 0.82em; }
 .chip.defeated { opacity: 0.45; text-decoration: line-through; }
+/* A co-located party member — highlighted so you can see who's in the room with you. */
+.chip.player { color: var(--color-accent); font-weight: bold; }
 
 .narration {
   margin-top: 0.528em; padding-top: 0.3696em;

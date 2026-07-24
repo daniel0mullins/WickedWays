@@ -388,7 +388,7 @@ mod tests {
         v.occupants = vec![ScopeEntity {
             id: "w".into(), name: "Wraith".into(), aliases: Vec::new(), kind: "occupant".into(),
             health: Some(0.0), image: None, equippable: None, usable: None, has_lore: None,
-            droppable: None, defeated: Some(true), talkable: None,
+            droppable: None, defeated: Some(true), talkable: None, player: None,
         }];
         m.observe(&v);
         assert!(m.rooms()[0].has_remains);

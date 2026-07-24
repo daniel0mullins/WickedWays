@@ -65,7 +65,7 @@ pub fn partition_hotspots(hotspots: &[Hotspot]) -> (Vec<&Hotspot>, Vec<&Hotspot>
         .collect();
     let body = hotspots
         .iter()
-        .filter(|h| matches!(h.kind, HotspotKind::Occupant | HotspotKind::Loot | HotspotKind::Item))
+        .filter(|h| matches!(h.kind, HotspotKind::Occupant | HotspotKind::Player | HotspotKind::Loot | HotspotKind::Item))
         .collect();
     (perimeter, body)
 }

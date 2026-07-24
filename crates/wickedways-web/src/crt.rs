@@ -467,11 +467,15 @@ pub fn crt_app() -> Element {
                         {hud}
                         div { class: "transcript", id: "transcript", {screen} }
                         {dock}
-                        div { class: "prompt",
+                        div { class: if my_turn() { "prompt" } else { "prompt waiting" },
                             span { class: "caret", "›" }
                             input {
                                 id: "prompt",
                                 value: "{draft}",
+                                // Off-turn (multiplayer): the input is locked until the turn comes to
+                                // you. Single-player is always your turn, so it never disables.
+                                disabled: !my_turn(),
+                                placeholder: if my_turn() { "" } else { "Waiting for your turn…" },
                                 oninput: move |e| draft.set(e.value()),
                                 onkeydown: move |e| if e.key() == Key::Enter {
                                     let text = draft.read().trim().to_string();
@@ -683,12 +687,21 @@ fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>
                 div { class: "section-label", "Here" }
                 div { class: "chips",
                     for o in v.occupants.iter() {
-                        span {
-                            key: "{o.id}",
-                            class: if o.defeated == Some(true) { "chip defeated" } else { "chip" },
-                            "{o.name}"
-                            if let Some(h) = o.health {
-                                span { class: "meta", " ({h} hp)" }
+                        {
+                            let is_player = o.player == Some(true);
+                            // A co-located party member is marked so you can see who you're with.
+                            let chip_class = if is_player { "chip player" }
+                                else if o.defeated == Some(true) { "chip defeated" }
+                                else { "chip" };
+                            let marker = if is_player { "◆ " } else { "" };
+                            let health = o.health;
+                            rsx! {
+                                span { key: "{o.id}", class: "{chip_class}",
+                                    "{marker}{o.name}"
+                                    if let Some(h) = health {
+                                        span { class: "meta", " ({h} hp)" }
+                                    }
+                                }
                             }
                         }
                     }

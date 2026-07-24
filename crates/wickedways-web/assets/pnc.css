@@ -59,6 +59,9 @@ body {
   padding: 0.4rem;
 }
 .pnc-scene { flex: 1; min-height: 0; display: flex; }
+.pnc-inv-gate { display: flex; flex-direction: column; min-height: 0; }
+/* Off-turn (multiplayer): dim + disable the interactive surfaces until it's your turn. */
+.pnc-scene.waiting, .pnc-inv-gate.waiting { opacity: 0.5; pointer-events: none; }
 .pnc-sidebar {
   width: clamp(220px, 28%, 360px);
   display: flex;
@@ -137,6 +140,11 @@ body {
   background: color-mix(in srgb, var(--color-panel) 85%, transparent);
 }
 .body-marker.occupant-marker { border-color: var(--color-error); }
+/* A co-located party member — accent ring + glow so teammates stand out from foes/loot. */
+.body-marker.player-marker {
+  border-color: var(--color-accent); border-width: 2px;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--color-accent) 60%, transparent);
+}
 .body-marker.loot-marker { border-color: var(--color-accent); }
 .body-marker.item-marker { border-color: var(--color-muted); }
 .hotspot .label {

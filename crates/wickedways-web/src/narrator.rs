@@ -279,7 +279,7 @@ mod tests {
             has_lore: None,
             droppable: None,
             defeated: None,
-            talkable: None,
+            talkable: None, player: None,
         }
     }
 
