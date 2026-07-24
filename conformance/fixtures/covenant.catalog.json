@@ -19,6 +19,27 @@
       "teaches": null,
       "immunities": null,
       "grantsImmunity": null
+    },
+    "ward-charm": {
+      "name": "Ward Charm",
+      "type": "consumable",
+      "stat": "sanity",
+      "modifier": 2,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false,
+        "droppable": true
+      },
+      "lore": "A knot of salt-crusted iron, still warm from the forging. Closing a hand around it, a Warden's breath comes a little easier -- the dark leans back, if only for a moment.",
+      "recipe": {
+        "iron": 2,
+        "salt": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
     }
   },
   "aliases": {
@@ -26,6 +47,10 @@
       "tablet",
       "rite",
       "stone"
+    ],
+    "ward-charm": [
+      "charm",
+      "ward"
     ]
   },
   "behaviors": {
@@ -90,5 +115,15 @@
     }
   },
   "formations": {},
-  "recipes": {}
+  "recipes": {
+    "ward-charm": {
+      "id": "ward-charm",
+      "outputName": "Ward Charm",
+      "materials": {
+        "iron": 2,
+        "salt": 1
+      },
+      "outputItemKey": "ward-charm"
+    }
+  }
 }

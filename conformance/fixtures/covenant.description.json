@@ -105,7 +105,9 @@
   "npcs": [],
   "formations": [],
   "scenes": [],
-  "recipes": [],
+  "recipes": [
+    "ward-charm"
+  ],
   "materials": [],
   "winConditions": [
     {

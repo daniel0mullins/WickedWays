@@ -28,7 +28,9 @@
     "materials": {},
     "claims": [],
     "encountered": [],
-    "knownRecipes": [],
+    "knownRecipes": [
+      "ward-charm"
+    ],
     "archetypes": [
       {
         "baseStats": {
@@ -253,6 +255,21 @@
     }
   ],
   "codex": [
+    {
+      "firstSeen": {
+        "round": 0
+      },
+      "key": "ward-charm",
+      "kind": "recipe",
+      "snapshot": {
+        "id": "ward-charm",
+        "materials": {
+          "iron": 2,
+          "salt": 1
+        },
+        "outputName": "Ward Charm"
+      }
+    },
     {
       "firstSeen": {
         "characterId": "player:Keeper",

@@ -25,6 +25,8 @@ pub struct AuthorDoc {
     #[serde(default)]
     pub caches: Vec<CacheEntry>,
     #[serde(default)]
+    pub recipes: Vec<RecipeEntry>,
+    #[serde(default)]
     pub scenes: Vec<SceneEntry>,
     #[serde(default)]
     pub npcs: Vec<NpcEntry>,
@@ -132,6 +134,20 @@ pub struct LootEntry { pub name: String, pub room: String, pub items: Vec<String
 pub struct CacheEntry {
     pub name: String,
     pub room: String,
+    pub materials: BTreeMap<String, i64>,
+}
+
+/// A `[[recipes]]` entry: a crafting recipe the party knows from the start. `id` is
+/// the recipe key (added to the description's `recipes` known-set); `output_item`
+/// names the `[[items]]` key the recipe instantiates; `materials` is the `{ component
+/// = qty }` cost withdrawn from the shared pool. Lowers to a `catalog.recipes`
+/// `RecipeMeta { id, outputName, materials, outputItemKey }`.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RecipeEntry {
+    pub id: String,
+    pub output_name: String,
+    pub output_item: String,
     pub materials: BTreeMap<String, i64>,
 }
 

@@ -92,6 +92,17 @@ name = "Ward Slag"
 room = "Crossing"
 materials = { iron = 3, salt = 2 }
 
+# -- Crafting -----------------------------------------------------------------
+# The covenant knows one rite from the start: harvest the Ward Slag, then forge a
+# Ward Charm from iron and salt. The charm steadies a Warden's nerve (a +2 sanity
+# consumable) -- useful, but never required to break the seal, which still takes
+# two Wardens on the twin discs.
+[[recipes]]
+id = "ward-charm"
+outputName = "Ward Charm"
+outputItem = "ward-charm"
+materials = { iron = 2, salt = 1 }
+
 # -- Victory: the two-ward covenant rite --------------------------------------
 # The seal breaks only when the North Ward AND the South Ward are each occupied by
 # some Warden this round. One character cannot stand in two rooms, so this requires
@@ -102,6 +113,18 @@ test = "some(party, element.room.name == 'North Ward') && some(party, element.ro
 narration = "Two Wardens take the twin discs in the same breath, and the sanctum answers at last. The seal between the wards splits with a sound like a held note released -- and above you, the way out grinds open. You leave together, or not at all; tonight, it is together."
 
 # -- Items --------------------------------------------------------------------
+[[items]]
+key = "ward-charm"
+name = "Ward Charm"
+type = "consumable"
+stat = "sanity"
+modifier = 2
+destroyable = true
+droppable = true
+recipe = { iron = 2, salt = 1 }
+aliases = ["charm", "ward"]
+lore = "A knot of salt-crusted iron, still warm from the forging. Closing a hand around it, a Warden's breath comes a little easier -- the dark leans back, if only for a moment."
+
 [[items]]
 key = "rite-tablet"
 name = "Rite Tablet"
