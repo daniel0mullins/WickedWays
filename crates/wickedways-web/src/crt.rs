@@ -460,9 +460,9 @@ pub fn crt_app() -> Element {
     // scrolling transcript, so they stay in view as narration grows. Only the room/occupants/narration
     // scroll. Both empty until the first projection.
     let vmodel = vm();
-    let (hud, dock) = match &vmodel {
-        Some(v) => (hud_bar(v, &status_fields()), dock_bar(v)),
-        None => (rsx! {}, rsx! {}),
+    let (hud, dock, side) = match &vmodel {
+        Some(v) => (hud_bar(v, &status_fields()), dock_bar(v), side_bar(v)),
+        None => (rsx! {}, rsx! {}, rsx! {}),
     };
     let screen = match vmodel {
         Some(v) => game_view(v, narration, draft),
@@ -489,6 +489,8 @@ pub fn crt_app() -> Element {
                 div { class: "monitor-screen",
                     div { class: "screen",
                         {hud}
+                        div { class: "screen-cols",
+                        div { class: "screen-main",
                         div { class: "transcript", id: "transcript", {screen} }
                         {dock}
                         div { class: if my_turn() && my_actions_left() { "prompt" } else { "prompt waiting" },
@@ -522,6 +524,9 @@ pub fn crt_app() -> Element {
                                 button { id: "submit", onclick: move |_| driver.send(Action::NextPlayer), "GM: nextPlayer" }
                             }
                         }
+                        } // .screen-main
+                        aside { class: "screen-side", {side} }
+                        } // .screen-cols
                     }
                     div { class: "crt-overlay" }
                 }
@@ -650,22 +655,13 @@ fn hud_bar(v: &ViewModel, fields: &[StatusField]) -> Element {
                 }
             }
         }
-        if !v.materials.is_empty() {
-            div { class: "campaign-status materials",
-                span { class: "meta", "MATERIALS" }
-                for m in v.materials.iter() {
-                    span { key: "mat-{m.component}", "{m.component} ×{m.quantity}" }
-                }
-            }
-        }
     }
 }
 
-/// The fixed dock pinned to the bottom of the CRT screen (between the transcript and the input): the
-/// current room's exits and the player's inventory, kept in view as the transcript scrolls.
+/// The fixed dock pinned to the bottom of the main column (between the transcript and the input): the
+/// current room's exits, kept in view as the transcript scrolls. Inventory and materials live in the
+/// right-hand [`side_bar`].
 fn dock_bar(v: &ViewModel) -> Element {
-    let inv = &v.inventory;
-    let empty = inv.items.is_empty() && inv.keys.is_empty();
     rsx! {
         div { class: "dock",
             if !v.exits.is_empty() || !v.locked_doors.is_empty() {
@@ -684,18 +680,37 @@ fn dock_bar(v: &ViewModel) -> Element {
                     }
                 }
             }
+        }
+    }
+}
+
+/// The right-third sidebar: the player's inventory and the shared material pool, kept in view
+/// alongside the scrolling transcript.
+fn side_bar(v: &ViewModel) -> Element {
+    let inv = &v.inventory;
+    let empty = inv.items.is_empty() && inv.keys.is_empty();
+    rsx! {
+        div { class: "section",
+            div { class: "section-label", "Inventory ({inv.items.len() + inv.keys.len()}/{inv.slots})" }
+            if empty {
+                div { class: "chip meta", "empty" }
+            } else {
+                div { class: "chips",
+                    for it in inv.items.iter() {
+                        span { key: "{it.id}", class: "chip", "{it.name}" }
+                    }
+                    for k in inv.keys.iter() {
+                        span { key: "{k.id}", class: "chip", "{k.name} ", span { class: "meta", "(key)" } }
+                    }
+                }
+            }
+        }
+        if !v.materials.is_empty() {
             div { class: "section",
-                div { class: "section-label", "Inventory ({inv.items.len() + inv.keys.len()}/{inv.slots})" }
-                if empty {
-                    div { class: "chip meta", "empty" }
-                } else {
-                    div { class: "chips",
-                        for it in inv.items.iter() {
-                            span { key: "{it.id}", class: "chip", "{it.name}" }
-                        }
-                        for k in inv.keys.iter() {
-                            span { key: "{k.id}", class: "chip", "{k.name} ", span { class: "meta", "(key)" } }
-                        }
+                div { class: "section-label", "Materials" }
+                div { class: "chips",
+                    for m in v.materials.iter() {
+                        span { key: "mat-{m.component}", class: "chip", "{m.component} ×{m.quantity}" }
                     }
                 }
             }

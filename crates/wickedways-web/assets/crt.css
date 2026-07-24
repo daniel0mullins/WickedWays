@@ -112,6 +112,31 @@
 .dock .section { margin-top: 0; }
 .hud .sep { opacity: 0.5; }
 
+/* Two-column body: the transcript/exits/prompt flow on the left two-thirds, inventory + materials
+   pinned in the right third. Both columns sit under the full-width HUD and share its height. */
+.screen-cols {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; gap: 1.2672em;
+}
+.screen-main {
+  flex: 2 1 0; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column; gap: 0.4224em;
+}
+.screen-side {
+  flex: 1 1 0; min-width: 0; min-height: 0;
+  overflow-y: auto;
+  padding-left: 1.0559em;
+  border-left: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
+  display: flex; flex-direction: column; gap: 0.264em;
+}
+.screen-side .section { margin-top: 0; }
+/* On a narrow monitor, stack the sidebar under the main flow instead of squeezing it. */
+@media (max-width: 620px) {
+  .screen-cols { flex-direction: column; gap: 0.4224em; }
+  .screen-side { flex: 0 0 auto; overflow-y: visible; padding-left: 0; border-left: none;
+    padding-top: 0.4224em; border-top: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent); }
+}
+
 .room-name {
   font-family: var(--font-display, var(--font-body));
   letter-spacing: 0.06em;
@@ -238,9 +263,6 @@
 }
 .campaign-status .status-field.status-warn { color: var(--color-warn, #d9c27a); }
 .campaign-status .status-field.status-critical { color: var(--color-error); }
-/* The material-pool readout: a lighter label, then component tallies. */
-.campaign-status.materials { gap: 0.19rem 0.66rem; }
-.campaign-status.materials .meta { opacity: 0.55; letter-spacing: 0.06em; }
 
 /* Clickable nouns in prose (room description + narration) — click fills `examine <noun>`. */
 .noun {
