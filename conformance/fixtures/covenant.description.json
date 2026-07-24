@@ -92,7 +92,16 @@
       "description": "A cracked altar stone with a single tablet resting in its hollow."
     }
   ],
-  "caches": [],
+  "caches": [
+    {
+      "name": "Ward Slag",
+      "room": "Crossing",
+      "materials": {
+        "iron": 3,
+        "salt": 2
+      }
+    }
+  ],
   "npcs": [],
   "formations": [],
   "scenes": [],

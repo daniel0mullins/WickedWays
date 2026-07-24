@@ -9,7 +9,7 @@ use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
 use wickedways_assemble::description::{
-    ArchetypeDef, CampaignDescription, ConditionEntry, ExitDef, FormationDef, LootDef,
+    ArchetypeDef, CacheDef, CampaignDescription, ConditionEntry, ExitDef, FormationDef, LootDef,
     MechanicEntry, MobDef, NpcDef, RoomDef, SceneDef,
 };
 use wickedways_core::script::ast::{
@@ -115,7 +115,18 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 description: l.description.clone(),
             })
             .collect(),
-        caches: Vec::new(),
+        // Each `[[caches]]` entry → a `CacheDef`. `materials` is the same
+        // `BTreeMap<String, i64>` MaterialMap on both surfaces (direct clone);
+        // `assemble` turns it into a `cache:<name>` MaterialCacheSnapshot in the room.
+        caches: doc
+            .caches
+            .iter()
+            .map(|c| CacheDef {
+                name: c.name.clone(),
+                room: c.room.clone(),
+                materials: c.materials.clone(),
+            })
+            .collect(),
         // Each `[[npcs]]` entry → an `NpcDef`. `stats` is the same core `Stats`
         // type on both surfaces (direct clone); `room`/`holds` carry through; the
         // held item descriptor (e.g. `cellar-key`) comes from `[[items]]` via

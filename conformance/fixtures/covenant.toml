@@ -83,6 +83,15 @@ room = "Reliquary"
 items = ["rite-tablet"]
 description = "A cracked altar stone with a single tablet resting in its hollow."
 
+# -- Material caches ----------------------------------------------------------
+# A single-use pile of raw stock left in the central crossing. Harvesting it drops
+# the materials into the shared covenant pool, where a Warden can later spend them
+# (crafting/repair). Depletes on the first harvest, so it cannot be farmed.
+[[caches]]
+name = "Ward Slag"
+room = "Crossing"
+materials = { iron = 3, salt = 2 }
+
 # -- Victory: the two-ward covenant rite --------------------------------------
 # The seal breaks only when the North Ward AND the South Ward are each occupied by
 # some Warden this round. One character cannot stand in two rooms, so this requires

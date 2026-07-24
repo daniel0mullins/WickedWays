@@ -97,7 +97,9 @@
       "spawnModifier": 1,
       "occupantIds": [],
       "lootIds": [],
-      "materialCacheIds": [],
+      "materialCacheIds": [
+        "cache:Ward Slag"
+      ],
       "lightSourceIds": [],
       "scenes": []
     },
@@ -240,7 +242,16 @@
       ]
     }
   ],
-  "materialCaches": [],
+  "materialCaches": [
+    {
+      "id": "cache:Ward Slag",
+      "contents": {
+        "iron": 3,
+        "salt": 2
+      },
+      "depleted": false
+    }
+  ],
   "codex": [
     {
       "firstSeen": {

@@ -110,6 +110,29 @@ fn first_diff(a: &Value, b: &Value, path: &mut String) -> (String, String) {
     }
 }
 
+/// The multiplayer Covenant campaign compiles from its TOML to the committed
+/// description — the half that carries the `[[caches]]` lowering (a `Ward Slag`
+/// material cache in the Crossing → `CacheDef { name, room, materials }`).
+#[test]
+fn covenant_description_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("covenant.toml"))).expect("compile");
+    let got: Value = serde_json::to_value(&compiled.description).expect("to_value");
+    let want: Value =
+        serde_json::from_str(&read(&dir.join("covenant.description.json"))).expect("parse");
+    assert_json_eq(&got, &want, "covenant.description.json");
+}
+
+#[test]
+fn covenant_catalog_matches() {
+    let dir = fixtures();
+    let compiled = compile(&read(&dir.join("covenant.toml"))).expect("compile");
+    let got: Value = serde_json::to_value(&compiled.catalog).expect("to_value");
+    let want: Value =
+        serde_json::from_str(&read(&dir.join("covenant.catalog.json"))).expect("parse");
+    assert_json_eq(&got, &want, "covenant.catalog.json");
+}
+
 #[test]
 fn g2_vault_description_matches() {
     let dir = fixtures();
