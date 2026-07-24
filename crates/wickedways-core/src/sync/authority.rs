@@ -146,7 +146,7 @@ impl SyncAuthority {
         // Managed-turns budget gate (multiplayer): a turn-action is refused once the active player has
         // spent its `actionsPerRound` budget. The player then ends its turn (`endTurn`) — or the GM
         // does (`nextPlayer`) — which `start_turn`s the next player and resets the budget.
-        if self.manage_turns && command.is_turn_action() {
+        if self.manage_turns && command.is_budgeted_action() {
             if let Some(actor) = command.actor_id() {
                 let spent = self
                     .world
@@ -448,6 +448,30 @@ mod tests {
         };
         assert!(reason.contains("no actions left"), "budget denial reason, got {reason:?}");
         assert_eq!(auth.head(), 0, "a denied command commits nothing");
+    }
+
+    #[test]
+    fn managed_turns_allow_a_free_action_after_the_budget_is_spent() {
+        // A spent budget bars a *budgeted* action but not a FREE one (equip/unequip/craft/repair/
+        // harvest): unequipping an item the actor doesn't hold is still refused, but with the engine's
+        // "not holding" violation — proving the budget gate let it through to apply rather than
+        // pre-empting it with "no actions left".
+        let mut world = world_two_rooms(false);
+        if let Some(pc) = world.characters.get_mut(&CharacterId("pc".into())) {
+            pc.actions_this_round = pc.actions_per_round;
+        }
+        let mut auth = managed_authority(world);
+        let res = auth.submit(Command::Unequip {
+            actor_id: CharacterId("pc".into()),
+            item_id: crate::world::ids::ItemId("nope".into()),
+        });
+        let SubmitResult::Denied { reason } = res else {
+            panic!("unequipping an unheld item should be denied, got {res:?}");
+        };
+        assert!(
+            !reason.contains("no actions left"),
+            "a free action must reach apply, not the budget gate; got {reason:?}"
+        );
     }
 
     #[test]

@@ -158,6 +158,23 @@ impl Command {
         )
     }
 
+    /// `true` for turn-actions that actually **spend** the per-round action budget, i.e.
+    /// `is_turn_action` minus the deliberately **free** verbs (`equip`/`unequip`/`craft`/`repair`/
+    /// `harvest`), which require the actor's turn but never tick `actionsThisRound` (mirroring the
+    /// engine's `recordAction(fn, budgeted=false)` for those methods). The managed-turns budget gate
+    /// keys off this — a spent budget bars a *budgeted* action but must still allow the free ones.
+    pub fn is_budgeted_action(&self) -> bool {
+        self.is_turn_action()
+            && !matches!(
+                self,
+                Command::Equip { .. }
+                    | Command::Unequip { .. }
+                    | Command::Craft { .. }
+                    | Command::Repair { .. }
+                    | Command::Harvest { .. }
+            )
+    }
+
     /// `true` for pre-start setup commands (`selectArchetype`).
     pub fn is_setup_command(&self) -> bool {
         matches!(self, Command::SelectArchetype { .. })
@@ -301,6 +318,37 @@ mod tests {
         assert!(turn.is_turn_action() && !turn.is_setup_command() && !turn.is_gm_command());
         assert!(setup.is_setup_command() && !setup.is_turn_action() && !setup.is_gm_command());
         assert!(gm.is_gm_command() && !gm.is_turn_action() && !gm.is_setup_command());
+    }
+
+    #[test]
+    fn budgeted_action_excludes_the_free_verbs() {
+        // Budgeted turn-actions spend the per-round budget…
+        let mv = Command::Move { actor_id: CharacterId("c1".into()), room_id: RoomId("r1".into()) };
+        let attack = Command::Attack {
+            actor_id: CharacterId("c1".into()),
+            target_id: CharacterId("m1".into()),
+        };
+        assert!(mv.is_budgeted_action() && mv.is_turn_action());
+        assert!(attack.is_budgeted_action());
+        // …while equip/unequip/craft/repair/harvest are turn-actions but FREE (no budget tick), so a
+        // spent budget must not bar them.
+        for free in [
+            Command::Equip {
+                actor_id: CharacterId("c1".into()),
+                item_id: ItemId("i1".into()),
+                slot: None,
+            },
+            Command::Unequip { actor_id: CharacterId("c1".into()), item_id: ItemId("i1".into()) },
+            Command::Craft { actor_id: CharacterId("c1".into()), recipe_id: "r".into() },
+            Command::Repair { actor_id: CharacterId("c1".into()), item_id: ItemId("i1".into()) },
+            Command::Harvest {
+                actor_id: CharacterId("c1".into()),
+                cache_id: MaterialCacheId("cache1".into()),
+            },
+        ] {
+            assert!(free.is_turn_action(), "{free:?} still requires the actor's turn");
+            assert!(!free.is_budgeted_action(), "{free:?} is a free action, not budgeted");
+        }
     }
 
     #[test]
