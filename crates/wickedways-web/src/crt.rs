@@ -489,10 +489,15 @@ pub fn crt_app() -> Element {
                 div { class: "monitor-screen",
                     div { class: "screen",
                         {hud}
+                        // Two columns: the transcript + exits on the left, inventory + materials on
+                        // the right. The prompt and controls sit BELOW the columns, full width.
                         div { class: "screen-cols",
-                        div { class: "screen-main",
-                        div { class: "transcript", id: "transcript", {screen} }
-                        {dock}
+                            div { class: "screen-main",
+                                div { class: "transcript", id: "transcript", {screen} }
+                                {dock}
+                            }
+                            aside { class: "screen-side", {side} }
+                        }
                         div { class: if my_turn() && my_actions_left() { "prompt" } else { "prompt waiting" },
                             span { class: "caret", "›" }
                             input {
@@ -524,9 +529,6 @@ pub fn crt_app() -> Element {
                                 button { id: "submit", onclick: move |_| driver.send(Action::NextPlayer), "GM: nextPlayer" }
                             }
                         }
-                        } // .screen-main
-                        aside { class: "screen-side", {side} }
-                        } // .screen-cols
                     }
                     div { class: "crt-overlay" }
                 }
