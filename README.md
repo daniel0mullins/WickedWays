@@ -1482,6 +1482,17 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
     (a pure `can_pass` query that runs no `run_script`), narrating the door's fail message and issuing
     no command when it's locked — e.g. the Hollow House cellar door stays shut until the caretaker's
     dialogue hands over the key.
+  - **Materials & crafting** are wired end to end. `harvest`/`craft`/`repair`/`destroy` are **free**
+    turn-gated commands (`authorize` requires the actor's turn; none tick the budget) that resolve
+    against the ported engine verbs — harvesting a room's `MaterialCache` into the shared pool,
+    crafting a known recipe's `outputItemKey` into a fresh item, repairing worn gear for a
+    proportional cost, and scrapping an item back into the pool. The widened `ViewModel` projects the
+    room's caches, the party's known recipes (with affordability), and the pool, so the CRT parser
+    resolves `harvest <cache>` / `craft <recipe>` and both surfaces render them. `destroy` is a
+    Rust-side wire extension (like `talk`/`wait`); the differential gate never issues these, so oracle
+    parity holds. Campaigns declare caches/recipes in the TOML authoring surface (`[[caches]]` /
+    `[[recipes]]`); the multiplayer client projects against the campaign's bundled catalog so recipes
+    and aliases resolve there too.
 - **The room server** in [`crates/wickedways-server/`](crates/wickedways-server/): a Rust/axum port of
   `packages/server`. A `RoomServer` hosts a native `SyncAuthority` per campaign behind a per-campaign
   tokio actor (`Table`) that serializes submit → persist → ack (flush-before-ack), gates appends by
