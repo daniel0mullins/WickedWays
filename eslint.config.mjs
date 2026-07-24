@@ -41,7 +41,7 @@ export default tseslint.config(
           // vitest.config.ts lives outside src/ so it can't be included in the
           // main tsconfig (rootDir: ./src). Allow it to be type-checked against
           // a default project so ESLint doesn't reject it outright.
-          allowDefaultProject: ["vitest.config.ts", "vitest.setup.ts", "packages/client/vite.config.ts", "packages/play/vite.config.ts", "packages/play/playwright.config.ts", "packages/play/e2e/*.spec.ts"],
+          allowDefaultProject: ["vitest.config.ts", "vitest.setup.ts", "packages/client/vite.config.ts"],
         },
         tsconfigRootDir: import.meta.dirname,
       },
@@ -80,15 +80,6 @@ export default tseslint.config(
     },
   },
 
-  // Playwright config and E2E specs live outside any package tsconfig so they
-  // run under the default project; relax the no-unsafe-member-access rule
-  // (process.env access) for config-level files that cannot be fully resolved.
-  {
-    files: ["packages/play/playwright.config.ts", "packages/play/e2e/*.spec.ts"],
-    rules: {
-      "@typescript-eslint/no-unsafe-member-access": "off",
-    },
-  },
 
   // Node CLI scripts run under js.configs.recommended, which declares no globals,
   // so `console`/`process`/`Buffer` trip no-undef. Declare the Node globals for
