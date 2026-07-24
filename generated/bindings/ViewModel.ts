@@ -4,6 +4,8 @@ import type { ExitView } from "./ExitView";
 import type { Inventory } from "./Inventory";
 import type { LockedDoorView } from "./LockedDoorView";
 import type { LootView } from "./LootView";
+import type { MaterialView } from "./MaterialView";
+import type { RecipeView } from "./RecipeView";
 import type { ScopeEntity } from "./ScopeEntity";
 import type { StatusView } from "./StatusView";
 import type { ThinRoom } from "./ThinRoom";
@@ -12,6 +14,19 @@ import type { ThinRoom } from "./ThinRoom";
  * The widened ViewModel (sub-plan 3a).
  *
  * `exits` / `lockedDoors` / `status.locationName` shipped in Phase-2 Task 6.
- * `defeated` on occupants shipped in sub-plan 4a.
+ * `defeated` on occupants shipped in sub-plan 4a. `caches` / `recipes` / `materials`
+ * shipped with crafting.
  */
-export type ViewModel = { room: ThinRoom, exits: Array<ExitView>, lockedDoors: Array<LockedDoorView>, occupants: Array<ScopeEntity>, loot: Array<LootView>, inventory: Inventory, scope: Array<ScopeEntity>, status: StatusView, outcome: CampaignOutcome, finished: boolean, };
+export type ViewModel = { room: ThinRoom, exits: Array<ExitView>, lockedDoors: Array<LockedDoorView>, occupants: Array<ScopeEntity>, loot: Array<LootView>, 
+/**
+ * Un-harvested material caches in the room (scope entities of kind `cache`).
+ */
+caches: Array<ScopeEntity>, inventory: Inventory, scope: Array<ScopeEntity>, 
+/**
+ * The shared material pool, sorted by component.
+ */
+materials: Array<MaterialView>, 
+/**
+ * Recipes the party knows (with current affordability).
+ */
+recipes: Array<RecipeView>, status: StatusView, outcome: CampaignOutcome, finished: boolean, };

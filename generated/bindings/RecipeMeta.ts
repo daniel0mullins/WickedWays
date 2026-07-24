@@ -6,4 +6,12 @@
  * otherwise live only in the registry's `create` closure). Keyed by recipe key
  * in the catalog's `recipes` map.
  */
-export type RecipeMeta = { id: string, outputName: string, materials: { [key in string]?: bigint }, };
+export type RecipeMeta = { id: string, outputName: string, materials: { [key in string]?: bigint }, 
+/**
+ * Catalog item key the recipe instantiates when crafted. The serialized codex
+ * otherwise carries only display + cost (the TS `create()` factory doesn't
+ * serialize), so `craft` needs this to build the output `ItemSnapshot` from the
+ * catalog. Optional + `skip_serializing_if` so recipe-free catalogs stay
+ * byte-stable; a materials recipe without it can be priced but not crafted.
+ */
+outputItemKey?: string, };
