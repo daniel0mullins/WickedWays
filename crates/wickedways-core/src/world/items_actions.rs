@@ -806,31 +806,32 @@ impl World {
             }
         }
 
-        // 2c. Author use-behaviour (scripted onUse). Runs AFTER the usable/KO
-        // guards and BEFORE grantsImmunity + consume. Absent script = no-op.
-        // Effects flow through the collect-then-apply pipeline, capped at
+        // 2c. Item use-behaviour (`ItemBehavior::on_use`). Runs AFTER the
+        // usable/KO guards and BEFORE grantsImmunity + consume. An unresolved
+        // key (no behavior entry, or a foreign-family binding) = no-op. Effects
+        // flow through the collect-then-apply pipeline, capped at
         // MAX_EFFECTS_PER_EVENT.
         if let crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } = &item_snap {
-            if let Some(crate::script::ast::BehaviorScript::Item { script }) =
-                cat.behaviors.get(behavior_key)
+            if let Some(resolved) =
+                crate::world::item_behavior::resolve_item_behavior(behavior_key, cat)
             {
                 let view = self.build_campaign_view(cat);
                 // Actor existence is already guaranteed by steps 1 & 2b, so a missing
                 // view is a real inconsistency — surface it (matching
                 // use_mechanic_action's fail-loud stance) rather than silently
-                // dropping the scripted effects.
+                // dropping the behavior's effects.
                 let actor_view = self.character_view(actor, cat).ok_or_else(|| {
                     ProceduralViolation(alloc::format!("Actor '{}' not found.", actor.0))
                 })?;
                 let effects = {
                     let rng = &mut self.rng;
-                    let mut state = serde_json::Value::Null; // no per-item script state (v1)
+                    let mut state = serde_json::Value::Null; // no per-item script state
                     let mut base = crate::world::mechanics::HookCtx {
                         state: &mut state,
                         view: &view,
                         rng,
                     };
-                    crate::script::ops::ScriptedItem { script }.run_use(&mut base, &actor_view)
+                    resolved.as_behavior().on_use(&mut base, &actor_view)
                 };
                 if effects.len() > crate::world::mechanics::MAX_EFFECTS_PER_EVENT {
                     return Err(ProceduralViolation(alloc::format!(

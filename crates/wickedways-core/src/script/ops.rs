@@ -144,12 +144,14 @@ impl ScriptedItem<'_> {
         };
         eval_effects(body, &mut cx)
     }
+}
 
-    pub fn run_use(&self, base: &mut HookCtx<'_>, actor: &CharacterView) -> Vec<Effect> {
+impl crate::world::item_behavior::ItemBehavior for ScriptedItem<'_> {
+    fn on_use(&self, base: &mut HookCtx<'_>, actor: &CharacterView) -> Vec<Effect> {
         self.run_body(self.script.on_use.as_ref(), base, actor)
     }
 
-    pub fn run_read(&self, base: &mut HookCtx<'_>, actor: &CharacterView) -> Vec<Effect> {
+    fn on_read(&self, base: &mut HookCtx<'_>, actor: &CharacterView) -> Vec<Effect> {
         self.run_body(self.script.on_read.as_ref(), base, actor)
     }
 }
@@ -517,6 +519,7 @@ impl ScriptedNpc<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::item_behavior::ItemBehavior;
 
     #[test]
     fn scripted_item_on_use_emits_adjust_stat_for_actor() {
@@ -554,7 +557,7 @@ mod tests {
             view: &view,
             rng: &mut rng,
         };
-        let effects = ScriptedItem { script: &script }.run_use(&mut base, &actor);
+        let effects = ScriptedItem { script: &script }.on_use(&mut base, &actor);
 
         assert_eq!(effects.len(), 1);
         match &effects[0] {
@@ -607,7 +610,7 @@ mod tests {
             view: &view,
             rng: &mut rng,
         };
-        let effects = ScriptedItem { script: &script }.run_read(&mut base, &actor);
+        let effects = ScriptedItem { script: &script }.on_read(&mut base, &actor);
 
         assert_eq!(effects.len(), 1);
         match &effects[0] {
@@ -649,7 +652,7 @@ mod tests {
             rng: &mut rng,
         };
         assert!(ScriptedItem { script: &script }
-            .run_read(&mut base, &actor)
+            .on_read(&mut base, &actor)
             .is_empty());
     }
 

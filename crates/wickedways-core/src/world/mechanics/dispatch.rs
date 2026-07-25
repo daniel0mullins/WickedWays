@@ -402,6 +402,26 @@ impl World {
                 }
             }
         }
+        // Item behaviors are validated STRICTLY WEAKER than every other family:
+        // `behavior_key` doubles as the `cat.items` descriptor key and most items
+        // carry no behavior entry, so a missing key is NOT an error (a
+        // resolve-or-reject loop here would fail hydrate for every plain item).
+        // Only an explicit Item-family script is shape-checked at load; a native
+        // behavior needs no check, and a foreign-family binding under the same
+        // key stays a silent no-op, matching the use_item/read_item call sites.
+        for item in self.items.values() {
+            let crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } = item else {
+                continue;
+            };
+            if crate::world::item_behavior::item_behavior(behavior_key).is_some() {
+                continue;
+            }
+            if let Some(b @ crate::script::ast::BehaviorScript::Item { .. }) =
+                cat.behaviors.get(behavior_key)
+            {
+                crate::script::validate_behavior(behavior_key, b)?;
+            }
+        }
         // exit behavior keys resolve native-first then catalog; a
         // scripted (non-native) exit behavior is also shape-checked at load.
         for exit in self.exits.values() {
@@ -1425,6 +1445,74 @@ mod tests {
             key: "bad".into(),
             state: serde_json::json!({}),
         });
+        assert!(w.validate_mechanics(&cat).is_err());
+    }
+
+    #[test]
+    fn validate_mechanics_accepts_plain_items_without_behavior_entries() {
+        // The item rule is strictly weaker than the other families: behavior_key
+        // doubles as the cat.items descriptor key, so an item with no behaviors
+        // entry (and even no descriptor here) must NOT fail load validation.
+        let mut w = world_with_party(&["pc"], 10);
+        w.items.insert(
+            crate::world::ids::ItemId("i1".into()),
+            crate::world::snapshot::ItemSnapshot::Item {
+                id: crate::world::ids::ItemId("i1".into()),
+                behavior_key: "lantern".into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
+        assert!(w.validate_mechanics(&Catalog::default()).is_ok());
+    }
+
+    #[test]
+    fn validate_mechanics_ignores_foreign_family_binding_on_an_item_key() {
+        // An Exit-family script under an item's key stays a silent no-op at the
+        // dispatch sites, so validation must not reject it either.
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "behaviors": { "lantern": { "family": "exit", "script": {
+                "canPass": { "kind": "lit", "value": true }
+            } } }
+        }))
+        .unwrap();
+        let mut w = world_with_party(&["pc"], 10);
+        w.items.insert(
+            crate::world::ids::ItemId("i1".into()),
+            crate::world::snapshot::ItemSnapshot::Item {
+                id: crate::world::ids::ItemId("i1".into()),
+                behavior_key: "lantern".into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
+        assert!(w.validate_mechanics(&cat).is_ok());
+    }
+
+    #[test]
+    fn validate_mechanics_rejects_an_ill_shaped_item_script() {
+        // A Pass statement inside on_use (an effect body) is ill-shaped; an
+        // explicit Item-family binding IS shape-checked at load.
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "behaviors": { "lantern": { "family": "item", "script": {
+                "onUse": [
+                    { "kind": "pass", "value": { "kind": "lit", "value": "nope" } }
+                ]
+            } } }
+        }))
+        .unwrap();
+        let mut w = world_with_party(&["pc"], 10);
+        w.items.insert(
+            crate::world::ids::ItemId("i1".into()),
+            crate::world::snapshot::ItemSnapshot::Item {
+                id: crate::world::ids::ItemId("i1".into()),
+                behavior_key: "lantern".into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
         assert!(w.validate_mechanics(&cat).is_err());
     }
 

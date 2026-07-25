@@ -399,30 +399,28 @@ impl World {
         let resolved = resolve_item(snap, cat)?;
         let lore = resolved.lore.clone();
 
-        // Author read-behaviour (scripted onRead): runs BEFORE the lore cue —
-        // run the read closure, THEN emit lore. Absent script = no-op. Effects
+        // Item read-behaviour (`ItemBehavior::on_read`): runs BEFORE the lore
+        // cue — run the hook, THEN emit lore. An unresolved key = no-op. Effects
         // flow through the collect-then-apply pipeline, capped at
         // MAX_EFFECTS_PER_EVENT (same as use_item).
         if let Some(key) = &behavior_key {
-            if let Some(crate::script::ast::BehaviorScript::Item { script }) =
-                cat.behaviors.get(key)
-            {
+            if let Some(resolved) = crate::world::item_behavior::resolve_item_behavior(key, cat) {
                 let view = self.build_campaign_view(cat);
                 // The held-check above guarantees the actor exists, so a missing view
                 // is a real inconsistency — surface it (matching use_mechanic_action's
-                // fail-loud stance) rather than silently dropping the scripted effects.
+                // fail-loud stance) rather than silently dropping the behavior's effects.
                 let actor_view = self.character_view(actor, cat).ok_or_else(|| {
                     ProceduralViolation(alloc::format!("Actor '{}' not found.", actor.0))
                 })?;
                 let effects = {
                     let rng = &mut self.rng;
-                    let mut state = serde_json::Value::Null; // no per-item script state (v1)
+                    let mut state = serde_json::Value::Null; // no per-item script state
                     let mut base = crate::world::mechanics::HookCtx {
                         state: &mut state,
                         view: &view,
                         rng,
                     };
-                    crate::script::ops::ScriptedItem { script }.run_read(&mut base, &actor_view)
+                    resolved.as_behavior().on_read(&mut base, &actor_view)
                 };
                 if effects.len() > crate::world::mechanics::MAX_EFFECTS_PER_EVENT {
                     return Err(ProceduralViolation(alloc::format!(

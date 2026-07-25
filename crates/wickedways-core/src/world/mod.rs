@@ -14,6 +14,7 @@ pub mod gate;
 pub mod history;
 pub mod ids;
 pub mod intent;
+pub mod item_behavior;
 mod items_actions;
 pub mod lifecycle;
 pub mod mechanics;
