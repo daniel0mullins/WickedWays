@@ -60,9 +60,10 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # ---- runtime: slim glibc base ----
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
-# curl is here for the platform health probe (Coolify runs `curl`/`wget` *inside* the container,
-# hitting the server's GET /healthz) — the slim base ships neither, so without this the probe can't
-# execute and the platform reports the container unhealthy despite a working app.
+# curl is here for the HEALTHCHECK below (and any platform probe like Coolify's, which runs
+# `curl`/`wget` *inside* the container) hitting the server's GET /healthz — the slim base ships
+# neither, so without this the probe can't execute and the container is reported unhealthy despite
+# a working app.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
@@ -86,4 +87,11 @@ ENV PORT=8080 \
     GENESIS_DIR=/app/genesis \
     GM_IDENTITY=gm
 EXPOSE 8080
+
+# Container-native liveness probe: hit the server's GET /healthz (200 "ok" while it's serving). Shell
+# form so ${PORT} expands at runtime from the env above — or whatever the platform injects — rather
+# than being frozen at build time. start-period covers the (near-instant) boot before the first probe.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -fsS "http://localhost:${PORT}/healthz" || exit 1
+
 CMD ["wickedways-server"]
