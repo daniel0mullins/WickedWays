@@ -1,0 +1,7 @@
+# Pin the toolchain so local rustfmt/clippy match CI (rustfmt output and clippy
+# lint sets shift across stables; the fmt/clippy gates in checks.yml need both
+# sides on the same version to agree).
+[toolchain]
+channel = "1.94.1"
+components = ["clippy", "rustfmt"]
+targets = ["wasm32-unknown-unknown"]
