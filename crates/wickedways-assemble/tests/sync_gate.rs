@@ -1,15 +1,17 @@
-//! The sync differential gate.
+//! The sync replay gate.
 //!
 //! Replays a committed command sequence through the native
 //! [`SyncAuthority`](wickedways_core::sync::SyncAuthority) and asserts each authoritative
-//! `{ seq, delta }` matches the TS oracle byte-for-byte. The goldens are TS-emitted
-//! recordings of the same command sequence driven through the oracle's sync authority.
+//! `{ seq, delta }` matches the committed golden. The goldens are regression pins of the
+//! authority's own deltas — regenerate deliberately with
+//! `UPDATE_GOLDENS=1 cargo test -p wickedways-assemble --test sync_gate`, review the diff,
+//! and commit it (second regeneration run = zero git diff).
 //!
 //! Lives in `wickedways-assemble`'s integration tests because CI already runs
 //! `cargo test -p wickedways-assemble` (pure Rust, no wasm) — the same home as the assembler
-//! genesis gate. The acceptance bar: a command "matches the oracle" only when its
-//! delta *content*, not just its serde shape, is identical. Each newly ported engine
-//! command extends this differential corpus.
+//! genesis gate. The acceptance bar: a command "matches" only when its delta *content*,
+//! not just its serde shape, is identical. Each newly supported engine command extends
+//! this corpus.
 
 use std::path::{Path, PathBuf};
 
@@ -27,13 +29,27 @@ fn read(name: &str) -> String {
     std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()))
 }
 
+fn updating() -> bool {
+    std::env::var_os("UPDATE_GOLDENS").is_some_and(|v| v == "1")
+}
+
+/// Write a regenerated golden: 2-space pretty JSON + trailing newline (the
+/// committed format).
+fn write_golden(name: &str, v: &Value) {
+    let p = fixtures().join(name);
+    let mut s = serde_json::to_string_pretty(v).expect("serialize golden");
+    s.push('\n');
+    std::fs::write(&p, s).unwrap_or_else(|e| panic!("write {}: {e}", p.display()));
+}
+
 /// The `<name>.catalog.json` path if that fixture ships a catalog, else `None`.
 fn catalog_path(name: &str) -> Option<PathBuf> {
     let p = fixtures().join(format!("{name}.catalog.json"));
     p.exists().then_some(p)
 }
 
-/// Collapse integer-valued floats to ints so a Rust `5.0` compares equal to a TS-emitted `5`.
+/// Collapse integer-valued floats to ints so a Rust `5.0` compares equal to a legacy `5`.
+/// After a full regeneration this is an identity transform.
 fn canon_numbers(v: &Value) -> Value {
     match v {
         Value::Number(n) => {
@@ -114,22 +130,40 @@ fn run_gate(name: &str) {
 
     let steps = golden["steps"]
         .as_array()
-        .expect("golden.steps is an array");
+        .expect("golden.steps is an array")
+        .clone();
 
+    let mut steps_out: Vec<Value> = Vec::new();
     for (i, step) in steps.iter().enumerate() {
         let command: Command =
             serde_json::from_value(step["command"].clone()).expect("parse command");
         match auth.submit(command) {
             SubmitResult::Committed { seq, delta } => {
-                assert_eq!(seq, step["seq"].as_u64().unwrap(), "{name} step {i}: seq");
+                // The stored delta is canonical: state-only (no `cues`),
+                // entity/removal sets sorted.
                 let got = canon_delta(&serde_json::to_value(&delta).unwrap());
-                let want = canon_delta(&step["delta"]);
-                assert_eq!(got, want, "{name} step {i}: delta must match the TS oracle");
+                if updating() {
+                    // The recorded command is the INPUT — echoed verbatim.
+                    steps_out.push(serde_json::json!({
+                        "command": step["command"],
+                        "seq": seq,
+                        "delta": got,
+                    }));
+                } else {
+                    assert_eq!(seq, step["seq"].as_u64().unwrap(), "{name} step {i}: seq");
+                    let want = canon_delta(&step["delta"]);
+                    assert_eq!(got, want, "{name} step {i}: delta must match the golden");
+                }
             }
             SubmitResult::Denied { reason } => {
                 panic!("{name} step {i}: unexpectedly denied: {reason}")
             }
         }
+    }
+    if updating() {
+        let mut out = golden.clone();
+        out["steps"] = Value::Array(steps_out);
+        write_golden(&format!("{name}.golden.json"), &out);
     }
 }
 

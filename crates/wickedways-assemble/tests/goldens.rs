@@ -1,10 +1,14 @@
-//! The differential conformance gate. THE AUTHORITY.
+//! The assembler's golden gate.
 //!
-//! Never edit a golden to make this pass. If Rust and the golden disagree, Rust is
-//! wrong until proven otherwise, and the fix goes in the assembler.
+//! The goldens are regression pins of `assemble()`'s own output over the
+//! committed description/catalog fixtures. When a change intentionally alters
+//! assembly, regenerate deliberately with
+//! `UPDATE_GOLDENS=1 cargo test -p wickedways-assemble --test goldens`, review
+//! the diff, and commit it. Run the regeneration twice: the second run must
+//! produce a zero git diff.
 //!
-//! Only PRE-BEGIN goldens are valid oracles: `started: false`. The 31 `started: true`
-//! snapshots encode `Authority::begin_campaign`'s work, not the assembler's.
+//! Only PRE-BEGIN goldens are valid pins here: `started: true` snapshots encode
+//! `begin_campaign`'s work, not the assembler's (the replay gate covers those).
 
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -20,55 +24,26 @@ fn read_json<T: serde::de::DeserializeOwned>(p: &Path) -> T {
     serde_json::from_str(&s).unwrap_or_else(|e| panic!("parse {}: {e}", p.display()))
 }
 
-/// Normalize numbers to JS/JSON value semantics before comparison.
-///
-/// The goldens are `JSON.stringify` output, where there is a single number type:
-/// `10.0` and `10` are the SAME value and stringify identically to `10`. But the
-/// Rust core types `Stats`/`PartialStats` are `f64`, so `serde_json` emits whole
-/// stats as `10.0`, and `serde_json`'s `Number` equality is *stricter* than JSON
-/// value equality — it distinguishes the int/float representations (`10.0 != 10`).
-/// That strictness is a bug relative to `canonicalize()`'s semantics, which this
-/// gate exists to mirror. Collapsing whole-valued floats to integers on BOTH sides
-/// makes the comparator faithful to JSON value equality. It is not a relaxation:
-/// every genuinely different value still differs (array order, keys, non-whole
-/// numbers, strings, presence/absence are all unchanged).
-fn canon_numbers(v: &Value) -> Value {
-    match v {
-        Value::Number(n) => {
-            if let Some(f) = n.as_f64() {
-                if f.is_finite() && f.fract() == 0.0 && n.as_i64().is_none() && n.as_u64().is_none()
-                {
-                    // A float that is integer-valued: re-key it as an integer.
-                    if f >= 0.0 && f <= u64::MAX as f64 {
-                        return Value::Number((f as u64).into());
-                    }
-                    if f >= i64::MIN as f64 && f <= i64::MAX as f64 {
-                        return Value::Number((f as i64).into());
-                    }
-                }
-            }
-            v.clone()
-        }
-        Value::Array(a) => Value::Array(a.iter().map(canon_numbers).collect()),
-        Value::Object(o) => Value::Object(
-            o.iter()
-                .map(|(k, x)| (k.clone(), canon_numbers(x)))
-                .collect(),
-        ),
-        _ => v.clone(),
-    }
+fn updating() -> bool {
+    std::env::var_os("UPDATE_GOLDENS").is_some_and(|v| v == "1")
+}
+
+/// Write a regenerated golden: 2-space pretty JSON + trailing newline (the
+/// committed format).
+fn write_golden(p: &Path, v: &Value) {
+    let mut s = serde_json::to_string_pretty(v).expect("serialize golden");
+    s.push('\n');
+    std::fs::write(p, s).unwrap_or_else(|e| panic!("write {}: {e}", p.display()));
 }
 
 /// Prints the first differing JSON pointer instead of dumping 200KB of diff.
 fn assert_json_eq(got: &Value, want: &Value, fixture: &str) {
-    let got = canon_numbers(got);
-    let want = canon_numbers(want);
     if got == want {
         return;
     }
     let mut path = String::new();
-    let (g, w) = first_diff(&got, &want, &mut path);
-    panic!("byte-parity FAILED for {fixture}\n  at: {path}\n  rust: {g}\n  golden: {w}",);
+    let (g, w) = first_diff(got, want, &mut path);
+    panic!("golden mismatch for {fixture}\n  at: {path}\n  rust: {g}\n  golden: {w}",);
 }
 
 fn first_diff(a: &Value, b: &Value, path: &mut String) -> (String, String) {
@@ -118,10 +93,14 @@ fn gate(name: &str, golden: &str, catalog_name: Option<&str>, party: &[Seat]) {
     let catalog: Catalog = catalog_name
         .map(|c| read_json::<Catalog>(&dir.join(format!("{c}.catalog.json"))))
         .unwrap_or_default();
-    let want: Value = read_json(&dir.join(golden));
     let got = serde_json::to_value(assemble(&desc, &catalog, party).expect("assemble"))
         .expect("to_value");
-    assert_json_eq(&got, &want, golden);
+    if updating() {
+        write_golden(&dir.join(golden), &got);
+    } else {
+        let want: Value = read_json(&dir.join(golden));
+        assert_json_eq(&got, &want, golden);
+    }
 }
 
 /// The single seat every facade fixture boots with: `player:Ada`, archetype
