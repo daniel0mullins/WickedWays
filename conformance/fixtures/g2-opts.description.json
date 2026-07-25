@@ -1,27 +1,27 @@
 {
-  "title": "Opts",
-  "opts": {
-    "maxRounds": 150,
-    "baseEncounterChance": 20
-  },
   "archetypes": [],
+  "caches": [],
+  "exits": [],
+  "formations": [],
+  "loot": [],
+  "loseConditions": [],
+  "materials": [],
+  "mechanics": [],
+  "mobs": [],
+  "npcs": [],
+  "opts": {
+    "baseEncounterChance": 20,
+    "maxRounds": 150
+  },
+  "recipes": [],
   "rooms": [
     {
-      "name": "Hall",
-      "description": "A long central hall."
+      "description": "A long central hall.",
+      "name": "Hall"
     }
   ],
-  "startRoom": "Hall",
-  "exits": [],
-  "mobs": [],
-  "loot": [],
-  "caches": [],
-  "npcs": [],
-  "formations": [],
   "scenes": [],
-  "recipes": [],
-  "materials": [],
-  "winConditions": [],
-  "loseConditions": [],
-  "mechanics": []
+  "startRoom": "Hall",
+  "title": "Opts",
+  "winConditions": []
 }

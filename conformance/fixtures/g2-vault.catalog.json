@@ -1,75 +1,75 @@
 {
-  "items": {
-    "vault-key": {
-      "name": "Vault Key",
-      "type": "key",
-      "stat": "health",
-      "modifier": 0,
-      "properties": {
-        "equippable": false,
-        "equipped": false,
-        "destroyable": false,
-        "usable": false
-      },
-      "keyCode": "vault",
-      "consumeOnUse": false,
-      "recipe": {
-        "item": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    }
-  },
   "aliases": {},
   "behaviors": {
-    "vault-door": {
-      "family": "exit",
-      "script": {
-        "canPass": {
-          "kind": "hasKey",
-          "of": {
-            "kind": "actor"
-          },
-          "keyCode": "vault"
-        },
-        "runScript": [],
-        "passMessage": "The lock yields.",
-        "failMessage": "The vault door is locked."
-      }
-    },
     "reached-vault": {
       "family": "victory",
       "script": {
         "test": {
           "kind": "bin",
-          "op": "eq",
           "left": {
+            "field": "name",
             "kind": "get",
             "of": {
+              "field": "room",
               "kind": "get",
               "of": {
+                "index": {
+                  "kind": "lit",
+                  "value": 0.0
+                },
                 "kind": "index",
                 "list": {
                   "kind": "party"
-                },
-                "index": {
-                  "kind": "lit",
-                  "value": 0
                 }
-              },
-              "field": "room"
-            },
-            "field": "name"
+              }
+            }
           },
+          "op": "eq",
           "right": {
             "kind": "lit",
             "value": "Vault"
           }
         }
       }
+    },
+    "vault-door": {
+      "family": "exit",
+      "script": {
+        "canPass": {
+          "keyCode": "vault",
+          "kind": "hasKey",
+          "of": {
+            "kind": "actor"
+          }
+        },
+        "failMessage": "The vault door is locked.",
+        "passMessage": "The lock yields.",
+        "runScript": []
+      }
     }
   },
   "formations": {},
+  "items": {
+    "vault-key": {
+      "consumeOnUse": false,
+      "grantsImmunity": null,
+      "immunities": null,
+      "keyCode": "vault",
+      "modifier": 0,
+      "name": "Vault Key",
+      "properties": {
+        "destroyable": false,
+        "equippable": false,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {
+        "item": 1
+      },
+      "stat": "health",
+      "teaches": null,
+      "type": "key"
+    }
+  },
   "recipes": {}
 }

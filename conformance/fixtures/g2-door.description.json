@@ -1,43 +1,43 @@
 {
-  "title": "Door",
-  "opts": {},
   "archetypes": [],
-  "rooms": [
-    {
-      "name": "Hall",
-      "description": "A cold stone hall."
-    },
-    {
-      "name": "Cellar",
-      "description": "The cellar below."
-    }
-  ],
-  "startRoom": "Hall",
+  "caches": [],
   "exits": [
     {
-      "from": "Hall",
+      "behaviorKey": "cellar-door",
       "direction": "south",
-      "to": "Cellar",
-      "behaviorKey": "cellar-door"
+      "from": "Hall",
+      "to": "Cellar"
     }
   ],
-  "mobs": [],
+  "formations": [],
   "loot": [
     {
-      "name": "shelf",
-      "room": "Hall",
       "items": [
         "cellar-key"
-      ]
+      ],
+      "name": "shelf",
+      "room": "Hall"
     }
   ],
-  "caches": [],
-  "npcs": [],
-  "formations": [],
-  "scenes": [],
-  "recipes": [],
-  "materials": [],
-  "winConditions": [],
   "loseConditions": [],
-  "mechanics": []
+  "materials": [],
+  "mechanics": [],
+  "mobs": [],
+  "npcs": [],
+  "opts": {},
+  "recipes": [],
+  "rooms": [
+    {
+      "description": "A cold stone hall.",
+      "name": "Hall"
+    },
+    {
+      "description": "The cellar below.",
+      "name": "Cellar"
+    }
+  ],
+  "scenes": [],
+  "startRoom": "Hall",
+  "title": "Door",
+  "winConditions": []
 }

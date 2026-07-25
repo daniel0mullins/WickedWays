@@ -1,54 +1,52 @@
 {
-  "items": {},
   "aliases": {},
   "behaviors": {
     "hex": {
       "family": "mechanic",
       "script": {
-        "init": {},
+        "actions": {},
         "hooks": {
           "onTurnStart": [
             {
-              "kind": "guard",
               "cond": {
-                "kind": "defined",
                 "expr": {
+                  "field": "room",
                   "kind": "get",
                   "of": {
                     "kind": "actor"
-                  },
-                  "field": "room"
-                }
-              }
+                  }
+                },
+                "kind": "defined"
+              },
+              "kind": "guard"
             },
             {
-              "kind": "emit",
               "effect": {
+                "amount": {
+                  "kind": "lit",
+                  "value": 2.0
+                },
                 "kind": "damage",
                 "target": {
                   "kind": "actor"
-                },
-                "amount": {
-                  "kind": "lit",
-                  "value": 2
                 }
-              }
+              },
+              "kind": "emit"
             },
             {
-              "kind": "emit",
               "effect": {
+                "amount": {
+                  "kind": "lit",
+                  "value": 1.0
+                },
                 "kind": "heal",
                 "target": {
                   "kind": "actor"
-                },
-                "amount": {
-                  "kind": "lit",
-                  "value": 1
                 }
-              }
+              },
+              "kind": "emit"
             },
             {
-              "kind": "emit",
               "effect": {
                 "kind": "grantImmunity",
                 "target": {
@@ -56,16 +54,18 @@
                 },
                 "turns": {
                   "kind": "lit",
-                  "value": 3
+                  "value": 3.0
                 }
-              }
+              },
+              "kind": "emit"
             }
           ]
         },
-        "actions": {}
+        "init": {}
       }
     }
   },
   "formations": {},
+  "items": {},
   "recipes": {}
 }

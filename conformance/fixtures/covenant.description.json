@@ -1,114 +1,119 @@
 {
-  "title": "The Covenant",
-  "opts": {
-    "maxRounds": 60,
-    "baseEncounterChance": 0
-  },
   "archetypes": [
     {
-      "id": "warden",
-      "name": "Warden",
       "baseStats": {
         "energy": 12.0,
         "health": 10.0,
         "sanity": 10.0
       },
-      "inventorySlots": 1
-    }
-  ],
-  "rooms": [
-    {
-      "name": "Antechamber",
-      "description": "The mouth of the sanctum, where the covenant gathers. A stair of black glass leads down into the dark, and the way you came in has already sealed behind you."
-    },
-    {
-      "name": "Crossing",
-      "description": "A four-way crossing beneath a vaulted ceiling. Passages run to a warded chamber on either hand, and an altar room lies ahead. The air hums, as if the stone is waiting to be answered."
-    },
-    {
-      "name": "North Ward",
-      "description": "A narrow chamber ending in a disc of pale iron set flush with the floor -- the North Ward. It thrums faintly underfoot, but nothing you do alone will hold it."
-    },
-    {
-      "name": "South Ward",
-      "description": "The twin of the far chamber: a disc of pale iron set into the floor -- the South Ward. It answers the tread of a single Warden with silence."
-    },
-    {
-      "name": "Reliquary",
-      "description": "A low altar room, its walls carved with two figures standing apart, hands raised toward a seal between them. A cracked altar stone holds what the covenant left behind."
-    }
-  ],
-  "startRoom": "Antechamber",
-  "exits": [
-    {
-      "from": "Antechamber",
-      "direction": "north",
-      "to": "Crossing"
-    },
-    {
-      "from": "Crossing",
-      "direction": "south",
-      "to": "Antechamber"
-    },
-    {
-      "from": "Crossing",
-      "direction": "west",
-      "to": "North Ward"
-    },
-    {
-      "from": "North Ward",
-      "direction": "east",
-      "to": "Crossing"
-    },
-    {
-      "from": "Crossing",
-      "direction": "east",
-      "to": "South Ward"
-    },
-    {
-      "from": "South Ward",
-      "direction": "west",
-      "to": "Crossing"
-    },
-    {
-      "from": "Crossing",
-      "direction": "north",
-      "to": "Reliquary"
-    },
-    {
-      "from": "Reliquary",
-      "direction": "south",
-      "to": "Crossing"
-    }
-  ],
-  "mobs": [],
-  "loot": [
-    {
-      "name": "altar-stone",
-      "room": "Reliquary",
-      "items": [
-        "rite-tablet"
-      ],
-      "description": "A cracked altar stone with a single tablet resting in its hollow."
+      "id": "warden",
+      "inventorySlots": 1,
+      "name": "Warden"
     }
   ],
   "caches": [
     {
-      "name": "Ward Slag",
-      "room": "Crossing",
       "materials": {
         "iron": 3,
         "salt": 2
-      }
+      },
+      "name": "Ward Slag",
+      "room": "Crossing"
     }
   ],
-  "npcs": [],
+  "exits": [
+    {
+      "direction": "north",
+      "from": "Antechamber",
+      "to": "Crossing"
+    },
+    {
+      "direction": "south",
+      "from": "Crossing",
+      "to": "Antechamber"
+    },
+    {
+      "direction": "west",
+      "from": "Crossing",
+      "to": "North Ward"
+    },
+    {
+      "direction": "east",
+      "from": "North Ward",
+      "to": "Crossing"
+    },
+    {
+      "direction": "east",
+      "from": "Crossing",
+      "to": "South Ward"
+    },
+    {
+      "direction": "west",
+      "from": "South Ward",
+      "to": "Crossing"
+    },
+    {
+      "direction": "north",
+      "from": "Crossing",
+      "to": "Reliquary"
+    },
+    {
+      "direction": "south",
+      "from": "Reliquary",
+      "to": "Crossing"
+    }
+  ],
   "formations": [],
-  "scenes": [],
+  "loot": [
+    {
+      "description": "A cracked altar stone with a single tablet resting in its hollow.",
+      "items": [
+        "rite-tablet"
+      ],
+      "name": "altar-stone",
+      "room": "Reliquary"
+    }
+  ],
+  "loseConditions": [],
+  "materials": [],
+  "mechanics": [],
+  "mobs": [],
+  "npcs": [],
+  "opts": {
+    "baseEncounterChance": 0,
+    "maxRounds": 60
+  },
   "recipes": [
     "ward-charm"
   ],
-  "materials": [],
+  "rooms": [
+    {
+      "description": "The mouth of the sanctum, where the covenant gathers. A stair of black glass leads down into the dark, and the way you came in has already sealed behind you.",
+      "name": "Antechamber"
+    },
+    {
+      "description": "A four-way crossing beneath a vaulted ceiling. Passages run to a warded chamber on either hand, and an altar room lies ahead. The air hums, as if the stone is waiting to be answered.",
+      "name": "Crossing"
+    },
+    {
+      "description": "A narrow chamber ending in a disc of pale iron set flush with the floor -- the North Ward. It thrums faintly underfoot, but nothing you do alone will hold it.",
+      "name": "North Ward"
+    },
+    {
+      "description": "The twin of the far chamber: a disc of pale iron set into the floor -- the South Ward. It answers the tread of a single Warden with silence.",
+      "name": "South Ward"
+    },
+    {
+      "description": "A low altar room, its walls carved with two figures standing apart, hands raised toward a seal between them. A cracked altar stone holds what the covenant left behind.",
+      "name": "Reliquary"
+    }
+  ],
+  "scenes": [],
+  "startRoom": "Antechamber",
+  "timeoutNarration": {
+    "text": "The lamps gutter out one by one. Whatever the covenant was meant to do here, it will not be done tonight — and the sanctum keeps those it is done with."
+  },
+  "title": "The Covenant",
   "winConditions": [
     {
       "key": "twin-wards-held",
@@ -116,10 +121,5 @@
         "text": "Two Wardens take the twin discs in the same breath, and the sanctum answers at last. The seal between the wards splits with a sound like a held note released -- and above you, the way out grinds open. You leave together, or not at all; tonight, it is together."
       }
     }
-  ],
-  "loseConditions": [],
-  "mechanics": [],
-  "timeoutNarration": {
-    "text": "The lamps gutter out one by one. Whatever the covenant was meant to do here, it will not be done tonight — and the sanctum keeps those it is done with."
-  }
+  ]
 }

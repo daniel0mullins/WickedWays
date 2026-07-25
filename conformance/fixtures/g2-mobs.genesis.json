@@ -1,139 +1,60 @@
 {
-  "schemaVersion": 6,
   "campaign": {
-    "id": "campaign:Mobs",
-    "title": "Mobs",
-    "maxRounds": 100,
-    "round": 0,
-    "started": false,
-    "outcome": "ongoing",
-    "winConditions": [],
-    "loseConditions": [],
-    "activeCharacterIndex": 0,
-    "partyIds": [
-      "player:Ada"
-    ],
     "actedThisRound": [],
-    "gmId": "player:Ada",
-    "materials": {},
-    "claims": [],
-    "encountered": [],
-    "knownRecipes": [],
-    "archetypes": [],
     "actionSounds": {},
-    "encounterTable": {
-      "baseChance": 20,
-      "visited": [
-        "room:Hall"
-      ],
-      "formations": []
+    "activeCharacterIndex": 0,
+    "archetypes": [],
+    "avPolicy": {
+      "enabled": true,
+      "maxParticipants": 6,
+      "video": true
     },
     "chatPolicy": {
-      "enabled": true,
-      "whisper": true,
+      "backfillWindow": 200,
       "edit": true,
+      "enabled": true,
       "reactions": true,
       "readReceipts": true,
       "typing": true,
-      "backfillWindow": 200
+      "whisper": true
     },
-    "avPolicy": {
-      "enabled": true,
-      "video": true,
-      "maxParticipants": 6
+    "claims": [],
+    "encounterTable": {
+      "baseChance": 20,
+      "formations": [],
+      "visited": [
+        "room:Hall"
+      ]
     },
-    "mechanics": []
+    "encountered": [],
+    "gmId": "player:Ada",
+    "id": "campaign:Mobs",
+    "knownRecipes": [],
+    "loseConditions": [],
+    "materials": {},
+    "maxRounds": 100,
+    "mechanics": [],
+    "outcome": "ongoing",
+    "partyIds": [
+      "player:Ada"
+    ],
+    "round": 0,
+    "started": false,
+    "title": "Mobs",
+    "winConditions": []
   },
-  "rooms": [
-    {
-      "id": "room:Hall",
-      "name": "Hall",
-      "description": "A long central hall.",
-      "exits": {
-        "north": "exit:Hall|Nursery",
-        "south": "exit:Cellar|Hall"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [
-        "player:Ada"
-      ],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:Nursery",
-      "name": "Nursery",
-      "description": "A child's room, long abandoned.",
-      "exits": {
-        "south": "exit:Hall|Nursery"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [
-        "mob:Wraith"
-      ],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:Cellar",
-      "name": "Cellar",
-      "description": "The cellar below.",
-      "exits": {
-        "north": "exit:Cellar|Hall"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [
-        "mob:Revenant"
-      ],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    }
-  ],
-  "exits": [
-    {
-      "id": "exit:Hall|Nursery",
-      "endpointIds": [
-        "room:Hall",
-        "room:Nursery"
-      ],
-      "state": {}
-    },
-    {
-      "id": "exit:Cellar|Hall",
-      "endpointIds": [
-        "room:Hall",
-        "room:Cellar"
-      ],
-      "state": {}
-    }
-  ],
   "characters": [
     {
-      "kind": "player",
-      "id": "player:Ada",
-      "name": "Ada",
-      "stats": {
-        "health": 10,
-        "sanity": 10,
-        "energy": 10
-      },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "room:Hall",
-      "inventory": {
-        "slots": 5,
-        "itemIds": [],
-        "keyIds": []
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
       },
+      "archetypeImmunities": [],
+      "currentRoomId": "room:Hall",
       "equipment": {},
       "history": [
         {
@@ -145,120 +66,199 @@
           "round": 0
         }
       ],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
+      "id": "player:Ada",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 5
+      },
+      "kind": "player",
+      "name": "Ada",
+      "stats": {
+        "energy": 10.0,
+        "health": 10.0,
+        "sanity": 10.0
       }
     },
     {
-      "kind": "mob",
-      "id": "mob:Wraith",
-      "name": "Wraith",
-      "stats": {
-        "health": 6,
-        "sanity": 5,
-        "energy": 5
-      },
       "actionsPerRound": 2,
       "actionsThisRound": 0,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeImmunities": [],
+      "baseEscapeChance": 50,
       "currentRoomId": "room:Nursery",
+      "equipment": {},
+      "history": [],
+      "id": "mob:Wraith",
       "inventory": {
-        "slots": 2,
         "itemIds": [],
         "keyIds": [
           "mob:Wraith:drop#0"
-        ]
+        ],
+        "slots": 2
       },
-      "equipment": {},
-      "history": [],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
+      "kind": "mob",
+      "lightAverse": false,
+      "materialDrops": {},
+      "name": "Wraith",
+      "naturalAttack": {
+        "power": 3,
+        "stat": "sanity"
       },
       "origin": "room",
-      "baseEscapeChance": 50,
-      "materialDrops": {},
-      "lightAverse": false,
-      "naturalAttack": {
-        "stat": "sanity",
-        "power": 3
+      "stats": {
+        "energy": 5.0,
+        "health": 6.0,
+        "sanity": 5.0
       }
     },
     {
-      "kind": "mob",
-      "id": "mob:Revenant",
-      "name": "Revenant",
-      "stats": {
-        "health": 10,
-        "sanity": 8,
-        "energy": 6
-      },
       "actionsPerRound": 2,
       "actionsThisRound": 0,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeImmunities": [],
+      "baseEscapeChance": 50,
       "currentRoomId": "room:Cellar",
+      "equipment": {},
+      "history": [],
+      "id": "mob:Revenant",
       "inventory": {
-        "slots": 2,
         "itemIds": [],
         "keyIds": [
           "mob:Revenant:drop#0"
-        ]
+        ],
+        "slots": 2
       },
-      "equipment": {},
-      "history": [],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
+      "kind": "mob",
+      "lightAverse": false,
+      "materialDrops": {},
+      "name": "Revenant",
+      "naturalAttack": {
+        "power": 2,
+        "stat": "sanity"
       },
       "origin": "room",
-      "baseEscapeChance": 50,
-      "materialDrops": {},
-      "lightAverse": false,
-      "naturalAttack": {
-        "stat": "sanity",
-        "power": 2
+      "stats": {
+        "energy": 6.0,
+        "health": 10.0,
+        "sanity": 8.0
       }
+    }
+  ],
+  "codex": [
+    {
+      "firstSeen": {
+        "characterId": "player:Ada",
+        "roomId": "room:Hall",
+        "round": 0
+      },
+      "key": "room:Hall",
+      "kind": "room",
+      "snapshot": {
+        "description": "A long central hall.",
+        "name": "Hall"
+      }
+    }
+  ],
+  "exits": [
+    {
+      "endpointIds": [
+        "room:Hall",
+        "room:Nursery"
+      ],
+      "id": "exit:Hall|Nursery",
+      "state": {}
+    },
+    {
+      "endpointIds": [
+        "room:Hall",
+        "room:Cellar"
+      ],
+      "id": "exit:Cellar|Hall",
+      "state": {}
     }
   ],
   "items": [
     {
-      "kind": "key",
+      "consumeOnUse": false,
       "id": "mob:Wraith:drop#0",
-      "name": "Brass Key",
       "keyCode": "brass",
-      "consumeOnUse": false
+      "kind": "key",
+      "name": "Brass Key"
     },
     {
-      "kind": "key",
+      "consumeOnUse": false,
       "id": "mob:Revenant:drop#0",
-      "name": "Iron Key",
       "keyCode": "iron",
-      "consumeOnUse": false
+      "kind": "key",
+      "name": "Iron Key"
     }
   ],
   "loot": [],
   "materialCaches": [],
-  "codex": [
+  "rooms": [
     {
-      "kind": "room",
-      "key": "room:Hall",
-      "snapshot": {
-        "name": "Hall",
-        "description": "A long central hall."
+      "dark": false,
+      "description": "A long central hall.",
+      "exits": {
+        "north": "exit:Hall|Nursery",
+        "south": "exit:Cellar|Hall"
       },
-      "firstSeen": {
-        "round": 0,
-        "characterId": "player:Ada",
-        "roomId": "room:Hall"
-      }
+      "id": "room:Hall",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Hall",
+      "occupantIds": [
+        "player:Ada"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A child's room, long abandoned.",
+      "exits": {
+        "south": "exit:Hall|Nursery"
+      },
+      "id": "room:Nursery",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Nursery",
+      "occupantIds": [
+        "mob:Wraith"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "The cellar below.",
+      "exits": {
+        "north": "exit:Cellar|Hall"
+      },
+      "id": "room:Cellar",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Cellar",
+      "occupantIds": [
+        "mob:Revenant"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
     }
-  ]
+  ],
+  "schemaVersion": 6
 }

@@ -1,233 +1,100 @@
 {
-  "title": "The Hollow House",
-  "opts": {
-    "maxRounds": 150,
-    "baseEncounterChance": 20
-  },
   "archetypes": [
     {
-      "id": "heir",
-      "name": "Heir",
       "baseStats": {
-        "health": 12,
-        "sanity": 16,
-        "energy": 5
+        "energy": 5.0,
+        "health": 12.0,
+        "sanity": 16.0
       },
-      "inventorySlots": 1,
+      "id": "heir",
       "immunities": [
         "fear"
-      ]
-    }
-  ],
-  "rooms": [
-    {
-      "name": "Foyer",
-      "description": "The entrance hall of the Hollow House. Dust sheets shroud the furniture; the front door has locked itself behind you."
-    },
-    {
-      "name": "Cellar",
-      "description": "A low brick cellar, black as a throat. Water seeps somewhere unseen.",
-      "dark": true
-    },
-    {
-      "name": "Hall",
-      "description": "A long central hall. Portraits watch from the walls, their eyes scratched out.",
-      "spawnModifier": 1
-    },
-    {
-      "name": "Kitchen",
-      "description": "A cold scullery. Copper pots hang in rows; one still sways.",
-      "spawnModifier": 1
-    },
-    {
-      "name": "Parlor",
-      "description": "A receiving parlor gone to mildew. A piano sits with its lid nailed shut.",
-      "spawnModifier": 1
-    },
-    {
-      "name": "Landing",
-      "description": "The upstairs landing. Two doors face you — one to the west, one leading further up — and a nursery stands open to the east.",
-      "spawnModifier": 1
-    },
-    {
-      "name": "Study",
-      "description": "A cramped study, papers everywhere, as if someone left mid-sentence."
-    },
-    {
-      "name": "Nursery",
-      "description": "A child's nursery. A rocking horse moves, very slightly, on its own.",
-      "dark": true
-    },
-    {
-      "name": "Attic",
-      "description": "The attic, under the bare ribs of the roof. This is where the journal ends."
-    }
-  ],
-  "startRoom": "Foyer",
-  "exits": [
-    {
-      "from": "Foyer",
-      "direction": "north",
-      "to": "Hall"
-    },
-    {
-      "from": "Hall",
-      "direction": "south",
-      "to": "Foyer"
-    },
-    {
-      "from": "Foyer",
-      "direction": "south",
-      "to": "Cellar",
-      "behaviorKey": "cellar-door",
-      "name": "cellar door",
-      "initialState": {
-        "unlocked": false
-      }
-    },
-    {
-      "from": "Hall",
-      "direction": "west",
-      "to": "Kitchen"
-    },
-    {
-      "from": "Kitchen",
-      "direction": "east",
-      "to": "Hall"
-    },
-    {
-      "from": "Hall",
-      "direction": "east",
-      "to": "Parlor"
-    },
-    {
-      "from": "Parlor",
-      "direction": "west",
-      "to": "Hall"
-    },
-    {
-      "from": "Hall",
-      "direction": "north",
-      "to": "Landing"
-    },
-    {
-      "from": "Landing",
-      "direction": "south",
-      "to": "Hall"
-    },
-    {
-      "from": "Landing",
-      "direction": "east",
-      "to": "Nursery"
-    },
-    {
-      "from": "Nursery",
-      "direction": "west",
-      "to": "Landing"
-    },
-    {
-      "from": "Landing",
-      "direction": "west",
-      "to": "Study",
-      "behaviorKey": "study-door",
-      "name": "study door",
-      "initialState": {
-        "unlocked": false
-      }
-    },
-    {
-      "from": "Landing",
-      "direction": "north",
-      "to": "Attic",
-      "behaviorKey": "attic-door",
-      "name": "attic door",
-      "initialState": {
-        "unlocked": false
-      }
-    }
-  ],
-  "mobs": [
-    {
-      "name": "Wraith",
-      "stats": {
-        "health": 6,
-        "sanity": 5,
-        "energy": 5
-      },
-      "room": "Nursery",
-      "drops": [
-        "brass-key"
       ],
-      "naturalAttack": {
-        "stat": "sanity",
-        "power": 3
-      }
-    },
-    {
-      "name": "Revenant",
-      "stats": {
-        "health": 10,
-        "sanity": 8,
-        "energy": 6
-      },
-      "room": "Cellar",
-      "drops": [
-        "iron-key"
-      ],
-      "naturalAttack": {
-        "stat": "sanity",
-        "power": 2
-      }
-    }
-  ],
-  "loot": [
-    {
-      "name": "foyer-table",
-      "room": "Foyer",
-      "items": [
-        "journal"
-      ],
-      "description": "A hall table with a single drawer."
-    },
-    {
-      "name": "hall-stand",
-      "room": "Hall",
-      "items": [
-        "poker"
-      ],
-      "description": "A fireplace stand."
-    },
-    {
-      "name": "kitchen-hook",
-      "room": "Kitchen",
-      "items": [
-        "lantern"
-      ],
-      "description": "A lantern hangs from a hook."
-    },
-    {
-      "name": "study-desk",
-      "room": "Study",
-      "items": [
-        "laudanum"
-      ],
-      "description": "A writing desk with a locked-open drawer."
+      "inventorySlots": 1,
+      "name": "Heir"
     }
   ],
   "caches": [],
-  "npcs": [
+  "exits": [
     {
-      "name": "Caretaker",
-      "stats": {
-        "health": 1,
-        "sanity": 1,
-        "energy": 1
+      "direction": "north",
+      "from": "Foyer",
+      "to": "Hall"
+    },
+    {
+      "direction": "south",
+      "from": "Hall",
+      "to": "Foyer"
+    },
+    {
+      "behaviorKey": "cellar-door",
+      "direction": "south",
+      "from": "Foyer",
+      "initialState": {
+        "unlocked": false
       },
-      "room": "Foyer",
-      "behavior": "caretaker",
-      "holds": [
-        "cellar-key"
-      ]
+      "name": "cellar door",
+      "to": "Cellar"
+    },
+    {
+      "direction": "west",
+      "from": "Hall",
+      "to": "Kitchen"
+    },
+    {
+      "direction": "east",
+      "from": "Kitchen",
+      "to": "Hall"
+    },
+    {
+      "direction": "east",
+      "from": "Hall",
+      "to": "Parlor"
+    },
+    {
+      "direction": "west",
+      "from": "Parlor",
+      "to": "Hall"
+    },
+    {
+      "direction": "north",
+      "from": "Hall",
+      "to": "Landing"
+    },
+    {
+      "direction": "south",
+      "from": "Landing",
+      "to": "Hall"
+    },
+    {
+      "direction": "east",
+      "from": "Landing",
+      "to": "Nursery"
+    },
+    {
+      "direction": "west",
+      "from": "Nursery",
+      "to": "Landing"
+    },
+    {
+      "behaviorKey": "study-door",
+      "direction": "west",
+      "from": "Landing",
+      "initialState": {
+        "unlocked": false
+      },
+      "name": "study door",
+      "to": "Study"
+    },
+    {
+      "behaviorKey": "attic-door",
+      "direction": "north",
+      "from": "Landing",
+      "initialState": {
+        "unlocked": false
+      },
+      "name": "attic door",
+      "to": "Attic"
     }
   ],
   "formations": [
@@ -240,21 +107,38 @@
       "weight": 1
     }
   ],
-  "scenes": [
+  "loot": [
     {
-      "room": "Foyer",
-      "key": "caretaker-intro",
-      "phase": "enter"
-    }
-  ],
-  "recipes": [],
-  "materials": [],
-  "winConditions": [
+      "description": "A hall table with a single drawer.",
+      "items": [
+        "journal"
+      ],
+      "name": "foyer-table",
+      "room": "Foyer"
+    },
     {
-      "key": "reached-attic-with-journal",
-      "narration": {
-        "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
-      }
+      "description": "A fireplace stand.",
+      "items": [
+        "poker"
+      ],
+      "name": "hall-stand",
+      "room": "Hall"
+    },
+    {
+      "description": "A lantern hangs from a hook.",
+      "items": [
+        "lantern"
+      ],
+      "name": "kitchen-hook",
+      "room": "Kitchen"
+    },
+    {
+      "description": "A writing desk with a locked-open drawer.",
+      "items": [
+        "laudanum"
+      ],
+      "name": "study-desk",
+      "room": "Study"
     }
   ],
   "loseConditions": [
@@ -271,6 +155,7 @@
       }
     }
   ],
+  "materials": [],
   "mechanics": [
     {
       "key": "dread"
@@ -282,7 +167,122 @@
       "key": "status-bar"
     }
   ],
+  "mobs": [
+    {
+      "drops": [
+        "brass-key"
+      ],
+      "name": "Wraith",
+      "naturalAttack": {
+        "power": 3,
+        "stat": "sanity"
+      },
+      "room": "Nursery",
+      "stats": {
+        "energy": 5.0,
+        "health": 6.0,
+        "sanity": 5.0
+      }
+    },
+    {
+      "drops": [
+        "iron-key"
+      ],
+      "name": "Revenant",
+      "naturalAttack": {
+        "power": 2,
+        "stat": "sanity"
+      },
+      "room": "Cellar",
+      "stats": {
+        "energy": 6.0,
+        "health": 10.0,
+        "sanity": 8.0
+      }
+    }
+  ],
+  "npcs": [
+    {
+      "behavior": "caretaker",
+      "holds": [
+        "cellar-key"
+      ],
+      "name": "Caretaker",
+      "room": "Foyer",
+      "stats": {
+        "energy": 1.0,
+        "health": 1.0,
+        "sanity": 1.0
+      }
+    }
+  ],
+  "opts": {
+    "baseEncounterChance": 20,
+    "maxRounds": 150
+  },
+  "recipes": [],
+  "rooms": [
+    {
+      "description": "The entrance hall of the Hollow House. Dust sheets shroud the furniture; the front door has locked itself behind you.",
+      "name": "Foyer"
+    },
+    {
+      "dark": true,
+      "description": "A low brick cellar, black as a throat. Water seeps somewhere unseen.",
+      "name": "Cellar"
+    },
+    {
+      "description": "A long central hall. Portraits watch from the walls, their eyes scratched out.",
+      "name": "Hall",
+      "spawnModifier": 1
+    },
+    {
+      "description": "A cold scullery. Copper pots hang in rows; one still sways.",
+      "name": "Kitchen",
+      "spawnModifier": 1
+    },
+    {
+      "description": "A receiving parlor gone to mildew. A piano sits with its lid nailed shut.",
+      "name": "Parlor",
+      "spawnModifier": 1
+    },
+    {
+      "description": "The upstairs landing. Two doors face you — one to the west, one leading further up — and a nursery stands open to the east.",
+      "name": "Landing",
+      "spawnModifier": 1
+    },
+    {
+      "description": "A cramped study, papers everywhere, as if someone left mid-sentence.",
+      "name": "Study"
+    },
+    {
+      "dark": true,
+      "description": "A child's nursery. A rocking horse moves, very slightly, on its own.",
+      "name": "Nursery"
+    },
+    {
+      "description": "The attic, under the bare ribs of the roof. This is where the journal ends.",
+      "name": "Attic"
+    }
+  ],
+  "scenes": [
+    {
+      "key": "caretaker-intro",
+      "phase": "enter",
+      "room": "Foyer"
+    }
+  ],
+  "startRoom": "Foyer",
   "timeoutNarration": {
     "text": "Dawn never comes. You realize, slowly, that it never will — and that you stopped looking for the door some hours ago."
-  }
+  },
+  "title": "The Hollow House",
+  "winConditions": [
+    {
+      "key": "reached-attic-with-journal",
+      "narration": {
+        "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
+      }
+    }
+  ]
 }

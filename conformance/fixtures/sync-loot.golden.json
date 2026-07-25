@@ -1,46 +1,54 @@
 {
   "commands": [
     {
-      "kind": "putInLootBox",
       "actorId": "player:Ada",
-      "lootId": "loot:chest",
       "itemIds": [
         "player:Ada:item#items/trinket"
-      ]
+      ],
+      "kind": "putInLootBox",
+      "lootId": "loot:chest"
     }
   ],
   "steps": [
     {
       "command": {
-        "kind": "putInLootBox",
         "actorId": "player:Ada",
-        "lootId": "loot:chest",
         "itemIds": [
           "player:Ada:item#items/trinket"
-        ]
+        ],
+        "kind": "putInLootBox",
+        "lootId": "loot:chest"
       },
-      "seq": 1,
       "delta": {
         "changed": [
           {
-            "type": "character",
             "data": {
-              "kind": "player",
-              "id": "player:Ada",
-              "name": "Ada",
-              "stats": {
-                "health": 10,
-                "sanity": 8,
-                "energy": 8
-              },
+              "capacity": 2,
+              "contentIds": [
+                "player:Ada:item#items/trinket"
+              ],
+              "description": "An old chest.",
+              "id": "loot:chest"
+            },
+            "type": "loot"
+          },
+          {
+            "data": {
               "actionsPerRound": 3,
               "actionsThisRound": 3,
-              "currentRoomId": "room:Hall",
-              "inventory": {
-                "slots": 5,
-                "itemIds": [],
-                "keyIds": []
+              "afflictions": {
+                "active": {},
+                "immunity": {},
+                "shakenOff": [],
+                "turnsActive": {
+                  "confused": 0,
+                  "fear": 0,
+                  "panic": 0
+                }
               },
+              "archetypeId": "delver",
+              "archetypeImmunities": [],
+              "currentRoomId": "room:Hall",
               "equipment": {},
               "history": [
                 {
@@ -52,55 +60,47 @@
                   "round": 0
                 },
                 {
-                  "kind": "pickUp",
                   "items": [
                     {
                       "id": "player:Ada:item#items/trinket",
                       "name": "Trinket"
                     }
                   ],
+                  "kind": "pickUp",
                   "round": 0
                 },
                 {
-                  "kind": "drop",
                   "items": [
                     {
                       "id": "player:Ada:item#items/trinket",
                       "name": "Trinket"
                     }
                   ],
+                  "kind": "drop",
                   "round": 0
                 }
               ],
-              "archetypeImmunities": [],
-              "afflictions": {
-                "active": {},
-                "turnsActive": {
-                  "panic": 0,
-                  "fear": 0,
-                  "confused": 0
-                },
-                "shakenOff": [],
-                "immunity": {}
+              "id": "player:Ada",
+              "inventory": {
+                "itemIds": [],
+                "keyIds": [],
+                "slots": 5
               },
-              "archetypeId": "delver"
-            }
-          },
-          {
-            "type": "loot",
-            "data": {
-              "id": "loot:chest",
-              "description": "An old chest.",
-              "capacity": 2,
-              "contentIds": [
-                "player:Ada:item#items/trinket"
-              ]
-            }
+              "kind": "player",
+              "name": "Ada",
+              "stats": {
+                "energy": 8,
+                "health": 10,
+                "sanity": 8
+              }
+            },
+            "type": "character"
           }
         ],
         "created": [],
         "removed": []
-      }
+      },
+      "seq": 1
     }
   ]
 }

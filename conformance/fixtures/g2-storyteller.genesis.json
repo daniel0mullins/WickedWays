@@ -1,47 +1,38 @@
 {
-  "schemaVersion": 6,
   "campaign": {
-    "id": "campaign:Storyteller",
-    "title": "Storyteller",
-    "maxRounds": 100,
-    "round": 0,
-    "started": false,
-    "outcome": "ongoing",
-    "winConditions": [],
-    "loseConditions": [],
-    "activeCharacterIndex": 0,
-    "partyIds": [
-      "player:Ada"
-    ],
     "actedThisRound": [],
-    "gmId": "player:Ada",
-    "materials": {},
-    "claims": [],
-    "encountered": [],
-    "knownRecipes": [],
-    "archetypes": [],
     "actionSounds": {},
-    "encounterTable": {
-      "baseChance": 20,
-      "visited": [
-        "room:Parlor"
-      ],
-      "formations": []
+    "activeCharacterIndex": 0,
+    "archetypes": [],
+    "avPolicy": {
+      "enabled": true,
+      "maxParticipants": 6,
+      "video": true
     },
     "chatPolicy": {
-      "enabled": true,
-      "whisper": true,
+      "backfillWindow": 200,
       "edit": true,
+      "enabled": true,
       "reactions": true,
       "readReceipts": true,
       "typing": true,
-      "backfillWindow": 200
+      "whisper": true
     },
-    "avPolicy": {
-      "enabled": true,
-      "video": true,
-      "maxParticipants": 6
+    "claims": [],
+    "encounterTable": {
+      "baseChance": 20,
+      "formations": [],
+      "visited": [
+        "room:Parlor"
+      ]
     },
+    "encountered": [],
+    "gmId": "player:Ada",
+    "id": "campaign:Storyteller",
+    "knownRecipes": [],
+    "loseConditions": [],
+    "materials": {},
+    "maxRounds": 100,
     "mechanics": [
       {
         "key": "storyteller",
@@ -49,44 +40,28 @@
           "seen": {}
         }
       }
-    ]
+    ],
+    "outcome": "ongoing",
+    "partyIds": [
+      "player:Ada"
+    ],
+    "round": 0,
+    "started": false,
+    "title": "Storyteller",
+    "winConditions": []
   },
-  "rooms": [
-    {
-      "id": "room:Parlor",
-      "name": "Parlor",
-      "description": "A mildewed parlor.",
-      "exits": {},
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [
-        "player:Ada"
-      ],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    }
-  ],
-  "exits": [],
   "characters": [
     {
-      "kind": "player",
-      "id": "player:Ada",
-      "name": "Ada",
-      "stats": {
-        "health": 10,
-        "sanity": 10,
-        "energy": 10
-      },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "room:Parlor",
-      "inventory": {
-        "slots": 5,
-        "itemIds": [],
-        "keyIds": []
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
       },
+      "archetypeImmunities": [],
+      "currentRoomId": "room:Parlor",
       "equipment": {},
       "history": [
         {
@@ -98,31 +73,56 @@
           "round": 0
         }
       ],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
+      "id": "player:Ada",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 5
+      },
+      "kind": "player",
+      "name": "Ada",
+      "stats": {
+        "energy": 10.0,
+        "health": 10.0,
+        "sanity": 10.0
       }
     }
   ],
+  "codex": [
+    {
+      "firstSeen": {
+        "characterId": "player:Ada",
+        "roomId": "room:Parlor",
+        "round": 0
+      },
+      "key": "room:Parlor",
+      "kind": "room",
+      "snapshot": {
+        "description": "A mildewed parlor.",
+        "name": "Parlor"
+      }
+    }
+  ],
+  "exits": [],
   "items": [],
   "loot": [],
   "materialCaches": [],
-  "codex": [
+  "rooms": [
     {
-      "kind": "room",
-      "key": "room:Parlor",
-      "snapshot": {
-        "name": "Parlor",
-        "description": "A mildewed parlor."
-      },
-      "firstSeen": {
-        "round": 0,
-        "characterId": "player:Ada",
-        "roomId": "room:Parlor"
-      }
+      "dark": false,
+      "description": "A mildewed parlor.",
+      "exits": {},
+      "id": "room:Parlor",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Parlor",
+      "occupantIds": [
+        "player:Ada"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
     }
-  ]
+  ],
+  "schemaVersion": 6
 }

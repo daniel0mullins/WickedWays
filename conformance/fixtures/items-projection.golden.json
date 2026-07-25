@@ -1,209 +1,234 @@
 {
   "view": {
-    "room": {
-      "id": "room:Hall",
-      "name": "Hall",
-      "description": "A stone hall.",
-      "isLit": true
-    },
+    "caches": [],
     "exits": [],
-    "lockedDoors": [],
-    "occupants": [
-      {
-        "id": "player:Ben",
-        "name": "Ben",
-        "aliases": [
-          "ben"
-        ],
-        "kind": "occupant",
-        "health": 12,
-        "defeated": false
-      }
-    ],
-    "loot": [
-      {
-        "id": "loot:chest",
-        "description": "An old chest.",
-        "opened": false,
-        "contents": [
-          {
-            "id": "loot:chest:item#0",
-            "name": "Old Coin",
-            "aliases": [
-              "old coin",
-              "coin"
-            ],
-            "kind": "item",
-            "equippable": false,
-            "usable": false,
-            "hasLore": false,
-            "droppable": true
-          }
-        ]
-      }
-    ],
+    "finished": false,
     "inventory": {
+      "equippedNames": [
+        "Silver Ring"
+      ],
       "items": [
         {
-          "id": "player:Ada:item#items/iron-sword",
-          "name": "Iron Sword",
           "aliases": [
             "iron sword",
             "sword",
             "blade"
           ],
-          "kind": "item",
+          "damaged": false,
+          "destroyable": true,
+          "droppable": true,
           "equippable": true,
-          "usable": false,
           "hasLore": true,
-          "droppable": true
+          "id": "player:Ada:item#items/iron-sword",
+          "kind": "item",
+          "name": "Iron Sword",
+          "usable": false
         },
         {
-          "id": "player:Ada:item#items/silver-ring",
-          "name": "Silver Ring",
           "aliases": [
             "silver ring",
             "ring",
             "band"
           ],
-          "kind": "item",
+          "damaged": false,
+          "destroyable": true,
+          "droppable": true,
           "equippable": true,
-          "usable": false,
           "hasLore": false,
-          "droppable": true
+          "id": "player:Ada:item#items/silver-ring",
+          "kind": "item",
+          "name": "Silver Ring",
+          "usable": false
         },
         {
-          "id": "player:Ada:item#items/healing-tonic",
-          "name": "Healing Tonic",
           "aliases": [
             "healing tonic",
             "tonic",
             "vial"
           ],
-          "kind": "item",
+          "damaged": false,
+          "destroyable": true,
+          "droppable": true,
           "equippable": false,
-          "usable": true,
           "hasLore": false,
-          "droppable": true
+          "id": "player:Ada:item#items/healing-tonic",
+          "kind": "item",
+          "name": "Healing Tonic",
+          "usable": true
         }
       ],
       "keys": [
         {
-          "id": "player:Ada:item#key:old",
-          "name": "Old Key",
           "aliases": [
             "old key"
           ],
-          "kind": "item",
+          "damaged": false,
+          "destroyable": false,
+          "droppable": true,
           "equippable": false,
-          "usable": false,
           "hasLore": false,
-          "droppable": true
+          "id": "player:Ada:item#key:old",
+          "kind": "item",
+          "name": "Old Key",
+          "usable": false
         }
-      ],
-      "equippedNames": [
-        "Silver Ring"
       ],
       "slots": 6
     },
-    "scope": [
+    "lockedDoors": [],
+    "loot": [
       {
-        "id": "player:Ben",
-        "name": "Ben",
+        "contents": [
+          {
+            "aliases": [
+              "old coin",
+              "coin"
+            ],
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
+            "equippable": false,
+            "hasLore": false,
+            "id": "loot:chest:item#0",
+            "kind": "item",
+            "name": "Old Coin",
+            "usable": false
+          }
+        ],
+        "description": "An old chest.",
+        "id": "loot:chest",
+        "opened": false
+      }
+    ],
+    "materials": [],
+    "occupants": [
+      {
         "aliases": [
           "ben"
         ],
+        "defeated": false,
+        "health": 12.0,
+        "id": "player:Ben",
         "kind": "occupant",
-        "health": 12,
-        "defeated": false
+        "name": "Ben",
+        "player": true
+      }
+    ],
+    "outcome": "ongoing",
+    "recipes": [],
+    "room": {
+      "description": "A stone hall.",
+      "id": "room:Hall",
+      "isLit": true,
+      "name": "Hall"
+    },
+    "scope": [
+      {
+        "aliases": [
+          "ben"
+        ],
+        "defeated": false,
+        "health": 12.0,
+        "id": "player:Ben",
+        "kind": "occupant",
+        "name": "Ben",
+        "player": true
       },
       {
-        "id": "loot:chest:item#0",
-        "name": "Old Coin",
         "aliases": [
           "old coin",
           "coin"
         ],
-        "kind": "item",
+        "damaged": false,
+        "destroyable": true,
+        "droppable": true,
         "equippable": false,
-        "usable": false,
         "hasLore": false,
-        "droppable": true
+        "id": "loot:chest:item#0",
+        "kind": "item",
+        "name": "Old Coin",
+        "usable": false
       },
       {
-        "id": "player:Ada:item#items/iron-sword",
-        "name": "Iron Sword",
         "aliases": [
           "iron sword",
           "sword",
           "blade"
         ],
-        "kind": "item",
+        "damaged": false,
+        "destroyable": true,
+        "droppable": true,
         "equippable": true,
-        "usable": false,
         "hasLore": true,
-        "droppable": true
+        "id": "player:Ada:item#items/iron-sword",
+        "kind": "item",
+        "name": "Iron Sword",
+        "usable": false
       },
       {
-        "id": "player:Ada:item#items/silver-ring",
-        "name": "Silver Ring",
         "aliases": [
           "silver ring",
           "ring",
           "band"
         ],
-        "kind": "item",
+        "damaged": false,
+        "destroyable": true,
+        "droppable": true,
         "equippable": true,
-        "usable": false,
         "hasLore": false,
-        "droppable": true
+        "id": "player:Ada:item#items/silver-ring",
+        "kind": "item",
+        "name": "Silver Ring",
+        "usable": false
       },
       {
-        "id": "player:Ada:item#items/healing-tonic",
-        "name": "Healing Tonic",
         "aliases": [
           "healing tonic",
           "tonic",
           "vial"
         ],
-        "kind": "item",
+        "damaged": false,
+        "destroyable": true,
+        "droppable": true,
         "equippable": false,
-        "usable": true,
         "hasLore": false,
-        "droppable": true
+        "id": "player:Ada:item#items/healing-tonic",
+        "kind": "item",
+        "name": "Healing Tonic",
+        "usable": true
       },
       {
-        "id": "player:Ada:item#key:old",
-        "name": "Old Key",
         "aliases": [
           "old key"
         ],
-        "kind": "item",
+        "damaged": false,
+        "destroyable": false,
+        "droppable": true,
         "equippable": false,
-        "usable": false,
         "hasLore": false,
-        "droppable": true
+        "id": "player:Ada:item#key:old",
+        "kind": "item",
+        "name": "Old Key",
+        "usable": false
       },
       {
-        "id": "loot:chest",
-        "name": "An old chest.",
         "aliases": [
           "chest",
           "box",
           "drawer",
           "container"
         ],
-        "kind": "loot"
+        "id": "loot:chest",
+        "kind": "loot",
+        "name": "An old chest."
       }
     ],
     "status": {
+      "health": 12.0,
       "locationName": "Hall",
-      "turn": 0,
       "maxTurns": 5,
-      "sanity": 13,
-      "health": 12
-    },
-    "outcome": "ongoing",
-    "finished": false
+      "sanity": 13.0,
+      "turn": 0
+    }
   }
 }

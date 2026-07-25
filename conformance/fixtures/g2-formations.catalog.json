@@ -1,91 +1,91 @@
 {
+  "aliases": {},
+  "behaviors": {},
+  "formations": {
+    "rat-pair": {
+      "mobs": [
+        {
+          "actionsPerRound": 2,
+          "baseEscapeChance": 50,
+          "drops": [
+            "rat-tail"
+          ],
+          "lightAverse": false,
+          "materialDrops": {},
+          "name": "Rat",
+          "naturalAttack": {
+            "power": 1.0,
+            "stat": "health"
+          },
+          "stats": {
+            "energy": 3.0,
+            "health": 2.0,
+            "sanity": 2.0
+          }
+        },
+        {
+          "actionsPerRound": 2,
+          "baseEscapeChance": 50,
+          "drops": [
+            "rat-tail"
+          ],
+          "lightAverse": false,
+          "materialDrops": {},
+          "name": "Rat",
+          "naturalAttack": {
+            "power": 1.0,
+            "stat": "health"
+          },
+          "stats": {
+            "energy": 3.0,
+            "health": 2.0,
+            "sanity": 2.0
+          }
+        }
+      ]
+    },
+    "rat-single": {
+      "mobs": [
+        {
+          "actionsPerRound": 2,
+          "baseEscapeChance": 50,
+          "drops": [
+            "rat-tail"
+          ],
+          "lightAverse": false,
+          "materialDrops": {},
+          "name": "Rat",
+          "naturalAttack": {
+            "power": 1.0,
+            "stat": "health"
+          },
+          "stats": {
+            "energy": 3.0,
+            "health": 2.0,
+            "sanity": 2.0
+          }
+        }
+      ]
+    }
+  },
   "items": {
     "rat-tail": {
-      "name": "Rat Tail",
-      "type": "consumable",
-      "stat": "sanity",
+      "grantsImmunity": null,
+      "immunities": null,
       "modifier": 1,
+      "name": "Rat Tail",
       "properties": {
+        "destroyable": true,
         "equippable": false,
         "equipped": false,
-        "destroyable": true,
         "usable": true
       },
       "recipe": {
         "item": 1
       },
+      "stat": "sanity",
       "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    }
-  },
-  "aliases": {},
-  "behaviors": {},
-  "formations": {
-    "rat-single": {
-      "mobs": [
-        {
-          "name": "Rat",
-          "stats": {
-            "health": 2,
-            "sanity": 2,
-            "energy": 3
-          },
-          "naturalAttack": {
-            "stat": "health",
-            "power": 1
-          },
-          "drops": [
-            "rat-tail"
-          ],
-          "baseEscapeChance": 50,
-          "lightAverse": false,
-          "materialDrops": {},
-          "actionsPerRound": 2
-        }
-      ]
-    },
-    "rat-pair": {
-      "mobs": [
-        {
-          "name": "Rat",
-          "stats": {
-            "health": 2,
-            "sanity": 2,
-            "energy": 3
-          },
-          "naturalAttack": {
-            "stat": "health",
-            "power": 1
-          },
-          "drops": [
-            "rat-tail"
-          ],
-          "baseEscapeChance": 50,
-          "lightAverse": false,
-          "materialDrops": {},
-          "actionsPerRound": 2
-        },
-        {
-          "name": "Rat",
-          "stats": {
-            "health": 2,
-            "sanity": 2,
-            "energy": 3
-          },
-          "naturalAttack": {
-            "stat": "health",
-            "power": 1
-          },
-          "drops": [
-            "rat-tail"
-          ],
-          "baseEscapeChance": 50,
-          "lightAverse": false,
-          "materialDrops": {},
-          "actionsPerRound": 2
-        }
-      ]
+      "type": "consumable"
     }
   },
   "recipes": {}

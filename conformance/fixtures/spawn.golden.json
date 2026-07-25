@@ -1,22 +1,22 @@
 {
-  "seed": 1,
   "commands": [
     {
       "kind": "startTurn"
     },
     {
-      "kind": "go",
-      "dir": "north"
+      "dir": "north",
+      "kind": "go"
     },
     {
-      "kind": "go",
-      "dir": "south"
+      "dir": "south",
+      "kind": "go"
     },
     {
-      "kind": "go",
-      "dir": "north"
+      "dir": "north",
+      "kind": "go"
     }
   ],
+  "seed": 1,
   "steps": [
     {
       "command": {
@@ -24,136 +24,81 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Spawn (conformance)",
-          "title": "Spawn (conformance)",
-          "maxRounds": 10,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Mara"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Mara",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
                 "health": 10,
                 "sanity": 10
-              }
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
           "encounterTable": {
             "baseChance": 100,
-            "visited": [
-              "room:Foyer"
-            ],
             "formations": [
               {
                 "behaviorKey": "conformance:wraith",
                 "weight": 1
               }
+            ],
+            "visited": [
+              "room:Foyer"
             ]
           },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Mara",
+          "id": "campaign:Spawn (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Mara"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Spawn (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "A dusty foyer.",
-            "exits": {
-              "north": "exit:Crypt|Foyer"
-            },
-            "dark": false,
-            "spawnModifier": 0,
-            "occupantIds": [
-              "player:Mara"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Crypt",
-            "name": "Crypt",
-            "description": "A silent crypt.",
-            "exits": {
-              "south": "exit:Crypt|Foyer"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": [
-              {
-                "id": "scene:Crypt:conformance:visit-counter:enter",
-                "behaviorKey": "conformance:visit-counter",
-                "phase": "enter",
-                "state": {
-                  "count": 0
-                }
-              }
-            ]
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Crypt|Foyer",
-            "endpointIds": [
-              "room:Foyer",
-              "room:Crypt"
-            ],
-            "state": {}
-          }
-        ],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Mara",
-            "name": "Mara",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Foyer",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Foyer",
             "equipment": {},
             "history": [
               {
@@ -165,92 +110,150 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Mara",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Mara",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dusty foyer.",
+              "name": "Foyer"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Crypt"
+            ],
+            "id": "exit:Crypt|Foyer",
+            "state": {}
           }
         ],
         "items": [],
         "loot": [],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "A dusty foyer."
+            "dark": false,
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Crypt|Foyer"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Crypt",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Crypt",
+            "occupantIds": [],
+            "scenes": [
+              {
+                "behaviorKey": "conformance:visit-counter",
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "phase": "enter",
+                "state": {
+                  "count": 0
+                }
+              }
+            ],
+            "spawnModifier": 1
+          },
+          {
+            "dark": false,
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Crypt|Foyer"
+            },
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "scenes": [],
+            "spawnModifier": 0
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Foyer",
-          "name": "Foyer",
-          "description": "A dusty foyer.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "north",
             "toName": "Crypt"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A dusty foyer.",
+          "id": "room:Foyer",
+          "isLit": true,
+          "name": "Foyer"
         },
         "scope": [],
         "status": {
+          "health": 10.0,
           "locationName": "Foyer",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 10.0,
+          "turn": 0
+        }
       }
     },
     {
       "command": {
-        "kind": "go",
-        "dir": "north"
+        "dir": "north",
+        "kind": "go"
       },
       "cues": [
         {
-          "kind": "mechanic",
           "cue": {
             "text": "The Crypt stirs (visit 1)."
-          }
+          },
+          "kind": "mechanic"
         },
         {
-          "kind": "action",
           "action": "move",
           "actor": {
             "id": "player:Mara",
             "name": "Mara"
-          }
+          },
+          "kind": "action"
         },
         {
           "kind": "encounter",
@@ -265,140 +268,119 @@
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Spawn (conformance)",
-          "title": "Spawn (conformance)",
-          "maxRounds": 10,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Mara"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Mara",
-          "materials": {},
-          "claims": [],
-          "encountered": [
-            "player:Mara:campaign-mob:wraith"
-          ],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
                 "health": 10,
                 "sanity": 10
-              }
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
           "encounterTable": {
             "baseChance": 100,
-            "visited": [
-              "room:Foyer",
-              "room:Crypt"
-            ],
             "formations": [
               {
                 "behaviorKey": "conformance:wraith",
                 "weight": 1
               }
-            ]
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
-        },
-        "rooms": [
-          {
-            "id": "room:Crypt",
-            "name": "Crypt",
-            "description": "A silent crypt.",
-            "exits": {
-              "south": "exit:Crypt|Foyer"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Mara",
-              "campaign-mob:wraith"
             ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": [
-              {
-                "id": "scene:Crypt:conformance:visit-counter:enter",
-                "behaviorKey": "conformance:visit-counter",
-                "phase": "enter",
-                "state": {
-                  "count": 2
-                }
-              }
-            ]
-          },
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "A dusty foyer.",
-            "exits": {
-              "north": "exit:Crypt|Foyer"
-            },
-            "dark": false,
-            "spawnModifier": 0,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Crypt|Foyer",
-            "endpointIds": [
+            "visited": [
               "room:Foyer",
               "room:Crypt"
-            ],
-            "state": {}
-          }
-        ],
+            ]
+          },
+          "encountered": [
+            "player:Mara:campaign-mob:wraith"
+          ],
+          "gmId": "player:Mara",
+          "id": "campaign:Spawn (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Mara"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Spawn (conformance)",
+          "winConditions": []
+        },
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Mara",
-            "name": "Mara",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
+            "actionsPerRound": 1,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
             },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Crypt",
+            "equipment": {},
+            "history": [],
+            "id": "campaign-mob:wraith",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 0
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Wraith",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "campaign",
+            "stats": {
+              "energy": 3.0,
+              "health": 4.0,
+              "sanity": 0.0
+            }
+          },
+          {
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Crypt",
             "equipment": {},
             "history": [
               {
@@ -418,311 +400,313 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Mara",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Mara",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dusty foyer.",
+              "name": "Foyer"
+            }
           },
           {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "Wraith",
             "kind": "mob",
-            "id": "campaign-mob:wraith",
-            "name": "Wraith",
-            "stats": {
-              "health": 4,
-              "sanity": 0,
-              "energy": 3
-            },
-            "actionsPerRound": 1,
-            "actionsThisRound": 0,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 0,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "campaign",
-            "baseEscapeChance": 50,
-            "materialDrops": {},
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "energy": 3.0,
+                "health": 4.0,
+                "sanity": 0.0
+              }
             }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "room:Crypt",
+            "kind": "room",
+            "snapshot": {
+              "description": "A silent crypt.",
+              "name": "Crypt"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Crypt"
+            ],
+            "id": "exit:Crypt|Foyer",
+            "state": {}
           }
         ],
         "items": [],
         "loot": [],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "A dusty foyer."
+            "dark": false,
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Crypt|Foyer"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Foyer"
-            }
-          },
-          {
-            "kind": "mob",
-            "key": "Wraith",
-            "snapshot": {
-              "name": "Wraith",
-              "stats": {
-                "health": 4,
-                "sanity": 0,
-                "energy": 3
+            "id": "room:Crypt",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Crypt",
+            "occupantIds": [
+              "player:Mara",
+              "campaign-mob:wraith"
+            ],
+            "scenes": [
+              {
+                "behaviorKey": "conformance:visit-counter",
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
               }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Crypt"
-            }
+            ],
+            "spawnModifier": 1
           },
           {
-            "kind": "room",
-            "key": "room:Crypt",
-            "snapshot": {
-              "name": "Crypt",
-              "description": "A silent crypt."
+            "dark": false,
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Crypt|Foyer"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Crypt"
-            }
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 0
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Crypt",
-          "name": "Crypt",
-          "description": "A silent crypt.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "south",
             "toName": "Foyer"
           }
         ],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
         "lockedDoors": [],
+        "loot": [],
+        "materials": [],
         "occupants": [
           {
-            "id": "campaign-mob:wraith",
-            "name": "Wraith",
             "aliases": [
               "wraith"
             ],
+            "defeated": false,
+            "health": 4.0,
+            "id": "campaign-mob:wraith",
             "kind": "occupant",
-            "health": 4,
-            "defeated": false
+            "name": "Wraith"
           }
         ],
-        "loot": [],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A silent crypt.",
+          "id": "room:Crypt",
+          "isLit": true,
+          "name": "Crypt"
         },
         "scope": [
           {
-            "id": "campaign-mob:wraith",
-            "name": "Wraith",
             "aliases": [
               "wraith"
             ],
+            "defeated": false,
+            "health": 4.0,
+            "id": "campaign-mob:wraith",
             "kind": "occupant",
-            "health": 4,
-            "defeated": false
+            "name": "Wraith"
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Crypt",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 10.0,
+          "turn": 0
+        }
       }
     },
     {
       "command": {
-        "kind": "go",
-        "dir": "south"
+        "dir": "south",
+        "kind": "go"
       },
       "cues": [
         {
-          "kind": "action",
           "action": "move",
           "actor": {
             "id": "player:Mara",
             "name": "Mara"
-          }
+          },
+          "kind": "action"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Spawn (conformance)",
-          "title": "Spawn (conformance)",
-          "maxRounds": 10,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Mara"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Mara",
-          "materials": {},
-          "claims": [],
-          "encountered": [
-            "player:Mara:campaign-mob:wraith"
-          ],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
                 "health": 10,
                 "sanity": 10
-              }
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
           "encounterTable": {
             "baseChance": 100,
-            "visited": [
-              "room:Foyer",
-              "room:Crypt"
-            ],
             "formations": [
               {
                 "behaviorKey": "conformance:wraith",
                 "weight": 1
               }
-            ]
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
-        },
-        "rooms": [
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "A dusty foyer.",
-            "exits": {
-              "north": "exit:Crypt|Foyer"
-            },
-            "dark": false,
-            "spawnModifier": 0,
-            "occupantIds": [
-              "player:Mara"
             ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Crypt",
-            "name": "Crypt",
-            "description": "A silent crypt.",
-            "exits": {
-              "south": "exit:Crypt|Foyer"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "campaign-mob:wraith"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": [
-              {
-                "id": "scene:Crypt:conformance:visit-counter:enter",
-                "behaviorKey": "conformance:visit-counter",
-                "phase": "enter",
-                "state": {
-                  "count": 2
-                }
-              }
-            ]
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Crypt|Foyer",
-            "endpointIds": [
+            "visited": [
               "room:Foyer",
               "room:Crypt"
-            ],
-            "state": {}
-          }
-        ],
+            ]
+          },
+          "encountered": [
+            "player:Mara:campaign-mob:wraith"
+          ],
+          "gmId": "player:Mara",
+          "id": "campaign:Spawn (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Mara"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Spawn (conformance)",
+          "winConditions": []
+        },
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Mara",
-            "name": "Mara",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
+            "actionsPerRound": 1,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
             },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Crypt",
+            "equipment": {},
+            "history": [],
+            "id": "campaign-mob:wraith",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 0
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Wraith",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "campaign",
+            "stats": {
+              "energy": 3.0,
+              "health": 4.0,
+              "sanity": 0.0
+            }
+          },
+          {
             "actionsPerRound": 3,
             "actionsThisRound": 2,
-            "currentRoomId": "room:Foyer",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Foyer",
             "equipment": {},
             "history": [
               {
@@ -750,294 +734,298 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Mara",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Mara",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dusty foyer.",
+              "name": "Foyer"
+            }
           },
           {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "Wraith",
             "kind": "mob",
-            "id": "campaign-mob:wraith",
-            "name": "Wraith",
-            "stats": {
-              "health": 4,
-              "sanity": 0,
-              "energy": 3
-            },
-            "actionsPerRound": 1,
-            "actionsThisRound": 0,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 0,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "campaign",
-            "baseEscapeChance": 50,
-            "materialDrops": {},
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "energy": 3.0,
+                "health": 4.0,
+                "sanity": 0.0
+              }
             }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "room:Crypt",
+            "kind": "room",
+            "snapshot": {
+              "description": "A silent crypt.",
+              "name": "Crypt"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Crypt"
+            ],
+            "id": "exit:Crypt|Foyer",
+            "state": {}
           }
         ],
         "items": [],
         "loot": [],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "A dusty foyer."
+            "dark": false,
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Crypt|Foyer"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Foyer"
-            }
-          },
-          {
-            "kind": "mob",
-            "key": "Wraith",
-            "snapshot": {
-              "name": "Wraith",
-              "stats": {
-                "health": 4,
-                "sanity": 0,
-                "energy": 3
+            "id": "room:Crypt",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Crypt",
+            "occupantIds": [
+              "campaign-mob:wraith"
+            ],
+            "scenes": [
+              {
+                "behaviorKey": "conformance:visit-counter",
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "phase": "enter",
+                "state": {
+                  "count": 2
+                }
               }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Crypt"
-            }
+            ],
+            "spawnModifier": 1
           },
           {
-            "kind": "room",
-            "key": "room:Crypt",
-            "snapshot": {
-              "name": "Crypt",
-              "description": "A silent crypt."
+            "dark": false,
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Crypt|Foyer"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Crypt"
-            }
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "scenes": [],
+            "spawnModifier": 0
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Foyer",
-          "name": "Foyer",
-          "description": "A dusty foyer.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "north",
             "toName": "Crypt"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A dusty foyer.",
+          "id": "room:Foyer",
+          "isLit": true,
+          "name": "Foyer"
         },
         "scope": [],
         "status": {
+          "health": 10.0,
           "locationName": "Foyer",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 10.0,
+          "turn": 0
+        }
       }
     },
     {
       "command": {
-        "kind": "go",
-        "dir": "north"
+        "dir": "north",
+        "kind": "go"
       },
       "cues": [
         {
-          "kind": "mechanic",
           "cue": {
             "text": "The Crypt stirs (visit 3)."
-          }
+          },
+          "kind": "mechanic"
         },
         {
-          "kind": "action",
           "action": "move",
           "actor": {
             "id": "player:Mara",
             "name": "Mara"
-          }
+          },
+          "kind": "action"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Spawn (conformance)",
-          "title": "Spawn (conformance)",
-          "maxRounds": 10,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Mara"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Mara",
-          "materials": {},
-          "claims": [],
-          "encountered": [
-            "player:Mara:campaign-mob:wraith"
-          ],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
                 "health": 10,
                 "sanity": 10
-              }
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
           "encounterTable": {
             "baseChance": 100,
-            "visited": [
-              "room:Foyer",
-              "room:Crypt"
-            ],
             "formations": [
               {
                 "behaviorKey": "conformance:wraith",
                 "weight": 1
               }
-            ]
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
-        },
-        "rooms": [
-          {
-            "id": "room:Crypt",
-            "name": "Crypt",
-            "description": "A silent crypt.",
-            "exits": {
-              "south": "exit:Crypt|Foyer"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "campaign-mob:wraith",
-              "player:Mara"
             ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": [
-              {
-                "id": "scene:Crypt:conformance:visit-counter:enter",
-                "behaviorKey": "conformance:visit-counter",
-                "phase": "enter",
-                "state": {
-                  "count": 3
-                }
-              }
-            ]
-          },
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "A dusty foyer.",
-            "exits": {
-              "north": "exit:Crypt|Foyer"
-            },
-            "dark": false,
-            "spawnModifier": 0,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Crypt|Foyer",
-            "endpointIds": [
+            "visited": [
               "room:Foyer",
               "room:Crypt"
-            ],
-            "state": {}
-          }
-        ],
+            ]
+          },
+          "encountered": [
+            "player:Mara:campaign-mob:wraith"
+          ],
+          "gmId": "player:Mara",
+          "id": "campaign:Spawn (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Mara"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Spawn (conformance)",
+          "winConditions": []
+        },
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Mara",
-            "name": "Mara",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
+            "actionsPerRound": 1,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
             },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Crypt",
+            "equipment": {},
+            "history": [],
+            "id": "campaign-mob:wraith",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 0
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Wraith",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "campaign",
+            "stats": {
+              "energy": 3.0,
+              "health": 4.0,
+              "sanity": 0.0
+            }
+          },
+          {
             "actionsPerRound": 3,
             "actionsThisRound": 3,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Crypt",
             "equipment": {},
             "history": [
               {
@@ -1073,158 +1061,182 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Mara",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Mara",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dusty foyer.",
+              "name": "Foyer"
+            }
           },
           {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "Wraith",
             "kind": "mob",
-            "id": "campaign-mob:wraith",
-            "name": "Wraith",
-            "stats": {
-              "health": 4,
-              "sanity": 0,
-              "energy": 3
-            },
-            "actionsPerRound": 1,
-            "actionsThisRound": 0,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 0,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "campaign",
-            "baseEscapeChance": 50,
-            "materialDrops": {},
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "energy": 3.0,
+                "health": 4.0,
+                "sanity": 0.0
+              }
             }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "room:Crypt",
+            "kind": "room",
+            "snapshot": {
+              "description": "A silent crypt.",
+              "name": "Crypt"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Crypt"
+            ],
+            "id": "exit:Crypt|Foyer",
+            "state": {}
           }
         ],
         "items": [],
         "loot": [],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "A dusty foyer."
+            "dark": false,
+            "description": "A silent crypt.",
+            "exits": {
+              "south": "exit:Crypt|Foyer"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Foyer"
-            }
-          },
-          {
-            "kind": "mob",
-            "key": "Wraith",
-            "snapshot": {
-              "name": "Wraith",
-              "stats": {
-                "health": 4,
-                "sanity": 0,
-                "energy": 3
+            "id": "room:Crypt",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Crypt",
+            "occupantIds": [
+              "campaign-mob:wraith",
+              "player:Mara"
+            ],
+            "scenes": [
+              {
+                "behaviorKey": "conformance:visit-counter",
+                "id": "scene:Crypt:conformance:visit-counter:enter",
+                "phase": "enter",
+                "state": {
+                  "count": 3
+                }
               }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Crypt"
-            }
+            ],
+            "spawnModifier": 1
           },
           {
-            "kind": "room",
-            "key": "room:Crypt",
-            "snapshot": {
-              "name": "Crypt",
-              "description": "A silent crypt."
+            "dark": false,
+            "description": "A dusty foyer.",
+            "exits": {
+              "north": "exit:Crypt|Foyer"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Crypt"
-            }
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 0
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Crypt",
-          "name": "Crypt",
-          "description": "A silent crypt.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "south",
             "toName": "Foyer"
           }
         ],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
         "lockedDoors": [],
+        "loot": [],
+        "materials": [],
         "occupants": [
           {
-            "id": "campaign-mob:wraith",
-            "name": "Wraith",
             "aliases": [
               "wraith"
             ],
+            "defeated": false,
+            "health": 4.0,
+            "id": "campaign-mob:wraith",
             "kind": "occupant",
-            "health": 4,
-            "defeated": false
+            "name": "Wraith"
           }
         ],
-        "loot": [],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A silent crypt.",
+          "id": "room:Crypt",
+          "isLit": true,
+          "name": "Crypt"
         },
         "scope": [
           {
-            "id": "campaign-mob:wraith",
-            "name": "Wraith",
             "aliases": [
               "wraith"
             ],
+            "defeated": false,
+            "health": 4.0,
+            "id": "campaign-mob:wraith",
             "kind": "occupant",
-            "health": 4,
-            "defeated": false
+            "name": "Wraith"
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Crypt",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 10.0,
+          "turn": 0
+        }
       }
     }
   ]

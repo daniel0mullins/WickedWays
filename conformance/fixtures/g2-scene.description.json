@@ -1,30 +1,30 @@
 {
-  "title": "Scene",
-  "opts": {},
   "archetypes": [],
+  "caches": [],
+  "exits": [],
+  "formations": [],
+  "loot": [],
+  "loseConditions": [],
+  "materials": [],
+  "mechanics": [],
+  "mobs": [],
+  "npcs": [],
+  "opts": {},
+  "recipes": [],
   "rooms": [
     {
-      "name": "Threshold",
-      "description": "A cold stone threshold."
+      "description": "A cold stone threshold.",
+      "name": "Threshold"
+    }
+  ],
+  "scenes": [
+    {
+      "key": "scene/threshold-draft",
+      "phase": "enter",
+      "room": "Threshold"
     }
   ],
   "startRoom": "Threshold",
-  "exits": [],
-  "mobs": [],
-  "loot": [],
-  "caches": [],
-  "npcs": [],
-  "formations": [],
-  "scenes": [
-    {
-      "room": "Threshold",
-      "key": "scene/threshold-draft",
-      "phase": "enter"
-    }
-  ],
-  "recipes": [],
-  "materials": [],
-  "winConditions": [],
-  "loseConditions": [],
-  "mechanics": []
+  "title": "Scene",
+  "winConditions": []
 }

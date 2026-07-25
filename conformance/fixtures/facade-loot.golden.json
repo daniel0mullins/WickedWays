@@ -1,151 +1,125 @@
 {
-  "seed": 262974950,
-  "startupCues": [],
   "ops": [
     {
-      "kind": "submit",
       "intent": {
         "kind": "open",
         "targetId": "loot:chest"
-      }
+      },
+      "kind": "submit"
     },
     {
-      "kind": "submit",
       "intent": {
         "kind": "take",
         "targetId": "loot:chest:item#0"
-      }
+      },
+      "kind": "submit"
     },
     {
-      "kind": "read",
-      "itemId": "loot:chest:item#0"
+      "itemId": "loot:chest:item#0",
+      "kind": "read"
     },
     {
-      "kind": "submit",
       "intent": {
         "kind": "take",
         "targetId": "loot:chest:item#1"
-      }
+      },
+      "kind": "submit"
     },
     {
-      "kind": "submit",
       "intent": {
         "kind": "drop",
         "targetId": "loot:chest:item#1"
-      }
+      },
+      "kind": "submit"
     },
     {
-      "kind": "read",
-      "itemId": "loot:chest:item#1"
+      "itemId": "loot:chest:item#1",
+      "kind": "read"
     }
   ],
+  "seed": 262974950,
+  "startupCues": [],
   "steps": [
     {
       "op": {
-        "kind": "submit",
         "intent": {
           "kind": "open",
           "targetId": "loot:chest"
-        }
+        },
+        "kind": "submit"
       },
       "result": {
         "cues": [],
         "mobAttacks": []
       },
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Facade Loot (conformance)",
-          "title": "Facade Loot (conformance)",
-          "maxRounds": 20,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
+                "energy": 8,
                 "health": 10,
-                "sanity": 8,
-                "energy": 8
-              }
+                "sanity": 8
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Loot (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Facade Loot (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [
-              "loot:chest"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 8,
-              "energy": 8
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -157,277 +131,290 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 10.0,
+              "sanity": 8.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          }
+        ],
+        "exits": [],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:chest:item#0",
             "behaviorKey": "items/facade-journal",
+            "id": "loot:chest:item#0",
+            "kind": "item",
             "modifier": 0
           },
           {
-            "kind": "item",
-            "id": "loot:chest:item#1",
             "behaviorKey": "items/facade-sword",
             "durability": 5,
+            "id": "loot:chest:item#1",
+            "kind": "item",
             "modifier": 3
           }
         ],
         "loot": [
           {
-            "id": "loot:chest",
-            "description": "An old chest.",
             "capacity": 4,
             "contentIds": [
               "loot:chest:item#0",
               "loot:chest:item#1"
-            ]
+            ],
+            "description": "An old chest.",
+            "id": "loot:chest"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
         "lockedDoors": [],
-        "occupants": [],
         "loot": [
           {
-            "id": "loot:chest",
-            "description": "An old chest.",
-            "opened": true,
             "contents": [
               {
-                "id": "loot:chest:item#0",
-                "name": "Journal",
                 "aliases": [
                   "journal",
                   "book"
                 ],
-                "kind": "item",
+                "damaged": false,
+                "destroyable": false,
+                "droppable": true,
                 "equippable": false,
-                "usable": false,
                 "hasLore": true,
-                "droppable": true
+                "id": "loot:chest:item#0",
+                "kind": "item",
+                "name": "Journal",
+                "usable": false
               },
               {
-                "id": "loot:chest:item#1",
-                "name": "Sword",
                 "aliases": [
                   "sword",
                   "blade"
                 ],
-                "kind": "item",
+                "damaged": false,
+                "destroyable": true,
+                "droppable": true,
                 "equippable": true,
-                "usable": false,
                 "hasLore": false,
-                "droppable": true
+                "id": "loot:chest:item#1",
+                "kind": "item",
+                "name": "Sword",
+                "usable": false
               }
-            ]
+            ],
+            "description": "An old chest.",
+            "id": "loot:chest",
+            "opened": true
           }
         ],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "loot:chest:item#0",
-            "name": "Journal",
             "aliases": [
               "journal",
               "book"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": false,
+            "droppable": true,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": true
+            "id": "loot:chest:item#0",
+            "kind": "item",
+            "name": "Journal",
+            "usable": false
           },
           {
-            "id": "loot:chest:item#1",
-            "name": "Sword",
             "aliases": [
               "sword",
               "blade"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "loot:chest:item#1",
+            "kind": "item",
+            "name": "Sword",
+            "usable": false
           },
           {
-            "id": "loot:chest",
-            "name": "An old chest.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:chest",
+            "kind": "loot",
+            "name": "An old chest."
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Hall",
-          "turn": 0,
           "maxTurns": 20,
-          "sanity": 8,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 8.0,
+          "turn": 0
+        }
       }
     },
     {
       "op": {
-        "kind": "submit",
         "intent": {
           "kind": "take",
           "targetId": "loot:chest:item#0"
-        }
+        },
+        "kind": "submit"
       },
       "result": {
         "cues": [
           {
-            "kind": "action",
             "action": "pickUp",
             "actor": {
               "id": "player:Ada",
               "name": "Ada"
-            }
+            },
+            "kind": "action"
           }
         ],
         "mobAttacks": []
       },
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Facade Loot (conformance)",
-          "title": "Facade Loot (conformance)",
-          "maxRounds": 20,
-          "round": 1,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
+                "energy": 8,
                 "health": 10,
-                "sanity": 8,
-                "energy": 8
-              }
+                "sanity": 8
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Loot (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 1,
+          "started": true,
+          "title": "Facade Loot (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [
-              "loot:chest"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 8,
-              "energy": 8
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "loot:chest:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -439,296 +426,307 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:chest:item#0",
                     "name": "Journal"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "loot:chest:item#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 10.0,
+              "sanity": 8.0
+            }
           }
         ],
-        "items": [
-          {
-            "kind": "item",
-            "id": "loot:chest:item#1",
-            "behaviorKey": "items/facade-sword",
-            "durability": 5,
-            "modifier": 3
-          },
-          {
-            "kind": "item",
-            "id": "loot:chest:item#0",
-            "behaviorKey": "items/facade-journal",
-            "modifier": 0
-          }
-        ],
-        "loot": [
-          {
-            "id": "loot:chest",
-            "description": "An old chest.",
-            "capacity": 4,
-            "contentIds": [
-              "loot:chest:item#1"
-            ]
-          }
-        ],
-        "materialCaches": [],
         "codex": [
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
             "firstSeen": {
-              "round": 0,
               "characterId": "player:Ada",
-              "roomId": "room:Hall"
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
             }
           },
           {
-            "kind": "item",
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
             "key": "consumable:Journal",
+            "kind": "item",
             "snapshot": {
               "name": "Journal",
               "type": "consumable"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
             }
           }
-        ]
-      },
-      "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
+        ],
         "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [
+        "items": [
           {
-            "id": "loot:chest",
-            "description": "An old chest.",
-            "opened": true,
-            "contents": [
-              {
-                "id": "loot:chest:item#1",
-                "name": "Sword",
-                "aliases": [
-                  "sword",
-                  "blade"
-                ],
-                "kind": "item",
-                "equippable": true,
-                "usable": false,
-                "hasLore": false,
-                "droppable": true
-              }
-            ]
+            "behaviorKey": "items/facade-journal",
+            "id": "loot:chest:item#0",
+            "kind": "item",
+            "modifier": 0
+          },
+          {
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "id": "loot:chest:item#1",
+            "kind": "item",
+            "modifier": 3
           }
         ],
+        "loot": [
+          {
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#1"
+            ],
+            "description": "An old chest.",
+            "id": "loot:chest"
+          }
+        ],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:chest:item#0",
-              "name": "Journal",
               "aliases": [
                 "journal",
                 "book"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": false,
+              "droppable": true,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": true
+              "id": "loot:chest:item#0",
+              "kind": "item",
+              "name": "Journal",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [
+          {
+            "contents": [
+              {
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "damaged": false,
+                "destroyable": true,
+                "droppable": true,
+                "equippable": true,
+                "hasLore": false,
+                "id": "loot:chest:item#1",
+                "kind": "item",
+                "name": "Sword",
+                "usable": false
+              }
+            ],
+            "description": "An old chest.",
+            "id": "loot:chest",
+            "opened": true
+          }
+        ],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "loot:chest:item#1",
-            "name": "Sword",
             "aliases": [
               "sword",
               "blade"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "loot:chest:item#1",
+            "kind": "item",
+            "name": "Sword",
+            "usable": false
           },
           {
-            "id": "loot:chest:item#0",
-            "name": "Journal",
             "aliases": [
               "journal",
               "book"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": false,
+            "droppable": true,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": true
+            "id": "loot:chest:item#0",
+            "kind": "item",
+            "name": "Journal",
+            "usable": false
           },
           {
-            "id": "loot:chest",
-            "name": "An old chest.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:chest",
+            "kind": "loot",
+            "name": "An old chest."
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Hall",
-          "turn": 1,
           "maxTurns": 20,
-          "sanity": 8,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 8.0,
+          "turn": 1
+        }
       }
     },
     {
       "op": {
-        "kind": "read",
-        "itemId": "loot:chest:item#0"
+        "itemId": "loot:chest:item#0",
+        "kind": "read"
       },
       "result": [
         {
-          "kind": "mechanic",
           "cue": {
             "text": "The pages are damp."
-          }
+          },
+          "kind": "mechanic"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Facade Loot (conformance)",
-          "title": "Facade Loot (conformance)",
-          "maxRounds": 20,
-          "round": 1,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
+                "energy": 8,
                 "health": 10,
-                "sanity": 8,
-                "energy": 8
-              }
+                "sanity": 8
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Loot (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 1,
+          "started": true,
+          "title": "Facade Loot (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [
-              "loot:chest"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 8,
-              "energy": 8
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "loot:chest:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -740,635 +738,657 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:chest:item#0",
                     "name": "Journal"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "loot:chest:item#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 10.0,
+              "sanity": 8.0
+            }
           }
         ],
-        "items": [
-          {
-            "kind": "item",
-            "id": "loot:chest:item#1",
-            "behaviorKey": "items/facade-sword",
-            "durability": 5,
-            "modifier": 3
-          },
-          {
-            "kind": "item",
-            "id": "loot:chest:item#0",
-            "behaviorKey": "items/facade-journal",
-            "modifier": 0
-          }
-        ],
-        "loot": [
-          {
-            "id": "loot:chest",
-            "description": "An old chest.",
-            "capacity": 4,
-            "contentIds": [
-              "loot:chest:item#1"
-            ]
-          }
-        ],
-        "materialCaches": [],
         "codex": [
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
             "firstSeen": {
-              "round": 0,
               "characterId": "player:Ada",
-              "roomId": "room:Hall"
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
             }
           },
           {
-            "kind": "item",
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
             "key": "consumable:Journal",
+            "kind": "item",
             "snapshot": {
               "name": "Journal",
               "type": "consumable"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
             }
           }
-        ]
-      },
-      "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
+        ],
         "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [
+        "items": [
           {
-            "id": "loot:chest",
-            "description": "An old chest.",
-            "opened": true,
-            "contents": [
-              {
-                "id": "loot:chest:item#1",
-                "name": "Sword",
-                "aliases": [
-                  "sword",
-                  "blade"
-                ],
-                "kind": "item",
-                "equippable": true,
-                "usable": false,
-                "hasLore": false,
-                "droppable": true
-              }
-            ]
+            "behaviorKey": "items/facade-journal",
+            "id": "loot:chest:item#0",
+            "kind": "item",
+            "modifier": 0
+          },
+          {
+            "behaviorKey": "items/facade-sword",
+            "durability": 5,
+            "id": "loot:chest:item#1",
+            "kind": "item",
+            "modifier": 3
           }
         ],
+        "loot": [
+          {
+            "capacity": 4,
+            "contentIds": [
+              "loot:chest:item#1"
+            ],
+            "description": "An old chest.",
+            "id": "loot:chest"
+          }
+        ],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:chest:item#0",
-              "name": "Journal",
               "aliases": [
                 "journal",
                 "book"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": false,
+              "droppable": true,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": true
+              "id": "loot:chest:item#0",
+              "kind": "item",
+              "name": "Journal",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [
+          {
+            "contents": [
+              {
+                "aliases": [
+                  "sword",
+                  "blade"
+                ],
+                "damaged": false,
+                "destroyable": true,
+                "droppable": true,
+                "equippable": true,
+                "hasLore": false,
+                "id": "loot:chest:item#1",
+                "kind": "item",
+                "name": "Sword",
+                "usable": false
+              }
+            ],
+            "description": "An old chest.",
+            "id": "loot:chest",
+            "opened": true
+          }
+        ],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "loot:chest:item#1",
-            "name": "Sword",
             "aliases": [
               "sword",
               "blade"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "loot:chest:item#1",
+            "kind": "item",
+            "name": "Sword",
+            "usable": false
           },
           {
-            "id": "loot:chest:item#0",
-            "name": "Journal",
             "aliases": [
               "journal",
               "book"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": false,
+            "droppable": true,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": true
+            "id": "loot:chest:item#0",
+            "kind": "item",
+            "name": "Journal",
+            "usable": false
           },
           {
-            "id": "loot:chest",
-            "name": "An old chest.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:chest",
+            "kind": "loot",
+            "name": "An old chest."
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Hall",
-          "turn": 1,
           "maxTurns": 20,
-          "sanity": 8,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 8.0,
+          "turn": 1
+        }
       }
     },
     {
       "op": {
-        "kind": "submit",
         "intent": {
           "kind": "take",
           "targetId": "loot:chest:item#1"
-        }
+        },
+        "kind": "submit"
       },
       "result": {
         "cues": [
           {
-            "kind": "action",
             "action": "pickUp",
             "actor": {
               "id": "player:Ada",
               "name": "Ada"
-            }
+            },
+            "kind": "action"
           }
         ],
         "mobAttacks": []
       },
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Facade Loot (conformance)",
-          "title": "Facade Loot (conformance)",
-          "maxRounds": 20,
-          "round": 2,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
+                "energy": 8,
                 "health": 10,
-                "sanity": 8,
-                "energy": 8
-              }
+                "sanity": 8
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Loot (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 2,
+          "started": true,
+          "title": "Facade Loot (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [
-              "loot:chest"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 8,
-              "energy": 8
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
+            },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
             "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "items": [
+                  {
+                    "id": "loot:chest:item#0",
+                    "name": "Journal"
+                  }
+                ],
+                "kind": "pickUp",
+                "round": 0
+              },
+              {
+                "items": [
+                  {
+                    "id": "loot:chest:item#1",
+                    "name": "Sword"
+                  }
+                ],
+                "kind": "pickUp",
+                "round": 1
+              }
+            ],
+            "id": "player:Ada",
             "inventory": {
-              "slots": 5,
               "itemIds": [
                 "loot:chest:item#0",
                 "loot:chest:item#1"
               ],
-              "keyIds": []
+              "keyIds": [],
+              "slots": 5
             },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Hall",
-                  "name": "Hall"
-                },
-                "round": 0
-              },
-              {
-                "kind": "pickUp",
-                "items": [
-                  {
-                    "id": "loot:chest:item#0",
-                    "name": "Journal"
-                  }
-                ],
-                "round": 0
-              },
-              {
-                "kind": "pickUp",
-                "items": [
-                  {
-                    "id": "loot:chest:item#1",
-                    "name": "Sword"
-                  }
-                ],
-                "round": 1
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 10.0,
+              "sanity": 8.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "consumable:Journal",
+            "kind": "item",
+            "snapshot": {
+              "name": "Journal",
+              "type": "consumable"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 1
+            },
+            "key": "weapon:Sword",
+            "kind": "item",
+            "snapshot": {
+              "name": "Sword",
+              "slot": "hand",
+              "type": "weapon"
+            }
+          }
+        ],
+        "exits": [],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:chest:item#0",
             "behaviorKey": "items/facade-journal",
+            "id": "loot:chest:item#0",
+            "kind": "item",
             "modifier": 0
           },
           {
-            "kind": "item",
-            "id": "loot:chest:item#1",
             "behaviorKey": "items/facade-sword",
             "durability": 5,
+            "id": "loot:chest:item#1",
+            "kind": "item",
             "modifier": 3
           }
         ],
         "loot": [
           {
-            "id": "loot:chest",
-            "description": "An old chest.",
             "capacity": 4,
-            "contentIds": []
+            "contentIds": [],
+            "description": "An old chest.",
+            "id": "loot:chest"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "item",
-            "key": "consumable:Journal",
-            "snapshot": {
-              "name": "Journal",
-              "type": "consumable"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "item",
-            "key": "weapon:Sword",
-            "snapshot": {
-              "name": "Sword",
-              "type": "weapon",
-              "slot": "hand"
-            },
-            "firstSeen": {
-              "round": 1,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          }
-        ]
-      },
-      "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
-        "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [
-          {
-            "id": "loot:chest",
-            "description": "An old chest.",
-            "opened": true,
-            "contents": []
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
         ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:chest:item#0",
-              "name": "Journal",
               "aliases": [
                 "journal",
                 "book"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": false,
+              "droppable": true,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": true
+              "id": "loot:chest:item#0",
+              "kind": "item",
+              "name": "Journal",
+              "usable": false
             },
             {
-              "id": "loot:chest:item#1",
-              "name": "Sword",
               "aliases": [
                 "sword",
                 "blade"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": true,
               "equippable": true,
-              "usable": false,
               "hasLore": false,
-              "droppable": true
+              "id": "loot:chest:item#1",
+              "kind": "item",
+              "name": "Sword",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [
+          {
+            "contents": [],
+            "description": "An old chest.",
+            "id": "loot:chest",
+            "opened": true
+          }
+        ],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "loot:chest:item#0",
-            "name": "Journal",
             "aliases": [
               "journal",
               "book"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": false,
+            "droppable": true,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": true
+            "id": "loot:chest:item#0",
+            "kind": "item",
+            "name": "Journal",
+            "usable": false
           },
           {
-            "id": "loot:chest:item#1",
-            "name": "Sword",
             "aliases": [
               "sword",
               "blade"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "loot:chest:item#1",
+            "kind": "item",
+            "name": "Sword",
+            "usable": false
           },
           {
-            "id": "loot:chest",
-            "name": "An old chest.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:chest",
+            "kind": "loot",
+            "name": "An old chest."
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Hall",
-          "turn": 2,
           "maxTurns": 20,
-          "sanity": 8,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 8.0,
+          "turn": 2
+        }
       }
     },
     {
       "op": {
-        "kind": "submit",
         "intent": {
           "kind": "drop",
           "targetId": "loot:chest:item#1"
-        }
+        },
+        "kind": "submit"
       },
       "result": {
         "cues": [
           {
-            "kind": "action",
             "action": "drop",
             "actor": {
               "id": "player:Ada",
               "name": "Ada"
-            }
+            },
+            "kind": "action"
           }
         ],
         "mobAttacks": []
       },
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Facade Loot (conformance)",
-          "title": "Facade Loot (conformance)",
-          "maxRounds": 20,
-          "round": 3,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
+                "energy": 8,
                 "health": 10,
-                "sanity": 8,
-                "energy": 8
-              }
+                "sanity": 8
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Loot (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 3,
+          "started": true,
+          "title": "Facade Loot (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [
-              "loot:chest"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 8,
-              "energy": 8
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "loot:chest:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -1380,287 +1400,294 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:chest:item#0",
                     "name": "Journal"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:chest:item#1",
                     "name": "Sword"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 1
               },
               {
-                "kind": "drop",
                 "items": [
                   {
                     "id": "loot:chest:item#1",
                     "name": "Sword"
                   }
                 ],
+                "kind": "drop",
                 "round": 2
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "loot:chest:item#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 10.0,
+              "sanity": 8.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "consumable:Journal",
+            "kind": "item",
+            "snapshot": {
+              "name": "Journal",
+              "type": "consumable"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 1
+            },
+            "key": "weapon:Sword",
+            "kind": "item",
+            "snapshot": {
+              "name": "Sword",
+              "slot": "hand",
+              "type": "weapon"
+            }
+          }
+        ],
+        "exits": [],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:chest:item#0",
             "behaviorKey": "items/facade-journal",
+            "id": "loot:chest:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:chest",
-            "description": "An old chest.",
             "capacity": 4,
-            "contentIds": []
+            "contentIds": [],
+            "description": "An old chest.",
+            "id": "loot:chest"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "item",
-            "key": "consumable:Journal",
-            "snapshot": {
-              "name": "Journal",
-              "type": "consumable"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "item",
-            "key": "weapon:Sword",
-            "snapshot": {
-              "name": "Sword",
-              "type": "weapon",
-              "slot": "hand"
-            },
-            "firstSeen": {
-              "round": 1,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          }
-        ]
-      },
-      "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
-        "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [
-          {
-            "id": "loot:chest",
-            "description": "An old chest.",
-            "opened": true,
-            "contents": []
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
         ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:chest:item#0",
-              "name": "Journal",
               "aliases": [
                 "journal",
                 "book"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": false,
+              "droppable": true,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": true
+              "id": "loot:chest:item#0",
+              "kind": "item",
+              "name": "Journal",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [
+          {
+            "contents": [],
+            "description": "An old chest.",
+            "id": "loot:chest",
+            "opened": true
+          }
+        ],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "loot:chest:item#0",
-            "name": "Journal",
             "aliases": [
               "journal",
               "book"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": false,
+            "droppable": true,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": true
+            "id": "loot:chest:item#0",
+            "kind": "item",
+            "name": "Journal",
+            "usable": false
           },
           {
-            "id": "loot:chest",
-            "name": "An old chest.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:chest",
+            "kind": "loot",
+            "name": "An old chest."
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Hall",
-          "turn": 3,
           "maxTurns": 20,
-          "sanity": 8,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 8.0,
+          "turn": 3
+        }
       }
     },
     {
       "op": {
-        "kind": "read",
-        "itemId": "loot:chest:item#1"
+        "itemId": "loot:chest:item#1",
+        "kind": "read"
       },
       "result": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Facade Loot (conformance)",
-          "title": "Facade Loot (conformance)",
-          "maxRounds": 20,
-          "round": 3,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
+                "energy": 8,
                 "health": 10,
-                "sanity": 8,
-                "energy": 8
-              }
+                "sanity": 8
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Loot (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 3,
+          "started": true,
+          "title": "Facade Loot (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [
-              "loot:chest"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 8,
-              "energy": 8
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "loot:chest:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -1672,183 +1699,214 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:chest:item#0",
                     "name": "Journal"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:chest:item#1",
                     "name": "Sword"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 1
               },
               {
-                "kind": "drop",
                 "items": [
                   {
                     "id": "loot:chest:item#1",
                     "name": "Sword"
                   }
                 ],
+                "kind": "drop",
                 "round": 2
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "loot:chest:item#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 10.0,
+              "sanity": 8.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "consumable:Journal",
+            "kind": "item",
+            "snapshot": {
+              "name": "Journal",
+              "type": "consumable"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 1
+            },
+            "key": "weapon:Sword",
+            "kind": "item",
+            "snapshot": {
+              "name": "Sword",
+              "slot": "hand",
+              "type": "weapon"
+            }
+          }
+        ],
+        "exits": [],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:chest:item#0",
             "behaviorKey": "items/facade-journal",
+            "id": "loot:chest:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:chest",
-            "description": "An old chest.",
             "capacity": 4,
-            "contentIds": []
+            "contentIds": [],
+            "description": "An old chest.",
+            "id": "loot:chest"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "item",
-            "key": "consumable:Journal",
-            "snapshot": {
-              "name": "Journal",
-              "type": "consumable"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "item",
-            "key": "weapon:Sword",
-            "snapshot": {
-              "name": "Sword",
-              "type": "weapon",
-              "slot": "hand"
-            },
-            "firstSeen": {
-              "round": 1,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          }
-        ]
-      },
-      "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
-        "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [
-          {
-            "id": "loot:chest",
-            "description": "An old chest.",
-            "opened": true,
-            "contents": []
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
         ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:chest:item#0",
-              "name": "Journal",
               "aliases": [
                 "journal",
                 "book"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": false,
+              "droppable": true,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": true
+              "id": "loot:chest:item#0",
+              "kind": "item",
+              "name": "Journal",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [
+          {
+            "contents": [],
+            "description": "An old chest.",
+            "id": "loot:chest",
+            "opened": true
+          }
+        ],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "loot:chest:item#0",
-            "name": "Journal",
             "aliases": [
               "journal",
               "book"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": false,
+            "droppable": true,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": true
+            "id": "loot:chest:item#0",
+            "kind": "item",
+            "name": "Journal",
+            "usable": false
           },
           {
-            "id": "loot:chest",
-            "name": "An old chest.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:chest",
+            "kind": "loot",
+            "name": "An old chest."
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Hall",
-          "turn": 3,
           "maxTurns": 20,
-          "sanity": 8,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 8.0,
+          "turn": 3
+        }
       }
     }
   ]

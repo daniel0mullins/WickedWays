@@ -1,57 +1,56 @@
 {
-  "items": {},
   "aliases": {},
   "behaviors": {
     "scene/threshold-draft": {
       "family": "scene",
       "script": {
         "canPlay": {
-          "kind": "not",
           "expr": {
-            "kind": "stateGet",
+            "default": false,
             "field": "seen",
-            "default": false
-          }
+            "kind": "stateGet"
+          },
+          "kind": "not"
         },
         "onEnter": [
           {
-            "kind": "guard",
             "cond": {
               "kind": "bin",
-              "op": "eq",
               "left": {
                 "kind": "round"
               },
+              "op": "eq",
               "right": {
                 "kind": "lit",
-                "value": 0
-              }
-            }
-          },
-          {
-            "kind": "when",
-            "cond": {
-              "kind": "not",
-              "expr": {
-                "kind": "stateGet",
-                "field": "revealed",
-                "default": false
+                "value": 0.0
               }
             },
+            "kind": "guard"
+          },
+          {
+            "cond": {
+              "expr": {
+                "default": false,
+                "field": "revealed",
+                "kind": "stateGet"
+              },
+              "kind": "not"
+            },
+            "kind": "when",
             "then": [
               {
-                "kind": "emit",
                 "effect": {
                   "kind": "cue",
                   "text": {
                     "kind": "lit",
                     "value": "A cold draft stirs the dust of the threshold."
                   }
-                }
+                },
+                "kind": "emit"
               },
               {
-                "kind": "setState",
                 "field": "revealed",
+                "kind": "setState",
                 "value": {
                   "kind": "lit",
                   "value": true
@@ -60,8 +59,8 @@
             ]
           },
           {
-            "kind": "setState",
             "field": "seen",
+            "kind": "setState",
             "value": {
               "kind": "lit",
               "value": true
@@ -72,5 +71,6 @@
     }
   },
   "formations": {},
+  "items": {},
   "recipes": {}
 }

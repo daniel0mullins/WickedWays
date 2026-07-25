@@ -1,36 +1,8 @@
 {
-  "schemaVersion": 6,
   "campaign": {
-    "id": "campaign:The Covenant",
-    "title": "The Covenant",
-    "maxRounds": 60,
-    "round": 0,
-    "started": false,
-    "outcome": "ongoing",
-    "winConditions": [
-      {
-        "key": "twin-wards-held",
-        "narration": {
-          "text": "Two Wardens take the twin discs in the same breath, and the sanctum answers at last. The seal between the wards splits with a sound like a held note released -- and above you, the way out grinds open. You leave together, or not at all; tonight, it is together."
-        }
-      }
-    ],
-    "loseConditions": [],
-    "timeoutNarration": {
-      "text": "The lamps gutter out one by one. Whatever the covenant was meant to do here, it will not be done tonight — and the sanctum keeps those it is done with."
-    },
-    "activeCharacterIndex": 0,
-    "partyIds": [
-      "player:Keeper"
-    ],
     "actedThisRound": [],
-    "gmId": "player:Keeper",
-    "materials": {},
-    "claims": [],
-    "encountered": [],
-    "knownRecipes": [
-      "ward-charm"
-    ],
+    "actionSounds": {},
+    "activeCharacterIndex": 0,
     "archetypes": [
       {
         "baseStats": {
@@ -43,13 +15,10 @@
         "name": "Warden"
       }
     ],
-    "actionSounds": {},
-    "encounterTable": {
-      "baseChance": 0,
-      "formations": [],
-      "visited": [
-        "room:Antechamber"
-      ]
+    "avPolicy": {
+      "enabled": true,
+      "maxParticipants": 6,
+      "video": true
     },
     "chatPolicy": {
       "backfillWindow": 200,
@@ -60,198 +29,80 @@
       "typing": true,
       "whisper": true
     },
-    "avPolicy": {
-      "enabled": true,
-      "maxParticipants": 6,
-      "video": true
+    "claims": [],
+    "encounterTable": {
+      "baseChance": 0,
+      "formations": [],
+      "visited": [
+        "room:Antechamber"
+      ]
     },
-    "mechanics": []
+    "encountered": [],
+    "gmId": "player:Keeper",
+    "id": "campaign:The Covenant",
+    "knownRecipes": [
+      "ward-charm"
+    ],
+    "loseConditions": [],
+    "materials": {},
+    "maxRounds": 60,
+    "mechanics": [],
+    "outcome": "ongoing",
+    "partyIds": [
+      "player:Keeper"
+    ],
+    "round": 0,
+    "started": false,
+    "timeoutNarration": {
+      "text": "The lamps gutter out one by one. Whatever the covenant was meant to do here, it will not be done tonight — and the sanctum keeps those it is done with."
+    },
+    "title": "The Covenant",
+    "winConditions": [
+      {
+        "key": "twin-wards-held",
+        "narration": {
+          "text": "Two Wardens take the twin discs in the same breath, and the sanctum answers at last. The seal between the wards splits with a sound like a held note released -- and above you, the way out grinds open. You leave together, or not at all; tonight, it is together."
+        }
+      }
+    ]
   },
-  "rooms": [
-    {
-      "id": "room:Antechamber",
-      "name": "Antechamber",
-      "description": "The mouth of the sanctum, where the covenant gathers. A stair of black glass leads down into the dark, and the way you came in has already sealed behind you.",
-      "exits": {
-        "north": "exit:Antechamber|Crossing"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [
-        "player:Keeper"
-      ],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:Crossing",
-      "name": "Crossing",
-      "description": "A four-way crossing beneath a vaulted ceiling. Passages run to a warded chamber on either hand, and an altar room lies ahead. The air hums, as if the stone is waiting to be answered.",
-      "exits": {
-        "east": "exit:Crossing|South Ward",
-        "north": "exit:Crossing|Reliquary",
-        "south": "exit:Antechamber|Crossing",
-        "west": "exit:Crossing|North Ward"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [],
-      "materialCacheIds": [
-        "cache:Ward Slag"
-      ],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:North Ward",
-      "name": "North Ward",
-      "description": "A narrow chamber ending in a disc of pale iron set flush with the floor -- the North Ward. It thrums faintly underfoot, but nothing you do alone will hold it.",
-      "exits": {
-        "east": "exit:Crossing|North Ward"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:South Ward",
-      "name": "South Ward",
-      "description": "The twin of the far chamber: a disc of pale iron set into the floor -- the South Ward. It answers the tread of a single Warden with silence.",
-      "exits": {
-        "west": "exit:Crossing|South Ward"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:Reliquary",
-      "name": "Reliquary",
-      "description": "A low altar room, its walls carved with two figures standing apart, hands raised toward a seal between them. A cracked altar stone holds what the covenant left behind.",
-      "exits": {
-        "south": "exit:Crossing|Reliquary"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [
-        "loot:altar-stone"
-      ],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    }
-  ],
-  "exits": [
-    {
-      "id": "exit:Antechamber|Crossing",
-      "endpointIds": [
-        "room:Antechamber",
-        "room:Crossing"
-      ],
-      "state": {}
-    },
-    {
-      "id": "exit:Crossing|North Ward",
-      "endpointIds": [
-        "room:Crossing",
-        "room:North Ward"
-      ],
-      "state": {}
-    },
-    {
-      "id": "exit:Crossing|South Ward",
-      "endpointIds": [
-        "room:Crossing",
-        "room:South Ward"
-      ],
-      "state": {}
-    },
-    {
-      "id": "exit:Crossing|Reliquary",
-      "endpointIds": [
-        "room:Crossing",
-        "room:Reliquary"
-      ],
-      "state": {}
-    }
-  ],
   "characters": [
     {
-      "kind": "player",
-      "id": "player:Keeper",
-      "name": "Keeper",
-      "stats": {
-        "energy": 12.0,
-        "sanity": 10.0,
-        "health": 10.0
-      },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "room:Antechamber",
-      "inventory": {
-        "slots": 6,
-        "itemIds": [],
-        "keyIds": []
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
       },
+      "archetypeId": "warden",
+      "archetypeImmunities": [],
+      "currentRoomId": "room:Antechamber",
       "equipment": {},
       "history": [
         {
           "kind": "move",
-          "round": 0,
           "room": {
             "id": "room:Antechamber",
             "name": "Antechamber"
-          }
+          },
+          "round": 0
         }
       ],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
+      "id": "player:Keeper",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 6
       },
-      "archetypeId": "warden"
-    }
-  ],
-  "items": [
-    {
-      "kind": "item",
-      "id": "loot:altar-stone:item#0",
-      "behaviorKey": "rite-tablet",
-      "modifier": 0
-    }
-  ],
-  "loot": [
-    {
-      "id": "loot:altar-stone",
-      "description": "A cracked altar stone with a single tablet resting in its hollow.",
-      "capacity": 3,
-      "contentIds": [
-        "loot:altar-stone:item#0"
-      ]
-    }
-  ],
-  "materialCaches": [
-    {
-      "id": "cache:Ward Slag",
-      "contents": {
-        "iron": 3,
-        "salt": 2
-      },
-      "depleted": false
+      "kind": "player",
+      "name": "Keeper",
+      "stats": {
+        "energy": 12.0,
+        "health": 10.0,
+        "sanity": 10.0
+      }
     }
   ],
   "codex": [
@@ -283,5 +134,154 @@
         "name": "Antechamber"
       }
     }
-  ]
+  ],
+  "exits": [
+    {
+      "endpointIds": [
+        "room:Antechamber",
+        "room:Crossing"
+      ],
+      "id": "exit:Antechamber|Crossing",
+      "state": {}
+    },
+    {
+      "endpointIds": [
+        "room:Crossing",
+        "room:North Ward"
+      ],
+      "id": "exit:Crossing|North Ward",
+      "state": {}
+    },
+    {
+      "endpointIds": [
+        "room:Crossing",
+        "room:South Ward"
+      ],
+      "id": "exit:Crossing|South Ward",
+      "state": {}
+    },
+    {
+      "endpointIds": [
+        "room:Crossing",
+        "room:Reliquary"
+      ],
+      "id": "exit:Crossing|Reliquary",
+      "state": {}
+    }
+  ],
+  "items": [
+    {
+      "behaviorKey": "rite-tablet",
+      "id": "loot:altar-stone:item#0",
+      "kind": "item",
+      "modifier": 0
+    }
+  ],
+  "loot": [
+    {
+      "capacity": 3,
+      "contentIds": [
+        "loot:altar-stone:item#0"
+      ],
+      "description": "A cracked altar stone with a single tablet resting in its hollow.",
+      "id": "loot:altar-stone"
+    }
+  ],
+  "materialCaches": [
+    {
+      "contents": {
+        "iron": 3,
+        "salt": 2
+      },
+      "depleted": false,
+      "id": "cache:Ward Slag"
+    }
+  ],
+  "rooms": [
+    {
+      "dark": false,
+      "description": "The mouth of the sanctum, where the covenant gathers. A stair of black glass leads down into the dark, and the way you came in has already sealed behind you.",
+      "exits": {
+        "north": "exit:Antechamber|Crossing"
+      },
+      "id": "room:Antechamber",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Antechamber",
+      "occupantIds": [
+        "player:Keeper"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A four-way crossing beneath a vaulted ceiling. Passages run to a warded chamber on either hand, and an altar room lies ahead. The air hums, as if the stone is waiting to be answered.",
+      "exits": {
+        "east": "exit:Crossing|South Ward",
+        "north": "exit:Crossing|Reliquary",
+        "south": "exit:Antechamber|Crossing",
+        "west": "exit:Crossing|North Ward"
+      },
+      "id": "room:Crossing",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [
+        "cache:Ward Slag"
+      ],
+      "name": "Crossing",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A narrow chamber ending in a disc of pale iron set flush with the floor -- the North Ward. It thrums faintly underfoot, but nothing you do alone will hold it.",
+      "exits": {
+        "east": "exit:Crossing|North Ward"
+      },
+      "id": "room:North Ward",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "North Ward",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "The twin of the far chamber: a disc of pale iron set into the floor -- the South Ward. It answers the tread of a single Warden with silence.",
+      "exits": {
+        "west": "exit:Crossing|South Ward"
+      },
+      "id": "room:South Ward",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "South Ward",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A low altar room, its walls carved with two figures standing apart, hands raised toward a seal between them. A cracked altar stone holds what the covenant left behind.",
+      "exits": {
+        "south": "exit:Crossing|Reliquary"
+      },
+      "id": "room:Reliquary",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:altar-stone"
+      ],
+      "materialCacheIds": [],
+      "name": "Reliquary",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    }
+  ],
+  "schemaVersion": 6
 }

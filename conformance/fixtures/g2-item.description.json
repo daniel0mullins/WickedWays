@@ -1,24 +1,24 @@
 {
-  "title": "Item",
-  "opts": {},
   "archetypes": [],
+  "caches": [],
+  "exits": [],
+  "formations": [],
+  "loot": [],
+  "loseConditions": [],
+  "materials": [],
+  "mechanics": [],
+  "mobs": [],
+  "npcs": [],
+  "opts": {},
+  "recipes": [],
   "rooms": [
     {
-      "name": "Chamber",
-      "description": "A shuttered apothecary's chamber."
+      "description": "A shuttered apothecary's chamber.",
+      "name": "Chamber"
     }
   ],
-  "startRoom": "Chamber",
-  "exits": [],
-  "mobs": [],
-  "loot": [],
-  "caches": [],
-  "npcs": [],
-  "formations": [],
   "scenes": [],
-  "recipes": [],
-  "materials": [],
-  "winConditions": [],
-  "loseConditions": [],
-  "mechanics": []
+  "startRoom": "Chamber",
+  "title": "Item",
+  "winConditions": []
 }

@@ -1,126 +1,73 @@
 {
-  "schemaVersion": 6,
   "campaign": {
-    "id": "campaign:Facade Undo (conformance)",
-    "title": "Facade Undo (conformance)",
-    "maxRounds": 20,
-    "round": 0,
-    "started": false,
-    "outcome": "ongoing",
-    "winConditions": [],
-    "loseConditions": [],
-    "activeCharacterIndex": 0,
-    "partyIds": [
-      "player:Ada"
-    ],
     "actedThisRound": [],
-    "gmId": "player:Ada",
-    "materials": {},
-    "claims": [],
-    "encountered": [
-      "player:Ada:mob:Lurker"
-    ],
-    "knownRecipes": [],
+    "actionSounds": {},
+    "activeCharacterIndex": 0,
     "archetypes": [
       {
-        "id": "delver",
-        "name": "Delver",
         "baseStats": {
-          "health": 20,
-          "sanity": 8,
-          "energy": 8
-        }
+          "energy": 8.0,
+          "health": 20.0,
+          "sanity": 8.0
+        },
+        "id": "delver",
+        "name": "Delver"
       }
     ],
-    "actionSounds": {},
-    "encounterTable": {
-      "baseChance": 0,
-      "visited": [
-        "room:Hall"
-      ],
-      "formations": []
+    "avPolicy": {
+      "enabled": true,
+      "maxParticipants": 6,
+      "video": true
     },
     "chatPolicy": {
-      "enabled": true,
-      "whisper": true,
+      "backfillWindow": 200,
       "edit": true,
+      "enabled": true,
       "reactions": true,
       "readReceipts": true,
       "typing": true,
-      "backfillWindow": 200
+      "whisper": true
     },
-    "avPolicy": {
-      "enabled": true,
-      "video": true,
-      "maxParticipants": 6
+    "claims": [],
+    "encounterTable": {
+      "baseChance": 0,
+      "formations": [],
+      "visited": [
+        "room:Hall"
+      ]
     },
-    "mechanics": []
+    "encountered": [
+      "player:Ada:mob:Lurker"
+    ],
+    "gmId": "player:Ada",
+    "id": "campaign:Facade Undo (conformance)",
+    "knownRecipes": [],
+    "loseConditions": [],
+    "materials": {},
+    "maxRounds": 20,
+    "mechanics": [],
+    "outcome": "ongoing",
+    "partyIds": [
+      "player:Ada"
+    ],
+    "round": 0,
+    "started": false,
+    "title": "Facade Undo (conformance)",
+    "winConditions": []
   },
-  "rooms": [
-    {
-      "id": "room:Hall",
-      "name": "Hall",
-      "description": "A stone hall.",
-      "exits": {
-        "north": "exit:Crypt|Hall"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [
-        "mob:Lurker",
-        "player:Ada"
-      ],
-      "lootIds": [
-        "loot:chest"
-      ],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:Crypt",
-      "name": "Crypt",
-      "description": "A dark-cornered crypt.",
-      "exits": {
-        "south": "exit:Crypt|Hall"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    }
-  ],
-  "exits": [
-    {
-      "id": "exit:Crypt|Hall",
-      "endpointIds": [
-        "room:Hall",
-        "room:Crypt"
-      ],
-      "state": {}
-    }
-  ],
   "characters": [
     {
-      "kind": "player",
-      "id": "player:Ada",
-      "name": "Ada",
-      "stats": {
-        "health": 20,
-        "sanity": 8,
-        "energy": 8
-      },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "room:Hall",
-      "inventory": {
-        "slots": 5,
-        "itemIds": [],
-        "keyIds": []
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
       },
+      "archetypeId": "delver",
+      "archetypeImmunities": [],
+      "currentRoomId": "room:Hall",
       "equipment": {},
       "history": [
         {
@@ -132,101 +79,154 @@
           "round": 0
         }
       ],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
+      "id": "player:Ada",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 5
       },
-      "archetypeId": "delver"
+      "kind": "player",
+      "name": "Ada",
+      "stats": {
+        "energy": 8.0,
+        "health": 20.0,
+        "sanity": 8.0
+      }
     },
     {
-      "kind": "mob",
-      "id": "mob:Lurker",
-      "name": "Lurker",
-      "stats": {
-        "health": 6,
-        "sanity": 4,
-        "energy": 4
-      },
       "actionsPerRound": 2,
       "actionsThisRound": 0,
-      "currentRoomId": "room:Hall",
-      "inventory": {
-        "slots": 2,
-        "itemIds": [],
-        "keyIds": []
-      },
-      "equipment": {},
-      "history": [],
-      "archetypeImmunities": [],
       "afflictions": {
         "active": {},
-        "turnsActive": {},
+        "immunity": {},
         "shakenOff": [],
-        "immunity": {}
+        "turnsActive": {}
+      },
+      "archetypeImmunities": [],
+      "baseEscapeChance": 50,
+      "currentRoomId": "room:Hall",
+      "equipment": {},
+      "history": [],
+      "id": "mob:Lurker",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 2
+      },
+      "kind": "mob",
+      "lightAverse": false,
+      "materialDrops": {},
+      "name": "Lurker",
+      "naturalAttack": {
+        "power": 1,
+        "stat": "health"
       },
       "origin": "room",
-      "baseEscapeChance": 50,
-      "materialDrops": {},
-      "lightAverse": false,
-      "naturalAttack": {
-        "stat": "health",
-        "power": 1
+      "stats": {
+        "energy": 4.0,
+        "health": 6.0,
+        "sanity": 4.0
       }
+    }
+  ],
+  "codex": [
+    {
+      "firstSeen": {
+        "characterId": "player:Ada",
+        "roomId": "room:Hall",
+        "round": 0
+      },
+      "key": "Lurker",
+      "kind": "mob",
+      "snapshot": {
+        "name": "Lurker",
+        "stats": {
+          "energy": 4.0,
+          "health": 6.0,
+          "sanity": 4.0
+        }
+      }
+    },
+    {
+      "firstSeen": {
+        "characterId": "player:Ada",
+        "roomId": "room:Hall",
+        "round": 0
+      },
+      "key": "room:Hall",
+      "kind": "room",
+      "snapshot": {
+        "description": "A stone hall.",
+        "name": "Hall"
+      }
+    }
+  ],
+  "exits": [
+    {
+      "endpointIds": [
+        "room:Hall",
+        "room:Crypt"
+      ],
+      "id": "exit:Crypt|Hall",
+      "state": {}
     }
   ],
   "items": [
     {
-      "kind": "item",
-      "id": "loot:chest:item#0",
       "behaviorKey": "items/facade-sword",
       "durability": 5,
+      "id": "loot:chest:item#0",
+      "kind": "item",
       "modifier": 3
     }
   ],
   "loot": [
     {
-      "id": "loot:chest",
-      "description": "An old chest.",
       "capacity": 3,
       "contentIds": [
         "loot:chest:item#0"
-      ]
+      ],
+      "description": "An old chest.",
+      "id": "loot:chest"
     }
   ],
   "materialCaches": [],
-  "codex": [
+  "rooms": [
     {
-      "kind": "mob",
-      "key": "Lurker",
-      "snapshot": {
-        "name": "Lurker",
-        "stats": {
-          "health": 6,
-          "sanity": 4,
-          "energy": 4
-        }
+      "dark": false,
+      "description": "A stone hall.",
+      "exits": {
+        "north": "exit:Crypt|Hall"
       },
-      "firstSeen": {
-        "round": 0,
-        "characterId": "player:Ada",
-        "roomId": "room:Hall"
-      }
+      "id": "room:Hall",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:chest"
+      ],
+      "materialCacheIds": [],
+      "name": "Hall",
+      "occupantIds": [
+        "mob:Lurker",
+        "player:Ada"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
     },
     {
-      "kind": "room",
-      "key": "room:Hall",
-      "snapshot": {
-        "name": "Hall",
-        "description": "A stone hall."
+      "dark": false,
+      "description": "A dark-cornered crypt.",
+      "exits": {
+        "south": "exit:Crypt|Hall"
       },
-      "firstSeen": {
-        "round": 0,
-        "characterId": "player:Ada",
-        "roomId": "room:Hall"
-      }
+      "id": "room:Crypt",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Crypt",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
     }
-  ]
+  ],
+  "schemaVersion": 6
 }

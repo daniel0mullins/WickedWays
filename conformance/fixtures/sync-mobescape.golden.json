@@ -1,79 +1,72 @@
 {
-  "seed": 1,
   "commands": [
     {
       "kind": "mobEscape",
       "mobId": "mob:Rat"
     }
   ],
+  "seed": 1,
   "steps": [
     {
       "command": {
         "kind": "mobEscape",
         "mobId": "mob:Rat"
       },
-      "seq": 1,
       "delta": {
         "changed": [
           {
-            "type": "room",
             "data": {
-              "id": "5b3009ca-4d23-4eac-b919-306ada63a971",
-              "name": "Cell",
+              "dark": false,
               "description": "a cold cell",
               "exits": {
                 "north": "54b433af-8503-4e6b-8e74-85e015a83ac9"
               },
-              "dark": false,
-              "spawnModifier": 1,
+              "id": "5b3009ca-4d23-4eac-b919-306ada63a971",
+              "lightSourceIds": [],
+              "lootIds": [],
+              "materialCacheIds": [],
+              "name": "Cell",
               "occupantIds": [
                 "player:Ada"
               ],
-              "lootIds": [],
-              "materialCacheIds": [],
-              "lightSourceIds": [],
-              "scenes": []
-            }
+              "scenes": [],
+              "spawnModifier": 1
+            },
+            "type": "room"
           },
           {
-            "type": "room",
             "data": {
-              "id": "a218c0bf-eed5-4ada-8abe-dcfdded3feaf",
-              "name": "Hall",
+              "dark": false,
               "description": "a stone hall",
               "exits": {
                 "south": "54b433af-8503-4e6b-8e74-85e015a83ac9"
               },
-              "dark": false,
-              "spawnModifier": 1,
+              "id": "a218c0bf-eed5-4ada-8abe-dcfdded3feaf",
+              "lightSourceIds": [],
+              "lootIds": [],
+              "materialCacheIds": [],
+              "name": "Hall",
               "occupantIds": [
                 "mob:Rat"
               ],
-              "lootIds": [],
-              "materialCacheIds": [],
-              "lightSourceIds": [],
-              "scenes": []
-            }
+              "scenes": [],
+              "spawnModifier": 1
+            },
+            "type": "room"
           },
           {
-            "type": "character",
             "data": {
-              "kind": "mob",
-              "id": "mob:Rat",
-              "name": "Rat",
-              "stats": {
-                "health": 5,
-                "sanity": 5,
-                "energy": 5
-              },
               "actionsPerRound": 2,
               "actionsThisRound": 1,
-              "currentRoomId": "a218c0bf-eed5-4ada-8abe-dcfdded3feaf",
-              "inventory": {
-                "slots": 2,
-                "itemIds": [],
-                "keyIds": []
+              "afflictions": {
+                "active": {},
+                "immunity": {},
+                "shakenOff": [],
+                "turnsActive": {}
               },
+              "archetypeImmunities": [],
+              "baseEscapeChance": 100,
+              "currentRoomId": "a218c0bf-eed5-4ada-8abe-dcfdded3feaf",
               "equipment": {},
               "history": [
                 {
@@ -94,31 +87,38 @@
                 },
                 {
                   "kind": "escape",
-                  "success": true,
-                  "round": 0
+                  "round": 0,
+                  "success": true
                 }
               ],
-              "archetypeImmunities": [],
-              "afflictions": {
-                "active": {},
-                "turnsActive": {},
-                "shakenOff": [],
-                "immunity": {}
+              "id": "mob:Rat",
+              "inventory": {
+                "itemIds": [],
+                "keyIds": [],
+                "slots": 2
+              },
+              "kind": "mob",
+              "lightAverse": false,
+              "materialDrops": {},
+              "name": "Rat",
+              "naturalAttack": {
+                "power": 1,
+                "stat": "health"
               },
               "origin": "unbound",
-              "baseEscapeChance": 100,
-              "materialDrops": {},
-              "lightAverse": false,
-              "naturalAttack": {
-                "stat": "health",
-                "power": 1
+              "stats": {
+                "energy": 5,
+                "health": 5,
+                "sanity": 5
               }
-            }
+            },
+            "type": "character"
           }
         ],
         "created": [],
         "removed": []
-      }
+      },
+      "seq": 1
     }
   ]
 }

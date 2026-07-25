@@ -1,128 +1,106 @@
 {
-  "seed": 262974953,
-  "startupCues": [],
   "ops": [
     {
-      "kind": "submit",
       "intent": {
         "kind": "take",
         "targetId": "loot:chest:item#0"
-      }
+      },
+      "kind": "submit"
     },
     {
-      "kind": "submit",
       "intent": {
         "kind": "wait"
-      }
+      },
+      "kind": "submit"
     }
   ],
+  "seed": 262974953,
+  "startupCues": [],
   "steps": [
     {
       "op": {
-        "kind": "submit",
         "intent": {
           "kind": "take",
           "targetId": "loot:chest:item#0"
-        }
+        },
+        "kind": "submit"
       },
       "result": {
         "cues": [],
         "error": "Cannot loot in the dark"
       },
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Facade Open Fail (conformance)",
-          "title": "Facade Open Fail (conformance)",
-          "maxRounds": 20,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
+                "energy": 8,
                 "health": 10,
-                "sanity": 8,
-                "energy": 8
-              }
+                "sanity": 8
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Vault"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Vault"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Open Fail (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Facade Open Fail (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Vault",
-            "name": "Vault",
-            "description": "A pitch-black vault.",
-            "exits": {},
-            "dark": true,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [
-              "loot:chest"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 8,
-              "energy": 8
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Vault",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Vault",
             "equipment": {},
             "history": [
               {
@@ -134,233 +112,240 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 10.0,
+              "sanity": 8.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Vault",
+              "round": 0
+            },
+            "key": "room:Vault",
+            "kind": "room",
+            "snapshot": {
+              "description": "A pitch-black vault.",
+              "name": "Vault"
+            }
+          }
+        ],
+        "exits": [],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:chest:item#0",
             "behaviorKey": "items/facade-relic",
+            "id": "loot:chest:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:chest",
-            "description": "An unseen chest.",
             "capacity": 3,
             "contentIds": [
               "loot:chest:item#0"
-            ]
+            ],
+            "description": "An unseen chest.",
+            "id": "loot:chest"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Vault",
-            "snapshot": {
-              "name": "Vault",
-              "description": "A pitch-black vault."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Vault"
-            }
+            "dark": true,
+            "description": "A pitch-black vault.",
+            "exits": {},
+            "id": "room:Vault",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "name": "Vault",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Vault",
-          "name": "Vault",
-          "description": "A pitch-black vault.",
-          "isLit": false
-        },
+        "caches": [],
         "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
         "lockedDoors": [],
-        "occupants": [],
         "loot": [
           {
-            "id": "loot:chest",
-            "description": "An unseen chest.",
-            "opened": true,
             "contents": [
               {
-                "id": "loot:chest:item#0",
-                "name": "Relic",
                 "aliases": [
                   "relic"
                 ],
-                "kind": "item",
+                "damaged": false,
+                "destroyable": false,
+                "droppable": true,
                 "equippable": false,
-                "usable": false,
                 "hasLore": false,
-                "droppable": true
+                "id": "loot:chest:item#0",
+                "kind": "item",
+                "name": "Relic",
+                "usable": false
               }
-            ]
+            ],
+            "description": "An unseen chest.",
+            "id": "loot:chest",
+            "opened": true
           }
         ],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A pitch-black vault.",
+          "id": "room:Vault",
+          "isLit": false,
+          "name": "Vault"
         },
         "scope": [
           {
-            "id": "loot:chest:item#0",
-            "name": "Relic",
             "aliases": [
               "relic"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": false,
+            "droppable": true,
             "equippable": false,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "loot:chest:item#0",
+            "kind": "item",
+            "name": "Relic",
+            "usable": false
           },
           {
-            "id": "loot:chest",
-            "name": "An unseen chest.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:chest",
+            "kind": "loot",
+            "name": "An unseen chest."
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Vault",
-          "turn": 0,
           "maxTurns": 20,
-          "sanity": 8,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 8.0,
+          "turn": 0
+        }
       }
     },
     {
       "op": {
-        "kind": "submit",
         "intent": {
           "kind": "wait"
-        }
+        },
+        "kind": "submit"
       },
       "result": {
         "cues": [],
         "mobAttacks": []
       },
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Facade Open Fail (conformance)",
-          "title": "Facade Open Fail (conformance)",
-          "maxRounds": 20,
-          "round": 1,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
+                "energy": 8,
                 "health": 10,
-                "sanity": 8,
-                "energy": 8
-              }
+                "sanity": 8
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Vault"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Vault"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Open Fail (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 1,
+          "started": true,
+          "title": "Facade Open Fail (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Vault",
-            "name": "Vault",
-            "description": "A pitch-black vault.",
-            "exits": {},
-            "dark": true,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [
-              "loot:chest"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 8,
-              "energy": 8
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Vault",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Vault",
             "equipment": {},
             "history": [
               {
@@ -372,126 +357,155 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 10.0,
+              "sanity": 8.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Vault",
+              "round": 0
+            },
+            "key": "room:Vault",
+            "kind": "room",
+            "snapshot": {
+              "description": "A pitch-black vault.",
+              "name": "Vault"
+            }
+          }
+        ],
+        "exits": [],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:chest:item#0",
             "behaviorKey": "items/facade-relic",
+            "id": "loot:chest:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:chest",
-            "description": "An unseen chest.",
             "capacity": 3,
             "contentIds": [
               "loot:chest:item#0"
-            ]
+            ],
+            "description": "An unseen chest.",
+            "id": "loot:chest"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Vault",
-            "snapshot": {
-              "name": "Vault",
-              "description": "A pitch-black vault."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Vault"
-            }
+            "dark": true,
+            "description": "A pitch-black vault.",
+            "exits": {},
+            "id": "room:Vault",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:chest"
+            ],
+            "materialCacheIds": [],
+            "name": "Vault",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Vault",
-          "name": "Vault",
-          "description": "A pitch-black vault.",
-          "isLit": false
-        },
+        "caches": [],
         "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
         "lockedDoors": [],
-        "occupants": [],
         "loot": [
           {
-            "id": "loot:chest",
-            "description": "An unseen chest.",
-            "opened": true,
             "contents": [
               {
-                "id": "loot:chest:item#0",
-                "name": "Relic",
                 "aliases": [
                   "relic"
                 ],
-                "kind": "item",
+                "damaged": false,
+                "destroyable": false,
+                "droppable": true,
                 "equippable": false,
-                "usable": false,
                 "hasLore": false,
-                "droppable": true
+                "id": "loot:chest:item#0",
+                "kind": "item",
+                "name": "Relic",
+                "usable": false
               }
-            ]
+            ],
+            "description": "An unseen chest.",
+            "id": "loot:chest",
+            "opened": true
           }
         ],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A pitch-black vault.",
+          "id": "room:Vault",
+          "isLit": false,
+          "name": "Vault"
         },
         "scope": [
           {
-            "id": "loot:chest:item#0",
-            "name": "Relic",
             "aliases": [
               "relic"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": false,
+            "droppable": true,
             "equippable": false,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "loot:chest:item#0",
+            "kind": "item",
+            "name": "Relic",
+            "usable": false
           },
           {
-            "id": "loot:chest",
-            "name": "An unseen chest.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:chest",
+            "kind": "loot",
+            "name": "An unseen chest."
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Vault",
-          "turn": 1,
           "maxTurns": 20,
-          "sanity": 8,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 8.0,
+          "turn": 1
+        }
       }
     }
   ]

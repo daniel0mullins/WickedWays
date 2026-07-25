@@ -1,5 +1,4 @@
 {
-  "seed": 6669,
   "commands": [
     {
       "kind": "startTurn"
@@ -13,6 +12,7 @@
       "targetId": "loot:cabinet:item#0"
     }
   ],
+  "seed": 6669,
   "steps": [
     {
       "command": {
@@ -20,99 +20,78 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Laudanum Use (conformance)",
-          "title": "Laudanum Use (conformance)",
-          "maxRounds": 10,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Mara"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Mara",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "patient",
-              "name": "Patient",
               "baseStats": {
                 "health": 12,
                 "sanity": 4
               },
-              "inventorySlots": 5
+              "id": "patient",
+              "inventorySlots": 5,
+              "name": "Patient"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Ward"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Ward"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Mara",
+          "id": "campaign:Laudanum Use (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Mara"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Laudanum Use (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Ward",
-            "name": "Ward",
-            "description": "A dim recovery ward.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Mara"
-            ],
-            "lootIds": [
-              "loot:cabinet"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Mara",
-            "name": "Mara",
-            "stats": {
-              "health": 12,
-              "sanity": 4,
-              "energy": 10
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Ward",
-            "inventory": {
-              "slots": 10,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {
+                "fear": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "patient",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Ward",
             "equipment": {},
             "history": [
               {
@@ -124,127 +103,155 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "fear": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Mara",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 10
             },
-            "archetypeId": "patient"
+            "kind": "player",
+            "name": "Mara",
+            "stats": {
+              "energy": 10.0,
+              "health": 12.0,
+              "sanity": 4.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Ward",
+              "round": 0
+            },
+            "key": "room:Ward",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dim recovery ward.",
+              "name": "Ward"
+            }
+          }
+        ],
+        "exits": [],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:cabinet:item#0",
             "behaviorKey": "laudanum",
+            "id": "loot:cabinet:item#0",
+            "kind": "item",
             "modifier": 6
           }
         ],
         "loot": [
           {
-            "id": "loot:cabinet",
-            "description": "A medicine cabinet.",
             "capacity": 3,
             "contentIds": [
               "loot:cabinet:item#0"
-            ]
+            ],
+            "description": "A medicine cabinet.",
+            "id": "loot:cabinet"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Ward",
-            "snapshot": {
-              "name": "Ward",
-              "description": "A dim recovery ward."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Ward"
-            }
+            "dark": false,
+            "description": "A dim recovery ward.",
+            "exits": {},
+            "id": "room:Ward",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:cabinet"
+            ],
+            "materialCacheIds": [],
+            "name": "Ward",
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Ward",
-          "name": "Ward",
-          "description": "A dim recovery ward.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 10
+        },
         "lockedDoors": [],
-        "occupants": [],
         "loot": [
           {
-            "id": "loot:cabinet",
-            "description": "A medicine cabinet.",
-            "opened": false,
             "contents": [
               {
-                "id": "loot:cabinet:item#0",
-                "name": "Vial of Laudanum",
                 "aliases": [
                   "vial of laudanum"
                 ],
-                "kind": "item",
+                "damaged": false,
+                "destroyable": true,
+                "droppable": true,
                 "equippable": false,
-                "usable": true,
                 "hasLore": false,
-                "droppable": true
+                "id": "loot:cabinet:item#0",
+                "kind": "item",
+                "name": "Vial of Laudanum",
+                "usable": true
               }
-            ]
+            ],
+            "description": "A medicine cabinet.",
+            "id": "loot:cabinet",
+            "opened": false
           }
         ],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 10
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A dim recovery ward.",
+          "id": "room:Ward",
+          "isLit": true,
+          "name": "Ward"
         },
         "scope": [
           {
-            "id": "loot:cabinet:item#0",
-            "name": "Vial of Laudanum",
             "aliases": [
               "vial of laudanum"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": false,
-            "usable": true,
             "hasLore": false,
-            "droppable": true
+            "id": "loot:cabinet:item#0",
+            "kind": "item",
+            "name": "Vial of Laudanum",
+            "usable": true
           },
           {
-            "id": "loot:cabinet",
-            "name": "A medicine cabinet.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:cabinet",
+            "kind": "loot",
+            "name": "A medicine cabinet."
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Ward",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 4,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 4.0,
+          "turn": 0
+        }
       }
     },
     {
@@ -254,110 +261,87 @@
       },
       "cues": [
         {
-          "kind": "action",
           "action": "pickUp",
           "actor": {
             "id": "player:Mara",
             "name": "Mara"
-          }
+          },
+          "kind": "action"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Laudanum Use (conformance)",
-          "title": "Laudanum Use (conformance)",
-          "maxRounds": 10,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Mara"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Mara",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "patient",
-              "name": "Patient",
               "baseStats": {
                 "health": 12,
                 "sanity": 4
               },
-              "inventorySlots": 5
+              "id": "patient",
+              "inventorySlots": 5,
+              "name": "Patient"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Ward"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Ward"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Mara",
+          "id": "campaign:Laudanum Use (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Mara"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Laudanum Use (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Ward",
-            "name": "Ward",
-            "description": "A dim recovery ward.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Mara"
-            ],
-            "lootIds": [
-              "loot:cabinet"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Mara",
-            "name": "Mara",
-            "stats": {
-              "health": 12,
-              "sanity": 4,
-              "energy": 10
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Ward",
-            "inventory": {
-              "slots": 10,
-              "itemIds": [
-                "loot:cabinet:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {
+                "fear": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "patient",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Ward",
             "equipment": {},
             "history": [
               {
@@ -369,148 +353,178 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:cabinet:item#0",
                     "name": "Vial of Laudanum"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "fear": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Mara",
+            "inventory": {
+              "itemIds": [
+                "loot:cabinet:item#0"
+              ],
+              "keyIds": [],
+              "slots": 10
             },
-            "archetypeId": "patient"
+            "kind": "player",
+            "name": "Mara",
+            "stats": {
+              "energy": 10.0,
+              "health": 12.0,
+              "sanity": 4.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Ward",
+              "round": 0
+            },
+            "key": "room:Ward",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dim recovery ward.",
+              "name": "Ward"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Ward",
+              "round": 0
+            },
+            "key": "consumable:Vial of Laudanum",
+            "kind": "item",
+            "snapshot": {
+              "name": "Vial of Laudanum",
+              "type": "consumable"
+            }
+          }
+        ],
+        "exits": [],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:cabinet:item#0",
             "behaviorKey": "laudanum",
+            "id": "loot:cabinet:item#0",
+            "kind": "item",
             "modifier": 6
           }
         ],
         "loot": [
           {
-            "id": "loot:cabinet",
-            "description": "A medicine cabinet.",
             "capacity": 3,
-            "contentIds": []
+            "contentIds": [],
+            "description": "A medicine cabinet.",
+            "id": "loot:cabinet"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Ward",
-            "snapshot": {
-              "name": "Ward",
-              "description": "A dim recovery ward."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Ward"
-            }
-          },
-          {
-            "kind": "item",
-            "key": "consumable:Vial of Laudanum",
-            "snapshot": {
-              "name": "Vial of Laudanum",
-              "type": "consumable"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Ward"
-            }
-          }
-        ]
-      },
-      "view": {
-        "room": {
-          "id": "room:Ward",
-          "name": "Ward",
-          "description": "A dim recovery ward.",
-          "isLit": true
-        },
-        "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [
-          {
-            "id": "loot:cabinet",
-            "description": "A medicine cabinet.",
-            "opened": true,
-            "contents": []
+            "dark": false,
+            "description": "A dim recovery ward.",
+            "exits": {},
+            "id": "room:Ward",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:cabinet"
+            ],
+            "materialCacheIds": [],
+            "name": "Ward",
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
         ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:cabinet:item#0",
-              "name": "Vial of Laudanum",
               "aliases": [
                 "vial of laudanum"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": true,
               "equippable": false,
-              "usable": true,
               "hasLore": false,
-              "droppable": true
+              "id": "loot:cabinet:item#0",
+              "kind": "item",
+              "name": "Vial of Laudanum",
+              "usable": true
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 10
+        },
+        "lockedDoors": [],
+        "loot": [
+          {
+            "contents": [],
+            "description": "A medicine cabinet.",
+            "id": "loot:cabinet",
+            "opened": true
+          }
+        ],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A dim recovery ward.",
+          "id": "room:Ward",
+          "isLit": true,
+          "name": "Ward"
         },
         "scope": [
           {
-            "id": "loot:cabinet:item#0",
-            "name": "Vial of Laudanum",
             "aliases": [
               "vial of laudanum"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": false,
-            "usable": true,
             "hasLore": false,
-            "droppable": true
+            "id": "loot:cabinet:item#0",
+            "kind": "item",
+            "name": "Vial of Laudanum",
+            "usable": true
           },
           {
-            "id": "loot:cabinet",
-            "name": "A medicine cabinet.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:cabinet",
+            "kind": "loot",
+            "name": "A medicine cabinet."
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Ward",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 4,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 4.0,
+          "turn": 0
+        }
       }
     },
     {
@@ -520,108 +534,86 @@
       },
       "cues": [
         {
-          "kind": "action",
           "action": "drop",
           "actor": {
             "id": "player:Mara",
             "name": "Mara"
-          }
+          },
+          "kind": "action"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Laudanum Use (conformance)",
-          "title": "Laudanum Use (conformance)",
-          "maxRounds": 10,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Mara"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Mara",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "patient",
-              "name": "Patient",
               "baseStats": {
                 "health": 12,
                 "sanity": 4
               },
-              "inventorySlots": 5
+              "id": "patient",
+              "inventorySlots": 5,
+              "name": "Patient"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Ward"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Ward"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Mara",
+          "id": "campaign:Laudanum Use (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Mara"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Laudanum Use (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Ward",
-            "name": "Ward",
-            "description": "A dim recovery ward.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Mara"
-            ],
-            "lootIds": [
-              "loot:cabinet"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Mara",
-            "name": "Mara",
-            "stats": {
-              "health": 12,
-              "sanity": 10,
-              "energy": 10
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 2,
-            "currentRoomId": "room:Ward",
-            "inventory": {
-              "slots": 10,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "patient",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Ward",
             "equipment": {},
             "history": [
               {
@@ -633,125 +625,150 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:cabinet:item#0",
                     "name": "Vial of Laudanum"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
-                "kind": "drop",
                 "items": [
                   {
                     "id": "loot:cabinet:item#0",
                     "name": "Vial of Laudanum"
                   }
                 ],
+                "kind": "drop",
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0,
-                "fear": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Mara",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 10
             },
-            "archetypeId": "patient"
+            "kind": "player",
+            "name": "Mara",
+            "stats": {
+              "energy": 10.0,
+              "health": 12.0,
+              "sanity": 10.0
+            }
           }
         ],
-        "items": [],
-        "loot": [
-          {
-            "id": "loot:cabinet",
-            "description": "A medicine cabinet.",
-            "capacity": 3,
-            "contentIds": []
-          }
-        ],
-        "materialCaches": [],
         "codex": [
           {
-            "kind": "room",
-            "key": "room:Ward",
-            "snapshot": {
-              "name": "Ward",
-              "description": "A dim recovery ward."
-            },
             "firstSeen": {
-              "round": 0,
               "characterId": "player:Mara",
-              "roomId": "room:Ward"
+              "roomId": "room:Ward",
+              "round": 0
+            },
+            "key": "room:Ward",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dim recovery ward.",
+              "name": "Ward"
             }
           },
           {
-            "kind": "item",
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Ward",
+              "round": 0
+            },
             "key": "consumable:Vial of Laudanum",
+            "kind": "item",
             "snapshot": {
               "name": "Vial of Laudanum",
               "type": "consumable"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Ward"
             }
           }
-        ]
-      },
-      "view": {
-        "room": {
-          "id": "room:Ward",
-          "name": "Ward",
-          "description": "A dim recovery ward.",
-          "isLit": true
-        },
+        ],
         "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
+        "items": [],
         "loot": [
           {
-            "id": "loot:cabinet",
+            "capacity": 3,
+            "contentIds": [],
             "description": "A medicine cabinet.",
-            "opened": true,
-            "contents": []
+            "id": "loot:cabinet"
           }
         ],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A dim recovery ward.",
+            "exits": {},
+            "id": "room:Ward",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:cabinet"
+            ],
+            "materialCacheIds": [],
+            "name": "Ward",
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [],
           "keys": [],
-          "equippedNames": [],
           "slots": 10
+        },
+        "lockedDoors": [],
+        "loot": [
+          {
+            "contents": [],
+            "description": "A medicine cabinet.",
+            "id": "loot:cabinet",
+            "opened": true
+          }
+        ],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A dim recovery ward.",
+          "id": "room:Ward",
+          "isLit": true,
+          "name": "Ward"
         },
         "scope": [
           {
-            "id": "loot:cabinet",
-            "name": "A medicine cabinet.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:cabinet",
+            "kind": "loot",
+            "name": "A medicine cabinet."
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Ward",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 10,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 10.0,
+          "turn": 0
+        }
       }
     }
   ]

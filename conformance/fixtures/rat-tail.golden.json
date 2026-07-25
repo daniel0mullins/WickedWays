@@ -1,5 +1,4 @@
 {
-  "seed": 10775,
   "commands": [
     {
       "kind": "startTurn"
@@ -13,6 +12,7 @@
       "targetId": "loot:nest:item#0"
     }
   ],
+  "seed": 10775,
   "steps": [
     {
       "command": {
@@ -20,99 +20,78 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Rat-Tail Use (conformance)",
-          "title": "Rat-Tail Use (conformance)",
-          "maxRounds": 10,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Mara"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Mara",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
                 "health": 12,
                 "sanity": 4
               },
-              "inventorySlots": 5
+              "id": "delver",
+              "inventorySlots": 5,
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Warren"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Warren"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Mara",
+          "id": "campaign:Rat-Tail Use (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Mara"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Rat-Tail Use (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Warren",
-            "name": "Warren",
-            "description": "A rat-gnawed cellar corner.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Mara"
-            ],
-            "lootIds": [
-              "loot:nest"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Mara",
-            "name": "Mara",
-            "stats": {
-              "health": 12,
-              "sanity": 4,
-              "energy": 10
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Warren",
-            "inventory": {
-              "slots": 10,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {
+                "fear": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Warren",
             "equipment": {},
             "history": [
               {
@@ -124,127 +103,155 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "fear": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Mara",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 10
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Mara",
+            "stats": {
+              "energy": 10.0,
+              "health": 12.0,
+              "sanity": 4.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Warren",
+              "round": 0
+            },
+            "key": "room:Warren",
+            "kind": "room",
+            "snapshot": {
+              "description": "A rat-gnawed cellar corner.",
+              "name": "Warren"
+            }
+          }
+        ],
+        "exits": [],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:nest:item#0",
             "behaviorKey": "rat-tail",
+            "id": "loot:nest:item#0",
+            "kind": "item",
             "modifier": 1
           }
         ],
         "loot": [
           {
-            "id": "loot:nest",
-            "description": "A filthy nest of rags.",
             "capacity": 3,
             "contentIds": [
               "loot:nest:item#0"
-            ]
+            ],
+            "description": "A filthy nest of rags.",
+            "id": "loot:nest"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Warren",
-            "snapshot": {
-              "name": "Warren",
-              "description": "A rat-gnawed cellar corner."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Warren"
-            }
+            "dark": false,
+            "description": "A rat-gnawed cellar corner.",
+            "exits": {},
+            "id": "room:Warren",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:nest"
+            ],
+            "materialCacheIds": [],
+            "name": "Warren",
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Warren",
-          "name": "Warren",
-          "description": "A rat-gnawed cellar corner.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 10
+        },
         "lockedDoors": [],
-        "occupants": [],
         "loot": [
           {
-            "id": "loot:nest",
-            "description": "A filthy nest of rags.",
-            "opened": false,
             "contents": [
               {
-                "id": "loot:nest:item#0",
-                "name": "Rat Tail",
                 "aliases": [
                   "rat tail"
                 ],
-                "kind": "item",
+                "damaged": false,
+                "destroyable": true,
+                "droppable": true,
                 "equippable": false,
-                "usable": true,
                 "hasLore": false,
-                "droppable": true
+                "id": "loot:nest:item#0",
+                "kind": "item",
+                "name": "Rat Tail",
+                "usable": true
               }
-            ]
+            ],
+            "description": "A filthy nest of rags.",
+            "id": "loot:nest",
+            "opened": false
           }
         ],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 10
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A rat-gnawed cellar corner.",
+          "id": "room:Warren",
+          "isLit": true,
+          "name": "Warren"
         },
         "scope": [
           {
-            "id": "loot:nest:item#0",
-            "name": "Rat Tail",
             "aliases": [
               "rat tail"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": false,
-            "usable": true,
             "hasLore": false,
-            "droppable": true
+            "id": "loot:nest:item#0",
+            "kind": "item",
+            "name": "Rat Tail",
+            "usable": true
           },
           {
-            "id": "loot:nest",
-            "name": "A filthy nest of rags.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:nest",
+            "kind": "loot",
+            "name": "A filthy nest of rags."
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Warren",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 4,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 4.0,
+          "turn": 0
+        }
       }
     },
     {
@@ -254,110 +261,87 @@
       },
       "cues": [
         {
-          "kind": "action",
           "action": "pickUp",
           "actor": {
             "id": "player:Mara",
             "name": "Mara"
-          }
+          },
+          "kind": "action"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Rat-Tail Use (conformance)",
-          "title": "Rat-Tail Use (conformance)",
-          "maxRounds": 10,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Mara"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Mara",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
                 "health": 12,
                 "sanity": 4
               },
-              "inventorySlots": 5
+              "id": "delver",
+              "inventorySlots": 5,
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Warren"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Warren"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Mara",
+          "id": "campaign:Rat-Tail Use (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Mara"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Rat-Tail Use (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Warren",
-            "name": "Warren",
-            "description": "A rat-gnawed cellar corner.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Mara"
-            ],
-            "lootIds": [
-              "loot:nest"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Mara",
-            "name": "Mara",
-            "stats": {
-              "health": 12,
-              "sanity": 4,
-              "energy": 10
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Warren",
-            "inventory": {
-              "slots": 10,
-              "itemIds": [
-                "loot:nest:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {
+                "fear": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Warren",
             "equipment": {},
             "history": [
               {
@@ -369,148 +353,178 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:nest:item#0",
                     "name": "Rat Tail"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "fear": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Mara",
+            "inventory": {
+              "itemIds": [
+                "loot:nest:item#0"
+              ],
+              "keyIds": [],
+              "slots": 10
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Mara",
+            "stats": {
+              "energy": 10.0,
+              "health": 12.0,
+              "sanity": 4.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Warren",
+              "round": 0
+            },
+            "key": "room:Warren",
+            "kind": "room",
+            "snapshot": {
+              "description": "A rat-gnawed cellar corner.",
+              "name": "Warren"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Warren",
+              "round": 0
+            },
+            "key": "consumable:Rat Tail",
+            "kind": "item",
+            "snapshot": {
+              "name": "Rat Tail",
+              "type": "consumable"
+            }
+          }
+        ],
+        "exits": [],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:nest:item#0",
             "behaviorKey": "rat-tail",
+            "id": "loot:nest:item#0",
+            "kind": "item",
             "modifier": 1
           }
         ],
         "loot": [
           {
-            "id": "loot:nest",
-            "description": "A filthy nest of rags.",
             "capacity": 3,
-            "contentIds": []
+            "contentIds": [],
+            "description": "A filthy nest of rags.",
+            "id": "loot:nest"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Warren",
-            "snapshot": {
-              "name": "Warren",
-              "description": "A rat-gnawed cellar corner."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Warren"
-            }
-          },
-          {
-            "kind": "item",
-            "key": "consumable:Rat Tail",
-            "snapshot": {
-              "name": "Rat Tail",
-              "type": "consumable"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Warren"
-            }
-          }
-        ]
-      },
-      "view": {
-        "room": {
-          "id": "room:Warren",
-          "name": "Warren",
-          "description": "A rat-gnawed cellar corner.",
-          "isLit": true
-        },
-        "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [
-          {
-            "id": "loot:nest",
-            "description": "A filthy nest of rags.",
-            "opened": true,
-            "contents": []
+            "dark": false,
+            "description": "A rat-gnawed cellar corner.",
+            "exits": {},
+            "id": "room:Warren",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:nest"
+            ],
+            "materialCacheIds": [],
+            "name": "Warren",
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
         ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:nest:item#0",
-              "name": "Rat Tail",
               "aliases": [
                 "rat tail"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": true,
               "equippable": false,
-              "usable": true,
               "hasLore": false,
-              "droppable": true
+              "id": "loot:nest:item#0",
+              "kind": "item",
+              "name": "Rat Tail",
+              "usable": true
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 10
+        },
+        "lockedDoors": [],
+        "loot": [
+          {
+            "contents": [],
+            "description": "A filthy nest of rags.",
+            "id": "loot:nest",
+            "opened": true
+          }
+        ],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A rat-gnawed cellar corner.",
+          "id": "room:Warren",
+          "isLit": true,
+          "name": "Warren"
         },
         "scope": [
           {
-            "id": "loot:nest:item#0",
-            "name": "Rat Tail",
             "aliases": [
               "rat tail"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": false,
-            "usable": true,
             "hasLore": false,
-            "droppable": true
+            "id": "loot:nest:item#0",
+            "kind": "item",
+            "name": "Rat Tail",
+            "usable": true
           },
           {
-            "id": "loot:nest",
-            "name": "A filthy nest of rags.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:nest",
+            "kind": "loot",
+            "name": "A filthy nest of rags."
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Warren",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 4,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 4.0,
+          "turn": 0
+        }
       }
     },
     {
@@ -520,108 +534,86 @@
       },
       "cues": [
         {
-          "kind": "action",
           "action": "drop",
           "actor": {
             "id": "player:Mara",
             "name": "Mara"
-          }
+          },
+          "kind": "action"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Rat-Tail Use (conformance)",
-          "title": "Rat-Tail Use (conformance)",
-          "maxRounds": 10,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Mara"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Mara",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
                 "health": 12,
                 "sanity": 4
               },
-              "inventorySlots": 5
+              "id": "delver",
+              "inventorySlots": 5,
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Warren"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Warren"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Mara",
+          "id": "campaign:Rat-Tail Use (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Mara"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Rat-Tail Use (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Warren",
-            "name": "Warren",
-            "description": "A rat-gnawed cellar corner.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Mara"
-            ],
-            "lootIds": [
-              "loot:nest"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Mara",
-            "name": "Mara",
-            "stats": {
-              "health": 12,
-              "sanity": 5,
-              "energy": 10
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 2,
-            "currentRoomId": "room:Warren",
-            "inventory": {
-              "slots": 10,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Warren",
             "equipment": {},
             "history": [
               {
@@ -633,125 +625,150 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:nest:item#0",
                     "name": "Rat Tail"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
-                "kind": "drop",
                 "items": [
                   {
                     "id": "loot:nest:item#0",
                     "name": "Rat Tail"
                   }
                 ],
+                "kind": "drop",
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0,
-                "fear": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Mara",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 10
             },
-            "archetypeId": "delver"
+            "kind": "player",
+            "name": "Mara",
+            "stats": {
+              "energy": 10.0,
+              "health": 12.0,
+              "sanity": 5.0
+            }
           }
         ],
-        "items": [],
-        "loot": [
-          {
-            "id": "loot:nest",
-            "description": "A filthy nest of rags.",
-            "capacity": 3,
-            "contentIds": []
-          }
-        ],
-        "materialCaches": [],
         "codex": [
           {
-            "kind": "room",
-            "key": "room:Warren",
-            "snapshot": {
-              "name": "Warren",
-              "description": "A rat-gnawed cellar corner."
-            },
             "firstSeen": {
-              "round": 0,
               "characterId": "player:Mara",
-              "roomId": "room:Warren"
+              "roomId": "room:Warren",
+              "round": 0
+            },
+            "key": "room:Warren",
+            "kind": "room",
+            "snapshot": {
+              "description": "A rat-gnawed cellar corner.",
+              "name": "Warren"
             }
           },
           {
-            "kind": "item",
+            "firstSeen": {
+              "characterId": "player:Mara",
+              "roomId": "room:Warren",
+              "round": 0
+            },
             "key": "consumable:Rat Tail",
+            "kind": "item",
             "snapshot": {
               "name": "Rat Tail",
               "type": "consumable"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Mara",
-              "roomId": "room:Warren"
             }
           }
-        ]
-      },
-      "view": {
-        "room": {
-          "id": "room:Warren",
-          "name": "Warren",
-          "description": "A rat-gnawed cellar corner.",
-          "isLit": true
-        },
+        ],
         "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
+        "items": [],
         "loot": [
           {
-            "id": "loot:nest",
+            "capacity": 3,
+            "contentIds": [],
             "description": "A filthy nest of rags.",
-            "opened": true,
-            "contents": []
+            "id": "loot:nest"
           }
         ],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A rat-gnawed cellar corner.",
+            "exits": {},
+            "id": "room:Warren",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:nest"
+            ],
+            "materialCacheIds": [],
+            "name": "Warren",
+            "occupantIds": [
+              "player:Mara"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [],
           "keys": [],
-          "equippedNames": [],
           "slots": 10
+        },
+        "lockedDoors": [],
+        "loot": [
+          {
+            "contents": [],
+            "description": "A filthy nest of rags.",
+            "id": "loot:nest",
+            "opened": true
+          }
+        ],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A rat-gnawed cellar corner.",
+          "id": "room:Warren",
+          "isLit": true,
+          "name": "Warren"
         },
         "scope": [
           {
-            "id": "loot:nest",
-            "name": "A filthy nest of rags.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:nest",
+            "kind": "loot",
+            "name": "A filthy nest of rags."
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Warren",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 5,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 5.0,
+          "turn": 0
+        }
       }
     }
   ]

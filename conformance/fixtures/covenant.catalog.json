@@ -1,47 +1,4 @@
 {
-  "items": {
-    "rite-tablet": {
-      "name": "Rite Tablet",
-      "type": "consumable",
-      "stat": "health",
-      "modifier": 0,
-      "properties": {
-        "equippable": false,
-        "equipped": false,
-        "destroyable": false,
-        "usable": false,
-        "droppable": false
-      },
-      "lore": "The tablet is worn almost smooth, but the rite is still legible where a patient thumb has traced it a thousand times. \"The seal was set by two and is broken by two. Let one Warden stand upon the North Ward and another upon the South, in the same moment, and the way will open to them both. Do not send one alone into the wards hoping to hold both discs by running between them -- the sanctum is older than your legs, and it counts. It has always counted. Go together, or remain.\"",
-      "recipe": {
-        "item": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    },
-    "ward-charm": {
-      "name": "Ward Charm",
-      "type": "consumable",
-      "stat": "sanity",
-      "modifier": 2,
-      "properties": {
-        "equippable": false,
-        "equipped": false,
-        "destroyable": true,
-        "usable": false,
-        "droppable": true
-      },
-      "lore": "A knot of salt-crusted iron, still warm from the forging. Closing a hand around it, a Warden's breath comes a little easier -- the dark leans back, if only for a moment.",
-      "recipe": {
-        "iron": 2,
-        "salt": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    }
-  },
   "aliases": {
     "rite-tablet": [
       "tablet",
@@ -59,7 +16,6 @@
       "script": {
         "test": {
           "kind": "bin",
-          "op": "and",
           "left": {
             "kind": "some",
             "list": {
@@ -67,24 +23,25 @@
             },
             "pred": {
               "kind": "bin",
-              "op": "eq",
               "left": {
+                "field": "name",
                 "kind": "get",
                 "of": {
+                  "field": "room",
                   "kind": "get",
                   "of": {
                     "kind": "element"
-                  },
-                  "field": "room"
-                },
-                "field": "name"
+                  }
+                }
               },
+              "op": "eq",
               "right": {
                 "kind": "lit",
                 "value": "North Ward"
               }
             }
           },
+          "op": "and",
           "right": {
             "kind": "some",
             "list": {
@@ -92,18 +49,18 @@
             },
             "pred": {
               "kind": "bin",
-              "op": "eq",
               "left": {
+                "field": "name",
                 "kind": "get",
                 "of": {
+                  "field": "room",
                   "kind": "get",
                   "of": {
                     "kind": "element"
-                  },
-                  "field": "room"
-                },
-                "field": "name"
+                  }
+                }
               },
+              "op": "eq",
               "right": {
                 "kind": "lit",
                 "value": "South Ward"
@@ -115,15 +72,58 @@
     }
   },
   "formations": {},
+  "items": {
+    "rite-tablet": {
+      "grantsImmunity": null,
+      "immunities": null,
+      "lore": "The tablet is worn almost smooth, but the rite is still legible where a patient thumb has traced it a thousand times. \"The seal was set by two and is broken by two. Let one Warden stand upon the North Ward and another upon the South, in the same moment, and the way will open to them both. Do not send one alone into the wards hoping to hold both discs by running between them -- the sanctum is older than your legs, and it counts. It has always counted. Go together, or remain.\"",
+      "modifier": 0,
+      "name": "Rite Tablet",
+      "properties": {
+        "destroyable": false,
+        "droppable": false,
+        "equippable": false,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {
+        "item": 1
+      },
+      "stat": "health",
+      "teaches": null,
+      "type": "consumable"
+    },
+    "ward-charm": {
+      "grantsImmunity": null,
+      "immunities": null,
+      "lore": "A knot of salt-crusted iron, still warm from the forging. Closing a hand around it, a Warden's breath comes a little easier -- the dark leans back, if only for a moment.",
+      "modifier": 2,
+      "name": "Ward Charm",
+      "properties": {
+        "destroyable": true,
+        "droppable": true,
+        "equippable": false,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {
+        "iron": 2,
+        "salt": 1
+      },
+      "stat": "sanity",
+      "teaches": null,
+      "type": "consumable"
+    }
+  },
   "recipes": {
     "ward-charm": {
       "id": "ward-charm",
-      "outputName": "Ward Charm",
       "materials": {
         "iron": 2,
         "salt": 1
       },
-      "outputItemKey": "ward-charm"
+      "outputItemKey": "ward-charm",
+      "outputName": "Ward Charm"
     }
   }
 }

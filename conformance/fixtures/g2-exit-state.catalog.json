@@ -1,26 +1,4 @@
 {
-  "items": {
-    "cellar-key": {
-      "name": "Cellar Key",
-      "type": "key",
-      "stat": "health",
-      "modifier": 0,
-      "properties": {
-        "equippable": false,
-        "equipped": false,
-        "destroyable": false,
-        "usable": false
-      },
-      "keyCode": "cellar",
-      "consumeOnUse": false,
-      "recipe": {
-        "item": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    }
-  },
   "aliases": {},
   "behaviors": {
     "cellar-door": {
@@ -28,35 +6,36 @@
       "script": {
         "canPass": {
           "kind": "bin",
-          "op": "or",
           "left": {
-            "kind": "stateGet",
+            "default": false,
             "field": "unlocked",
-            "default": false
+            "kind": "stateGet"
           },
+          "op": "or",
           "right": {
+            "keyCode": "cellar",
             "kind": "hasKey",
             "of": {
               "kind": "actor"
-            },
-            "keyCode": "cellar"
+            }
           }
         },
+        "failMessage": "The cellar door won't budge — it's locked.",
         "runScript": [
           {
-            "kind": "when",
             "cond": {
-              "kind": "not",
               "expr": {
-                "kind": "stateGet",
+                "default": false,
                 "field": "unlocked",
-                "default": false
-              }
+                "kind": "stateGet"
+              },
+              "kind": "not"
             },
+            "kind": "when",
             "then": [
               {
-                "kind": "setState",
                 "field": "unlocked",
+                "kind": "setState",
                 "value": {
                   "kind": "lit",
                   "value": true
@@ -71,11 +50,32 @@
               }
             ]
           }
-        ],
-        "failMessage": "The cellar door won't budge — it's locked."
+        ]
       }
     }
   },
   "formations": {},
+  "items": {
+    "cellar-key": {
+      "consumeOnUse": false,
+      "grantsImmunity": null,
+      "immunities": null,
+      "keyCode": "cellar",
+      "modifier": 0,
+      "name": "Cellar Key",
+      "properties": {
+        "destroyable": false,
+        "equippable": false,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {
+        "item": 1
+      },
+      "stat": "health",
+      "teaches": null,
+      "type": "key"
+    }
+  },
   "recipes": {}
 }

@@ -1,38 +1,38 @@
 {
-  "title": "Archetype",
-  "opts": {},
   "archetypes": [
     {
-      "id": "heir",
-      "name": "Heir",
       "baseStats": {
-        "health": 12,
-        "sanity": 16,
-        "energy": 5
+        "energy": 5.0,
+        "health": 12.0,
+        "sanity": 16.0
       },
-      "inventorySlots": 1,
+      "id": "heir",
       "immunities": [
         "fear"
-      ]
+      ],
+      "inventorySlots": 1,
+      "name": "Heir"
     }
   ],
+  "caches": [],
+  "exits": [],
+  "formations": [],
+  "loot": [],
+  "loseConditions": [],
+  "materials": [],
+  "mechanics": [],
+  "mobs": [],
+  "npcs": [],
+  "opts": {},
+  "recipes": [],
   "rooms": [
     {
-      "name": "Hall",
-      "description": "A long central hall."
+      "description": "A long central hall.",
+      "name": "Hall"
     }
   ],
-  "startRoom": "Hall",
-  "exits": [],
-  "mobs": [],
-  "loot": [],
-  "caches": [],
-  "npcs": [],
-  "formations": [],
   "scenes": [],
-  "recipes": [],
-  "materials": [],
-  "winConditions": [],
-  "loseConditions": [],
-  "mechanics": []
+  "startRoom": "Hall",
+  "title": "Archetype",
+  "winConditions": []
 }
