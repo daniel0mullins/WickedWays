@@ -143,22 +143,6 @@ fn ada() -> Vec<Seat> {
 /// a mob in a NON-start room that is therefore NOT discovered (`scripted-scene`),
 /// held-key NPCs (`caretaker`, `npc-foundation`), and an opted-in mechanic
 /// (`facade-talk`).
-///
-/// Seven of these were previously excluded because their committed INPUT artifacts
-/// were corrupt/incomplete due to fixture-GENERATOR bugs (NOT a seating defect —
-/// see `.superpowers/sdd/task-7-report.md`); those generator bugs are now fixed and
-/// the inputs regenerated:
-///   * post-op stat/state drift — the description was serialized AFTER the golden
-///     ops ran, and `Character`/`Exit` store state by reference, so ops leaked into
-///     `description.mobs[].stats` (and an exit's `initialState`): `facade-afflicted-mob`
-///     (Blocked 6→8), `facade-legality` (Wraith 0→1), `facade-lit-entry` (Brute
-///     4.8→6), `facade-mob-combat` (Brute 4.8→6), `caretaker` (door unlocked→locked).
-///     Fixed: `facade-gen.ts` now clones the description BEFORE `runFacadeGolden`.
-///   * catalog omitted an item the description references (held key lived only in
-///     the registry): `caretaker` (`cellar-key`), `npc-foundation` (`items/gate-key`)
-///     — now exported into each catalog's `items`.
-///   * catalog omitted a referenced mechanic behavior: `facade-talk`
-///     (`conformance:dread`) — now exported into the catalog `behaviors`.
 #[test]
 fn facade_genesis_goldens_single_pc() {
     for name in [
@@ -203,10 +187,10 @@ fn two_pc_genesis_golden() {
     gate("two-pc", "two-pc.genesis.json", Some("two-pc"), &party);
 }
 
-/// The G2 MVP author's canonical `Vault` campaign, seated with a single PC that
-/// declares NO archetype (`Seat { archetype: None }` — the MVP TOML surface has no
-/// archetype concept, so `player:Ada`'s `archetypeId` is `null` in the genesis).
-/// Gates the assembler over the G2 oracle: a keyed door (`hasKey(actor, 'vault')`),
+/// The g2-vault author oracle: the canonical `Vault` campaign, seated with a single
+/// PC that declares NO archetype (`Seat { archetype: None }` — the TOML author
+/// surface has no archetype concept, so `player:Ada`'s `archetypeId` is `null` in
+/// the genesis). Gates the assembler over a keyed door (`hasKey(actor, 'vault')`),
 /// an authored key item placed inside a loot container (`shelf` holds `vault-key`),
 /// and a `party[0].room.name == 'Vault'` victory.
 #[test]
@@ -223,9 +207,9 @@ fn g2_vault_genesis_golden() {
     );
 }
 
-/// The G2 "scene bodies" author oracle, seated with a single PC that declares NO
-/// archetype (`Seat { archetype: None }` — the surface has no archetype concept, so
-/// `player:Ada`'s `archetypeId` is `null` in the genesis). Gates the assembler over
+/// The g2-scene author oracle (scene bodies), seated with a single PC that declares
+/// NO archetype (`Seat { archetype: None }` — the surface has no archetype concept,
+/// so `player:Ada`'s `archetypeId` is `null` in the genesis). Gates the assembler over
 /// a room-attached enter-scene: the `[[scenes]]` attachment reaches the genesis as a
 /// pristine (pre-begin, `state: {}`) `scene:Threshold:scene/threshold-draft:enter`
 /// entry, and its `BehaviorScript::Scene` (canPlay expr + onEnter statement body)
@@ -244,9 +228,9 @@ fn g2_scene_genesis_golden() {
     );
 }
 
-/// The G2 "item bodies" author oracle, seated with a single PC that declares NO
-/// archetype (`Seat { archetype: None }` — the surface has no archetype concept, so
-/// `player:Ada`'s stats are the campaign defaults). Gates the assembler over a
+/// The g2-item author oracle (item bodies), seated with a single PC that declares
+/// NO archetype (`Seat { archetype: None }` — the surface has no archetype concept,
+/// so `player:Ada`'s stats are the campaign defaults). Gates the assembler over a
 /// declared-but-unplaced usable consumable: the `[[items]]` consumable descriptor
 /// (`type:"consumable"`, `usable:true`, `stat:"sanity"`, `modifier:6`, author-data
 /// `recipe:{healing:1}`) and its `BehaviorScript::Item` (an `onUse` statement body
@@ -261,9 +245,9 @@ fn g2_item_genesis_golden() {
     gate("g2-item", "g2-item.genesis.json", Some("g2-item"), &party);
 }
 
-/// The G2 "npc dialogue" author oracle, seated with a single PC that declares NO
-/// archetype (`Seat { archetype: None }` — the surface has no archetype concept, so
-/// `player:Ada`'s stats are the campaign defaults). Gates the assembler over a placed
+/// The g2-npc author oracle (npc dialogue), seated with a single PC that declares
+/// NO archetype (`Seat { archetype: None }` — the surface has no archetype concept,
+/// so `player:Ada`'s stats are the campaign defaults). Gates the assembler over a placed
 /// NPC holding a key: the `[[npcs]]` `NpcDef` (name/stats/room/behavior/holds) seats
 /// `npc:Caretaker` in the Foyer, mints its held `npc:Caretaker:item#0` cellar key, and
 /// records it as a codex `mob`; its `BehaviorScript::Npc` (description + a `default`
@@ -278,9 +262,9 @@ fn g2_npc_genesis_golden() {
     gate("g2-npc", "g2-npc.genesis.json", Some("g2-npc"), &party);
 }
 
-/// The G2 "mechanic scaffolding" author oracle, seated with a single PC that declares
-/// NO archetype (`Seat { archetype: None }` — the surface has no archetype concept, so
-/// `player:Ada`'s stats are the campaign defaults). Gates the assembler over a
+/// The g2-mechanic author oracle (mechanic scaffolding), seated with a single PC that
+/// declares NO archetype (`Seat { archetype: None }` — the surface has no archetype
+/// concept, so `player:Ada`'s stats are the campaign defaults). Gates the assembler over a
 /// `[[mechanics]]` opt-in: the mechanic reaches the genesis as a pristine
 /// `{ key: "dread", state: {} }` entry (`state` seeded from the behavior's `init`),
 /// and its `BehaviorScript::Mechanic` (`init` + an `onTurnStart` guard/emit body, incl.
@@ -299,7 +283,7 @@ fn g2_mechanic_genesis_golden() {
     );
 }
 
-/// The G2 "archetypes" author oracle: the real hollow-house `Heir` archetype, with a
+/// The g2-archetype author oracle: the real hollow-house `Heir` archetype, with a
 /// PC seated AS it — so the genesis PC carries the archetype id + its statline/immunities.
 #[test]
 fn g2_archetype_genesis_golden() {
@@ -315,8 +299,8 @@ fn g2_archetype_genesis_golden() {
     );
 }
 
-/// The G2 "timeout narration" author oracle: the real hollow-house `.onTimeout` cue,
-/// authored as a `timeoutNarration` string lowered to the `{ text }` shape.
+/// The g2-timeout author oracle: the real hollow-house timeout cue, authored as a
+/// `timeoutNarration` string lowered to the `{ text }` shape.
 #[test]
 fn g2_timeout_genesis_golden() {
     let party = vec![Seat {
@@ -331,8 +315,8 @@ fn g2_timeout_genesis_golden() {
     );
 }
 
-/// The G2 "campaign opts" author oracle: the real hollow-house bounds (maxRounds 150,
-/// baseEncounterChance 20) via the `[opts]` table.
+/// The g2-opts author oracle (campaign opts): the real hollow-house bounds (maxRounds
+/// 150, baseEncounterChance 20) via the `[opts]` table.
 #[test]
 fn g2_opts_genesis_golden() {
     let party = vec![Seat {
@@ -342,7 +326,7 @@ fn g2_opts_genesis_golden() {
     gate("g2-opts", "g2-opts.genesis.json", Some("g2-opts"), &party);
 }
 
-/// The G2 "formations" author oracle: the real roving rats — the `rat-single`/
+/// The g2-formations author oracle: the real roving rats — the `rat-single`/
 /// `rat-pair` weighted opt-ins (description) + their `MobSpec` rosters (catalog).
 #[test]
 fn g2_formations_genesis_golden() {
@@ -358,8 +342,9 @@ fn g2_formations_genesis_golden() {
     );
 }
 
-/// The G2 "exit name + initialState" author oracle: a keyed door carrying a display
-/// name + `{ unlocked: false }` initial state, atop the real doorScript behavior.
+/// The g2-exit-state author oracle (exit name + `initialState`): a keyed door
+/// carrying a display name + `{ unlocked: false }` initial state, atop the real
+/// doorScript behavior.
 #[test]
 fn g2_exit_state_genesis_golden() {
     let party = vec![Seat {
@@ -374,8 +359,9 @@ fn g2_exit_state_genesis_golden() {
     );
 }
 
-/// The G2 "room dark + spawnModifier" author oracle: a lightless Cellar + a
-/// biased-encounter Hall, proving the previously-dropped RoomDef sub-fields.
+/// The g2-dark-rooms author oracle (room `dark` + `spawnModifier`): a lightless
+/// Cellar + a biased-encounter Hall, proving those RoomDef sub-fields reach the
+/// genesis.
 #[test]
 fn g2_dark_rooms_genesis_golden() {
     let party = vec![Seat {
@@ -390,7 +376,7 @@ fn g2_dark_rooms_genesis_golden() {
     );
 }
 
-/// The G2 "placed mobs" author oracle: the two real hollow-house mobs (Wraith,
+/// The g2-mobs author oracle (placed mobs): the two real hollow-house mobs (Wraith,
 /// Revenant) with stats/room/drops/naturalAttack, in connected rooms.
 #[test]
 fn g2_mobs_genesis_golden() {
@@ -401,9 +387,9 @@ fn g2_mobs_genesis_golden() {
     gate("g2-mobs", "g2-mobs.genesis.json", Some("g2-mobs"), &party);
 }
 
-/// The G2 "full item descriptor" author oracle: three real hollow-house items
-/// (lantern/poker/journal) exercising slot/emitsLight/maxDurability/lore/equippable/
-/// droppable, seated in a Hall loot container.
+/// The g2-equipment author oracle (full item descriptor): three real hollow-house
+/// items (lantern/poker/journal) exercising slot/emitsLight/maxDurability/lore/
+/// equippable/droppable, seated in a Hall loot container.
 #[test]
 fn g2_equipment_genesis_golden() {
     let party = vec![Seat {
@@ -418,9 +404,9 @@ fn g2_equipment_genesis_golden() {
     );
 }
 
-/// The G2 "exit runScript + pass" author oracle: a keyed door whose narration
-/// `runScript` (a `when` latching `unlocked` + a `pass`) rides in the catalog,
-/// seated with a single no-archetype PC.
+/// The g2-door author oracle (exit `runScript` + `pass`): a keyed door whose
+/// narration `runScript` (a `when` latching `unlocked` + a `pass`) rides in the
+/// catalog, seated with a single no-archetype PC.
 #[test]
 fn g2_door_genesis_golden() {
     let party = vec![Seat {
@@ -430,7 +416,7 @@ fn g2_door_genesis_golden() {
     gate("g2-door", "g2-door.genesis.json", Some("g2-door"), &party);
 }
 
-/// The G2 "storyteller forms" author oracle: the real hollow-house `storyteller`
+/// The g2-storyteller author oracle: the real hollow-house `storyteller`
 /// mechanic over a 1-entry lore map. Its genesis carries the mechanic state seeded
 /// from `init` (`{ seen: {} }`); the `onAction` guard chain (action subject, mapLit,
 /// has, lookup, stateGetIn, setStateIn) rides in the catalog.
@@ -448,7 +434,7 @@ fn g2_storyteller_genesis_golden() {
     );
 }
 
-/// The G2 "status-bar forms" author oracle: the real hollow-house `status-bar`
+/// The g2-status-bar author oracle: the real hollow-house `status-bar`
 /// mechanic. Genesis carries the `{}`-seeded mechanic state; the onRoundStart/
 /// onTurnEnd bodies (str/concat/length/first + the Status effect) ride in the catalog.
 #[test]
@@ -465,8 +451,8 @@ fn g2_status_bar_genesis_golden() {
     );
 }
 
-/// The G2 "victory quantifiers" author oracle: the three real hollow-house win/lose
-/// conditions (reached-attic-with-journal / sanity-zero / party-down). Their keys +
+/// The g2-victory author oracle (victory quantifiers): the three real hollow-house
+/// win/lose conditions (reached-attic-with-journal / sanity-zero / party-down). Their keys +
 /// narration reach the genesis win/lose lists; each `test` predicate (some/every/
 /// includes/element/first/length) rides in the catalog as a `BehaviorScript::Victory`.
 #[test]
@@ -483,7 +469,7 @@ fn g2_victory_genesis_golden() {
     );
 }
 
-/// The G2 "remaining effects" author oracle: a bespoke `hex` mechanic emitting
+/// The g2-effects author oracle: a bespoke `hex` mechanic emitting
 /// `damage`/`heal`/`grantImmunity` behind a `defined(...)` guard. Genesis carries
 /// the `{}`-seeded mechanic state; the onTurnStart body rides in the catalog.
 #[test]
@@ -500,8 +486,8 @@ fn g2_effects_genesis_golden() {
     );
 }
 
-/// The G2 "mechanic actions + modifyDamage" author oracle, seated with a single PC
-/// that declares NO archetype (`Seat { archetype: None }`). Gates the assembler over
+/// The g2-mechanic-actions author oracle (`modifyDamage` + custom actions), seated
+/// with a single PC that declares NO archetype (`Seat { archetype: None }`). Gates the assembler over
 /// the same `[[mechanics]]` opt-in as `g2-mechanic` — the mechanic still reaches the
 /// genesis as a pristine `{ key: "dread", state: {} }` entry — while its richer
 /// `BehaviorScript::Mechanic` (now carrying a `modifyDamage` transform and a `brace`

@@ -1,6 +1,5 @@
-//! Plain-data mirror of the TypeScript `CampaignTemplateDescription`
-//! (`src/lib/authoring/description.ts:118`), minus `opts.rng` — a closure, and the
-//! seed reaches the engine through `Authority::new` instead.
+//! Plain-data authoring schema for a campaign description. There is no rng field:
+//! the seed reaches the engine through `Authority::new` instead.
 //!
 //! Rust owns this schema; TypeScript conforms. `pnpm run bindings:check` fails on drift.
 
@@ -12,9 +11,9 @@ use ts_rs::TS;
 
 use wickedways_core::world::snapshot::Stats;
 
-/// `Partial<Stats>` on the TS side — every field optional.
+/// Stats with every field optional.
 pub type PartialStats = BTreeMap<String, f64>;
-/// `Partial<Record<ItemComponentType, number>>` — `src/lib/inventory.ts:49`.
+/// Item-component type -> quantity.
 pub type MaterialMap = BTreeMap<String, i64>;
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -256,8 +255,8 @@ pub struct CampaignDescription {
 mod tests {
     use super::*;
 
-    /// The description must round-trip through the exact JSON shape the TS
-    /// `CampaignTemplateDescription` produces (camelCase, `opts` nested, no `rng`).
+    /// The description must round-trip through the exact JSON shape the committed
+    /// description fixtures carry (camelCase, `opts` nested, no `rng`).
     #[test]
     fn deserializes_a_minimal_description() {
         let json = r#"{

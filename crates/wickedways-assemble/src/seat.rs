@@ -1,40 +1,38 @@
-//! Party seating. Oracle: `conformance/fixtures/oracle-session.ts:79-98`.
+//! Party seating: turns the player-less construct output into the seated genesis.
 //!
-//! The TS `assemble()` returns a player-less campaign; the PC is constructed, given
+//! The construct pass returns a player-less campaign; each PC is then built, given
 //! `player:{name}`, joined, optionally given an archetype, and moved into `startRoom`
-//! WITHOUT firing enter-scenes — those are `begin_campaign`'s job. `campaign.gm` is
-//! set to the first player. Genesis is captured before `beginCampaign()`.
+//! WITHOUT firing enter-scenes — those are `begin_campaign`'s job. The GM is the
+//! first player. Genesis is captured before the campaign begins.
 //!
-//! Two side effects of the boot `pc.move(startRoom, /*fireScenes*/ false)` are
-//! reproduced here, because the pre-begin genesis carries them:
-//!   * `Character.move` records a budgeted `move` history entry and ticks
-//!     `actionsThisRound` to 1 (`character.ts:1091-1108`, `recordAction`).
-//!   * `PlayerCharacter.move` then runs `NOTE_ENCOUNTERS` (records every non-party
+//! Two side effects of that boot move (scenes suppressed) are reproduced here,
+//! because the pre-begin genesis carries them:
+//!   * the move records a budgeted `move` history entry and ticks
+//!     `actionsThisRound` to 1;
+//!   * the player-side move then notes encounters (recording every non-party
 //!     start-room occupant into the codex as a `mob` entry — NPCs included — and into
-//!     `campaign.encountered` as `"{pc}:{occ}"`) followed by
-//!     `RECORD_ENCOUNTER({kind:"room"})` (`player-character.ts:172-178`,
-//!     `campaign.ts:823-860`). So the codex discovery order is
+//!     `campaign.encountered` as `"{pc}:{occ}"`) followed by a room encounter
+//!     record. So the codex discovery order is
 //!     `[occupants in occupant order..., room]`, first-write-wins per `kind::key`.
 //!
-//! DEFERRED — the KO-occupant skip. `NOTE_ENCOUNTERS` (`campaign.ts:827`) skips
+//! DEFERRED — the KO-occupant skip. The oracle's encounter-noting step skips
 //! occupants whose `status` includes `Status.KO`, for BOTH the codex entry and the
 //! `encountered` push. This crate does NOT implement that skip, and deliberately so:
-//! KO is DERIVED from stats/afflictions by a *reconcile* (`character.ts:377`,
-//! `applyFromStats`), which runs only on `takeDamage`/`startTurn`/`endTurn` — all
-//! post-begin. A character constructed by the assembler never reconciles, so its
-//! `afflictions` are empty at genesis EVEN IF authored with `health: 0` (verified:
-//! a health-0 mob's genesis `afflictions.active` is `{}`, and the TS engine records
-//! it in both `encountered` and the codex). No occupant is ever KO in a pre-begin
-//! snapshot, so the skip is a no-op here and no fixture can exercise it. This is
-//! fail-loud: were a genuinely-KO-at-genesis occupant ever to become expressible,
-//! the TS oracle would drop it while this code would keep it, and the byte-parity
-//! gate would fire — at which point the skip must be implemented (compute KO from the
-//! occupant snapshot as `applyFromStats` does, and skip both the codex entry and the
-//! `encountered` push).
+//! KO is DERIVED from stats/afflictions by a *reconcile* that runs only on
+//! `takeDamage`/`startTurn`/`endTurn` — all post-begin. A character constructed by
+//! the assembler never reconciles, so its `afflictions` are empty at genesis EVEN IF
+//! authored with `health: 0` (verified: a health-0 mob's genesis `afflictions.active`
+//! is `{}`, and the oracle records it in both `encountered` and the codex). No
+//! occupant is ever KO in a pre-begin snapshot, so the skip is a no-op here and no
+//! fixture can exercise it. This is fail-loud: were a genuinely-KO-at-genesis
+//! occupant ever to become expressible, the oracle would drop it while this code
+//! would keep it, and the byte-parity gate would fire — at which point the skip must
+//! be implemented (compute KO from the occupant snapshot as the stats reconcile
+//! does, and skip both the codex entry and the `encountered` push).
 //!
-//! The serializer seeds `allCharacters` with party members BEFORE room occupants
-//! (`serializer.ts:65,90`), and a `Map` keeps first-insertion position, so seated
-//! PCs sort to the FRONT of `characters[]`, ahead of the mobs/npcs.
+//! The golden serialization seeds the character list with party members BEFORE room
+//! occupants, and first insertion fixes position, so seated PCs sort to the FRONT
+//! of `characters[]`, ahead of the mobs/npcs.
 
 use std::collections::BTreeMap;
 
@@ -52,16 +50,15 @@ use crate::description::{ArchetypeDef, CampaignDescription};
 use crate::error::AssembleError;
 use crate::{ids, Seat};
 
-/// `DEFAULT_PLAYER_STATS` (`player-character.ts:44-48`) — the baseline before any
-/// archetype override.
+/// The default player statline — the baseline before any archetype override.
 const DEFAULT_PLAYER_STATS: Stats = Stats {
     energy: 10.0,
     sanity: 10.0,
     health: 10.0,
 };
-/// Player inventory capacity default (`player-character.ts:84`).
+/// Player inventory capacity default.
 const DEFAULT_PLAYER_SLOTS: i64 = 5;
-/// Player action budget (`player-character.ts:86`).
+/// Player action budget.
 const PLAYER_ACTIONS_PER_ROUND: i64 = 3;
 
 /// Seats `party` into `snap` (mutating in place). An empty party is the pristine
@@ -90,7 +87,7 @@ pub(crate) fn seat_party(
     let room_description = snap.rooms[room_idx].description.clone();
 
     // Occupants already in the start room (construct's mobs then npcs, in occupant
-    // order). Every seated PC "discovers" exactly these: `NOTE_ENCOUNTERS` skips
+    // order). Every seated PC "discovers" exactly these: encounter noting skips
     // party members, so PCs never discover one another.
     let discoverable: Vec<CharacterId> = snap.rooms[room_idx].occupant_ids.clone();
 
@@ -107,7 +104,7 @@ pub(crate) fn seat_party(
     for (i, seat) in party.iter().enumerate() {
         let pc_id = ids::player_id(&seat.name);
 
-        // --- selectArchetype (player-character.ts:129-160) ---
+        // --- archetype selection ---
         let mut stats = DEFAULT_PLAYER_STATS;
         let mut slots = DEFAULT_PLAYER_SLOTS;
         let mut immunities: Vec<Status> = Vec::new();
@@ -117,7 +114,7 @@ pub(crate) fn seat_party(
             }
         }
 
-        // --- codex + encountered from the boot move's NOTE_ENCOUNTERS ---
+        // --- codex + encountered from the boot move's encounter noting ---
         // Every discoverable occupant is recorded by every seat (distinct
         // characterId), so `encountered` is seat-major/occupant-minor.
         let first_seen = json!({
@@ -149,7 +146,7 @@ pub(crate) fn seat_party(
                 "firstSeen": first_seen,
             }));
         }
-        // RECORD_ENCOUNTER({kind:"room"}) — after the occupant sweep, once.
+        // The room encounter record — after the occupant sweep, once.
         if !room_recorded {
             room_recorded = true;
             codex_entries.push(json!({
@@ -169,7 +166,7 @@ pub(crate) fn seat_party(
             name: seat.name.clone(),
             stats,
             actions_per_round: PLAYER_ACTIONS_PER_ROUND,
-            // The boot move ticks the budget once (recordAction, character.ts:596).
+            // The boot move ticks the budget once.
             actions_this_round: 1,
             current_room_id: Some(RoomId(start_room_id.clone())),
             inventory: InventorySnapshot {
@@ -215,10 +212,10 @@ pub(crate) fn seat_party(
     snap.campaign.active_character_index = 0;
     snap.campaign.encountered = encountered;
 
-    // The boot move runs `maybeSpawn`, which marks the entered room visited
-    // regardless of spawn outcome (`encounter-table.ts:83-84`). Only the start
-    // room is entered, so `visited` becomes `[startRoom]` (a Set — deduped even
-    // across multiple seated PCs).
+    // The boot move runs the encounter spawn check, which marks the entered room
+    // visited regardless of spawn outcome. Only the start room is entered, so
+    // `visited` becomes `[startRoom]` — a set, deduped even across multiple
+    // seated PCs.
     if let Value::Object(et) = &mut snap.campaign.encounter_table {
         et.insert("visited".to_string(), json!([start_room_id]));
     }
@@ -233,9 +230,8 @@ pub(crate) fn seat_party(
     Ok(())
 }
 
-/// Mirrors `PlayerCharacter.selectArchetype` (`player-character.ts:145-159`):
-/// named base stats override, `inventorySlots` is a floored delta, immunities
-/// become a standing passive.
+/// Archetype application: named base stats override, `inventorySlots` is a
+/// floored delta (never below 0), immunities become a standing passive.
 fn apply_archetype(
     arch: &ArchetypeDef,
     stats: &mut Stats,

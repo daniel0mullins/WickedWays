@@ -1,14 +1,14 @@
-//! The sync differential gate (Phase 2c, sub-project B).
+//! The sync differential gate.
 //!
 //! Replays a committed command sequence through the native
 //! [`SyncAuthority`](wickedways_core::sync::SyncAuthority) and asserts each authoritative
-//! `{ seq, delta }` matches the TS sync `Authority` byte-for-byte. The goldens are emitted by
-//! `conformance/fixtures/sync-move.gen.test.ts` (driving `src/lib/sync/authority.ts`).
+//! `{ seq, delta }` matches the TS oracle byte-for-byte. The goldens are TS-emitted
+//! recordings of the same command sequence driven through the oracle's sync authority.
 //!
 //! Lives in `wickedways-assemble`'s integration tests because CI already runs
 //! `cargo test -p wickedways-assemble` (pure Rust, no wasm) — the same home as the assembler
-//! genesis gate. This is B's acceptance mechanism: a command "matches the oracle" only when its
-//! delta *content*, not just its serde shape, is identical. As A1/A2 land engine actions, each new
+//! genesis gate. The acceptance bar: a command "matches the oracle" only when its
+//! delta *content*, not just its serde shape, is identical. Each newly ported engine
 //! command extends this differential corpus.
 
 use std::path::{Path, PathBuf};
@@ -61,8 +61,8 @@ fn canon_numbers(v: &Value) -> Value {
 }
 
 /// Canonicalize a `Delta`: `changed`/`created`/`removed` are id-keyed **sets** (element order is not
-/// semantic — the applier writes each entity by id independently), so sort them, mirroring
-/// `conformance/canonical-json.ts`'s treatment of the top-level entity arrays. Rust emits them in
+/// semantic — the applier writes each entity by id independently), so sort them — the same
+/// treatment the conformance canonicalizer gives the top-level entity arrays. Rust emits them in
 /// BTreeMap (sorted-id) order and the TS oracle in reachable-walk order; both canonicalize equal.
 fn canon_delta(v: &Value) -> Value {
     let mut d = canon_numbers(v);
@@ -98,7 +98,7 @@ fn run_gate(name: &str) {
     let golden: Value =
         serde_json::from_str(&read(&format!("{name}.golden.json"))).expect("parse golden");
 
-    // A rng-drawing fixture (e.g. combat) records the `seed` the TS side fed its Authority as
+    // A rng-drawing fixture (e.g. combat) records the `seed` the oracle fed its rng as
     // `mulberry32(seed)`; seed the Rust World's rng with the same value so both draw the identical
     // stream. Rust's `Rng::seeded` is the verified mulberry32 twin.
     if let Some(seed) = golden.get("seed").and_then(Value::as_u64) {
@@ -139,13 +139,13 @@ fn sync_move_deltas_match_the_ts_oracle() {
     run_gate("sync-move");
 }
 
-/// `selectArchetype` over a pre-start single-player campaign (A1's first engine-action port).
+/// `selectArchetype` over a pre-start single-player campaign.
 #[test]
 fn sync_archetype_delta_matches_the_ts_oracle() {
     run_gate("sync-archetype");
 }
 
-/// `transferGM` over a started two-player campaign (A2's first lifecycle-command port).
+/// `transferGM` over a started two-player campaign.
 #[test]
 fn sync_transfergm_delta_matches_the_ts_oracle() {
     run_gate("sync-transfergm");
@@ -158,8 +158,8 @@ fn sync_leave_delta_matches_the_ts_oracle() {
     run_gate("sync-leave");
 }
 
-/// `putInLootBox` — the first loot-mechanic port and first fixture that ships a catalog (the moved
-/// item's descriptor is resolved by behaviour key).
+/// `putInLootBox` — the first fixture that ships a catalog (the moved item's descriptor is
+/// resolved by behaviour key).
 #[test]
 fn sync_loot_delta_matches_the_ts_oracle() {
     run_gate("sync-loot");
@@ -172,8 +172,8 @@ fn sync_mobattack_delta_matches_the_ts_oracle() {
     run_gate("sync-mobattack");
 }
 
-/// `mobEscape` — the final A2 command and the one genuinely-new mechanic (escape roll → flee through
-/// an exit). Exercises the full success path: two rng draws + relocation + the `escape` history.
+/// `mobEscape` — an escape roll → flee through an exit. Exercises the full success path: two rng
+/// draws + relocation + the `escape` history.
 #[test]
 fn sync_mobescape_delta_matches_the_ts_oracle() {
     run_gate("sync-mobescape");

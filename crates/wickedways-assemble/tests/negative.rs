@@ -1,5 +1,5 @@
-//! One test per `Problem` variant, ported from `src/lib/authoring/assembler.test.ts`.
-//! The gate proves parity on campaigns that WORK; these prove the validation paths.
+//! One test per `Problem` variant. The gate proves parity on campaigns that WORK;
+//! these prove the validation paths.
 
 use serde_json::json;
 use wickedways_assemble::{assemble, description::CampaignDescription, error::Problem};
@@ -58,8 +58,8 @@ fn exit_references_undefined_room() {
         .any(|p| matches!(p, Problem::UndefinedRoom { room, .. } if room == "nowhere")));
 }
 
-/// assembler.test.ts "collects ALL validation problems into one AuthoringError":
-/// three simultaneous faults must all appear. Fail-fast would return only one.
+/// ALL validation problems are collected into one error: three simultaneous
+/// faults must all appear. Fail-fast would return only one.
 #[test]
 fn collects_all_problems_not_just_the_first() {
     let mut v = base();
@@ -165,8 +165,8 @@ fn unregistered_condition_keys() {
     assert!(ps.iter().any(|p| matches!(p, Problem::UnregisteredCondition { ctx, key } if ctx == "loseWhen" && key == "missing-lose")));
 }
 
-// NOTE: there is no `unregistered_recipe_key` test. The catalog has no recipe registry,
-// so the check has no Rust counterpart in G1. See "Deliberate divergences".
+// NOTE: there is no `unregistered_recipe_key` test — recipe-key validation is
+// deliberately absent (see the DELIBERATE DIVERGENCE note in validate.rs).
 
 #[test]
 fn chat_backfill_window_below_one() {

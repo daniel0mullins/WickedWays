@@ -1,5 +1,5 @@
-//! Aggregated authoring errors. Mirrors `AuthoringError` (`src/lib/authoring/errors.ts`):
-//! the validate pass collects EVERY problem and reports them together.
+//! Aggregated authoring errors: the validate pass collects EVERY problem and
+//! reports them together.
 //!
 //! `assemble` consumes untrusted author data. Nothing here may panic.
 
@@ -19,9 +19,9 @@ pub enum Problem {
         ctx: String,
         key: String,
     },
-    // NOTE: no `UnregisteredRecipe` in G1. The catalog now carries a `recipes` map
+    // NOTE: no `UnregisteredRecipe` variant. The catalog now carries a `recipes` map
     // (used for the codex), so this variant is cheaply addable — recipe-key validation
-    // is deliberately deferred to G2 (untrusted modding input). See "Deliberate divergences".
+    // is deliberately deferred until author input becomes untrusted (modding).
     UnregisteredCondition {
         ctx: String,
         key: String,
@@ -56,8 +56,8 @@ pub enum Problem {
 }
 
 impl fmt::Display for Problem {
-    /// Message strings are copied verbatim from `assembler.ts` so the CLI reads the
-    /// same as the TS authoring errors did. They are NOT byte-compared by the gate.
+    /// Message wording is deliberate — the CLI surfaces these strings verbatim —
+    /// but they are NOT byte-compared by the gate.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Problem::DuplicateName { kind, name } => write!(f, "Duplicate {kind} name '{name}'."),

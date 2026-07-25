@@ -1,5 +1,5 @@
-//! The validate-all pass (`assembler.ts:38-168`). Collects EVERY problem; never
-//! short-circuits. Registry lookups become catalog lookups.
+//! The validate-all pass: collects EVERY problem; never short-circuits. All
+//! existence checks are catalog lookups.
 
 use std::collections::BTreeSet;
 
@@ -29,7 +29,7 @@ fn behavior_family(b: &wickedways_core::script::ast::BehaviorScript) -> String {
 pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
     let mut problems = Vec::new();
 
-    // ---- duplicate names (assembler.ts:42-55) ----
+    // ---- duplicate names ----
     let dup = |kind: &'static str, names: Vec<&str>, problems: &mut Vec<Problem>| {
         let mut seen = BTreeSet::new();
         for n in names {
@@ -77,7 +77,7 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         }
     };
 
-    // ---- room references (assembler.ts:63-72) ----
+    // ---- room references ----
     if let Some(sr) = &desc.start_room {
         require_room("startRoom".into(), sr, &mut problems);
     }
@@ -105,7 +105,7 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         require_room(format!("scene '{}'", s.key), &s.room, &mut problems);
     }
 
-    // ---- item keys (assembler.ts:75-93) ----
+    // ---- item keys ----
     let require_item = |ctx: String, k: &str, problems: &mut Vec<Problem>| {
         if !catalog.items.contains_key(k) {
             problems.push(Problem::UnregisteredItem {
@@ -135,16 +135,16 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         }
     }
 
-    // ---- recipes (assembler.ts:95-101) ----
-    // DELIBERATE DIVERGENCE: the TS `registry.recipe(k)` existence check has no Rust
-    // counterpart yet. The catalog DOES now carry a `recipes` map (added for codex
-    // reconstruction — see construct.rs), so this check is cheaply closeable in place:
-    // flag any `desc.recipes` key missing from `catalog.recipes`. It is deliberately
-    // deferred to G2, where author input becomes untrusted (modding) — under G1's trusted
-    // TS toolchain, genesis is unaffected (`knownRecipes` comes straight from `desc.recipes`).
-    // See "Deliberate divergences" in the plan.
+    // ---- recipes ----
+    // DELIBERATE DIVERGENCE: declared recipe keys get no existence check here, though
+    // the oracle's authoring path had one. The catalog DOES now carry a `recipes` map
+    // (added for codex reconstruction — see construct.rs), so the check is cheaply
+    // closeable in place: flag any `desc.recipes` key missing from `catalog.recipes`.
+    // It is deliberately deferred until author input becomes untrusted (modding);
+    // while the toolchain is trusted, genesis bytes are unaffected (`knownRecipes`
+    // comes straight from `desc.recipes`).
 
-    // ---- conditions (assembler.ts:103-111) ----
+    // ---- conditions ----
     // Conditions are the "victory" behavior family, NOT "condition". Verified: the
     // hollow-house win/lose keys (reached-attic-with-journal, sanity-zero, party-down)
     // are all `family: "victory"` in the catalog.
@@ -162,14 +162,14 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         }
     }
 
-    // ---- scenes (assembler.ts:113-119) ----
+    // ---- scenes ----
     for s in &desc.scenes {
         if !has_behavior(catalog, &s.key, "scene") {
             problems.push(Problem::UnregisteredScene { key: s.key.clone() });
         }
     }
 
-    // ---- keyed exits (assembler.ts:121-129) ----
+    // ---- keyed exits ----
     for e in &desc.exits {
         if let Some(k) = &e.behavior_key {
             if !has_behavior(catalog, k, "exit") {
@@ -182,14 +182,14 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         }
     }
 
-    // ---- formations (assembler.ts:131-137) ----
+    // ---- formations ----
     for f in &desc.formations {
         if !catalog.formations.contains_key(&f.key) {
             problems.push(Problem::UnregisteredFormation { key: f.key.clone() });
         }
     }
 
-    // ---- npc behaviors (assembler.ts:139-145) ----
+    // ---- npc behaviors ----
     for n in &desc.npcs {
         if !has_behavior(catalog, &n.behavior, "npc") {
             problems.push(Problem::UnregisteredNpc {
@@ -199,7 +199,7 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         }
     }
 
-    // ---- mechanics: duplicate THEN unregistered (assembler.ts:147-158) ----
+    // ---- mechanics: duplicate THEN unregistered ----
     let mut seen_mech: BTreeSet<&str> = BTreeSet::new();
     for m in &desc.mechanics {
         if !seen_mech.insert(m.key.as_str()) {
@@ -210,12 +210,12 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         }
     }
 
-    // ---- policy bounds (assembler.ts:160-166) ----
+    // ---- policy bounds ----
     if let Some(w) = desc
         .chat
         .as_ref()
         .and_then(|c| c.get("backfillWindow"))
-        .and_then(|v| v.as_i64())
+        .and_then(serde_json::Value::as_i64)
     {
         if w < 1 {
             problems.push(Problem::ChatBackfillWindow { got: w });
@@ -225,7 +225,7 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         .av
         .as_ref()
         .and_then(|a| a.get("maxParticipants"))
-        .and_then(|v| v.as_i64())
+        .and_then(serde_json::Value::as_i64)
     {
         if n < 1 {
             problems.push(Problem::AvMaxParticipants { got: n });
