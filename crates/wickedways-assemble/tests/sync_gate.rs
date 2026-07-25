@@ -38,7 +38,8 @@ fn canon_numbers(v: &Value) -> Value {
     match v {
         Value::Number(n) => {
             if let Some(f) = n.as_f64() {
-                if f.is_finite() && f.fract() == 0.0 && n.as_i64().is_none() && n.as_u64().is_none() {
+                if f.is_finite() && f.fract() == 0.0 && n.as_i64().is_none() && n.as_u64().is_none()
+                {
                     if (0.0..=u64::MAX as f64).contains(&f) {
                         return Value::Number((f as u64).into());
                     }
@@ -50,7 +51,11 @@ fn canon_numbers(v: &Value) -> Value {
             v.clone()
         }
         Value::Array(a) => Value::Array(a.iter().map(canon_numbers).collect()),
-        Value::Object(o) => Value::Object(o.iter().map(|(k, x)| (k.clone(), canon_numbers(x))).collect()),
+        Value::Object(o) => Value::Object(
+            o.iter()
+                .map(|(k, x)| (k.clone(), canon_numbers(x)))
+                .collect(),
+        ),
         _ => v.clone(),
     }
 }
@@ -107,7 +112,9 @@ fn run_gate(name: &str) {
         .unwrap_or_default();
     let mut auth = SyncAuthority::new(world, catalog, AuthorityOpts::default());
 
-    let steps = golden["steps"].as_array().expect("golden.steps is an array");
+    let steps = golden["steps"]
+        .as_array()
+        .expect("golden.steps is an array");
 
     for (i, step) in steps.iter().enumerate() {
         let command: Command =
@@ -119,7 +126,9 @@ fn run_gate(name: &str) {
                 let want = canon_delta(&step["delta"]);
                 assert_eq!(got, want, "{name} step {i}: delta must match the TS oracle");
             }
-            SubmitResult::Denied { reason } => panic!("{name} step {i}: unexpectedly denied: {reason}"),
+            SubmitResult::Denied { reason } => {
+                panic!("{name} step {i}: unexpectedly denied: {reason}")
+            }
         }
     }
 }

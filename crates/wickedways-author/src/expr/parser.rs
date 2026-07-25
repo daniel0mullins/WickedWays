@@ -31,8 +31,17 @@ use crate::error::{CompileError, Span};
 pub fn parse_expr(src: &str, base: Span) -> Result<Expr, CompileError> {
     let tokens = tokenize(src, base)?;
     // Span used for "unexpected end of input": one past the last char.
-    let eof_span = Span { line: base.line, col: base.col + src.chars().count() };
-    let mut p = Parser { tokens, pos: 0, eof_span, depth: 0, nodes: 0 };
+    let eof_span = Span {
+        line: base.line,
+        col: base.col + src.chars().count(),
+    };
+    let mut p = Parser {
+        tokens,
+        pos: 0,
+        eof_span,
+        depth: 0,
+        nodes: 0,
+    };
     let expr = p.parse_ternary()?;
     // Nothing may trail a complete expression.
     if let Some((_tok, span)) = p.peek() {
@@ -185,10 +194,14 @@ impl Parser {
                 break;
             }
             self.advance(); // consume the operator
-            // Left-assoc: the right operand only takes strictly-tighter ops.
+                            // Left-assoc: the right operand only takes strictly-tighter ops.
             let right = self.parse_binary(bp + 1)?;
             self.add_node()?; // bound the left-nested `Bin` chain length
-            left = Expr::Bin { op, left: Box::new(left), right: Box::new(right) };
+            left = Expr::Bin {
+                op,
+                left: Box::new(left),
+                right: Box::new(right),
+            };
         }
         Ok(left)
     }
@@ -207,7 +220,9 @@ impl Parser {
         if matches!(self.peek(), Some((Token::Bang, _))) {
             self.advance(); // consume '!'
             let inner = self.parse_unary()?;
-            return Ok(Expr::Not { expr: Box::new(inner) });
+            return Ok(Expr::Not {
+                expr: Box::new(inner),
+            });
         }
         self.parse_postfix()
     }
@@ -217,7 +232,10 @@ impl Parser {
         let mut expr = self.parse_primary()?;
         loop {
             // Bound the `Get`/`Index` chain length (`.field`/`[i]` grow the tree here).
-            if matches!(self.peek(), Some((Token::Dot, _)) | Some((Token::LBracket, _))) {
+            if matches!(
+                self.peek(),
+                Some((Token::Dot, _)) | Some((Token::LBracket, _))
+            ) {
                 self.add_node()?;
             }
             match self.peek() {
@@ -238,14 +256,20 @@ impl Parser {
                             });
                         }
                     };
-                    expr = Expr::Get { of: Box::new(expr), field };
+                    expr = Expr::Get {
+                        of: Box::new(expr),
+                        field,
+                    };
                 }
                 Some((Token::LBracket, _)) => {
                     self.advance(); // consume '['
                     let index = self.parse_ternary()?;
                     self.expect(&Token::RBracket, "']' to close an index")?;
                     // MVP: subscript ALWAYS lowers to `Index`, never `First`.
-                    expr = Expr::Index { list: Box::new(expr), index: Box::new(index) };
+                    expr = Expr::Index {
+                        list: Box::new(expr),
+                        index: Box::new(index),
+                    };
                 }
                 _ => break,
             }
@@ -265,9 +289,15 @@ impl Parser {
             }
         };
         match tok {
-            Token::Num(n) => Ok(Expr::Lit { value: Value::Number(n) }),
-            Token::Str(s) => Ok(Expr::Lit { value: Value::Str(s) }),
-            Token::Bool(b) => Ok(Expr::Lit { value: Value::Bool(b) }),
+            Token::Num(n) => Ok(Expr::Lit {
+                value: Value::Number(n),
+            }),
+            Token::Str(s) => Ok(Expr::Lit {
+                value: Value::Str(s),
+            }),
+            Token::Bool(b) => Ok(Expr::Lit {
+                value: Value::Bool(b),
+            }),
             // Prefix `-`: valid ONLY immediately before a numeric literal, where
             // it produces a negative numeric `Lit` (there is no unary-negation
             // AST node — `-actor` is an error). A `-` *between* two operands is
@@ -283,7 +313,9 @@ impl Parser {
                 match num {
                     Some(n) => {
                         self.advance(); // consume the numeric literal
-                        Ok(Expr::Lit { value: Value::Number(-n) })
+                        Ok(Expr::Lit {
+                            value: Value::Number(-n),
+                        })
                     }
                     None => Err(CompileError::ExprParse {
                         span,
@@ -343,7 +375,9 @@ impl Parser {
             }
             let mut it = args.into_iter();
             let field = match it.next() {
-                Some(Expr::Lit { value: Value::Str(s) }) => s,
+                Some(Expr::Lit {
+                    value: Value::Str(s),
+                }) => s,
                 _ => {
                     return Err(CompileError::ExprParse {
                         span: name_span,
@@ -378,7 +412,11 @@ impl Parser {
                     });
                 }
             };
-            return Ok(Expr::StateGetIn { map_field, key: Box::new(key), default });
+            return Ok(Expr::StateGetIn {
+                map_field,
+                key: Box::new(key),
+                default,
+            });
         }
 
         // `mapLit(k1, v1, k2, v2, …)` — a static string→value table (the storyteller's
@@ -389,7 +427,8 @@ impl Parser {
             if args.len() % 2 != 0 {
                 return Err(CompileError::ExprParse {
                     span: name_span,
-                    message: "mapLit expects alternating key/value arguments (an even count)".into(),
+                    message: "mapLit expects alternating key/value arguments (an even count)"
+                        .into(),
                 });
             }
             let mut entries: std::collections::BTreeMap<String, Value> =
@@ -397,7 +436,9 @@ impl Parser {
             let mut it = args.into_iter();
             while let Some(k) = it.next() {
                 let key = match k {
-                    Expr::Lit { value: Value::Str(s) } => s,
+                    Expr::Lit {
+                        value: Value::Str(s),
+                    } => s,
                     _ => {
                         return Err(CompileError::ExprParse {
                             span: name_span,
@@ -442,7 +483,10 @@ impl Parser {
                 "some" => Expr::Some { list, pred: second },
                 "every" => Expr::Every { list, pred: second },
                 // The `matches!` guard restricts this arm to "includes".
-                _ => Expr::Includes { list, value: second },
+                _ => Expr::Includes {
+                    list,
+                    value: second,
+                },
             });
         }
 
@@ -473,7 +517,10 @@ impl Parser {
         // Only these three call names are known; everything else is unknown.
         let known = matches!(name.as_str(), "hasKey" | "hasItem" | "hasEquipped");
         if !known {
-            return Err(CompileError::UnknownReference { span: name_span, name });
+            return Err(CompileError::UnknownReference {
+                span: name_span,
+                name,
+            });
         }
 
         // All three take exactly 2 args; the 2nd must be a string literal.
@@ -503,7 +550,9 @@ impl Parser {
             }
         };
         let key = match second {
-            Expr::Lit { value: Value::Str(s) } => s,
+            Expr::Lit {
+                value: Value::Str(s),
+            } => s,
             _ => {
                 return Err(CompileError::ExprParse {
                     span: name_span,
@@ -512,10 +561,19 @@ impl Parser {
             }
         };
         Ok(match name.as_str() {
-            "hasKey" => Expr::HasKey { of: Box::new(of), key_code: key },
-            "hasItem" => Expr::HasItem { of: Box::new(of), item_key: key },
+            "hasKey" => Expr::HasKey {
+                of: Box::new(of),
+                key_code: key,
+            },
+            "hasItem" => Expr::HasItem {
+                of: Box::new(of),
+                item_key: key,
+            },
             // The `known` guard restricts this arm to "hasEquipped".
-            _ => Expr::HasEquipped { of: Box::new(of), item_key: key },
+            _ => Expr::HasEquipped {
+                of: Box::new(of),
+                item_key: key,
+            },
         })
     }
 }
@@ -538,7 +596,9 @@ fn take_n<const N: usize>(
 /// (used for the `field`/`map_field` arguments that must be compile-time keys).
 fn str_lit_arg(arg: Option<Expr>, span: Span, what: &str) -> Result<String, CompileError> {
     match arg {
-        Some(Expr::Lit { value: Value::Str(s) }) => Ok(s),
+        Some(Expr::Lit {
+            value: Value::Str(s),
+        }) => Ok(s),
         _ => Err(CompileError::ExprParse {
             span,
             message: format!("{what} must be a string literal"),

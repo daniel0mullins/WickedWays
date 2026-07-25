@@ -16,26 +16,63 @@ use crate::stats::StatType;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "lowercase")]
-pub enum BinOp { Add, Sub, Mul, Div, Eq, Ne, Lt, Lte, Gt, Gte, And, Or }
+pub enum BinOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Eq,
+    Ne,
+    Lt,
+    Lte,
+    Gt,
+    Gte,
+    And,
+    Or,
+}
 
 /// The closed expression set. Tagged on `kind` (codebase discriminant convention).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum Expr {
-    Lit { value: Value },
+    Lit {
+        value: Value,
+    },
     /// A literal static table (e.g. lore). Values are literals, not sub-exprs.
     /// Only legal as the `map` operand of `Lookup`/`Has` (enforced at load by
     /// `validate_behavior`, Task 9).
-    MapLit { entries: BTreeMap<String, Value> },
-    Bin { op: BinOp, left: Box<Expr>, right: Box<Expr> },
-    Not { expr: Box<Expr> },
-    IfElse { cond: Box<Expr>, then: Box<Expr>, r#else: Box<Expr> },
+    MapLit {
+        entries: BTreeMap<String, Value>,
+    },
+    Bin {
+        op: BinOp,
+        left: Box<Expr>,
+        right: Box<Expr>,
+    },
+    Not {
+        expr: Box<Expr>,
+    },
+    IfElse {
+        cond: Box<Expr>,
+        then: Box<Expr>,
+        r#else: Box<Expr>,
+    },
     /// Non-null check (mirrors TS `!== undefined`).
-    Defined { expr: Box<Expr> },
+    Defined {
+        expr: Box<Expr>,
+    },
     /// JS-`Number.prototype.toString`-faithful number-to-string (spec: strings).
-    Str { num: Box<Expr> },
-    Concat { parts: alloc::vec::Vec<Expr> },
+    Str {
+        num: Box<Expr>,
+    },
+    Concat {
+        parts: alloc::vec::Vec<Expr>,
+    },
 
     // ── Read-model subjects (Task 3) ────────────────────────────────────────
     /// Current campaign round (`Null` in exit contexts).
@@ -53,48 +90,93 @@ pub enum Expr {
     /// The bound quantifier element (Task 6).
     Element,
     /// List length (`Party`/`List`), else `Null`.
-    Length { list: Box<Expr> },
+    Length {
+        list: Box<Expr>,
+    },
     /// Element at `index` (trunc); OOB/ill-typed → `Null`.
-    Index { list: Box<Expr>, index: Box<Expr> },
+    Index {
+        list: Box<Expr>,
+        index: Box<Expr>,
+    },
     /// Element at index 0.
-    First { list: Box<Expr> },
+    First {
+        list: Box<Expr>,
+    },
     /// Membership over a `List` by strict equality; `false` otherwise.
-    Includes { list: Box<Expr>, value: Box<Expr> },
+    Includes {
+        list: Box<Expr>,
+        value: Box<Expr>,
+    },
     /// Bounded existential quantifier over a subject/value list: `true` iff
     /// `pred` holds for at least one element. `some([])` is `false` (JS
     /// `Array.prototype.some`). `pred` reads the current item via `Element`.
-    Some { list: Box<Expr>, pred: Box<Expr> },
+    Some {
+        list: Box<Expr>,
+        pred: Box<Expr>,
+    },
     /// Bounded universal quantifier over a subject/value list: `true` iff
     /// `pred` holds for every element. `every([])` is vacuously `true` (JS
     /// `Array.prototype.every`). `pred` reads the current item via `Element`.
-    Every { list: Box<Expr>, pred: Box<Expr> },
+    Every {
+        list: Box<Expr>,
+        pred: Box<Expr>,
+    },
     /// Field access on a subject; unknown field / non-subject → `Null`.
-    Get { of: Box<Expr>, field: String },
+    Get {
+        of: Box<Expr>,
+        field: String,
+    },
     /// `of` (a character) has an item with this behavior key equipped.
-    HasEquipped { of: Box<Expr>, item_key: String },
+    HasEquipped {
+        of: Box<Expr>,
+        item_key: String,
+    },
     /// `of` (a character) holds an item with this behavior key.
-    HasItem { of: Box<Expr>, item_key: String },
+    HasItem {
+        of: Box<Expr>,
+        item_key: String,
+    },
     /// `of` (a character) holds a key with this key code.
-    HasKey { of: Box<Expr>, key_code: String },
+    HasKey {
+        of: Box<Expr>,
+        key_code: String,
+    },
 
     // ── Script state reads + static tables (Task 5) ─────────────────────────
     /// Read `state[field]`, or `default` when the field is missing / `null`
     /// / the ctx has no state (mirrors TS `state.x ?? default`).
-    StateGet { field: String, default: Value },
+    StateGet {
+        field: String,
+        default: Value,
+    },
     /// Read `state[map_field][String(key)]`, with the same defaulting
     /// (dynamic string-keyed maps — e.g. the storyteller's `seen[roomName]`).
-    StateGetIn { map_field: String, key: Box<Expr>, default: Value },
+    StateGetIn {
+        map_field: String,
+        key: Box<Expr>,
+        default: Value,
+    },
     /// Value at `String(key)` in a static `MapLit`, else `Null`. Requires a
     /// `MapLit` operand (enforced at load, Task 9); a non-`MapLit` yields `Null`.
-    Lookup { map: Box<Expr>, key: Box<Expr> },
+    Lookup {
+        map: Box<Expr>,
+        key: Box<Expr>,
+    },
     /// Whether a static `MapLit` contains `String(key)`. Non-`MapLit` → `false`.
-    Has { map: Box<Expr>, key: Box<Expr> },
+    Has {
+        map: Box<Expr>,
+        key: Box<Expr>,
+    },
 }
 
 /// A statement in an effect/script body (Task 7). Tagged on `kind`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum Stmt {
     /// Falsy `cond` halts the body, keeping the accumulated output (TS
     /// `if (!cond) return [];` / `sequence` short-circuit).
@@ -104,7 +186,11 @@ pub enum Stmt {
     /// `state[field] = value` (own state only).
     SetState { field: String, value: Expr },
     /// `state[map_field][String(key)] = value` (own state only).
-    SetStateIn { map_field: String, key: Expr, value: Expr },
+    SetStateIn {
+        map_field: String,
+        key: Expr,
+        value: Expr,
+    },
     /// Emit an effect (effect bodies only).
     Emit { effect: EffectTemplate },
     /// Exit narration (script bodies only); the last `Pass` wins.
@@ -115,20 +201,48 @@ pub enum Stmt {
 /// the `Effect` set.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum EffectTemplate {
-    Damage { target: Expr, amount: Expr },
-    Heal { target: Expr, amount: Expr },
-    AdjustStat { target: Expr, stat: StatType, delta: Expr },
-    GrantImmunity { target: Expr, turns: Expr },
-    Cue { text: Expr },
-    Status { fields: Vec<FieldTemplate> },
+    Damage {
+        target: Expr,
+        amount: Expr,
+    },
+    Heal {
+        target: Expr,
+        amount: Expr,
+    },
+    AdjustStat {
+        target: Expr,
+        stat: StatType,
+        delta: Expr,
+    },
+    GrantImmunity {
+        target: Expr,
+        turns: Expr,
+    },
+    Cue {
+        text: Expr,
+    },
+    Status {
+        fields: Vec<FieldTemplate>,
+    },
     /// Hand `item` from `from` to `to` (`Effect::GiveItem`). `from`/`to` resolve as
     /// character ids, `item` as an item id.
-    GiveItem { from: Expr, to: Expr, item: Expr },
+    GiveItem {
+        from: Expr,
+        to: Expr,
+        item: Expr,
+    },
     /// Flip `target`'s `visible` flag (`Effect::SetVisible`). `visible` is evaluated
     /// for JS truthiness.
-    SetVisible { target: Expr, visible: Expr },
+    SetVisible {
+        target: Expr,
+        visible: Expr,
+    },
 }
 
 /// One `StatusField` template (Task 7).
@@ -146,12 +260,24 @@ pub struct FieldTemplate {
 /// The body of a `modify_damage` transform (Task 7). Tagged on `kind`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum DamageBody {
-    Value { expr: Expr },
+    Value {
+        expr: Expr,
+    },
     /// Halts the fold (TS `{ value, final: true }`).
-    Final { expr: Expr },
-    IfElse { cond: Expr, then: Box<DamageBody>, r#else: Box<DamageBody> },
+    Final {
+        expr: Expr,
+    },
+    IfElse {
+        cond: Expr,
+        then: Box<DamageBody>,
+        r#else: Box<DamageBody>,
+    },
 }
 
 /// The six mechanic hook bodies (Task 9). Each is optional; a missing hook is a

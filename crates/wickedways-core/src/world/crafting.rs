@@ -42,9 +42,14 @@ impl World {
     /// Remove `cost` from the pool, deleting any component that reaches ≤ 0. The
     /// whole cost is checked up front, so a failed withdrawal leaves the pool
     /// untouched. Mirrors `Campaign.withdrawMaterials`.
-    fn withdraw_materials(&mut self, cost: &BTreeMap<String, i64>) -> Result<(), ProceduralViolation> {
+    fn withdraw_materials(
+        &mut self,
+        cost: &BTreeMap<String, i64>,
+    ) -> Result<(), ProceduralViolation> {
         if !self.can_afford(cost) {
-            return Err(ProceduralViolation("Insufficient materials in the party pool".into()));
+            return Err(ProceduralViolation(
+                "Insufficient materials in the party pool".into(),
+            ));
         }
         if !self.campaign.materials.is_object() {
             self.campaign.materials = json!({});
@@ -142,20 +147,21 @@ impl World {
         _cues: &mut [PresentationCue],
     ) -> Result<ItemId, ProceduralViolation> {
         if !self.knows_recipe(recipe_id) {
-            return Err(ProceduralViolation("Cannot craft an undiscovered recipe".into()));
+            return Err(ProceduralViolation(
+                "Cannot craft an undiscovered recipe".into(),
+            ));
         }
         let recipe = cat
             .recipes
             .get(recipe_id)
             .ok_or_else(|| ProceduralViolation("No recipe registered for that id".into()))?
             .clone();
-        let output_key = recipe.output_item_key.ok_or_else(|| {
-            ProceduralViolation("Recipe has no craftable output item".into())
+        let output_key = recipe
+            .output_item_key
+            .ok_or_else(|| ProceduralViolation("Recipe has no craftable output item".into()))?;
+        let descriptor = cat.items.get(&output_key).ok_or_else(|| {
+            ProceduralViolation(format!("No item registered for key '{output_key}'"))
         })?;
-        let descriptor = cat
-            .items
-            .get(&output_key)
-            .ok_or_else(|| ProceduralViolation(format!("No item registered for key '{output_key}'")))?;
 
         if !self.can_afford(&recipe.materials) {
             return Err(ProceduralViolation("Not enough materials to craft".into()));
@@ -167,7 +173,9 @@ impl World {
             .get(actor)
             .ok_or_else(|| ProceduralViolation("Actor not found".into()))?;
         if ch.inventory.item_ids.len() as i64 >= ch.inventory.slots {
-            return Err(ProceduralViolation("No inventory slot for the crafted item".into()));
+            return Err(ProceduralViolation(
+                "No inventory slot for the crafted item".into(),
+            ));
         }
 
         self.withdraw_materials(&recipe.materials)?;
@@ -229,10 +237,14 @@ impl World {
             .clone();
         let resolved = resolve_item(&snap, cat)?;
         let (Some(max), Some(cur)) = (resolved.max_durability, resolved.durability) else {
-            return Err(ProceduralViolation("Cannot repair an item that has no durability.".into()));
+            return Err(ProceduralViolation(
+                "Cannot repair an item that has no durability.".into(),
+            ));
         };
         if cur >= max {
-            return Err(ProceduralViolation("Cannot repair an item that is not damaged.".into()));
+            return Err(ProceduralViolation(
+                "Cannot repair an item that is not damaged.".into(),
+            ));
         }
 
         // Proportional cost from the item's own material composition (`recipe`):
@@ -260,7 +272,9 @@ impl World {
             }
         }
         if !self.can_afford(&cost) {
-            return Err(ProceduralViolation("Not enough materials to repair.".into()));
+            return Err(ProceduralViolation(
+                "Not enough materials to repair.".into(),
+            ));
         }
         self.withdraw_materials(&cost)?;
         self.set_durability(item_id, max);
@@ -297,15 +311,22 @@ impl World {
             .clone();
         let resolved = resolve_item(&snap, cat)?;
         if !resolved.properties.destroyable {
-            return Err(ProceduralViolation("That item cannot be broken down.".into()));
+            return Err(ProceduralViolation(
+                "That item cannot be broken down.".into(),
+            ));
         }
         // The item's `recipe` (material makeup) returns to the pool — the same field
         // craft/repair price against.
-        let room = self.characters.get(actor).and_then(|c| c.current_room_id.clone());
+        let room = self
+            .characters
+            .get(actor)
+            .and_then(|c| c.current_room_id.clone());
         let recipe = match &snap {
-            ItemSnapshot::Item { behavior_key, .. } => {
-                cat.items.get(behavior_key).map(|d| d.recipe.clone()).unwrap_or_else(|| json!({}))
-            }
+            ItemSnapshot::Item { behavior_key, .. } => cat
+                .items
+                .get(behavior_key)
+                .map(|d| d.recipe.clone())
+                .unwrap_or_else(|| json!({})),
             ItemSnapshot::Key { .. } => json!({}),
         };
         self.deposit_materials(&recipe, Some(&actor.0), room.as_ref().map(|r| r.0.as_str()));
@@ -337,7 +358,9 @@ impl World {
 mod tests {
     use super::*;
     use crate::stats::StatType;
-    use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType, RecipeMeta, SlotKind};
+    use crate::world::descriptor::{
+        ItemDescriptor, ItemProperties, ItemType, RecipeMeta, SlotKind,
+    };
     use crate::world::ids::RoomId;
     use crate::world::snapshot::MaterialCacheSnapshot;
     use crate::world::test_support::world_two_rooms;
@@ -376,33 +399,75 @@ mod tests {
         }
     }
 
-    fn catalog_with(items: BTreeMap<String, ItemDescriptor>, recipes: BTreeMap<String, RecipeMeta>) -> Catalog {
-        Catalog { items, recipes, ..Catalog::default() }
+    fn catalog_with(
+        items: BTreeMap<String, ItemDescriptor>,
+        recipes: BTreeMap<String, RecipeMeta>,
+    ) -> Catalog {
+        Catalog {
+            items,
+            recipes,
+            ..Catalog::default()
+        }
     }
 
     fn place_cache(world: &mut World, room: &str, id: &str, contents: Value) {
         let cid = MaterialCacheId(id.into());
+        world.material_caches.insert(
+            cid.clone(),
+            MaterialCacheSnapshot {
+                id: cid.clone(),
+                contents,
+                depleted: false,
+            },
+        );
         world
-            .material_caches
-            .insert(cid.clone(), MaterialCacheSnapshot { id: cid.clone(), contents, depleted: false });
-        world.rooms.get_mut(&RoomId(room.into())).unwrap().material_cache_ids.push(cid);
+            .rooms
+            .get_mut(&RoomId(room.into()))
+            .unwrap()
+            .material_cache_ids
+            .push(cid);
     }
 
     #[test]
     fn harvest_deposits_into_the_pool_and_depletes_the_cache() {
         let mut world = world_two_rooms(false); // pc in the lit "start" room
-        place_cache(&mut world, "start", "cache:vein", json!({ "iron": 3, "salt": 2 }));
+        place_cache(
+            &mut world,
+            "start",
+            "cache:vein",
+            json!({ "iron": 3, "salt": 2 }),
+        );
         let cat = Catalog::default();
         let mut cues = Vec::new();
 
-        world.harvest(&pc(), &MaterialCacheId("cache:vein".into()), &cat, &mut cues).unwrap();
+        world
+            .harvest(
+                &pc(),
+                &MaterialCacheId("cache:vein".into()),
+                &cat,
+                &mut cues,
+            )
+            .unwrap();
 
-        assert_eq!(world.campaign.materials, json!({ "iron": 3.0, "salt": 2.0 }));
+        assert_eq!(
+            world.campaign.materials,
+            json!({ "iron": 3.0, "salt": 2.0 })
+        );
         assert!(world.material_caches[&MaterialCacheId("cache:vein".into())].depleted);
 
         // A second harvest is a safe no-op (anti-farming): pool unchanged.
-        world.harvest(&pc(), &MaterialCacheId("cache:vein".into()), &cat, &mut cues).unwrap();
-        assert_eq!(world.campaign.materials, json!({ "iron": 3.0, "salt": 2.0 }));
+        world
+            .harvest(
+                &pc(),
+                &MaterialCacheId("cache:vein".into()),
+                &cat,
+                &mut cues,
+            )
+            .unwrap();
+        assert_eq!(
+            world.campaign.materials,
+            json!({ "iron": 3.0, "salt": 2.0 })
+        );
     }
 
     #[test]
@@ -412,7 +477,12 @@ mod tests {
         world.rooms.get_mut(&RoomId("start".into())).unwrap().dark = true;
         place_cache(&mut world, "start", "cache:vein", json!({ "iron": 1 }));
         let err = world
-            .harvest(&pc(), &MaterialCacheId("cache:vein".into()), &Catalog::default(), &mut Vec::new())
+            .harvest(
+                &pc(),
+                &MaterialCacheId("cache:vein".into()),
+                &Catalog::default(),
+                &mut Vec::new(),
+            )
             .unwrap_err();
         assert!(err.0.contains("dark"), "got {err:?}");
     }
@@ -422,14 +492,22 @@ mod tests {
         let mut world = world_two_rooms(false);
         place_cache(&mut world, "next", "cache:vein", json!({ "iron": 1 })); // pc is in "start"
         let err = world
-            .harvest(&pc(), &MaterialCacheId("cache:vein".into()), &Catalog::default(), &mut Vec::new())
+            .harvest(
+                &pc(),
+                &MaterialCacheId("cache:vein".into()),
+                &Catalog::default(),
+                &mut Vec::new(),
+            )
             .unwrap_err();
         assert!(err.0.contains("not in the current room"), "got {err:?}");
     }
 
     fn craftable_catalog() -> Catalog {
         let mut items = BTreeMap::new();
-        items.insert("items/blade".to_string(), weapon_desc(Some(4), json!({ "iron": 2 })));
+        items.insert(
+            "items/blade".to_string(),
+            weapon_desc(Some(4), json!({ "iron": 2 })),
+        );
         let mut recipes = BTreeMap::new();
         recipes.insert(
             "blade".to_string(),
@@ -455,7 +533,12 @@ mod tests {
         // Output is a fresh full-durability instance of the recipe's item, now held.
         assert!(world.characters[&pc()].inventory.item_ids.contains(&id));
         match &world.items[&id] {
-            ItemSnapshot::Item { behavior_key, durability, modifier, .. } => {
+            ItemSnapshot::Item {
+                behavior_key,
+                durability,
+                modifier,
+                ..
+            } => {
                 assert_eq!(behavior_key, "items/blade");
                 assert_eq!(*durability, Some(4));
                 assert_eq!(*modifier, 2);
@@ -470,7 +553,9 @@ mod tests {
     fn craft_an_undiscovered_recipe_is_refused() {
         let mut world = world_two_rooms(false);
         world.campaign.materials = json!({ "iron": 5 });
-        let err = world.craft(&pc(), "blade", &craftable_catalog(), &mut Vec::new()).unwrap_err();
+        let err = world
+            .craft(&pc(), "blade", &craftable_catalog(), &mut Vec::new())
+            .unwrap_err();
         assert!(err.0.contains("undiscovered"), "got {err:?}");
     }
 
@@ -479,9 +564,15 @@ mod tests {
         let mut world = world_two_rooms(false);
         world.campaign.known_recipes.push("blade".into());
         world.campaign.materials = json!({ "iron": 1 });
-        let err = world.craft(&pc(), "blade", &craftable_catalog(), &mut Vec::new()).unwrap_err();
+        let err = world
+            .craft(&pc(), "blade", &craftable_catalog(), &mut Vec::new())
+            .unwrap_err();
         assert!(err.0.contains("Not enough materials"), "got {err:?}");
-        assert_eq!(world.campaign.materials, json!({ "iron": 1 }), "pool untouched on failure");
+        assert_eq!(
+            world.campaign.materials,
+            json!({ "iron": 1 }),
+            "pool untouched on failure"
+        );
     }
 
     #[test]
@@ -492,11 +583,23 @@ mod tests {
         // Fill the single... actually two_rooms pc has 6 slots; fill them.
         let slots = world.characters[&pc()].inventory.slots;
         for i in 0..slots {
-            world.characters.get_mut(&pc()).unwrap().inventory.item_ids.push(ItemId(format!("filler{i}")));
+            world
+                .characters
+                .get_mut(&pc())
+                .unwrap()
+                .inventory
+                .item_ids
+                .push(ItemId(format!("filler{i}")));
         }
-        let err = world.craft(&pc(), "blade", &craftable_catalog(), &mut Vec::new()).unwrap_err();
+        let err = world
+            .craft(&pc(), "blade", &craftable_catalog(), &mut Vec::new())
+            .unwrap_err();
         assert!(err.0.contains("No inventory slot"), "got {err:?}");
-        assert_eq!(world.campaign.materials, json!({ "iron": 5 }), "pool untouched on failure");
+        assert_eq!(
+            world.campaign.materials,
+            json!({ "iron": 5 }),
+            "pool untouched on failure"
+        );
     }
 
     #[test]
@@ -504,38 +607,74 @@ mod tests {
         let mut world = world_two_rooms(false);
         // A held blade worn to 1/4; recipe { iron: 4 } → cost ceil(4 * 3 / 4) = 3.
         let mut items = BTreeMap::new();
-        items.insert("items/blade".to_string(), weapon_desc(Some(4), json!({ "iron": 4 })));
+        items.insert(
+            "items/blade".to_string(),
+            weapon_desc(Some(4), json!({ "iron": 4 })),
+        );
         let cat = catalog_with(items, BTreeMap::new());
         let bid = ItemId("blade-1".into());
         world.items.insert(
             bid.clone(),
-            ItemSnapshot::Item { id: bid.clone(), behavior_key: "items/blade".into(), durability: Some(1), modifier: 2 },
+            ItemSnapshot::Item {
+                id: bid.clone(),
+                behavior_key: "items/blade".into(),
+                durability: Some(1),
+                modifier: 2,
+            },
         );
-        world.characters.get_mut(&pc()).unwrap().inventory.item_ids.push(bid.clone());
+        world
+            .characters
+            .get_mut(&pc())
+            .unwrap()
+            .inventory
+            .item_ids
+            .push(bid.clone());
         world.campaign.materials = json!({ "iron": 10 });
 
         world.repair(&pc(), &bid, &cat, &mut Vec::new()).unwrap();
 
         match &world.items[&bid] {
-            ItemSnapshot::Item { durability, .. } => assert_eq!(*durability, Some(4), "restored to full"),
+            ItemSnapshot::Item { durability, .. } => {
+                assert_eq!(*durability, Some(4), "restored to full")
+            }
             _ => panic!(),
         }
-        assert_eq!(world.campaign.materials, json!({ "iron": 7.0 }), "cost of 3 withdrawn");
+        assert_eq!(
+            world.campaign.materials,
+            json!({ "iron": 7.0 }),
+            "cost of 3 withdrawn"
+        );
     }
 
     #[test]
     fn repair_an_undamaged_item_is_refused() {
         let mut world = world_two_rooms(false);
         let mut items = BTreeMap::new();
-        items.insert("items/blade".to_string(), weapon_desc(Some(4), json!({ "iron": 4 })));
+        items.insert(
+            "items/blade".to_string(),
+            weapon_desc(Some(4), json!({ "iron": 4 })),
+        );
         let cat = catalog_with(items, BTreeMap::new());
         let bid = ItemId("blade-1".into());
         world.items.insert(
             bid.clone(),
-            ItemSnapshot::Item { id: bid.clone(), behavior_key: "items/blade".into(), durability: Some(4), modifier: 2 },
+            ItemSnapshot::Item {
+                id: bid.clone(),
+                behavior_key: "items/blade".into(),
+                durability: Some(4),
+                modifier: 2,
+            },
         );
-        world.characters.get_mut(&pc()).unwrap().inventory.item_ids.push(bid.clone());
-        let err = world.repair(&pc(), &bid, &cat, &mut Vec::new()).unwrap_err();
+        world
+            .characters
+            .get_mut(&pc())
+            .unwrap()
+            .inventory
+            .item_ids
+            .push(bid.clone());
+        let err = world
+            .repair(&pc(), &bid, &cat, &mut Vec::new())
+            .unwrap_err();
         assert!(err.0.contains("not damaged"), "got {err:?}");
     }
 
@@ -543,21 +682,41 @@ mod tests {
     fn destroy_scraps_a_held_item_into_the_pool() {
         let mut world = world_two_rooms(false);
         let mut items = BTreeMap::new();
-        items.insert("items/blade".to_string(), weapon_desc(Some(4), json!({ "iron": 2, "salt": 1 })));
+        items.insert(
+            "items/blade".to_string(),
+            weapon_desc(Some(4), json!({ "iron": 2, "salt": 1 })),
+        );
         let cat = catalog_with(items, BTreeMap::new());
         let bid = ItemId("blade-1".into());
         world.items.insert(
             bid.clone(),
-            ItemSnapshot::Item { id: bid.clone(), behavior_key: "items/blade".into(), durability: Some(3), modifier: 2 },
+            ItemSnapshot::Item {
+                id: bid.clone(),
+                behavior_key: "items/blade".into(),
+                durability: Some(3),
+                modifier: 2,
+            },
         );
-        world.characters.get_mut(&pc()).unwrap().inventory.item_ids.push(bid.clone());
+        world
+            .characters
+            .get_mut(&pc())
+            .unwrap()
+            .inventory
+            .item_ids
+            .push(bid.clone());
 
         world.destroy(&pc(), &bid, &cat, &mut Vec::new()).unwrap();
 
         // The item's makeup returned to the pool and the item is gone.
-        assert_eq!(world.campaign.materials, json!({ "iron": 2.0, "salt": 1.0 }));
+        assert_eq!(
+            world.campaign.materials,
+            json!({ "iron": 2.0, "salt": 1.0 })
+        );
         assert!(!world.items.contains_key(&bid), "snapshot removed");
-        assert!(!world.characters[&pc()].inventory.item_ids.contains(&bid), "not held");
+        assert!(
+            !world.characters[&pc()].inventory.item_ids.contains(&bid),
+            "not held"
+        );
     }
 
     #[test]
@@ -571,10 +730,23 @@ mod tests {
         let bid = ItemId("anvil-1".into());
         world.items.insert(
             bid.clone(),
-            ItemSnapshot::Item { id: bid.clone(), behavior_key: "items/anvil".into(), durability: Some(4), modifier: 2 },
+            ItemSnapshot::Item {
+                id: bid.clone(),
+                behavior_key: "items/anvil".into(),
+                durability: Some(4),
+                modifier: 2,
+            },
         );
-        world.characters.get_mut(&pc()).unwrap().inventory.item_ids.push(bid.clone());
-        let err = world.destroy(&pc(), &bid, &cat, &mut Vec::new()).unwrap_err();
+        world
+            .characters
+            .get_mut(&pc())
+            .unwrap()
+            .inventory
+            .item_ids
+            .push(bid.clone());
+        let err = world
+            .destroy(&pc(), &bid, &cat, &mut Vec::new())
+            .unwrap_err();
         assert!(err.0.contains("cannot be broken down"), "got {err:?}");
         assert!(world.items.contains_key(&bid), "untouched on refusal");
     }
@@ -583,14 +755,24 @@ mod tests {
     fn repair_an_unheld_item_is_refused() {
         let mut world = world_two_rooms(false);
         let mut items = BTreeMap::new();
-        items.insert("items/blade".to_string(), weapon_desc(Some(4), json!({ "iron": 4 })));
+        items.insert(
+            "items/blade".to_string(),
+            weapon_desc(Some(4), json!({ "iron": 4 })),
+        );
         let cat = catalog_with(items, BTreeMap::new());
         let bid = ItemId("blade-1".into());
         world.items.insert(
             bid.clone(),
-            ItemSnapshot::Item { id: bid.clone(), behavior_key: "items/blade".into(), durability: Some(1), modifier: 2 },
+            ItemSnapshot::Item {
+                id: bid.clone(),
+                behavior_key: "items/blade".into(),
+                durability: Some(1),
+                modifier: 2,
+            },
         );
-        let err = world.repair(&pc(), &bid, &cat, &mut Vec::new()).unwrap_err();
+        let err = world
+            .repair(&pc(), &bid, &cat, &mut Vec::new())
+            .unwrap_err();
         assert!(err.0.contains("not holding"), "got {err:?}");
     }
 }

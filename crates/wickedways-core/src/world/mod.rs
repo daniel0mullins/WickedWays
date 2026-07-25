@@ -1,7 +1,9 @@
 //! The id-keyed runtime world model (Phase 1).
 pub mod afflictions;
 pub mod archetype;
+mod combat;
 pub mod command;
+mod crafting;
 pub mod descriptor;
 pub mod direction;
 pub mod equipment;
@@ -12,28 +14,28 @@ pub mod gate;
 pub mod history;
 pub mod ids;
 pub mod intent;
+mod items_actions;
 pub mod lifecycle;
-pub mod mob_actions;
 pub mod mechanics;
+pub mod mob_actions;
+mod movement;
 pub mod resolve;
 pub mod rng;
 pub mod scenes;
 pub mod snapshot;
 pub mod submit;
-mod combat;
-mod crafting;
-mod items_actions;
-mod movement;
 mod turn;
-pub mod view;
 pub mod victory;
+pub mod view;
 
 #[cfg(test)]
 pub mod test_support;
 
 pub use direction::Direction;
 pub use ids::{CharacterId, ExitId, ItemId, LootId, MaterialCacheId, RoomId};
-pub use snapshot::{ExitSnapshot, ItemSnapshot, LootSnapshot, MaterialCacheSnapshot, SceneSnapshot};
+pub use snapshot::{
+    ExitSnapshot, ItemSnapshot, LootSnapshot, MaterialCacheSnapshot, SceneSnapshot,
+};
 
 use alloc::collections::BTreeMap;
 use rng::Rng;
@@ -66,7 +68,11 @@ impl World {
     /// hydration — references are ids, so there is nothing to re-wire.
     pub fn from_snapshot(s: CampaignSnapshot) -> World {
         World {
-            characters: s.characters.into_iter().map(|c| (c.id.clone(), c)).collect(),
+            characters: s
+                .characters
+                .into_iter()
+                .map(|c| (c.id.clone(), c))
+                .collect(),
             rooms: s.rooms.into_iter().map(|r| (r.id.clone(), r)).collect(),
             items: s.items.into_iter().map(|i| (item_id(&i), i)).collect(),
             loot: s.loot.into_iter().map(|l| (l.id.clone(), l)).collect(),

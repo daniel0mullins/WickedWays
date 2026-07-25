@@ -54,7 +54,11 @@ use crate::{ids, Seat};
 
 /// `DEFAULT_PLAYER_STATS` (`player-character.ts:44-48`) — the baseline before any
 /// archetype override.
-const DEFAULT_PLAYER_STATS: Stats = Stats { energy: 10.0, sanity: 10.0, health: 10.0 };
+const DEFAULT_PLAYER_STATS: Stats = Stats {
+    energy: 10.0,
+    sanity: 10.0,
+    health: 10.0,
+};
 /// Player inventory capacity default (`player-character.ts:84`).
 const DEFAULT_PLAYER_SLOTS: i64 = 5;
 /// Player action budget (`player-character.ts:86`).
@@ -168,7 +172,11 @@ pub(crate) fn seat_party(
             // The boot move ticks the budget once (recordAction, character.ts:596).
             actions_this_round: 1,
             current_room_id: Some(RoomId(start_room_id.clone())),
-            inventory: InventorySnapshot { slots, item_ids: Vec::new(), key_ids: Vec::new() },
+            inventory: InventorySnapshot {
+                slots,
+                item_ids: Vec::new(),
+                key_ids: Vec::new(),
+            },
             equipment: BTreeMap::new(),
             // The boot move records one `move` history entry at round 0.
             history: vec![ActionHistoryEntry::Move {
@@ -193,7 +201,9 @@ pub(crate) fn seat_party(
 
         // The PC joins the room's occupants at the end (after existing mobs/npcs
         // and any earlier-seated PC), and the party in seat order.
-        snap.rooms[room_idx].occupant_ids.push(CharacterId(pc_id.clone()));
+        snap.rooms[room_idx]
+            .occupant_ids
+            .push(CharacterId(pc_id.clone()));
         snap.campaign.party_ids.push(CharacterId(pc_id.clone()));
         if i == 0 {
             snap.campaign.gm_id = Some(CharacterId(pc_id.clone()));

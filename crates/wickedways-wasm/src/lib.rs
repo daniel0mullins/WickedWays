@@ -42,7 +42,9 @@ mod conformance_api {
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
         let out = serde_json::to_value(parsed.mitigator())
             .map_err(|e| JsValue::from_str(&e.to_string()))?;
-        let s = out.as_str().ok_or_else(|| JsValue::from_str("expected string stat"))?;
+        let s = out
+            .as_str()
+            .ok_or_else(|| JsValue::from_str("expected string stat"))?;
         Ok(s.to_string())
     }
 
@@ -75,11 +77,13 @@ mod conformance_api {
         let catalog: Catalog =
             serde_json::from_str(catalog_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
 
-        let opened_vec: Vec<String> =
-            serde_json::from_str(opened_loot_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
+        let opened_vec: Vec<String> = serde_json::from_str(opened_loot_json)
+            .map_err(|e| JsValue::from_str(&e.to_string()))?;
         let opened_loot: BTreeSet<String> = opened_vec.into_iter().collect();
 
-        let vm = world.view(&catalog, &opened_loot).map_err(|e| JsValue::from_str(&e.0))?;
+        let vm = world
+            .view(&catalog, &opened_loot)
+            .map_err(|e| JsValue::from_str(&e.0))?;
         serde_json::to_string(&vm).map_err(|e| JsValue::from_str(&e.to_string()))
     }
 
@@ -102,7 +106,9 @@ mod conformance_api {
         let mut world = World::from_snapshot(snap);
         let cat: Catalog =
             serde_json::from_str(catalog_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
-        world.validate_mechanics(&cat).map_err(|e| JsValue::from_str(&e.0))?;
+        world
+            .validate_mechanics(&cat)
+            .map_err(|e| JsValue::from_str(&e.0))?;
         world.seed_rng(seed);
         let commands: Vec<Command> =
             serde_json::from_str(commands_json).map_err(|e| JsValue::from_str(&e.to_string()))?;
@@ -112,7 +118,9 @@ mod conformance_api {
             let mut cues: Vec<PresentationCue> = Vec::new();
             apply_command(&mut world, cmd.clone(), &cat, &mut opened, &mut cues)
                 .map_err(|e| JsValue::from_str(&e.0))?;
-            let vm = world.view(&cat, &opened).map_err(|e| JsValue::from_str(&e.0))?;
+            let vm = world
+                .view(&cat, &opened)
+                .map_err(|e| JsValue::from_str(&e.0))?;
             steps.push(serde_json::json!({
                 "command": cmd,
                 "cues": cues,

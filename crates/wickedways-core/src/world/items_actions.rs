@@ -129,7 +129,8 @@ impl World {
             let used = ch.inventory.item_ids.len() as i64;
             if used >= slots {
                 return Err(ProceduralViolation(
-                    "Attempted to add to inventory, but character doesn't have enough slots!".into(),
+                    "Attempted to add to inventory, but character doesn't have enough slots!"
+                        .into(),
                 ));
             }
         }
@@ -258,18 +259,30 @@ impl World {
                 .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
             ch.history.push(ActionHistoryEntry::PickUp {
                 round,
-                items: vec![ItemRef { id: target.clone(), name: resolved.name.clone() }],
+                items: vec![ItemRef {
+                    id: target.clone(),
+                    name: resolved.name.clone(),
+                }],
             });
         }
 
         // 8. Emit action cue.
         cues.push(PresentationCue::Action {
             action: ActionKind::PickUp,
-            actor: EntityRef { id: actor.0.clone(), name: actor_name },
+            actor: EntityRef {
+                id: actor.0.clone(),
+                name: actor_name,
+            },
             sound: None,
         });
 
-        self.record_action(actor, true, crate::world::mechanics::ActionView::of("pickUp"), cat, cues)?;
+        self.record_action(
+            actor,
+            true,
+            crate::world::mechanics::ActionView::of("pickUp"),
+            cat,
+            cues,
+        )?;
         Ok(Some(loot_id))
     }
 
@@ -303,14 +316,21 @@ impl World {
         }
 
         // --- snapshot the actor's current room for visibility flip ---
-        let actor_room = self.characters.get(actor).and_then(|c| c.current_room_id.clone());
-        let was_lit = actor_room.as_ref().map(|r| self.is_lit(r, cat)).unwrap_or(true);
+        let actor_room = self
+            .characters
+            .get(actor)
+            .and_then(|c| c.current_room_id.clone());
+        let was_lit = actor_room
+            .as_ref()
+            .map(|r| self.is_lit(r, cat))
+            .unwrap_or(true);
 
         // 1. Item must be in actor's inventory.item_ids
         {
-            let ch = self.characters.get(actor).ok_or_else(|| {
-                ProceduralViolation("Actor not found.".into())
-            })?;
+            let ch = self
+                .characters
+                .get(actor)
+                .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
             if !ch.inventory.item_ids.contains(item) {
                 return Err(ProceduralViolation(
                     "Cannot equip an item the character is not holding.".into(),
@@ -319,9 +339,10 @@ impl World {
         }
 
         // Resolve the item to check equippability and slot
-        let item_snap = self.items.get(item).ok_or_else(|| {
-            ProceduralViolation("Item snapshot not found.".into())
-        })?;
+        let item_snap = self
+            .items
+            .get(item)
+            .ok_or_else(|| ProceduralViolation("Item snapshot not found.".into()))?;
         let resolved = resolve_item(item_snap, cat)?;
 
         // 2. Must be equippable
@@ -330,15 +351,18 @@ impl World {
         }
 
         // 3. Must have a slot kind
-        let item_slot_kind = resolved.slot.ok_or_else(|| {
-            ProceduralViolation("Item has no equipment slot.".into())
-        })?;
+        let item_slot_kind = resolved
+            .slot
+            .ok_or_else(|| ProceduralViolation("Item has no equipment slot.".into()))?;
 
         // Determine two-handed from descriptor (two_handed is not in ResolvedItem; read from catalog)
         let is_two_handed = {
             let snap = self.items.get(item).unwrap(); // safe: checked above
             if let crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } = snap {
-                cat.items.get(behavior_key).and_then(|d| d.two_handed).unwrap_or(false)
+                cat.items
+                    .get(behavior_key)
+                    .and_then(|d| d.two_handed)
+                    .unwrap_or(false)
             } else {
                 false
             }
@@ -356,8 +380,14 @@ impl World {
         // 5. Two-handed weapon: clear both hands, set both
         if resolved.r#type == ItemType::Weapon && is_two_handed {
             // Collect current occupants of left/right hand (may be different items)
-            let left_occ = self.characters.get(actor).and_then(|c| c.equipment.get(LEFT_HAND).cloned());
-            let right_occ = self.characters.get(actor).and_then(|c| c.equipment.get(RIGHT_HAND).cloned());
+            let left_occ = self
+                .characters
+                .get(actor)
+                .and_then(|c| c.equipment.get(LEFT_HAND).cloned());
+            let right_occ = self
+                .characters
+                .get(actor)
+                .and_then(|c| c.equipment.get(RIGHT_HAND).cloned());
 
             // Unequip each hand's occupant (suppress intermediate cues)
             if let Some(occ) = left_occ {
@@ -385,19 +415,26 @@ impl World {
                 .collect();
 
             if eligible.is_empty() {
-                return Err(ProceduralViolation("Character has no slot for this item.".into()));
+                return Err(ProceduralViolation(
+                    "Character has no slot for this item.".into(),
+                ));
             }
 
             // First free eligible slot in canonical order, else displace eligible[0]
             let chosen_slot: &str = {
                 let ch = self.characters.get(actor).unwrap();
-                eligible.iter().find(|&&s| !ch.equipment.contains_key(s)).copied()
+                eligible
+                    .iter()
+                    .find(|&&s| !ch.equipment.contains_key(s))
+                    .copied()
                     .unwrap_or(eligible[0])
             };
             let chosen_slot = chosen_slot.to_string(); // own the string before mutable borrow
 
             // Auto-swap: if chosen slot has a different occupant, unequip it first
-            let current_occ = self.characters.get(actor)
+            let current_occ = self
+                .characters
+                .get(actor)
                 .and_then(|c| c.equipment.get(chosen_slot.as_str()).cloned());
             if let Some(occ) = current_occ {
                 if &occ != item {
@@ -414,9 +451,16 @@ impl World {
         if let Some(ref room_id) = actor_room {
             let now_lit = self.is_lit(room_id, cat);
             if now_lit != was_lit {
-                let room_name = self.rooms.get(room_id).map(|r| r.name.clone()).unwrap_or_default();
+                let room_name = self
+                    .rooms
+                    .get(room_id)
+                    .map(|r| r.name.clone())
+                    .unwrap_or_default();
                 cues.push(PresentationCue::Visibility {
-                    room: EntityRef { id: room_id.0.clone(), name: room_name },
+                    room: EntityRef {
+                        id: room_id.0.clone(),
+                        name: room_name,
+                    },
                     lit: now_lit,
                 });
             }
@@ -448,14 +492,21 @@ impl World {
             crate::world::gate::GateVerdict::Allow => {}
         }
 
-        let actor_room = self.characters.get(actor).and_then(|c| c.current_room_id.clone());
-        let was_lit = actor_room.as_ref().map(|r| self.is_lit(r, cat)).unwrap_or(true);
+        let actor_room = self
+            .characters
+            .get(actor)
+            .and_then(|c| c.current_room_id.clone());
+        let was_lit = actor_room
+            .as_ref()
+            .map(|r| self.is_lit(r, cat))
+            .unwrap_or(true);
 
         // Validate: item held AND equipped (mirrors character.ts:756-773 — no catalog lookup)
         {
-            let ch = self.characters.get(actor).ok_or_else(|| {
-                ProceduralViolation("Actor not found.".into())
-            })?;
+            let ch = self
+                .characters
+                .get(actor)
+                .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
             if !ch.inventory.item_ids.contains(item) {
                 return Err(ProceduralViolation(
                     "Cannot unequip an item the character is not holding.".into(),
@@ -472,9 +523,16 @@ impl World {
         if let Some(ref room_id) = actor_room {
             let now_lit = self.is_lit(room_id, cat);
             if now_lit != was_lit {
-                let room_name = self.rooms.get(room_id).map(|r| r.name.clone()).unwrap_or_default();
+                let room_name = self
+                    .rooms
+                    .get(room_id)
+                    .map(|r| r.name.clone())
+                    .unwrap_or_default();
                 cues.push(PresentationCue::Visibility {
-                    room: EntityRef { id: room_id.0.clone(), name: room_name },
+                    room: EntityRef {
+                        id: room_id.0.clone(),
+                        name: room_name,
+                    },
                     lit: now_lit,
                 });
             }
@@ -490,9 +548,10 @@ impl World {
         actor: &CharacterId,
         item: &ItemId,
     ) -> Result<(), ProceduralViolation> {
-        let ch = self.characters.get_mut(actor).ok_or_else(|| {
-            ProceduralViolation("Actor not found.".into())
-        })?;
+        let ch = self
+            .characters
+            .get_mut(actor)
+            .ok_or_else(|| ProceduralViolation("Actor not found.".into()))?;
         // Remove from every slot that holds this item (two-handed spans two slots).
         ch.equipment.retain(|_, v| v != item);
         Ok(())
@@ -523,7 +582,10 @@ impl World {
             ch.inventory.item_ids.retain(|id| id != target);
             ch.history.push(ActionHistoryEntry::Drop {
                 round,
-                items: vec![ItemRef { id: target.clone(), name: item_name.to_string() }],
+                items: vec![ItemRef {
+                    id: target.clone(),
+                    name: item_name.to_string(),
+                }],
             });
             ch.name.clone()
         };
@@ -531,11 +593,20 @@ impl World {
         // Emit Drop action cue.
         cues.push(PresentationCue::Action {
             action: ActionKind::Drop,
-            actor: EntityRef { id: actor.0.clone(), name: actor_name },
+            actor: EntityRef {
+                id: actor.0.clone(),
+                name: actor_name,
+            },
             sound: None,
         });
 
-        self.record_action(actor, true, crate::world::mechanics::ActionView::of("drop"), cat, cues)?;
+        self.record_action(
+            actor,
+            true,
+            crate::world::mechanics::ActionView::of("drop"),
+            cat,
+            cues,
+        )?;
         Ok(())
     }
 
@@ -644,12 +715,17 @@ impl World {
             .map(|r| r.loot_ids.contains(loot_id))
             .unwrap_or(false);
         if !co_located {
-            return Err(ProceduralViolation("The loot container is not here.".into()));
+            return Err(ProceduralViolation(
+                "The loot container is not here.".into(),
+            ));
         }
 
         // 2. Reject keys for the WHOLE op before moving anything (mirrors `requested.some(key)`).
         for id in item_ids {
-            if matches!(self.items.get(id), Some(crate::world::snapshot::ItemSnapshot::Key { .. })) {
+            if matches!(
+                self.items.get(id),
+                Some(crate::world::snapshot::ItemSnapshot::Key { .. })
+            ) {
                 return Err(ProceduralViolation(
                     "Keys cannot be stored in a loot container.".into(),
                 ));
@@ -728,9 +804,10 @@ impl World {
             .clone();
         let resolved = resolve_item(&item_snap, cat)?;
         if !resolved.properties.usable {
-            return Err(ProceduralViolation(
-                alloc::format!("The {} isn't something you can use.", resolved.name),
-            ));
+            return Err(ProceduralViolation(alloc::format!(
+                "The {} isn't something you can use.",
+                resolved.name
+            )));
         }
 
         // 2b. Reject use while KO'd. `use` is the always-allowed escape hatch under
@@ -820,8 +897,12 @@ mod tests {
 
     // ── helpers ────────────────────────────────────────────────────────────────
 
-    fn iid(s: &str) -> ItemId { serde_json::from_value(json!(s)).unwrap() }
-    fn cid(s: &str) -> CharacterId { CharacterId(s.into()) }
+    fn iid(s: &str) -> ItemId {
+        serde_json::from_value(json!(s)).unwrap()
+    }
+    fn cid(s: &str) -> CharacterId {
+        CharacterId(s.into())
+    }
 
     fn weapon_desc(slot: SlotKind, two_handed: Option<bool>) -> ItemDescriptor {
         ItemDescriptor {
@@ -923,8 +1004,13 @@ mod tests {
                     modifier: 0,
                 },
             );
-            world.characters.get_mut(&char_id).unwrap()
-                .inventory.item_ids.push(id);
+            world
+                .characters
+                .get_mut(&char_id)
+                .unwrap()
+                .inventory
+                .item_ids
+                .push(id);
         }
 
         // Also insert catalog-only items that have no snapshot (edge case detection)
@@ -935,7 +1021,13 @@ mod tests {
     fn simple_cat_with(key: &str, desc: ItemDescriptor) -> Catalog {
         let mut items = BTreeMap::new();
         items.insert(key.to_string(), desc);
-        Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() }
+        Catalog {
+            items,
+            aliases: BTreeMap::new(),
+            behaviors: Default::default(),
+            formations: Default::default(),
+            recipes: Default::default(),
+        }
     }
 
     // ── tests ──────────────────────────────────────────────────────────────────
@@ -954,7 +1046,8 @@ mod tests {
         assert_eq!(
             ch.equipment.get("leftHand"),
             Some(&item),
-            "sword should land in leftHand (first eligible in canonical order); equipment = {:?}", ch.equipment
+            "sword should land in leftHand (first eligible in canonical order); equipment = {:?}",
+            ch.equipment
         );
 
         // Free: no budget tick, no history
@@ -968,10 +1061,8 @@ mod tests {
     #[test]
     fn equip_second_finger_ring_uses_second_eligible_slot() {
         let cat = simple_cat_with("items/ring", accessory_desc(SlotKind::Finger));
-        let (mut world, char_id) = world_with_items(
-            &[("ring-1", "items/ring"), ("ring-2", "items/ring")],
-            &cat,
-        );
+        let (mut world, char_id) =
+            world_with_items(&[("ring-1", "items/ring"), ("ring-2", "items/ring")], &cat);
 
         let ring1 = iid("ring-1");
         let ring2 = iid("ring-2");
@@ -987,12 +1078,14 @@ mod tests {
         assert_eq!(
             ch.equipment.get("leftIndexFinger"),
             Some(&ring1),
-            "first ring should land in leftIndexFinger (canonical order); equipment = {:?}", ch.equipment
+            "first ring should land in leftIndexFinger (canonical order); equipment = {:?}",
+            ch.equipment
         );
         assert_eq!(
             ch.equipment.get("leftRingFinger"),
             Some(&ring2),
-            "second ring should land in leftRingFinger (canonical order); equipment = {:?}", ch.equipment
+            "second ring should land in leftRingFinger (canonical order); equipment = {:?}",
+            ch.equipment
         );
     }
 
@@ -1072,7 +1165,13 @@ mod tests {
                 modifier: 0,
             },
         );
-        world.characters.get_mut(&char_id).unwrap().inventory.item_ids.push(sword3.clone());
+        world
+            .characters
+            .get_mut(&char_id)
+            .unwrap()
+            .inventory
+            .item_ids
+            .push(sword3.clone());
 
         world.equip(&char_id, &sword3, &cat, &mut cues).unwrap();
 
@@ -1081,7 +1180,8 @@ mod tests {
         assert_eq!(
             ch.equipment.get("leftHand"),
             Some(&sword3),
-            "sword3 should be in leftHand (eligible[0]); equipment = {:?}", ch.equipment
+            "sword3 should be in leftHand (eligible[0]); equipment = {:?}",
+            ch.equipment
         );
         // sword1 was in leftHand (first equipped), so it is the evicted item
         assert!(
@@ -1104,10 +1204,16 @@ mod tests {
 
         let ch = &world.characters[&char_id];
         let still_equipped = ch.equipment.values().any(|v| v == &item);
-        assert!(!still_equipped, "item should not be in equipment after unequip");
+        assert!(
+            !still_equipped,
+            "item should not be in equipment after unequip"
+        );
 
         // Item still in inventory
-        assert!(ch.inventory.item_ids.contains(&item), "item should stay in inventory");
+        assert!(
+            ch.inventory.item_ids.contains(&item),
+            "item should stay in inventory"
+        );
 
         // Still free
         assert_eq!(ch.actions_this_round, 0);
@@ -1134,8 +1240,14 @@ mod tests {
         world.unequip(&char_id, &item, &cat, &mut cues).unwrap();
 
         let ch = &world.characters[&char_id];
-        assert!(!ch.equipment.contains_key("leftHand"), "leftHand should be free");
-        assert!(!ch.equipment.contains_key("rightHand"), "rightHand should be free");
+        assert!(
+            !ch.equipment.contains_key("leftHand"),
+            "leftHand should be free"
+        );
+        assert!(
+            !ch.equipment.contains_key("rightHand"),
+            "rightHand should be free"
+        );
     }
 
     #[test]
@@ -1168,7 +1280,10 @@ mod tests {
         // Item is in inventory but NOT equipped
         let mut cues = Vec::new();
         let result = world.unequip(&char_id, &item, &cat, &mut cues);
-        assert!(result.is_err(), "unequip of non-equipped item should return Err");
+        assert!(
+            result.is_err(),
+            "unequip of non-equipped item should return Err"
+        );
     }
 
     #[test]
@@ -1222,8 +1337,12 @@ mod tests {
         }
     }
 
-    fn rid(s: &str) -> RoomId { RoomId(s.into()) }
-    fn lid(s: &str) -> LootId { LootId(s.into()) }
+    fn rid(s: &str) -> RoomId {
+        RoomId(s.into())
+    }
+    fn lid(s: &str) -> LootId {
+        LootId(s.into())
+    }
 
     /// Build a world with one lit room, a loot container, an item, and the player in the room.
     fn take_world(dark: bool, slots: i64) -> (World, CharacterId) {
@@ -1248,12 +1367,15 @@ mod tests {
 
         // Add a loot container with that item
         let loot_id = lid("loot-1");
-        world.loot.insert(loot_id.clone(), LootSnapshot {
-            id: loot_id.clone(),
-            description: "A chest".into(),
-            capacity: 10,
-            content_ids: alloc::vec![item_id],
-        });
+        world.loot.insert(
+            loot_id.clone(),
+            LootSnapshot {
+                id: loot_id.clone(),
+                description: "A chest".into(),
+                capacity: 10,
+                content_ids: alloc::vec![item_id],
+            },
+        );
 
         // Add the room with the loot container
         let room = RoomSnapshot {
@@ -1282,7 +1404,12 @@ mod tests {
         let chest = lid("chest");
         world.loot.insert(
             chest.clone(),
-            LootSnapshot { id: chest.clone(), description: "A chest".into(), capacity: 2, content_ids: alloc::vec![] },
+            LootSnapshot {
+                id: chest.clone(),
+                description: "A chest".into(),
+                capacity: 2,
+                content_ids: alloc::vec![],
+            },
         );
         world.rooms.insert(
             rid("room1"),
@@ -1307,9 +1434,18 @@ mod tests {
     fn put_moves_a_held_item_into_a_co_located_container() {
         let (mut world, pc, cat) = put_world();
         let mut cues = Vec::new();
-        world.put_in_loot_box(&pc, &lid("chest"), &[iid("coin-1")], &cat, &mut cues).unwrap();
-        assert!(world.characters[&pc].inventory.item_ids.is_empty(), "item left the inventory");
-        assert_eq!(world.loot[&lid("chest")].content_ids, alloc::vec![iid("coin-1")], "item in the chest");
+        world
+            .put_in_loot_box(&pc, &lid("chest"), &[iid("coin-1")], &cat, &mut cues)
+            .unwrap();
+        assert!(
+            world.characters[&pc].inventory.item_ids.is_empty(),
+            "item left the inventory"
+        );
+        assert_eq!(
+            world.loot[&lid("chest")].content_ids,
+            alloc::vec![iid("coin-1")],
+            "item in the chest"
+        );
     }
 
     #[test]
@@ -1318,12 +1454,28 @@ mod tests {
         let key = iid("key-1");
         world.items.insert(
             key.clone(),
-            ItemSnapshot::Key { id: key.clone(), name: "Brass Key".into(), key_code: "crypt".into(), consume_on_use: false },
+            ItemSnapshot::Key {
+                id: key.clone(),
+                name: "Brass Key".into(),
+                key_code: "crypt".into(),
+                consume_on_use: false,
+            },
         );
-        world.characters.get_mut(&pc).unwrap().inventory.item_ids.push(key.clone());
+        world
+            .characters
+            .get_mut(&pc)
+            .unwrap()
+            .inventory
+            .item_ids
+            .push(key.clone());
         let mut cues = Vec::new();
-        assert!(world.put_in_loot_box(&pc, &lid("chest"), &[key], &cat, &mut cues).is_err());
-        assert!(world.loot[&lid("chest")].content_ids.is_empty(), "nothing stored on rejection");
+        assert!(world
+            .put_in_loot_box(&pc, &lid("chest"), &[key], &cat, &mut cues)
+            .is_err());
+        assert!(
+            world.loot[&lid("chest")].content_ids.is_empty(),
+            "nothing stored on rejection"
+        );
     }
 
     #[test]
@@ -1332,8 +1484,16 @@ mod tests {
         // Fill the chest to capacity (2): no room for the coin.
         world.loot.get_mut(&lid("chest")).unwrap().content_ids = alloc::vec![iid("x"), iid("y")];
         let mut cues = Vec::new();
-        world.put_in_loot_box(&pc, &lid("chest"), &[iid("coin-1")], &cat, &mut cues).unwrap();
-        assert!(world.characters[&pc].inventory.item_ids.contains(&iid("coin-1")), "coin stays: no free space");
+        world
+            .put_in_loot_box(&pc, &lid("chest"), &[iid("coin-1")], &cat, &mut cues)
+            .unwrap();
+        assert!(
+            world.characters[&pc]
+                .inventory
+                .item_ids
+                .contains(&iid("coin-1")),
+            "coin stays: no free space"
+        );
     }
 
     #[test]
@@ -1341,13 +1501,15 @@ mod tests {
         let (mut world, pc, cat) = put_world();
         world.characters.get_mut(&pc).unwrap().current_room_id = Some(rid("elsewhere"));
         let mut cues = Vec::new();
-        assert!(world.put_in_loot_box(&pc, &lid("chest"), &[iid("coin-1")], &cat, &mut cues).is_err());
+        assert!(world
+            .put_in_loot_box(&pc, &lid("chest"), &[iid("coin-1")], &cat, &mut cues)
+            .is_err());
     }
 
     #[test]
     fn take_moves_item_to_inventory_removes_from_loot_ticks_budget_records_history_emits_cue() {
         let cat = simple_cat_with("items/coin", consumable_desc());
-        let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/6);
+        let (mut world, pc_id) = take_world(/*dark=*/ false, /*slots=*/ 6);
         let item_id = iid("item-1");
         let mut cues = Vec::new();
 
@@ -1358,11 +1520,17 @@ mod tests {
 
         // Item is now in inventory
         let ch = &world.characters[&pc_id];
-        assert!(ch.inventory.item_ids.contains(&item_id), "item should be in inventory");
+        assert!(
+            ch.inventory.item_ids.contains(&item_id),
+            "item should be in inventory"
+        );
 
         // Item is removed from loot content_ids
         let loot = &world.loot[&lid("loot-1")];
-        assert!(!loot.content_ids.contains(&item_id), "item should be removed from loot");
+        assert!(
+            !loot.content_ids.contains(&item_id),
+            "item should be removed from loot"
+        );
 
         // Budget ticked +1
         assert_eq!(ch.actions_this_round, 1, "take should tick budget");
@@ -1381,7 +1549,11 @@ mod tests {
         // An action cue (pickUp) was emitted
         assert_eq!(cues.len(), 1);
         match &cues[0] {
-            PresentationCue::Action { action: ActionKind::PickUp, actor, sound: None } => {
+            PresentationCue::Action {
+                action: ActionKind::PickUp,
+                actor,
+                sound: None,
+            } => {
                 assert_eq!(actor.id, "pc");
             }
             other => panic!("expected Action(pickUp) cue, got {:?}", other),
@@ -1391,20 +1563,24 @@ mod tests {
     #[test]
     fn take_in_dark_room_returns_err() {
         let cat = simple_cat_with("items/coin", consumable_desc());
-        let (mut world, pc_id) = take_world(/*dark=*/true, /*slots=*/6);
+        let (mut world, pc_id) = take_world(/*dark=*/ true, /*slots=*/ 6);
         let item_id = iid("item-1");
         let mut cues = Vec::new();
 
         let result = world.take(&pc_id, &item_id, &cat, &mut cues);
         assert!(result.is_err(), "take in a dark room should return Err");
         let err = result.unwrap_err();
-        assert!(err.0.contains("dark"), "error message should mention 'dark', got: {}", err.0);
+        assert!(
+            err.0.contains("dark"),
+            "error message should mention 'dark', got: {}",
+            err.0
+        );
     }
 
     #[test]
     fn take_absent_item_returns_err() {
         let cat = simple_cat_with("items/coin", consumable_desc());
-        let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/6);
+        let (mut world, pc_id) = take_world(/*dark=*/ false, /*slots=*/ 6);
         // item-99 does not exist in any loot container
         let missing = iid("item-99");
         let mut cues = Vec::new();
@@ -1417,12 +1593,15 @@ mod tests {
     fn take_when_inventory_full_returns_err() {
         let cat = simple_cat_with("items/coin", consumable_desc());
         // slots=0 → inventory full
-        let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/0);
+        let (mut world, pc_id) = take_world(/*dark=*/ false, /*slots=*/ 0);
         let item_id = iid("item-1");
         let mut cues = Vec::new();
 
         let result = world.take(&pc_id, &item_id, &cat, &mut cues);
-        assert!(result.is_err(), "take with full inventory should return Err");
+        assert!(
+            result.is_err(),
+            "take with full inventory should return Err"
+        );
     }
 
     #[test]
@@ -1445,12 +1624,15 @@ mod tests {
         );
 
         let loot_id = lid("loot-key");
-        world.loot.insert(loot_id.clone(), LootSnapshot {
-            id: loot_id.clone(),
-            description: "Lockbox".into(),
-            capacity: 5,
-            content_ids: alloc::vec![key_id.clone()],
-        });
+        world.loot.insert(
+            loot_id.clone(),
+            LootSnapshot {
+                id: loot_id.clone(),
+                description: "Lockbox".into(),
+                capacity: 5,
+                content_ids: alloc::vec![key_id.clone()],
+            },
+        );
 
         let room = RoomSnapshot {
             id: rid("room1"),
@@ -1470,12 +1652,25 @@ mod tests {
         let cat = Catalog::default();
         let mut cues = Vec::new();
         let result = world.take(&pc_id, &key_id, &cat, &mut cues);
-        assert!(result.is_ok(), "key pickup should bypass slot check; err={:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "key pickup should bypass slot check; err={:?}",
+            result.err()
+        );
 
         let ch = &world.characters[&pc_id];
-        assert!(ch.inventory.key_ids.contains(&key_id), "key should be in key_ids");
-        assert!(!ch.inventory.item_ids.contains(&key_id), "key should NOT be in item_ids");
-        assert!(ch.inventory.item_ids.is_empty(), "item_ids still empty (slots=0 enforced)");
+        assert!(
+            ch.inventory.key_ids.contains(&key_id),
+            "key should be in key_ids"
+        );
+        assert!(
+            !ch.inventory.item_ids.contains(&key_id),
+            "key should NOT be in item_ids"
+        );
+        assert!(
+            ch.inventory.item_ids.is_empty(),
+            "item_ids still empty (slots=0 enforced)"
+        );
     }
 
     #[test]
@@ -1500,12 +1695,15 @@ mod tests {
         );
 
         let loot_id = lid("loot-key");
-        world.loot.insert(loot_id.clone(), LootSnapshot {
-            id: loot_id.clone(),
-            description: "Lockbox".into(),
-            capacity: 5,
-            content_ids: alloc::vec![key_id.clone()],
-        });
+        world.loot.insert(
+            loot_id.clone(),
+            LootSnapshot {
+                id: loot_id.clone(),
+                description: "Lockbox".into(),
+                capacity: 5,
+                content_ids: alloc::vec![key_id.clone()],
+            },
+        );
 
         let room = RoomSnapshot {
             id: rid("room1"),
@@ -1529,15 +1727,28 @@ mod tests {
         let ch = &world.characters[&pc_id];
 
         // Budget ticked exactly +1
-        assert_eq!(ch.actions_this_round, 1, "key take should tick budget by exactly 1");
+        assert_eq!(
+            ch.actions_this_round, 1,
+            "key take should tick budget by exactly 1"
+        );
 
         // History gained a PickUp entry with the key's id and name
-        assert_eq!(ch.history.len(), 1, "key take should record exactly one history entry");
+        assert_eq!(
+            ch.history.len(),
+            1,
+            "key take should record exactly one history entry"
+        );
         match &ch.history[0] {
             ActionHistoryEntry::PickUp { items, .. } => {
                 assert_eq!(items.len(), 1, "PickUp entry should list exactly one item");
-                assert_eq!(items[0].id, key_id, "PickUp item id should match the key id");
-                assert_eq!(items[0].name, "Brass Key", "PickUp item name should match the key name");
+                assert_eq!(
+                    items[0].id, key_id,
+                    "PickUp item id should match the key id"
+                );
+                assert_eq!(
+                    items[0].name, "Brass Key",
+                    "PickUp item name should match the key name"
+                );
             }
             other => panic!("expected PickUp history entry, got {:?}", other),
         }
@@ -1548,7 +1759,7 @@ mod tests {
         // When the acting character's current_room_id is None, take() must return
         // Err(ProceduralViolation) rather than panicking or succeeding.
         let cat = simple_cat_with("items/coin", consumable_desc());
-        let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/6);
+        let (mut world, pc_id) = take_world(/*dark=*/ false, /*slots=*/ 6);
 
         // Explicitly clear the actor's room assignment
         world.characters.get_mut(&pc_id).unwrap().current_room_id = None;
@@ -1556,7 +1767,10 @@ mod tests {
         let item_id = iid("item-1");
         let mut cues = Vec::new();
         let result = world.take(&pc_id, &item_id, &cat, &mut cues);
-        assert!(result.is_err(), "take with actor in no room should return Err");
+        assert!(
+            result.is_err(),
+            "take with actor in no room should return Err"
+        );
     }
 
     // ── drop_item ──────────────────────────────────────────────────────────────
@@ -1629,10 +1843,16 @@ mod tests {
         let ch = &world.characters[&pc_id];
 
         // Item removed from inventory
-        assert!(!ch.inventory.item_ids.contains(&item_id), "item should be removed from inventory");
+        assert!(
+            !ch.inventory.item_ids.contains(&item_id),
+            "item should be removed from inventory"
+        );
 
         // Item still orphaned in world.items (no room mutation)
-        assert!(world.items.contains_key(&item_id), "item should still exist in world.items (orphaned)");
+        assert!(
+            world.items.contains_key(&item_id),
+            "item should still exist in world.items (orphaned)"
+        );
 
         // Budget ticked +1
         assert_eq!(ch.actions_this_round, 1, "drop should tick budget");
@@ -1651,7 +1871,11 @@ mod tests {
         // Drop action cue emitted
         assert_eq!(cues.len(), 1);
         match &cues[0] {
-            PresentationCue::Action { action: ActionKind::Drop, actor, sound: None } => {
+            PresentationCue::Action {
+                action: ActionKind::Drop,
+                actor,
+                sound: None,
+            } => {
                 assert_eq!(actor.id, "pc");
             }
             other => panic!("expected Action(drop) cue, got {:?}", other),
@@ -1664,41 +1888,57 @@ mod tests {
         let mut cat_items = alloc::collections::BTreeMap::new();
         // Key type items are normally in ItemSnapshot::Key, but we fake a catalog entry
         // with type=Key for the type-check path.
-        cat_items.insert("items/brass-key".to_string(), ItemDescriptor {
-            name: "Brass Key".into(),
-            r#type: ItemType::Key,
-            stat: crate::stats::StatType::Health,
-            modifier: 0,
-            properties: ItemProperties {
-                equippable: false,
-                equipped: false,
-                destroyable: false,
-                usable: false,
-                droppable: None,
+        cat_items.insert(
+            "items/brass-key".to_string(),
+            ItemDescriptor {
+                name: "Brass Key".into(),
+                r#type: ItemType::Key,
+                stat: crate::stats::StatType::Health,
+                modifier: 0,
+                properties: ItemProperties {
+                    equippable: false,
+                    equipped: false,
+                    destroyable: false,
+                    usable: false,
+                    droppable: None,
+                },
+                slot: None,
+                two_handed: None,
+                emits_light: None,
+                max_durability: None,
+                lore: None,
+                presentation: None,
+                key_code: Some("door-east".into()),
+                consume_on_use: None,
+                recipe: json!({}),
+                teaches: json!(null),
+                immunities: json!([]),
+                grants_immunity: json!(null),
             },
-            slot: None,
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: Some("door-east".into()),
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
-        });
-        let cat = Catalog { items: cat_items, aliases: alloc::collections::BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() };
+        );
+        let cat = Catalog {
+            items: cat_items,
+            aliases: alloc::collections::BTreeMap::new(),
+            behaviors: Default::default(),
+            formations: Default::default(),
+            recipes: Default::default(),
+        };
 
         let (mut world, pc_id) = world_with_items(&[("key-x", "items/brass-key")], &cat);
         let item_id = iid("key-x");
         let mut cues = Vec::new();
 
         let result = world.drop_item(&pc_id, &item_id, &cat, &mut cues);
-        assert!(result.is_err(), "dropping a Key-type item should return Err");
+        assert!(
+            result.is_err(),
+            "dropping a Key-type item should return Err"
+        );
         let err = result.unwrap_err();
-        assert!(err.0.contains("Keys cannot be dropped"), "error should mention keys, got: {}", err.0);
+        assert!(
+            err.0.contains("Keys cannot be dropped"),
+            "error should mention keys, got: {}",
+            err.0
+        );
     }
 
     #[test]
@@ -1712,11 +1952,18 @@ mod tests {
         let mut cues = Vec::new();
 
         let result = world.drop_item(&pc_id, &item_id, &cat, &mut cues);
-        assert!(result.is_ok(), "engine should allow dropping required items (droppable:false); err={:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "engine should allow dropping required items (droppable:false); err={:?}",
+            result.err()
+        );
 
         let ch = &world.characters[&pc_id];
         // Item removed from inventory
-        assert!(!ch.inventory.item_ids.contains(&item_id), "item should be removed from inventory");
+        assert!(
+            !ch.inventory.item_ids.contains(&item_id),
+            "item should be removed from inventory"
+        );
         // Budget ticked +1
         assert_eq!(ch.actions_this_round, 1, "drop should tick budget");
         // History has a Drop entry
@@ -1857,10 +2104,16 @@ mod tests {
         let ch = &world.characters[&pc_id];
 
         // Item consumed (removed from inventory)
-        assert!(!ch.inventory.item_ids.contains(&item_id), "item should be consumed (removed from inventory)");
+        assert!(
+            !ch.inventory.item_ids.contains(&item_id),
+            "item should be consumed (removed from inventory)"
+        );
 
         // Item still orphaned in world.items (no room mutation)
-        assert!(world.items.contains_key(&item_id), "item should still exist in world.items (orphaned)");
+        assert!(
+            world.items.contains_key(&item_id),
+            "item should still exist in world.items (orphaned)"
+        );
 
         // Budget ticked +1
         assert_eq!(ch.actions_this_round, 1, "use should tick budget");
@@ -1879,7 +2132,11 @@ mod tests {
         // Drop action cue emitted (not PickUp — use records a drop cue)
         assert_eq!(cues.len(), 1);
         match &cues[0] {
-            PresentationCue::Action { action: ActionKind::Drop, actor, sound: None } => {
+            PresentationCue::Action {
+                action: ActionKind::Drop,
+                actor,
+                sound: None,
+            } => {
                 assert_eq!(actor.id, "pc");
             }
             other => panic!("expected Action(drop) cue for use, got {:?}", other),
@@ -1916,7 +2173,8 @@ mod tests {
         let ch = &world.characters[&pc_id];
         // Immunity granted for Panic with 2 turns
         assert_eq!(
-            ch.afflictions.immunity_of(Status::Panic), 2,
+            ch.afflictions.immunity_of(Status::Panic),
+            2,
             "use of tonic should grant 2 turns of Panic immunity"
         );
         // Item consumed (removed from inventory)
@@ -1944,14 +2202,22 @@ mod tests {
                         effect: EffectTemplate::AdjustStat {
                             target: Expr::Actor,
                             stat: crate::stats::StatType::Sanity,
-                            delta: Expr::Lit { value: Value::Number(6.0) },
+                            delta: Expr::Lit {
+                                value: Value::Number(6.0)
+                            },
                         },
                     }]),
                     on_read: None,
                 },
             },
         );
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors, formations: Default::default(), recipes: Default::default() };
+        let cat = Catalog {
+            items,
+            aliases: BTreeMap::new(),
+            behaviors,
+            formations: Default::default(),
+            recipes: Default::default(),
+        };
 
         let (mut world, pc_id) = world_with_items(&[("potion-1", "items/potion")], &cat);
         // sanity 4 so +6 is observable and uncapped (world_with_party seeds 5.0).
@@ -1966,7 +2232,10 @@ mod tests {
             "onUse restored +6 sanity (uncapped AdjustStat)"
         );
         assert!(
-            !world.characters[&pc_id].inventory.item_ids.contains(&item_id),
+            !world.characters[&pc_id]
+                .inventory
+                .item_ids
+                .contains(&item_id),
             "the item was still consumed"
         );
     }
@@ -2005,12 +2274,19 @@ mod tests {
     /// primed so the very next `gate` draw fizzles.
     fn prime_confused_fizzle(world: &mut World, actor: &CharacterId) {
         use crate::world::afflictions::default_affliction_config;
-        world.characters.get_mut(actor).unwrap().afflictions.set_active(Status::Confused, true);
+        world
+            .characters
+            .get_mut(actor)
+            .unwrap()
+            .afflictions
+            .set_active(Status::Confused, true);
         let fail = default_affliction_config().confused_fail_chance;
         loop {
             let mut peek = world.rng.clone();
             let r = (crate::dice::roll(100, peek.next_f64()) as i64) <= fail;
-            if r { break; }
+            if r {
+                break;
+            }
             world.rng.next_f64(); // burn a non-fizzling draw
         }
     }
@@ -2018,28 +2294,42 @@ mod tests {
     #[test]
     fn panicked_take_is_blocked_with_err() {
         let cat = simple_cat_with("items/coin", consumable_desc());
-        let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/6);
-        world.characters.get_mut(&pc_id).unwrap().afflictions.set_active(Status::Panic, true);
+        let (mut world, pc_id) = take_world(/*dark=*/ false, /*slots=*/ 6);
+        world
+            .characters
+            .get_mut(&pc_id)
+            .unwrap()
+            .afflictions
+            .set_active(Status::Panic, true);
         let item_id = iid("item-1");
         let mut cues = Vec::new();
 
         let result = world.take(&pc_id, &item_id, &cat, &mut cues);
-        assert!(result.is_err(), "panicked take (non-move) should be blocked");
+        assert!(
+            result.is_err(),
+            "panicked take (non-move) should be blocked"
+        );
         assert_eq!(result.unwrap_err().0, "Panicked: can only move.");
 
         // Block leaves NO side-effects: item not moved, no budget tick, no history, no cue.
         let ch = &world.characters[&pc_id];
-        assert!(!ch.inventory.item_ids.contains(&item_id), "item must not move on block");
+        assert!(
+            !ch.inventory.item_ids.contains(&item_id),
+            "item must not move on block"
+        );
         assert_eq!(ch.actions_this_round, 0, "block does not tick budget");
         assert!(ch.history.is_empty(), "block records no history");
         assert!(cues.is_empty(), "block emits no cue");
-        assert!(world.loot[&lid("loot-1")].content_ids.contains(&item_id), "item stays in loot");
+        assert!(
+            world.loot[&lid("loot-1")].content_ids.contains(&item_id),
+            "item stays in loot"
+        );
     }
 
     #[test]
     fn confused_take_fizzles_records_fumble_does_not_tick_budget_item_not_moved() {
         let cat = simple_cat_with("items/coin", consumable_desc());
-        let (mut world, pc_id) = take_world(/*dark=*/false, /*slots=*/6);
+        let (mut world, pc_id) = take_world(/*dark=*/ false, /*slots=*/ 6);
         prime_confused_fizzle(&mut world, &pc_id);
         let item_id = iid("item-1");
         let mut cues = Vec::new();
@@ -2053,18 +2343,35 @@ mod tests {
         // `isActionMap`, so recordAction finds `budgeted === false`
         // (character.ts:530). Only a SUCCESSFUL take ticks, via the internal
         // addToInventory/pickUp. Verified by the afflictions differential gate.
-        assert_eq!(ch.actions_this_round, 0, "fizzled take does NOT tick budget");
+        assert_eq!(
+            ch.actions_this_round, 0,
+            "fizzled take does NOT tick budget"
+        );
         assert_eq!(ch.history.len(), 1);
         match &ch.history[0] {
-            ActionHistoryEntry::Fumble { round: 0, action } => assert_eq!(action, "takeFromLootBox"),
+            ActionHistoryEntry::Fumble { round: 0, action } => {
+                assert_eq!(action, "takeFromLootBox")
+            }
             other => panic!("expected Fumble history, got {:?}", other),
         }
         // Fumble cue emitted.
         assert_eq!(cues.len(), 1);
-        assert!(matches!(&cues[0], PresentationCue::Action { action: ActionKind::Fumble, .. }));
+        assert!(matches!(
+            &cues[0],
+            PresentationCue::Action {
+                action: ActionKind::Fumble,
+                ..
+            }
+        ));
         // Item NOT moved.
-        assert!(!ch.inventory.item_ids.contains(&item_id), "item must not move on fizzle");
-        assert!(world.loot[&lid("loot-1")].content_ids.contains(&item_id), "item stays in loot");
+        assert!(
+            !ch.inventory.item_ids.contains(&item_id),
+            "item must not move on fizzle"
+        );
+        assert!(
+            world.loot[&lid("loot-1")].content_ids.contains(&item_id),
+            "item stays in loot"
+        );
     }
 
     #[test]
@@ -2079,16 +2386,28 @@ mod tests {
 
         let ch = &world.characters[&char_id];
         // Fumble recorded but budget NOT ticked (equip is free).
-        assert_eq!(ch.actions_this_round, 0, "fizzled equip does NOT tick budget (free action)");
+        assert_eq!(
+            ch.actions_this_round, 0,
+            "fizzled equip does NOT tick budget (free action)"
+        );
         assert_eq!(ch.history.len(), 1);
         match &ch.history[0] {
             ActionHistoryEntry::Fumble { action, .. } => assert_eq!(action, "equip"),
             other => panic!("expected Fumble history, got {:?}", other),
         }
         assert_eq!(cues.len(), 1);
-        assert!(matches!(&cues[0], PresentationCue::Action { action: ActionKind::Fumble, .. }));
+        assert!(matches!(
+            &cues[0],
+            PresentationCue::Action {
+                action: ActionKind::Fumble,
+                ..
+            }
+        ));
         // Item NOT equipped.
-        assert!(!ch.equipment.values().any(|v| v == &item), "item must not equip on fizzle");
+        assert!(
+            !ch.equipment.values().any(|v| v == &item),
+            "item must not equip on fizzle"
+        );
     }
 
     #[test]
@@ -2096,7 +2415,12 @@ mod tests {
         use crate::world::afflictions::Status;
         let cat = simple_cat_with("items/tonic", usable_immunity_desc());
         let (mut world, pc_id) = world_with_items(&[("tonic-1", "items/tonic")], &cat);
-        world.characters.get_mut(&pc_id).unwrap().afflictions.set_active(Status::Ko, true);
+        world
+            .characters
+            .get_mut(&pc_id)
+            .unwrap()
+            .afflictions
+            .set_active(Status::Ko, true);
         let item_id = iid("tonic-1");
         let mut cues = Vec::new();
 
@@ -2106,8 +2430,15 @@ mod tests {
 
         let ch = &world.characters[&pc_id];
         // Item NOT consumed, immunity NOT granted, no budget tick / history / cue.
-        assert!(ch.inventory.item_ids.contains(&item_id), "item must not be consumed while KO'd");
-        assert_eq!(ch.afflictions.immunity_of(Status::Panic), 0, "no immunity granted while KO'd");
+        assert!(
+            ch.inventory.item_ids.contains(&item_id),
+            "item must not be consumed while KO'd"
+        );
+        assert_eq!(
+            ch.afflictions.immunity_of(Status::Panic),
+            0,
+            "no immunity granted while KO'd"
+        );
         assert_eq!(ch.actions_this_round, 0, "no budget tick");
         assert!(cues.is_empty(), "no cue emitted");
     }

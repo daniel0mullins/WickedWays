@@ -63,16 +63,31 @@ impl MechanicOp for ScriptedMechanic<'_> {
     }
     fn on_turn_start(&self, cx: &mut TurnCtx) -> Vec<Effect> {
         let actor = cx.actor.clone();
-        self.run_body(self.script.hooks.on_turn_start.as_ref(), &mut cx.base, Some(&actor), None)
+        self.run_body(
+            self.script.hooks.on_turn_start.as_ref(),
+            &mut cx.base,
+            Some(&actor),
+            None,
+        )
     }
     fn on_turn_end(&self, cx: &mut TurnCtx) -> Vec<Effect> {
         let actor = cx.actor.clone();
-        self.run_body(self.script.hooks.on_turn_end.as_ref(), &mut cx.base, Some(&actor), None)
+        self.run_body(
+            self.script.hooks.on_turn_end.as_ref(),
+            &mut cx.base,
+            Some(&actor),
+            None,
+        )
     }
     fn on_action(&self, cx: &mut ActionCtx) -> Vec<Effect> {
         let actor = cx.actor.clone();
         let action = cx.action.clone();
-        self.run_body(self.script.hooks.on_action.as_ref(), &mut cx.base, Some(&actor), Some(&action))
+        self.run_body(
+            self.script.hooks.on_action.as_ref(),
+            &mut cx.base,
+            Some(&actor),
+            Some(&action),
+        )
     }
     fn modify_damage(&self, d: &DamageView, cx: &mut HookCtx) -> TransformResult {
         match &self.script.hooks.modify_damage {
@@ -174,8 +189,12 @@ impl ExitBehavior for ScriptedExit<'_> {
         };
         eval_script(&self.script.run_script, &mut cx)
     }
-    fn pass_message(&self) -> Option<&str> { self.script.pass_message.as_deref() }
-    fn fail_message(&self) -> Option<&str> { self.script.fail_message.as_deref() }
+    fn pass_message(&self) -> Option<&str> {
+        self.script.pass_message.as_deref()
+    }
+    fn fail_message(&self) -> Option<&str> {
+        self.script.fail_message.as_deref()
+    }
 }
 
 /// Victory adapter (see plan deviation note 2). NOT a `VictoryConditionBehavior`
@@ -198,7 +217,11 @@ impl ScriptedVictory<'_> {
             damage: None,
             element: None,
             rng: None,
-            rooms: RoomSource::World { world, cat, cache: BTreeMap::new() },
+            rooms: RoomSource::World {
+                world,
+                cat,
+                cache: BTreeMap::new(),
+            },
         };
         eval_predicate(&self.script.test, &mut cx)
     }
@@ -233,7 +256,11 @@ impl ScriptedScene<'_> {
             damage: None,
             element: None,
             rng: None,
-            rooms: RoomSource::World { world, cat, cache: alloc::collections::BTreeMap::new() },
+            rooms: RoomSource::World {
+                world,
+                cat,
+                cache: alloc::collections::BTreeMap::new(),
+            },
         }
     }
 
@@ -247,7 +274,9 @@ impl ScriptedScene<'_> {
         world: &World,
         cat: &Catalog,
     ) -> bool {
-        let Some(pred) = &self.script.can_play else { return true };
+        let Some(pred) = &self.script.can_play else {
+            return true;
+        };
         let mut cx = self.ctx(CtxState::Read(state), view, actor, world, cat);
         eval_predicate(pred, &mut cx)
     }
@@ -331,7 +360,11 @@ fn tokenize(s: &str) -> Vec<String> {
         .split_whitespace()
         .filter_map(|piece| {
             let t = piece.trim_matches(|c: char| c.is_ascii_punctuation());
-            if t.is_empty() { None } else { Some(t.to_string()) }
+            if t.is_empty() {
+                None
+            } else {
+                Some(t.to_string())
+            }
         })
         .collect()
 }
@@ -354,7 +387,10 @@ struct Selection<'a> {
 /// Run the selection algorithm (see module comment above). Pure: depends only on
 /// the script and the prompt.
 fn select_entry<'a>(script: &'a NpcScript, prompt: Option<&str>) -> Selection<'a> {
-    let default_sel = || Selection { entry: &script.default, key: "default".to_string() };
+    let default_sel = || Selection {
+        entry: &script.default,
+        key: "default".to_string(),
+    };
 
     // 1. Bare prompt (None or empties to nothing) -> default.
     let ordered = match prompt {
@@ -370,7 +406,10 @@ fn select_entry<'a>(script: &'a NpcScript, prompt: Option<&str>) -> Selection<'a
     for (i, entry) in script.dialogue.iter().enumerate() {
         if let DialogueMatch::Exact { text } = &entry.match_ {
             if tokenize(text) == ordered {
-                return Selection { entry, key: i.to_string() };
+                return Selection {
+                    entry,
+                    key: i.to_string(),
+                };
             }
         }
     }
@@ -396,7 +435,10 @@ fn select_entry<'a>(script: &'a NpcScript, prompt: Option<&str>) -> Selection<'a
         }
     }
     match best {
-        Some((_, entry, i)) => Selection { entry, key: i.to_string() },
+        Some((_, entry, i)) => Selection {
+            entry,
+            key: i.to_string(),
+        },
         // 2c. Nothing matched -> default.
         None => default_sel(),
     }
@@ -449,7 +491,9 @@ impl ScriptedNpc<'_> {
         };
         // Response is always emitted (same cue-build path as EffectTemplate::Cue).
         let cue = MechanicCue {
-            text: Some(coerce_str(&eval_expr(&sel.entry.response, &mut cx).into_value())),
+            text: Some(coerce_str(
+                &eval_expr(&sel.entry.response, &mut cx).into_value(),
+            )),
             sound: None,
         };
         let effects = if once && already {
@@ -493,7 +537,9 @@ mod tests {
                 effect: EffectTemplate::AdjustStat {
                     target: Expr::Actor,
                     stat: StatType::Sanity,
-                    delta: Expr::Lit { value: Value::Number(6.0) },
+                    delta: Expr::Lit {
+                        value: Value::Number(6.0)
+                    },
                 },
             }]),
             on_read: None,
@@ -501,12 +547,20 @@ mod tests {
 
         let mut rng = crate::world::rng::Rng::seeded(0);
         let mut state = serde_json::Value::Null;
-        let mut base = HookCtx { state: &mut state, view: &view, rng: &mut rng };
+        let mut base = HookCtx {
+            state: &mut state,
+            view: &view,
+            rng: &mut rng,
+        };
         let effects = ScriptedItem { script: &script }.run_use(&mut base, &actor);
 
         assert_eq!(effects.len(), 1);
         match &effects[0] {
-            Effect::AdjustStat { target, stat, delta } => {
+            Effect::AdjustStat {
+                target,
+                stat,
+                delta,
+            } => {
                 assert_eq!(target.0, "pc");
                 assert_eq!(*stat, StatType::Sanity);
                 assert!((*delta - 6.0).abs() < 1e-9);
@@ -537,19 +591,29 @@ mod tests {
                 effect: EffectTemplate::AdjustStat {
                     target: Expr::Actor,
                     stat: StatType::Energy,
-                    delta: Expr::Lit { value: Value::Number(-2.0) },
+                    delta: Expr::Lit {
+                        value: Value::Number(-2.0)
+                    },
                 },
             }]),
         };
 
         let mut rng = crate::world::rng::Rng::seeded(0);
         let mut state = serde_json::Value::Null;
-        let mut base = HookCtx { state: &mut state, view: &view, rng: &mut rng };
+        let mut base = HookCtx {
+            state: &mut state,
+            view: &view,
+            rng: &mut rng,
+        };
         let effects = ScriptedItem { script: &script }.run_read(&mut base, &actor);
 
         assert_eq!(effects.len(), 1);
         match &effects[0] {
-            Effect::AdjustStat { target, stat, delta } => {
+            Effect::AdjustStat {
+                target,
+                stat,
+                delta,
+            } => {
                 assert_eq!(target.0, "pc");
                 assert_eq!(*stat, StatType::Energy);
                 assert!((*delta + 2.0).abs() < 1e-9);
@@ -571,10 +635,17 @@ mod tests {
         let actor = w
             .character_view(&crate::world::ids::CharacterId("pc".into()), &cat)
             .unwrap();
-        let script = ItemScript { on_use: None, on_read: None };
+        let script = ItemScript {
+            on_use: None,
+            on_read: None,
+        };
         let mut rng = crate::world::rng::Rng::seeded(0);
         let mut state = serde_json::Value::Null;
-        let mut base = HookCtx { state: &mut state, view: &view, rng: &mut rng };
+        let mut base = HookCtx {
+            state: &mut state,
+            view: &view,
+            rng: &mut rng,
+        };
         assert!(ScriptedItem { script: &script }
             .run_read(&mut base, &actor)
             .is_empty());
@@ -583,11 +654,18 @@ mod tests {
     // ─── NPC dialogue matcher + ScriptedNpc (NPC sub-plan 2) ─────────────────
 
     fn lit(s: &str) -> crate::script::ast::Expr {
-        crate::script::ast::Expr::Lit { value: crate::script::value::Value::Str(s.into()) }
+        crate::script::ast::Expr::Lit {
+            value: crate::script::value::Value::Str(s.into()),
+        }
     }
 
     fn entry(m: DialogueMatch, resp: &str) -> DialogueEntry {
-        DialogueEntry { match_: m, response: lit(resp), effects: Vec::new(), once: false }
+        DialogueEntry {
+            match_: m,
+            response: lit(resp),
+            effects: Vec::new(),
+            once: false,
+        }
     }
 
     fn exact(text: &str, resp: &str) -> DialogueEntry {
@@ -596,7 +674,9 @@ mod tests {
 
     fn fuzzy(tokens: &[&str], resp: &str) -> DialogueEntry {
         entry(
-            DialogueMatch::Fuzzy { tokens: tokens.iter().map(|t| t.to_string()).collect() },
+            DialogueMatch::Fuzzy {
+                tokens: tokens.iter().map(|t| t.to_string()).collect(),
+            },
             resp,
         )
     }
@@ -623,7 +703,11 @@ mod tests {
             .character_view(&crate::world::ids::CharacterId("pc".into()), &cat)
             .unwrap();
         let mut rng = crate::world::rng::Rng::seeded(0);
-        let mut base = HookCtx { state, view: &view, rng: &mut rng };
+        let mut base = HookCtx {
+            state,
+            view: &view,
+            rng: &mut rng,
+        };
         ScriptedNpc { script }.run_talk(prompt, &mut base, &actor)
     }
 
@@ -657,7 +741,10 @@ mod tests {
     #[test]
     fn exact_beats_fuzzy_even_when_authored_later() {
         // Fuzzy["hello"] also subsets the prompt, but Exact wins outright.
-        let script = npc(alloc::vec![fuzzy(&["hello"], "FUZZY"), exact("hello there", "EXACT")]);
+        let script = npc(alloc::vec![
+            fuzzy(&["hello"], "FUZZY"),
+            exact("hello there", "EXACT")
+        ]);
         let mut state = Json::Null;
         let (cues, _) = talk(&script, Some("hello there"), &mut state);
         assert_eq!(cue(&cues), "EXACT");
@@ -692,7 +779,10 @@ mod tests {
 
     #[test]
     fn fuzzy_score_tie_selects_first_authored() {
-        let script = npc(alloc::vec![fuzzy(&["cellar"], "FIRST"), fuzzy(&["key"], "SECOND")]);
+        let script = npc(alloc::vec![
+            fuzzy(&["cellar"], "FIRST"),
+            fuzzy(&["key"], "SECOND")
+        ]);
         let mut state = Json::Null;
         let (cues, _) = talk(&script, Some("cellar key"), &mut state);
         assert_eq!(cue(&cues), "FIRST");
@@ -741,7 +831,9 @@ mod tests {
         use crate::stats::StatType;
 
         let give = DialogueEntry {
-            match_: DialogueMatch::Fuzzy { tokens: alloc::vec!["give".into()] },
+            match_: DialogueMatch::Fuzzy {
+                tokens: alloc::vec!["give".into()],
+            },
             response: lit("HERE"),
             effects: alloc::vec![EffectTemplate::AdjustStat {
                 target: crate::script::ast::Expr::Actor,
@@ -770,7 +862,9 @@ mod tests {
         use crate::stats::StatType;
 
         let give = DialogueEntry {
-            match_: DialogueMatch::Fuzzy { tokens: alloc::vec!["give".into()] },
+            match_: DialogueMatch::Fuzzy {
+                tokens: alloc::vec!["give".into()],
+            },
             response: lit("HERE"),
             effects: alloc::vec![EffectTemplate::AdjustStat {
                 target: crate::script::ast::Expr::Actor,
@@ -789,6 +883,8 @@ mod tests {
     }
 
     fn lit_num(n: f64) -> crate::script::ast::Expr {
-        crate::script::ast::Expr::Lit { value: crate::script::value::Value::Number(n) }
+        crate::script::ast::Expr::Lit {
+            value: crate::script::value::Value::Number(n),
+        }
     }
 }

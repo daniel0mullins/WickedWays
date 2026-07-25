@@ -39,9 +39,21 @@ impl MobAttack {
     /// the surfaces' narrator.
     pub fn narration(&self) -> alloc::string::String {
         match self.stat {
-            StatType::Sanity => alloc::format!("The {} claws at your mind — you lose {} Sanity.", self.name, self.amount),
-            StatType::Energy => alloc::format!("The {} saps your strength — you lose {} Energy.", self.name, self.amount),
-            StatType::Health => alloc::format!("The {} tears into you — you lose {} Health.", self.name, self.amount),
+            StatType::Sanity => alloc::format!(
+                "The {} claws at your mind — you lose {} Sanity.",
+                self.name,
+                self.amount
+            ),
+            StatType::Energy => alloc::format!(
+                "The {} saps your strength — you lose {} Energy.",
+                self.name,
+                self.amount
+            ),
+            StatType::Health => alloc::format!(
+                "The {} tears into you — you lose {} Health.",
+                self.name,
+                self.amount
+            ),
         }
     }
 }
@@ -194,7 +206,11 @@ impl World {
             Ok(Some(mob_attacks))
         })();
         match outcome {
-            Ok(mob_attacks) => ExecuteResult { cues, mob_attacks, error: None },
+            Ok(mob_attacks) => ExecuteResult {
+                cues,
+                mob_attacks,
+                error: None,
+            },
             Err(ProceduralViolation(msg)) => ExecuteResult {
                 cues,
                 mob_attacks: None, // TS error path returns { cues, error } — no mobAttacks key
@@ -344,14 +360,19 @@ impl World {
                     .map(|c| c.kind == CharacterKind::Npc && c.visible)
                     .unwrap_or(false);
                 if !in_room || !is_visible_npc {
-                    return Err(ProceduralViolation("There's no one here to talk to.".into()));
+                    return Err(ProceduralViolation(
+                        "There's no one here to talk to.".into(),
+                    ));
                 }
                 self.talk(actor, &target, prompt.as_deref(), cat, cues)
             }
             // Materials & crafting — free, turn-gated verbs (see `crafting.rs`).
-            Intent::Harvest { target_id } => {
-                self.harvest(actor, &crate::world::ids::MaterialCacheId(target_id), cat, cues)
-            }
+            Intent::Harvest { target_id } => self.harvest(
+                actor,
+                &crate::world::ids::MaterialCacheId(target_id),
+                cat,
+                cues,
+            ),
             Intent::Craft { recipe_id } => self.craft(actor, &recipe_id, cat, cues).map(|_| ()),
             Intent::Repair { target_id } => self.repair(actor, &ItemId(target_id), cat, cues),
             Intent::Destroy { target_id } => self.destroy(actor, &ItemId(target_id), cat, cues),
@@ -429,7 +450,10 @@ impl World {
 
         if let Some(lore) = lore {
             cues.push(PresentationCue::Mechanic {
-                cue: MechanicCue { text: Some(lore), sound: None },
+                cue: MechanicCue {
+                    text: Some(lore),
+                    sound: None,
+                },
             });
         }
         Ok(())
@@ -470,9 +494,9 @@ impl World {
 
         // Build the (owned) views while `self` is borrowed only immutably.
         let view = self.build_campaign_view(cat);
-        let actor_view = self.character_view(actor, cat).ok_or_else(|| {
-            ProceduralViolation(alloc::format!("Actor '{}' not found.", actor.0))
-        })?;
+        let actor_view = self
+            .character_view(actor, cat)
+            .ok_or_else(|| ProceduralViolation(alloc::format!("Actor '{}' not found.", actor.0)))?;
 
         // Take `&mut` on the NPC's per-instance state AND on the rng — disjoint
         // fields of `World`, which the borrow checker allows simultaneously (same
@@ -480,9 +504,10 @@ impl World {
         // persisting into that NPC's snapshot → per-instance `once`.
         let (mut cue_batch, effects) = {
             let rng = &mut self.rng;
-            let npc_ref = self.characters.get_mut(npc).ok_or_else(|| {
-                ProceduralViolation(alloc::format!("NPC '{}' not found.", npc.0))
-            })?;
+            let npc_ref = self
+                .characters
+                .get_mut(npc)
+                .ok_or_else(|| ProceduralViolation(alloc::format!("NPC '{}' not found.", npc.0)))?;
             let mut base = crate::world::mechanics::HookCtx {
                 state: &mut npc_ref.npc_state,
                 view: &view,
@@ -527,7 +552,11 @@ impl World {
             .characters
             .get(actor)
             .and_then(|a| a.current_room_id.clone())
-            .and_then(|rid| self.rooms.get(&rid).map(|r| r.occupant_ids.contains(target)))
+            .and_then(|rid| {
+                self.rooms
+                    .get(&rid)
+                    .map(|r| r.occupant_ids.contains(target))
+            })
             .unwrap_or(false);
         if !is_visible_npc || !co_located {
             return Ok(());
@@ -544,7 +573,11 @@ impl World {
         };
         cues.push(PresentationCue::Mechanic {
             cue: MechanicCue {
-                text: Some(crate::script::ops::ScriptedNpc { script }.description().into()),
+                text: Some(
+                    crate::script::ops::ScriptedNpc { script }
+                        .description()
+                        .into(),
+                ),
                 sound: None,
             },
         });
@@ -585,8 +618,6 @@ impl World {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::collections::BTreeMap;
-    use alloc::string::String;
     use crate::stats::StatType;
     use crate::world::afflictions::Status;
     use crate::world::descriptor::Catalog;
@@ -595,6 +626,8 @@ mod tests {
     use crate::world::snapshot::RoomSnapshot;
     use crate::world::test_support::world_with_party;
     use crate::world::World;
+    use alloc::collections::BTreeMap;
+    use alloc::string::String;
 
     fn cid(s: &str) -> CharacterId {
         CharacterId(s.into())
@@ -646,7 +679,11 @@ mod tests {
         assert_eq!(attacks.len(), 1);
         assert_eq!(attacks[0].name, "wraith");
         assert_eq!(attacks[0].stat, StatType::Health);
-        assert!((attacks[0].amount - 0.6).abs() < 1e-9, "amount = {}", attacks[0].amount);
+        assert!(
+            (attacks[0].amount - 0.6).abs() < 1e-9,
+            "amount = {}",
+            attacks[0].amount
+        );
         // The strike actually landed on the PC.
         let health = w.effective_stat(&cid("pc"), StatType::Health, &Catalog::default());
         assert!((health - 9.4).abs() < 1e-9);
@@ -658,7 +695,11 @@ mod tests {
     fn ko_mob_does_not_strike() {
         let mut w = world_with_pc_in_room();
         seat_test_mob(&mut w, "wraith", "room1");
-        w.characters.get_mut(&cid("wraith")).unwrap().afflictions.set_active(Status::Ko, true);
+        w.characters
+            .get_mut(&cid("wraith"))
+            .unwrap()
+            .afflictions
+            .set_active(Status::Ko, true);
         let attacks = w.run_mob_reactions(&cid("pc"), &Catalog::default(), &mut Vec::new());
         assert!(attacks.is_empty());
     }
@@ -667,7 +708,11 @@ mod tests {
     fn ko_active_player_is_not_piled_on_at_entry() {
         let mut w = world_with_pc_in_room();
         seat_test_mob(&mut w, "wraith", "room1");
-        w.characters.get_mut(&cid("pc")).unwrap().afflictions.set_active(Status::Ko, true);
+        w.characters
+            .get_mut(&cid("pc"))
+            .unwrap()
+            .afflictions
+            .set_active(Status::Ko, true);
         let attacks = w.run_mob_reactions(&cid("pc"), &Catalog::default(), &mut Vec::new());
         assert!(attacks.is_empty());
     }
@@ -678,7 +723,11 @@ mod tests {
         // runMobReactions catches ProceduralViolation and skips (session.ts:165-168).
         let mut w = world_with_pc_in_room();
         seat_test_mob(&mut w, "wraith", "room1");
-        w.characters.get_mut(&cid("wraith")).unwrap().afflictions.set_active(Status::Panic, true);
+        w.characters
+            .get_mut(&cid("wraith"))
+            .unwrap()
+            .afflictions
+            .set_active(Status::Panic, true);
         let attacks = w.run_mob_reactions(&cid("pc"), &Catalog::default(), &mut Vec::new());
         assert!(attacks.is_empty());
         // PC untouched.
@@ -729,58 +778,116 @@ mod tests {
         assert!(attacks.is_empty()); // ally is kind=player, not Mob
     }
 
-    use alloc::collections::BTreeSet;
-    use crate::world::intent::Intent;
-    use crate::world::ids::{ItemId, LootId};
-    use crate::world::snapshot::{ItemSnapshot, LootSnapshot};
     use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType, SlotKind};
+    use crate::world::ids::{ItemId, LootId};
+    use crate::world::intent::Intent;
+    use crate::world::snapshot::{ItemSnapshot, LootSnapshot};
+    use alloc::collections::BTreeSet;
     use serde_json::json;
 
-    fn iid(s: &str) -> ItemId { ItemId(s.into()) }
-    fn lid(s: &str) -> LootId { LootId(s.into()) }
+    fn iid(s: &str) -> ItemId {
+        ItemId(s.into())
+    }
+    fn lid(s: &str) -> LootId {
+        LootId(s.into())
+    }
 
     /// Catalog with one weapon "items/sword" (equippable) and one consumable
     /// "items/herb" (usable, lore) — the same descriptor shapes as command.rs tests.
     fn cat_with_items() -> Catalog {
         let mut items = BTreeMap::new();
-        items.insert("items/sword".to_string(), ItemDescriptor {
-            name: "Sword".into(), r#type: ItemType::Weapon, stat: StatType::Health,
-            modifier: 3,
-            properties: ItemProperties {
-                equippable: true, equipped: false, destroyable: true,
-                usable: false, droppable: None,
+        items.insert(
+            "items/sword".to_string(),
+            ItemDescriptor {
+                name: "Sword".into(),
+                r#type: ItemType::Weapon,
+                stat: StatType::Health,
+                modifier: 3,
+                properties: ItemProperties {
+                    equippable: true,
+                    equipped: false,
+                    destroyable: true,
+                    usable: false,
+                    droppable: None,
+                },
+                slot: Some(SlotKind::Hand),
+                two_handed: None,
+                emits_light: None,
+                max_durability: Some(5),
+                lore: None,
+                presentation: None,
+                key_code: None,
+                consume_on_use: None,
+                recipe: json!({}),
+                teaches: json!(null),
+                immunities: json!([]),
+                grants_immunity: json!(null),
             },
-            slot: Some(SlotKind::Hand), two_handed: None, emits_light: None,
-            max_durability: Some(5), lore: None, presentation: None, key_code: None,
-            consume_on_use: None, recipe: json!({}), teaches: json!(null),
-            immunities: json!([]), grants_immunity: json!(null),
-        });
-        items.insert("items/herb".to_string(), ItemDescriptor {
-            name: "Herb".into(), r#type: ItemType::Consumable, stat: StatType::Health,
-            modifier: 2,
-            properties: ItemProperties {
-                equippable: false, equipped: false, destroyable: false,
-                usable: true, droppable: None,
+        );
+        items.insert(
+            "items/herb".to_string(),
+            ItemDescriptor {
+                name: "Herb".into(),
+                r#type: ItemType::Consumable,
+                stat: StatType::Health,
+                modifier: 2,
+                properties: ItemProperties {
+                    equippable: false,
+                    equipped: false,
+                    destroyable: false,
+                    usable: true,
+                    droppable: None,
+                },
+                slot: None,
+                two_handed: None,
+                emits_light: None,
+                max_durability: None,
+                lore: Some("Bitter leaves.".into()),
+                presentation: None,
+                key_code: None,
+                consume_on_use: Some(true),
+                recipe: json!({}),
+                teaches: json!(null),
+                immunities: json!([]),
+                grants_immunity: json!(null),
             },
-            slot: None, two_handed: None, emits_light: None, max_durability: None,
-            lore: Some("Bitter leaves.".into()), presentation: None, key_code: None,
-            consume_on_use: Some(true), recipe: json!({}), teaches: json!(null),
-            immunities: json!([]), grants_immunity: json!(null),
-        });
+        );
         // A required quest item (droppable: false) for the drop guard.
-        items.insert("items/locket".to_string(), ItemDescriptor {
-            name: "Locket".into(), r#type: ItemType::Accessory, stat: StatType::Sanity,
-            modifier: 0,
-            properties: ItemProperties {
-                equippable: false, equipped: false, destroyable: false,
-                usable: false, droppable: Some(false),
+        items.insert(
+            "items/locket".to_string(),
+            ItemDescriptor {
+                name: "Locket".into(),
+                r#type: ItemType::Accessory,
+                stat: StatType::Sanity,
+                modifier: 0,
+                properties: ItemProperties {
+                    equippable: false,
+                    equipped: false,
+                    destroyable: false,
+                    usable: false,
+                    droppable: Some(false),
+                },
+                slot: None,
+                two_handed: None,
+                emits_light: None,
+                max_durability: None,
+                lore: None,
+                presentation: None,
+                key_code: None,
+                consume_on_use: None,
+                recipe: json!({}),
+                teaches: json!(null),
+                immunities: json!([]),
+                grants_immunity: json!(null),
             },
-            slot: None, two_handed: None, emits_light: None, max_durability: None,
-            lore: None, presentation: None, key_code: None, consume_on_use: None,
-            recipe: json!({}), teaches: json!(null),
-            immunities: json!([]), grants_immunity: json!(null),
-        });
-        Catalog { items, aliases: BTreeMap::new(), behaviors: BTreeMap::new(), formations: Default::default(), recipes: Default::default() }
+        );
+        Catalog {
+            items,
+            aliases: BTreeMap::new(),
+            behaviors: BTreeMap::new(),
+            formations: Default::default(),
+            recipes: Default::default(),
+        }
     }
 
     /// PC in room1 holding a sword (item-sword) and a locket (item-locket);
@@ -788,21 +895,38 @@ mod tests {
     fn world_for_submit() -> World {
         let mut w = world_with_pc_in_room();
         let pc = cid("pc");
-        for (id, key) in [("item-sword", "items/sword"), ("item-locket", "items/locket"), ("item-herb", "items/herb")] {
-            w.items.insert(iid(id), ItemSnapshot::Item {
-                id: iid(id), behavior_key: key.into(),
-                durability: if key == "items/sword" { Some(5) } else { None },
-                modifier: 0,
-            });
+        for (id, key) in [
+            ("item-sword", "items/sword"),
+            ("item-locket", "items/locket"),
+            ("item-herb", "items/herb"),
+        ] {
+            w.items.insert(
+                iid(id),
+                ItemSnapshot::Item {
+                    id: iid(id),
+                    behavior_key: key.into(),
+                    durability: if key == "items/sword" { Some(5) } else { None },
+                    modifier: 0,
+                },
+            );
         }
         let ch = w.characters.get_mut(&pc).unwrap();
         ch.inventory.item_ids.push(iid("item-sword"));
         ch.inventory.item_ids.push(iid("item-locket"));
-        w.loot.insert(lid("loot-1"), LootSnapshot {
-            id: lid("loot-1"), description: "A chest".into(), capacity: 5,
-            content_ids: alloc::vec![iid("item-herb")],
-        });
-        w.rooms.get_mut(&rid("room1")).unwrap().loot_ids.push(lid("loot-1"));
+        w.loot.insert(
+            lid("loot-1"),
+            LootSnapshot {
+                id: lid("loot-1"),
+                description: "A chest".into(),
+                capacity: 5,
+                content_ids: alloc::vec![iid("item-herb")],
+            },
+        );
+        w.rooms
+            .get_mut(&rid("room1"))
+            .unwrap()
+            .loot_ids
+            .push(lid("loot-1"));
         w
     }
 
@@ -824,11 +948,19 @@ mod tests {
             kind: CharacterKind::Npc,
             id: id.clone(),
             name: name.into(),
-            stats: Stats { health: 3.0, sanity: 3.0, energy: 3.0 },
+            stats: Stats {
+                health: 3.0,
+                sanity: 3.0,
+                energy: 3.0,
+            },
             actions_per_round: 1,
             actions_this_round: 0,
             current_room_id: Some(room_id.clone()),
-            inventory: InventorySnapshot { slots: 0, item_ids: alloc::vec![], key_ids: alloc::vec![] },
+            inventory: InventorySnapshot {
+                slots: 0,
+                item_ids: alloc::vec![],
+                key_ids: alloc::vec![],
+            },
             equipment: BTreeMap::new(),
             history: alloc::vec![],
             archetype_immunities: alloc::vec![],
@@ -857,36 +989,64 @@ mod tests {
         let (r, _) = submit_one(&mut w, Intent::Wait);
         assert_eq!(r.error, None);
         assert_eq!(r.mob_attacks, Some(Vec::new())); // TS: mobAttacks present ([]) on success
-        // single-member party: next_player wraps → round 0 → 1
+                                                     // single-member party: next_player wraps → round 0 → 1
         assert_eq!(w.campaign.round, 1);
     }
 
     #[test]
     fn equip_is_free_no_turn_wrap() {
         let mut w = world_for_submit();
-        let (r, _) = submit_one(&mut w, Intent::Equip { target_id: "item-sword".into() });
+        let (r, _) = submit_one(
+            &mut w,
+            Intent::Equip {
+                target_id: "item-sword".into(),
+            },
+        );
         assert_eq!(r.error, None);
-        assert_eq!(w.campaign.round, 0, "free action must not advance the round");
-        assert!(w.characters[&cid("pc")].equipment.values().any(|i| i == &iid("item-sword")));
+        assert_eq!(
+            w.campaign.round, 0,
+            "free action must not advance the round"
+        );
+        assert!(w.characters[&cid("pc")]
+            .equipment
+            .values()
+            .any(|i| i == &iid("item-sword")));
     }
 
     #[test]
     fn open_marks_loot_revealed_without_advancing() {
         let mut w = world_for_submit();
-        let (r, opened) = submit_one(&mut w, Intent::Open { target_id: "loot-1".into() });
+        let (r, opened) = submit_one(
+            &mut w,
+            Intent::Open {
+                target_id: "loot-1".into(),
+            },
+        );
         assert_eq!(r.error, None);
         assert!(opened.contains("loot-1"));
         assert_eq!(w.campaign.round, 0);
-        assert_eq!(w.loot[&lid("loot-1")].content_ids.len(), 1, "open mutates nothing");
+        assert_eq!(
+            w.loot[&lid("loot-1")].content_ids.len(),
+            1,
+            "open mutates nothing"
+        );
     }
 
     #[test]
     fn take_auto_opens_moves_item_and_advances() {
         let mut w = world_for_submit();
-        let (r, opened) = submit_one(&mut w, Intent::Take { target_id: "item-herb".into() });
+        let (r, opened) = submit_one(
+            &mut w,
+            Intent::Take {
+                target_id: "item-herb".into(),
+            },
+        );
         assert_eq!(r.error, None);
         assert!(opened.contains("loot-1"), "take auto-opens the container");
-        assert!(w.characters[&cid("pc")].inventory.item_ids.contains(&iid("item-herb")));
+        assert!(w.characters[&cid("pc")]
+            .inventory
+            .item_ids
+            .contains(&iid("item-herb")));
         assert_eq!(w.campaign.round, 1);
     }
 
@@ -897,11 +1057,21 @@ mod tests {
         // so the container must remain revealed even though nothing was taken.
         let mut w = world_for_submit();
         w.rooms.get_mut(&rid("room1")).unwrap().dark = true;
-        let (r, opened) = submit_one(&mut w, Intent::Take { target_id: "item-herb".into() });
+        let (r, opened) = submit_one(
+            &mut w,
+            Intent::Take {
+                target_id: "item-herb".into(),
+            },
+        );
         assert_eq!(r.error.as_deref(), Some("Cannot loot in the dark"));
-        assert!(opened.contains("loot-1"), "a failed-after-open take still reveals the container");
+        assert!(
+            opened.contains("loot-1"),
+            "a failed-after-open take still reveals the container"
+        );
         // The item never left the chest.
-        assert!(w.loot[&lid("loot-1")].content_ids.contains(&iid("item-herb")));
+        assert!(w.loot[&lid("loot-1")]
+            .content_ids
+            .contains(&iid("item-herb")));
     }
 
     #[test]
@@ -911,7 +1081,12 @@ mod tests {
         use crate::world::Direction;
         let mut w = crate::world::test_support::world_two_rooms(/*next_dark=*/ false);
         seat_test_mob(&mut w, "wraith", "next"); // mob waits in the destination
-        let (r, _) = submit_one(&mut w, Intent::Move { dir: Direction::North });
+        let (r, _) = submit_one(
+            &mut w,
+            Intent::Move {
+                dir: Direction::North,
+            },
+        );
         assert_eq!(r.error, None);
         assert_eq!(
             r.mob_attacks,
@@ -932,7 +1107,12 @@ mod tests {
         seat_test_mob(&mut w, "lurker", "next");
         // Make the lurker see in the dark so it can actually strike.
         w.characters.get_mut(&cid("lurker")).unwrap().light_averse = Some(true);
-        let (r, _) = submit_one(&mut w, Intent::Move { dir: Direction::North });
+        let (r, _) = submit_one(
+            &mut w,
+            Intent::Move {
+                dir: Direction::North,
+            },
+        );
         assert_eq!(r.error, None);
         assert_eq!(
             r.mob_attacks.as_ref().map(|v| v.len()),
@@ -966,22 +1146,70 @@ mod tests {
     #[test]
     fn error_results_use_exact_ts_strings_and_omit_mob_attacks() {
         let cases: alloc::vec::Vec<(Intent, &str)> = alloc::vec![
-            (Intent::Open { target_id: "nope".into() }, "There's nothing like that to open here."),
-            (Intent::Take { target_id: "nope".into() }, "You don't see that here."),
-            (Intent::Drop { target_id: "nope".into() }, "You aren't carrying that."),
-            (Intent::Drop { target_id: "item-locket".into() },
-                "You can't bring yourself to part with the Locket."),
-            (Intent::Equip { target_id: "nope".into() }, "You aren't carrying that."),
-            (Intent::Use { target_id: "nope".into() }, "You aren't carrying that."),
-            (Intent::Unequip { target_id: "item-sword".into() }, "That isn't equipped."),
-            (Intent::Attack { target_id: "nope".into() }, "There's nothing like that to attack here."),
-            (Intent::Talk { npc_id: "n1".into(), prompt: None }, "There's no one here to talk to."),
+            (
+                Intent::Open {
+                    target_id: "nope".into()
+                },
+                "There's nothing like that to open here."
+            ),
+            (
+                Intent::Take {
+                    target_id: "nope".into()
+                },
+                "You don't see that here."
+            ),
+            (
+                Intent::Drop {
+                    target_id: "nope".into()
+                },
+                "You aren't carrying that."
+            ),
+            (
+                Intent::Drop {
+                    target_id: "item-locket".into()
+                },
+                "You can't bring yourself to part with the Locket."
+            ),
+            (
+                Intent::Equip {
+                    target_id: "nope".into()
+                },
+                "You aren't carrying that."
+            ),
+            (
+                Intent::Use {
+                    target_id: "nope".into()
+                },
+                "You aren't carrying that."
+            ),
+            (
+                Intent::Unequip {
+                    target_id: "item-sword".into()
+                },
+                "That isn't equipped."
+            ),
+            (
+                Intent::Attack {
+                    target_id: "nope".into()
+                },
+                "There's nothing like that to attack here."
+            ),
+            (
+                Intent::Talk {
+                    npc_id: "n1".into(),
+                    prompt: None
+                },
+                "There's no one here to talk to."
+            ),
         ];
         for (intent, want) in cases {
             let mut w = world_for_submit();
             let (r, _) = submit_one(&mut w, intent.clone());
             assert_eq!(r.error.as_deref(), Some(want), "intent {intent:?}");
-            assert_eq!(r.mob_attacks, None, "TS error path omits mobAttacks ({intent:?})");
+            assert_eq!(
+                r.mob_attacks, None,
+                "TS error path omits mobAttacks ({intent:?})"
+            );
         }
     }
 
@@ -993,10 +1221,24 @@ mod tests {
         // non-advancing — the round does NOT tick and mobAttacks is empty ([]).
         let mut w = world_for_submit();
         seat_npc(&mut w, "keeper", "room1", /*visible=*/ true);
-        let (r, _) = submit_one(&mut w, Intent::Talk { npc_id: "keeper".into(), prompt: None });
+        let (r, _) = submit_one(
+            &mut w,
+            Intent::Talk {
+                npc_id: "keeper".into(),
+                prompt: None,
+            },
+        );
         assert_eq!(r.error, None, "a visible co-located NPC must resolve");
-        assert_eq!(r.cues, Vec::new(), "Sub-plan 2 owns dialogue; this is a placeholder no-op");
-        assert_eq!(r.mob_attacks, Some(Vec::new()), "free action returns mobAttacks: []");
+        assert_eq!(
+            r.cues,
+            Vec::new(),
+            "Sub-plan 2 owns dialogue; this is a placeholder no-op"
+        );
+        assert_eq!(
+            r.mob_attacks,
+            Some(Vec::new()),
+            "free action returns mobAttacks: []"
+        );
         assert_eq!(w.campaign.round, 0, "talk is free — no round advance");
     }
 
@@ -1006,7 +1248,10 @@ mod tests {
         seat_npc(&mut w, "keeper", "room1", /*visible=*/ true);
         let (r, _) = submit_one(
             &mut w,
-            Intent::Talk { npc_id: "keeper".into(), prompt: Some("how do i get out".into()) },
+            Intent::Talk {
+                npc_id: "keeper".into(),
+                prompt: Some("how do i get out".into()),
+            },
         );
         assert_eq!(r.error, None);
         assert_eq!(w.campaign.round, 0);
@@ -1017,7 +1262,13 @@ mod tests {
         // A hidden NPC is not "here" for conversation.
         let mut w = world_for_submit();
         seat_npc(&mut w, "keeper", "room1", /*visible=*/ false);
-        let (r, _) = submit_one(&mut w, Intent::Talk { npc_id: "keeper".into(), prompt: None });
+        let (r, _) = submit_one(
+            &mut w,
+            Intent::Talk {
+                npc_id: "keeper".into(),
+                prompt: None,
+            },
+        );
         assert_eq!(r.error.as_deref(), Some("There's no one here to talk to."));
         assert_eq!(r.mob_attacks, None, "error path omits mobAttacks");
     }
@@ -1027,14 +1278,26 @@ mod tests {
         // A co-located Mob is not an NPC — you can't converse with it.
         let mut w = world_for_submit();
         seat_test_mob(&mut w, "wraith", "room1");
-        let (r, _) = submit_one(&mut w, Intent::Talk { npc_id: "wraith".into(), prompt: None });
+        let (r, _) = submit_one(
+            &mut w,
+            Intent::Talk {
+                npc_id: "wraith".into(),
+                prompt: None,
+            },
+        );
         assert_eq!(r.error.as_deref(), Some("There's no one here to talk to."));
     }
 
     #[test]
     fn talk_to_missing_npc_is_rejected() {
         let mut w = world_for_submit();
-        let (r, _) = submit_one(&mut w, Intent::Talk { npc_id: "nobody".into(), prompt: None });
+        let (r, _) = submit_one(
+            &mut w,
+            Intent::Talk {
+                npc_id: "nobody".into(),
+                prompt: None,
+            },
+        );
         assert_eq!(r.error.as_deref(), Some("There's no one here to talk to."));
     }
 
@@ -1042,8 +1305,17 @@ mod tests {
     fn attack_on_ko_target_reports_already_dead() {
         let mut w = world_for_submit();
         seat_test_mob(&mut w, "wraith", "room1");
-        w.characters.get_mut(&cid("wraith")).unwrap().afflictions.set_active(Status::Ko, true);
-        let (r, _) = submit_one(&mut w, Intent::Attack { target_id: "wraith".into() });
+        w.characters
+            .get_mut(&cid("wraith"))
+            .unwrap()
+            .afflictions
+            .set_active(Status::Ko, true);
+        let (r, _) = submit_one(
+            &mut w,
+            Intent::Attack {
+                target_id: "wraith".into(),
+            },
+        );
         assert_eq!(r.error.as_deref(), Some("The wraith is already dead."));
     }
 
@@ -1052,9 +1324,17 @@ mod tests {
         // Advancing intent: start_turn runs (mutating), then the guard throws.
         // TS returns { cues-so-far, error } and does NOT roll back (session.ts:134-138).
         let mut w = world_for_submit();
-        let (r, _) = submit_one(&mut w, Intent::Take { target_id: "nope".into() });
+        let (r, _) = submit_one(
+            &mut w,
+            Intent::Take {
+                target_id: "nope".into(),
+            },
+        );
         assert_eq!(r.error.as_deref(), Some("You don't see that here."));
-        assert_eq!(w.campaign.round, 0, "next_player must NOT run after a throw");
+        assert_eq!(
+            w.campaign.round, 0,
+            "next_player must NOT run after a throw"
+        );
     }
 
     // ── read_item ────────────────────────────────────────────────────────────
@@ -1065,14 +1345,30 @@ mod tests {
         let mut w = world_for_submit();
         // move the herb (has lore) into inventory first
         let mut opened = BTreeSet::new();
-        w.submit(Intent::Take { target_id: "item-herb".into() }, &cat_with_items(), &mut opened);
+        w.submit(
+            Intent::Take {
+                target_id: "item-herb".into(),
+            },
+            &cat_with_items(),
+            &mut opened,
+        );
         let mut cues = Vec::new();
-        w.read_item(&cid("pc"), &iid("item-herb"), &cat_with_items(), &mut cues).unwrap();
-        assert_eq!(cues, alloc::vec![PresentationCue::Mechanic {
-            cue: MechanicCue { text: Some("Bitter leaves.".into()), sound: None },
-        }]);
+        w.read_item(&cid("pc"), &iid("item-herb"), &cat_with_items(), &mut cues)
+            .unwrap();
+        assert_eq!(
+            cues,
+            alloc::vec![PresentationCue::Mechanic {
+                cue: MechanicCue {
+                    text: Some("Bitter leaves.".into()),
+                    sound: None
+                },
+            }]
+        );
         // free + non-consuming: still held, round unchanged by read itself
-        assert!(w.characters[&cid("pc")].inventory.item_ids.contains(&iid("item-herb")));
+        assert!(w.characters[&cid("pc")]
+            .inventory
+            .item_ids
+            .contains(&iid("item-herb")));
     }
 
     #[test]
@@ -1085,22 +1381,41 @@ mod tests {
 
         // Build a catalog: the herb (has lore "Bitter leaves.") + an on_read script.
         let mut cat = cat_with_items();
-        cat.behaviors.insert("items/herb".to_string(), BehaviorScript::Item {
-            script: ItemScript {
-                on_use: None,
-                on_read: Some(alloc::vec![Stmt::Emit { effect: EffectTemplate::AdjustStat {
-                    target: Expr::Actor, stat: StatType::Sanity, delta: Expr::Lit { value: Value::Number(-2.0) },
-                }}]),
+        cat.behaviors.insert(
+            "items/herb".to_string(),
+            BehaviorScript::Item {
+                script: ItemScript {
+                    on_use: None,
+                    on_read: Some(alloc::vec![Stmt::Emit {
+                        effect: EffectTemplate::AdjustStat {
+                            target: Expr::Actor,
+                            stat: StatType::Sanity,
+                            delta: Expr::Lit {
+                                value: Value::Number(-2.0)
+                            },
+                        }
+                    }]),
+                },
             },
-        });
+        );
 
         // Move the herb into inventory, then read it.
         let mut opened = BTreeSet::new();
-        w.submit(Intent::Take { target_id: "item-herb".into() }, &cat, &mut opened);
+        w.submit(
+            Intent::Take {
+                target_id: "item-herb".into(),
+            },
+            &cat,
+            &mut opened,
+        );
         let mut cues = Vec::new();
-        w.read_item(&pc, &iid("item-herb"), &cat, &mut cues).unwrap();
+        w.read_item(&pc, &iid("item-herb"), &cat, &mut cues)
+            .unwrap();
 
-        assert_eq!(w.characters[&pc].stats.sanity, 5.0, "onRead drained 2 sanity");
+        assert_eq!(
+            w.characters[&pc].stats.sanity, 5.0,
+            "onRead drained 2 sanity"
+        );
         // The lore cue is still emitted (and after the stat change).
         assert!(cues.iter().any(|c| matches!(c,
             PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("Bitter leaves."))));
@@ -1112,7 +1427,8 @@ mod tests {
         // surfacing Character.read's throw.
         let mut w = world_for_submit();
         let mut cues = Vec::new();
-        w.read_item(&cid("pc"), &iid("item-herb"), &cat_with_items(), &mut cues).unwrap();
+        w.read_item(&cid("pc"), &iid("item-herb"), &cat_with_items(), &mut cues)
+            .unwrap();
         assert!(cues.is_empty());
     }
 
@@ -1120,7 +1436,8 @@ mod tests {
     fn read_item_without_lore_is_silent() {
         let mut w = world_for_submit();
         let mut cues = Vec::new();
-        w.read_item(&cid("pc"), &iid("item-sword"), &cat_with_items(), &mut cues).unwrap();
+        w.read_item(&cid("pc"), &iid("item-sword"), &cat_with_items(), &mut cues)
+            .unwrap();
         assert!(cues.is_empty());
     }
 
@@ -1135,7 +1452,9 @@ mod tests {
     /// AdjustStat(+3 sanity) effect is gated by `once`, plus one fuzzy "cellar"
     /// entry with no effect. `once` toggles the default entry's latch.
     fn keeper_script(default_once: bool) -> NpcScript {
-        let lit = |s: &str| Expr::Lit { value: ScriptValue::Str(s.into()) };
+        let lit = |s: &str| Expr::Lit {
+            value: ScriptValue::Str(s.into()),
+        };
         NpcScript {
             description: "A hunched keeper.".into(),
             default: DialogueEntry {
@@ -1144,12 +1463,16 @@ mod tests {
                 effects: alloc::vec![EffectTemplate::AdjustStat {
                     target: Expr::Actor,
                     stat: StatType::Sanity,
-                    delta: Expr::Lit { value: ScriptValue::Number(3.0) },
+                    delta: Expr::Lit {
+                        value: ScriptValue::Number(3.0)
+                    },
                 }],
                 once: default_once,
             },
             dialogue: alloc::vec![DialogueEntry {
-                match_: DialogueMatch::Fuzzy { tokens: alloc::vec!["cellar".into()] },
+                match_: DialogueMatch::Fuzzy {
+                    tokens: alloc::vec!["cellar".into()]
+                },
                 response: lit("The cellar is locked."),
                 effects: alloc::vec![],
                 once: false,
@@ -1162,14 +1485,18 @@ mod tests {
         let mut cat = cat_with_items();
         cat.behaviors.insert(
             "npc/keeper".into(),
-            BehaviorScript::Npc { script: keeper_script(default_once) },
+            BehaviorScript::Npc {
+                script: keeper_script(default_once),
+            },
         );
         cat
     }
 
     fn has_cue(r: &ExecuteResult, text: &str) -> bool {
-        r.cues.iter().any(|c| matches!(c,
-            PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some(text)))
+        r.cues.iter().any(|c| {
+            matches!(c,
+            PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some(text))
+        })
     }
 
     #[test]
@@ -1180,10 +1507,24 @@ mod tests {
 
         // First bare talk: DEFAULT response cue + the once effect fires (sanity 7→10).
         let mut opened = BTreeSet::new();
-        let r1 = w.submit(Intent::Talk { npc_id: "keeper".into(), prompt: None }, &cat, &mut opened);
+        let r1 = w.submit(
+            Intent::Talk {
+                npc_id: "keeper".into(),
+                prompt: None,
+            },
+            &cat,
+            &mut opened,
+        );
         assert_eq!(r1.error, None);
-        assert!(has_cue(&r1, "The keeper nods."), "default response cue always emitted");
-        assert_eq!(w.characters[&cid("pc")].stats.sanity, 10.0, "once effect fired");
+        assert!(
+            has_cue(&r1, "The keeper nods."),
+            "default response cue always emitted"
+        );
+        assert_eq!(
+            w.characters[&cid("pc")].stats.sanity,
+            10.0,
+            "once effect fired"
+        );
         assert_eq!(w.campaign.round, 0, "talk is free — no round advance");
 
         // The latch lives on THIS npc's per-instance state under onceFired.default.
@@ -1194,16 +1535,30 @@ mod tests {
 
         // Round-trip the whole world through JSON, proving npcState persists in bytes.
         let json = serde_json::to_string(&w.to_snapshot()).unwrap();
-        assert!(json.contains("\"npcState\""), "fired latch must serialize: {json}");
+        assert!(
+            json.contains("\"npcState\""),
+            "fired latch must serialize: {json}"
+        );
         assert!(json.contains("\"onceFired\""));
         let mut w2 = crate::world::World::from_snapshot(serde_json::from_str(&json).unwrap());
 
         // Second talk after the round-trip: response re-emits, effect is SUPPRESSED.
         let mut opened2 = BTreeSet::new();
-        let r2 = w2.submit(Intent::Talk { npc_id: "keeper".into(), prompt: None }, &cat, &mut opened2);
+        let r2 = w2.submit(
+            Intent::Talk {
+                npc_id: "keeper".into(),
+                prompt: None,
+            },
+            &cat,
+            &mut opened2,
+        );
         assert_eq!(r2.error, None);
         assert!(has_cue(&r2, "The keeper nods."), "response re-emitted");
-        assert_eq!(w2.characters[&cid("pc")].stats.sanity, 10.0, "once latch survived the snapshot");
+        assert_eq!(
+            w2.characters[&cid("pc")].stats.sanity,
+            10.0,
+            "once latch survived the snapshot"
+        );
     }
 
     #[test]
@@ -1213,12 +1568,18 @@ mod tests {
         let cat = cat_with_keeper(false);
         let mut opened = BTreeSet::new();
         let r = w.submit(
-            Intent::Talk { npc_id: "keeper".into(), prompt: Some("about the cellar?".into()) },
+            Intent::Talk {
+                npc_id: "keeper".into(),
+                prompt: Some("about the cellar?".into()),
+            },
             &cat,
             &mut opened,
         );
         assert_eq!(r.error, None);
-        assert!(has_cue(&r, "The cellar is locked."), "fuzzy 'cellar' entry selected");
+        assert!(
+            has_cue(&r, "The cellar is locked."),
+            "fuzzy 'cellar' entry selected"
+        );
     }
 
     #[test]
@@ -1227,7 +1588,13 @@ mod tests {
         // resolve_npc → None and talk emits nothing (mirrors read_item not-held).
         let mut w = world_for_submit();
         seat_npc(&mut w, "keeper", "room1", true);
-        let (r, _) = submit_one(&mut w, Intent::Talk { npc_id: "keeper".into(), prompt: None });
+        let (r, _) = submit_one(
+            &mut w,
+            Intent::Talk {
+                npc_id: "keeper".into(),
+                prompt: None,
+            },
+        );
         assert_eq!(r.error, None);
         assert_eq!(r.cues, Vec::new());
     }
@@ -1241,18 +1608,49 @@ mod tests {
         let mut opened = BTreeSet::new();
 
         // keeper-a fires (7→10); keeper-b fires INDEPENDENTLY (10→13).
-        w.submit(Intent::Talk { npc_id: "keeper-a".into(), prompt: None }, &cat, &mut opened);
+        w.submit(
+            Intent::Talk {
+                npc_id: "keeper-a".into(),
+                prompt: None,
+            },
+            &cat,
+            &mut opened,
+        );
         assert_eq!(w.characters[&cid("pc")].stats.sanity, 10.0);
-        w.submit(Intent::Talk { npc_id: "keeper-b".into(), prompt: None }, &cat, &mut opened);
-        assert_eq!(w.characters[&cid("pc")].stats.sanity, 13.0, "keeper-b's latch is separate");
+        w.submit(
+            Intent::Talk {
+                npc_id: "keeper-b".into(),
+                prompt: None,
+            },
+            &cat,
+            &mut opened,
+        );
+        assert_eq!(
+            w.characters[&cid("pc")].stats.sanity,
+            13.0,
+            "keeper-b's latch is separate"
+        );
 
         // keeper-a is latched — talking to it again fires no effect.
-        w.submit(Intent::Talk { npc_id: "keeper-a".into(), prompt: None }, &cat, &mut opened);
+        w.submit(
+            Intent::Talk {
+                npc_id: "keeper-a".into(),
+                prompt: None,
+            },
+            &cat,
+            &mut opened,
+        );
         assert_eq!(w.characters[&cid("pc")].stats.sanity, 13.0);
 
         // Each NPC carries its OWN latch on its OWN snapshot state.
-        assert_eq!(w.characters[&cid("keeper-a")].npc_state["onceFired"]["default"], serde_json::json!(true));
-        assert_eq!(w.characters[&cid("keeper-b")].npc_state["onceFired"]["default"], serde_json::json!(true));
+        assert_eq!(
+            w.characters[&cid("keeper-a")].npc_state["onceFired"]["default"],
+            serde_json::json!(true)
+        );
+        assert_eq!(
+            w.characters[&cid("keeper-b")].npc_state["onceFired"]["default"],
+            serde_json::json!(true)
+        );
     }
 
     #[test]
@@ -1262,10 +1660,17 @@ mod tests {
         seat_npc(&mut w, "keeper", "room1", true);
         let cat = cat_with_keeper(false);
         let mut cues = Vec::new();
-        w.examine(&cid("pc"), &cid("keeper"), &cat, &mut cues).unwrap();
-        assert_eq!(cues, alloc::vec![PresentationCue::Mechanic {
-            cue: MechanicCue { text: Some("A hunched keeper.".into()), sound: None },
-        }]);
+        w.examine(&cid("pc"), &cid("keeper"), &cat, &mut cues)
+            .unwrap();
+        assert_eq!(
+            cues,
+            alloc::vec![PresentationCue::Mechanic {
+                cue: MechanicCue {
+                    text: Some("A hunched keeper.".into()),
+                    sound: None
+                },
+            }]
+        );
     }
 
     #[test]
@@ -1275,12 +1680,14 @@ mod tests {
         let mut w = world_for_submit();
         seat_npc(&mut w, "keeper", "room1", /*visible=*/ false);
         let mut cues = Vec::new();
-        w.examine(&cid("pc"), &cid("keeper"), &cat, &mut cues).unwrap();
+        w.examine(&cid("pc"), &cid("keeper"), &cat, &mut cues)
+            .unwrap();
         assert!(cues.is_empty(), "a hidden NPC yields no description");
         // a co-located Mob is not an NPC
         let mut cues2 = Vec::new();
         seat_test_mob(&mut w, "wraith", "room1");
-        w.examine(&cid("pc"), &cid("wraith"), &cat, &mut cues2).unwrap();
+        w.examine(&cid("pc"), &cid("wraith"), &cat, &mut cues2)
+            .unwrap();
         assert!(cues2.is_empty(), "examining a mob is a no-op");
     }
 
@@ -1288,7 +1695,7 @@ mod tests {
     fn validate_mechanics_rejects_npc_with_unresolved_behavior_key() {
         let mut w = world_for_submit();
         seat_npc(&mut w, "keeper", "room1", true); // npc_behavior_key = "npc/keeper"
-        // No "npc/keeper" behavior registered → validation fails fast.
+                                                   // No "npc/keeper" behavior registered → validation fails fast.
         let err = w.validate_mechanics(&cat_with_items()).unwrap_err();
         assert!(err.0.contains("npc/keeper"), "got: {}", err.0);
         // Registered → validation passes.

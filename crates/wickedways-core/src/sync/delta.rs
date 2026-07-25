@@ -82,11 +82,51 @@ pub fn diff(before: &CampaignSnapshot, after: &CampaignSnapshot) -> Delta {
     let mut created = Vec::new();
     let mut removed = Vec::new();
 
-    diff_collection(&before.rooms, &after.rooms, room_id, |r| EntitySnapshot::Room(Box::new(r)), &mut changed, &mut created, &mut removed);
-    diff_collection(&before.characters, &after.characters, character_id, |c| EntitySnapshot::Character(Box::new(c)), &mut changed, &mut created, &mut removed);
-    diff_collection(&before.items, &after.items, item_id, |i| EntitySnapshot::Item(Box::new(i)), &mut changed, &mut created, &mut removed);
-    diff_collection(&before.loot, &after.loot, loot_id, |l| EntitySnapshot::Loot(Box::new(l)), &mut changed, &mut created, &mut removed);
-    diff_collection(&before.material_caches, &after.material_caches, cache_id, |m| EntitySnapshot::MaterialCache(Box::new(m)), &mut changed, &mut created, &mut removed);
+    diff_collection(
+        &before.rooms,
+        &after.rooms,
+        room_id,
+        |r| EntitySnapshot::Room(Box::new(r)),
+        &mut changed,
+        &mut created,
+        &mut removed,
+    );
+    diff_collection(
+        &before.characters,
+        &after.characters,
+        character_id,
+        |c| EntitySnapshot::Character(Box::new(c)),
+        &mut changed,
+        &mut created,
+        &mut removed,
+    );
+    diff_collection(
+        &before.items,
+        &after.items,
+        item_id,
+        |i| EntitySnapshot::Item(Box::new(i)),
+        &mut changed,
+        &mut created,
+        &mut removed,
+    );
+    diff_collection(
+        &before.loot,
+        &after.loot,
+        loot_id,
+        |l| EntitySnapshot::Loot(Box::new(l)),
+        &mut changed,
+        &mut created,
+        &mut removed,
+    );
+    diff_collection(
+        &before.material_caches,
+        &after.material_caches,
+        cache_id,
+        |m| EntitySnapshot::MaterialCache(Box::new(m)),
+        &mut changed,
+        &mut created,
+        &mut removed,
+    );
 
     let core_changed = before.campaign != after.campaign || before.codex != after.codex;
     let campaign_core = core_changed.then(|| {
@@ -96,7 +136,13 @@ pub fn diff(before: &CampaignSnapshot, after: &CampaignSnapshot) -> Delta {
         })
     });
 
-    Delta { changed, created, removed, campaign_core, cues: Vec::new() }
+    Delta {
+        changed,
+        created,
+        removed,
+        campaign_core,
+        cues: Vec::new(),
+    }
 }
 
 /// Compares one entity collection between `before` and `after`, classifying each `after`
@@ -183,7 +229,10 @@ mod tests {
         };
         after.items.push(new_item.clone());
         let d = diff(&before, &after);
-        assert_eq!(d.created, alloc::vec![EntitySnapshot::Item(Box::new(new_item))]);
+        assert_eq!(
+            d.created,
+            alloc::vec![EntitySnapshot::Item(Box::new(new_item))]
+        );
         assert!(d.changed.is_empty() && d.removed.is_empty());
     }
 
@@ -255,7 +304,10 @@ mod tests {
         assert_eq!(v["changed"], json!([]));
         assert_eq!(v["created"], json!([]));
         assert_eq!(v["removed"], json!([]));
-        assert!(v.get("campaignCore").is_none(), "absent core must be omitted, not null");
+        assert!(
+            v.get("campaignCore").is_none(),
+            "absent core must be omitted, not null"
+        );
     }
 
     #[test]

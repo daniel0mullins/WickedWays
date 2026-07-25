@@ -40,28 +40,42 @@ impl Value {
 /// string V8 computes); this function only re-assembles the NOTATION, since JS
 /// switches to exponential form outside [1e-6, 1e21) while Rust never does.
 pub fn format_js_number(n: f64) -> String {
-    if n.is_nan() { return "NaN".to_string(); }
-    if n.is_infinite() {
-        return if n > 0.0 { "Infinity".to_string() } else { "-Infinity".to_string() };
+    if n.is_nan() {
+        return "NaN".to_string();
     }
-    if n == 0.0 { return "0".to_string(); } // covers -0.0: JS String(-0) === "0"
+    if n.is_infinite() {
+        return if n > 0.0 {
+            "Infinity".to_string()
+        } else {
+            "-Infinity".to_string()
+        };
+    }
+    if n == 0.0 {
+        return "0".to_string();
+    } // covers -0.0: JS String(-0) === "0"
     let neg = n < 0.0;
     let a = if neg { -n } else { n };
     // "d.dddde<exp>" or "d e<exp>"; mantissa digits are ASCII.
     let exp_str = format!("{a:e}");
-    let (mant, exp) = exp_str.split_once('e').expect("LowerExp always contains 'e'");
+    let (mant, exp) = exp_str
+        .split_once('e')
+        .expect("LowerExp always contains 'e'");
     let exp: i32 = exp.parse().expect("LowerExp exponent is an integer");
     let all: String = mant.chars().filter(|c| *c != '.').collect();
     let trimmed = all.trim_end_matches('0');
     let digits = if trimmed.is_empty() { "0" } else { trimmed };
     let k = digits.len() as i32; // significant digit count
-    let pos = exp + 1;           // ECMA "n": value = digits × 10^(pos − k)
+    let pos = exp + 1; // ECMA "n": value = digits × 10^(pos − k)
     let mut s = String::new();
-    if neg { s.push('-'); }
+    if neg {
+        s.push('-');
+    }
     if k <= pos && pos <= 21 {
         // integer, zero-padded: e.g. 1e2 -> "100"
         s.push_str(digits);
-        for _ in 0..(pos - k) { s.push('0'); }
+        for _ in 0..(pos - k) {
+            s.push('0');
+        }
     } else if 0 < pos && pos <= 21 {
         // decimal point inside the digits: e.g. "2.5", "123456789.123"
         s.push_str(&digits[..pos as usize]);
@@ -70,15 +84,22 @@ pub fn format_js_number(n: f64) -> String {
     } else if -6 < pos && pos <= 0 {
         // leading zeros: e.g. "0.000001"
         s.push_str("0.");
-        for _ in 0..(-pos) { s.push('0'); }
+        for _ in 0..(-pos) {
+            s.push('0');
+        }
         s.push_str(digits);
     } else {
         // exponential: e.g. "1e+21", "1e-7", "1.5e+22"
         s.push_str(&digits[..1]);
-        if digits.len() > 1 { s.push('.'); s.push_str(&digits[1..]); }
+        if digits.len() > 1 {
+            s.push('.');
+            s.push_str(&digits[1..]);
+        }
         s.push('e');
         let e = pos - 1;
-        if e >= 0 { s.push('+'); }
+        if e >= 0 {
+            s.push('+');
+        }
         s.push_str(&format!("{e}"));
     }
     s
@@ -97,8 +118,12 @@ pub fn coerce_str(v: &Value) -> String {
             // JS Array.prototype.toString: comma-joined elements (null -> "").
             let mut out = String::new();
             for (i, it) in items.iter().enumerate() {
-                if i > 0 { out.push(','); }
-                if !matches!(it, Value::Null) { out.push_str(&coerce_str(it)); }
+                if i > 0 {
+                    out.push(',');
+                }
+                if !matches!(it, Value::Null) {
+                    out.push_str(&coerce_str(it));
+                }
             }
             out
         }
@@ -154,18 +179,18 @@ mod tests {
             (16.0, "16"),
             (2.5, "2.5"),
             (0.1, "0.1"),
-            (3.6, "3.6"),                       // the dread pre-cap damage value
+            (3.6, "3.6"), // the dread pre-cap damage value
             (-1.5, "-1.5"),
             (0.0, "0"),
-            (-0.0, "0"),                        // JS String(-0) === "0"
+            (-0.0, "0"), // JS String(-0) === "0"
             (15.0, "15"),
             (7.0, "7"),
             (3.2, "3.2"),                       // a darkness-multiplier-shaped fraction
             (0.1 + 0.2, "0.30000000000000004"), // shortest-roundtrip 17 digits
             (1.0 / 3.0, "0.3333333333333333"),
-            (1e21, "1e+21"),                    // exponential at the 1e21 boundary
-            (1e-7, "1e-7"),                     // exponential below 1e-6
-            (0.000001, "0.000001"),             // fixed AT the 1e-6 boundary
+            (1e21, "1e+21"),        // exponential at the 1e21 boundary
+            (1e-7, "1e-7"),         // exponential below 1e-6
+            (0.000001, "0.000001"), // fixed AT the 1e-6 boundary
             (123456789.123, "123456789.123"),
         ];
         for (n, want) in cases {
@@ -178,14 +203,38 @@ mod tests {
 
     #[test]
     fn value_serializes_untagged_as_plain_json() {
-        assert_eq!(serde_json::to_value(Value::Number(2.5)).unwrap(), serde_json::json!(2.5));
-        assert_eq!(serde_json::to_value(Value::Str("x".into())).unwrap(), serde_json::json!("x"));
-        assert_eq!(serde_json::to_value(Value::Bool(true)).unwrap(), serde_json::json!(true));
-        assert_eq!(serde_json::to_value(Value::Null).unwrap(), serde_json::json!(null));
         assert_eq!(
-            serde_json::to_value(Value::List(alloc::vec![Value::Number(1.0), Value::Str("a".into())])).unwrap(),
-            serde_json::json!([1.0, "a"]));
+            serde_json::to_value(Value::Number(2.5)).unwrap(),
+            serde_json::json!(2.5)
+        );
+        assert_eq!(
+            serde_json::to_value(Value::Str("x".into())).unwrap(),
+            serde_json::json!("x")
+        );
+        assert_eq!(
+            serde_json::to_value(Value::Bool(true)).unwrap(),
+            serde_json::json!(true)
+        );
+        assert_eq!(
+            serde_json::to_value(Value::Null).unwrap(),
+            serde_json::json!(null)
+        );
+        assert_eq!(
+            serde_json::to_value(Value::List(alloc::vec![
+                Value::Number(1.0),
+                Value::Str("a".into())
+            ]))
+            .unwrap(),
+            serde_json::json!([1.0, "a"])
+        );
         let v: Value = serde_json::from_value(serde_json::json!(["a", 2.0, null])).unwrap();
-        assert_eq!(v, Value::List(alloc::vec![Value::Str("a".into()), Value::Number(2.0), Value::Null]));
+        assert_eq!(
+            v,
+            Value::List(alloc::vec![
+                Value::Str("a".into()),
+                Value::Number(2.0),
+                Value::Null
+            ])
+        );
     }
 }

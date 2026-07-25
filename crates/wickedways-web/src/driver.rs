@@ -27,17 +27,25 @@ use crate::transport::WsTransport;
 // catalog, so booting them auto-`BeginCampaign`s. Real manifest-driven assembly (in place of these
 // bundled snapshots) is a later increment.
 const DEMO_GENESIS: &str = include_str!("../../../conformance/fixtures/sync-move.genesis.json");
-const CARETAKER_GENESIS: &str = include_str!("../../../conformance/fixtures/caretaker.genesis.json");
-const CARETAKER_CATALOG: &str = include_str!("../../../conformance/fixtures/caretaker.catalog.json");
-const FACADE_GENESIS: &str = include_str!("../../../conformance/fixtures/facade-free-vs-advancing.genesis.json");
-const FACADE_CATALOG: &str = include_str!("../../../conformance/fixtures/facade-free-vs-advancing.catalog.json");
-const STATUS_BAR_GENESIS: &str = include_str!("../../../conformance/fixtures/g2-status-bar.genesis.json");
-const STATUS_BAR_CATALOG: &str = include_str!("../../../conformance/fixtures/g2-status-bar.catalog.json");
+const CARETAKER_GENESIS: &str =
+    include_str!("../../../conformance/fixtures/caretaker.genesis.json");
+const CARETAKER_CATALOG: &str =
+    include_str!("../../../conformance/fixtures/caretaker.catalog.json");
+const FACADE_GENESIS: &str =
+    include_str!("../../../conformance/fixtures/facade-free-vs-advancing.genesis.json");
+const FACADE_CATALOG: &str =
+    include_str!("../../../conformance/fixtures/facade-free-vs-advancing.catalog.json");
+const STATUS_BAR_GENESIS: &str =
+    include_str!("../../../conformance/fixtures/g2-status-bar.genesis.json");
+const STATUS_BAR_CATALOG: &str =
+    include_str!("../../../conformance/fixtures/g2-status-bar.catalog.json");
 // The Hollow House — the full authored campaign (TOML → author → assemble). The genesis is the
 // pristine snapshot seated with one Heir PC (the GM); its catalog carries the scripted mechanics
 // (dread/sanity status bar/victory conditions) the core runs.
-const HOLLOW_GENESIS: &str = include_str!("../../../conformance/fixtures/hollow-house.genesis.json");
-const HOLLOW_CATALOG: &str = include_str!("../../../conformance/fixtures/hollow-house.catalog.json");
+const HOLLOW_GENESIS: &str =
+    include_str!("../../../conformance/fixtures/hollow-house.genesis.json");
+const HOLLOW_CATALOG: &str =
+    include_str!("../../../conformance/fixtures/hollow-house.catalog.json");
 // The Covenant — the co-op MULTIPLAYER campaign (TOML → author → assemble, seated with four Wardens,
 // the first is GM). Its `twin-wards-held` victory needs two players in two different rooms at once, so
 // it's designed for the room server; the bundle here is the single-player fallback (unwinnable solo)
@@ -65,11 +73,16 @@ fn bundled(id: &str) -> Option<(&'static str, Option<&'static str>)> {
 /// The parsed genesis snapshot + catalog for a bundled campaign id, falling back to
 /// [`DEFAULT_CAMPAIGN`] for an unknown id.
 pub fn bundled_campaign(id: &str) -> Result<(CampaignSnapshot, Catalog), String> {
-    let (genesis, catalog) = bundled(id).or_else(|| bundled(DEFAULT_CAMPAIGN)).ok_or("no campaign")?;
-    let snapshot = serde_json::from_str(genesis).map_err(|e| format!("genesis '{id}' malformed: {e}"))?;
+    let (genesis, catalog) = bundled(id)
+        .or_else(|| bundled(DEFAULT_CAMPAIGN))
+        .ok_or("no campaign")?;
+    let snapshot =
+        serde_json::from_str(genesis).map_err(|e| format!("genesis '{id}' malformed: {e}"))?;
     let catalog = match catalog {
         None => Catalog::default(),
-        Some(json) => serde_json::from_str(json).map_err(|e| format!("catalog '{id}' malformed: {e}"))?,
+        Some(json) => {
+            serde_json::from_str(json).map_err(|e| format!("catalog '{id}' malformed: {e}"))?
+        }
     };
     Ok((snapshot, catalog))
 }
@@ -155,7 +168,11 @@ fn default_ws() -> String {
         .map(|w| w.location())
         .and_then(|loc| {
             let host = loc.host().ok().filter(|h| !h.is_empty())?;
-            let scheme = if loc.protocol().ok().as_deref() == Some("https:") { "wss" } else { "ws" };
+            let scheme = if loc.protocol().ok().as_deref() == Some("https:") {
+                "wss"
+            } else {
+                "ws"
+            };
             Some(format!("{scheme}://{host}/ws"))
         })
         .unwrap_or_else(|| "ws://127.0.0.1:9000/ws".into())
@@ -244,11 +261,12 @@ pub fn has_actions_left(world: &World, single: bool) -> bool {
     if single {
         return true;
     }
-    match world
-        .active_character_id()
-        .ok()
-        .and_then(|id| world.characters.get(&id).map(|c| (c.actions_this_round, c.actions_per_round)))
-    {
+    match world.active_character_id().ok().and_then(|id| {
+        world
+            .characters
+            .get(&id)
+            .map(|c| (c.actions_this_round, c.actions_per_round))
+    }) {
         Some((used, cap)) => used < cap,
         None => true,
     }
@@ -269,7 +287,10 @@ pub enum AppTransport {
 /// Build a fresh offline transport + a coordinator joined to it, from an authoritative snapshot and
 /// its catalog. Shared by single-player boot, `restore` (from a save), and `restart` (from a pristine
 /// genesis) — the local analog of the room server's "reset the authority to a snapshot".
-pub fn rebuild_single(snapshot: CampaignSnapshot, catalog: Catalog) -> (AppTransport, SyncCoordinator) {
+pub fn rebuild_single(
+    snapshot: CampaignSnapshot,
+    catalog: Catalog,
+) -> (AppTransport, SyncCoordinator) {
     let transport = AppTransport::Single(Box::new(SinglePlayerTransport::new(
         World::from_snapshot(snapshot),
         catalog,
@@ -281,7 +302,9 @@ pub fn rebuild_single(snapshot: CampaignSnapshot, catalog: Catalog) -> (AppTrans
 /// Boot the offline single-player authority for a bundled campaign: build it, and `BeginCampaign` if
 /// the genesis hasn't started yet (single-player is the sole GM). Returns the transport, the joined
 /// coordinator, and the campaign catalog the surface projects with. Shared by boot and `restart`.
-pub async fn boot_single(campaign: &str) -> Result<(AppTransport, SyncCoordinator, Catalog), String> {
+pub async fn boot_single(
+    campaign: &str,
+) -> Result<(AppTransport, SyncCoordinator, Catalog), String> {
     let (snapshot, catalog) = bundled_campaign(campaign)?;
     let started = snapshot.campaign.started;
     let (transport, mut coord) = rebuild_single(snapshot, catalog.clone());
@@ -302,7 +325,9 @@ pub async fn boot(cfg: &Config) -> Result<(AppTransport, SyncCoordinator, Catalo
     match cfg.mode {
         Mode::Single => boot_single(&cfg.campaign).await,
         Mode::Multi => {
-            let transport = AppTransport::Multi(WsTransport::connect(&cfg.ws, &cfg.campaign, &cfg.token).await?);
+            let transport = AppTransport::Multi(
+                WsTransport::connect(&cfg.ws, &cfg.campaign, &cfg.token).await?,
+            );
             let coord = SyncCoordinator::join(&transport);
             // Project against the campaign's bundled catalog (resolving a hosted `<slug>~<token>`
             // room id to its base) so item aliases, recipes, and other catalog-derived view data
@@ -375,8 +400,16 @@ pub struct SurfaceInfo {
 }
 
 const SURFACE_INFOS: &[SurfaceInfo] = &[
-    SurfaceInfo { id: "crt-terminal", label: "CRT Terminal", description: "Classic green-screen text adventure." },
-    SurfaceInfo { id: "point-and-click", label: "Point & Click", description: "Visual scene with clickable hotspots." },
+    SurfaceInfo {
+        id: "crt-terminal",
+        label: "CRT Terminal",
+        description: "Classic green-screen text adventure.",
+    },
+    SurfaceInfo {
+        id: "point-and-click",
+        label: "Point & Click",
+        description: "Visual scene with clickable hotspots.",
+    },
 ];
 
 /// Look up a surface's launcher metadata by id.
@@ -507,7 +540,10 @@ fn visible(info: &CampaignInfo, debug: bool) -> bool {
 /// The campaigns the launcher menu should list, in order: the shipped Hollow House always, plus the
 /// debug/conformance campaigns when `?debug` is present.
 pub fn menu_campaigns(debug: bool) -> Vec<&'static CampaignInfo> {
-    campaign_registry().iter().filter(|c| visible(c, debug)).collect()
+    campaign_registry()
+        .iter()
+        .filter(|c| visible(c, debug))
+        .collect()
 }
 
 /// A campaign's welcome-screen text — the `CampaignManifest` display passthrough consumed by both
@@ -528,7 +564,11 @@ pub fn welcome_for(campaign: &str) -> WelcomeText {
         Some(i) => WelcomeText {
             title: i.title.into(),
             intro: i.intro.into(),
-            button: if i.button_text.is_empty() { format!("Enter {}", i.title) } else { i.button_text.into() },
+            button: if i.button_text.is_empty() {
+                format!("Enter {}", i.title)
+            } else {
+                i.button_text.into()
+            },
         },
         None => WelcomeText {
             title: "WICKEDWAYS".into(),
@@ -555,13 +595,19 @@ pub enum LauncherRoute {
 fn choose(slug: &str, surfaces: &[&str], surface: Option<&str>) -> LauncherRoute {
     if let Some(sid) = surface {
         if surfaces.contains(&sid) {
-            return LauncherRoute::Surface { slug: slug.into(), surface: sid.into() };
+            return LauncherRoute::Surface {
+                slug: slug.into(),
+                surface: sid.into(),
+            };
         }
     }
     if surfaces.len() >= 2 {
         LauncherRoute::Picker { slug: slug.into() }
     } else {
-        LauncherRoute::Surface { slug: slug.into(), surface: surfaces.first().copied().unwrap_or("crt-terminal").into() }
+        LauncherRoute::Surface {
+            slug: slug.into(),
+            surface: surfaces.first().copied().unwrap_or("crt-terminal").into(),
+        }
     }
 }
 
@@ -572,14 +618,20 @@ pub fn resolve_route(campaign: Option<&str>, surface: Option<&str>, debug: bool)
     match resolve_campaign_info(campaign) {
         // Route on the ORIGINAL id (a room id `<slug>~<token>` stays intact for the connection); the
         // surfaces/visibility come from its base campaign via `resolve_campaign_info`.
-        Some(info) if visible(info, debug) => choose(campaign.unwrap_or(info.slug), info.surfaces, surface),
+        Some(info) if visible(info, debug) => {
+            choose(campaign.unwrap_or(info.slug), info.surfaces, surface)
+        }
         _ => LauncherRoute::Menu,
     }
 }
 
 /// Read the launcher route from the page URL (`?campaign=` / `?surface=` / `?debug`).
 pub fn read_route() -> LauncherRoute {
-    resolve_route(query_param("campaign").as_deref(), query_param("surface").as_deref(), debug_enabled())
+    resolve_route(
+        query_param("campaign").as_deref(),
+        query_param("surface").as_deref(),
+        debug_enabled(),
+    )
 }
 
 /// Mutate the current URL's query in place via `history.replaceState` (no reload), applying `f` to a
@@ -587,8 +639,12 @@ pub fn read_route() -> LauncherRoute {
 /// [`set_params`] / [`clear_params`].
 fn replace_query(f: impl FnOnce(&web_sys::UrlSearchParams)) {
     let Some(win) = web_sys::window() else { return };
-    let Ok(href) = win.location().href() else { return };
-    let Ok(url) = web_sys::Url::new(&href) else { return };
+    let Ok(href) = win.location().href() else {
+        return;
+    };
+    let Ok(url) = web_sys::Url::new(&href) else {
+        return;
+    };
     // `url.searchParams` is spec-linked to `url.search`, so mutating it updates `url.href`.
     f(&url.search_params());
     if let Ok(history) = win.history() {
@@ -625,7 +681,11 @@ pub fn project(coord: &SyncCoordinator, catalog: &Catalog) -> Option<ViewModel> 
 /// `move`, whose compass direction becomes the destination room id via the active character's room
 /// and the exit graph. Intents with no sync command in the multiplayer path (open/talk/wait) return
 /// a human-readable note the surface narrates back.
-pub fn intent_to_command(world: &World, catalog: &Catalog, intent: &Intent) -> Result<Command, String> {
+pub fn intent_to_command(
+    world: &World,
+    catalog: &Catalog,
+    intent: &Intent,
+) -> Result<Command, String> {
     let actor = world.active_character_id().map_err(|e| e.0)?;
     match intent {
         Intent::Move { dir } => {
@@ -635,7 +695,10 @@ pub fn intent_to_command(world: &World, catalog: &Catalog, intent: &Intent) -> R
                 .and_then(|c| c.current_room_id.clone())
                 .ok_or("you are nowhere")?;
             let room = world.rooms.get(&room_id).ok_or("room not found")?;
-            let exit_id = room.exits.get(dir.as_key()).ok_or_else(|| format!("no exit {}", dir.as_key()))?;
+            let exit_id = room
+                .exits
+                .get(dir.as_key())
+                .ok_or_else(|| format!("no exit {}", dir.as_key()))?;
             let ex = world.exits.get(exit_id).ok_or("exit not found")?;
             // Gate the move on the exit's keyed-door behavior, the way the single-seat `go` does — the
             // sync `move` (by room id) lands via `move_to`, which performs no door check. A locked
@@ -648,21 +711,53 @@ pub fn intent_to_command(world: &World, catalog: &Catalog, intent: &Intent) -> R
             } else {
                 ex.endpoint_ids[0].clone()
             };
-            Ok(Command::Move { actor_id: actor, room_id: dest })
+            Ok(Command::Move {
+                actor_id: actor,
+                room_id: dest,
+            })
         }
-        Intent::Take { target_id } => Ok(Command::PickUp { actor_id: actor, item_ids: vec![ItemId(target_id.clone())] }),
-        Intent::Drop { target_id } => Ok(Command::Drop { actor_id: actor, item_ids: vec![ItemId(target_id.clone())] }),
-        Intent::Attack { target_id } => Ok(Command::Attack { actor_id: actor, target_id: CharacterId(target_id.clone()) }),
-        Intent::Equip { target_id } => Ok(Command::Equip { actor_id: actor, item_id: ItemId(target_id.clone()), slot: None }),
-        Intent::Unequip { target_id } => Ok(Command::Unequip { actor_id: actor, item_id: ItemId(target_id.clone()) }),
-        Intent::Use { target_id } => Ok(Command::Use { actor_id: actor, item_id: ItemId(target_id.clone()) }),
+        Intent::Take { target_id } => Ok(Command::PickUp {
+            actor_id: actor,
+            item_ids: vec![ItemId(target_id.clone())],
+        }),
+        Intent::Drop { target_id } => Ok(Command::Drop {
+            actor_id: actor,
+            item_ids: vec![ItemId(target_id.clone())],
+        }),
+        Intent::Attack { target_id } => Ok(Command::Attack {
+            actor_id: actor,
+            target_id: CharacterId(target_id.clone()),
+        }),
+        Intent::Equip { target_id } => Ok(Command::Equip {
+            actor_id: actor,
+            item_id: ItemId(target_id.clone()),
+            slot: None,
+        }),
+        Intent::Unequip { target_id } => Ok(Command::Unequip {
+            actor_id: actor,
+            item_id: ItemId(target_id.clone()),
+        }),
+        Intent::Use { target_id } => Ok(Command::Use {
+            actor_id: actor,
+            item_id: ItemId(target_id.clone()),
+        }),
         // Materials & crafting — all free (turn-gated by authorize, no budget tick).
-        Intent::Harvest { target_id } => {
-            Ok(Command::Harvest { actor_id: actor, cache_id: MaterialCacheId(target_id.clone()) })
-        }
-        Intent::Craft { recipe_id } => Ok(Command::Craft { actor_id: actor, recipe_id: recipe_id.clone() }),
-        Intent::Repair { target_id } => Ok(Command::Repair { actor_id: actor, item_id: ItemId(target_id.clone()) }),
-        Intent::Destroy { target_id } => Ok(Command::Destroy { actor_id: actor, item_id: ItemId(target_id.clone()) }),
+        Intent::Harvest { target_id } => Ok(Command::Harvest {
+            actor_id: actor,
+            cache_id: MaterialCacheId(target_id.clone()),
+        }),
+        Intent::Craft { recipe_id } => Ok(Command::Craft {
+            actor_id: actor,
+            recipe_id: recipe_id.clone(),
+        }),
+        Intent::Repair { target_id } => Ok(Command::Repair {
+            actor_id: actor,
+            item_id: ItemId(target_id.clone()),
+        }),
+        Intent::Destroy { target_id } => Ok(Command::Destroy {
+            actor_id: actor,
+            item_id: ItemId(target_id.clone()),
+        }),
         // `open` is a local view reveal (list a container's contents) — the surfaces handle it
         // directly against the current view, so it never reaches the sync layer.
         Intent::Open { .. } => Err("(opening is a local view action)".into()),
@@ -691,27 +786,54 @@ mod tests {
         // round-start hook (fired by BeginCampaign); it rides the delta's cues and the coordinator
         // absorbs it, so `status_fields()` reflects the campaign's live readout.
         let (snapshot, catalog) = bundled_campaign("status-bar").unwrap();
-        assert!(!snapshot.campaign.started, "status-bar boots pre-started so BeginCampaign fires onRoundStart");
+        assert!(
+            !snapshot.campaign.started,
+            "status-bar boots pre-started so BeginCampaign fires onRoundStart"
+        );
         let (mut transport, mut coord) = rebuild_single(snapshot, catalog);
-        assert!(coord.status_fields().is_empty(), "no status before BeginCampaign");
+        assert!(
+            coord.status_fields().is_empty(),
+            "no status before BeginCampaign"
+        );
         let res = coord.submit(&mut transport, Command::BeginCampaign);
-        assert!(matches!(res, SubmitResult::Committed { .. }), "begin should commit, got {res:?}");
+        assert!(
+            matches!(res, SubmitResult::Committed { .. }),
+            "begin should commit, got {res:?}"
+        );
         let fields = coord.status_fields();
-        assert!(fields.iter().any(|f| f.label == "Sanity"), "status bar paints Sanity, got {fields:?}");
-        assert!(fields.iter().any(|f| f.label == "Round"), "status bar paints Round, got {fields:?}");
+        assert!(
+            fields.iter().any(|f| f.label == "Sanity"),
+            "status bar paints Sanity, got {fields:?}"
+        );
+        assert!(
+            fields.iter().any(|f| f.label == "Round"),
+            "status bar paints Round, got {fields:?}"
+        );
     }
 
     #[test]
     fn every_bundled_campaign_boots_begins_and_projects() {
-        for id in ["demo", "caretaker", "facade-free-vs-advancing", "status-bar", "hollow-house"] {
+        for id in [
+            "demo",
+            "caretaker",
+            "facade-free-vs-advancing",
+            "status-bar",
+            "hollow-house",
+        ] {
             let (snapshot, catalog) = bundled_campaign(id).unwrap_or_else(|e| panic!("{id}: {e}"));
             let started = snapshot.campaign.started;
             let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
             if !started {
                 let res = coord.submit(&mut transport, Command::BeginCampaign);
-                assert!(matches!(res, SubmitResult::Committed { .. }), "{id}: begin should commit, got {res:?}");
+                assert!(
+                    matches!(res, SubmitResult::Committed { .. }),
+                    "{id}: begin should commit, got {res:?}"
+                );
             }
-            assert!(project(&coord, &catalog).is_some(), "{id}: should project a view");
+            assert!(
+                project(&coord, &catalog).is_some(),
+                "{id}: should project a view"
+            );
         }
     }
 
@@ -742,10 +864,17 @@ mod tests {
             .find(|(_, c)| c.kind == CharacterKind::Npc)
             .map(|(id, c)| (id.clone(), c.visible))
             .expect("hollow-house seats a caretaker npc");
-        assert!(caretaker.1, "the caretaker is visible before the first talk");
+        assert!(
+            caretaker.1,
+            "the caretaker is visible before the first talk"
+        );
 
-        let intent = Intent::Talk { npc_id: caretaker.0 .0.clone(), prompt: None };
-        let cmd = intent_to_command(coord.replica(), &catalog, &intent).expect("talk maps to a Talk command");
+        let intent = Intent::Talk {
+            npc_id: caretaker.0 .0.clone(),
+            prompt: None,
+        };
+        let cmd = intent_to_command(coord.replica(), &catalog, &intent)
+            .expect("talk maps to a Talk command");
         let res = coord.submit(&mut transport, cmd);
         let SubmitResult::Committed { delta, .. } = res else {
             panic!("talk should commit, got {res:?}");
@@ -753,7 +882,10 @@ mod tests {
 
         // The caretaker speaks: a mechanic cue carries the dialogue response line.
         assert!(
-            delta.cues.iter().any(|c| matches!(c, PresentationCue::Mechanic { .. })),
+            delta
+                .cues
+                .iter()
+                .any(|c| matches!(c, PresentationCue::Mechanic { .. })),
             "talk emits the caretaker's dialogue as a mechanic cue, got {:?}",
             delta.cues
         );
@@ -764,7 +896,10 @@ mod tests {
             .get(&caretaker.0)
             .map(|c| c.visible)
             .unwrap_or(true);
-        assert!(!still_visible, "the caretaker vanishes after handing over the cellar key");
+        assert!(
+            !still_visible,
+            "the caretaker vanishes after handing over the cellar key"
+        );
     }
 
     #[test]
@@ -787,8 +922,17 @@ mod tests {
         }
 
         // The player starts in the Foyer; the cellar door (south) is locked without the key.
-        let blocked = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: Direction::South });
-        assert!(blocked.is_err(), "the cellar door is locked without the key, got {blocked:?}");
+        let blocked = intent_to_command(
+            coord.replica(),
+            &catalog,
+            &Intent::Move {
+                dir: Direction::South,
+            },
+        );
+        assert!(
+            blocked.is_err(),
+            "the cellar door is locked without the key, got {blocked:?}"
+        );
 
         // Talk to the caretaker → receive the cellar key.
         let caretaker = coord
@@ -801,13 +945,25 @@ mod tests {
         let talk = intent_to_command(
             coord.replica(),
             &catalog,
-            &Intent::Talk { npc_id: caretaker.0.clone(), prompt: None },
+            &Intent::Talk {
+                npc_id: caretaker.0.clone(),
+                prompt: None,
+            },
         )
         .unwrap();
-        assert!(matches!(coord.submit(&mut transport, talk), SubmitResult::Committed { .. }));
+        assert!(matches!(
+            coord.submit(&mut transport, talk),
+            SubmitResult::Committed { .. }
+        ));
 
         // With the cellar key in hand, the door is now passable.
-        let allowed = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: Direction::South });
+        let allowed = intent_to_command(
+            coord.replica(),
+            &catalog,
+            &Intent::Move {
+                dir: Direction::South,
+            },
+        );
         assert!(
             matches!(allowed, Ok(Command::Move { .. })),
             "with the cellar key the door is passable, got {allowed:?}"
@@ -826,32 +982,62 @@ mod tests {
         let started = snapshot.campaign.started;
         let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
         if !started {
-            assert!(matches!(coord.submit(&mut transport, Command::BeginCampaign), SubmitResult::Committed { .. }));
+            assert!(matches!(
+                coord.submit(&mut transport, Command::BeginCampaign),
+                SubmitResult::Committed { .. }
+            ));
         }
         let pc = coord.replica().active_character_id().unwrap();
         let budget = coord.replica().characters[&pc].actions_per_round; // 3 for the Heir
-        assert!(budget >= 2, "the test needs a multi-action budget, got {budget}");
+        assert!(
+            budget >= 2,
+            "the test needs a multi-action budget, got {budget}"
+        );
         let round0 = coord.snapshot().campaign.round;
         let sanity0 = coord.replica().characters[&pc].stats.sanity;
 
         // Alternate Foyer↔Hall (both open corridors) so exits stay valid. The turn must NOT advance
         // until the budget is spent.
-        let dir = |i: i64| if i % 2 == 0 { Direction::North } else { Direction::South };
+        let dir = |i: i64| {
+            if i % 2 == 0 {
+                Direction::North
+            } else {
+                Direction::South
+            }
+        };
         for i in 0..(budget - 1) {
-            let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: dir(i) }).unwrap();
-            assert!(matches!(coord.submit(&mut transport, cmd), SubmitResult::Committed { .. }));
+            let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: dir(i) })
+                .unwrap();
+            assert!(matches!(
+                coord.submit(&mut transport, cmd),
+                SubmitResult::Committed { .. }
+            ));
             assert_eq!(
-                coord.snapshot().campaign.round, round0,
-                "the turn must not advance before the budget is spent (after move {})", i + 1
+                coord.snapshot().campaign.round,
+                round0,
+                "the turn must not advance before the budget is spent (after move {})",
+                i + 1
             );
         }
         // The budget-spending move ends the turn → the round advances.
-        let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Move { dir: dir(budget - 1) }).unwrap();
+        let cmd = intent_to_command(
+            coord.replica(),
+            &catalog,
+            &Intent::Move {
+                dir: dir(budget - 1),
+            },
+        )
+        .unwrap();
         coord.submit(&mut transport, cmd);
-        assert_eq!(coord.snapshot().campaign.round, round0 + 1, "the turn advances once the action budget is spent");
+        assert_eq!(
+            coord.snapshot().campaign.round,
+            round0 + 1,
+            "the turn advances once the action budget is spent"
+        );
         // Dread fired exactly once this turn, not once per action.
         assert_eq!(
-            coord.replica().characters[&pc].stats.sanity, sanity0 - 1.0,
+            coord.replica().characters[&pc].stats.sanity,
+            sanity0 - 1.0,
             "dread drains once per turn, not per action"
         );
     }
@@ -873,17 +1059,38 @@ mod tests {
             ));
         }
 
-        let pc = coord.replica().active_character_id().expect("a started campaign has an active seat");
+        let pc = coord
+            .replica()
+            .active_character_id()
+            .expect("a started campaign has an active seat");
         let round_before = coord.snapshot().campaign.round;
-        let sanity_before = coord.replica().characters.get(&pc).map(|c| c.stats.sanity).unwrap();
+        let sanity_before = coord
+            .replica()
+            .characters
+            .get(&pc)
+            .map(|c| c.stats.sanity)
+            .unwrap();
 
-        let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Wait).expect("wait maps to a command");
+        let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Wait)
+            .expect("wait maps to a command");
         let res = coord.submit(&mut transport, cmd);
-        assert!(matches!(res, SubmitResult::Committed { .. }), "solo wait commits, got {res:?}");
+        assert!(
+            matches!(res, SubmitResult::Committed { .. }),
+            "solo wait commits, got {res:?}"
+        );
 
         let round_after = coord.snapshot().campaign.round;
-        let sanity_after = coord.replica().characters.get(&pc).map(|c| c.stats.sanity).unwrap();
-        assert_eq!(round_after, round_before + 1, "a solo wait advances the round");
+        let sanity_after = coord
+            .replica()
+            .characters
+            .get(&pc)
+            .map(|c| c.stats.sanity)
+            .unwrap();
+        assert_eq!(
+            round_after,
+            round_before + 1,
+            "a solo wait advances the round"
+        );
         assert!(
             sanity_after < sanity_before,
             "dread drains sanity on turn start (was {sanity_before}, now {sanity_after})"
@@ -914,13 +1121,27 @@ mod tests {
 
         // A committed action moves the state forward.
         let cmd = intent_to_command(coord.replica(), &catalog, &Intent::Wait).unwrap();
-        assert!(matches!(coord.submit(&mut transport, cmd), SubmitResult::Committed { .. }));
-        assert!(coord.replica().characters[&pc].stats.sanity < sanity_before, "the wait advanced state");
+        assert!(matches!(
+            coord.submit(&mut transport, cmd),
+            SubmitResult::Committed { .. }
+        ));
+        assert!(
+            coord.replica().characters[&pc].stats.sanity < sanity_before,
+            "the wait advanced state"
+        );
 
         // Undo: rebuild from the captured snapshot restores the pre-command state exactly.
         let (_t, reverted) = rebuild_single(before, catalog.clone());
-        assert_eq!(reverted.replica().characters[&pc].stats.sanity, sanity_before, "undo restores sanity");
-        assert_eq!(reverted.snapshot().campaign.round, round_before, "undo restores the round");
+        assert_eq!(
+            reverted.replica().characters[&pc].stats.sanity,
+            sanity_before,
+            "undo restores sanity"
+        );
+        assert_eq!(
+            reverted.snapshot().campaign.round,
+            round_before,
+            "undo restores the round"
+        );
     }
 
     #[test]
@@ -936,10 +1157,22 @@ mod tests {
     fn every_registered_campaign_is_bootable_and_its_surfaces_are_known() {
         // The launcher must never present a campaign it can't boot or a surface it can't mount.
         for c in campaign_registry() {
-            assert!(bundled(c.slug).is_some(), "{}: registry slug must be a bundled campaign", c.slug);
-            assert!(!c.surfaces.is_empty(), "{}: must offer at least one surface", c.slug);
+            assert!(
+                bundled(c.slug).is_some(),
+                "{}: registry slug must be a bundled campaign",
+                c.slug
+            );
+            assert!(
+                !c.surfaces.is_empty(),
+                "{}: must offer at least one surface",
+                c.slug
+            );
             for sid in c.surfaces {
-                assert!(surface_info(sid).is_some(), "{}: surface '{sid}' must have metadata", c.slug);
+                assert!(
+                    surface_info(sid).is_some(),
+                    "{}: surface '{sid}' must have metadata",
+                    c.slug
+                );
             }
         }
     }
@@ -952,8 +1185,14 @@ mod tests {
         // Started; active seat 0 is the GM host (the campaign's gmId character).
         snap.campaign.started = true;
         snap.campaign.active_character_index = 0;
-        assert!(is_my_turn(&snap, "gm", true, false), "the GM's turn when its own seat is active");
-        assert!(!is_my_turn(&snap, "player-x", false, false), "not a joiner's turn while the GM seat is active");
+        assert!(
+            is_my_turn(&snap, "gm", true, false),
+            "the GM's turn when its own seat is active"
+        );
+        assert!(
+            !is_my_turn(&snap, "player-x", false, false),
+            "not a joiner's turn while the GM seat is active"
+        );
         // Single-player drives every seat → always your turn once started.
         assert!(is_my_turn(&snap, "whatever", true, true));
     }
@@ -962,24 +1201,44 @@ mod tests {
     fn a_room_id_resolves_to_its_base_campaign_but_keeps_the_room_in_the_route() {
         // A hosted/shared room id `<slug>~<token>` resolves to its base campaign's metadata…
         assert_eq!(base_campaign("covenant~a5f3"), "covenant");
-        assert_eq!(resolve_campaign_info(Some("covenant~a5f3")).map(|c| c.slug), Some("covenant"));
+        assert_eq!(
+            resolve_campaign_info(Some("covenant~a5f3")).map(|c| c.slug),
+            Some("covenant")
+        );
         // …while the route keeps the FULL room id so the connection targets that specific room.
         assert_eq!(
             resolve_route(Some("covenant~a5f3"), Some("crt-terminal"), false),
-            LauncherRoute::Surface { slug: "covenant~a5f3".into(), surface: "crt-terminal".into() }
+            LauncherRoute::Surface {
+                slug: "covenant~a5f3".into(),
+                surface: "crt-terminal".into()
+            }
         );
         // A room id with two surfaces and none chosen still routes to the picker (keeping the room id).
-        assert_eq!(resolve_route(Some("covenant~a5f3"), None, false), LauncherRoute::Picker { slug: "covenant~a5f3".into() });
+        assert_eq!(
+            resolve_route(Some("covenant~a5f3"), None, false),
+            LauncherRoute::Picker {
+                slug: "covenant~a5f3".into()
+            }
+        );
         // An unknown base still falls back to the menu.
-        assert_eq!(resolve_route(Some("nope~x"), None, false), LauncherRoute::Menu);
+        assert_eq!(
+            resolve_route(Some("nope~x"), None, false),
+            LauncherRoute::Menu
+        );
     }
 
     #[test]
     fn resolve_route_shows_the_menu_for_an_absent_or_unknown_campaign() {
         assert_eq!(resolve_route(None, None, false), LauncherRoute::Menu);
-        assert_eq!(resolve_route(Some("no-such-campaign"), None, false), LauncherRoute::Menu);
+        assert_eq!(
+            resolve_route(Some("no-such-campaign"), None, false),
+            LauncherRoute::Menu
+        );
         // A dangling `?surface=` without a campaign is still the menu.
-        assert_eq!(resolve_route(None, Some("crt-terminal"), false), LauncherRoute::Menu);
+        assert_eq!(
+            resolve_route(None, Some("crt-terminal"), false),
+            LauncherRoute::Menu
+        );
     }
 
     #[test]
@@ -987,23 +1246,53 @@ mod tests {
         // The default menu shows the shipped campaigns: Hollow House (single-player) and The Covenant
         // (multiplayer). The demo/conformance campaigns stay behind `?debug`.
         let shipped: Vec<_> = menu_campaigns(false).iter().map(|c| c.slug).collect();
-        assert_eq!(shipped, vec!["hollow-house", "covenant"], "default menu shows the shipped campaigns");
-        assert_eq!(menu_campaigns(true).len(), campaign_registry().len(), "?debug shows every campaign");
-        assert!(menu_campaigns(true).iter().any(|c| c.slug == "demo"), "?debug includes the demo campaigns");
+        assert_eq!(
+            shipped,
+            vec!["hollow-house", "covenant"],
+            "default menu shows the shipped campaigns"
+        );
+        assert_eq!(
+            menu_campaigns(true).len(),
+            campaign_registry().len(),
+            "?debug shows every campaign"
+        );
+        assert!(
+            menu_campaigns(true).iter().any(|c| c.slug == "demo"),
+            "?debug includes the demo campaigns"
+        );
     }
 
     #[test]
     fn resolve_route_gates_debug_only_campaigns_behind_the_debug_flag() {
         // The shipped campaign is always available.
-        assert_eq!(resolve_route(Some("hollow-house"), None, false), LauncherRoute::Picker { slug: "hollow-house".into() });
+        assert_eq!(
+            resolve_route(Some("hollow-house"), None, false),
+            LauncherRoute::Picker {
+                slug: "hollow-house".into()
+            }
+        );
         // A debug-only campaign is hidden (→ menu) without `?debug`, even with a valid surface…
-        assert_eq!(resolve_route(Some("demo"), Some("crt-terminal"), false), LauncherRoute::Menu);
-        assert_eq!(resolve_route(Some("demo"), None, false), LauncherRoute::Menu);
+        assert_eq!(
+            resolve_route(Some("demo"), Some("crt-terminal"), false),
+            LauncherRoute::Menu
+        );
+        assert_eq!(
+            resolve_route(Some("demo"), None, false),
+            LauncherRoute::Menu
+        );
         // …and available with it.
-        assert_eq!(resolve_route(Some("demo"), None, true), LauncherRoute::Picker { slug: "demo".into() });
+        assert_eq!(
+            resolve_route(Some("demo"), None, true),
+            LauncherRoute::Picker {
+                slug: "demo".into()
+            }
+        );
         assert_eq!(
             resolve_route(Some("demo"), Some("crt-terminal"), true),
-            LauncherRoute::Surface { slug: "demo".into(), surface: "crt-terminal".into() }
+            LauncherRoute::Surface {
+                slug: "demo".into(),
+                surface: "crt-terminal".into()
+            }
         );
     }
 
@@ -1012,12 +1301,25 @@ mod tests {
         // A known, available campaign + valid surface mounts directly.
         assert_eq!(
             resolve_route(Some("hollow-house"), Some("point-and-click"), false),
-            LauncherRoute::Surface { slug: "hollow-house".into(), surface: "point-and-click".into() }
+            LauncherRoute::Surface {
+                slug: "hollow-house".into(),
+                surface: "point-and-click".into()
+            }
         );
         // Available campaign, no surface → picker (every bundled campaign offers ≥ 2).
-        assert_eq!(resolve_route(Some("hollow-house"), None, false), LauncherRoute::Picker { slug: "hollow-house".into() });
+        assert_eq!(
+            resolve_route(Some("hollow-house"), None, false),
+            LauncherRoute::Picker {
+                slug: "hollow-house".into()
+            }
+        );
         // An invalid surface id is ignored → picker (not a bogus mount).
-        assert_eq!(resolve_route(Some("hollow-house"), Some("hologram"), false), LauncherRoute::Picker { slug: "hollow-house".into() });
+        assert_eq!(
+            resolve_route(Some("hollow-house"), Some("hologram"), false),
+            LauncherRoute::Picker {
+                slug: "hollow-house".into()
+            }
+        );
     }
 
     #[test]
@@ -1025,7 +1327,10 @@ mod tests {
         // A registered campaign carries its title + intro; an empty button_text → "Enter <title>".
         let demo = welcome_for("demo");
         assert_eq!(demo.title, "The Crypt");
-        assert!(!demo.intro.is_empty(), "intro should be the campaign's prose");
+        assert!(
+            !demo.intro.is_empty(),
+            "intro should be the campaign's prose"
+        );
         assert_eq!(demo.button, "Enter The Crypt");
         // An unknown campaign (e.g. a multiplayer one not bundled here) → the generic welcome.
         let unknown = welcome_for("some-server-campaign");
@@ -1038,12 +1343,18 @@ mod tests {
         // The <2-surface branch (no bundled campaign exercises it, so test `choose` directly).
         assert_eq!(
             choose("solo", &["crt-terminal"], None),
-            LauncherRoute::Surface { slug: "solo".into(), surface: "crt-terminal".into() }
+            LauncherRoute::Surface {
+                slug: "solo".into(),
+                surface: "crt-terminal".into()
+            }
         );
         // A single-surface campaign with no surfaces at all still yields a safe default.
         assert_eq!(
             choose("empty", &[], None),
-            LauncherRoute::Surface { slug: "empty".into(), surface: "crt-terminal".into() }
+            LauncherRoute::Surface {
+                slug: "empty".into(),
+                surface: "crt-terminal".into()
+            }
         );
     }
 }

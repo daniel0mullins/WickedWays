@@ -76,7 +76,12 @@ pub struct AuthorityOpts {
 
 impl Default for AuthorityOpts {
     fn default() -> Self {
-        AuthorityOpts { snapshot_every: 20, start_seq: 0, solo: false, manage_turns: false }
+        AuthorityOpts {
+            snapshot_every: 20,
+            start_seq: 0,
+            solo: false,
+            manage_turns: false,
+        }
     }
 }
 
@@ -132,7 +137,11 @@ impl SyncAuthority {
 
     /// Committed entries with `seq >= from_seq`, in order.
     pub fn entries_since(&self, from_seq: u64) -> Vec<LogEntry> {
-        self.log.iter().filter(|e| e.seq >= from_seq).cloned().collect()
+        self.log
+            .iter()
+            .filter(|e| e.seq >= from_seq)
+            .cloned()
+            .collect()
     }
 
     /// Authorize → apply (restoring the pre-image on a [`ProceduralViolation`]) → diff → commit.
@@ -155,7 +164,9 @@ impl SyncAuthority {
                     .map(|c| c.actions_this_round >= c.actions_per_round)
                     .unwrap_or(false);
                 if spent {
-                    return SubmitResult::Denied { reason: "You have no actions left this turn.".into() };
+                    return SubmitResult::Denied {
+                        reason: "You have no actions left this turn.".into(),
+                    };
                 }
             }
         }
@@ -165,7 +176,14 @@ impl SyncAuthority {
         // direct clone is guaranteed faithful, where a snapshot round-trip need not be.
         let backup = self.world.clone();
         let before = self.world.to_snapshot();
-        let cues = match apply_command(&mut self.world, &command, &self.catalog, self.solo, self.manage_turns, &mut self.solo_turn_started) {
+        let cues = match apply_command(
+            &mut self.world,
+            &command,
+            &self.catalog,
+            self.solo,
+            self.manage_turns,
+            &mut self.solo_turn_started,
+        ) {
             Ok(cues) => cues,
             Err(v) => {
                 self.world = backup;
@@ -179,7 +197,12 @@ impl SyncAuthority {
         // they reach clients — the delta model otherwise discards them.
         delta.cues = cues;
         let seq = self.head() + 1;
-        self.log.push(LogEntry { seq, base_seq: seq - 1, command, delta: delta.clone() });
+        self.log.push(LogEntry {
+            seq,
+            base_seq: seq - 1,
+            command,
+            delta: delta.clone(),
+        });
         if seq.is_multiple_of(self.snapshot_every) {
             self.checkpoint = (seq, after);
         }
@@ -210,7 +233,10 @@ fn apply_command(
     // Managed-turns (multiplayer): a turn-changing command begins the new active player's turn —
     // `start_turn` resets their budget, ticks afflictions, and fires `onTurnStart` (dread).
     if manage_turns
-        && matches!(command, Command::BeginCampaign | Command::NextPlayer | Command::EndTurn { .. })
+        && matches!(
+            command,
+            Command::BeginCampaign | Command::NextPlayer | Command::EndTurn { .. }
+        )
     {
         apply_action(world, command, cat, &mut cues)?; // begin_campaign / next_player
         if let Ok(active) = world.active_character_id() {
@@ -250,7 +276,10 @@ fn apply_command(
                 // reflects the stat loss from the delta.
                 for attack in &attacks {
                     cues.push(PresentationCue::Mechanic {
-                        cue: MechanicCue { text: Some(attack.narration()), sound: None },
+                        cue: MechanicCue {
+                            text: Some(attack.narration()),
+                            sound: None,
+                        },
                     });
                 }
             }
@@ -276,14 +305,21 @@ fn apply_action(
 ) -> Result<(), ProceduralViolation> {
     let result: Result<(), ProceduralViolation> = match command {
         Command::Move { actor_id, room_id } => world.move_to(actor_id, room_id.clone(), cat, cues),
-        Command::Attack { actor_id, target_id } => world.attack(actor_id, target_id, cat, cues),
-        Command::Equip { actor_id, item_id, .. } => world.equip(actor_id, item_id, cat, cues),
+        Command::Attack {
+            actor_id,
+            target_id,
+        } => world.attack(actor_id, target_id, cat, cues),
+        Command::Equip {
+            actor_id, item_id, ..
+        } => world.equip(actor_id, item_id, cat, cues),
         Command::Unequip { actor_id, item_id } => world.unequip(actor_id, item_id, cat, cues),
         Command::Use { actor_id, item_id } => world.use_item(actor_id, item_id, cat, cues),
         // Free NPC dialogue: emits the selected entry's response + effects as cues on the delta.
-        Command::Talk { actor_id, npc_id, prompt } => {
-            world.talk(actor_id, npc_id, prompt.as_deref(), cat, cues)
-        }
+        Command::Talk {
+            actor_id,
+            npc_id,
+            prompt,
+        } => world.talk(actor_id, npc_id, prompt.as_deref(), cat, cues),
         // `wait` is a pure pass: the solo turn loop (start_turn → mob reactions → next_player) around
         // it carries the time cost; the action itself does nothing to the world.
         Command::Wait { .. } => Ok(()),
@@ -299,15 +335,18 @@ fn apply_action(
             }
             Ok(())
         }
-        Command::PutInLootBox { actor_id, loot_id, item_ids } => {
-            world.put_in_loot_box(actor_id, loot_id, item_ids, cat, cues)
-        }
+        Command::PutInLootBox {
+            actor_id,
+            loot_id,
+            item_ids,
+        } => world.put_in_loot_box(actor_id, loot_id, item_ids, cat, cues),
         // A GM-issued mob strike is the actor-agnostic attack with a mob as the actor.
         Command::MobAttack { mob_id, target_id } => world.attack(mob_id, target_id, cat, cues),
         Command::MobEscape { mob_id } => world.mob_escape(mob_id, cat, cues),
-        Command::SelectArchetype { actor_id, archetype_id } => {
-            world.select_archetype(actor_id, archetype_id)
-        }
+        Command::SelectArchetype {
+            actor_id,
+            archetype_id,
+        } => world.select_archetype(actor_id, archetype_id),
         Command::TransferGm { character_id } => world.transfer_gm(character_id),
         Command::LeaveCampaign { character_id } => world.leave_campaign(character_id),
         Command::JoinCampaign { character } => world.join_campaign((**character).clone()),
@@ -318,9 +357,10 @@ fn apply_action(
         Command::EndTurn { .. } => world.next_player(cat, cues),
         // Materials & crafting — all FREE actions (turn-gated by `authorize`, no budget tick).
         Command::Harvest { actor_id, cache_id } => world.harvest(actor_id, cache_id, cat, cues),
-        Command::Craft { actor_id, recipe_id } => {
-            world.craft(actor_id, recipe_id, cat, cues).map(|_| ())
-        }
+        Command::Craft {
+            actor_id,
+            recipe_id,
+        } => world.craft(actor_id, recipe_id, cat, cues).map(|_| ()),
         Command::Repair { actor_id, item_id } => world.repair(actor_id, item_id, cat, cues),
         Command::Destroy { actor_id, item_id } => world.destroy(actor_id, item_id, cat, cues),
         // A1/A2 engine-action ports, join/seat handling (C), and the mob commands are not yet
@@ -352,20 +392,40 @@ mod tests {
         let cache_id = MaterialCacheId("cache:vein".into());
         world.material_caches.insert(
             cache_id.clone(),
-            MaterialCacheSnapshot { id: cache_id.clone(), contents: serde_json::json!({ "iron": 2 }), depleted: false },
+            MaterialCacheSnapshot {
+                id: cache_id.clone(),
+                contents: serde_json::json!({ "iron": 2 }),
+                depleted: false,
+            },
         );
-        world.rooms.get_mut(&RoomId("start".into())).unwrap().material_cache_ids.push(cache_id.clone());
+        world
+            .rooms
+            .get_mut(&RoomId("start".into()))
+            .unwrap()
+            .material_cache_ids
+            .push(cache_id.clone());
         let mut auth = authority(world);
-        let res = auth.submit(Command::Harvest { actor_id: CharacterId("pc".into()), cache_id });
-        assert!(matches!(res, SubmitResult::Committed { .. }), "harvest should commit, got {res:?}");
-        assert_eq!(auth.snapshot().campaign.materials, serde_json::json!({ "iron": 2.0 }));
+        let res = auth.submit(Command::Harvest {
+            actor_id: CharacterId("pc".into()),
+            cache_id,
+        });
+        assert!(
+            matches!(res, SubmitResult::Committed { .. }),
+            "harvest should commit, got {res:?}"
+        );
+        assert_eq!(
+            auth.snapshot().campaign.materials,
+            serde_json::json!({ "iron": 2.0 })
+        );
     }
 
     #[test]
     fn commits_a_craft_that_spends_from_the_pool() {
         // A known recipe crafted through the sync path: the output item lands in the pc's inventory
         // and the pool is debited — the whole materials→craft wire end to end.
-        use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType, RecipeMeta, SlotKind};
+        use crate::world::descriptor::{
+            ItemDescriptor, ItemProperties, ItemType, RecipeMeta, SlotKind,
+        };
         let mut world = world_two_rooms(false);
         world.campaign.known_recipes.push("blade".into());
         world.campaign.materials = serde_json::json!({ "iron": 5 });
@@ -377,7 +437,13 @@ mod tests {
                 r#type: ItemType::Weapon,
                 stat: crate::stats::StatType::Health,
                 modifier: 2,
-                properties: ItemProperties { equippable: true, equipped: false, destroyable: true, usable: false, droppable: None },
+                properties: ItemProperties {
+                    equippable: true,
+                    equipped: false,
+                    destroyable: true,
+                    usable: false,
+                    droppable: None,
+                },
                 slot: Some(SlotKind::Hand),
                 two_handed: None,
                 emits_light: None,
@@ -402,14 +468,32 @@ mod tests {
                 output_item_key: Some("items/blade".into()),
             },
         );
-        let catalog = Catalog { items, recipes, ..Catalog::default() };
+        let catalog = Catalog {
+            items,
+            recipes,
+            ..Catalog::default()
+        };
         let mut auth = SyncAuthority::new(world, catalog, AuthorityOpts::default());
 
-        let res = auth.submit(Command::Craft { actor_id: CharacterId("pc".into()), recipe_id: "blade".into() });
-        assert!(matches!(res, SubmitResult::Committed { .. }), "craft should commit, got {res:?}");
+        let res = auth.submit(Command::Craft {
+            actor_id: CharacterId("pc".into()),
+            recipe_id: "blade".into(),
+        });
+        assert!(
+            matches!(res, SubmitResult::Committed { .. }),
+            "craft should commit, got {res:?}"
+        );
         let snap = auth.snapshot();
-        assert_eq!(snap.campaign.materials, serde_json::json!({ "iron": 3.0 }), "pool debited by 2");
-        let pc = snap.characters.iter().find(|c| c.id == CharacterId("pc".into())).expect("pc present");
+        assert_eq!(
+            snap.campaign.materials,
+            serde_json::json!({ "iron": 3.0 }),
+            "pool debited by 2"
+        );
+        let pc = snap
+            .characters
+            .iter()
+            .find(|c| c.id == CharacterId("pc".into()))
+            .expect("pc present");
         assert_eq!(pc.inventory.item_ids.len(), 1, "output held");
     }
 
@@ -424,7 +508,10 @@ mod tests {
             SubmitResult::Committed { seq, delta } => {
                 assert_eq!(seq, 1);
                 // Moving the pc changes its character snapshot and the two rooms' occupants.
-                assert!(delta.changed.iter().any(|e| matches!(e, super::super::delta::EntitySnapshot::Character(_))));
+                assert!(delta
+                    .changed
+                    .iter()
+                    .any(|e| matches!(e, super::super::delta::EntitySnapshot::Character(_))));
                 assert!(!delta.changed.is_empty());
             }
             SubmitResult::Denied { reason } => panic!("expected commit, denied: {reason}"),
@@ -458,7 +545,11 @@ mod tests {
         });
         assert!(matches!(res, SubmitResult::Denied { .. }));
         assert_eq!(auth.head(), 0, "a denied command commits nothing");
-        assert_eq!(auth.world.to_snapshot(), before, "state must be fully restored");
+        assert_eq!(
+            auth.world.to_snapshot(),
+            before,
+            "state must be fully restored"
+        );
     }
 
     #[test]
@@ -479,32 +570,55 @@ mod tests {
         let mut world = world_with_party(&["a", "b"], 10);
         world.campaign.gm_id = Some(CharacterId("a".into()));
         let mut auth = authority(world);
-        assert!(matches!(auth.submit(Command::NextPlayer), SubmitResult::Committed { seq: 1, .. }));
-        assert!(matches!(auth.submit(Command::NextPlayer), SubmitResult::Committed { seq: 2, .. }));
+        assert!(matches!(
+            auth.submit(Command::NextPlayer),
+            SubmitResult::Committed { seq: 1, .. }
+        ));
+        assert!(matches!(
+            auth.submit(Command::NextPlayer),
+            SubmitResult::Committed { seq: 2, .. }
+        ));
         assert_eq!(auth.head(), 2);
-        assert_eq!(auth.entries_since(2).len(), 1, "entries_since(2) is just the second commit");
+        assert_eq!(
+            auth.entries_since(2).len(),
+            1,
+            "entries_since(2) is just the second commit"
+        );
         assert_eq!(auth.entries_since(1).len(), 2);
     }
 
     /// Seed the always-registered `conformance:dread` mechanic so `start_turn` has an onTurnStart
     /// hook to fire ("The dread watches.").
     fn with_dread(mut world: World) -> World {
-        world.campaign.mechanics.push(crate::world::snapshot::MechanicSnapshot {
-            key: "conformance:dread".into(),
-            state: serde_json::json!({ "ticks": 0 }),
-        });
+        world
+            .campaign
+            .mechanics
+            .push(crate::world::snapshot::MechanicSnapshot {
+                key: "conformance:dread".into(),
+                state: serde_json::json!({ "ticks": 0 }),
+            });
         world
     }
 
     fn solo_authority(world: World) -> SyncAuthority {
-        SyncAuthority::new(world, Catalog::default(), AuthorityOpts { solo: true, ..Default::default() })
+        SyncAuthority::new(
+            world,
+            Catalog::default(),
+            AuthorityOpts {
+                solo: true,
+                ..Default::default()
+            },
+        )
     }
 
     fn managed_authority(world: World) -> SyncAuthority {
         SyncAuthority::new(
             world,
             Catalog::default(),
-            AuthorityOpts { manage_turns: true, ..Default::default() },
+            AuthorityOpts {
+                manage_turns: true,
+                ..Default::default()
+            },
         )
     }
 
@@ -524,7 +638,10 @@ mod tests {
         let SubmitResult::Denied { reason } = res else {
             panic!("a budget-spent move should be denied, got {res:?}");
         };
-        assert!(reason.contains("no actions left"), "budget denial reason, got {reason:?}");
+        assert!(
+            reason.contains("no actions left"),
+            "budget denial reason, got {reason:?}"
+        );
         assert_eq!(auth.head(), 0, "a denied command commits nothing");
     }
 
@@ -559,12 +676,15 @@ mod tests {
         let mut world = with_dread(world_with_party(&["a", "b"], 10));
         world.campaign.gm_id = Some(CharacterId("a".into()));
         let mut auth = managed_authority(world);
-        let res = auth.submit(Command::EndTurn { actor_id: CharacterId("a".into()) });
+        let res = auth.submit(Command::EndTurn {
+            actor_id: CharacterId("a".into()),
+        });
         let SubmitResult::Committed { delta, .. } = res else {
             panic!("endTurn should commit, got {res:?}");
         };
         assert_eq!(
-            auth.snapshot().campaign.active_character_index, 1,
+            auth.snapshot().campaign.active_character_index,
+            1,
             "endTurn advances to the next seat"
         );
         assert!(
@@ -586,7 +706,9 @@ mod tests {
         world.campaign.gm_id = Some(CharacterId("pc".into()));
         let round_before = world.campaign.round;
         let mut auth = solo_authority(world);
-        let res = auth.submit(Command::Wait { actor_id: CharacterId("pc".into()) });
+        let res = auth.submit(Command::Wait {
+            actor_id: CharacterId("pc".into()),
+        });
         let SubmitResult::Committed { delta, .. } = res else {
             panic!("solo wait should commit, got {res:?}");
         };
@@ -598,7 +720,11 @@ mod tests {
             "solo wait fires onTurnStart (dread), got {:?}",
             delta.cues
         );
-        assert_eq!(auth.snapshot().campaign.round, round_before + 1, "solo wait advances the round");
+        assert_eq!(
+            auth.snapshot().campaign.round,
+            round_before + 1,
+            "solo wait advances the round"
+        );
     }
 
     #[test]
@@ -609,12 +735,22 @@ mod tests {
         world.campaign.gm_id = Some(CharacterId("pc".into()));
         let round_before = world.campaign.round;
         let mut auth = authority(world);
-        let res = auth.submit(Command::Wait { actor_id: CharacterId("pc".into()) });
+        let res = auth.submit(Command::Wait {
+            actor_id: CharacterId("pc".into()),
+        });
         let SubmitResult::Committed { delta, .. } = res else {
             panic!("wait should commit, got {res:?}");
         };
-        assert!(delta.cues.is_empty(), "a non-solo wait fires no hooks, got {:?}", delta.cues);
-        assert_eq!(auth.snapshot().campaign.round, round_before, "no solo loop → no round advance");
+        assert!(
+            delta.cues.is_empty(),
+            "a non-solo wait fires no hooks, got {:?}",
+            delta.cues
+        );
+        assert_eq!(
+            auth.snapshot().campaign.round,
+            round_before,
+            "no solo loop → no round advance"
+        );
     }
 
     #[test]
@@ -628,7 +764,9 @@ mod tests {
         let mut auth = solo_authority(world);
         // A `wait` is a non-move advancing action, so the light-tied drop-in immunity never applies —
         // the co-located mob provokes.
-        let res = auth.submit(Command::Wait { actor_id: CharacterId("pc".into()) });
+        let res = auth.submit(Command::Wait {
+            actor_id: CharacterId("pc".into()),
+        });
         let SubmitResult::Committed { delta, .. } = res else {
             panic!("solo wait should commit, got {res:?}");
         };
@@ -650,9 +788,18 @@ mod tests {
         let mut auth = SyncAuthority::new(
             world,
             Catalog::default(),
-            AuthorityOpts { snapshot_every: 2, start_seq: 0, solo: false, manage_turns: false },
+            AuthorityOpts {
+                snapshot_every: 2,
+                start_seq: 0,
+                solo: false,
+                manage_turns: false,
+            },
         );
-        assert_eq!(auth.load_snapshot().0, 0, "genesis checkpoint until the cadence");
+        assert_eq!(
+            auth.load_snapshot().0,
+            0,
+            "genesis checkpoint until the cadence"
+        );
         auth.submit(Command::NextPlayer); // seq 1
         assert_eq!(auth.load_snapshot().0, 0);
         auth.submit(Command::NextPlayer); // seq 2 -> checkpoint

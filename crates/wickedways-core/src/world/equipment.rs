@@ -69,13 +69,23 @@ mod tests {
     #[test]
     fn default_equipment_slots_canonical_order() {
         // Mirrors TS DEFAULT_EQUIPMENT_SLOTS exactly
-        assert_eq!(DEFAULT_EQUIPMENT_SLOTS, [
-            "head", "torso", "legs", "feet",
-            "leftWrist", "rightWrist",
-            "leftHand", "rightHand",
-            "leftIndexFinger", "leftRingFinger",
-            "rightIndexFinger", "rightRingFinger",
-        ]);
+        assert_eq!(
+            DEFAULT_EQUIPMENT_SLOTS,
+            [
+                "head",
+                "torso",
+                "legs",
+                "feet",
+                "leftWrist",
+                "rightWrist",
+                "leftHand",
+                "rightHand",
+                "leftIndexFinger",
+                "leftRingFinger",
+                "rightIndexFinger",
+                "rightRingFinger",
+            ]
+        );
     }
 
     #[test]

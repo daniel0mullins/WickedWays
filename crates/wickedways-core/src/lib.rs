@@ -11,7 +11,9 @@ pub mod stats;
 pub use stats::StatType;
 
 pub mod damage;
-pub use damage::{compute_mitigated_damage, DamageInput, LIGHT_VULNERABILITY, MAX_STAT, MITIGATION_PER_POINT};
+pub use damage::{
+    compute_mitigated_damage, DamageInput, LIGHT_VULNERABILITY, MAX_STAT, MITIGATION_PER_POINT,
+};
 
 pub mod presentation;
 pub use presentation::{
@@ -23,7 +25,7 @@ pub mod error;
 pub use error::ProceduralViolation;
 
 pub mod world;
-pub use world::{World, snapshot::CampaignSnapshot};
+pub use world::{snapshot::CampaignSnapshot, World};
 
 pub mod script;
 

@@ -37,12 +37,18 @@ pub struct CharacterView {
 
 impl CharacterView {
     /// TS `CharacterView.hasEquipped(itemKey)` — matches on item `behaviorKey`.
-    pub fn has_equipped(&self, key: &str) -> bool { self.equipped_keys.contains(key) }
+    pub fn has_equipped(&self, key: &str) -> bool {
+        self.equipped_keys.contains(key)
+    }
     /// TS `CharacterView.hasItem(itemKey)` — matches held (inventory) item `behaviorKey`.
-    pub fn has_item(&self, key: &str) -> bool { self.held_keys.contains(key) }
+    pub fn has_item(&self, key: &str) -> bool {
+        self.held_keys.contains(key)
+    }
     /// True if the character's keyring holds a key with this `keyCode`
     /// (TS `c.inventory.keys.some((k) => k.keyCode === code)`).
-    pub fn has_key(&self, code: &str) -> bool { self.key_codes.contains(code) }
+    pub fn has_key(&self, code: &str) -> bool {
+        self.key_codes.contains(code)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -155,8 +161,7 @@ impl World {
 }
 
 // Local copy to avoid a cross-module const import cycle in this file.
-const ALL_STATUSES_LOCAL: [Status; 4] =
-    [Status::Confused, Status::Fear, Status::Ko, Status::Panic];
+const ALL_STATUSES_LOCAL: [Status; 4] = [Status::Confused, Status::Fear, Status::Ko, Status::Panic];
 
 #[cfg(test)]
 mod tests {
@@ -164,7 +169,9 @@ mod tests {
     use crate::world::ids::CharacterId;
     use crate::world::test_support::world_with_party;
 
-    fn cid(s: &str) -> CharacterId { CharacterId(s.into()) }
+    fn cid(s: &str) -> CharacterId {
+        CharacterId(s.into())
+    }
 
     #[test]
     fn campaign_view_projects_party_effective_stats() {
@@ -191,16 +198,20 @@ mod tests {
     fn room_view_projects_lit_and_occupants() {
         use crate::world::ids::RoomId;
         // world_two_rooms seats "pc" (Heir) in "start" (lit); "next" may be dark.
-        let w = crate::world::test_support::world_two_rooms(/*next_dark=*/true);
+        let w = crate::world::test_support::world_two_rooms(/*next_dark=*/ true);
         let cat = Catalog::default();
-        let start = w.room_view(&RoomId("start".into()), &cat).expect("start room");
+        let start = w
+            .room_view(&RoomId("start".into()), &cat)
+            .expect("start room");
         assert_eq!(start.id, "start");
         assert!(start.lit);
         assert_eq!(start.occupant_ids, alloc::vec!["pc".to_string()]);
         assert_eq!(start.occupants.len(), 1);
         assert_eq!(start.occupants[0].id, cid("pc"));
 
-        let next = w.room_view(&RoomId("next".into()), &cat).expect("next room");
+        let next = w
+            .room_view(&RoomId("next".into()), &cat)
+            .expect("next room");
         assert!(!next.lit); // dark, no light sources
         assert!(next.occupants.is_empty());
 
@@ -212,11 +223,21 @@ mod tests {
         use crate::world::ids::ItemId;
         use crate::world::snapshot::ItemSnapshot;
         let mut w = world_with_party(&["pc"], 10);
-        w.items.insert(ItemId("k1".into()), ItemSnapshot::Key {
-            id: ItemId("k1".into()), name: "Brass Key".into(),
-            key_code: "brass".into(), consume_on_use: false,
-        });
-        w.characters.get_mut(&cid("pc")).unwrap().inventory.key_ids.push(ItemId("k1".into()));
+        w.items.insert(
+            ItemId("k1".into()),
+            ItemSnapshot::Key {
+                id: ItemId("k1".into()),
+                name: "Brass Key".into(),
+                key_code: "brass".into(),
+                consume_on_use: false,
+            },
+        );
+        w.characters
+            .get_mut(&cid("pc"))
+            .unwrap()
+            .inventory
+            .key_ids
+            .push(ItemId("k1".into()));
         let v = w.character_view(&cid("pc"), &Catalog::default()).unwrap();
         assert!(v.has_key("brass"));
         assert!(!v.has_key("iron"));

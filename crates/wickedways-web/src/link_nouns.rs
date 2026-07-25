@@ -47,7 +47,10 @@ pub fn link_nouns(line: &str, nouns: &[String]) -> Vec<Segment> {
         }
     }
     if filtered.is_empty() {
-        return vec![Segment { text: line.to_string(), noun: None }];
+        return vec![Segment {
+            text: line.to_string(),
+            noun: None,
+        }];
     }
     // Longest first so multi-word phrases beat single-word prefixes.
     filtered.sort_by_key(|nl| std::cmp::Reverse(nl.len()));
@@ -88,7 +91,10 @@ pub fn link_nouns(line: &str, nouns: &[String]) -> Vec<Segment> {
         // Try to emit a noun at `pos` (longest first).
         if let Some(nl) = filtered.iter().find(|nl| matches_at(nl, pos)) {
             let surface: String = chars[pos..pos + nl.len()].iter().collect();
-            segments.push(Segment { text: surface.clone(), noun: Some(surface) });
+            segments.push(Segment {
+                text: surface.clone(),
+                noun: Some(surface),
+            });
             pos += nl.len();
             continue;
         }
@@ -101,14 +107,20 @@ pub fn link_nouns(line: &str, nouns: &[String]) -> Vec<Segment> {
         if !plain.is_empty() {
             match segments.last_mut() {
                 Some(last) if last.noun.is_none() => last.text.push_str(&plain),
-                _ => segments.push(Segment { text: plain, noun: None }),
+                _ => segments.push(Segment {
+                    text: plain,
+                    noun: None,
+                }),
             }
         }
         pos = end;
     }
 
     if segments.is_empty() {
-        vec![Segment { text: line.to_string(), noun: None }]
+        vec![Segment {
+            text: line.to_string(),
+            noun: None,
+        }]
     } else {
         segments
     }
@@ -131,9 +143,27 @@ mod tests {
     fn splits_a_line_with_one_known_noun_into_plain_noun_plain() {
         let segs = link_nouns("You see a Lantern on the shelf.", &nouns(&["Lantern"]));
         assert_eq!(segs.len(), 3);
-        assert_eq!(segs[0], Segment { text: "You see a ".into(), noun: None });
-        assert_eq!(segs[1], Segment { text: "Lantern".into(), noun: Some("Lantern".into()) });
-        assert_eq!(segs[2], Segment { text: " on the shelf.".into(), noun: None });
+        assert_eq!(
+            segs[0],
+            Segment {
+                text: "You see a ".into(),
+                noun: None
+            }
+        );
+        assert_eq!(
+            segs[1],
+            Segment {
+                text: "Lantern".into(),
+                noun: Some("Lantern".into())
+            }
+        );
+        assert_eq!(
+            segs[2],
+            Segment {
+                text: " on the shelf.".into(),
+                noun: None
+            }
+        );
     }
 
     #[test]
@@ -145,7 +175,10 @@ mod tests {
 
     #[test]
     fn longest_first_wins() {
-        let segs = link_nouns("An Iron Fire-Poker rests nearby.", &nouns(&["iron", "Iron Fire-Poker"]));
+        let segs = link_nouns(
+            "An Iron Fire-Poker rests nearby.",
+            &nouns(&["iron", "Iron Fire-Poker"]),
+        );
         let noun_segs: Vec<_> = segs.iter().filter(|s| s.noun.is_some()).collect();
         assert_eq!(noun_segs.len(), 1);
         assert_eq!(noun_segs[0].noun.as_deref(), Some("Iron Fire-Poker"));
@@ -170,7 +203,13 @@ mod tests {
     #[test]
     fn a_line_with_no_known_noun_returns_a_single_plain_segment() {
         let segs = link_nouns("The room is dark and quiet.", &nouns(&["Lantern"]));
-        assert_eq!(segs, vec![Segment { text: "The room is dark and quiet.".into(), noun: None }]);
+        assert_eq!(
+            segs,
+            vec![Segment {
+                text: "The room is dark and quiet.".into(),
+                noun: None
+            }]
+        );
     }
 
     #[test]
@@ -191,25 +230,47 @@ mod tests {
     fn handles_multiple_nouns_in_one_line_without_overlap() {
         let line = "The Skeleton guards the Iron Gate.";
         let segs = link_nouns(line, &nouns(&["Skeleton", "Iron Gate"]));
-        let noun_texts: Vec<_> = segs.iter().filter(|s| s.noun.is_some()).map(|s| s.text.clone()).collect();
+        let noun_texts: Vec<_> = segs
+            .iter()
+            .filter(|s| s.noun.is_some())
+            .map(|s| s.text.clone())
+            .collect();
         assert_eq!(noun_texts, vec!["Skeleton", "Iron Gate"]);
         assert_eq!(join(&segs), line);
     }
 
     #[test]
     fn an_empty_line_returns_a_single_plain_segment() {
-        assert_eq!(link_nouns("", &nouns(&["Lantern"])), vec![Segment { text: "".into(), noun: None }]);
+        assert_eq!(
+            link_nouns("", &nouns(&["Lantern"])),
+            vec![Segment {
+                text: "".into(),
+                noun: None
+            }]
+        );
     }
 
     #[test]
     fn preserves_exact_text_with_noun_at_start_or_end() {
         let start = link_nouns("Lantern sits on the table.", &nouns(&["Lantern"]));
-        assert_eq!(start[0], Segment { text: "Lantern".into(), noun: Some("Lantern".into()) });
+        assert_eq!(
+            start[0],
+            Segment {
+                text: "Lantern".into(),
+                noun: Some("Lantern".into())
+            }
+        );
         assert_eq!(join(&start), "Lantern sits on the table.");
 
         let line = "You pick up the Lantern";
         let end = link_nouns(line, &nouns(&["Lantern"]));
-        assert_eq!(*end.last().unwrap(), Segment { text: "Lantern".into(), noun: Some("Lantern".into()) });
+        assert_eq!(
+            *end.last().unwrap(),
+            Segment {
+                text: "Lantern".into(),
+                noun: Some("Lantern".into())
+            }
+        );
         assert_eq!(join(&end), line);
     }
 }

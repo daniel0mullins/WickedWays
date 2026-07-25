@@ -113,7 +113,9 @@ impl SqliteStore {
                updatedAt  INTEGER NOT NULL
              )",
         )?;
-        Ok(Self { conn: Mutex::new(conn) })
+        Ok(Self {
+            conn: Mutex::new(conn),
+        })
     }
 }
 
@@ -159,7 +161,13 @@ impl CampaignStore for SqliteStore {
              ON CONFLICT(campaignId) DO UPDATE SET
                seq = excluded.seq, snapshot = excluded.snapshot,
                membership = excluded.membership, updatedAt = excluded.updatedAt",
-            rusqlite::params![campaign_id, record.seq as i64, snapshot, membership, updated_at],
+            rusqlite::params![
+                campaign_id,
+                record.seq as i64,
+                snapshot,
+                membership,
+                updated_at
+            ],
         )?;
         Ok(())
     }

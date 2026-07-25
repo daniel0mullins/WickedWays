@@ -64,7 +64,9 @@ mod ts_export {
         // Task 4: movement + direction
         Direction::export_all().expect("export Direction");
         // Task 1 (sub-plan 3a): item descriptor primitives
-        use crate::world::descriptor::{ItemType, SlotKind, ItemProperties, Presentation, ItemDescriptor, Catalog};
+        use crate::world::descriptor::{
+            Catalog, ItemDescriptor, ItemProperties, ItemType, Presentation, SlotKind,
+        };
         ItemType::export_all().expect("export ItemType");
         SlotKind::export_all().expect("export SlotKind");
         ItemProperties::export_all().expect("export ItemProperties");
@@ -80,7 +82,9 @@ mod ts_export {
         MobSpec::export_all().expect("export MobSpec");
         FormationDescriptor::export_all().expect("export FormationDescriptor");
         // Task 5 (sub-plan 3a): widened ViewModel
-        use crate::world::view::{ThinRoom, ScopeEntity, LootView, Inventory, StatusView, ViewModel};
+        use crate::world::view::{
+            Inventory, LootView, ScopeEntity, StatusView, ThinRoom, ViewModel,
+        };
         ThinRoom::export_all().expect("export ThinRoom");
         ScopeEntity::export_all().expect("export ScopeEntity");
         LootView::export_all().expect("export LootView");
@@ -91,7 +95,7 @@ mod ts_export {
         ExitView::export_all().expect("export ExitView");
         LockedDoorView::export_all().expect("export LockedDoorView");
         // Task 2 (sub-plan 4a): typed afflictions + Status
-        use crate::world::afflictions::{Status, Afflictions};
+        use crate::world::afflictions::{Afflictions, Status};
         Status::export_all().expect("export Status");
         Afflictions::export_all().expect("export Afflictions");
         // Phase 2a: the Authority boundary types
@@ -103,8 +107,8 @@ mod ts_export {
         // Scripted-ops DSL AST (scripted-ops plan, Task 10)
         use crate::script::ast::{
             BehaviorScript, BinOp, DamageBody, DialogueEntry, DialogueMatch, EffectTemplate,
-            Expr, ExitScript, FieldTemplate, ItemScript, MechanicHooks, MechanicScript,
-            NpcScript, SceneScript, Stmt, VictoryScript,
+            ExitScript, Expr, FieldTemplate, ItemScript, MechanicHooks, MechanicScript, NpcScript,
+            SceneScript, Stmt, VictoryScript,
         };
         use crate::script::value::Value as ScriptValue;
         ScriptValue::export_all().expect("export ScriptValue");

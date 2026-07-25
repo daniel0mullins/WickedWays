@@ -40,7 +40,8 @@ pub fn authorize(world: &World, command: &Command) -> AuthResult {
     // Turn-actions, `wait`, and `endTurn` share the same gate: the campaign is running and it's your
     // turn. `wait` is a time-advancing pass; `endTurn` ends your own turn (a player may only end the
     // turn while it is theirs — the GM ends anyone's via `nextPlayer`).
-    if command.is_turn_action() || matches!(command, Command::Wait { .. }) || command.is_end_turn() {
+    if command.is_turn_action() || matches!(command, Command::Wait { .. }) || command.is_end_turn()
+    {
         if !started {
             return denied("Campaign has not begun.");
         }
@@ -128,7 +129,10 @@ mod tests {
     }
 
     fn move_cmd(actor: &str) -> Command {
-        Command::Move { actor_id: cid(actor), room_id: RoomId("r1".into()) }
+        Command::Move {
+            actor_id: cid(actor),
+            room_id: RoomId("r1".into()),
+        }
     }
 
     #[test]
@@ -141,7 +145,10 @@ mod tests {
     #[test]
     fn rejects_a_turn_action_from_a_non_active_character() {
         let world = world_with_party(&["a", "b"], 10);
-        assert!(matches!(authorize(&world, &move_cmd("b")), AuthResult::Denied(_)));
+        assert!(matches!(
+            authorize(&world, &move_cmd("b")),
+            AuthResult::Denied(_)
+        ));
     }
 
     #[test]
@@ -167,7 +174,10 @@ mod tests {
     #[test]
     fn rejects_setup_after_the_campaign_has_started() {
         let world = world_with_party(&["a"], 10); // started == true
-        let setup = Command::SelectArchetype { actor_id: cid("a"), archetype_id: "arch".into() };
+        let setup = Command::SelectArchetype {
+            actor_id: cid("a"),
+            archetype_id: "arch".into(),
+        };
         assert!(matches!(authorize(&world, &setup), AuthResult::Denied(_)));
     }
 
@@ -175,7 +185,10 @@ mod tests {
     fn accepts_setup_before_start() {
         let mut world = world_with_party(&["a"], 10);
         world.campaign.started = false;
-        let setup = Command::SelectArchetype { actor_id: cid("a"), archetype_id: "arch".into() };
+        let setup = Command::SelectArchetype {
+            actor_id: cid("a"),
+            archetype_id: "arch".into(),
+        };
         assert_eq!(authorize(&world, &setup), AuthResult::Ok);
     }
 
@@ -223,20 +236,31 @@ mod tests {
     fn join_accepts_a_player_and_rejects_after_finish() {
         let world = world_with_party(&["a"], 10);
         let character = world.characters[&cid("a")].clone(); // kind == Player
-        let join = Command::JoinCampaign { character: Box::new(character) };
+        let join = Command::JoinCampaign {
+            character: Box::new(character),
+        };
         assert_eq!(authorize(&world, &join), AuthResult::Ok);
 
         let mut finished = world_with_party(&["a"], 10);
         finished.campaign.outcome = CampaignOutcome::Ended;
         let character = finished.characters[&cid("a")].clone();
         assert!(matches!(
-            authorize(&finished, &Command::JoinCampaign { character: Box::new(character) }),
+            authorize(
+                &finished,
+                &Command::JoinCampaign {
+                    character: Box::new(character)
+                }
+            ),
             AuthResult::Denied(_)
         ));
     }
 
     fn talk_cmd(actor: &str) -> Command {
-        Command::Talk { actor_id: cid(actor), npc_id: cid("npc:Caretaker"), prompt: None }
+        Command::Talk {
+            actor_id: cid(actor),
+            npc_id: cid("npc:Caretaker"),
+            prompt: None,
+        }
     }
 
     #[test]
@@ -248,7 +272,10 @@ mod tests {
     #[test]
     fn rejects_talk_from_a_non_active_character() {
         let world = world_with_party(&["a", "b"], 10);
-        assert!(matches!(authorize(&world, &talk_cmd("b")), AuthResult::Denied(_)));
+        assert!(matches!(
+            authorize(&world, &talk_cmd("b")),
+            AuthResult::Denied(_)
+        ));
     }
 
     #[test]
@@ -268,7 +295,12 @@ mod tests {
         character.kind = CharacterKind::Mob;
         world.campaign.started = true;
         assert_eq!(
-            authorize(&world, &Command::JoinCampaign { character: Box::new(character) }),
+            authorize(
+                &world,
+                &Command::JoinCampaign {
+                    character: Box::new(character)
+                }
+            ),
             AuthResult::Denied("Only player characters can join a campaign.".into())
         );
     }

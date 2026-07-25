@@ -33,7 +33,9 @@ use wickedways_core::{CampaignSnapshot, World};
 
 use crate::membership::{actor_of, Membership};
 use crate::store::{CampaignStore, MembershipState};
-use crate::table::{spawn_table, ConnId, GmOp, OnCommit, SubmitOutcome, Subscriber, Table, TableHandle};
+use crate::table::{
+    spawn_table, ConnId, GmOp, OnCommit, SubmitOutcome, Subscriber, Table, TableHandle,
+};
 use crate::transport::{Actor, ClientMsg, GmPresence, PlayerEntry, PresenceEntry, ServerMsg};
 
 /// Host-supplied verifier: maps a connection token to its authenticated identity, or `None` to deny.
@@ -154,7 +156,11 @@ impl RoomServer {
                     );
                     return None; // fail closed — do NOT build a genesis table (that would overwrite the record)
                 }
-                (rec.snapshot, rec.seq, Membership::from_state(rec.membership))
+                (
+                    rec.snapshot,
+                    rec.seq,
+                    Membership::from_state(rec.membership),
+                )
             }
             None => {
                 let genesis = (self.opts.genesis_for)(campaign_id)?;
@@ -180,14 +186,22 @@ impl RoomServer {
         let authority = SyncAuthority::new(
             world,
             catalog.clone(),
-            AuthorityOpts { snapshot_every, start_seq: seq, solo: false, manage_turns: true },
+            AuthorityOpts {
+                snapshot_every,
+                start_seq: seq,
+                solo: false,
+                manage_turns: true,
+            },
         );
         let mut table = Table::new(authority, membership, campaign_id, catalog, snapshot_every);
         if let Some(store) = &self.opts.store {
             table.set_store(store.clone());
         }
         let handle = spawn_table(table);
-        self.tables.lock().unwrap().insert(campaign_id.to_string(), handle.clone());
+        self.tables
+            .lock()
+            .unwrap()
+            .insert(campaign_id.to_string(), handle.clone());
         Some(handle)
     }
 
@@ -280,7 +294,10 @@ impl RoomServer {
                 identity,
             })
             .collect();
-        Some(ServerMsg::Players { campaign_id: campaign_id.to_string(), players })
+        Some(ServerMsg::Players {
+            campaign_id: campaign_id.to_string(),
+            players,
+        })
     }
 
     async fn broadcast_roster(&self, campaign_id: &str) {
@@ -306,7 +323,13 @@ pub struct Connection {
 impl Connection {
     /// A fresh, unauthenticated connection.
     pub fn new(server: Arc<RoomServer>, send: Subscriber, conn_id: ConnId) -> Self {
-        Self { server, send, conn_id, identity: None, joined: HashSet::new() }
+        Self {
+            server,
+            send,
+            conn_id,
+            identity: None,
+            joined: HashSet::new(),
+        }
     }
 
     fn reply(&self, msg: ServerMsg) {
@@ -314,23 +337,51 @@ impl Connection {
     }
 
     fn denied(&self, reason: &str) {
-        self.reply(ServerMsg::Denied { reason: reason.to_string() });
+        self.reply(ServerMsg::Denied {
+            reason: reason.to_string(),
+        });
     }
 
     /// Handles one parsed client message. Multiplayer arms only.
     pub async fn handle(&mut self, msg: ClientMsg) {
         match msg {
-            ClientMsg::Join { campaign_id, token, from_seq } => self.on_join(campaign_id, token, from_seq).await,
-            ClientMsg::Submit { campaign_id, command } => self.on_submit(campaign_id, command).await,
+            ClientMsg::Join {
+                campaign_id,
+                token,
+                from_seq,
+            } => self.on_join(campaign_id, token, from_seq).await,
+            ClientMsg::Submit {
+                campaign_id,
+                command,
+            } => self.on_submit(campaign_id, command).await,
             ClientMsg::GetSnapshot { campaign_id } => self.on_get_snapshot(campaign_id).await,
-            ClientMsg::AssignSeat { campaign_id, character_id, identity } => {
-                self.on_gm_control(&campaign_id, GmOp::Assign { character_id, identity }).await
+            ClientMsg::AssignSeat {
+                campaign_id,
+                character_id,
+                identity,
+            } => {
+                self.on_gm_control(
+                    &campaign_id,
+                    GmOp::Assign {
+                        character_id,
+                        identity,
+                    },
+                )
+                .await
             }
-            ClientMsg::UnassignSeat { campaign_id, character_id } => {
-                self.on_gm_control(&campaign_id, GmOp::Unassign { character_id }).await
+            ClientMsg::UnassignSeat {
+                campaign_id,
+                character_id,
+            } => {
+                self.on_gm_control(&campaign_id, GmOp::Unassign { character_id })
+                    .await
             }
-            ClientMsg::TransferGm { campaign_id, identity } => {
-                self.on_gm_control(&campaign_id, GmOp::TransferGm { identity }).await
+            ClientMsg::TransferGm {
+                campaign_id,
+                identity,
+            } => {
+                self.on_gm_control(&campaign_id, GmOp::TransferGm { identity })
+                    .await
             }
         }
     }
@@ -399,7 +450,9 @@ impl Connection {
             Actor::Join { character_id } => {
                 let character_id = character_id.clone();
                 let claimer = identity.clone();
-                Some(Box::new(move |m: &mut Membership| m.claim(&character_id, claimer)))
+                Some(Box::new(move |m: &mut Membership| {
+                    m.claim(&character_id, claimer)
+                }))
             }
             _ => None,
         };
@@ -413,7 +466,10 @@ impl Connection {
         // Read-only; pre-auth allowed.
         match self.server.ensure_loaded(&campaign_id).await {
             Some(table) => table.get_snapshot(self.send.clone()).await,
-            None => self.reply(ServerMsg::Snapshot { seq: 0, snapshot: Value::Null }),
+            None => self.reply(ServerMsg::Snapshot {
+                seq: 0,
+                snapshot: Value::Null,
+            }),
         }
     }
 
@@ -517,4 +573,3 @@ async fn serve_socket(mut socket: WebSocket, server: Arc<RoomServer>) {
     }
     conn.on_close().await;
 }
-

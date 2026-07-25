@@ -34,20 +34,46 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         let mut seen = BTreeSet::new();
         for n in names {
             if !seen.insert(n) {
-                problems.push(Problem::DuplicateName { kind, name: n.to_owned() });
+                problems.push(Problem::DuplicateName {
+                    kind,
+                    name: n.to_owned(),
+                });
             }
         }
     };
-    dup("room", desc.rooms.iter().map(|r| r.name.as_str()).collect(), &mut problems);
-    dup("mob", desc.mobs.iter().map(|m| m.name.as_str()).collect(), &mut problems);
-    dup("loot", desc.loot.iter().map(|l| l.name.as_str()).collect(), &mut problems);
-    dup("cache", desc.caches.iter().map(|c| c.name.as_str()).collect(), &mut problems);
-    dup("npc", desc.npcs.iter().map(|n| n.name.as_str()).collect(), &mut problems);
+    dup(
+        "room",
+        desc.rooms.iter().map(|r| r.name.as_str()).collect(),
+        &mut problems,
+    );
+    dup(
+        "mob",
+        desc.mobs.iter().map(|m| m.name.as_str()).collect(),
+        &mut problems,
+    );
+    dup(
+        "loot",
+        desc.loot.iter().map(|l| l.name.as_str()).collect(),
+        &mut problems,
+    );
+    dup(
+        "cache",
+        desc.caches.iter().map(|c| c.name.as_str()).collect(),
+        &mut problems,
+    );
+    dup(
+        "npc",
+        desc.npcs.iter().map(|n| n.name.as_str()).collect(),
+        &mut problems,
+    );
 
     let room_names: BTreeSet<&str> = desc.rooms.iter().map(|r| r.name.as_str()).collect();
     let require_room = |ctx: String, name: &str, problems: &mut Vec<Problem>| {
         if !room_names.contains(name) {
-            problems.push(Problem::UndefinedRoom { ctx, room: name.to_owned() });
+            problems.push(Problem::UndefinedRoom {
+                ctx,
+                room: name.to_owned(),
+            });
         }
     };
 
@@ -60,32 +86,53 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         require_room("exit.to".into(), &e.to, &mut problems);
     }
     for m in &desc.mobs {
-        if let Some(r) = &m.room { require_room(format!("mob '{}'", m.name), r, &mut problems); }
+        if let Some(r) = &m.room {
+            require_room(format!("mob '{}'", m.name), r, &mut problems);
+        }
     }
-    for l in &desc.loot { require_room(format!("loot '{}'", l.name), &l.room, &mut problems); }
-    for c in &desc.caches { require_room(format!("cache '{}'", c.name), &c.room, &mut problems); }
+    for l in &desc.loot {
+        require_room(format!("loot '{}'", l.name), &l.room, &mut problems);
+    }
+    for c in &desc.caches {
+        require_room(format!("cache '{}'", c.name), &c.room, &mut problems);
+    }
     for n in &desc.npcs {
-        if let Some(r) = &n.room { require_room(format!("npc '{}'", n.name), r, &mut problems); }
+        if let Some(r) = &n.room {
+            require_room(format!("npc '{}'", n.name), r, &mut problems);
+        }
     }
-    for s in &desc.scenes { require_room(format!("scene '{}'", s.key), &s.room, &mut problems); }
+    for s in &desc.scenes {
+        require_room(format!("scene '{}'", s.key), &s.room, &mut problems);
+    }
 
     // ---- item keys (assembler.ts:75-93) ----
     let require_item = |ctx: String, k: &str, problems: &mut Vec<Problem>| {
         if !catalog.items.contains_key(k) {
-            problems.push(Problem::UnregisteredItem { ctx, key: k.to_owned() });
+            problems.push(Problem::UnregisteredItem {
+                ctx,
+                key: k.to_owned(),
+            });
         }
     };
     for m in &desc.mobs {
-        for k in &m.drops { require_item(format!("mob '{}' drop", m.name), k, &mut problems); }
+        for k in &m.drops {
+            require_item(format!("mob '{}' drop", m.name), k, &mut problems);
+        }
     }
     for l in &desc.loot {
-        for k in &l.items { require_item(format!("loot '{}' item", l.name), k, &mut problems); }
+        for k in &l.items {
+            require_item(format!("loot '{}' item", l.name), k, &mut problems);
+        }
     }
     for r in &desc.rooms {
-        for k in &r.lights { require_item(format!("room '{}' light", r.name), k, &mut problems); }
+        for k in &r.lights {
+            require_item(format!("room '{}' light", r.name), k, &mut problems);
+        }
     }
     for n in &desc.npcs {
-        for k in &n.holds { require_item(format!("npc '{}' holds", n.name), k, &mut problems); }
+        for k in &n.holds {
+            require_item(format!("npc '{}' holds", n.name), k, &mut problems);
+        }
     }
 
     // ---- recipes (assembler.ts:95-101) ----
@@ -101,10 +148,16 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
     // Conditions are the "victory" behavior family, NOT "condition". Verified: the
     // hollow-house win/lose keys (reached-attic-with-journal, sanity-zero, party-down)
     // are all `family: "victory"` in the catalog.
-    for (ctx, list) in [("winWhen", &desc.win_conditions), ("loseWhen", &desc.lose_conditions)] {
+    for (ctx, list) in [
+        ("winWhen", &desc.win_conditions),
+        ("loseWhen", &desc.lose_conditions),
+    ] {
         for c in list {
             if !has_behavior(catalog, &c.key, "victory") {
-                problems.push(Problem::UnregisteredCondition { ctx: ctx.into(), key: c.key.clone() });
+                problems.push(Problem::UnregisteredCondition {
+                    ctx: ctx.into(),
+                    key: c.key.clone(),
+                });
             }
         }
     }
@@ -121,7 +174,9 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         if let Some(k) = &e.behavior_key {
             if !has_behavior(catalog, k, "exit") {
                 problems.push(Problem::UnregisteredExit {
-                    from: e.from.clone(), to: e.to.clone(), key: k.clone(),
+                    from: e.from.clone(),
+                    to: e.to.clone(),
+                    key: k.clone(),
                 });
             }
         }
@@ -137,7 +192,10 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
     // ---- npc behaviors (assembler.ts:139-145) ----
     for n in &desc.npcs {
         if !has_behavior(catalog, &n.behavior, "npc") {
-            problems.push(Problem::UnregisteredNpc { npc: n.name.clone(), key: n.behavior.clone() });
+            problems.push(Problem::UnregisteredNpc {
+                npc: n.name.clone(),
+                key: n.behavior.clone(),
+            });
         }
     }
 
@@ -153,11 +211,25 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
     }
 
     // ---- policy bounds (assembler.ts:160-166) ----
-    if let Some(w) = desc.chat.as_ref().and_then(|c| c.get("backfillWindow")).and_then(|v| v.as_i64()) {
-        if w < 1 { problems.push(Problem::ChatBackfillWindow { got: w }); }
+    if let Some(w) = desc
+        .chat
+        .as_ref()
+        .and_then(|c| c.get("backfillWindow"))
+        .and_then(|v| v.as_i64())
+    {
+        if w < 1 {
+            problems.push(Problem::ChatBackfillWindow { got: w });
+        }
     }
-    if let Some(n) = desc.av.as_ref().and_then(|a| a.get("maxParticipants")).and_then(|v| v.as_i64()) {
-        if n < 1 { problems.push(Problem::AvMaxParticipants { got: n }); }
+    if let Some(n) = desc
+        .av
+        .as_ref()
+        .and_then(|a| a.get("maxParticipants"))
+        .and_then(|v| v.as_i64())
+    {
+        if n < 1 {
+            problems.push(Problem::AvMaxParticipants { got: n });
+        }
     }
 
     problems

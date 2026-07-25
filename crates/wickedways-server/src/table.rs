@@ -53,9 +53,16 @@ pub enum SubmitOutcome {
 /// [`Table::gm_mutate`]. Mirrors the `assignSeat`/`unassignSeat`/`transferGM` arms of `server.ts`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GmOp {
-    Assign { character_id: String, identity: String },
-    Unassign { character_id: String },
-    TransferGm { identity: String },
+    Assign {
+        character_id: String,
+        identity: String,
+    },
+    Unassign {
+        character_id: String,
+    },
+    TransferGm {
+        identity: String,
+    },
 }
 
 /// A read-only view of a table's seat ownership, for building presence/roster without holding the
@@ -142,7 +149,9 @@ impl Table {
     pub fn join(&mut self, conn: ConnId, sub: Subscriber, from_seq: u64) {
         sub(ServerMsg::Joined { head: self.head() });
         for e in self.authority.entries_since(from_seq + 1) {
-            sub(ServerMsg::Entry { entry: wire_entry(&e.command, &e.delta, e.seq, e.base_seq) });
+            sub(ServerMsg::Entry {
+                entry: wire_entry(&e.command, &e.delta, e.seq, e.base_seq),
+            });
         }
         self.participants.insert(conn, sub);
     }
@@ -195,19 +204,31 @@ impl Table {
         if self.persist().await.is_err() {
             // Revert campaign + membership to the last durable record, then deny the submitter only.
             self.reload().await;
-            sender(ServerMsg::Denied { reason: "could not persist; retry".into() });
+            sender(ServerMsg::Denied {
+                reason: "could not persist; retry".into(),
+            });
             return SubmitOutcome::NotCommitted;
         }
 
         let delta = serde_json::to_value(&delta).unwrap_or(Value::Null);
         let command = serde_json::to_value(&command).unwrap_or(Value::Null);
-        sender(ServerMsg::Committed { seq, delta: delta.clone() });
-        let entry = WireLogEntry { seq, base_seq: seq - 1, command, delta };
+        sender(ServerMsg::Committed {
+            seq,
+            delta: delta.clone(),
+        });
+        let entry = WireLogEntry {
+            seq,
+            base_seq: seq - 1,
+            command,
+            delta,
+        };
         for p in self.participants.values() {
             // Exclude the submitter (who already got `committed`); a not-yet-joined submitter is
             // simply absent from the map, so nothing special is needed.
             if !Arc::ptr_eq(p, sender) {
-                p(ServerMsg::Entry { entry: entry.clone() });
+                p(ServerMsg::Entry {
+                    entry: entry.clone(),
+                });
             }
         }
         SubmitOutcome::Committed { seq }
@@ -219,7 +240,10 @@ impl Table {
     /// reload-on-failure sequence, done under the actor so it cannot interleave with a submit.
     pub async fn gm_mutate(&mut self, op: GmOp) -> Result<(), ()> {
         match op {
-            GmOp::Assign { character_id, identity } => self.membership.assign(&character_id, identity),
+            GmOp::Assign {
+                character_id,
+                identity,
+            } => self.membership.assign(&character_id, identity),
             GmOp::Unassign { character_id } => self.membership.unassign(&character_id),
             GmOp::TransferGm { identity } => self.membership.transfer_gm(identity),
         }
@@ -241,7 +265,9 @@ impl Table {
     /// Writes the current durable record (no-op without a store). Snapshot + membership are written
     /// in one `save`, so they land atomically. Runs on the blocking pool (rusqlite is synchronous).
     pub async fn persist(&self) -> Result<(), StoreError> {
-        let Some(store) = self.store.clone() else { return Ok(()) };
+        let Some(store) = self.store.clone() else {
+            return Ok(());
+        };
         let record = CampaignRecord {
             seq: self.authority.head(),
             snapshot: self.authority.snapshot(),
@@ -255,11 +281,17 @@ impl Table {
     /// discarding any un-persisted commit. Falls back to the construction state when the store holds
     /// no record yet. Mirrors the TS `reload` hook.
     pub async fn reload(&mut self) {
-        let Some(store) = self.store.clone() else { return };
+        let Some(store) = self.store.clone() else {
+            return;
+        };
         let id = self.campaign_id.clone();
         let loaded = run_blocking(move || store.load(&id)).await;
         let (snapshot, seq, membership) = match loaded {
-            Ok(Some(rec)) => (rec.snapshot, rec.seq, Membership::from_state(rec.membership)),
+            Ok(Some(rec)) => (
+                rec.snapshot,
+                rec.seq,
+                Membership::from_state(rec.membership),
+            ),
             // Load failed or empty: fall back to the construction state (never-persisted campaign).
             _ => (
                 self.base_snapshot.clone(),
@@ -270,14 +302,24 @@ impl Table {
         self.authority = SyncAuthority::new(
             World::from_snapshot(snapshot),
             self.catalog.clone(),
-            AuthorityOpts { snapshot_every: self.snapshot_every, start_seq: seq, solo: false, manage_turns: true },
+            AuthorityOpts {
+                snapshot_every: self.snapshot_every,
+                start_seq: seq,
+                solo: false,
+                manage_turns: true,
+            },
         );
         self.membership = membership;
     }
 }
 
 /// Builds a `WireLogEntry` (opaque `command`/`delta`) from a typed authority log entry.
-fn wire_entry(command: &Command, delta: &wickedways_core::sync::Delta, seq: u64, base_seq: u64) -> WireLogEntry {
+fn wire_entry(
+    command: &Command,
+    delta: &wickedways_core::sync::Delta,
+    seq: u64,
+    base_seq: u64,
+) -> WireLogEntry {
     WireLogEntry {
         seq,
         base_seq,
@@ -307,20 +349,51 @@ pub enum TableMsg {
     // Join/Leave/GetSnapshot/Broadcast carry an ack `reply` so their handle methods resolve only
     // once the actor has actually processed them — deterministic ordering for callers and tests,
     // rather than relying on a later round-trip to drain the queue.
-    Join { conn: ConnId, sub: Subscriber, from_seq: u64, reply: oneshot::Sender<()> },
-    Leave { conn: ConnId, reply: oneshot::Sender<()> },
-    Submit { command: Command, sender: Subscriber, on_commit: Option<OnCommit>, reply: oneshot::Sender<SubmitOutcome> },
-    GetSnapshot { requester: Subscriber, reply: oneshot::Sender<()> },
-    Broadcast { msg: ServerMsg, reply: oneshot::Sender<()> },
-    Head { reply: oneshot::Sender<u64> },
-    CurrentSnapshot { reply: oneshot::Sender<CampaignSnapshot> },
+    Join {
+        conn: ConnId,
+        sub: Subscriber,
+        from_seq: u64,
+        reply: oneshot::Sender<()>,
+    },
+    Leave {
+        conn: ConnId,
+        reply: oneshot::Sender<()>,
+    },
+    Submit {
+        command: Command,
+        sender: Subscriber,
+        on_commit: Option<OnCommit>,
+        reply: oneshot::Sender<SubmitOutcome>,
+    },
+    GetSnapshot {
+        requester: Subscriber,
+        reply: oneshot::Sender<()>,
+    },
+    Broadcast {
+        msg: ServerMsg,
+        reply: oneshot::Sender<()>,
+    },
+    Head {
+        reply: oneshot::Sender<u64>,
+    },
+    CurrentSnapshot {
+        reply: oneshot::Sender<CampaignSnapshot>,
+    },
     /// Run a closure against the seat map (join seat-claims etc.) under the actor's serialization,
     /// with a follow-up reply.
-    WithMembership { f: Box<dyn FnOnce(&mut Membership) + Send>, reply: oneshot::Sender<()> },
+    WithMembership {
+        f: Box<dyn FnOnce(&mut Membership) + Send>,
+        reply: oneshot::Sender<()>,
+    },
     /// Apply a GM seat-control mutation and persist it atomically.
-    GmMutate { op: GmOp, reply: oneshot::Sender<Result<(), ()>> },
+    GmMutate {
+        op: GmOp,
+        reply: oneshot::Sender<Result<(), ()>>,
+    },
     /// Snapshot the seat map for presence/roster.
-    MembershipView { reply: oneshot::Sender<MembershipView> },
+    MembershipView {
+        reply: oneshot::Sender<MembershipView>,
+    },
 }
 
 /// A handle to a running [`Table`] actor: cloneable, cheap, and the only way to reach the campaign's
@@ -334,7 +407,17 @@ impl TableHandle {
     /// Registers a participant and backfills entries after `from_seq`; resolves once done.
     pub async fn join(&self, conn: ConnId, sub: Subscriber, from_seq: u64) {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::Join { conn, sub, from_seq, reply }).await.is_ok() {
+        if self
+            .tx
+            .send(TableMsg::Join {
+                conn,
+                sub,
+                from_seq,
+                reply,
+            })
+            .await
+            .is_ok()
+        {
             let _ = rx.await;
         }
     }
@@ -355,7 +438,17 @@ impl TableHandle {
         on_commit: Option<OnCommit>,
     ) -> SubmitOutcome {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::Submit { command, sender, on_commit, reply }).await.is_err() {
+        if self
+            .tx
+            .send(TableMsg::Submit {
+                command,
+                sender,
+                on_commit,
+                reply,
+            })
+            .await
+            .is_err()
+        {
             return SubmitOutcome::NotCommitted;
         }
         rx.await.unwrap_or(SubmitOutcome::NotCommitted)
@@ -364,7 +457,12 @@ impl TableHandle {
     /// Sends the latest checkpoint to `requester`; resolves once sent.
     pub async fn get_snapshot(&self, requester: Subscriber) {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::GetSnapshot { requester, reply }).await.is_ok() {
+        if self
+            .tx
+            .send(TableMsg::GetSnapshot { requester, reply })
+            .await
+            .is_ok()
+        {
             let _ = rx.await;
         }
     }
@@ -372,7 +470,12 @@ impl TableHandle {
     /// Broadcasts a message to every participant; resolves once sent.
     pub async fn broadcast(&self, msg: ServerMsg) {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::Broadcast { msg, reply }).await.is_ok() {
+        if self
+            .tx
+            .send(TableMsg::Broadcast { msg, reply })
+            .await
+            .is_ok()
+        {
             let _ = rx.await;
         }
     }
@@ -389,7 +492,12 @@ impl TableHandle {
     /// The current live snapshot.
     pub async fn current_snapshot(&self) -> Option<CampaignSnapshot> {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::CurrentSnapshot { reply }).await.is_err() {
+        if self
+            .tx
+            .send(TableMsg::CurrentSnapshot { reply })
+            .await
+            .is_err()
+        {
             return None;
         }
         rx.await.ok()
@@ -398,7 +506,15 @@ impl TableHandle {
     /// Runs `f` against the seat map under the actor's serialization; resolves when done.
     pub async fn with_membership(&self, f: impl FnOnce(&mut Membership) + Send + 'static) {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::WithMembership { f: Box::new(f), reply }).await.is_err() {
+        if self
+            .tx
+            .send(TableMsg::WithMembership {
+                f: Box::new(f),
+                reply,
+            })
+            .await
+            .is_err()
+        {
             return;
         }
         let _ = rx.await;
@@ -408,7 +524,12 @@ impl TableHandle {
     /// rejected (persist failure → reloaded) or the actor is gone.
     pub async fn gm_mutate(&self, op: GmOp) -> Result<(), ()> {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::GmMutate { op, reply }).await.is_err() {
+        if self
+            .tx
+            .send(TableMsg::GmMutate { op, reply })
+            .await
+            .is_err()
+        {
             return Err(());
         }
         rx.await.unwrap_or(Err(()))
@@ -417,7 +538,12 @@ impl TableHandle {
     /// Snapshots the seat map for presence/roster.
     pub async fn membership_view(&self) -> Option<MembershipView> {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::MembershipView { reply }).await.is_err() {
+        if self
+            .tx
+            .send(TableMsg::MembershipView { reply })
+            .await
+            .is_err()
+        {
             return None;
         }
         rx.await.ok()
@@ -432,7 +558,12 @@ pub fn spawn_table(table: Table) -> TableHandle {
         let mut table = table;
         while let Some(msg) = rx.recv().await {
             match msg {
-                TableMsg::Join { conn, sub, from_seq, reply } => {
+                TableMsg::Join {
+                    conn,
+                    sub,
+                    from_seq,
+                    reply,
+                } => {
                     table.join(conn, sub, from_seq);
                     let _ = reply.send(());
                 }
@@ -440,7 +571,12 @@ pub fn spawn_table(table: Table) -> TableHandle {
                     table.leave(conn);
                     let _ = reply.send(());
                 }
-                TableMsg::Submit { command, sender, on_commit, reply } => {
+                TableMsg::Submit {
+                    command,
+                    sender,
+                    on_commit,
+                    reply,
+                } => {
                     let out = table.submit(command, &sender, on_commit).await;
                     let _ = reply.send(out);
                 }

@@ -26,7 +26,10 @@ use wickedways_server::store::{CampaignStore, SqliteStore};
 
 #[tokio::main]
 async fn main() {
-    let port: u16 = std::env::var("PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(8080);
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(8080);
     let gm_identity = std::env::var("GM_IDENTITY").unwrap_or_else(|_| "gm".into());
     let genesis_dir = std::env::var("GENESIS_DIR").unwrap_or_else(|_| "./genesis".into());
 
@@ -43,7 +46,10 @@ async fn main() {
     let durable = store.is_some();
 
     let catalog = match std::env::var("CATALOG_PATH") {
-        Ok(path) if !path.is_empty() => match std::fs::read_to_string(&path).ok().and_then(|t| serde_json::from_str(&t).ok()) {
+        Ok(path) if !path.is_empty() => match std::fs::read_to_string(&path)
+            .ok()
+            .and_then(|t| serde_json::from_str(&t).ok())
+        {
             Some(c) => c,
             None => {
                 eprintln!("wickedways-server: cannot read/parse CATALOG_PATH `{path}`");
@@ -61,7 +67,9 @@ async fn main() {
         verify_token: Box::new(|t: &str| (!t.is_empty()).then(|| t.to_string())),
         gm_identity_for: Box::new(move |_| gm_identity.clone()),
         genesis_for: Box::new(move |id: &str| load_genesis(&genesis_dir, id)),
-        catalog_for: Some(Box::new(move |id: &str| load_catalog(&genesis_dir_for_catalog, id))),
+        catalog_for: Some(Box::new(move |id: &str| {
+            load_catalog(&genesis_dir_for_catalog, id)
+        })),
         display_name_for: None,
         catalog,
         store,
@@ -88,11 +96,18 @@ async fn main() {
             std::process::exit(1);
         }
     };
-    let addr = listener.local_addr().map(|a| a.to_string()).unwrap_or_else(|_| format!("0.0.0.0:{port}"));
+    let addr = listener
+        .local_addr()
+        .map(|a| a.to_string())
+        .unwrap_or_else(|_| format!("0.0.0.0:{port}"));
     println!(
         "wickedways-server listening on {addr} — /ws ({}), web client: {}",
         if durable { "durable" } else { "ephemeral" },
-        if web_dir.is_empty() { "disabled".to_string() } else { format!("{web_dir}/") }
+        if web_dir.is_empty() {
+            "disabled".to_string()
+        } else {
+            format!("{web_dir}/")
+        }
     );
     if let Err(e) = axum::serve(listener, app).await {
         eprintln!("wickedways-server: serve error: {e}");
@@ -110,7 +125,11 @@ fn base_campaign(id: &str) -> &str {
 /// Read + parse `<dir>/<key>.<suffix>` for the id, trying the exact id first, then its
 /// [`base_campaign`] (so an unseeded per-host room id resolves to its base). Rejects any id that could
 /// escape `dir` (path traversal), since the id comes from the wire.
-fn read_campaign_file<T: serde::de::DeserializeOwned>(dir: &str, id: &str, suffix: &str) -> Option<T> {
+fn read_campaign_file<T: serde::de::DeserializeOwned>(
+    dir: &str,
+    id: &str,
+    suffix: &str,
+) -> Option<T> {
     if id.is_empty() || id.contains('/') || id.contains('\\') || id.contains("..") {
         return None;
     }
@@ -144,7 +163,11 @@ mod tests {
     fn base_campaign_strips_the_per_host_room_token() {
         assert_eq!(base_campaign("covenant"), "covenant");
         assert_eq!(base_campaign("covenant~a5f3"), "covenant");
-        assert_eq!(base_campaign("covenant~a~b"), "covenant", "only the first segment is the base");
+        assert_eq!(
+            base_campaign("covenant~a~b"),
+            "covenant",
+            "only the first segment is the base"
+        );
         assert_eq!(base_campaign("demo"), "demo");
     }
 }

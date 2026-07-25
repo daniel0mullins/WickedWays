@@ -31,7 +31,9 @@ use web_sys::{MessageEvent, WebSocket};
 
 use wickedways_core::sync::{Command, Delta, LogEntry, SubmitResult, SyncTransport};
 use wickedways_core::CampaignSnapshot;
-use wickedways_transport::{ClientMsg, GmPresence, PlayerEntry, PresenceEntry, ServerMsg, WireLogEntry};
+use wickedways_transport::{
+    ClientMsg, GmPresence, PlayerEntry, PresenceEntry, ServerMsg, WireLogEntry,
+};
 
 use crate::mirror::Mirror;
 
@@ -99,12 +101,18 @@ impl Inner {
 
 /// Handles one inbound server frame, updating the mirror + resolving waiters. Mirrors `#onMessage`.
 fn handle_message(inner: &Rc<RefCell<Inner>>, text: &str) {
-    let Ok(msg) = serde_json::from_str::<ServerMsg>(text) else { return };
+    let Ok(msg) = serde_json::from_str::<ServerMsg>(text) else {
+        return;
+    };
     let mut b = inner.borrow_mut();
     match msg {
         ServerMsg::Snapshot { seq, snapshot } => {
             if let Some(w) = b.snapshot_waiter.take() {
-                let snap = if snapshot.is_null() { None } else { serde_json::from_value(snapshot).ok() };
+                let snap = if snapshot.is_null() {
+                    None
+                } else {
+                    serde_json::from_value(snapshot).ok()
+                };
                 let _ = w.send((seq, snap));
             }
         }
@@ -134,7 +142,9 @@ fn handle_message(inner: &Rc<RefCell<Inner>>, text: &str) {
                         let _ = w.send(SubmitResult::Committed { seq, delta: d });
                     }
                     Err(e) => {
-                        let _ = w.send(SubmitResult::Denied { reason: format!("bad delta: {e}") });
+                        let _ = w.send(SubmitResult::Denied {
+                            reason: format!("bad delta: {e}"),
+                        });
                     }
                 }
                 b.check_head_waiters();
@@ -209,7 +219,9 @@ impl WsTransport {
         let inner_close = inner.clone();
         let on_close = Closure::<dyn FnMut()>::new(move || {
             if let Some((w, _)) = inner_close.borrow_mut().pending_submit.take() {
-                let _ = w.send(SubmitResult::Denied { reason: "connection lost; resubmit".into() });
+                let _ = w.send(SubmitResult::Denied {
+                    reason: "connection lost; resubmit".into(),
+                });
             }
         });
         ws.set_onclose(Some(on_close.as_ref().unchecked_ref()));
@@ -223,7 +235,9 @@ impl WsTransport {
             }
         });
         ws.set_onopen(Some(on_open.as_ref().unchecked_ref()));
-        open_rx.await.map_err(|_| "socket closed before open".to_string())?;
+        open_rx
+            .await
+            .map_err(|_| "socket closed before open".to_string())?;
         ws.set_onopen(None);
         drop(on_open);
 
@@ -233,8 +247,15 @@ impl WsTransport {
             inner.borrow_mut().snapshot_waiter = Some(tx);
             rx
         };
-        send(&ws, &ClientMsg::GetSnapshot { campaign_id: campaign_id.into() });
-        let (seq, snapshot) = snap_rx.await.map_err(|_| "closed during getSnapshot".to_string())?;
+        send(
+            &ws,
+            &ClientMsg::GetSnapshot {
+                campaign_id: campaign_id.into(),
+            },
+        );
+        let (seq, snapshot) = snap_rx
+            .await
+            .map_err(|_| "closed during getSnapshot".to_string())?;
         inner.borrow_mut().mirror.seed(seq, snapshot);
 
         // join(fromSeq) → head.
@@ -243,8 +264,17 @@ impl WsTransport {
             inner.borrow_mut().joined_waiter = Some(tx);
             rx
         };
-        send(&ws, &ClientMsg::Join { campaign_id: campaign_id.into(), token: token.into(), from_seq: seq });
-        let head = joined_rx.await.map_err(|_| "closed during join".to_string())?;
+        send(
+            &ws,
+            &ClientMsg::Join {
+                campaign_id: campaign_id.into(),
+                token: token.into(),
+                from_seq: seq,
+            },
+        );
+        let head = joined_rx
+            .await
+            .map_err(|_| "closed during join".to_string())?;
         if let Some(err) = inner.borrow().auth_error.clone() {
             return Err(err);
         }
@@ -273,8 +303,16 @@ impl WsTransport {
             b.pending_submit = Some((tx, command));
             rx
         };
-        send(&self.ws, &ClientMsg::Submit { campaign_id: self.campaign_id.clone(), command: command_value });
-        rx.await.unwrap_or(SubmitResult::Denied { reason: "connection lost".into() })
+        send(
+            &self.ws,
+            &ClientMsg::Submit {
+                campaign_id: self.campaign_id.clone(),
+                command: command_value,
+            },
+        );
+        rx.await.unwrap_or(SubmitResult::Denied {
+            reason: "connection lost".into(),
+        })
     }
 
     /// The latest lobby roster (seat ownership + online + GM + connected players), as pushed by the
@@ -334,7 +372,9 @@ impl SyncTransport for WsTransport {
     /// [`submit_async`](WsTransport::submit_async). Present only to satisfy the trait the coordinator
     /// uses for its synchronous reads; the app never routes a submit through here.
     fn submit(&mut self, _command: Command) -> SubmitResult {
-        SubmitResult::Denied { reason: "WebSocket transport: use submit_async".into() }
+        SubmitResult::Denied {
+            reason: "WebSocket transport: use submit_async".into(),
+        }
     }
 
     fn entries_since(&self, from_seq: u64) -> Vec<LogEntry> {

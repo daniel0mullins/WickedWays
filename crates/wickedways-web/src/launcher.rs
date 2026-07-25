@@ -53,7 +53,9 @@ pub fn launcher_app() -> Element {
 /// params and the state stays deep-linkable.
 fn navigate(mut route: Signal<LauncherRoute>, next: LauncherRoute) {
     match &next {
-        LauncherRoute::Surface { slug, surface } => set_params(&[("campaign", slug), ("surface", surface)]),
+        LauncherRoute::Surface { slug, surface } => {
+            set_params(&[("campaign", slug), ("surface", surface)])
+        }
         LauncherRoute::Picker { slug } => {
             set_params(&[("campaign", slug)]);
             clear_params(&["surface"]);

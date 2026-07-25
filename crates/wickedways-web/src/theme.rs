@@ -64,7 +64,13 @@ mod tests {
         // Every CRT theme keeps the full var set the surface consumes.
         for id in ["green", "amber", "ice", "bogus"] {
             let vars = crt_theme_vars(id);
-            for key in ["--color-bg", "--color-text", "--color-accent", "--plastic", "--crt-scanline"] {
+            for key in [
+                "--color-bg",
+                "--color-text",
+                "--color-accent",
+                "--plastic",
+                "--crt-scanline",
+            ] {
                 assert!(vars.contains(key), "{id} missing {key}");
             }
         }

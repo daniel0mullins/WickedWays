@@ -6,8 +6,8 @@
 //! Only PRE-BEGIN goldens are valid oracles: `started: false`. The 31 `started: true`
 //! snapshots encode `Authority::begin_campaign`'s work, not the assembler's.
 
-use std::path::{Path, PathBuf};
 use serde_json::Value;
+use std::path::{Path, PathBuf};
 use wickedways_assemble::{assemble, description::CampaignDescription, Seat};
 use wickedways_core::world::descriptor::Catalog;
 
@@ -50,9 +50,11 @@ fn canon_numbers(v: &Value) -> Value {
             v.clone()
         }
         Value::Array(a) => Value::Array(a.iter().map(canon_numbers).collect()),
-        Value::Object(o) => {
-            Value::Object(o.iter().map(|(k, x)| (k.clone(), canon_numbers(x))).collect())
-        }
+        Value::Object(o) => Value::Object(
+            o.iter()
+                .map(|(k, x)| (k.clone(), canon_numbers(x)))
+                .collect(),
+        ),
         _ => v.clone(),
     }
 }
@@ -61,12 +63,12 @@ fn canon_numbers(v: &Value) -> Value {
 fn assert_json_eq(got: &Value, want: &Value, fixture: &str) {
     let got = canon_numbers(got);
     let want = canon_numbers(want);
-    if got == want { return; }
+    if got == want {
+        return;
+    }
     let mut path = String::new();
     let (g, w) = first_diff(&got, &want, &mut path);
-    panic!(
-        "byte-parity FAILED for {fixture}\n  at: {path}\n  rust: {g}\n  golden: {w}",
-    );
+    panic!("byte-parity FAILED for {fixture}\n  at: {path}\n  rust: {g}\n  golden: {w}",);
 }
 
 fn first_diff(a: &Value, b: &Value, path: &mut String) -> (String, String) {
@@ -117,7 +119,8 @@ fn gate(name: &str, golden: &str, catalog_name: Option<&str>, party: &[Seat]) {
         .map(|c| read_json::<Catalog>(&dir.join(format!("{c}.catalog.json"))))
         .unwrap_or_default();
     let want: Value = read_json(&dir.join(golden));
-    let got = serde_json::to_value(assemble(&desc, &catalog, party).expect("assemble")).expect("to_value");
+    let got = serde_json::to_value(assemble(&desc, &catalog, party).expect("assemble"))
+        .expect("to_value");
     assert_json_eq(&got, &want, golden);
 }
 
@@ -126,7 +129,10 @@ fn gate(name: &str, golden: &str, catalog_name: Option<&str>, party: &[Seat]) {
 /// `player:Ada`, whose `archetypeId` is `delver` (the archetype's per-fixture
 /// `baseStats` drive the PC's varying stats).
 fn ada() -> Vec<Seat> {
-    vec![Seat { name: "Ada".into(), archetype: Some("delver".into()) }]
+    vec![Seat {
+        name: "Ada".into(),
+        archetype: Some("delver".into()),
+    }]
 }
 
 /// Every pre-begin `*.genesis.json` facade golden carries exactly one PC,
@@ -156,10 +162,20 @@ fn ada() -> Vec<Seat> {
 #[test]
 fn facade_genesis_goldens_single_pc() {
     for name in [
-        "caretaker", "facade-afflicted-mob", "facade-free-vs-advancing",
-        "facade-ko-piling", "facade-legality", "facade-lit-entry", "facade-loot",
-        "facade-mob-combat", "facade-open-fail", "facade-talk", "facade-undo",
-        "npc-dialogue", "npc-foundation", "scripted-scene",
+        "caretaker",
+        "facade-afflicted-mob",
+        "facade-free-vs-advancing",
+        "facade-ko-piling",
+        "facade-legality",
+        "facade-lit-entry",
+        "facade-loot",
+        "facade-mob-combat",
+        "facade-open-fail",
+        "facade-talk",
+        "facade-undo",
+        "npc-dialogue",
+        "npc-foundation",
+        "scripted-scene",
     ] {
         gate(name, &format!("{name}.genesis.json"), Some(name), &ada());
     }
@@ -175,8 +191,14 @@ fn facade_genesis_goldens_single_pc() {
 #[test]
 fn two_pc_genesis_golden() {
     let party = vec![
-        Seat { name: "Ada".into(), archetype: Some("delver".into()) },
-        Seat { name: "Ben".into(), archetype: Some("delver".into()) },
+        Seat {
+            name: "Ada".into(),
+            archetype: Some("delver".into()),
+        },
+        Seat {
+            name: "Ben".into(),
+            archetype: Some("delver".into()),
+        },
     ];
     gate("two-pc", "two-pc.genesis.json", Some("two-pc"), &party);
 }
@@ -189,8 +211,16 @@ fn two_pc_genesis_golden() {
 /// and a `party[0].room.name == 'Vault'` victory.
 #[test]
 fn g2_vault_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-vault", "g2-vault.genesis.json", Some("g2-vault"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-vault",
+        "g2-vault.genesis.json",
+        Some("g2-vault"),
+        &party,
+    );
 }
 
 /// The G2 "scene bodies" author oracle, seated with a single PC that declares NO
@@ -202,8 +232,16 @@ fn g2_vault_genesis_golden() {
 /// rides in the catalog untouched.
 #[test]
 fn g2_scene_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-scene", "g2-scene.genesis.json", Some("g2-scene"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-scene",
+        "g2-scene.genesis.json",
+        Some("g2-scene"),
+        &party,
+    );
 }
 
 /// The G2 "item bodies" author oracle, seated with a single PC that declares NO
@@ -216,7 +254,10 @@ fn g2_scene_genesis_golden() {
 /// single room + PC (the item is not reachable at genesis).
 #[test]
 fn g2_item_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
     gate("g2-item", "g2-item.genesis.json", Some("g2-item"), &party);
 }
 
@@ -230,7 +271,10 @@ fn g2_item_genesis_golden() {
 /// the catalog untouched.
 #[test]
 fn g2_npc_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
     gate("g2-npc", "g2-npc.genesis.json", Some("g2-npc"), &party);
 }
 
@@ -243,31 +287,58 @@ fn g2_npc_genesis_golden() {
 /// the negative-`-1` `adjustStat` delta) rides in the catalog untouched.
 #[test]
 fn g2_mechanic_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-mechanic", "g2-mechanic.genesis.json", Some("g2-mechanic"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-mechanic",
+        "g2-mechanic.genesis.json",
+        Some("g2-mechanic"),
+        &party,
+    );
 }
 
 /// The G2 "archetypes" author oracle: the real hollow-house `Heir` archetype, with a
 /// PC seated AS it — so the genesis PC carries the archetype id + its statline/immunities.
 #[test]
 fn g2_archetype_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: Some("heir".into()) }];
-    gate("g2-archetype", "g2-archetype.genesis.json", Some("g2-archetype"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: Some("heir".into()),
+    }];
+    gate(
+        "g2-archetype",
+        "g2-archetype.genesis.json",
+        Some("g2-archetype"),
+        &party,
+    );
 }
 
 /// The G2 "timeout narration" author oracle: the real hollow-house `.onTimeout` cue,
 /// authored as a `timeoutNarration` string lowered to the `{ text }` shape.
 #[test]
 fn g2_timeout_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-timeout", "g2-timeout.genesis.json", Some("g2-timeout"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-timeout",
+        "g2-timeout.genesis.json",
+        Some("g2-timeout"),
+        &party,
+    );
 }
 
 /// The G2 "campaign opts" author oracle: the real hollow-house bounds (maxRounds 150,
 /// baseEncounterChance 20) via the `[opts]` table.
 #[test]
 fn g2_opts_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
     gate("g2-opts", "g2-opts.genesis.json", Some("g2-opts"), &party);
 }
 
@@ -275,31 +346,58 @@ fn g2_opts_genesis_golden() {
 /// `rat-pair` weighted opt-ins (description) + their `MobSpec` rosters (catalog).
 #[test]
 fn g2_formations_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-formations", "g2-formations.genesis.json", Some("g2-formations"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-formations",
+        "g2-formations.genesis.json",
+        Some("g2-formations"),
+        &party,
+    );
 }
 
 /// The G2 "exit name + initialState" author oracle: a keyed door carrying a display
 /// name + `{ unlocked: false }` initial state, atop the real doorScript behavior.
 #[test]
 fn g2_exit_state_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-exit-state", "g2-exit-state.genesis.json", Some("g2-exit-state"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-exit-state",
+        "g2-exit-state.genesis.json",
+        Some("g2-exit-state"),
+        &party,
+    );
 }
 
 /// The G2 "room dark + spawnModifier" author oracle: a lightless Cellar + a
 /// biased-encounter Hall, proving the previously-dropped RoomDef sub-fields.
 #[test]
 fn g2_dark_rooms_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-dark-rooms", "g2-dark-rooms.genesis.json", Some("g2-dark-rooms"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-dark-rooms",
+        "g2-dark-rooms.genesis.json",
+        Some("g2-dark-rooms"),
+        &party,
+    );
 }
 
 /// The G2 "placed mobs" author oracle: the two real hollow-house mobs (Wraith,
 /// Revenant) with stats/room/drops/naturalAttack, in connected rooms.
 #[test]
 fn g2_mobs_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
     gate("g2-mobs", "g2-mobs.genesis.json", Some("g2-mobs"), &party);
 }
 
@@ -308,8 +406,16 @@ fn g2_mobs_genesis_golden() {
 /// droppable, seated in a Hall loot container.
 #[test]
 fn g2_equipment_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-equipment", "g2-equipment.genesis.json", Some("g2-equipment"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-equipment",
+        "g2-equipment.genesis.json",
+        Some("g2-equipment"),
+        &party,
+    );
 }
 
 /// The G2 "exit runScript + pass" author oracle: a keyed door whose narration
@@ -317,7 +423,10 @@ fn g2_equipment_genesis_golden() {
 /// seated with a single no-archetype PC.
 #[test]
 fn g2_door_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
     gate("g2-door", "g2-door.genesis.json", Some("g2-door"), &party);
 }
 
@@ -327,8 +436,16 @@ fn g2_door_genesis_golden() {
 /// has, lookup, stateGetIn, setStateIn) rides in the catalog.
 #[test]
 fn g2_storyteller_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-storyteller", "g2-storyteller.genesis.json", Some("g2-storyteller"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-storyteller",
+        "g2-storyteller.genesis.json",
+        Some("g2-storyteller"),
+        &party,
+    );
 }
 
 /// The G2 "status-bar forms" author oracle: the real hollow-house `status-bar`
@@ -336,8 +453,16 @@ fn g2_storyteller_genesis_golden() {
 /// onTurnEnd bodies (str/concat/length/first + the Status effect) ride in the catalog.
 #[test]
 fn g2_status_bar_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-status-bar", "g2-status-bar.genesis.json", Some("g2-status-bar"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-status-bar",
+        "g2-status-bar.genesis.json",
+        Some("g2-status-bar"),
+        &party,
+    );
 }
 
 /// The G2 "victory quantifiers" author oracle: the three real hollow-house win/lose
@@ -346,8 +471,16 @@ fn g2_status_bar_genesis_golden() {
 /// includes/element/first/length) rides in the catalog as a `BehaviorScript::Victory`.
 #[test]
 fn g2_victory_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-victory", "g2-victory.genesis.json", Some("g2-victory"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-victory",
+        "g2-victory.genesis.json",
+        Some("g2-victory"),
+        &party,
+    );
 }
 
 /// The G2 "remaining effects" author oracle: a bespoke `hex` mechanic emitting
@@ -355,8 +488,16 @@ fn g2_victory_genesis_golden() {
 /// the `{}`-seeded mechanic state; the onTurnStart body rides in the catalog.
 #[test]
 fn g2_effects_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-effects", "g2-effects.genesis.json", Some("g2-effects"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-effects",
+        "g2-effects.genesis.json",
+        Some("g2-effects"),
+        &party,
+    );
 }
 
 /// The G2 "mechanic actions + modifyDamage" author oracle, seated with a single PC
@@ -367,13 +508,26 @@ fn g2_effects_genesis_golden() {
 /// custom action alongside the hook) rides in the catalog untouched.
 #[test]
 fn g2_mechanic_actions_genesis_golden() {
-    let party = vec![Seat { name: "Ada".into(), archetype: None }];
-    gate("g2-mechanic-actions", "g2-mechanic-actions.genesis.json", Some("g2-mechanic-actions"), &party);
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-mechanic-actions",
+        "g2-mechanic-actions.genesis.json",
+        Some("g2-mechanic-actions"),
+        &party,
+    );
 }
 
 #[test]
 fn hollow_house_pristine() {
-    gate("hollow-house", "hollow-house.snapshot.json", Some("hollow-house"), &[]);
+    gate(
+        "hollow-house",
+        "hollow-house.snapshot.json",
+        Some("hollow-house"),
+        &[],
+    );
 }
 
 /// The **playable** genesis the web-client launcher bundles: the pristine campaign seated with one
@@ -386,7 +540,10 @@ fn hollow_house_playable_genesis() {
         "hollow-house",
         "hollow-house.genesis.json",
         Some("hollow-house"),
-        &[Seat { name: "Heir".into(), archetype: Some("heir".into()) }],
+        &[Seat {
+            name: "Heir".into(),
+            archetype: Some("heir".into()),
+        }],
     );
 }
 
@@ -398,8 +555,16 @@ fn hollow_house_playable_genesis() {
 /// `covenant_playable.rs`.
 #[test]
 fn covenant_playable_genesis() {
-    let party = vec![Seat { name: "Keeper".into(), archetype: Some("warden".into()) }];
-    gate("covenant", "covenant.genesis.json", Some("covenant"), &party);
+    let party = vec![Seat {
+        name: "Keeper".into(),
+        archetype: Some("warden".into()),
+    }];
+    gate(
+        "covenant",
+        "covenant.genesis.json",
+        Some("covenant"),
+        &party,
+    );
 }
 
 #[test]

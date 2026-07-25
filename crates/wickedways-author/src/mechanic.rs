@@ -68,7 +68,10 @@ mod tests {
         match v {
             Value::Number(n) => {
                 if let Some(f) = n.as_f64() {
-                    if f.is_finite() && f.fract() == 0.0 && n.as_i64().is_none() && n.as_u64().is_none()
+                    if f.is_finite()
+                        && f.fract() == 0.0
+                        && n.as_i64().is_none()
+                        && n.as_u64().is_none()
                     {
                         if f >= 0.0 && f <= u64::MAX as f64 {
                             return Value::Number((f as u64).into());
@@ -81,9 +84,11 @@ mod tests {
                 v.clone()
             }
             Value::Array(a) => Value::Array(a.iter().map(canon_numbers).collect()),
-            Value::Object(o) => {
-                Value::Object(o.iter().map(|(k, x)| (k.clone(), canon_numbers(x))).collect())
-            }
+            Value::Object(o) => Value::Object(
+                o.iter()
+                    .map(|(k, x)| (k.clone(), canon_numbers(x)))
+                    .collect(),
+            ),
             _ => v.clone(),
         }
     }
@@ -96,17 +101,22 @@ mod tests {
 
     #[test]
     fn init_and_on_turn_start_hook() {
-        let v = script_json(r#"
+        let v = script_json(
+            r#"
             init = { }
             onTurnStart = "guard !hasEquipped(actor, 'lantern')\nemit adjustStat(actor, sanity, -1)"
-        "#);
-        assert_eq!(v, json!({
-            "init":{},
-            "hooks":{"onTurnStart":[
-                {"kind":"guard","cond":{"kind":"not","expr":{"kind":"hasEquipped","of":{"kind":"actor"},"itemKey":"lantern"}}},
-                {"kind":"emit","effect":{"kind":"adjustStat","target":{"kind":"actor"},"stat":"sanity","delta":{"kind":"lit","value":-1}}}]},
-            "actions":{}
-        }));
+        "#,
+        );
+        assert_eq!(
+            v,
+            json!({
+                "init":{},
+                "hooks":{"onTurnStart":[
+                    {"kind":"guard","cond":{"kind":"not","expr":{"kind":"hasEquipped","of":{"kind":"actor"},"itemKey":"lantern"}}},
+                    {"kind":"emit","effect":{"kind":"adjustStat","target":{"kind":"actor"},"stat":"sanity","delta":{"kind":"lit","value":-1}}}]},
+                "actions":{}
+            })
+        );
     }
 
     #[test]
@@ -117,26 +127,34 @@ mod tests {
 
     #[test]
     fn actions_and_modify_damage() {
-        let v = script_json(r#"
+        let v = script_json(
+            r#"
             init = { }
             modifyDamage = "damage.amount > 3 ? final 3 : damage.amount"
             [actions]
             brace = "emit cue('You brace against the dread.')\nemit adjustStat(actor, sanity, 1)"
-        "#);
-        assert_eq!(v["hooks"]["modifyDamage"], json!({
-            "kind":"ifElse",
-            "cond":{"kind":"bin","op":"gt",
-                "left":{"kind":"get","field":"amount","of":{"kind":"damage"}},
-                "right":{"kind":"lit","value":3}},
-            "then":{"kind":"final","expr":{"kind":"lit","value":3}},
-            "else":{"kind":"value","expr":{"kind":"get","field":"amount","of":{"kind":"damage"}}}
-        }));
-        assert_eq!(v["actions"], json!({
-            "brace":[
-                {"kind":"emit","effect":{"kind":"cue","text":{"kind":"lit","value":"You brace against the dread."}}},
-                {"kind":"emit","effect":{"kind":"adjustStat","target":{"kind":"actor"},"stat":"sanity","delta":{"kind":"lit","value":1}}}
-            ]
-        }));
+        "#,
+        );
+        assert_eq!(
+            v["hooks"]["modifyDamage"],
+            json!({
+                "kind":"ifElse",
+                "cond":{"kind":"bin","op":"gt",
+                    "left":{"kind":"get","field":"amount","of":{"kind":"damage"}},
+                    "right":{"kind":"lit","value":3}},
+                "then":{"kind":"final","expr":{"kind":"lit","value":3}},
+                "else":{"kind":"value","expr":{"kind":"get","field":"amount","of":{"kind":"damage"}}}
+            })
+        );
+        assert_eq!(
+            v["actions"],
+            json!({
+                "brace":[
+                    {"kind":"emit","effect":{"kind":"cue","text":{"kind":"lit","value":"You brace against the dread."}}},
+                    {"kind":"emit","effect":{"kind":"adjustStat","target":{"kind":"actor"},"stat":"sanity","delta":{"kind":"lit","value":1}}}
+                ]
+            })
+        );
     }
 
     #[test]

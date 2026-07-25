@@ -23,7 +23,8 @@ use wickedways_server::transport::ServerMsg;
 fn genesis() -> CampaignSnapshot {
     let p = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../conformance/fixtures/sync-move.genesis.json");
-    serde_json::from_str(&std::fs::read_to_string(&p).expect("read genesis")).expect("parse genesis")
+    serde_json::from_str(&std::fs::read_to_string(&p).expect("read genesis"))
+        .expect("parse genesis")
 }
 
 /// A `Table` over the genesis, with `store` installed (durable) or not (ephemeral).
@@ -32,9 +33,20 @@ fn table(store: Option<Arc<dyn CampaignStore>>) -> Table {
     let authority = SyncAuthority::new(
         World::from_snapshot(genesis()),
         Catalog::default(),
-        AuthorityOpts { snapshot_every, start_seq: 0, solo: false, manage_turns: false },
+        AuthorityOpts {
+            snapshot_every,
+            start_seq: 0,
+            solo: false,
+            manage_turns: false,
+        },
     );
-    let mut t = Table::new(authority, Membership::new("gm"), "camp", Catalog::default(), snapshot_every);
+    let mut t = Table::new(
+        authority,
+        Membership::new("gm"),
+        "camp",
+        Catalog::default(),
+        snapshot_every,
+    );
     if let Some(s) = store {
         t.set_store(s);
     }
@@ -54,15 +66,24 @@ fn next_player() -> Command {
 }
 
 fn has_committed(log: &Arc<Mutex<Vec<ServerMsg>>>, seq: u64) -> bool {
-    log.lock().unwrap().iter().any(|m| matches!(m, ServerMsg::Committed { seq: s, .. } if *s == seq))
+    log.lock()
+        .unwrap()
+        .iter()
+        .any(|m| matches!(m, ServerMsg::Committed { seq: s, .. } if *s == seq))
 }
 
 fn has_entry(log: &Arc<Mutex<Vec<ServerMsg>>>) -> bool {
-    log.lock().unwrap().iter().any(|m| matches!(m, ServerMsg::Entry { .. }))
+    log.lock()
+        .unwrap()
+        .iter()
+        .any(|m| matches!(m, ServerMsg::Entry { .. }))
 }
 
 fn has_denied(log: &Arc<Mutex<Vec<ServerMsg>>>) -> bool {
-    log.lock().unwrap().iter().any(|m| matches!(m, ServerMsg::Denied { .. }))
+    log.lock()
+        .unwrap()
+        .iter()
+        .any(|m| matches!(m, ServerMsg::Denied { .. }))
 }
 
 // ── a mock store: records save order and can be made to fail ──────────────────────────────────
@@ -75,7 +96,11 @@ struct MockStore {
 
 impl MockStore {
     fn new(order: Arc<Mutex<Vec<String>>>, fail: bool) -> Self {
-        Self { order, fail, saved: Arc::new(Mutex::new(None)) }
+        Self {
+            order,
+            fail,
+            saved: Arc::new(Mutex::new(None)),
+        }
     }
 }
 
@@ -106,9 +131,15 @@ async fn acks_the_submitter_with_committed_and_broadcasts_entry_to_others() {
 
     let out = t.submit(next_player(), &sender, None).await;
     assert_eq!(out, SubmitOutcome::Committed { seq: 1 });
-    assert!(has_committed(&sender_log, 1), "submitter must get committed{{seq:1}}");
+    assert!(
+        has_committed(&sender_log, 1),
+        "submitter must get committed{{seq:1}}"
+    );
     assert!(has_entry(&other_log), "other participant must get an entry");
-    assert!(!has_entry(&sender_log), "submitter must NOT also get an entry");
+    assert!(
+        !has_entry(&sender_log),
+        "submitter must NOT also get an entry"
+    );
 }
 
 #[tokio::test]
@@ -116,7 +147,8 @@ async fn denies_an_illegal_command_to_the_sender_only() {
     let mut t = table(None);
     let (sender, sender_log) = recorder();
     let bogus: Command =
-        serde_json::from_value(json!({ "kind": "move", "actorId": "nobody", "roomId": "nowhere" })).unwrap();
+        serde_json::from_value(json!({ "kind": "move", "actorId": "nobody", "roomId": "nowhere" }))
+            .unwrap();
 
     let out = t.submit(bogus, &sender, None).await;
     assert_eq!(out, SubmitOutcome::NotCommitted);
@@ -135,7 +167,11 @@ async fn persists_before_acking_then_broadcasts() {
     let sender: Subscriber = Arc::new(move |_msg| ack_order.lock().unwrap().push("ack".into()));
 
     t.submit(next_player(), &sender, None).await;
-    assert_eq!(*order.lock().unwrap(), vec!["persist", "ack"], "persisted before the committed ack");
+    assert_eq!(
+        *order.lock().unwrap(),
+        vec!["persist", "ack"],
+        "persisted before the committed ack"
+    );
 }
 
 #[tokio::test]
@@ -152,9 +188,19 @@ async fn rolls_back_and_denies_when_persist_fails() {
     let out = t.submit(next_player(), &sender, None).await;
     assert_eq!(out, SubmitOutcome::NotCommitted);
     assert!(has_denied(&sender_log), "submitter gets denied");
-    assert!(!has_committed(&sender_log, 1), "submitter must NOT get committed");
-    assert!(!has_entry(&other_log), "no entry broadcast on persist failure");
-    assert_eq!(t.head(), 0, "reload reverts the head to the last durable record (none → 0)");
+    assert!(
+        !has_committed(&sender_log, 1),
+        "submitter must NOT get committed"
+    );
+    assert!(
+        !has_entry(&other_log),
+        "no entry broadcast on persist failure"
+    );
+    assert_eq!(
+        t.head(),
+        0,
+        "reload reverts the head to the last durable record (none → 0)"
+    );
 }
 
 // ── guarantees the Rust actor adds ────────────────────────────────────────────────────────────
@@ -178,7 +224,11 @@ async fn the_actor_serializes_concurrent_submits() {
         }
         other => panic!("both submits must commit, got {other:?}"),
     };
-    assert_eq!(seqs, [1, 2], "the two commits get distinct, consecutive seqs — no interleave");
+    assert_eq!(
+        seqs,
+        [1, 2],
+        "the two commits get distinct, consecutive seqs — no interleave"
+    );
     assert_eq!(handle.head().await, 2);
 }
 
@@ -197,5 +247,8 @@ async fn seat_claim_in_on_commit_persists_atomically_with_the_commit() {
     // The persisted record carries both the committed seq and the claimed seat.
     let rec = store.load("camp").expect("load").expect("present");
     assert_eq!(rec.seq, 1);
-    assert_eq!(rec.membership.seats, vec![("player:Ada".to_string(), "ada".to_string())]);
+    assert_eq!(
+        rec.membership.seats,
+        vec![("player:Ada".to_string(), "ada".to_string())]
+    );
 }

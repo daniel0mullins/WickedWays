@@ -63,10 +63,14 @@ pub struct PlayerEntry {
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Actor {
     #[serde(rename_all = "camelCase")]
-    Character { actor_id: String },
+    Character {
+        actor_id: String,
+    },
     Gm,
     #[serde(rename_all = "camelCase")]
-    Join { character_id: String },
+    Join {
+        character_id: String,
+    },
 }
 
 /// Messages a client sends to the room server. Multiplayer arms only; chat/AV are sub-project E.
@@ -74,35 +78,70 @@ pub enum Actor {
 #[serde(tag = "t", rename_all = "camelCase")]
 pub enum ClientMsg {
     #[serde(rename_all = "camelCase")]
-    Join { campaign_id: String, token: String, from_seq: u64 },
+    Join {
+        campaign_id: String,
+        token: String,
+        from_seq: u64,
+    },
     #[serde(rename_all = "camelCase")]
     Submit { campaign_id: String, command: Value },
     #[serde(rename_all = "camelCase")]
     GetSnapshot { campaign_id: String },
     #[serde(rename_all = "camelCase")]
-    AssignSeat { campaign_id: String, character_id: String, identity: String },
+    AssignSeat {
+        campaign_id: String,
+        character_id: String,
+        identity: String,
+    },
     #[serde(rename_all = "camelCase")]
-    UnassignSeat { campaign_id: String, character_id: String },
+    UnassignSeat {
+        campaign_id: String,
+        character_id: String,
+    },
     // `transferGM` keeps its trailing capitals on the wire (camelCase would give `transferGm`),
     // so the tag is pinned explicitly — same treatment as the `Command` variant.
     #[serde(rename = "transferGM", rename_all = "camelCase")]
-    TransferGm { campaign_id: String, identity: String },
+    TransferGm {
+        campaign_id: String,
+        identity: String,
+    },
 }
 
 /// Messages the room server sends to a client. Multiplayer arms only; chat/AV are sub-project E.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "t", rename_all = "camelCase")]
 pub enum ServerMsg {
-    Joined { head: u64 },
-    Entry { entry: WireLogEntry },
-    Committed { seq: u64, delta: Value },
-    Snapshot { seq: u64, snapshot: Value },
-    Denied { reason: String },
-    Error { message: String },
+    Joined {
+        head: u64,
+    },
+    Entry {
+        entry: WireLogEntry,
+    },
+    Committed {
+        seq: u64,
+        delta: Value,
+    },
+    Snapshot {
+        seq: u64,
+        snapshot: Value,
+    },
+    Denied {
+        reason: String,
+    },
+    Error {
+        message: String,
+    },
     #[serde(rename_all = "camelCase")]
-    Presence { campaign_id: String, seats: Vec<PresenceEntry>, gm: GmPresence },
+    Presence {
+        campaign_id: String,
+        seats: Vec<PresenceEntry>,
+        gm: GmPresence,
+    },
     #[serde(rename_all = "camelCase")]
-    Players { campaign_id: String, players: Vec<PlayerEntry> },
+    Players {
+        campaign_id: String,
+        players: Vec<PlayerEntry>,
+    },
 }
 
 #[cfg(test)]
@@ -125,7 +164,11 @@ mod tests {
         for case in cases {
             let parsed: ClientMsg = serde_json::from_value(case.clone())
                 .unwrap_or_else(|e| panic!("deserialize {case}: {e}"));
-            assert_eq!(serde_json::to_value(&parsed).unwrap(), case, "round-trip {case}");
+            assert_eq!(
+                serde_json::to_value(&parsed).unwrap(),
+                case,
+                "round-trip {case}"
+            );
         }
     }
 
@@ -152,21 +195,32 @@ mod tests {
         for case in cases {
             let parsed: ServerMsg = serde_json::from_value(case.clone())
                 .unwrap_or_else(|e| panic!("deserialize {case}: {e}"));
-            assert_eq!(serde_json::to_value(&parsed).unwrap(), case, "round-trip {case}");
+            assert_eq!(
+                serde_json::to_value(&parsed).unwrap(),
+                case,
+                "round-trip {case}"
+            );
         }
     }
 
     /// `transferGM` keeps its trailing capitals as the `t` tag (never `transferGm`).
     #[test]
     fn transfer_gm_tag_keeps_trailing_capitals() {
-        let m = ClientMsg::TransferGm { campaign_id: "camp".into(), identity: "ada".into() };
+        let m = ClientMsg::TransferGm {
+            campaign_id: "camp".into(),
+            identity: "ada".into(),
+        };
         assert_eq!(serde_json::to_value(&m).unwrap()["t"], json!("transferGM"));
     }
 
     /// An unclaimed seat serializes its owner as JSON `null` (TS `owner: string | null`).
     #[test]
     fn unclaimed_seat_owner_is_null() {
-        let e = PresenceEntry { character_id: "c1".into(), owner: None, online: false };
+        let e = PresenceEntry {
+            character_id: "c1".into(),
+            owner: None,
+            online: false,
+        };
         assert_eq!(
             serde_json::to_value(&e).unwrap(),
             json!({ "characterId": "c1", "owner": null, "online": false })
@@ -184,7 +238,11 @@ mod tests {
         for case in cases {
             let parsed: Actor = serde_json::from_value(case.clone())
                 .unwrap_or_else(|e| panic!("deserialize {case}: {e}"));
-            assert_eq!(serde_json::to_value(&parsed).unwrap(), case, "round-trip {case}");
+            assert_eq!(
+                serde_json::to_value(&parsed).unwrap(),
+                case,
+                "round-trip {case}"
+            );
         }
     }
 }

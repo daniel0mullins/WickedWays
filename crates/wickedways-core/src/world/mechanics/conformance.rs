@@ -16,13 +16,22 @@ pub struct Dread;
 pub static DREAD: Dread = Dread;
 
 fn cue(text: &str) -> Effect {
-    Effect::Cue { cue: MechanicCue { text: Some(text.into()), sound: None } }
+    Effect::Cue {
+        cue: MechanicCue {
+            text: Some(text.into()),
+            sound: None,
+        },
+    }
 }
 
 /// The `modify_damage` threshold, extracted as a free function so it is
 /// unit-testable directly without constructing a `HookCtx`.
 fn cap(amount: f64) -> TransformResult {
-    if amount > 3.0 { TransformResult::Final(3.0) } else { TransformResult::Value(amount) }
+    if amount > 3.0 {
+        TransformResult::Final(3.0)
+    } else {
+        TransformResult::Value(amount)
+    }
 }
 
 /// Effects for the `conformance:dread` "brace" custom action: a cue plus a small
@@ -31,7 +40,11 @@ fn cap(amount: f64) -> TransformResult {
 fn brace_effects(actor: &CharacterId) -> Vec<Effect> {
     vec![
         cue("You brace against the dread."),
-        Effect::AdjustStat { target: actor.clone(), stat: StatType::Sanity, delta: 1.0 },
+        Effect::AdjustStat {
+            target: actor.clone(),
+            stat: StatType::Sanity,
+            delta: 1.0,
+        },
     ]
 }
 
@@ -60,7 +73,11 @@ impl MechanicOp for Dread {
             return vec![cue("Dread deepens.")];
         };
         vec![
-            Effect::AdjustStat { target, stat: StatType::Sanity, delta: -1.0 },
+            Effect::AdjustStat {
+                target,
+                stat: StatType::Sanity,
+                delta: -1.0,
+            },
             cue("Dread deepens."),
         ]
     }
@@ -92,7 +109,12 @@ impl MechanicOp for EffectCount {
         json!({ "n": 0 })
     }
     fn on_round_end(&self, cx: &mut HookCtx) -> Vec<Effect> {
-        let n = cx.state.get("n").and_then(|v| v.as_i64()).unwrap_or(0).max(0);
+        let n = cx
+            .state
+            .get("n")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0)
+            .max(0);
         (0..n).map(|_| cue("x")).collect()
     }
 }
@@ -123,7 +145,9 @@ mod tests {
         use crate::world::ids::CharacterId;
         let fx = brace_effects(&CharacterId("pc".into()));
         assert_eq!(fx.len(), 2);
-        assert!(matches!(&fx[0], Effect::Cue { cue } if cue.text.as_deref() == Some("You brace against the dread.")));
+        assert!(
+            matches!(&fx[0], Effect::Cue { cue } if cue.text.as_deref() == Some("You brace against the dread."))
+        );
         assert!(matches!(&fx[1],
             Effect::AdjustStat { target, stat: StatType::Sanity, delta }
             if target == &CharacterId("pc".into()) && *delta == 1.0));

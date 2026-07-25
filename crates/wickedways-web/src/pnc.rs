@@ -37,8 +37,8 @@ use crate::audio::cue_for_intent;
 use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
-    boot, boot_single, has_actions_left, intent_to_command, is_gm, is_my_turn, project, read_config, rebuild_single,
-    toggle_fullscreen, welcome_for, AppTransport, Mode, GM_IDENTITY,
+    boot, boot_single, has_actions_left, intent_to_command, is_gm, is_my_turn, project,
+    read_config, rebuild_single, toggle_fullscreen, welcome_for, AppTransport, Mode, GM_IDENTITY,
 };
 use crate::map::{layout_map, map_svg, MapModel};
 use crate::narrator::Narrator;
@@ -60,10 +60,16 @@ impl LogLine {
         Self { text, class: "" }
     }
     fn heading(text: String) -> Self {
-        Self { text, class: "heading" }
+        Self {
+            text,
+            class: "heading",
+        }
     }
     fn error(text: String) -> Self {
-        Self { text, class: "error" }
+        Self {
+            text,
+            class: "error",
+        }
     }
     fn end(text: String) -> Self {
         Self { text, class: "end" }
@@ -132,8 +138,8 @@ pub fn pnc_app() -> Element {
     let mut settings_open = use_signal(|| false);
     let mut audio_on = use_signal(|| false);
     let inv_tab_items = use_signal(|| true); // true = Inventory tab, false = Key Items tab
-    // The boot mode + launcher palette, read once. The settings menu (save/restore/restart) shows
-    // only in single-player; the palette (`?theme=`) overrides the pnc.css defaults on `.pnc-app`.
+                                             // The boot mode + launcher palette, read once. The settings menu (save/restore/restart) shows
+                                             // only in single-player; the palette (`?theme=`) overrides the pnc.css defaults on `.pnc-app`.
     let mode = use_hook(|| read_config().mode);
     let theme_vars = use_hook(|| pnc_theme_vars(&read_config().theme));
     // The campaign's welcome text (title/intro/button) — the manifest passthrough, read once.
@@ -150,7 +156,8 @@ pub fn pnc_app() -> Element {
         match boot(&cfg).await {
             Err(e) => {
                 status.set("error".into());
-                log.write().push(LogLine::error(format!("connect failed: {e}")));
+                log.write()
+                    .push(LogLine::error(format!("connect failed: {e}")));
             }
             Ok((transport, coord, catalog)) => {
                 // Mutable so `restore`/`restart` can rebind to a fresh offline authority mid-session.
@@ -173,13 +180,16 @@ pub fn pnc_app() -> Element {
                 vm.set(initial);
                 status_fields.set(coord.status_fields().to_vec());
                 my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
-                            my_actions_left.set(has_actions_left(coord.replica(), single));
+                my_actions_left.set(has_actions_left(coord.replica(), single));
 
                 // Loop over UI actions AND server pushes: a pushed entry (another client's move, or the
                 // GM advancing the turn) re-syncs + re-projects, so play stays live and `my_turn` flips
                 // when the turn reaches this client — no polling.
                 let pushes = transport.push_notifications();
-                let mut events = futures_util::stream::select(rx.map(PncEv::Act), pushes.map(|_| PncEv::Refresh));
+                let mut events = futures_util::stream::select(
+                    rx.map(PncEv::Act),
+                    pushes.map(|_| PncEv::Refresh),
+                );
                 while let Some(ev) = events.next().await {
                     let action = match ev {
                         PncEv::Act(a) => a,
@@ -214,7 +224,8 @@ pub fn pnc_app() -> Element {
                         // A player ends their OWN turn (the active character is theirs on their turn).
                         PncAction::EndTurn => {
                             if let Ok(actor_id) = coord.replica().active_character_id() {
-                                submit(&transport, &mut coord, Command::EndTurn { actor_id }, log).await;
+                                submit(&transport, &mut coord, Command::EndTurn { actor_id }, log)
+                                    .await;
                             }
                             let after = project(&coord, &catalog);
                             if let Some(a) = &after {
@@ -230,13 +241,19 @@ pub fn pnc_app() -> Element {
                         // ── Single-player lifecycle (mirrors the CRT verbs, same rebuild seam) ──
                         PncAction::Save => {
                             if cfg.mode == Mode::Single {
-                                let blob = SaveBlob { snapshot: coord.snapshot(), map: map_model.read().serialize() };
+                                let blob = SaveBlob {
+                                    snapshot: coord.snapshot(),
+                                    map: map_model.read().serialize(),
+                                };
                                 match savestore::save("slot1", &blob) {
                                     Ok(()) => log.write().push(LogLine::plain("Saved.".into())),
-                                    Err(e) => log.write().push(LogLine::error(format!("Save failed: {e}"))),
+                                    Err(e) => log
+                                        .write()
+                                        .push(LogLine::error(format!("Save failed: {e}"))),
                                 }
                             } else {
-                                log.write().push(LogLine::plain("(save is single-player only)".into()));
+                                log.write()
+                                    .push(LogLine::plain("(save is single-player only)".into()));
                             }
                             continue;
                         }
@@ -257,10 +274,13 @@ pub fn pnc_app() -> Element {
                                         vm.set(restored);
                                         status_fields.set(coord.status_fields().to_vec());
                                     }
-                                    None => log.write().push(LogLine::plain("No save found.".into())),
+                                    None => {
+                                        log.write().push(LogLine::plain("No save found.".into()))
+                                    }
                                 }
                             } else {
-                                log.write().push(LogLine::plain("(restore is single-player only)".into()));
+                                log.write()
+                                    .push(LogLine::plain("(restore is single-player only)".into()));
                             }
                             continue;
                         }
@@ -284,10 +304,13 @@ pub fn pnc_app() -> Element {
                                         vm.set(fresh);
                                         status_fields.set(coord.status_fields().to_vec());
                                     }
-                                    Err(e) => log.write().push(LogLine::error(format!("Restart failed: {e}"))),
+                                    Err(e) => log
+                                        .write()
+                                        .push(LogLine::error(format!("Restart failed: {e}"))),
                                 }
                             } else {
-                                log.write().push(LogLine::plain("(restart is single-player only)".into()));
+                                log.write()
+                                    .push(LogLine::plain("(restart is single-player only)".into()));
                             }
                             continue;
                         }
@@ -310,17 +333,25 @@ pub fn pnc_app() -> Element {
                                         vm.set(reverted);
                                         status_fields.set(coord.status_fields().to_vec());
                                     }
-                                    None => log.write().push(LogLine::plain("Nothing to undo.".into())),
+                                    None => {
+                                        log.write().push(LogLine::plain("Nothing to undo.".into()))
+                                    }
                                 }
                             } else {
-                                log.write().push(LogLine::plain("(undo is single-player only)".into()));
+                                log.write()
+                                    .push(LogLine::plain("(undo is single-player only)".into()));
                             }
                             continue;
                         }
                         PncAction::Fullscreen => {
                             let entering = toggle_fullscreen();
                             log.write().push(LogLine::plain(
-                                if entering { "Fullscreen on." } else { "Fullscreen off." }.into(),
+                                if entering {
+                                    "Fullscreen on."
+                                } else {
+                                    "Fullscreen off."
+                                }
+                                .into(),
                             ));
                             continue;
                         }
@@ -338,7 +369,8 @@ pub fn pnc_app() -> Element {
                                         audio.update(&v);
                                     }
                                 } else {
-                                    log.write().push(LogLine::plain("Audio is unavailable.".into()));
+                                    log.write()
+                                        .push(LogLine::plain("Audio is unavailable.".into()));
                                 }
                             }
                             continue;
@@ -363,7 +395,9 @@ pub fn pnc_app() -> Element {
                     if let Intent::Open { target_id } = &intent {
                         if let Some(v) = project(&coord, &catalog) {
                             let lines = narrator.read().render_action(
-                                &Intent::Open { target_id: target_id.clone() },
+                                &Intent::Open {
+                                    target_id: target_id.clone(),
+                                },
                                 &v,
                                 &v,
                             );
@@ -384,8 +418,10 @@ pub fn pnc_app() -> Element {
                     };
                     // Capture the pre-command state for `undo` (single-player only), pushed only once
                     // the command commits.
-                    let undo_point = (cfg.mode == Mode::Single)
-                        .then(|| SaveBlob { snapshot: coord.snapshot(), map: map_model.read().serialize() });
+                    let undo_point = (cfg.mode == Mode::Single).then(|| SaveBlob {
+                        snapshot: coord.snapshot(),
+                        map: map_model.read().serialize(),
+                    });
                     let Some(cues) = submit(&transport, &mut coord, command, log).await else {
                         audio.note_error();
                         continue;
@@ -433,14 +469,17 @@ pub fn pnc_app() -> Element {
                     vm.set(after);
                     status_fields.set(coord.status_fields().to_vec());
                     my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
-                            my_actions_left.set(has_actions_left(coord.replica(), single));
+                    my_actions_left.set(has_actions_left(coord.replica(), single));
                 }
             }
         }
     });
 
     let view = vm();
-    let room_name = view.as_ref().map(|v| v.status.location_name.clone()).unwrap_or_default();
+    let room_name = view
+        .as_ref()
+        .map(|v| v.status.location_name.clone())
+        .unwrap_or_default();
     let finished = view.as_ref().map(|v| v.finished).unwrap_or(false);
 
     rsx! {
@@ -653,13 +692,21 @@ fn offer(
         return;
     }
     if actions.len() == 1 {
-        if let ActionDescriptor::Intent { intent: Intent::Move { .. }, .. } = &actions[0] {
+        if let ActionDescriptor::Intent {
+            intent: Intent::Move { .. },
+            ..
+        } = &actions[0]
+        {
             driver.send(PncAction::Run(actions[0].clone()));
             return;
         }
     }
     let coords = e.client_coordinates();
-    menu.set(Some(ActionMenu { actions: actions.to_vec(), x: coords.x, y: coords.y }));
+    menu.set(Some(ActionMenu {
+        actions: actions.to_vec(),
+        x: coords.x,
+        y: coords.y,
+    }));
 }
 
 /// The CSS class for a campaign status field by its (optional) emphasis.
@@ -704,7 +751,11 @@ fn status_view(view: Option<&ViewModel>, fields: &[StatusField]) -> Element {
 /// The crafting panel: the shared material pool readout plus a button per known recipe (disabled
 /// until the pool can afford it). Forging dispatches a free `Craft` intent through the shared driver.
 /// Hidden entirely when the campaign has no recipes.
-fn crafting_view(view: Option<&ViewModel>, finished: bool, driver: Coroutine<PncAction>) -> Element {
+fn crafting_view(
+    view: Option<&ViewModel>,
+    finished: bool,
+    driver: Coroutine<PncAction>,
+) -> Element {
     let Some(v) = view else { return rsx! {} };
     if v.recipes.is_empty() && v.materials.is_empty() {
         return rsx! {};

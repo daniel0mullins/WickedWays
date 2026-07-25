@@ -25,7 +25,9 @@ use wickedways_core::world::view::ViewModel;
 use crate::ambient::AmbientBed;
 use crate::audio::{error_sound, sound_for_mob_attack};
 use crate::audio_engine::AudioEngine;
-use crate::audio_pack::{default_chiptune_pack, default_director, AudioDirector, CampaignAudio, SoundPack, SoundSpec};
+use crate::audio_pack::{
+    default_chiptune_pack, default_director, AudioDirector, CampaignAudio, SoundPack, SoundSpec,
+};
 
 /// The session-lived audio orchestrator. One per surface; created disabled.
 pub struct AudioRuntime {
@@ -45,7 +47,10 @@ impl AudioRuntime {
         let (make_director, packs) = match audio {
             Some(a) if !a.soundpacks.is_empty() => (a.make_director, a.soundpacks),
             Some(a) => (a.make_director, vec![default_chiptune_pack()]),
-            None => (default_director as fn() -> Box<dyn AudioDirector>, vec![default_chiptune_pack()]),
+            None => (
+                default_director as fn() -> Box<dyn AudioDirector>,
+                vec![default_chiptune_pack()],
+            ),
         };
         let director = make_director();
         Self {
@@ -162,7 +167,10 @@ mod tests {
 
     #[test]
     fn the_default_runtime_lists_the_chiptune_pack() {
-        assert_eq!(AudioRuntime::for_campaign(None).soundpacks(), vec![("chiptune", "Chiptune")]);
+        assert_eq!(
+            AudioRuntime::for_campaign(None).soundpacks(),
+            vec![("chiptune", "Chiptune")]
+        );
     }
 
     #[test]
@@ -184,7 +192,11 @@ mod tests {
         // While disabled these must never touch Web Audio (so they're safe on the host target).
         let rt = AudioRuntime::for_campaign(None);
         rt.note_error();
-        rt.play_mob_attack(&MobAttack { name: "Wraith".into(), stat: wickedways_core::StatType::Health, amount: 3.0 });
+        rt.play_mob_attack(&MobAttack {
+            name: "Wraith".into(),
+            stat: wickedways_core::StatType::Health,
+            amount: 3.0,
+        });
     }
 
     #[test]

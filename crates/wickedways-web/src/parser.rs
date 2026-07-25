@@ -71,17 +71,41 @@ fn is_stop(w: &str) -> bool {
 fn is_noun_verb(verb: &str) -> bool {
     matches!(
         verb,
-        "take" | "get" | "drop" | "attack" | "kill" | "hit" | "equip" | "wear" | "wield" | "light"
-            | "unequip" | "remove" | "extinguish" | "use" | "open"
-            | "harvest" | "scavenge" | "gather" | "craft" | "forge" | "make"
-            | "repair" | "mend" | "fix" | "destroy" | "scrap" | "break"
+        "take"
+            | "get"
+            | "drop"
+            | "attack"
+            | "kill"
+            | "hit"
+            | "equip"
+            | "wear"
+            | "wield"
+            | "light"
+            | "unequip"
+            | "remove"
+            | "extinguish"
+            | "use"
+            | "open"
+            | "harvest"
+            | "scavenge"
+            | "gather"
+            | "craft"
+            | "forge"
+            | "make"
+            | "repair"
+            | "mend"
+            | "fix"
+            | "destroy"
+            | "scrap"
+            | "break"
     )
 }
 
 /// A verb needing a resolved noun → an `Intent`, or an error string.
 fn noun_verb(verb: &str, t: &ScopeEntity) -> Option<Result<Intent, String>> {
     let id = t.id.clone();
-    let carry_err = || Err("That's not something you can carry — try taking what's inside it.".to_string());
+    let carry_err =
+        || Err("That's not something you can carry — try taking what's inside it.".to_string());
     Some(match verb {
         "take" | "get" => {
             if t.kind == "loot" {
@@ -191,18 +215,29 @@ pub fn parse(input: &str, scope: &[ScopeEntity]) -> ParseResult {
             return ParseResult::Error(format!("{verb} to whom?"));
         }
         return resolve_then(verb, &target, scope, |t| {
-            ParseResult::Intent(Intent::Talk { npc_id: t.id.clone(), prompt: prompt.clone() })
+            ParseResult::Intent(Intent::Talk {
+                npc_id: t.id.clone(),
+                prompt: prompt.clone(),
+            })
         });
     }
 
-    let noun_phrase = tokens.iter().skip(1).filter(|t| !is_stop(t)).copied().collect::<Vec<_>>().join(" ");
+    let noun_phrase = tokens
+        .iter()
+        .skip(1)
+        .filter(|t| !is_stop(t))
+        .copied()
+        .collect::<Vec<_>>()
+        .join(" ");
 
     // examine / look-at / read — resolve then examine; bare `look`/`l` is the room query.
     if matches!(verb, "examine" | "x" | "look-at" | "read" | "look" | "l") {
         if noun_phrase.is_empty() {
             return ParseResult::Query(Query::Look);
         }
-        return resolve_then(verb, &noun_phrase, scope, |t| ParseResult::Examine(t.clone()));
+        return resolve_then(verb, &noun_phrase, scope, |t| {
+            ParseResult::Examine(t.clone())
+        });
     }
 
     // Noun verbs (take/drop/attack/…).
@@ -237,9 +272,16 @@ fn verb_targets(verb: &str, kind: &str) -> bool {
 /// Resolve `phrase` against the `verb`-relevant subset of `scope`; 0 → error, >1 → ambiguous,
 /// 1 → `build`. Filtering by verb before counting is what keeps a recipe and a same-named item from
 /// reading as ambiguous.
-fn resolve_then(verb: &str, phrase: &str, scope: &[ScopeEntity], build: impl Fn(&ScopeEntity) -> ParseResult) -> ParseResult {
-    let matches: Vec<&ScopeEntity> =
-        resolve(phrase, scope).into_iter().filter(|e| verb_targets(verb, &e.kind)).collect();
+fn resolve_then(
+    verb: &str,
+    phrase: &str,
+    scope: &[ScopeEntity],
+    build: impl Fn(&ScopeEntity) -> ParseResult,
+) -> ParseResult {
+    let matches: Vec<&ScopeEntity> = resolve(phrase, scope)
+        .into_iter()
+        .filter(|e| verb_targets(verb, &e.kind))
+        .collect();
     match matches.len() {
         0 => ParseResult::Error("You don't see that here.".into()),
         1 => build(matches[0]),
@@ -259,7 +301,9 @@ fn resolve<'a>(phrase: &str, scope: &'a [ScopeEntity]) -> Vec<&'a ScopeEntity> {
     let partial = scope
         .iter()
         .filter(|e| {
-            e.aliases.iter().any(|a| a.contains(phrase) || phrase.contains(a.as_str()))
+            e.aliases
+                .iter()
+                .any(|a| a.contains(phrase) || phrase.contains(a.as_str()))
                 || e.name.to_lowercase().contains(phrase)
         })
         .collect();
@@ -268,7 +312,10 @@ fn resolve<'a>(phrase: &str, scope: &'a [ScopeEntity]) -> Vec<&'a ScopeEntity> {
 
 fn dedupe(entities: Vec<&ScopeEntity>) -> Vec<&ScopeEntity> {
     let mut seen = std::collections::HashSet::new();
-    entities.into_iter().filter(|e| seen.insert(e.id.clone())).collect()
+    entities
+        .into_iter()
+        .filter(|e| seen.insert(e.id.clone()))
+        .collect()
 }
 
 /// Pull the first `"…"` segment from raw input: its trimmed contents (None if empty/absent) and the
@@ -281,7 +328,14 @@ fn extract_quoted_prompt(input: &str) -> (Option<String>, String) {
             let mut remainder = String::with_capacity(input.len());
             remainder.push_str(&input[..open]);
             remainder.push_str(&input[close + 1..]);
-            return (if prompt.is_empty() { None } else { Some(prompt) }, remainder);
+            return (
+                if prompt.is_empty() {
+                    None
+                } else {
+                    Some(prompt)
+                },
+                remainder,
+            );
         }
     }
     (None, input.to_string())
@@ -306,7 +360,8 @@ mod tests {
             destroyable: None,
             damaged: None,
             defeated: None,
-            talkable: None, player: None,
+            talkable: None,
+            player: None,
         }
     }
 
@@ -320,23 +375,47 @@ mod tests {
 
     #[test]
     fn bare_direction_and_go_move() {
-        assert_eq!(parse("north", &[]), ParseResult::Intent(Intent::Move { dir: Direction::North }));
-        assert_eq!(parse("n", &[]), ParseResult::Intent(Intent::Move { dir: Direction::North }));
-        assert_eq!(parse("go west", &[]), ParseResult::Intent(Intent::Move { dir: Direction::West }));
+        assert_eq!(
+            parse("north", &[]),
+            ParseResult::Intent(Intent::Move {
+                dir: Direction::North
+            })
+        );
+        assert_eq!(
+            parse("n", &[]),
+            ParseResult::Intent(Intent::Move {
+                dir: Direction::North
+            })
+        );
+        assert_eq!(
+            parse("go west", &[]),
+            ParseResult::Intent(Intent::Move {
+                dir: Direction::West
+            })
+        );
         assert_eq!(parse("go", &[]), ParseResult::Error("Go where?".into()));
     }
 
     #[test]
     fn empty_input_and_unknown_verb() {
-        assert_eq!(parse("   ", &[]), ParseResult::Error("Say something.".into()));
-        assert_eq!(parse("frobnicate", &[]), ParseResult::Error("I don't know how to \"frobnicate\".".into()));
+        assert_eq!(
+            parse("   ", &[]),
+            ParseResult::Error("Say something.".into())
+        );
+        assert_eq!(
+            parse("frobnicate", &[]),
+            ParseResult::Error("I don't know how to \"frobnicate\".".into())
+        );
     }
 
     #[test]
     fn meta_and_queries() {
         assert_eq!(parse("save", &[]), ParseResult::Meta(Meta::Save));
         assert_eq!(parse("map", &[]), ParseResult::Meta(Meta::Map));
-        assert_eq!(parse("inventory", &[]), ParseResult::Query(Query::Inventory));
+        assert_eq!(
+            parse("inventory", &[]),
+            ParseResult::Query(Query::Inventory)
+        );
         assert_eq!(parse("i", &[]), ParseResult::Query(Query::Inventory));
         assert_eq!(parse("exits", &[]), ParseResult::Query(Query::Exits));
         assert_eq!(parse("look", &[]), ParseResult::Query(Query::Look));
@@ -346,25 +425,57 @@ mod tests {
     #[test]
     fn noun_verbs_resolve_the_target() {
         let s = scope();
-        assert_eq!(parse("attack rat", &s), ParseResult::Intent(Intent::Attack { target_id: "m:rat".into() }));
-        assert_eq!(parse("take torch", &s), ParseResult::Intent(Intent::Take { target_id: "i:torch".into() }));
-        assert_eq!(parse("take the torch", &s), ParseResult::Intent(Intent::Take { target_id: "i:torch".into() }));
-        assert_eq!(parse("wield brand", &s), ParseResult::Intent(Intent::Equip { target_id: "i:torch".into() }));
-        assert_eq!(parse("open chest", &s), ParseResult::Intent(Intent::Open { target_id: "l:chest".into() }));
+        assert_eq!(
+            parse("attack rat", &s),
+            ParseResult::Intent(Intent::Attack {
+                target_id: "m:rat".into()
+            })
+        );
+        assert_eq!(
+            parse("take torch", &s),
+            ParseResult::Intent(Intent::Take {
+                target_id: "i:torch".into()
+            })
+        );
+        assert_eq!(
+            parse("take the torch", &s),
+            ParseResult::Intent(Intent::Take {
+                target_id: "i:torch".into()
+            })
+        );
+        assert_eq!(
+            parse("wield brand", &s),
+            ParseResult::Intent(Intent::Equip {
+                target_id: "i:torch".into()
+            })
+        );
+        assert_eq!(
+            parse("open chest", &s),
+            ParseResult::Intent(Intent::Open {
+                target_id: "l:chest".into()
+            })
+        );
     }
 
     #[test]
     fn loot_cannot_be_taken_and_items_cannot_be_opened() {
         let s = scope();
-        assert!(matches!(parse("take chest", &s), ParseResult::Error(m) if m.contains("can carry")));
-        assert!(matches!(parse("open torch", &s), ParseResult::Error(m) if m == "You can't open that."));
+        assert!(
+            matches!(parse("take chest", &s), ParseResult::Error(m) if m.contains("can carry"))
+        );
+        assert!(
+            matches!(parse("open torch", &s), ParseResult::Error(m) if m == "You can't open that.")
+        );
     }
 
     #[test]
     fn missing_or_unseen_noun() {
         let s = scope();
         assert_eq!(parse("take", &s), ParseResult::Error("take what?".into()));
-        assert_eq!(parse("attack ghost", &s), ParseResult::Error("You don't see that here.".into()));
+        assert_eq!(
+            parse("attack ghost", &s),
+            ParseResult::Error("You don't see that here.".into())
+        );
     }
 
     #[test]
@@ -372,12 +483,18 @@ mod tests {
         let s = scope();
         assert_eq!(parse("look", &s), ParseResult::Query(Query::Look));
         assert_eq!(parse("examine rat", &s), ParseResult::Examine(s[0].clone()));
-        assert_eq!(parse("look at torch", &s), ParseResult::Examine(s[1].clone()));
+        assert_eq!(
+            parse("look at torch", &s),
+            ParseResult::Examine(s[1].clone())
+        );
     }
 
     #[test]
     fn ambiguous_when_two_entities_share_a_substring() {
-        let s = vec![ent("k:1", "Brass Key", "item", &["key"]), ent("k:2", "Iron Key", "item", &["key"])];
+        let s = vec![
+            ent("k:1", "Brass Key", "item", &["key"]),
+            ent("k:2", "Iron Key", "item", &["key"]),
+        ];
         match parse("take key", &s) {
             ParseResult::Ambiguous(c) => assert_eq!(c.len(), 2),
             other => panic!("expected ambiguous, got {other:?}"),
@@ -391,10 +508,30 @@ mod tests {
             ent("blade", "Iron Blade", "recipe", &["iron blade"]),
             ent("i:sword", "Sword", "item", &["sword"]),
         ];
-        assert_eq!(parse("harvest vein", &s), ParseResult::Intent(Intent::Harvest { target_id: "cache:vein".into() }));
-        assert_eq!(parse("craft iron blade", &s), ParseResult::Intent(Intent::Craft { recipe_id: "blade".into() }));
-        assert_eq!(parse("repair sword", &s), ParseResult::Intent(Intent::Repair { target_id: "i:sword".into() }));
-        assert_eq!(parse("scrap sword", &s), ParseResult::Intent(Intent::Destroy { target_id: "i:sword".into() }));
+        assert_eq!(
+            parse("harvest vein", &s),
+            ParseResult::Intent(Intent::Harvest {
+                target_id: "cache:vein".into()
+            })
+        );
+        assert_eq!(
+            parse("craft iron blade", &s),
+            ParseResult::Intent(Intent::Craft {
+                recipe_id: "blade".into()
+            })
+        );
+        assert_eq!(
+            parse("repair sword", &s),
+            ParseResult::Intent(Intent::Repair {
+                target_id: "i:sword".into()
+            })
+        );
+        assert_eq!(
+            parse("scrap sword", &s),
+            ParseResult::Intent(Intent::Destroy {
+                target_id: "i:sword".into()
+            })
+        );
     }
 
     #[test]
@@ -405,11 +542,19 @@ mod tests {
             ent("m:rat", "Rat", "occupant", &["rat"]),
         ];
         // A virtual target of the wrong verb-namespace simply isn't in scope for that verb.
-        assert!(matches!(parse("harvest sword", &s), ParseResult::Error(m) if m.contains("don't see")));
-        assert!(matches!(parse("craft sword", &s), ParseResult::Error(m) if m.contains("don't see")));
-        assert!(matches!(parse("repair vein", &s), ParseResult::Error(m) if m.contains("don't see")));
+        assert!(
+            matches!(parse("harvest sword", &s), ParseResult::Error(m) if m.contains("don't see"))
+        );
+        assert!(
+            matches!(parse("craft sword", &s), ParseResult::Error(m) if m.contains("don't see"))
+        );
+        assert!(
+            matches!(parse("repair vein", &s), ParseResult::Error(m) if m.contains("don't see"))
+        );
         // A physical target of the wrong kind still gets the specific reason from `noun_verb`.
-        assert!(matches!(parse("repair rat", &s), ParseResult::Error(m) if m.contains("can't repair")));
+        assert!(
+            matches!(parse("repair rat", &s), ParseResult::Error(m) if m.contains("can't repair"))
+        );
     }
 
     #[test]
@@ -418,12 +563,32 @@ mod tests {
         // in scope. A physical verb must resolve the item without ambiguity; `craft` still finds the
         // recipe.
         let s = vec![
-            ent("item:charm-1", "Ward Charm", "item", &["ward charm", "charm"]),
+            ent(
+                "item:charm-1",
+                "Ward Charm",
+                "item",
+                &["ward charm", "charm"],
+            ),
             ent("ward-charm", "Ward Charm", "recipe", &["ward charm"]),
         ];
-        assert_eq!(parse("equip ward charm", &s), ParseResult::Intent(Intent::Equip { target_id: "item:charm-1".into() }));
-        assert_eq!(parse("use charm", &s), ParseResult::Intent(Intent::Use { target_id: "item:charm-1".into() }));
-        assert_eq!(parse("craft ward charm", &s), ParseResult::Intent(Intent::Craft { recipe_id: "ward-charm".into() }));
+        assert_eq!(
+            parse("equip ward charm", &s),
+            ParseResult::Intent(Intent::Equip {
+                target_id: "item:charm-1".into()
+            })
+        );
+        assert_eq!(
+            parse("use charm", &s),
+            ParseResult::Intent(Intent::Use {
+                target_id: "item:charm-1".into()
+            })
+        );
+        assert_eq!(
+            parse("craft ward charm", &s),
+            ParseResult::Intent(Intent::Craft {
+                recipe_id: "ward-charm".into()
+            })
+        );
     }
 
     #[test]
@@ -431,12 +596,21 @@ mod tests {
         let s = vec![ent("npc:keeper", "Keeper", "occupant", &["keeper"])];
         assert_eq!(
             parse("talk to keeper \"how do I get out\"", &s),
-            ParseResult::Intent(Intent::Talk { npc_id: "npc:keeper".into(), prompt: Some("how do I get out".into()) }),
+            ParseResult::Intent(Intent::Talk {
+                npc_id: "npc:keeper".into(),
+                prompt: Some("how do I get out".into())
+            }),
         );
         assert_eq!(
             parse("talk keeper", &s),
-            ParseResult::Intent(Intent::Talk { npc_id: "npc:keeper".into(), prompt: None }),
+            ParseResult::Intent(Intent::Talk {
+                npc_id: "npc:keeper".into(),
+                prompt: None
+            }),
         );
-        assert_eq!(parse("talk", &s), ParseResult::Error("talk to whom?".into()));
+        assert_eq!(
+            parse("talk", &s),
+            ParseResult::Error("talk to whom?".into())
+        );
     }
 }

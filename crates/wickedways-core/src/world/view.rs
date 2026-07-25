@@ -241,14 +241,16 @@ fn item_scope_entity(
     })
 }
 
-
 impl World {
     /// Returns `true` if the character is currently KO.
     /// Mirrors `o.status.includes(Status.KO)` in `viewmodel.ts`.
     pub fn is_ko(&self, id: &crate::world::ids::CharacterId) -> bool {
         self.characters
             .get(id)
-            .map(|c| c.afflictions.is_active(crate::world::afflictions::Status::Ko))
+            .map(|c| {
+                c.afflictions
+                    .is_active(crate::world::afflictions::Status::Ko)
+            })
             .unwrap_or(false)
     }
 
@@ -257,7 +259,10 @@ impl World {
     /// the dark); mobs don't act in Phase 1, so this is exercised by unit tests here
     /// and by the differential gate in sub-plan 6 (mob turns).
     pub fn sees_in_dark(&self, actor: &crate::world::ids::CharacterId) -> bool {
-        self.characters.get(actor).and_then(|c| c.light_averse).unwrap_or(false)
+        self.characters
+            .get(actor)
+            .and_then(|c| c.light_averse)
+            .unwrap_or(false)
     }
 
     /// Build the widened ViewModel (sub-plan 3a).
@@ -308,9 +313,10 @@ impl World {
                 .exits
                 .get(exit_id)
                 .ok_or_else(|| ProceduralViolation("exit missing".into()))?;
-            let dir: crate::world::direction::Direction =
-                serde_json::from_value(serde_json::Value::String(dir_key.clone()))
-                    .map_err(|_| ProceduralViolation(format!("unknown direction key '{dir_key}'")))?;
+            let dir: crate::world::direction::Direction = serde_json::from_value(
+                serde_json::Value::String(dir_key.clone()),
+            )
+            .map_err(|_| ProceduralViolation(format!("unknown direction key '{dir_key}'")))?;
             let passable = match &exit.behavior_key {
                 None => true,
                 Some(key) => {
@@ -320,9 +326,7 @@ impl World {
                     // for both native and scripted (catalog) doors.
                     let resolved = crate::world::exits::resolve_exit_behavior(key, cat)
                         .ok_or_else(|| {
-                            ProceduralViolation(format!(
-                                "Exit behavior '{key}' is not registered."
-                            ))
+                            ProceduralViolation(format!("Exit behavior '{key}' is not registered."))
                         })?;
                     resolved.as_behavior().can_pass(&actor_view, &exit.state)
                 }
@@ -331,7 +335,11 @@ impl World {
                 let a = exit.endpoint_ids[0].clone();
                 let b = exit.endpoint_ids[1].clone();
                 let dest = if a == room_id { b } else { a };
-                let to_name = self.rooms.get(&dest).map(|r| r.name.clone()).unwrap_or_default();
+                let to_name = self
+                    .rooms
+                    .get(&dest)
+                    .map(|r| r.name.clone())
+                    .unwrap_or_default();
                 exits.push(ExitView { dir, to_name });
             } else {
                 locked_doors.push(LockedDoorView {
@@ -347,9 +355,7 @@ impl World {
             .iter()
             // Drop the active character, and any invisible occupant (a hidden NPC):
             // absent from `occupants` and, since `scope` reuses this vec, from `scope`.
-            .filter(|id| {
-                *id != &active_id && self.characters.get(id).is_none_or(|c| c.visible)
-            })
+            .filter(|id| *id != &active_id && self.characters.get(id).is_none_or(|c| c.visible))
             .map(|id| {
                 let name = self
                     .characters
@@ -357,10 +363,23 @@ impl World {
                     .map(|c| c.name.clone())
                     .unwrap_or_default();
                 let health = self.effective_stat(id, StatType::Health, cat);
-                let is_kind = |k: CharacterKind| self.characters.get(id).map(|c| c.kind == k).unwrap_or(false);
-                let talkable = if is_kind(CharacterKind::Npc) { Some(true) } else { None };
+                let is_kind = |k: CharacterKind| {
+                    self.characters
+                        .get(id)
+                        .map(|c| c.kind == k)
+                        .unwrap_or(false)
+                };
+                let talkable = if is_kind(CharacterKind::Npc) {
+                    Some(true)
+                } else {
+                    None
+                };
                 // Mark co-located party members so surfaces can show who's in the room with you.
-                let player = if is_kind(CharacterKind::Player) { Some(true) } else { None };
+                let player = if is_kind(CharacterKind::Player) {
+                    Some(true)
+                } else {
+                    None
+                };
                 ScopeEntity {
                     id: id.0.clone(),
                     name: name.clone(),
@@ -549,7 +568,12 @@ impl World {
             .as_object()
             .map(|obj| {
                 obj.iter()
-                    .filter_map(|(k, v)| v.as_f64().map(|q| MaterialView { component: k.clone(), quantity: q as i64 }))
+                    .filter_map(|(k, v)| {
+                        v.as_f64().map(|q| MaterialView {
+                            component: k.clone(),
+                            quantity: q as i64,
+                        })
+                    })
                     .collect()
             })
             .unwrap_or_default();
@@ -610,14 +634,12 @@ impl World {
 mod tests {
     // ── widened ViewModel (sub-plan 3a) tests ─────────────────────────────────
 
-    use crate::world::descriptor::{
-        Catalog, ItemDescriptor, ItemProperties, ItemType, SlotKind,
-    };
+    use crate::stats::StatType;
+    use crate::world::descriptor::{Catalog, ItemDescriptor, ItemProperties, ItemType, SlotKind};
     use crate::world::ids::{CharacterId, ItemId, LootId, RoomId};
     use crate::world::snapshot::{
         CharacterKind, CharacterSnapshot, InventorySnapshot, LootSnapshot, Stats,
     };
-    use crate::stats::StatType;
     use alloc::collections::{BTreeMap, BTreeSet};
     use serde_json::{json, Value};
 
@@ -697,9 +719,19 @@ mod tests {
         let mut items = BTreeMap::new();
         items.insert("items/sword".into(), sword_descriptor());
         items.insert("items/potion".into(), potion_descriptor());
-        let mut aliases: BTreeMap<alloc::string::String, alloc::vec::Vec<alloc::string::String>> = BTreeMap::new();
-        aliases.insert("items/sword".into(), alloc::vec!["sword".into(), "blade".into()]);
-        Catalog { items, aliases, behaviors: Default::default(), formations: Default::default(), recipes: Default::default() }
+        let mut aliases: BTreeMap<alloc::string::String, alloc::vec::Vec<alloc::string::String>> =
+            BTreeMap::new();
+        aliases.insert(
+            "items/sword".into(),
+            alloc::vec!["sword".into(), "blade".into()],
+        );
+        Catalog {
+            items,
+            aliases,
+            behaviors: Default::default(),
+            formations: Default::default(),
+            recipes: Default::default(),
+        }
     }
 
     /// Build a world that has:
@@ -715,21 +747,29 @@ mod tests {
         let npc_id = char_id("npc1");
         let start_room = room_id("start");
         let chest_id = loot_id("chest1");
-        let sword1_id = item_id("sword-1");  // in loot chest
-        let sword2_id = item_id("sword-2");  // equipped by pc
+        let sword1_id = item_id("sword-1"); // in loot chest
+        let sword2_id = item_id("sword-2"); // equipped by pc
         let potion1_id = item_id("potion-1"); // in inventory
-        let key1_id = item_id("key-1");       // key in inventory
+        let key1_id = item_id("key-1"); // key in inventory
 
         // Character: NPC
         let npc = CharacterSnapshot {
             kind: CharacterKind::Mob,
             id: npc_id.clone(),
             name: "Wraith".into(),
-            stats: Stats { energy: 2.0, sanity: 0.0, health: 3.0 },
+            stats: Stats {
+                energy: 2.0,
+                sanity: 0.0,
+                health: 3.0,
+            },
             actions_per_round: 1,
             actions_this_round: 0,
             current_room_id: Some(start_room.clone()),
-            inventory: InventorySnapshot { slots: 0, item_ids: alloc::vec![], key_ids: alloc::vec![] },
+            inventory: InventorySnapshot {
+                slots: 0,
+                item_ids: alloc::vec![],
+                key_ids: alloc::vec![],
+            },
             equipment: BTreeMap::new(),
             history: alloc::vec![],
             archetype_immunities: alloc::vec![],
@@ -753,7 +793,11 @@ mod tests {
             kind: CharacterKind::Player,
             id: pc_id.clone(),
             name: "Heir".into(),
-            stats: Stats { energy: 5.0, sanity: 7.0, health: 10.0 },
+            stats: Stats {
+                energy: 5.0,
+                sanity: 7.0,
+                health: 10.0,
+            },
             actions_per_round: 3,
             actions_this_round: 0,
             current_room_id: Some(start_room.clone()),
@@ -891,7 +935,12 @@ mod tests {
         let v = w.view(&cat, &BTreeSet::new()).unwrap();
 
         // Healing Potion: not equippable, usable, no lore, droppable:Some(false) => false
-        let potion = v.inventory.items.iter().find(|i| i.name == "Healing Potion").unwrap();
+        let potion = v
+            .inventory
+            .items
+            .iter()
+            .find(|i| i.name == "Healing Potion")
+            .unwrap();
         assert_eq!(potion.kind, "item");
         assert_eq!(potion.equippable, Some(false));
         assert_eq!(potion.usable, Some(true));
@@ -907,7 +956,11 @@ mod tests {
 
         // Iron Sword in loot chest: droppable:None => true (None != Some(false)),
         // equippable:true, usable:false, has_lore:true (lore is Some("A trusty blade."))
-        let sword = v.loot[0].contents.iter().find(|i| i.name == "Iron Sword").unwrap();
+        let sword = v.loot[0]
+            .contents
+            .iter()
+            .find(|i| i.name == "Iron Sword")
+            .unwrap();
         assert_eq!(sword.kind, "item");
         assert_eq!(sword.equippable, Some(true));
         assert_eq!(sword.usable, Some(false));
@@ -922,7 +975,12 @@ mod tests {
         let v = w.view(&cat, &BTreeSet::new()).unwrap();
 
         // inventory has potion (no aliases in catalog for potion) — just lowercased name
-        let potion = v.inventory.items.iter().find(|i| i.name == "Healing Potion").unwrap();
+        let potion = v
+            .inventory
+            .items
+            .iter()
+            .find(|i| i.name == "Healing Potion")
+            .unwrap();
         assert_eq!(potion.aliases, alloc::vec!["healing potion"]);
     }
 
@@ -942,7 +1000,11 @@ mod tests {
         assert!(sword.aliases.contains(&"sword".into()));
         assert!(sword.aliases.contains(&"blade".into()));
         // "sword" should not appear twice even if in catalog and name-lower would match
-        let count = sword.aliases.iter().filter(|a| a.as_str() == "sword").count();
+        let count = sword
+            .aliases
+            .iter()
+            .filter(|a| a.as_str() == "sword")
+            .count();
         assert_eq!(count, 1);
     }
 
@@ -1023,11 +1085,23 @@ mod tests {
         snap.name = "Rowan".into();
         snap.kind = CharacterKind::Player;
         w.characters.insert(rowan.clone(), snap);
-        w.rooms.get_mut(&room_id("start")).unwrap().occupant_ids.push(rowan);
+        w.rooms
+            .get_mut(&room_id("start"))
+            .unwrap()
+            .occupant_ids
+            .push(rowan);
 
         let v = w.view(&cat, &BTreeSet::new()).unwrap();
-        let other = v.occupants.iter().find(|o| o.name == "Rowan").expect("the co-located player appears");
-        assert_eq!(other.player, Some(true), "a co-located party member is marked as a player");
+        let other = v
+            .occupants
+            .iter()
+            .find(|o| o.name == "Rowan")
+            .expect("the co-located player appears");
+        assert_eq!(
+            other.player,
+            Some(true),
+            "a co-located party member is marked as a player"
+        );
         // A mob sharing the room is not a player.
         let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
         assert_eq!(wraith.player, None, "a mob is not marked as a player");
@@ -1080,17 +1154,20 @@ mod tests {
         // We have: 1 occupant (Wraith), 1 loot content (Iron Sword in chest), 1 inv item (Healing Potion),
         //          1 key (Brass Key), 1 loot container (chest1)
         assert_eq!(v.scope.len(), 5);
-        assert_eq!(v.scope[0].kind, "occupant");  // Wraith
+        assert_eq!(v.scope[0].kind, "occupant"); // Wraith
         assert_eq!(v.scope[0].name, "Wraith");
-        assert_eq!(v.scope[1].kind, "item");       // Iron Sword from chest
+        assert_eq!(v.scope[1].kind, "item"); // Iron Sword from chest
         assert_eq!(v.scope[1].name, "Iron Sword");
-        assert_eq!(v.scope[2].kind, "item");       // Healing Potion from inventory
+        assert_eq!(v.scope[2].kind, "item"); // Healing Potion from inventory
         assert_eq!(v.scope[2].name, "Healing Potion");
-        assert_eq!(v.scope[3].kind, "item");       // Brass Key
+        assert_eq!(v.scope[3].kind, "item"); // Brass Key
         assert_eq!(v.scope[3].name, "Brass Key");
-        assert_eq!(v.scope[4].kind, "loot");       // chest container
+        assert_eq!(v.scope[4].kind, "loot"); // chest container
         assert_eq!(v.scope[4].name, "An old chest");
-        assert_eq!(v.scope[4].aliases, alloc::vec!["chest", "box", "drawer", "container"]);
+        assert_eq!(
+            v.scope[4].aliases,
+            alloc::vec!["chest", "box", "drawer", "container"]
+        );
     }
 
     /// Task 6: `defeated` on occupant (character) entities, not on items.
@@ -1109,20 +1186,35 @@ mod tests {
         {
             let v = w.view(&cat, &BTreeSet::new()).unwrap();
             let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
-            assert_eq!(wraith.defeated, Some(false), "healthy occupant should have defeated=Some(false)");
+            assert_eq!(
+                wraith.defeated,
+                Some(false),
+                "healthy occupant should have defeated=Some(false)"
+            );
 
             // item entity in scope → defeated: None
             let potion = v.scope.iter().find(|e| e.name == "Healing Potion").unwrap();
-            assert_eq!(potion.defeated, None, "item entity should have defeated=None");
+            assert_eq!(
+                potion.defeated, None,
+                "item entity should have defeated=None"
+            );
         }
 
         // KO the NPC → defeated: Some(true)
         {
             let npc_id = char_id("npc1");
-            w.characters.get_mut(&npc_id).unwrap().afflictions.set_active(Status::Ko, true);
+            w.characters
+                .get_mut(&npc_id)
+                .unwrap()
+                .afflictions
+                .set_active(Status::Ko, true);
             let v = w.view(&cat, &BTreeSet::new()).unwrap();
             let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
-            assert_eq!(wraith.defeated, Some(true), "KO occupant should have defeated=Some(true)");
+            assert_eq!(
+                wraith.defeated,
+                Some(true),
+                "KO occupant should have defeated=Some(true)"
+            );
         }
     }
 
@@ -1139,11 +1231,17 @@ mod tests {
         {
             let v = w.view(&cat, &BTreeSet::new()).unwrap();
             let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
-            assert_eq!(wraith.talkable, None, "a mob occupant should have talkable=None");
+            assert_eq!(
+                wraith.talkable, None,
+                "a mob occupant should have talkable=None"
+            );
 
             // item entity in scope → talkable None
             let potion = v.scope.iter().find(|e| e.name == "Healing Potion").unwrap();
-            assert_eq!(potion.talkable, None, "item entity should have talkable=None");
+            assert_eq!(
+                potion.talkable, None,
+                "item entity should have talkable=None"
+            );
         }
 
         // Turn Wraith into an NPC → talkable Some(true).
@@ -1151,7 +1249,11 @@ mod tests {
             w.characters.get_mut(&npc_id).unwrap().kind = CharacterKind::Npc;
             let v = w.view(&cat, &BTreeSet::new()).unwrap();
             let wraith = v.occupants.iter().find(|o| o.name == "Wraith").unwrap();
-            assert_eq!(wraith.talkable, Some(true), "an NPC occupant should have talkable=Some(true)");
+            assert_eq!(
+                wraith.talkable,
+                Some(true),
+                "an NPC occupant should have talkable=Some(true)"
+            );
             // and in scope too (scope reuses the occupants vec)
             let scoped = v.scope.iter().find(|e| e.name == "Wraith").unwrap();
             assert_eq!(scoped.talkable, Some(true));
@@ -1188,13 +1290,16 @@ mod tests {
         // (alphabetical by direction key), not authoring order, is emitted.
         let mut w = build_world_for_view();
         add_crypt(&mut w);
-        w.exits.insert(ExitId("e1".into()), ExitSnapshot {
-            id: ExitId("e1".into()),
-            endpoint_ids: [room_id("start"), room_id("crypt")],
-            behavior_key: None,
-            name: None,
-            state: Value::Null,
-        });
+        w.exits.insert(
+            ExitId("e1".into()),
+            ExitSnapshot {
+                id: ExitId("e1".into()),
+                endpoint_ids: [room_id("start"), room_id("crypt")],
+                behavior_key: None,
+                name: None,
+                state: Value::Null,
+            },
+        );
         let room = w.rooms.get_mut(&room_id("start")).unwrap();
         room.exits.insert("south".into(), ExitId("e1".into()));
         room.exits.insert("north".into(), ExitId("e1".into()));
@@ -1204,8 +1309,14 @@ mod tests {
         assert_eq!(
             vm.exits,
             alloc::vec![
-                ExitView { dir: Direction::North, to_name: "Crypt".into() },
-                ExitView { dir: Direction::South, to_name: "Crypt".into() },
+                ExitView {
+                    dir: Direction::North,
+                    to_name: "Crypt".into()
+                },
+                ExitView {
+                    dir: Direction::South,
+                    to_name: "Crypt".into()
+                },
             ],
             "alphabetical by direction key"
         );
@@ -1222,9 +1333,17 @@ mod tests {
         let cid = MaterialCacheId("cache:Iron Vein".into());
         w.material_caches.insert(
             cid.clone(),
-            MaterialCacheSnapshot { id: cid.clone(), contents: json!({ "iron": 3 }), depleted: false },
+            MaterialCacheSnapshot {
+                id: cid.clone(),
+                contents: json!({ "iron": 3 }),
+                depleted: false,
+            },
         );
-        w.rooms.get_mut(&room_id("start")).unwrap().material_cache_ids.push(cid);
+        w.rooms
+            .get_mut(&room_id("start"))
+            .unwrap()
+            .material_cache_ids
+            .push(cid);
         // A known recipe + a pool that can afford it.
         w.campaign.known_recipes.push("blade".into());
         w.campaign.materials = json!({ "iron": 5, "salt": 1 });
@@ -1251,12 +1370,21 @@ mod tests {
         assert!(vm.recipes[0].affordable);
         // Materials: sorted by component.
         assert_eq!(
-            vm.materials.iter().map(|m| (m.component.as_str(), m.quantity)).collect::<alloc::vec::Vec<_>>(),
+            vm.materials
+                .iter()
+                .map(|m| (m.component.as_str(), m.quantity))
+                .collect::<alloc::vec::Vec<_>>(),
             alloc::vec![("iron", 5), ("salt", 1)]
         );
         // Both appear in the scope (so the parser can resolve `harvest`/`craft`).
-        assert!(vm.scope.iter().any(|e| e.kind == "cache" && e.name == "Iron Vein"));
-        assert!(vm.scope.iter().any(|e| e.kind == "recipe" && e.name == "Iron Blade"));
+        assert!(vm
+            .scope
+            .iter()
+            .any(|e| e.kind == "cache" && e.name == "Iron Vein"));
+        assert!(vm
+            .scope
+            .iter()
+            .any(|e| e.kind == "recipe" && e.name == "Iron Blade"));
     }
 
     #[test]
@@ -1269,21 +1397,31 @@ mod tests {
         // locked state + no matching key on the PC → can_pass false.
         let mut w = build_world_for_view();
         add_crypt(&mut w);
-        w.exits.insert(ExitId("door".into()), ExitSnapshot {
-            id: ExitId("door".into()),
-            endpoint_ids: [room_id("start"), room_id("crypt")],
-            behavior_key: Some("conformance:keyed-door".into()),
-            name: None, // → "door" fallback (viewmodel.ts:131 `exit.name ?? "door"`)
-            state: json!({ "unlocked": false }),
-        });
-        w.rooms.get_mut(&room_id("start")).unwrap()
-            .exits.insert("north".into(), ExitId("door".into()));
+        w.exits.insert(
+            ExitId("door".into()),
+            ExitSnapshot {
+                id: ExitId("door".into()),
+                endpoint_ids: [room_id("start"), room_id("crypt")],
+                behavior_key: Some("conformance:keyed-door".into()),
+                name: None, // → "door" fallback (viewmodel.ts:131 `exit.name ?? "door"`)
+                state: json!({ "unlocked": false }),
+            },
+        );
+        w.rooms
+            .get_mut(&room_id("start"))
+            .unwrap()
+            .exits
+            .insert("north".into(), ExitId("door".into()));
 
         let vm = w.view(&build_catalog(), &BTreeSet::new()).unwrap();
         assert_eq!(vm.exits, alloc::vec![] as Vec<ExitView>);
-        assert_eq!(vm.locked_doors, alloc::vec![
-            LockedDoorView { name: "door".into(), dir: Direction::North },
-        ]);
+        assert_eq!(
+            vm.locked_doors,
+            alloc::vec![LockedDoorView {
+                name: "door".into(),
+                dir: Direction::North
+            },]
+        );
     }
 
     #[test]
@@ -1291,7 +1429,10 @@ mod tests {
         use crate::world::test_support::world_with_party;
         let mut w = world_with_party(&["pc", "mob"], 10);
         // A light-averse mob sees in the dark; a plain PC does not.
-        w.characters.get_mut(&CharacterId("mob".into())).unwrap().light_averse = Some(true);
+        w.characters
+            .get_mut(&CharacterId("mob".into()))
+            .unwrap()
+            .light_averse = Some(true);
         assert!(w.sees_in_dark(&CharacterId("mob".into())));
         assert!(!w.sees_in_dark(&CharacterId("pc".into())));
     }

@@ -48,7 +48,11 @@ pub fn archetype_options(snapshot: &CampaignSnapshot) -> Vec<ArchetypeOption> {
         .unwrap_or_default()
         .into_iter()
         .map(|a| {
-            let name = if a.name.is_empty() { a.id.clone() } else { a.name };
+            let name = if a.name.is_empty() {
+                a.id.clone()
+            } else {
+                a.name
+            };
             ArchetypeOption { id: a.id, name }
         })
         .collect()
@@ -70,7 +74,12 @@ pub fn build_joining_character(
         .gm_id
         .as_ref()
         .and_then(|gm| snapshot.characters.iter().find(|c| &c.id == gm))
-        .or_else(|| snapshot.characters.iter().find(|c| c.kind == CharacterKind::Player))
+        .or_else(|| {
+            snapshot
+                .characters
+                .iter()
+                .find(|c| c.kind == CharacterKind::Player)
+        })
         .or_else(|| snapshot.characters.first())?;
     let mut c = template.clone();
     c.kind = CharacterKind::Player;
@@ -90,9 +99,14 @@ pub fn build_joining_character(
 /// was chosen — `SelectArchetype` to apply its statline. Both are pre-begin setup.
 pub fn join_commands(character: CharacterSnapshot, archetype_id: Option<&str>) -> Vec<Command> {
     let actor = character.id.clone();
-    let mut cmds = vec![Command::JoinCampaign { character: Box::new(character) }];
+    let mut cmds = vec![Command::JoinCampaign {
+        character: Box::new(character),
+    }];
     if let Some(a) = archetype_id.filter(|s| !s.is_empty()) {
-        cmds.push(Command::SelectArchetype { actor_id: actor, archetype_id: a.to_string() });
+        cmds.push(Command::SelectArchetype {
+            actor_id: actor,
+            archetype_id: a.to_string(),
+        });
     }
     cmds
 }
@@ -197,10 +211,14 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
                 return;
             }
             let cid = character_id_for(&identity);
-            let Some(character) = build_joining_character(&snap, picked, &cid) else { return };
+            let Some(character) = build_joining_character(&snap, picked, &cid) else {
+                return;
+            };
             let arch = archetype();
             let cmds = join_commands(character, (!arch.is_empty()).then_some(arch.as_str()));
-            let Some(t) = transport.borrow().clone() else { return };
+            let Some(t) = transport.borrow().clone() else {
+                return;
+            };
             spawn(async move {
                 for c in cmds {
                     let _ = t.submit_async(c).await;
@@ -212,7 +230,9 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
     let do_start = {
         let transport = transport.clone();
         move |_| {
-            let Some(t) = transport.borrow().clone() else { return };
+            let Some(t) = transport.borrow().clone() else {
+                return;
+            };
             spawn(async move {
                 let _ = t.submit_async(Command::BeginCampaign).await;
             });
@@ -324,7 +344,10 @@ mod tests {
     #[test]
     fn archetype_options_reads_the_campaign_catalogue() {
         let opts = archetype_options(&covenant());
-        assert!(opts.iter().any(|a| a.id == "warden"), "covenant offers the warden archetype, got {opts:?}");
+        assert!(
+            opts.iter().any(|a| a.id == "warden"),
+            "covenant offers the warden archetype, got {opts:?}"
+        );
     }
 
     #[test]
@@ -334,11 +357,20 @@ mod tests {
         assert_eq!(c.kind, CharacterKind::Player);
         assert_eq!(c.id, CharacterId("player:rowan".into()));
         assert_eq!(c.name, "Rowan");
-        assert!(c.archetype_id.is_none(), "no archetype until the player picks one");
-        assert!(c.inventory.item_ids.is_empty() && c.inventory.key_ids.is_empty(), "joiner carries no items");
+        assert!(
+            c.archetype_id.is_none(),
+            "no archetype until the player picks one"
+        );
+        assert!(
+            c.inventory.item_ids.is_empty() && c.inventory.key_ids.is_empty(),
+            "joiner carries no items"
+        );
         // Spawns where the GM host stands — the campaign's entry room (Antechamber).
         let host_room = snap.characters[0].current_room_id.clone();
-        assert_eq!(c.current_room_id, host_room, "joiner spawns at the entry room");
+        assert_eq!(
+            c.current_room_id, host_room,
+            "joiner spawns at the entry room"
+        );
     }
 
     #[test]
@@ -348,13 +380,22 @@ mod tests {
 
         let with = join_commands(c.clone(), Some("warden"));
         assert!(matches!(with[0], Command::JoinCampaign { .. }));
-        assert!(matches!(&with[1], Command::SelectArchetype { archetype_id, .. } if archetype_id == "warden"));
+        assert!(
+            matches!(&with[1], Command::SelectArchetype { archetype_id, .. } if archetype_id == "warden")
+        );
         assert_eq!(with.len(), 2);
 
         let without = join_commands(c, None);
         assert_eq!(without.len(), 1, "no archetype → just the join");
-        let empty = join_commands(build_joining_character(&covenant(), "R", "player:r").unwrap(), Some(""));
-        assert_eq!(empty.len(), 1, "an empty archetype id is treated as no choice");
+        let empty = join_commands(
+            build_joining_character(&covenant(), "R", "player:r").unwrap(),
+            Some(""),
+        );
+        assert_eq!(
+            empty.len(),
+            1,
+            "an empty archetype id is treated as no choice"
+        );
     }
 
     #[test]

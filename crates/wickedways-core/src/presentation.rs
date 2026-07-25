@@ -124,7 +124,10 @@ mod tests {
     fn action_cue_move_serializes_camelcase_tagged() {
         let c = PresentationCue::Action {
             action: ActionKind::Move,
-            actor: EntityRef { id: "c1".to_string(), name: "Heir".to_string() },
+            actor: EntityRef {
+                id: "c1".to_string(),
+                name: "Heir".to_string(),
+            },
             sound: None,
         };
         assert_eq!(
@@ -137,35 +140,66 @@ mod tests {
     #[test]
     fn visibility_cue_serializes() {
         let c = PresentationCue::Visibility {
-            room: EntityRef { id: "r1".to_string(), name: "Cellar".to_string() },
+            room: EntityRef {
+                id: "r1".to_string(),
+                name: "Cellar".to_string(),
+            },
             lit: false,
         };
-        assert_eq!(json(&c), serde_json::json!({
-            "kind": "visibility", "room": { "id": "r1", "name": "Cellar" }, "lit": false }));
+        assert_eq!(
+            json(&c),
+            serde_json::json!({
+            "kind": "visibility", "room": { "id": "r1", "name": "Cellar" }, "lit": false })
+        );
     }
 
     #[test]
     fn mechanic_cue_serializes_with_text_only() {
-        let c = PresentationCue::Mechanic { cue: MechanicCue { text: Some("You can't go that way.".to_string()), sound: None } };
-        assert_eq!(json(&c), serde_json::json!({
-            "kind": "mechanic", "cue": { "text": "You can't go that way." } }));
+        let c = PresentationCue::Mechanic {
+            cue: MechanicCue {
+                text: Some("You can't go that way.".to_string()),
+                sound: None,
+            },
+        };
+        assert_eq!(
+            json(&c),
+            serde_json::json!({
+            "kind": "mechanic", "cue": { "text": "You can't go that way." } })
+        );
     }
 
     #[test]
     fn resolution_cue_serializes_timeout() {
-        let c = PresentationCue::Resolution { outcome: CampaignOutcome::TimedOut, reason: None, narration: None };
-        assert_eq!(json(&c), serde_json::json!({ "kind": "resolution", "outcome": "timed-out" }));
+        let c = PresentationCue::Resolution {
+            outcome: CampaignOutcome::TimedOut,
+            reason: None,
+            narration: None,
+        };
+        assert_eq!(
+            json(&c),
+            serde_json::json!({ "kind": "resolution", "outcome": "timed-out" })
+        );
     }
 
     #[test]
     fn campaign_outcome_serializes_kebab() {
-        assert_eq!(serde_json::to_value(CampaignOutcome::TimedOut).unwrap(), serde_json::json!("timed-out"));
-        assert_eq!(serde_json::to_value(CampaignOutcome::Ongoing).unwrap(), serde_json::json!("ongoing"));
+        assert_eq!(
+            serde_json::to_value(CampaignOutcome::TimedOut).unwrap(),
+            serde_json::json!("timed-out")
+        );
+        assert_eq!(
+            serde_json::to_value(CampaignOutcome::Ongoing).unwrap(),
+            serde_json::json!("ongoing")
+        );
     }
 
     #[test]
     fn cue_roundtrips() {
-        let c = PresentationCue::Resolution { outcome: CampaignOutcome::Won, reason: Some("reach-attic".to_string()), narration: None };
+        let c = PresentationCue::Resolution {
+            outcome: CampaignOutcome::Won,
+            reason: Some("reach-attic".to_string()),
+            narration: None,
+        };
         let s = serde_json::to_string(&c).unwrap();
         assert_eq!(serde_json::from_str::<PresentationCue>(&s).unwrap(), c);
     }

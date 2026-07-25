@@ -39,7 +39,9 @@ fn local_storage() -> Option<web_sys::Storage> {
 pub fn save(slot: &str, blob: &SaveBlob) -> Result<(), String> {
     let json = serde_json::to_string(blob).map_err(|e| format!("serialize save: {e}"))?;
     let storage = local_storage().ok_or("localStorage is unavailable")?;
-    storage.set_item(&slot_key(slot), &json).map_err(|e| format!("write save: {e:?}"))
+    storage
+        .set_item(&slot_key(slot), &json)
+        .map_err(|e| format!("write save: {e:?}"))
 }
 
 /// Load and parse the save in `slot`, or `None` if absent, unreadable, or malformed.
@@ -53,9 +55,9 @@ pub fn load(slot: &str) -> Option<SaveBlob> {
 mod tests {
     use super::*;
     use crate::map::{MapModel, MapSnapshot};
+    use wickedways_core::presentation::CampaignOutcome;
     use wickedways_core::world::direction::Direction;
     use wickedways_core::world::view::{ExitView, Inventory, StatusView, ThinRoom, ViewModel};
-    use wickedways_core::presentation::CampaignOutcome;
 
     const GENESIS: &str = include_str!("../../../conformance/fixtures/sync-move.genesis.json");
 
@@ -68,23 +70,47 @@ mod tests {
     fn map() -> MapSnapshot {
         let mut m = MapModel::new();
         let mut v = ViewModel {
-            room: ThinRoom { id: "hall".into(), name: "Hall".into(), description: String::new(), is_lit: true },
-            exits: vec![ExitView { dir: Direction::North, to_name: "Landing".into() }],
+            room: ThinRoom {
+                id: "hall".into(),
+                name: "Hall".into(),
+                description: String::new(),
+                is_lit: true,
+            },
+            exits: vec![ExitView {
+                dir: Direction::North,
+                to_name: "Landing".into(),
+            }],
             locked_doors: Vec::new(),
             occupants: Vec::new(),
             loot: Vec::new(),
             caches: Vec::new(),
-            inventory: Inventory { items: Vec::new(), keys: Vec::new(), equipped_names: Vec::new(), slots: 0 },
+            inventory: Inventory {
+                items: Vec::new(),
+                keys: Vec::new(),
+                equipped_names: Vec::new(),
+                slots: 0,
+            },
             scope: Vec::new(),
             materials: Vec::new(),
             recipes: Vec::new(),
-            status: StatusView { location_name: "Hall".into(), turn: 0, max_turns: 1, health: 10.0, sanity: 10.0 },
+            status: StatusView {
+                location_name: "Hall".into(),
+                turn: 0,
+                max_turns: 1,
+                health: 10.0,
+                sanity: 10.0,
+            },
             outcome: CampaignOutcome::Ongoing,
             finished: false,
         };
         m.observe(&v);
         m.record_move("hall", Direction::North, "landing");
-        v.room = ThinRoom { id: "landing".into(), name: "Landing".into(), description: String::new(), is_lit: true };
+        v.room = ThinRoom {
+            id: "landing".into(),
+            name: "Landing".into(),
+            description: String::new(),
+            is_lit: true,
+        };
         v.exits = Vec::new();
         m.observe(&v);
         m.serialize()
@@ -92,15 +118,24 @@ mod tests {
 
     #[test]
     fn save_blob_round_trips_through_json() {
-        let blob = SaveBlob { snapshot: snapshot(), map: map() };
+        let blob = SaveBlob {
+            snapshot: snapshot(),
+            map: map(),
+        };
         let json = serde_json::to_string(&blob).expect("serialize");
         let back: SaveBlob = serde_json::from_str(&json).expect("deserialize");
-        assert_eq!(back, blob, "the save blob must survive a JSON round-trip byte-for-byte");
+        assert_eq!(
+            back, blob,
+            "the save blob must survive a JSON round-trip byte-for-byte"
+        );
     }
 
     #[test]
     fn round_trip_preserves_the_map_topology() {
-        let blob = SaveBlob { snapshot: snapshot(), map: map() };
+        let blob = SaveBlob {
+            snapshot: snapshot(),
+            map: map(),
+        };
         let back: SaveBlob = serde_json::from_str(&serde_json::to_string(&blob).unwrap()).unwrap();
         assert_eq!(back.map.current_id.as_deref(), Some("landing"));
         assert_eq!(back.map.rooms.len(), 2);

@@ -52,10 +52,10 @@ pub fn resolve_formation<'a>(key: &str, cat: &'a Catalog) -> Option<ResolvedForm
 #[cfg(any(test, feature = "conformance"))]
 pub mod conformance {
     use super::*;
-    use alloc::collections::BTreeMap;
     use crate::world::afflictions::Afflictions;
     use crate::world::ids::CharacterId;
     use crate::world::snapshot::{CharacterKind, InventorySnapshot, Stats};
+    use alloc::collections::BTreeMap;
 
     /// The deterministic id of the spawned wraith (assigned in `build`, matched by
     /// the TS shadow). Spawned ids are not auto-derived.
@@ -73,11 +73,19 @@ pub mod conformance {
             kind: CharacterKind::Mob,
             id: CharacterId(WRAITH_ID.into()),
             name: "Wraith".into(),
-            stats: Stats { health: 4.0, sanity: 0.0, energy: 3.0 },
+            stats: Stats {
+                health: 4.0,
+                sanity: 0.0,
+                energy: 3.0,
+            },
             actions_per_round: 1,
             actions_this_round: 0,
             current_room_id: None,
-            inventory: InventorySnapshot { slots: 0, item_ids: Vec::new(), key_ids: Vec::new() },
+            inventory: InventorySnapshot {
+                slots: 0,
+                item_ids: Vec::new(),
+                key_ids: Vec::new(),
+            },
             equipment: BTreeMap::new(),
             history: Vec::new(),
             archetype_immunities: Vec::new(),
@@ -109,20 +117,28 @@ pub mod conformance {
     /// tests to seat a live non-party occupant that should suppress a spawn.
     #[cfg(test)]
     pub fn seat_test_mob(w: &mut crate::world::World, name: &str, room: &str) {
-        use alloc::collections::BTreeMap;
         use crate::world::afflictions::Afflictions;
         use crate::world::snapshot::{CharacterKind, InventorySnapshot, Stats};
+        use alloc::collections::BTreeMap;
         let id = CharacterId(name.into());
         let room_id = RoomId(room.into());
         let snap = CharacterSnapshot {
             kind: CharacterKind::Mob,
             id: id.clone(),
             name: name.into(),
-            stats: Stats { health: 4.0, sanity: 0.0, energy: 3.0 },
+            stats: Stats {
+                health: 4.0,
+                sanity: 0.0,
+                energy: 3.0,
+            },
             actions_per_round: 1,
             actions_this_round: 0,
             current_room_id: Some(room_id.clone()),
-            inventory: InventorySnapshot { slots: 0, item_ids: alloc::vec![], key_ids: alloc::vec![] },
+            inventory: InventorySnapshot {
+                slots: 0,
+                item_ids: alloc::vec![],
+                key_ids: alloc::vec![],
+            },
             equipment: BTreeMap::new(),
             history: alloc::vec![],
             archetype_immunities: alloc::vec![],
@@ -184,9 +200,15 @@ impl World {
         // 3. suppressed if any active (non-KO) non-party occupant present.
         let party: alloc::collections::BTreeSet<CharacterId> =
             self.campaign.party_ids.iter().cloned().collect();
-        let occupants: Vec<CharacterId> =
-            self.rooms.get(room).map(|r| r.occupant_ids.clone()).unwrap_or_default();
-        if occupants.iter().any(|o| !party.contains(o) && !self.is_ko(o)) {
+        let occupants: Vec<CharacterId> = self
+            .rooms
+            .get(room)
+            .map(|r| r.occupant_ids.clone())
+            .unwrap_or_default();
+        if occupants
+            .iter()
+            .any(|o| !party.contains(o) && !self.is_ko(o))
+        {
             return Ok(Vec::new());
         }
 
@@ -211,7 +233,12 @@ impl World {
         }
 
         // 5. threshold roll (1 rng draw). threshold = clamp(baseChance * spawnModifier, 0, 100).
-        let base = self.campaign.encounter_table.get("baseChance").and_then(|v| v.as_i64()).unwrap_or(0);
+        let base = self
+            .campaign
+            .encounter_table
+            .get("baseChance")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0);
         let spawn_mod = self.rooms.get(room).map(|r| r.spawn_modifier).unwrap_or(1);
         let threshold = (base * spawn_mod).clamp(0, 100);
         let r = crate::dice::roll(100, self.rng.next_f64()) as i64;
@@ -233,9 +260,9 @@ impl World {
         let key = chosen.unwrap_or(&formations[formations.len() - 1].0);
 
         // 7. resolve (native first, then descriptor) + build.
-        let mobs = match resolve_formation(key, cat)
-            .ok_or_else(|| ProceduralViolation(alloc::format!("Formation '{key}' is not registered.")))?
-        {
+        let mobs = match resolve_formation(key, cat).ok_or_else(|| {
+            ProceduralViolation(alloc::format!("Formation '{key}' is not registered."))
+        })? {
             ResolvedFormation::Native(b) => {
                 let view = self.build_campaign_view(cat);
                 b.build(&view)
@@ -333,15 +360,24 @@ mod tests {
         use crate::world::snapshot::Stats;
         let spec = MobSpec {
             name: "Rat".into(),
-            stats: Stats { health: 2.0, sanity: 2.0, energy: 3.0 },
-            natural_attack: NaturalAttack { stat: StatType::Health, power: 1.0 },
+            stats: Stats {
+                health: 2.0,
+                sanity: 2.0,
+                energy: 3.0,
+            },
+            natural_attack: NaturalAttack {
+                stat: StatType::Health,
+                power: 1.0,
+            },
             drops: alloc::vec!["items/rat-tail".into()],
             base_escape_chance: 50,
             light_averse: false,
             material_drops: serde_json::json!({}),
             actions_per_round: 2,
         };
-        let desc = FormationDescriptor { mobs: alloc::vec![spec.clone(), spec] };
+        let desc = FormationDescriptor {
+            mobs: alloc::vec![spec.clone(), spec],
+        };
         let built = desc.build();
         assert_eq!(built.len(), 2);
         assert_eq!(built[0].id.0, "campaign-mob:rat");
@@ -360,8 +396,16 @@ mod tests {
         use crate::world::formation_descriptor::FormationDescriptor;
         use alloc::collections::BTreeMap;
         let mut formations = BTreeMap::new();
-        formations.insert("rat-single".to_string(), FormationDescriptor { mobs: alloc::vec![] });
-        let cat = Catalog { formations, ..Default::default() };
+        formations.insert(
+            "rat-single".to_string(),
+            FormationDescriptor {
+                mobs: alloc::vec![],
+            },
+        );
+        let cat = Catalog {
+            formations,
+            ..Default::default()
+        };
         assert!(matches!(
             resolve_formation("rat-single", &cat),
             Some(ResolvedFormation::Descriptor(_))
@@ -381,7 +425,9 @@ mod spawn_tests {
     use crate::world::ids::{CharacterId, RoomId};
     use crate::world::test_support::world_two_rooms;
 
-    fn rid(s: &str) -> RoomId { RoomId(s.into()) }
+    fn rid(s: &str) -> RoomId {
+        RoomId(s.into())
+    }
 
     /// Put a single `conformance:wraith` formation (weight 1) and a baseChance into
     /// the encounter table, and clear `visited`.
@@ -397,19 +443,29 @@ mod spawn_tests {
     fn spawns_wraith_when_threshold_guarantees_and_marks_visited() {
         let mut w = world_two_rooms(false);
         arm_encounter_table(&mut w, 100); // threshold = clamp(100*spawn_mod,0,100) = 100 → always
-        // ensure spawn_modifier is 1 on "next"
-        if let Some(r) = w.rooms.get_mut(&rid("next")) { r.spawn_modifier = 1; }
+                                          // ensure spawn_modifier is 1 on "next"
+        if let Some(r) = w.rooms.get_mut(&rid("next")) {
+            r.spawn_modifier = 1;
+        }
         let spawned = w.maybe_spawn(&rid("next"), &Catalog::default()).unwrap();
-        assert_eq!(spawned, alloc::vec![CharacterId("campaign-mob:wraith".into())]);
+        assert_eq!(
+            spawned,
+            alloc::vec![CharacterId("campaign-mob:wraith".into())]
+        );
         // inserted into characters with origin "campaign" and room "next"
         let m = &w.characters[&CharacterId("campaign-mob:wraith".into())];
         assert_eq!(m.origin, Some(serde_json::json!("campaign")));
         assert_eq!(m.current_room_id, Some(rid("next")));
         // present in the room occupants
-        assert!(w.rooms[&rid("next")].occupant_ids.contains(&CharacterId("campaign-mob:wraith".into())));
+        assert!(w.rooms[&rid("next")]
+            .occupant_ids
+            .contains(&CharacterId("campaign-mob:wraith".into())));
         // visited marked
-        assert!(w.campaign.encounter_table["visited"].as_array().unwrap()
-            .iter().any(|v| v == "next"));
+        assert!(w.campaign.encounter_table["visited"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v == "next"));
     }
 
     #[test]
@@ -421,7 +477,9 @@ mod spawn_tests {
         }
         let spawned = w.maybe_spawn(&rid("next"), &Catalog::default()).unwrap();
         assert!(spawned.is_empty());
-        assert!(!w.characters.contains_key(&CharacterId("campaign-mob:wraith".into())));
+        assert!(!w
+            .characters
+            .contains_key(&CharacterId("campaign-mob:wraith".into())));
     }
 
     #[test]
@@ -436,16 +494,25 @@ mod spawn_tests {
         crate::world::formations::conformance::seat_test_mob(&mut w, "resident", "next");
         let spawned = w.maybe_spawn(&rid("next"), &Catalog::default()).unwrap();
         assert!(spawned.is_empty());
-        assert!(w.campaign.encounter_table["visited"].as_array().unwrap().iter().any(|v| v == "next"));
+        assert!(w.campaign.encounter_table["visited"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v == "next"));
     }
 
     #[test]
     fn no_spawn_when_no_formations_but_marks_visited() {
         let mut w = world_two_rooms(false);
-        w.campaign.encounter_table = serde_json::json!({ "baseChance": 100, "visited": [], "formations": [] });
+        w.campaign.encounter_table =
+            serde_json::json!({ "baseChance": 100, "visited": [], "formations": [] });
         let spawned = w.maybe_spawn(&rid("next"), &Catalog::default()).unwrap();
         assert!(spawned.is_empty());
-        assert!(w.campaign.encounter_table["visited"].as_array().unwrap().iter().any(|v| v == "next"));
+        assert!(w.campaign.encounter_table["visited"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v == "next"));
     }
 
     #[test]
@@ -454,7 +521,9 @@ mod spawn_tests {
         arm_encounter_table(&mut w, 0); // threshold 0 → roll(100) always > 0 → never spawn
         let spawned = w.maybe_spawn(&rid("next"), &Catalog::default()).unwrap();
         assert!(spawned.is_empty());
-        assert!(!w.characters.contains_key(&CharacterId("campaign-mob:wraith".into())));
+        assert!(!w
+            .characters
+            .contains_key(&CharacterId("campaign-mob:wraith".into())));
     }
 
     /// A rat-tail-like consumable item descriptor: NO `maxDurability` (so a fresh
@@ -462,8 +531,8 @@ mod spawn_tests {
     /// `mob-drop` golden proves (a no-maxDurability item serializes with only
     /// `modifier`, no `durability`).
     fn rat_tail_desc() -> crate::world::descriptor::ItemDescriptor {
-        use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType};
         use crate::stats::StatType;
+        use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType};
         ItemDescriptor {
             name: "Rat Tail".into(),
             r#type: ItemType::Consumable,
@@ -494,14 +563,21 @@ mod spawn_tests {
     /// Build a catalog with a `rat-single`/`rat-pair` descriptor formation whose
     /// mob(s) drop `items/rat-tail`, plus the matching item descriptor.
     fn rat_catalog(mob_count: usize) -> Catalog {
+        use crate::stats::StatType;
         use crate::world::formation_descriptor::{FormationDescriptor, MobSpec, NaturalAttack};
         use crate::world::snapshot::Stats;
-        use crate::stats::StatType;
         use alloc::collections::BTreeMap;
         let spec = MobSpec {
             name: "Rat".into(),
-            stats: Stats { health: 2.0, sanity: 2.0, energy: 3.0 },
-            natural_attack: NaturalAttack { stat: StatType::Health, power: 1.0 },
+            stats: Stats {
+                health: 2.0,
+                sanity: 2.0,
+                energy: 3.0,
+            },
+            natural_attack: NaturalAttack {
+                stat: StatType::Health,
+                power: 1.0,
+            },
             drops: alloc::vec!["items/rat-tail".into()],
             base_escape_chance: 50,
             light_averse: false,
@@ -513,7 +589,11 @@ mod spawn_tests {
         formations.insert("rat-formation".to_string(), FormationDescriptor { mobs });
         let mut items = BTreeMap::new();
         items.insert("items/rat-tail".to_string(), rat_tail_desc());
-        Catalog { formations, items, ..Default::default() }
+        Catalog {
+            formations,
+            items,
+            ..Default::default()
+        }
     }
 
     fn arm_descriptor_table(w: &mut crate::world::World) {
@@ -523,13 +603,15 @@ mod spawn_tests {
             "formations": [ { "behaviorKey": "rat-formation", "weight": 1 } ]
         });
         // threshold = clamp(100 * spawn_mod, 0, 100); ensure spawn_mod = 1 → always spawn
-        if let Some(r) = w.rooms.get_mut(&rid("next")) { r.spawn_modifier = 1; }
+        if let Some(r) = w.rooms.get_mut(&rid("next")) {
+            r.spawn_modifier = 1;
+        }
     }
 
     #[test]
     fn descriptor_spawn_seeds_drop_item_and_inventory() {
-        use crate::world::snapshot::ItemSnapshot;
         use crate::world::ids::ItemId;
+        use crate::world::snapshot::ItemSnapshot;
         let mut w = world_two_rooms(false);
         arm_descriptor_table(&mut w);
         let cat = rat_catalog(1);
@@ -539,13 +621,21 @@ mod spawn_tests {
         let m = &w.characters[&CharacterId("campaign-mob:rat".into())];
         let drop_id = ItemId("campaign-mob:rat:drop#0".into());
         // inventory carries the drop id + a slot for it
-        assert!(m.inventory.item_ids.contains(&drop_id), "drop id in inventory");
+        assert!(
+            m.inventory.item_ids.contains(&drop_id),
+            "drop id in inventory"
+        );
         assert!(m.inventory.slots >= 1, "slots widened for the drop");
 
         // World.items has the minted snapshot (fresh: no durability, modifier 0)
         let snap = w.items.get(&drop_id).expect("drop snapshot in World.items");
         match snap {
-            ItemSnapshot::Item { id, behavior_key, durability, modifier } => {
+            ItemSnapshot::Item {
+                id,
+                behavior_key,
+                durability,
+                modifier,
+            } => {
                 assert_eq!(id, &drop_id);
                 assert_eq!(behavior_key, "items/rat-tail");
                 assert_eq!(*durability, None, "no maxDurability → durability omitted");
@@ -557,8 +647,8 @@ mod spawn_tests {
 
     #[test]
     fn descriptor_pair_spawn_seeds_second_rats_drop() {
-        use crate::world::snapshot::ItemSnapshot;
         use crate::world::ids::ItemId;
+        use crate::world::snapshot::ItemSnapshot;
         let mut w = world_two_rooms(false);
         arm_descriptor_table(&mut w);
         let cat = rat_catalog(2);
@@ -589,8 +679,15 @@ mod spawn_tests {
         w.campaign.encounter_table = serde_json::json!({ "baseChance": 0, "formations": [] });
         let _ = w.maybe_spawn(&rid("next"), &Catalog::default()).unwrap();
         // the mark must still land: "visited" now exists and contains "next"
-        let visited = w.campaign.encounter_table.get("visited").and_then(|v| v.as_array());
-        assert!(visited.is_some(), "visited array should be created when absent");
+        let visited = w
+            .campaign
+            .encounter_table
+            .get("visited")
+            .and_then(|v| v.as_array());
+        assert!(
+            visited.is_some(),
+            "visited array should be created when absent"
+        );
         assert!(visited.unwrap().iter().any(|v| v.as_str() == Some("next")));
     }
 }

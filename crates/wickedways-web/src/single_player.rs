@@ -38,9 +38,17 @@ impl SinglePlayerTransport {
         // Solo mode: the offline host runs the full single-player turn loop (start_turn → action →
         // mob reactions → next_player) around each time-advancing command, so dread ticks, mobs
         // strike back, and rounds advance without a GM — the multiplayer server leaves this off.
-        let authority =
-            SyncAuthority::new(genesis, catalog, AuthorityOpts { solo: true, ..AuthorityOpts::default() });
-        Self { authority: RefCell::new(authority) }
+        let authority = SyncAuthority::new(
+            genesis,
+            catalog,
+            AuthorityOpts {
+                solo: true,
+                ..AuthorityOpts::default()
+            },
+        );
+        Self {
+            authority: RefCell::new(authority),
+        }
     }
 
     /// Submit a command to the local authority and return its verdict. Async only to match
@@ -98,7 +106,11 @@ mod tests {
     fn join_seeds_the_replica_from_the_local_authority() {
         let t = SinglePlayerTransport::new(genesis_world(), Catalog::default());
         let coord = SyncCoordinator::join(&t);
-        assert_eq!(coord.snapshot(), t.current_snapshot(), "replica must equal the authority at join");
+        assert_eq!(
+            coord.snapshot(),
+            t.current_snapshot(),
+            "replica must equal the authority at join"
+        );
     }
 
     #[test]
@@ -109,9 +121,16 @@ mod tests {
         // `nextPlayer` is a GM/lifecycle op needing no ids — the same command the surfaces' GM
         // control submits — so it commits against the fixture without a catalog.
         let res = coord.submit(&mut t, Command::NextPlayer);
-        assert!(matches!(res, SubmitResult::Committed { .. }), "offline submit should commit");
+        assert!(
+            matches!(res, SubmitResult::Committed { .. }),
+            "offline submit should commit"
+        );
         assert_eq!(t.head(), head_before + 1, "the authority advanced its log");
-        assert_eq!(coord.snapshot(), t.current_snapshot(), "the replica converged to the authority");
+        assert_eq!(
+            coord.snapshot(),
+            t.current_snapshot(),
+            "the replica converged to the authority"
+        );
     }
 
     #[test]
@@ -135,9 +154,19 @@ mod tests {
         // A nonexistent actor is not the active character → the authority denies; nothing to apply.
         let res = coord.submit(
             &mut t,
-            Command::Move { actor_id: CharacterId("ghost".into()), room_id: RoomId("nowhere".into()) },
+            Command::Move {
+                actor_id: CharacterId("ghost".into()),
+                room_id: RoomId("nowhere".into()),
+            },
         );
-        assert!(matches!(res, SubmitResult::Denied { .. }), "an unauthorized command is denied");
-        assert_eq!(coord.snapshot(), before, "a denial does not mutate the replica");
+        assert!(
+            matches!(res, SubmitResult::Denied { .. }),
+            "an unauthorized command is denied"
+        );
+        assert_eq!(
+            coord.snapshot(),
+            before,
+            "a denial does not mutate the replica"
+        );
     }
 }

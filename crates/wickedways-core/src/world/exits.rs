@@ -12,9 +12,15 @@ pub trait ExitBehavior: Sync {
     fn can_pass(&self, actor: &CharacterView, state: &Value) -> bool;
     /// TS `runScript` — run on a successful pass; may mutate `state`; returns a
     /// one-time narration line (TS `string | void`).
-    fn run_script(&self, _actor: &CharacterView, _state: &mut Value) -> Option<String> { None }
-    fn pass_message(&self) -> Option<&str> { None }
-    fn fail_message(&self) -> Option<&str> { None }
+    fn run_script(&self, _actor: &CharacterView, _state: &mut Value) -> Option<String> {
+        None
+    }
+    fn pass_message(&self) -> Option<&str> {
+        None
+    }
+    fn fail_message(&self) -> Option<&str> {
+        None
+    }
 }
 
 /// Resolve a first-party exit behavior by key. `None` for an unregistered key
@@ -56,9 +62,9 @@ pub fn resolve_exit_behavior<'a>(
         return Some(ResolvedExitBehavior::Native(b));
     }
     match cat.behaviors.get(key) {
-        Some(crate::script::ast::BehaviorScript::Exit { script }) => {
-            Some(ResolvedExitBehavior::Scripted(crate::script::ops::ScriptedExit { script }))
-        }
+        Some(crate::script::ast::BehaviorScript::Exit { script }) => Some(
+            ResolvedExitBehavior::Scripted(crate::script::ops::ScriptedExit { script }),
+        ),
         _ => None,
     }
 }
@@ -73,12 +79,19 @@ pub mod conformance {
 
     /// Door-logic free helpers (testable without constructing a `CharacterView`).
     pub fn door_can_pass(state: &Value, has_key: bool) -> bool {
-        state.get("unlocked").and_then(|v| v.as_bool()).unwrap_or(false) || has_key
+        state
+            .get("unlocked")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+            || has_key
     }
     /// Returns the narration (and mutates `state.unlocked = true`) iff the door was
     /// locked and the actor holds the key; otherwise `None`.
     pub fn door_run_script(state: &mut Value, has_key: bool) -> Option<String> {
-        let unlocked = state.get("unlocked").and_then(|v| v.as_bool()).unwrap_or(false);
+        let unlocked = state
+            .get("unlocked")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
         if !unlocked && has_key {
             state["unlocked"] = json!(true);
             Some(String::from("The door unlocks."))
@@ -97,8 +110,12 @@ pub mod conformance {
         fn run_script(&self, actor: &CharacterView, state: &mut Value) -> Option<String> {
             door_run_script(state, actor.has_item(DOOR_KEY))
         }
-        fn pass_message(&self) -> Option<&str> { Some("You pass through.") }
-        fn fail_message(&self) -> Option<&str> { Some("The door is locked.") }
+        fn pass_message(&self) -> Option<&str> {
+            Some("You pass through.")
+        }
+        fn fail_message(&self) -> Option<&str> {
+            Some("The door is locked.")
+        }
     }
 }
 
@@ -124,7 +141,8 @@ pub(crate) fn tests_catalog_with_door(key: &str) -> crate::world::descriptor::Ca
                 ] } ],
             "failMessage": "The study door won't budge — it's locked."
         } } }
-    })).unwrap()
+    }))
+    .unwrap()
 }
 
 #[cfg(test)]
@@ -142,10 +160,14 @@ mod tests {
     #[test]
     fn resolve_exit_behavior_native_first_then_scripted() {
         let cat = cat_with_door("study-door");
-        assert!(matches!(resolve_exit_behavior("conformance:keyed-door", &cat),
-            Some(ResolvedExitBehavior::Native(_))));
-        assert!(matches!(resolve_exit_behavior("study-door", &cat),
-            Some(ResolvedExitBehavior::Scripted(_))));
+        assert!(matches!(
+            resolve_exit_behavior("conformance:keyed-door", &cat),
+            Some(ResolvedExitBehavior::Native(_))
+        ));
+        assert!(matches!(
+            resolve_exit_behavior("study-door", &cat),
+            Some(ResolvedExitBehavior::Scripted(_))
+        ));
         assert!(resolve_exit_behavior("nope", &cat).is_none());
     }
 
@@ -157,44 +179,81 @@ mod tests {
         use crate::world::test_support::world_with_party;
         let cat = cat_with_door("study-door");
         let Some(ResolvedExitBehavior::Scripted(door)) = resolve_exit_behavior("study-door", &cat)
-            else { panic!("expected scripted") };
+        else {
+            panic!("expected scripted")
+        };
         let b: &dyn ExitBehavior = &door;
 
         // actor WITHOUT the brass key
         let mut w = world_with_party(&["pc"], 10);
-        let no_key = w.character_view(&CharacterId("pc".into()), &Catalog::default()).unwrap();
+        let no_key = w
+            .character_view(&CharacterId("pc".into()), &Catalog::default())
+            .unwrap();
         let mut state = json!({ "unlocked": false });
         assert!(!b.can_pass(&no_key, &state), "locked + keyless -> blocked");
-        assert_eq!(b.fail_message(), Some("The study door won't budge — it's locked."));
+        assert_eq!(
+            b.fail_message(),
+            Some("The study door won't budge — it's locked.")
+        );
         assert_eq!(b.pass_message(), None);
 
         // actor WITH the brass key: passes, unlocks once, silent re-pass
-        w.items.insert(ItemId("k1".into()), ItemSnapshot::Key {
-            id: ItemId("k1".into()), name: "Brass Key".into(),
-            key_code: "brass".into(), consume_on_use: false,
-        });
-        w.characters.get_mut(&CharacterId("pc".into())).unwrap()
-            .inventory.key_ids.push(ItemId("k1".into()));
-        let with_key = w.character_view(&CharacterId("pc".into()), &Catalog::default()).unwrap();
+        w.items.insert(
+            ItemId("k1".into()),
+            ItemSnapshot::Key {
+                id: ItemId("k1".into()),
+                name: "Brass Key".into(),
+                key_code: "brass".into(),
+                consume_on_use: false,
+            },
+        );
+        w.characters
+            .get_mut(&CharacterId("pc".into()))
+            .unwrap()
+            .inventory
+            .key_ids
+            .push(ItemId("k1".into()));
+        let with_key = w
+            .character_view(&CharacterId("pc".into()), &Catalog::default())
+            .unwrap();
         assert!(b.can_pass(&with_key, &state));
-        assert_eq!(b.run_script(&with_key, &mut state).as_deref(), Some("The door unlocks."));
+        assert_eq!(
+            b.run_script(&with_key, &mut state).as_deref(),
+            Some("The door unlocks.")
+        );
         assert_eq!(state["unlocked"], json!(true));
-        assert_eq!(b.run_script(&with_key, &mut state), None, "already unlocked -> silent");
+        assert_eq!(
+            b.run_script(&with_key, &mut state),
+            None,
+            "already unlocked -> silent"
+        );
         // and now even a keyless actor passes (state.unlocked)
         assert!(b.can_pass(&no_key, &state));
     }
 
     #[test]
     fn door_can_pass_when_unlocked_or_holding_key() {
-        assert!(!conformance::door_can_pass(&json!({ "unlocked": false }), false));
-        assert!(conformance::door_can_pass(&json!({ "unlocked": false }), true)); // has key
-        assert!(conformance::door_can_pass(&json!({ "unlocked": true }), false)); // already unlocked
+        assert!(!conformance::door_can_pass(
+            &json!({ "unlocked": false }),
+            false
+        ));
+        assert!(conformance::door_can_pass(
+            &json!({ "unlocked": false }),
+            true
+        )); // has key
+        assert!(conformance::door_can_pass(
+            &json!({ "unlocked": true }),
+            false
+        )); // already unlocked
     }
 
     #[test]
     fn door_run_script_unlocks_once_with_key() {
         let mut s = json!({ "unlocked": false });
-        assert_eq!(conformance::door_run_script(&mut s, true).as_deref(), Some("The door unlocks."));
+        assert_eq!(
+            conformance::door_run_script(&mut s, true).as_deref(),
+            Some("The door unlocks.")
+        );
         assert_eq!(s["unlocked"], json!(true));
         // already unlocked → no narration, no change
         assert_eq!(conformance::door_run_script(&mut s, true), None);

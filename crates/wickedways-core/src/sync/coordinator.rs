@@ -108,7 +108,11 @@ impl SyncCoordinator {
 
     /// Submits a command to the authority; on success the authoritative delta has been applied to
     /// the local replica by the time this returns. A denial leaves the replica untouched.
-    pub fn submit<T: SyncTransport>(&mut self, transport: &mut T, command: Command) -> SubmitResult {
+    pub fn submit<T: SyncTransport>(
+        &mut self,
+        transport: &mut T,
+        command: Command,
+    ) -> SubmitResult {
         let res = transport.submit(command);
         self.sync(transport);
         res
@@ -146,7 +150,11 @@ mod tests {
     use crate::world::test_support::world_two_rooms;
 
     fn transport(world: World) -> InProcessTransport {
-        InProcessTransport::new(SyncAuthority::new(world, Catalog::default(), AuthorityOpts::default()))
+        InProcessTransport::new(SyncAuthority::new(
+            world,
+            Catalog::default(),
+            AuthorityOpts::default(),
+        ))
     }
 
     #[test]
@@ -155,7 +163,11 @@ mod tests {
         // replica via from_snapshot, so a join-time match proves snapshot idempotency here.
         let t = transport(world_two_rooms(false));
         let coord = SyncCoordinator::join(&t);
-        assert_eq!(coord.snapshot(), t.current_snapshot(), "replica must equal the authority at join");
+        assert_eq!(
+            coord.snapshot(),
+            t.current_snapshot(),
+            "replica must equal the authority at join"
+        );
     }
 
     #[test]
@@ -164,10 +176,17 @@ mod tests {
         let mut coord = SyncCoordinator::join(&t);
         let res = coord.submit(
             &mut t,
-            Command::Move { actor_id: CharacterId("pc".into()), room_id: RoomId("next".into()) },
+            Command::Move {
+                actor_id: CharacterId("pc".into()),
+                room_id: RoomId("next".into()),
+            },
         );
         assert!(matches!(res, SubmitResult::Committed { .. }));
-        assert_eq!(coord.snapshot(), t.current_snapshot(), "submitter's replica reflects its own commit");
+        assert_eq!(
+            coord.snapshot(),
+            t.current_snapshot(),
+            "submitter's replica reflects its own commit"
+        );
     }
 
     #[test]
@@ -176,7 +195,13 @@ mod tests {
         let mut a = SyncCoordinator::join(&t);
         let mut b = SyncCoordinator::join(&t);
         // `a` acts; `b` is unaware until it syncs.
-        a.submit(&mut t, Command::Move { actor_id: CharacterId("pc".into()), room_id: RoomId("next".into()) });
+        a.submit(
+            &mut t,
+            Command::Move {
+                actor_id: CharacterId("pc".into()),
+                room_id: RoomId("next".into()),
+            },
+        );
         assert_ne!(b.snapshot(), a.snapshot(), "b has not synced yet");
         b.sync(&t);
         assert_eq!(b.snapshot(), a.snapshot(), "b converges to a");
@@ -191,9 +216,16 @@ mod tests {
         // Not the active character → authority denies; nothing to apply.
         let res = coord.submit(
             &mut t,
-            Command::Move { actor_id: CharacterId("ghost".into()), room_id: RoomId("next".into()) },
+            Command::Move {
+                actor_id: CharacterId("ghost".into()),
+                room_id: RoomId("next".into()),
+            },
         );
         assert!(matches!(res, SubmitResult::Denied { .. }));
-        assert_eq!(coord.snapshot(), before, "a denial does not mutate the replica");
+        assert_eq!(
+            coord.snapshot(),
+            before,
+            "a denial does not mutate the replica"
+        );
     }
 }

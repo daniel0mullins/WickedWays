@@ -62,8 +62,13 @@ fn boot_submit_snapshot_restore_roundtrip() {
 #[test]
 fn talk_returns_error_result_not_a_throw() {
     let mut auth = Authority::new(genesis(), CATALOG, 1).expect("boot");
-    let out = auth.submit(r#"{ "kind": "talk", "npcId": "n1" }"#).expect("submit");
+    let out = auth
+        .submit(r#"{ "kind": "talk", "npcId": "n1" }"#)
+        .expect("submit");
     let parsed: serde_json::Value = serde_json::from_str(&out).unwrap();
-    assert_eq!(parsed["error"], serde_json::json!("There's no one here to talk to."));
+    assert_eq!(
+        parsed["error"],
+        serde_json::json!("There's no one here to talk to.")
+    );
     assert!(parsed.get("mobAttacks").is_none());
 }

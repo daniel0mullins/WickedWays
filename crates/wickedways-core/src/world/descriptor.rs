@@ -1,11 +1,11 @@
 //! Item descriptor primitives — the data half of an item's identity, sourced
 //! from the campaign's registry (the catalog), not the per-instance snapshot.
 //! JSON byte-compatible with `src/lib/inventory.ts` + `src/lib/equipment.ts`.
+use crate::stats::StatType;
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "ts")]
 use ts_rs::TS;
-use crate::stats::StatType;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
@@ -163,7 +163,7 @@ mod tests {
         assert_eq!(d.r#type, ItemType::Weapon);
         assert_eq!(d.max_durability, Some(8));
         assert_eq!(d.recipe, serde_json::json!({ "metal": 1 })); // inert passthrough
-        assert_eq!(serde_json::to_value(&d).unwrap(), json);     // byte round-trip
+        assert_eq!(serde_json::to_value(&d).unwrap(), json); // byte round-trip
     }
 
     #[test]
@@ -175,7 +175,10 @@ mod tests {
             "aliases": { "items/poker": ["poker", "iron"] }
         })).unwrap();
         assert_eq!(cat.items.get("items/poker").unwrap().name, "Iron Poker");
-        assert_eq!(cat.aliases.get("items/poker").unwrap(), &vec!["poker".to_string(), "iron".to_string()]);
+        assert_eq!(
+            cat.aliases.get("items/poker").unwrap(),
+            &vec!["poker".to_string(), "iron".to_string()]
+        );
     }
 
     #[test]
@@ -183,7 +186,8 @@ mod tests {
         // Every committed fixture catalog lacks "behaviors" — must stay loadable.
         let cat: Catalog = serde_json::from_value(serde_json::json!({
             "items": {}, "aliases": {}
-        })).unwrap();
+        }))
+        .unwrap();
         assert!(cat.behaviors.is_empty());
         // empty behaviors are still emitted as {} on serialize, byte-faithful to
         // the TS `catalogFromRegistry` oracle (which always writes the key).
@@ -206,8 +210,10 @@ mod tests {
                 ] }
             } } }
         })).unwrap();
-        assert!(matches!(cat.behaviors.get("dread"),
-            Some(crate::script::ast::BehaviorScript::Mechanic { .. })));
+        assert!(matches!(
+            cat.behaviors.get("dread"),
+            Some(crate::script::ast::BehaviorScript::Mechanic { .. })
+        ));
     }
 
     #[test]
@@ -241,8 +247,7 @@ mod tests {
         assert_eq!(f.mobs.len(), 1);
         assert_eq!(f.mobs[0].name, "Rat");
         // round-trips: the parsed catalog re-serializes with its formation intact
-        let back: Catalog =
-            serde_json::from_value(serde_json::to_value(&cat).unwrap()).unwrap();
+        let back: Catalog = serde_json::from_value(serde_json::to_value(&cat).unwrap()).unwrap();
         assert_eq!(back, cat);
     }
 
@@ -274,8 +279,7 @@ mod tests {
         assert_eq!(r.output_name, "Widget");
         assert_eq!(r.materials.get("metal"), Some(&2));
         // round-trips: the parsed catalog re-serializes with its recipe intact
-        let back: Catalog =
-            serde_json::from_value(serde_json::to_value(&cat).unwrap()).unwrap();
+        let back: Catalog = serde_json::from_value(serde_json::to_value(&cat).unwrap()).unwrap();
         assert_eq!(back, cat);
     }
 

@@ -103,7 +103,11 @@ mod tests {
             cues: vec![],
         };
         apply(&mut replica, &delta);
-        assert_eq!(replica.items[&ItemId("new".into())], new_item, "created item inserted");
+        assert_eq!(
+            replica.items[&ItemId("new".into())],
+            new_item,
+            "created item inserted"
+        );
         assert_eq!(
             replica.characters[&CharacterId("a".into())].stats.health,
             1.0,
@@ -116,11 +120,25 @@ mod tests {
         let mut replica = world_with_party(&["a"], 10);
         replica.items.insert(
             ItemId("gone".into()),
-            ItemSnapshot::Item { id: ItemId("gone".into()), behavior_key: "k".into(), durability: None, modifier: 0 },
+            ItemSnapshot::Item {
+                id: ItemId("gone".into()),
+                behavior_key: "k".into(),
+                durability: None,
+                modifier: 0,
+            },
         );
-        let delta = Delta { created: vec![], changed: vec![], removed: vec!["gone".into()], campaign_core: None, cues: vec![] };
+        let delta = Delta {
+            created: vec![],
+            changed: vec![],
+            removed: vec!["gone".into()],
+            campaign_core: None,
+            cues: vec![],
+        };
         apply(&mut replica, &delta);
-        assert!(!replica.items.contains_key(&ItemId("gone".into())), "removed id is gone");
+        assert!(
+            !replica.items.contains_key(&ItemId("gone".into())),
+            "removed id is gone"
+        );
     }
 
     #[test]
@@ -128,19 +146,36 @@ mod tests {
         // The structural-convergence guarantee: replaying the authority's own deltas into a fresh
         // replica reproduces the authoritative snapshot exactly, after every step.
         let genesis = world_two_rooms(false);
-        let mut auth = SyncAuthority::new(genesis.clone(), Catalog::default(), AuthorityOpts::default());
+        let mut auth = SyncAuthority::new(
+            genesis.clone(),
+            Catalog::default(),
+            AuthorityOpts::default(),
+        );
         let mut replica = genesis.clone();
 
         let pc = crate::world::ids::CharacterId("pc".into());
         let sequence = [
-            Command::Move { actor_id: pc.clone(), room_id: RoomId("next".into()) },
-            Command::Move { actor_id: pc.clone(), room_id: RoomId("start".into()) },
-            Command::Move { actor_id: pc.clone(), room_id: RoomId("next".into()) },
+            Command::Move {
+                actor_id: pc.clone(),
+                room_id: RoomId("next".into()),
+            },
+            Command::Move {
+                actor_id: pc.clone(),
+                room_id: RoomId("start".into()),
+            },
+            Command::Move {
+                actor_id: pc.clone(),
+                room_id: RoomId("next".into()),
+            },
         ];
         for cmd in sequence {
             let delta = commit_delta(&mut auth, cmd);
             apply(&mut replica, &delta);
-            assert_eq!(replica.to_snapshot(), auth.snapshot(), "replica diverged from authority");
+            assert_eq!(
+                replica.to_snapshot(),
+                auth.snapshot(),
+                "replica diverged from authority"
+            );
         }
     }
 
@@ -150,7 +185,8 @@ mod tests {
         // pick that up through campaignCore.
         let mut world = world_with_party(&["a", "b"], 10);
         world.campaign.gm_id = Some(crate::world::ids::CharacterId("a".into()));
-        let mut auth = SyncAuthority::new(world.clone(), Catalog::default(), AuthorityOpts::default());
+        let mut auth =
+            SyncAuthority::new(world.clone(), Catalog::default(), AuthorityOpts::default());
         let mut replica = world.clone();
         let delta = commit_delta(&mut auth, Command::NextPlayer);
         assert!(delta.campaign_core.is_some());

@@ -45,10 +45,31 @@ pub struct AfflictionConfig {
 
 pub fn default_affliction_config() -> AfflictionConfig {
     let mut clear = BTreeMap::new();
-    clear.insert(Status::Fear, ClearOdds { base: 40, increment: 30 });
-    clear.insert(Status::Panic, ClearOdds { base: 20, increment: 20 });
-    clear.insert(Status::Confused, ClearOdds { base: 15, increment: 15 });
-    AfflictionConfig { clear, confused_fail_chance: 50 }
+    clear.insert(
+        Status::Fear,
+        ClearOdds {
+            base: 40,
+            increment: 30,
+        },
+    );
+    clear.insert(
+        Status::Panic,
+        ClearOdds {
+            base: 20,
+            increment: 20,
+        },
+    );
+    clear.insert(
+        Status::Confused,
+        ClearOdds {
+            base: 15,
+            increment: 15,
+        },
+    );
+    AfflictionConfig {
+        clear,
+        confused_fail_chance: 50,
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -75,7 +96,11 @@ impl Afflictions {
     }
 
     pub fn list(&self) -> Vec<Status> {
-        self.active.iter().filter(|(_, &on)| on).map(|(&s, _)| s).collect()
+        self.active
+            .iter()
+            .filter(|(_, &on)| on)
+            .map(|(&s, _)| s)
+            .collect()
     }
 
     /// Returns the current timed immunity turns remaining for `s` (0 if none).
@@ -88,7 +113,9 @@ impl Afflictions {
     /// Mirrors `afflictions.ts:182-192`.
     pub fn grant_immunity(&mut self, statuses: &[Status], turns: i64) {
         for &s in statuses {
-            if s == Status::Ko { continue; }
+            if s == Status::Ko {
+                continue;
+            }
             let cur = self.immunity.get(&s).copied().unwrap_or(0);
             self.immunity.insert(s, cur.max(turns));
             self.clear_episode(s);
@@ -204,8 +231,12 @@ impl Serialize for Afflictions {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
         // Only emit entries where the value is true.
-        let active_true: BTreeMap<Status, bool> =
-            self.active.iter().filter(|(_, &on)| on).map(|(&k, &v)| (k, v)).collect();
+        let active_true: BTreeMap<Status, bool> = self
+            .active
+            .iter()
+            .filter(|(_, &on)| on)
+            .map(|(&k, &v)| (k, v))
+            .collect();
         let mut st = s.serialize_struct("Afflictions", 4)?;
         st.serialize_field("active", &active_true)?;
         st.serialize_field("turnsActive", &self.turns_active)?;
@@ -346,8 +377,8 @@ mod tests {
 
     // -- apply_from_stats threshold tests (mirror afflictions.ts:95-128) --
 
-    use alloc::collections::BTreeSet;
     use crate::world::rng::Rng;
+    use alloc::collections::BTreeSet;
 
     #[test]
     fn ko_when_health_le_zero_clears_clearables() {
@@ -436,7 +467,10 @@ mod tests {
         assert_eq!(a.turns_active.get(&Status::Fear).copied().unwrap_or(0), 0);
         assert!(!a.is_active(Status::Fear));
         // Confused was inactive → no draw, counter stays 0.
-        assert_eq!(a.turns_active.get(&Status::Confused).copied().unwrap_or(0), 0);
+        assert_eq!(
+            a.turns_active.get(&Status::Confused).copied().unwrap_or(0),
+            0
+        );
     }
 
     #[test]

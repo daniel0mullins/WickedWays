@@ -95,16 +95,22 @@ impl AudioEngine {
         match voice.source {
             Source::Noise => {
                 let frames = (ctx.sample_rate() as f64 * voice.duration).floor().max(1.0) as u32;
-                let Ok(buffer) = ctx.create_buffer(1, frames, ctx.sample_rate()) else { return };
+                let Ok(buffer) = ctx.create_buffer(1, frames, ctx.sample_rate()) else {
+                    return;
+                };
                 let samples = noise_samples(frames as usize);
                 let _ = buffer.copy_to_channel(&samples, 0);
-                let Ok(src) = ctx.create_buffer_source() else { return };
+                let Ok(src) = ctx.create_buffer_source() else {
+                    return;
+                };
                 src.set_buffer(Some(&buffer));
                 let _ = src.connect_with_audio_node(&gain);
                 schedule(&src, t0, end);
             }
             osc_source => {
-                let Ok(osc) = ctx.create_oscillator() else { return };
+                let Ok(osc) = ctx.create_oscillator() else {
+                    return;
+                };
                 osc.set_type(oscillator_type(osc_source));
                 let freq = osc.frequency();
                 let _ = freq.set_value_at_time(voice.freq as f32, t0);
@@ -149,7 +155,10 @@ mod tests {
         let b = noise_samples(256);
         assert_eq!(a.len(), 256);
         assert_eq!(a, b, "same length → identical samples (no RNG)");
-        assert!(a.iter().all(|&s| (-1.0..1.0).contains(&s)), "every sample in [-1, 1)");
+        assert!(
+            a.iter().all(|&s| (-1.0..1.0).contains(&s)),
+            "every sample in [-1, 1)"
+        );
         // Not a constant — the LCG actually varies.
         assert!(a.iter().any(|&s| s != a[0]));
     }

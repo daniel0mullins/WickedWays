@@ -38,7 +38,10 @@ impl World {
         }
 
         // 1. Current room + its exits (in the room's stored order).
-        let room_id = self.characters.get(mob).and_then(|c| c.current_room_id.clone());
+        let room_id = self
+            .characters
+            .get(mob)
+            .and_then(|c| c.current_room_id.clone());
         let exit_ids: Vec<_> = room_id
             .as_ref()
             .and_then(|rid| self.rooms.get(rid))
@@ -46,7 +49,11 @@ impl World {
             .unwrap_or_default();
 
         // 2. Threshold and the (always-drawn) escape roll.
-        let base = self.characters.get(mob).and_then(|c| c.base_escape_chance).unwrap_or(0) as f64;
+        let base = self
+            .characters
+            .get(mob)
+            .and_then(|c| c.base_escape_chance)
+            .unwrap_or(0) as f64;
         let effective_health = self.effective_stat(mob, StatType::Health, cat);
         let threshold = (base + effective_health).clamp(0.0, 100.0);
         let rolled = f64::from(roll(100, self.rng.next_f64())) <= threshold;
@@ -55,9 +62,11 @@ impl World {
         // 3. On success, pick an exit (second draw) and relocate through it.
         if success {
             let idx = (roll(exit_ids.len() as u32, self.rng.next_f64()) - 1) as usize;
-            let destination = room_id
-                .as_ref()
-                .and_then(|rid| self.exits.get(&exit_ids[idx]).map(|e| other_side(&e.endpoint_ids, rid)));
+            let destination = room_id.as_ref().and_then(|rid| {
+                self.exits
+                    .get(&exit_ids[idx])
+                    .map(|e| other_side(&e.endpoint_ids, rid))
+            });
             if let Some(dest) = destination {
                 self.move_to(mob, dest, cat, cues)?;
             }
@@ -66,7 +75,8 @@ impl World {
         // 4. Record the outcome (mirrors `recordAction(escape, { kind: "escape", success })`).
         let round = self.campaign.round;
         if let Some(c) = self.characters.get_mut(mob) {
-            c.history.push(ActionHistoryEntry::Escape { round, success });
+            c.history
+                .push(ActionHistoryEntry::Escape { round, success });
         }
         Ok(())
     }
@@ -106,7 +116,11 @@ mod tests {
         w.rng = Rng::seeded(1);
         let mut cues = Vec::new();
         w.mob_escape(&mob, &Catalog::default(), &mut cues).unwrap();
-        assert_eq!(w.characters[&mob].current_room_id, Some(RoomId("next".into())), "moved through exit");
+        assert_eq!(
+            w.characters[&mob].current_room_id,
+            Some(RoomId("next".into())),
+            "moved through exit"
+        );
         assert!(matches!(
             w.characters[&mob].history.last(),
             Some(ActionHistoryEntry::Escape { success: true, .. })
@@ -120,7 +134,11 @@ mod tests {
         w.rng = Rng::seeded(1);
         let mut cues = Vec::new();
         w.mob_escape(&mob, &Catalog::default(), &mut cues).unwrap();
-        assert_eq!(w.characters[&mob].current_room_id, Some(RoomId("start".into())), "did not move");
+        assert_eq!(
+            w.characters[&mob].current_room_id,
+            Some(RoomId("start".into())),
+            "did not move"
+        );
         assert!(matches!(
             w.characters[&mob].history.last(),
             Some(ActionHistoryEntry::Escape { success: false, .. })

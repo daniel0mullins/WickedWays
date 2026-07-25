@@ -35,13 +35,20 @@ impl Authority {
         // NOTE (post-DSL reconciliation): validate_mechanics now takes &Catalog
         // (it resolves scripted behaviors from catalog.behaviors, not just the
         // native registry). Pass the parsed catalog.
-        world.validate_mechanics(&catalog).map_err(|e| JsValue::from_str(&e.0))?;
+        world
+            .validate_mechanics(&catalog)
+            .map_err(|e| JsValue::from_str(&e.0))?;
         world.seed_rng(seed);
         let mut startup: Vec<PresentationCue> = Vec::new();
         world
             .begin_campaign(&catalog, &mut startup)
             .map_err(|e| JsValue::from_str(&e.0))?;
-        Ok(Authority { world, catalog, opened: BTreeSet::new(), startup })
+        Ok(Authority {
+            world,
+            catalog,
+            opened: BTreeSet::new(),
+            startup,
+        })
     }
 
     /// Opening cues emitted during begin_campaign; returns and clears the buffer
@@ -97,7 +104,12 @@ impl Authority {
             .map_err(|e| JsValue::from_str(&e.0))?;
         let mut cues: Vec<PresentationCue> = Vec::new();
         self.world
-            .examine(&actor, &CharacterId(target_id.into()), &self.catalog, &mut cues)
+            .examine(
+                &actor,
+                &CharacterId(target_id.into()),
+                &self.catalog,
+                &mut cues,
+            )
             .map_err(|e| JsValue::from_str(&e.0))?;
         serde_json::to_string(&cues).map_err(js_err)
     }
@@ -116,7 +128,9 @@ impl Authority {
         let mut world = World::from_snapshot(snap);
         // NOTE (post-DSL reconciliation): validate_mechanics takes &Catalog; the
         // session's catalog is held on self.
-        world.validate_mechanics(&self.catalog).map_err(|e| JsValue::from_str(&e.0))?;
+        world
+            .validate_mechanics(&self.catalog)
+            .map_err(|e| JsValue::from_str(&e.0))?;
         world.rng = rng;
         self.world = world;
         self.opened.clear();

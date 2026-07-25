@@ -47,9 +47,15 @@ pub enum EquipmentSlot {
 pub enum Command {
     // ── turn-actions: a PlayerCharacter, only legal on its own turn ──
     #[serde(rename_all = "camelCase")]
-    Move { actor_id: CharacterId, room_id: RoomId },
+    Move {
+        actor_id: CharacterId,
+        room_id: RoomId,
+    },
     #[serde(rename_all = "camelCase")]
-    Attack { actor_id: CharacterId, target_id: CharacterId },
+    Attack {
+        actor_id: CharacterId,
+        target_id: CharacterId,
+    },
     #[serde(rename_all = "camelCase")]
     Equip {
         actor_id: CharacterId,
@@ -58,37 +64,82 @@ pub enum Command {
         slot: Option<EquipmentSlot>,
     },
     #[serde(rename_all = "camelCase")]
-    Unequip { actor_id: CharacterId, item_id: ItemId },
+    Unequip {
+        actor_id: CharacterId,
+        item_id: ItemId,
+    },
     #[serde(rename_all = "camelCase")]
-    Craft { actor_id: CharacterId, recipe_id: String },
+    Craft {
+        actor_id: CharacterId,
+        recipe_id: String,
+    },
     #[serde(rename_all = "camelCase")]
-    Repair { actor_id: CharacterId, item_id: ItemId },
+    Repair {
+        actor_id: CharacterId,
+        item_id: ItemId,
+    },
     // Scrap a held item back into the shared material pool. A Rust-side extension beyond the TS
     // `types.ts` union (the TS engine ran `destroy` through the item-action/session layer), like
     // `talk`/`wait`: the Rust surfaces route every action through sync, so it needs a wire command.
     // Free — turn-gated, no budget tick.
     #[serde(rename_all = "camelCase")]
-    Destroy { actor_id: CharacterId, item_id: ItemId },
+    Destroy {
+        actor_id: CharacterId,
+        item_id: ItemId,
+    },
     #[serde(rename_all = "camelCase")]
-    PickUp { actor_id: CharacterId, item_ids: Vec<ItemId> },
+    PickUp {
+        actor_id: CharacterId,
+        item_ids: Vec<ItemId>,
+    },
     #[serde(rename_all = "camelCase")]
-    Drop { actor_id: CharacterId, item_ids: Vec<ItemId> },
+    Drop {
+        actor_id: CharacterId,
+        item_ids: Vec<ItemId>,
+    },
     #[serde(rename_all = "camelCase")]
-    TakeFromLootBox { actor_id: CharacterId, loot_id: LootId, item_ids: Vec<ItemId> },
+    TakeFromLootBox {
+        actor_id: CharacterId,
+        loot_id: LootId,
+        item_ids: Vec<ItemId>,
+    },
     #[serde(rename_all = "camelCase")]
-    PutInLootBox { actor_id: CharacterId, loot_id: LootId, item_ids: Vec<ItemId> },
+    PutInLootBox {
+        actor_id: CharacterId,
+        loot_id: LootId,
+        item_ids: Vec<ItemId>,
+    },
     #[serde(rename_all = "camelCase")]
-    TransferKey { actor_id: CharacterId, item_id: ItemId, recipient_id: CharacterId },
+    TransferKey {
+        actor_id: CharacterId,
+        item_id: ItemId,
+        recipient_id: CharacterId,
+    },
     #[serde(rename_all = "camelCase")]
-    ConsumeKey { actor_id: CharacterId, item_id: ItemId },
+    ConsumeKey {
+        actor_id: CharacterId,
+        item_id: ItemId,
+    },
     #[serde(rename_all = "camelCase")]
-    Use { actor_id: CharacterId, item_id: ItemId },
+    Use {
+        actor_id: CharacterId,
+        item_id: ItemId,
+    },
     #[serde(rename_all = "camelCase")]
-    PlaceLight { actor_id: CharacterId, item_id: ItemId },
+    PlaceLight {
+        actor_id: CharacterId,
+        item_id: ItemId,
+    },
     #[serde(rename_all = "camelCase")]
-    TakeLight { actor_id: CharacterId, item_id: ItemId },
+    TakeLight {
+        actor_id: CharacterId,
+        item_id: ItemId,
+    },
     #[serde(rename_all = "camelCase")]
-    Harvest { actor_id: CharacterId, cache_id: MaterialCacheId },
+    Harvest {
+        actor_id: CharacterId,
+        cache_id: MaterialCacheId,
+    },
     // ── free NPC interaction: dialogue (non-advancing; runs on your own turn) ──
     // A Rust-side extension beyond the TS `types.ts` union: the original engine ran NPC
     // dialogue through the single-seat session layer, but the Rust surfaces route every
@@ -108,35 +159,53 @@ pub enum Command {
     // through the solo turn loop (start_turn → mob reactions → next_player); in multiplayer it is a
     // no-op the GM's `nextPlayer` supersedes.
     #[serde(rename_all = "camelCase")]
-    Wait { actor_id: CharacterId },
+    Wait {
+        actor_id: CharacterId,
+    },
     // ── end-of-turn: a player ends their OWN turn ──
     // A Rust-side extension: carries the acting player's id so the room server routes it to that
     // player's seat (a player may only end their own turn), whereas the GM's `nextPlayer` (no actor)
     // can end anyone's. Both advance the active seat; managed-turn mode `start_turn`s the next player.
     #[serde(rename_all = "camelCase")]
-    EndTurn { actor_id: CharacterId },
+    EndTurn {
+        actor_id: CharacterId,
+    },
     // ── setup: pre-start, on your own character ──
     #[serde(rename_all = "camelCase")]
-    SelectArchetype { actor_id: CharacterId, archetype_id: String },
+    SelectArchetype {
+        actor_id: CharacterId,
+        archetype_id: String,
+    },
     // ── join: self-service; carries the new character's bare snapshot ──
     // Boxed: a `CharacterSnapshot` dwarfs every id-only variant, so keeping it inline
     // would bloat every `Command` value (and every `LogEntry` that carries one). serde
     // treats `Box<T>` transparently, so the wire shape is unchanged.
-    JoinCampaign { character: Box<CharacterSnapshot> },
+    JoinCampaign {
+        character: Box<CharacterSnapshot>,
+    },
     // ── GM / lifecycle / NPC: issued by the GM ──
     BeginCampaign,
     EndCampaign,
     NextPlayer,
     #[serde(rename_all = "camelCase")]
-    LeaveCampaign { character_id: CharacterId },
+    LeaveCampaign {
+        character_id: CharacterId,
+    },
     // `transferGM` keeps its trailing capitals on the wire (camelCase would give
     // `transferGm`), so the tag is pinned explicitly.
     #[serde(rename = "transferGM", rename_all = "camelCase")]
-    TransferGm { character_id: CharacterId },
+    TransferGm {
+        character_id: CharacterId,
+    },
     #[serde(rename_all = "camelCase")]
-    MobEscape { mob_id: CharacterId },
+    MobEscape {
+        mob_id: CharacterId,
+    },
     #[serde(rename_all = "camelCase")]
-    MobAttack { mob_id: CharacterId, target_id: CharacterId },
+    MobAttack {
+        mob_id: CharacterId,
+        target_id: CharacterId,
+    },
 }
 
 impl Command {
@@ -304,7 +373,11 @@ mod tests {
         for case in cases {
             let parsed: Command = serde_json::from_value(case.clone())
                 .unwrap_or_else(|e| panic!("deserialize {case}: {e}"));
-            assert_eq!(serde_json::to_value(&parsed).unwrap(), case, "round-trip {case}");
+            assert_eq!(
+                serde_json::to_value(&parsed).unwrap(),
+                case,
+                "round-trip {case}"
+            );
         }
     }
 
@@ -322,8 +395,14 @@ mod tests {
 
     #[test]
     fn classifiers_partition_the_union() {
-        let turn = Command::Move { actor_id: CharacterId("c1".into()), room_id: RoomId("r1".into()) };
-        let setup = Command::SelectArchetype { actor_id: CharacterId("c1".into()), archetype_id: "a".into() };
+        let turn = Command::Move {
+            actor_id: CharacterId("c1".into()),
+            room_id: RoomId("r1".into()),
+        };
+        let setup = Command::SelectArchetype {
+            actor_id: CharacterId("c1".into()),
+            archetype_id: "a".into(),
+        };
         let gm = Command::NextPlayer;
         assert!(turn.is_turn_action() && !turn.is_setup_command() && !turn.is_gm_command());
         assert!(setup.is_setup_command() && !setup.is_turn_action() && !setup.is_gm_command());
@@ -333,7 +412,10 @@ mod tests {
     #[test]
     fn budgeted_action_excludes_the_free_verbs() {
         // Budgeted turn-actions spend the per-round budget…
-        let mv = Command::Move { actor_id: CharacterId("c1".into()), room_id: RoomId("r1".into()) };
+        let mv = Command::Move {
+            actor_id: CharacterId("c1".into()),
+            room_id: RoomId("r1".into()),
+        };
         let attack = Command::Attack {
             actor_id: CharacterId("c1".into()),
             target_id: CharacterId("m1".into()),
@@ -348,17 +430,35 @@ mod tests {
                 item_id: ItemId("i1".into()),
                 slot: None,
             },
-            Command::Unequip { actor_id: CharacterId("c1".into()), item_id: ItemId("i1".into()) },
-            Command::Craft { actor_id: CharacterId("c1".into()), recipe_id: "r".into() },
-            Command::Repair { actor_id: CharacterId("c1".into()), item_id: ItemId("i1".into()) },
-            Command::Destroy { actor_id: CharacterId("c1".into()), item_id: ItemId("i1".into()) },
+            Command::Unequip {
+                actor_id: CharacterId("c1".into()),
+                item_id: ItemId("i1".into()),
+            },
+            Command::Craft {
+                actor_id: CharacterId("c1".into()),
+                recipe_id: "r".into(),
+            },
+            Command::Repair {
+                actor_id: CharacterId("c1".into()),
+                item_id: ItemId("i1".into()),
+            },
+            Command::Destroy {
+                actor_id: CharacterId("c1".into()),
+                item_id: ItemId("i1".into()),
+            },
             Command::Harvest {
                 actor_id: CharacterId("c1".into()),
                 cache_id: MaterialCacheId("cache1".into()),
             },
         ] {
-            assert!(free.is_turn_action(), "{free:?} still requires the actor's turn");
-            assert!(!free.is_budgeted_action(), "{free:?} is a free action, not budgeted");
+            assert!(
+                free.is_turn_action(),
+                "{free:?} still requires the actor's turn"
+            );
+            assert!(
+                !free.is_budgeted_action(),
+                "{free:?} is a free action, not budgeted"
+            );
         }
     }
 
@@ -375,7 +475,13 @@ mod tests {
         assert_eq!(turn.actor_id(), Some(&CharacterId("c1".into())));
         assert_eq!(setup.actor_id(), Some(&CharacterId("c2".into())));
         assert_eq!(Command::NextPlayer.actor_id(), None);
-        assert_eq!(Command::MobEscape { mob_id: CharacterId("m1".into()) }.actor_id(), None);
+        assert_eq!(
+            Command::MobEscape {
+                mob_id: CharacterId("m1".into())
+            }
+            .actor_id(),
+            None
+        );
     }
 
     #[test]
@@ -383,7 +489,9 @@ mod tests {
         // A join wraps a full CharacterSnapshot; borrow one from a built world.
         let world = crate::world::test_support::world_with_party(&["c1"], 10);
         let character = world.characters[&CharacterId("c1".into())].clone();
-        let join = Command::JoinCampaign { character: Box::new(character) };
+        let join = Command::JoinCampaign {
+            character: Box::new(character),
+        };
         assert!(join.is_join_command());
         assert_eq!(join.actor_id(), None);
         // The tag is `joinCampaign` and the character rides under `character`.
@@ -410,7 +518,12 @@ mod tests {
         // A free interaction: carries an actor, but is NOT a turn/gm/setup/join command.
         assert!(bare.is_npc_interaction());
         assert_eq!(bare.actor_id(), Some(&CharacterId("c1".into())));
-        assert!(!bare.is_turn_action() && !bare.is_gm_command() && !bare.is_setup_command() && !bare.is_join_command());
+        assert!(
+            !bare.is_turn_action()
+                && !bare.is_gm_command()
+                && !bare.is_setup_command()
+                && !bare.is_join_command()
+        );
         // A prompt round-trips.
         let with: Command = serde_json::from_value(
             json!({ "kind": "talk", "actorId": "c1", "npcId": "n1", "prompt": "the cellar" }),
@@ -421,8 +534,13 @@ mod tests {
 
     #[test]
     fn end_turn_round_trips_and_carries_the_acting_player() {
-        let et = Command::EndTurn { actor_id: CharacterId("c1".into()) };
-        assert_eq!(serde_json::to_value(&et).unwrap(), json!({ "kind": "endTurn", "actorId": "c1" }));
+        let et = Command::EndTurn {
+            actor_id: CharacterId("c1".into()),
+        };
+        assert_eq!(
+            serde_json::to_value(&et).unwrap(),
+            json!({ "kind": "endTurn", "actorId": "c1" })
+        );
         // Carries an actor (so the room server routes it to that player's seat), but is not a
         // turn-action / gm / setup command.
         assert!(et.is_end_turn());
@@ -432,7 +550,9 @@ mod tests {
 
     #[test]
     fn wait_round_trips_and_is_time_advancing() {
-        let wait = Command::Wait { actor_id: CharacterId("c1".into()) };
+        let wait = Command::Wait {
+            actor_id: CharacterId("c1".into()),
+        };
         assert_eq!(
             serde_json::to_value(&wait).unwrap(),
             json!({ "kind": "wait", "actorId": "c1" })
@@ -442,11 +562,22 @@ mod tests {
         assert_eq!(wait.actor_id(), Some(&CharacterId("c1".into())));
         assert!(!wait.is_turn_action() && !wait.is_gm_command() && !wait.is_npc_interaction());
         // Move/pickUp/drop/use/attack are time-advancing; equip/unequip/talk are not.
-        let m = Command::Move { actor_id: CharacterId("c1".into()), room_id: RoomId("r".into()) };
+        let m = Command::Move {
+            actor_id: CharacterId("c1".into()),
+            room_id: RoomId("r".into()),
+        };
         assert!(m.is_time_advancing());
-        let e = Command::Equip { actor_id: CharacterId("c1".into()), item_id: ItemId("i".into()), slot: None };
+        let e = Command::Equip {
+            actor_id: CharacterId("c1".into()),
+            item_id: ItemId("i".into()),
+            slot: None,
+        };
         assert!(!e.is_time_advancing());
-        let t = Command::Talk { actor_id: CharacterId("c1".into()), npc_id: CharacterId("n".into()), prompt: None };
+        let t = Command::Talk {
+            actor_id: CharacterId("c1".into()),
+            npc_id: CharacterId("n".into()),
+            prompt: None,
+        };
         assert!(!t.is_time_advancing());
     }
 
@@ -461,12 +592,16 @@ mod tests {
             serde_json::to_value(&no_slot).unwrap(),
             json!({ "kind": "equip", "actorId": "c1", "itemId": "i1" })
         );
-        let with_slot: Command =
-            serde_json::from_value(json!({ "kind": "equip", "actorId": "c1", "itemId": "i1", "slot": "rightIndexFinger" }))
-                .unwrap();
+        let with_slot: Command = serde_json::from_value(
+            json!({ "kind": "equip", "actorId": "c1", "itemId": "i1", "slot": "rightIndexFinger" }),
+        )
+        .unwrap();
         assert!(matches!(
             with_slot,
-            Command::Equip { slot: Some(EquipmentSlot::RightIndexFinger), .. }
+            Command::Equip {
+                slot: Some(EquipmentSlot::RightIndexFinger),
+                ..
+            }
         ));
     }
 

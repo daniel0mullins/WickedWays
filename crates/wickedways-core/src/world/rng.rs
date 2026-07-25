@@ -33,9 +33,17 @@ mod tests {
         // Output: 0.6270739405881613 0.002735721180215478 0.5274470399599522
         let mut rng = Rng::seeded(1);
         let got = [rng.next_f64(), rng.next_f64(), rng.next_f64()];
-        let want = [0.6270739405881613_f64, 0.002735721180215478_f64, 0.5274470399599522_f64];
+        let want = [
+            0.6270739405881613_f64,
+            0.002735721180215478_f64,
+            0.5274470399599522_f64,
+        ];
         for (g, w) in got.iter().zip(want.iter()) {
-            assert_eq!(g.to_bits(), w.to_bits(), "mulberry32 draw mismatch: {g} vs {w}");
+            assert_eq!(
+                g.to_bits(),
+                w.to_bits(),
+                "mulberry32 draw mismatch: {g} vs {w}"
+            );
         }
     }
 }

@@ -29,21 +29,45 @@ pub const ALL_STATUSES: [Status; 4] = [Status::Confused, Status::Fear, Status::K
 /// are `f64` to match TS `number` and the f64 stat model.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Effect {
-    Damage { target: CharacterId, amount: f64 },
-    Heal { target: CharacterId, amount: f64 },
+    Damage {
+        target: CharacterId,
+        amount: f64,
+    },
+    Heal {
+        target: CharacterId,
+        amount: f64,
+    },
     /// `stat` is Sanity or Energy only (TS restricts AdjustStat to non-Health).
-    AdjustStat { target: CharacterId, stat: StatType, delta: f64 },
-    GrantImmunity { target: CharacterId, turns: f64 },
-    Cue { cue: MechanicCue },
-    Status { fields: Vec<StatusField> },
+    AdjustStat {
+        target: CharacterId,
+        stat: StatType,
+        delta: f64,
+    },
+    GrantImmunity {
+        target: CharacterId,
+        turns: f64,
+    },
+    Cue {
+        cue: MechanicCue,
+    },
+    Status {
+        fields: Vec<StatusField>,
+    },
     /// Hand item id `item` from `from`'s inventory to `to`'s. Routes by the source
     /// list (a key stays a key, a non-key stays an item); `World.items` is never
     /// touched — the `ItemSnapshot` persists and reachability follows the new
     /// holder. Not party-restricted (an NPC — non-party — may hand over a key).
-    GiveItem { from: CharacterId, to: CharacterId, item: ItemId },
+    GiveItem {
+        from: CharacterId,
+        to: CharacterId,
+        item: ItemId,
+    },
     /// Flip `target`'s `visible` flag (reversibly). An NPC that "disappears" flips
     /// this to `false`. Not party-restricted; a missing target is a no-op.
-    SetVisible { target: CharacterId, visible: bool },
+    SetVisible {
+        target: CharacterId,
+        visible: bool,
+    },
 }
 
 /// Result of `modify_damage` (TS `number | { value; final: true }`).
@@ -93,7 +117,10 @@ pub struct ActionView {
 impl ActionView {
     /// A room-less action view (every non-move action).
     pub fn of(kind: &str) -> ActionView {
-        ActionView { kind: kind.into(), room: None }
+        ActionView {
+            kind: kind.into(),
+            room: None,
+        }
     }
 }
 
@@ -102,18 +129,30 @@ impl ActionView {
 pub trait MechanicOp: Sync {
     /// Authoring-time state seed (TS `initialState`). NEVER called on hydrate.
     fn init_state(&self, config: &Value) -> Value;
-    fn on_round_start(&self, _cx: &mut HookCtx) -> Vec<Effect> { Vec::new() }
-    fn on_round_end(&self, _cx: &mut HookCtx) -> Vec<Effect> { Vec::new() }
-    fn on_turn_start(&self, _cx: &mut TurnCtx) -> Vec<Effect> { Vec::new() }
-    fn on_turn_end(&self, _cx: &mut TurnCtx) -> Vec<Effect> { Vec::new() }
-    fn on_action(&self, _cx: &mut ActionCtx) -> Vec<Effect> { Vec::new() }
+    fn on_round_start(&self, _cx: &mut HookCtx) -> Vec<Effect> {
+        Vec::new()
+    }
+    fn on_round_end(&self, _cx: &mut HookCtx) -> Vec<Effect> {
+        Vec::new()
+    }
+    fn on_turn_start(&self, _cx: &mut TurnCtx) -> Vec<Effect> {
+        Vec::new()
+    }
+    fn on_turn_end(&self, _cx: &mut TurnCtx) -> Vec<Effect> {
+        Vec::new()
+    }
+    fn on_action(&self, _cx: &mut ActionCtx) -> Vec<Effect> {
+        Vec::new()
+    }
     fn modify_damage(&self, d: &DamageView, _cx: &mut HookCtx) -> TransformResult {
         TransformResult::Value(d.amount)
     }
     /// Run a named custom action (TS `CustomAction.run`). `None` = this op has no
     /// action under `action_key` (→ a `ProceduralViolation` at the invoke site,
     /// mirroring TS's "has no action" throw). `cost` is v1-inert (every action costs 1).
-    fn run_action(&self, _action_key: &str, _cx: &mut ActionCtx) -> Option<Vec<Effect>> { None }
+    fn run_action(&self, _action_key: &str, _cx: &mut ActionCtx) -> Option<Vec<Effect>> {
+        None
+    }
 }
 
 /// Resolve a first-party op by key. The compiled-in registry; the snapshot's
@@ -155,9 +194,9 @@ pub fn resolve_mechanic_op<'a>(key: &str, cat: &'a Catalog) -> Option<ResolvedMe
         return Some(ResolvedMechanicOp::Native(op));
     }
     match cat.behaviors.get(key) {
-        Some(crate::script::ast::BehaviorScript::Mechanic { script }) => {
-            Some(ResolvedMechanicOp::Scripted(crate::script::ops::ScriptedMechanic { script }))
-        }
+        Some(crate::script::ast::BehaviorScript::Mechanic { script }) => Some(
+            ResolvedMechanicOp::Scripted(crate::script::ops::ScriptedMechanic { script }),
+        ),
         _ => None,
     }
 }
@@ -175,6 +214,9 @@ mod tests {
     #[test]
     fn conformance_op_init_state_is_zeroed_ticks() {
         let op = mechanic_op("conformance:dread").unwrap();
-        assert_eq!(op.init_state(&serde_json::json!(null)), serde_json::json!({"ticks": 0}));
+        assert_eq!(
+            op.init_state(&serde_json::json!(null)),
+            serde_json::json!({"ticks": 0})
+        );
     }
 }

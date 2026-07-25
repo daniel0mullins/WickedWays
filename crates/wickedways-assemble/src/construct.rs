@@ -18,9 +18,7 @@ use serde_json::{json, Value};
 use wickedways_core::presentation::CampaignOutcome;
 use wickedways_core::world::afflictions::Afflictions;
 use wickedways_core::world::descriptor::{Catalog, ItemType};
-use wickedways_core::world::ids::{
-    CharacterId, ExitId, ItemId, LootId, MaterialCacheId, RoomId,
-};
+use wickedways_core::world::ids::{CharacterId, ExitId, ItemId, LootId, MaterialCacheId, RoomId};
 use wickedways_core::world::snapshot::{
     CampaignCoreSnapshot, CampaignSnapshot, CharacterKind, CharacterSnapshot, ExitSnapshot,
     InventorySnapshot, ItemSnapshot, LootSnapshot, MaterialCacheSnapshot, MechanicSnapshot,
@@ -41,7 +39,11 @@ pub fn construct(
 ) -> Result<CampaignSnapshot, AssembleError> {
     // ---- assembler.ts:171-198 — campaign-core scalar fields ----
     let win_conditions = desc.win_conditions.iter().map(condition_snapshot).collect();
-    let lose_conditions = desc.lose_conditions.iter().map(condition_snapshot).collect();
+    let lose_conditions = desc
+        .lose_conditions
+        .iter()
+        .map(condition_snapshot)
+        .collect();
 
     // Mechanics, in declared order. State == `catalog.behaviors[key].script.init`
     // (the scripted-ops DSL carries as data what TS computed via `initialState`).
@@ -85,7 +87,9 @@ pub fn construct(
     // caches (assembler.ts:211-216) — attached to their room below.
     // loot (assembler.ts:218-229) — box + contents, placed in its room.
     for l in &desc.loot {
-        let Some(&idx) = room_index.get(&l.room) else { continue };
+        let Some(&idx) = room_index.get(&l.room) else {
+            continue;
+        };
         let box_id = ids::loot_id(&l.name);
         let mut contents: Vec<ItemSnapshot> = Vec::new();
         for (i, key) in l.items.iter().enumerate() {
@@ -107,7 +111,9 @@ pub fn construct(
 
     // caches (assembler.ts:211-216) — deposited into their room.
     for c in &desc.caches {
-        let Some(&idx) = room_index.get(&c.room) else { continue };
+        let Some(&idx) = room_index.get(&c.room) else {
+            continue;
+        };
         rooms[idx].caches.push(MaterialCacheSnapshot {
             id: MaterialCacheId(ids::cache_id(&c.name)),
             contents: serde_json::to_value(&c.materials).unwrap_or_else(|_| json!({})),
@@ -117,7 +123,9 @@ pub fn construct(
 
     // room light sources (assembler.ts:249-253).
     for r in &desc.rooms {
-        let Some(&idx) = room_index.get(&r.name) else { continue };
+        let Some(&idx) = room_index.get(&r.name) else {
+            continue;
+        };
         for (i, key) in r.lights.iter().enumerate() {
             if let Some(snap) = item_snapshot(catalog, key, ids::room_light_id(&r.name, i)) {
                 rooms[idx].light_items.push(snap);
@@ -129,7 +137,9 @@ pub fn construct(
     // A mob with no room is never placed => unreachable => not serialized.
     for m in &desc.mobs {
         let Some(room) = &m.room else { continue };
-        let Some(&idx) = room_index.get(room) else { continue };
+        let Some(&idx) = room_index.get(room) else {
+            continue;
+        };
         let build = build_mob(m, catalog, &rooms[idx].id);
         rooms[idx].occupant_ids.push(build.snapshot.id.clone());
         char_builds.insert(build.snapshot.id.clone(), build);
@@ -139,7 +149,9 @@ pub fn construct(
     // mobs before npcs in occupant order.
     for n in &desc.npcs {
         let Some(room) = &n.room else { continue };
-        let Some(&idx) = room_index.get(room) else { continue };
+        let Some(&idx) = room_index.get(room) else {
+            continue;
+        };
         let build = build_npc(n, catalog, &rooms[idx].id);
         rooms[idx].occupant_ids.push(build.snapshot.id.clone());
         char_builds.insert(build.snapshot.id.clone(), build);
@@ -150,8 +162,7 @@ pub fn construct(
     let mut exit_snaps: BTreeMap<String, ExitSnapshot> = BTreeMap::new();
     let mut wired: BTreeSet<String> = BTreeSet::new();
     for e in &desc.exits {
-        let (Some(&from_idx), Some(&to_idx)) =
-            (room_index.get(&e.from), room_index.get(&e.to))
+        let (Some(&from_idx), Some(&to_idx)) = (room_index.get(&e.from), room_index.get(&e.to))
         else {
             continue;
         };
@@ -186,7 +197,9 @@ pub fn construct(
 
     // scenes (assembler.ts:336-347) — registered on their room in declared order.
     for s in &desc.scenes {
-        let Some(&idx) = room_index.get(&s.room) else { continue };
+        let Some(&idx) = room_index.get(&s.room) else {
+            continue;
+        };
         rooms[idx].scenes.push(SceneSnapshot {
             id: ids::scene_id(&s.room, &s.key, s.phase.as_deref()),
             behavior_key: s.key.clone(),
@@ -405,7 +418,11 @@ impl RoomBuild {
             occupant_ids: self.occupant_ids.clone(),
             loot_ids: self.loot.iter().map(|lb| lb.snapshot.id.clone()).collect(),
             material_cache_ids: self.caches.iter().map(|c| c.id.clone()).collect(),
-            light_source_ids: self.light_items.iter().map(|it| item_id(it).clone()).collect(),
+            light_source_ids: self
+                .light_items
+                .iter()
+                .map(|it| item_id(it).clone())
+                .collect(),
             scenes: self.scenes.clone(),
         }
     }
@@ -504,7 +521,11 @@ fn build_mob(m: &MobDef, catalog: &Catalog, room_id: &str) -> CharBuild {
         actions_per_round: m.actions_per_round.unwrap_or(2),
         actions_this_round: 0,
         current_room_id: Some(RoomId(room_id.to_string())),
-        inventory: InventorySnapshot { slots, item_ids, key_ids },
+        inventory: InventorySnapshot {
+            slots,
+            item_ids,
+            key_ids,
+        },
         equipment: BTreeMap::new(),
         history: Vec::new(),
         archetype_immunities: Vec::new(),
@@ -523,7 +544,12 @@ fn build_mob(m: &MobDef, catalog: &Catalog, room_id: &str) -> CharBuild {
         npc_state: Value::Null,
         visible: true,
     };
-    CharBuild { snapshot, item_snaps, key_snaps, equip_snaps: Vec::new() }
+    CharBuild {
+        snapshot,
+        item_snaps,
+        key_snaps,
+        equip_snaps: Vec::new(),
+    }
 }
 
 fn build_npc(n: &NpcDef, catalog: &Catalog, room_id: &str) -> CharBuild {
@@ -553,7 +579,11 @@ fn build_npc(n: &NpcDef, catalog: &Catalog, room_id: &str) -> CharBuild {
         actions_per_round: 3,
         actions_this_round: 0,
         current_room_id: Some(RoomId(room_id.to_string())),
-        inventory: InventorySnapshot { slots: 5, item_ids, key_ids },
+        inventory: InventorySnapshot {
+            slots: 5,
+            item_ids,
+            key_ids,
+        },
         equipment: BTreeMap::new(),
         history: Vec::new(),
         archetype_immunities: Vec::new(),
@@ -568,7 +598,12 @@ fn build_npc(n: &NpcDef, catalog: &Catalog, room_id: &str) -> CharBuild {
         npc_state: Value::Null,
         visible: true,
     };
-    CharBuild { snapshot, item_snaps, key_snaps, equip_snaps: Vec::new() }
+    CharBuild {
+        snapshot,
+        item_snaps,
+        key_snaps,
+        equip_snaps: Vec::new(),
+    }
 }
 
 /// Compass opposite (`src/lib/room.ts` REVERSE) — used to place the auto-reverse
@@ -657,7 +692,11 @@ mod tests {
     fn a_two_way_exit_appears_once_and_links_both_rooms() {
         let snap = construct(&minimal(), &Catalog::default()).expect("construct");
         assert_eq!(snap.exits.len(), 1);
-        let start = snap.rooms.iter().find(|r| r.id.0 == "room:start").expect("start");
+        let start = snap
+            .rooms
+            .iter()
+            .find(|r| r.id.0 == "room:start")
+            .expect("start");
         assert!(start.exits.values().any(|e| e.0 == "exit:next|start"));
     }
 }

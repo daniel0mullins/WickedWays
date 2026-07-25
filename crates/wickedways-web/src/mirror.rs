@@ -54,7 +54,11 @@ impl Mirror {
 
     /// Committed entries with `seq >= from_seq`, in order (the `entries_since` read).
     pub fn entries_since(&self, from_seq: u64) -> Vec<LogEntry> {
-        self.log.iter().filter(|e| e.seq >= from_seq).cloned().collect()
+        self.log
+            .iter()
+            .filter(|e| e.seq >= from_seq)
+            .cloned()
+            .collect()
     }
 
     /// The latest checkpoint `(seq, snapshot)`, if the handshake seeded one.
@@ -112,7 +116,13 @@ mod tests {
             seq,
             base_seq: seq - 1,
             command: Command::NextPlayer,
-            delta: Delta { created: vec![], changed: vec![], removed: vec![], campaign_core: None, cues: vec![] },
+            delta: Delta {
+                created: vec![],
+                changed: vec![],
+                removed: vec![],
+                campaign_core: None,
+                cues: vec![],
+            },
         }
     }
 
@@ -168,7 +178,10 @@ mod tests {
         .expect("parse");
         m.seed(5, Some(snap.clone()));
         assert_eq!(m.head(), 5, "seeded head is the snapshot seq");
-        assert!(seqs(&m).is_empty(), "no entries yet — they stream from seq+1");
+        assert!(
+            seqs(&m).is_empty(),
+            "no entries yet — they stream from seq+1"
+        );
         let (seq, got) = m.load_snapshot().expect("snapshot seeded");
         assert_eq!(seq, 5);
         assert_eq!(got, snap);
@@ -188,7 +201,8 @@ mod tests {
             command: json!({ "kind": "nextPlayer" }),
             delta: json!({ "changed": [], "created": [], "removed": [] }),
         };
-        m.apply_wire_entry(&wire).expect("well-formed wire entry applies");
+        m.apply_wire_entry(&wire)
+            .expect("well-formed wire entry applies");
         assert_eq!(m.head(), 1);
         assert_eq!(seqs(&m), vec![1]);
     }

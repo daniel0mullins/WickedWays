@@ -38,7 +38,10 @@ const EXPR_BASE: Span = Span { line: 1, col: 1 };
 pub(crate) fn lower(doc: &AuthorDoc) -> Result<CompiledCampaign, CompileError> {
     let description = lower_description(doc);
     let catalog = lower_catalog(doc)?;
-    Ok(CompiledCampaign { description, catalog })
+    Ok(CompiledCampaign {
+        description,
+        catalog,
+    })
 }
 
 fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
@@ -82,7 +85,10 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 to: e.to.clone(),
                 behavior_key: e.behavior.clone(),
                 name: e.name.clone(),
-                initial_state: e.initial_state.as_ref().and_then(|v| serde_json::to_value(v).ok()),
+                initial_state: e
+                    .initial_state
+                    .as_ref()
+                    .and_then(|v| serde_json::to_value(v).ok()),
                 one_way: e.one_way,
             })
             .collect(),
@@ -100,9 +106,15 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 actions_per_round: m.actions_per_round,
                 drops: m.drops.clone(),
                 base_escape_chance: m.base_escape_chance,
-                material_drops: m.material_drops.as_ref().and_then(|v| serde_json::to_value(v).ok()),
+                material_drops: m
+                    .material_drops
+                    .as_ref()
+                    .and_then(|v| serde_json::to_value(v).ok()),
                 light_averse: m.light_averse,
-                natural_attack: m.natural_attack.as_ref().and_then(|v| serde_json::to_value(v).ok()),
+                natural_attack: m
+                    .natural_attack
+                    .as_ref()
+                    .and_then(|v| serde_json::to_value(v).ok()),
             })
             .collect(),
         loot: doc
@@ -148,7 +160,10 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
         formations: doc
             .formations
             .iter()
-            .map(|f| FormationDef { key: f.key.clone(), weight: f.weight })
+            .map(|f| FormationDef {
+                key: f.key.clone(),
+                weight: f.weight,
+            })
             .collect(),
         scenes: doc
             .scenes
@@ -297,7 +312,9 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
     // Victory behaviors: each win/lose condition's `test` is a parsed predicate,
     // keyed by the condition key (shared with the description's condition entry).
     for cond in doc.victory.win.iter().chain(doc.victory.lose.iter()) {
-        let script = VictoryScript { test: parse_expr(&cond.test, EXPR_BASE)? };
+        let script = VictoryScript {
+            test: parse_expr(&cond.test, EXPR_BASE)?,
+        };
         behaviors.insert(cond.key.clone(), BehaviorScript::Victory { script });
     }
 
@@ -305,7 +322,10 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
     for exit in &doc.exits {
         if let Some(key) = &exit.behavior {
             if !doc.behaviors.exit.contains_key(key) {
-                return Err(CompileError::UnresolvedKey { kind: "exit", key: key.clone() });
+                return Err(CompileError::UnresolvedKey {
+                    kind: "exit",
+                    key: key.clone(),
+                });
             }
         }
     }
@@ -314,7 +334,12 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
     // `mobs` roster), keyed the same as the description opt-in.
     let mut formations = BTreeMap::new();
     for f in &doc.formations {
-        formations.insert(f.key.clone(), FormationDescriptor { mobs: f.mobs.clone() });
+        formations.insert(
+            f.key.clone(),
+            FormationDescriptor {
+                mobs: f.mobs.clone(),
+            },
+        );
     }
 
     // Each `[[recipes]]` entry's catalog half → a `RecipeMeta` carrying the cost +

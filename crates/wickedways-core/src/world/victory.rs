@@ -97,11 +97,16 @@ mod tests {
                     "pred": { "kind": "bin", "op": "lte",
                         "left": { "kind": "get", "of": { "kind": "element" }, "field": "sanity" },
                         "right": { "kind": "lit", "value": 0.0 } } } } } }
-        })).unwrap();
-        assert!(matches!(resolve_victory("conformance:round-reached", &cat),
-            Some(ResolvedVictory::Native(_))));
-        assert!(matches!(resolve_victory("sanity-zero", &cat),
-            Some(ResolvedVictory::Scripted(_))));
+        }))
+        .unwrap();
+        assert!(matches!(
+            resolve_victory("conformance:round-reached", &cat),
+            Some(ResolvedVictory::Native(_))
+        ));
+        assert!(matches!(
+            resolve_victory("sanity-zero", &cat),
+            Some(ResolvedVictory::Scripted(_))
+        ));
         assert!(resolve_victory("nope", &cat).is_none());
     }
 }

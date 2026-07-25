@@ -11,7 +11,9 @@
 //! Driven by [`crate::audio_runtime::AudioRuntime`], which starts it on the engine's `AudioContext`
 //! when the player enables sound and feeds it a 0–1 tension on every view update.
 
-use web_sys::{AudioContext, BiquadFilterNode, BiquadFilterType, GainNode, OscillatorNode, OscillatorType};
+use web_sys::{
+    AudioContext, BiquadFilterNode, BiquadFilterType, GainNode, OscillatorNode, OscillatorType,
+};
 
 // Tunable voice — dialed by ear on the running dev server (kept in sync with `ambient.ts`).
 const BASE_HZ: f32 = 55.0; // A1 fundamental
@@ -49,18 +51,24 @@ impl AmbientBed {
         let Ok(gain) = ctx.create_gain() else { return };
         let _ = gain.connect_with_audio_node(&ctx.destination());
 
-        let Ok(filter) = ctx.create_biquad_filter() else { return };
+        let Ok(filter) = ctx.create_biquad_filter() else {
+            return;
+        };
         filter.set_type(BiquadFilterType::Lowpass);
         let _ = filter.frequency().set_value_at_time(CUTOFF, now);
         let _ = filter.connect_with_audio_node(&gain);
 
-        let Ok(osc1) = ctx.create_oscillator() else { return };
+        let Ok(osc1) = ctx.create_oscillator() else {
+            return;
+        };
         osc1.set_type(OscillatorType::Sawtooth);
         let _ = osc1.frequency().set_value_at_time(BASE_HZ, now);
         let _ = osc1.connect_with_audio_node(&filter);
         let _ = osc1.start_with_when(now);
 
-        let Ok(osc2) = ctx.create_oscillator() else { return };
+        let Ok(osc2) = ctx.create_oscillator() else {
+            return;
+        };
         osc2.set_type(OscillatorType::Sawtooth);
         let _ = osc2.frequency().set_value_at_time(BASE_HZ + DETUNE_HZ, now);
         let _ = osc2.connect_with_audio_node(&filter);

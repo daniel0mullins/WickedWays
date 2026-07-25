@@ -52,9 +52,11 @@ fn canon_numbers(v: &Value) -> Value {
             v.clone()
         }
         Value::Array(a) => Value::Array(a.iter().map(canon_numbers).collect()),
-        Value::Object(o) => {
-            Value::Object(o.iter().map(|(k, x)| (k.clone(), canon_numbers(x))).collect())
-        }
+        Value::Object(o) => Value::Object(
+            o.iter()
+                .map(|(k, x)| (k.clone(), canon_numbers(x)))
+                .collect(),
+        ),
         _ => v.clone(),
     }
 }

@@ -55,7 +55,10 @@ pub fn tokenize(src: &str, base: Span) -> Result<Vec<(Token, Span)>, CompileErro
     let mut out: Vec<(Token, Span)> = Vec::new();
     let mut i = 0usize;
 
-    let span_at = |i: usize| Span { line: base.line, col: base.col + i };
+    let span_at = |i: usize| Span {
+        line: base.line,
+        col: base.col + i,
+    };
 
     while i < chars.len() {
         let c = chars[i];
@@ -72,12 +75,36 @@ pub fn tokenize(src: &str, base: Span) -> Result<Vec<(Token, Span)>, CompileErro
         // two-char operators first, then single-char
         let next = chars.get(i + 1).copied();
         match (c, next) {
-            ('&', Some('&')) => { out.push((Token::AndAnd, start_span)); i += 2; continue; }
-            ('|', Some('|')) => { out.push((Token::OrOr, start_span)); i += 2; continue; }
-            ('=', Some('=')) => { out.push((Token::EqEq, start_span)); i += 2; continue; }
-            ('!', Some('=')) => { out.push((Token::NotEq, start_span)); i += 2; continue; }
-            ('<', Some('=')) => { out.push((Token::Lte, start_span)); i += 2; continue; }
-            ('>', Some('=')) => { out.push((Token::Gte, start_span)); i += 2; continue; }
+            ('&', Some('&')) => {
+                out.push((Token::AndAnd, start_span));
+                i += 2;
+                continue;
+            }
+            ('|', Some('|')) => {
+                out.push((Token::OrOr, start_span));
+                i += 2;
+                continue;
+            }
+            ('=', Some('=')) => {
+                out.push((Token::EqEq, start_span));
+                i += 2;
+                continue;
+            }
+            ('!', Some('=')) => {
+                out.push((Token::NotEq, start_span));
+                i += 2;
+                continue;
+            }
+            ('<', Some('=')) => {
+                out.push((Token::Lte, start_span));
+                i += 2;
+                continue;
+            }
+            ('>', Some('=')) => {
+                out.push((Token::Gte, start_span));
+                i += 2;
+                continue;
+            }
             _ => {}
         }
 

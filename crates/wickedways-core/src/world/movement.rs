@@ -7,10 +7,6 @@
 //! the departed room fire before the occupant is removed, enter-phase scenes of
 //! the entered room fire after the occupant is added and before the visibility
 //! cue. An unregistered scene `behavior_key` surfaces as `Err(ProceduralViolation)`.
-use alloc::collections::BTreeSet;
-use alloc::format;
-use alloc::string::ToString;
-use alloc::vec::Vec;
 use crate::error::ProceduralViolation;
 use crate::presentation::{ActionKind, EntityRef, MechanicCue, PresentationCue};
 use crate::world::descriptor::Catalog;
@@ -18,6 +14,10 @@ use crate::world::direction::Direction;
 use crate::world::history::{ActionHistoryEntry, RoomRef};
 use crate::world::ids::{CharacterId, RoomId};
 use crate::world::World;
+use alloc::collections::BTreeSet;
+use alloc::format;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 impl World {
     /// Whether `room` is currently lit. Mirrors `src/lib/room.ts` `get isLit`
@@ -26,8 +26,12 @@ impl World {
     /// non-broken light. Needs `&Catalog` to read each item's `emits_light` and
     /// `max_durability` (broken-state).
     pub fn is_lit(&self, room: &RoomId, cat: &Catalog) -> bool {
-        let Some(r) = self.rooms.get(room) else { return true };
-        if !r.dark { return true; }
+        let Some(r) = self.rooms.get(room) else {
+            return true;
+        };
+        if !r.dark {
+            return true;
+        }
         // Placed light sources: any non-broken source lights the room
         // (TS `for (const light of #lightSources.values()) if (!light.isBroken)`).
         for id in &r.light_source_ids {
@@ -38,7 +42,9 @@ impl World {
             }
         }
         // Occupant-carried light (TS `occupants.some((o) => o.hasLight)`).
-        r.occupant_ids.iter().any(|occ| self.character_has_light(occ, cat))
+        r.occupant_ids
+            .iter()
+            .any(|occ| self.character_has_light(occ, cat))
     }
 
     /// True when `char_id` has an equipped, non-broken, light-emitting item in a
@@ -46,10 +52,16 @@ impl World {
     /// left/right hand slots; an item counts iff its descriptor `emitsLight` is
     /// `true` and the instance is not broken.
     pub fn character_has_light(&self, char_id: &CharacterId, cat: &Catalog) -> bool {
-        let Some(ch) = self.characters.get(char_id) else { return false };
+        let Some(ch) = self.characters.get(char_id) else {
+            return false;
+        };
         for slot in ["leftHand", "rightHand"] {
-            let Some(item_id) = ch.equipment.get(slot) else { continue };
-            let Some(snap) = self.items.get(item_id) else { continue };
+            let Some(item_id) = ch.equipment.get(slot) else {
+                continue;
+            };
+            let Some(snap) = self.items.get(item_id) else {
+                continue;
+            };
             if let crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } = snap {
                 let emits = cat
                     .items
@@ -69,8 +81,15 @@ impl World {
     /// the catalog descriptor; `durability` is the per-instance snapshot value.
     fn item_is_broken(&self, snap: &crate::world::snapshot::ItemSnapshot, cat: &Catalog) -> bool {
         match snap {
-            crate::world::snapshot::ItemSnapshot::Item { behavior_key, durability, .. } => {
-                cat.items.get(behavior_key).and_then(|d| d.max_durability).is_some()
+            crate::world::snapshot::ItemSnapshot::Item {
+                behavior_key,
+                durability,
+                ..
+            } => {
+                cat.items
+                    .get(behavior_key)
+                    .and_then(|d| d.max_durability)
+                    .is_some()
                     && *durability == Some(0)
             }
             crate::world::snapshot::ItemSnapshot::Key { .. } => false,
@@ -80,8 +99,15 @@ impl World {
     /// Build an `EntityRef` for a character — safe to call even if the character
     /// has already been mutated (uses current snapshot state).
     pub(crate) fn entity_ref_char(&self, id: &CharacterId) -> EntityRef {
-        let name = self.characters.get(id).map(|c| c.name.clone()).unwrap_or_default();
-        EntityRef { id: id.0.clone(), name }
+        let name = self
+            .characters
+            .get(id)
+            .map(|c| c.name.clone())
+            .unwrap_or_default();
+        EntityRef {
+            id: id.0.clone(),
+            name,
+        }
     }
 
     /// Evaluate the exit in `dir` from the actor's current room, then call
@@ -125,7 +151,10 @@ impl World {
 
         let Some(exit_id) = room.exits.get(dir.as_key()).cloned() else {
             cues.push(PresentationCue::Mechanic {
-                cue: MechanicCue { text: Some("You can't go that way.".into()), sound: None },
+                cue: MechanicCue {
+                    text: Some("You can't go that way.".into()),
+                    sound: None,
+                },
             });
             return Ok(());
         };
@@ -147,9 +176,10 @@ impl World {
         // A behavior-keyed exit: resolve the registry (sub-plan 6) and evaluate
         // canPass / runScript-or-passMessage before moving. Mirrors TS `go` (:4-6).
         if let Some(key) = exit.behavior_key.clone() {
-            let resolved = crate::world::exits::resolve_exit_behavior(&key, cat).ok_or_else(|| {
-                ProceduralViolation(format!("Exit behavior '{key}' is not registered."))
-            })?;
+            let resolved =
+                crate::world::exits::resolve_exit_behavior(&key, cat).ok_or_else(|| {
+                    ProceduralViolation(format!("Exit behavior '{key}' is not registered."))
+                })?;
             let behavior = resolved.as_behavior();
             let actor_view = self
                 .character_view(actor, cat)
@@ -159,7 +189,10 @@ impl World {
             if !behavior.can_pass(&actor_view, &exit.state) {
                 if let Some(fail) = behavior.fail_message() {
                     cues.push(PresentationCue::Mechanic {
-                        cue: MechanicCue { text: Some(fail.into()), sound: None },
+                        cue: MechanicCue {
+                            text: Some(fail.into()),
+                            sound: None,
+                        },
                     });
                 }
                 return Ok(()); // blocked — no move
@@ -172,7 +205,10 @@ impl World {
             .or_else(|| behavior.pass_message().map(|s| s.to_string()));
             if let Some(l) = line {
                 cues.push(PresentationCue::Mechanic {
-                    cue: MechanicCue { text: Some(l), sound: None },
+                    cue: MechanicCue {
+                        text: Some(l),
+                        sound: None,
+                    },
                 });
             }
             return self.move_to(actor, dest, cat, cues);
@@ -196,7 +232,10 @@ impl World {
         dir: Direction,
         cat: &Catalog,
     ) -> Option<alloc::string::String> {
-        let here = self.characters.get(actor).and_then(|c| c.current_room_id.clone())?;
+        let here = self
+            .characters
+            .get(actor)
+            .and_then(|c| c.current_room_id.clone())?;
         let exit_id = self.rooms.get(&here)?.exits.get(dir.as_key())?.clone();
         let exit = self.exits.get(&exit_id)?;
         let key = exit.behavior_key.clone()?;
@@ -206,7 +245,12 @@ impl World {
         if behavior.can_pass(&actor_view, &exit.state) {
             None
         } else {
-            Some(behavior.fail_message().unwrap_or("The way is blocked.").into())
+            Some(
+                behavior
+                    .fail_message()
+                    .unwrap_or("The way is blocked.")
+                    .into(),
+            )
         }
     }
 
@@ -280,8 +324,10 @@ impl World {
                 }
                 // Native: unchanged cue-only path (byte-identical to the old resolver).
                 Some(crate::world::scenes::ResolvedScene::Native(behavior)) => {
-                    if let Some(scene) =
-                        self.rooms.get_mut(room_id).and_then(|r| r.scenes.get_mut(i))
+                    if let Some(scene) = self
+                        .rooms
+                        .get_mut(room_id)
+                        .and_then(|r| r.scenes.get_mut(i))
                     {
                         if behavior.can_play(&view, &scene.state) {
                             emitted.extend(behavior.run_script(&view, &mut scene.state));
@@ -293,11 +339,14 @@ impl World {
                 Some(crate::world::scenes::ResolvedScene::Scripted(script)) => {
                     // Take the scene's own JSON state out so its Write borrow does not
                     // collide with the RoomSource::World `&self` borrow used for room reads.
-                    let mut state =
-                        match self.rooms.get_mut(room_id).and_then(|r| r.scenes.get_mut(i)) {
-                            Some(s) => core::mem::take(&mut s.state),
-                            None => continue,
-                        };
+                    let mut state = match self
+                        .rooms
+                        .get_mut(room_id)
+                        .and_then(|r| r.scenes.get_mut(i))
+                    {
+                        Some(s) => core::mem::take(&mut s.state),
+                        None => continue,
+                    };
                     let campaign_view = self.build_campaign_view(cat);
                     let actor_view = self.character_view(actor, cat);
                     let scene_op = crate::script::ops::ScriptedScene { script };
@@ -325,7 +374,11 @@ impl World {
                         Vec::new()
                     };
                     // Write the (possibly mutated) state back before applying effects.
-                    if let Some(s) = self.rooms.get_mut(room_id).and_then(|r| r.scenes.get_mut(i)) {
+                    if let Some(s) = self
+                        .rooms
+                        .get_mut(room_id)
+                        .and_then(|r| r.scenes.get_mut(i))
+                    {
                         s.state = state;
                     }
                     // Runaway backstop, then the shared collect-then-apply pipeline.
@@ -361,8 +414,10 @@ impl World {
         // Exit old room — fire exit-phase scenes first (mover still an occupant),
         // then retain all occupants that are not the actor. Mirrors TS
         // `Room.exitRoom` (play "exit" scenes → delete occupant).
-        if let Some(prev) =
-            self.characters.get(actor).and_then(|c| c.current_room_id.clone())
+        if let Some(prev) = self
+            .characters
+            .get(actor)
+            .and_then(|c| c.current_room_id.clone())
         {
             self.fire_scenes(&prev, "exit", actor, cat, cues)?;
             if let Some(r) = self.rooms.get_mut(&prev) {
@@ -394,7 +449,10 @@ impl World {
                 .map(|r| r.name.clone())
                 .unwrap_or_default();
             cues.push(PresentationCue::Visibility {
-                room: EntityRef { id: room.0.clone(), name },
+                room: EntityRef {
+                    id: room.0.clone(),
+                    name,
+                },
                 lit: false,
             });
         }
@@ -421,7 +479,10 @@ impl World {
         if let Some(c) = self.characters.get_mut(actor) {
             c.history.push(ActionHistoryEntry::Move {
                 round,
-                room: RoomRef { id: room.clone(), name: room_name.clone() },
+                room: RoomRef {
+                    id: room.clone(),
+                    name: room_name.clone(),
+                },
             });
         }
         // Action cue — emitted after the history push, matching TS order.
@@ -434,10 +495,19 @@ impl World {
         // the encounter cues: TS `PlayerCharacter.move` (player-character.ts:169-173)
         // calls `super.move(room)` — which runs `recordAction` to completion, including
         // any `endTurn`/reconcile — THEN emits NOTE_ENCOUNTERS.
-        self.record_action(actor, true, crate::world::mechanics::ActionView {
-            kind: "move".into(),
-            room: Some(RoomRef { id: room.clone(), name: room_name.clone() }),
-        }, cat, cues)?;
+        self.record_action(
+            actor,
+            true,
+            crate::world::mechanics::ActionView {
+                kind: "move".into(),
+                room: Some(RoomRef {
+                    id: room.clone(),
+                    name: room_name.clone(),
+                }),
+            },
+            cat,
+            cues,
+        )?;
 
         // PlayerCharacter.move tail (player-character.ts:169-176), AFTER super.move's
         // recordAction: maybeSpawn → NOTE_ENCOUNTERS → room codex. Spawned mobs land
@@ -449,17 +519,33 @@ impl World {
             // NOTE_ENCOUNTERS: scan occupants (now incl. spawned), skip party/KO, dedup on
             // "{actor}:{occ}" in campaign.encountered; record mob codex; stage encounter cues.
             let party: BTreeSet<CharacterId> = self.campaign.party_ids.iter().cloned().collect();
-            let occupants: Vec<CharacterId> =
-                self.rooms.get(&room).map(|r| r.occupant_ids.clone()).unwrap_or_default();
+            let occupants: Vec<CharacterId> = self
+                .rooms
+                .get(&room)
+                .map(|r| r.occupant_ids.clone())
+                .unwrap_or_default();
             let mut encounter_refs: Vec<EntityRef> = Vec::new();
             for occ in occupants {
-                if party.contains(&occ) { continue; }
-                if self.is_ko(&occ) { continue; }
+                if party.contains(&occ) {
+                    continue;
+                }
+                if self.is_ko(&occ) {
+                    continue;
+                }
                 let key = format!("{}:{}", actor.0, occ.0);
-                if self.campaign.encountered.iter().any(|k| k == &key) { continue; }
+                if self.campaign.encountered.iter().any(|k| k == &key) {
+                    continue;
+                }
                 self.campaign.encountered.push(key);
-                let (name, stats) = self.characters.get(&occ)
-                    .map(|c| (c.name.clone(), (c.stats.health, c.stats.sanity, c.stats.energy)))
+                let (name, stats) = self
+                    .characters
+                    .get(&occ)
+                    .map(|c| {
+                        (
+                            c.name.clone(),
+                            (c.stats.health, c.stats.sanity, c.stats.energy),
+                        )
+                    })
                     .unwrap_or_default();
                 self.record_codex(
                     "mob", &name,
@@ -471,27 +557,40 @@ impl World {
 
             // RECORD_ENCOUNTER({kind:"room"}): first-write-wins room codex entry.
             let room_id_str = room.0.clone();
-            let already_in_codex = self.codex.as_array()
-                .map(|arr| arr.iter().any(|e|
-                    e.get("kind").and_then(|v| v.as_str()) == Some("room")
-                    && e.get("key").and_then(|v| v.as_str()) == Some(&room_id_str)))
+            let already_in_codex = self
+                .codex
+                .as_array()
+                .map(|arr| {
+                    arr.iter().any(|e| {
+                        e.get("kind").and_then(|v| v.as_str()) == Some("room")
+                            && e.get("key").and_then(|v| v.as_str()) == Some(&room_id_str)
+                    })
+                })
                 .unwrap_or(false);
             if !already_in_codex {
-                let (room_name_str, room_desc) = self.rooms.get(&room)
-                    .map(|r| (r.name.clone(), r.description.clone())).unwrap_or_default();
+                let (room_name_str, room_desc) = self
+                    .rooms
+                    .get(&room)
+                    .map(|r| (r.name.clone(), r.description.clone()))
+                    .unwrap_or_default();
                 let entry = serde_json::json!({
                     "kind": "room", "key": room_id_str,
                     "snapshot": { "name": room_name_str, "description": room_desc },
                     "firstSeen": { "round": self.campaign.round, "characterId": actor.0.clone(), "roomId": room_id_str }
                 });
-                if let Some(arr) = self.codex.as_array_mut() { arr.push(entry); }
+                if let Some(arr) = self.codex.as_array_mut() {
+                    arr.push(entry);
+                }
             }
 
             // Encounter cues last (after the move action cue AND any turn-end cues).
             for r in encounter_refs {
                 cues.push(PresentationCue::Encounter {
                     mob: r,
-                    room: EntityRef { id: room.0.clone(), name: room_name.clone() },
+                    room: EntityRef {
+                        id: room.0.clone(),
+                        name: room_name.clone(),
+                    },
                     sound: None,
                 });
             }
@@ -508,27 +607,39 @@ mod tests {
     use crate::world::ids::{CharacterId, RoomId};
     use crate::world::test_support::world_two_rooms;
 
-    fn cid(s: &str) -> CharacterId { CharacterId(s.into()) }
-    fn rid(s: &str) -> RoomId { RoomId(s.into()) }
+    fn cid(s: &str) -> CharacterId {
+        CharacterId(s.into())
+    }
+    fn rid(s: &str) -> RoomId {
+        RoomId(s.into())
+    }
 
     /// Insert a minimal live Mob character `name` (id == name) into `room`, and push
     /// its id into that room's `occupant_ids`. Mirrors the CharacterSnapshot pattern
     /// used in `test_support.rs` for player characters.
     fn seat_mob(w: &mut crate::world::World, name: &str, room: &str) {
-        use alloc::collections::BTreeMap;
         use crate::world::afflictions::Afflictions;
         use crate::world::snapshot::{CharacterKind, CharacterSnapshot, InventorySnapshot, Stats};
+        use alloc::collections::BTreeMap;
         let id = CharacterId(name.into());
         let room_id = RoomId(room.into());
         let snap = CharacterSnapshot {
             kind: CharacterKind::Mob,
             id: id.clone(),
             name: name.into(),
-            stats: Stats { health: 4.0, sanity: 0.0, energy: 3.0 },
+            stats: Stats {
+                health: 4.0,
+                sanity: 0.0,
+                energy: 3.0,
+            },
             actions_per_round: 1,
             actions_this_round: 0,
             current_room_id: Some(room_id.clone()),
-            inventory: InventorySnapshot { slots: 0, item_ids: alloc::vec![], key_ids: alloc::vec![] },
+            inventory: InventorySnapshot {
+                slots: 0,
+                item_ids: alloc::vec![],
+                key_ids: alloc::vec![],
+            },
             equipment: BTreeMap::new(),
             history: alloc::vec![],
             archetype_immunities: alloc::vec![],
@@ -559,27 +670,38 @@ mod tests {
         phase: &str,
         state: serde_json::Value,
     ) {
-        w.rooms.get_mut(&rid(room)).unwrap().scenes.push(
-            crate::world::snapshot::SceneSnapshot {
+        w.rooms
+            .get_mut(&rid(room))
+            .unwrap()
+            .scenes
+            .push(crate::world::snapshot::SceneSnapshot {
                 id: "scene".into(),
                 behavior_key: key.into(),
                 phase: phase.into(),
                 state,
-            },
-        );
+            });
     }
 
     fn mcue(text: &str) -> PresentationCue {
         PresentationCue::Mechanic {
-            cue: crate::presentation::MechanicCue { text: Some(text.into()), sound: None },
+            cue: crate::presentation::MechanicCue {
+                text: Some(text.into()),
+                sound: None,
+            },
         }
     }
 
     #[test]
     fn scripted_scene_enter_emits_cue_and_hides_target() {
-        let mut w = world_two_rooms(/*next_dark=*/false);
+        let mut w = world_two_rooms(/*next_dark=*/ false);
         seat_mob(&mut w, "ghost", "start"); // a target to hide
-        attach_named_scene(&mut w, "start", "scenes/ambush", "enter", serde_json::json!({}));
+        attach_named_scene(
+            &mut w,
+            "start",
+            "scenes/ambush",
+            "enter",
+            serde_json::json!({}),
+        );
         let cat: Catalog = serde_json::from_value(serde_json::json!({
             "items": {}, "aliases": {},
             "behaviors": { "scenes/ambush": {
@@ -592,9 +714,11 @@ mod tests {
                         "visible": { "kind": "lit", "value": false } } }
                 ] }
             } }
-        })).unwrap();
+        }))
+        .unwrap();
         let mut cues = Vec::new();
-        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues).unwrap();
+        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues)
+            .unwrap();
         // cue surfaced AND target hidden — both effects applied in order.
         assert_eq!(cues, alloc::vec![mcue("A cold wind stirs.")]);
         assert!(!w.characters[&cid("ghost")].visible);
@@ -603,7 +727,13 @@ mod tests {
     #[test]
     fn scripted_scene_can_play_false_is_skipped() {
         let mut w = world_two_rooms(false);
-        attach_named_scene(&mut w, "start", "scenes/quiet", "enter", serde_json::json!({}));
+        attach_named_scene(
+            &mut w,
+            "start",
+            "scenes/quiet",
+            "enter",
+            serde_json::json!({}),
+        );
         let cat: Catalog = serde_json::from_value(serde_json::json!({
             "items": {}, "aliases": {},
             "behaviors": { "scenes/quiet": {
@@ -618,18 +748,29 @@ mod tests {
                     ]
                 }
             } }
-        })).unwrap();
+        }))
+        .unwrap();
         let mut cues = Vec::new();
-        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues).unwrap();
+        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues)
+            .unwrap();
         // Skipped: no cue emitted and the body's setState never ran.
         assert!(cues.is_empty());
-        assert_eq!(w.rooms[&rid("start")].scenes[0].state, serde_json::json!({}));
+        assert_eq!(
+            w.rooms[&rid("start")].scenes[0].state,
+            serde_json::json!({})
+        );
     }
 
     #[test]
     fn scripted_scene_setstate_persists_across_fires() {
         let mut w = world_two_rooms(false);
-        attach_named_scene(&mut w, "start", "scenes/counter", "enter", serde_json::json!({}));
+        attach_named_scene(
+            &mut w,
+            "start",
+            "scenes/counter",
+            "enter",
+            serde_json::json!({}),
+        );
         let cat: Catalog = serde_json::from_value(serde_json::json!({
             "items": {}, "aliases": {},
             "behaviors": { "scenes/counter": {
@@ -639,94 +780,144 @@ mod tests {
                         "left": { "kind": "stateGet", "field": "count", "default": 0 },
                         "right": { "kind": "lit", "value": 1 } } } ] }
             } }
-        })).unwrap();
+        }))
+        .unwrap();
         let mut cues = Vec::new();
-        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues).unwrap();
-        assert_eq!(w.rooms[&rid("start")].scenes[0].state["count"], serde_json::json!(1.0));
-        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues).unwrap();
-        assert_eq!(w.rooms[&rid("start")].scenes[0].state["count"], serde_json::json!(2.0));
+        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues)
+            .unwrap();
+        assert_eq!(
+            w.rooms[&rid("start")].scenes[0].state["count"],
+            serde_json::json!(1.0)
+        );
+        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues)
+            .unwrap();
+        assert_eq!(
+            w.rooms[&rid("start")].scenes[0].state["count"],
+            serde_json::json!(2.0)
+        );
     }
 
     #[test]
     fn native_visit_counter_scene_still_fires_unchanged() {
         let mut w = world_two_rooms(false);
-        attach_named_scene(&mut w, "start", "conformance:visit-counter", "enter",
-            serde_json::json!({ "count": 0 }));
+        attach_named_scene(
+            &mut w,
+            "start",
+            "conformance:visit-counter",
+            "enter",
+            serde_json::json!({ "count": 0 }),
+        );
         let cat = Catalog::default();
         let mut cues = Vec::new();
-        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues).unwrap();
+        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues)
+            .unwrap();
         assert_eq!(cues, alloc::vec![mcue("The Start stirs (visit 1).")]);
-        assert_eq!(w.rooms[&rid("start")].scenes[0].state["count"], serde_json::json!(1));
+        assert_eq!(
+            w.rooms[&rid("start")].scenes[0].state["count"],
+            serde_json::json!(1)
+        );
         // Firing again advances the native counter — byte-identical to the old path.
         let mut cues2 = Vec::new();
-        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues2).unwrap();
+        w.fire_scenes(&rid("start"), "enter", &cid("pc"), &cat, &mut cues2)
+            .unwrap();
         assert_eq!(cues2, alloc::vec![mcue("The Start stirs (visit 2).")]);
     }
 
     #[test]
     fn go_over_behavior_free_exit_moves_updates_occupancy_and_emits_action_cue() {
-        let mut w = world_two_rooms(/*next_dark=*/false);
+        let mut w = world_two_rooms(/*next_dark=*/ false);
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .unwrap();
         assert_eq!(w.characters[&cid("pc")].current_room_id, Some(rid("next")));
         assert!(!w.rooms[&rid("start")].occupant_ids.contains(&cid("pc")));
         assert!(w.rooms[&rid("next")].occupant_ids.contains(&cid("pc")));
         assert_eq!(w.characters[&cid("pc")].actions_this_round, 1);
-        assert_eq!(cues, vec![PresentationCue::Action {
-            action: ActionKind::Move,
-            actor: EntityRef { id: "pc".into(), name: "Heir".into() },
-            sound: None }]);
+        assert_eq!(
+            cues,
+            vec![PresentationCue::Action {
+                action: ActionKind::Move,
+                actor: EntityRef {
+                    id: "pc".into(),
+                    name: "Heir".into()
+                },
+                sound: None
+            }]
+        );
         // history append — pin exact round and room
         assert_eq!(
             w.characters[&cid("pc")].history.last(),
             Some(&ActionHistoryEntry::Move {
                 round: 0,
-                room: RoomRef { id: rid("next"), name: "Next".into() },
+                room: RoomRef {
+                    id: rid("next"),
+                    name: "Next".into()
+                },
             })
         );
     }
 
     #[test]
     fn entering_a_dark_room_emits_visibility_lit_false() {
-        let mut w = world_two_rooms(/*next_dark=*/true);
+        let mut w = world_two_rooms(/*next_dark=*/ true);
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
-        assert_eq!(cues, vec![
-            PresentationCue::Visibility {
-                room: EntityRef { id: "next".into(), name: "Next".into() },
-                lit: false,
-            },
-            PresentationCue::Action {
-                action: ActionKind::Move,
-                actor: EntityRef { id: "pc".into(), name: "Heir".into() },
-                sound: None,
-            },
-        ]);
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .unwrap();
+        assert_eq!(
+            cues,
+            vec![
+                PresentationCue::Visibility {
+                    room: EntityRef {
+                        id: "next".into(),
+                        name: "Next".into()
+                    },
+                    lit: false,
+                },
+                PresentationCue::Action {
+                    action: ActionKind::Move,
+                    actor: EntityRef {
+                        id: "pc".into(),
+                        name: "Heir".into()
+                    },
+                    sound: None,
+                },
+            ]
+        );
     }
 
     #[test]
     fn go_at_a_wall_emits_cant_go_that_way_and_does_not_move_or_tick_budget() {
         let mut w = world_two_rooms(false);
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::East, &Catalog::default(), &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::East, &Catalog::default(), &mut cues)
+            .unwrap();
         assert_eq!(w.characters[&cid("pc")].current_room_id, Some(rid("start")));
         assert_eq!(w.characters[&cid("pc")].actions_this_round, 0);
-        assert_eq!(cues, vec![PresentationCue::Mechanic {
-            cue: crate::presentation::MechanicCue {
-                text: Some("You can't go that way.".into()), sound: None } }]);
+        assert_eq!(
+            cues,
+            vec![PresentationCue::Mechanic {
+                cue: crate::presentation::MechanicCue {
+                    text: Some("You can't go that way.".into()),
+                    sound: None
+                }
+            }]
+        );
     }
 
     #[test]
     fn is_lit_truth_table() {
         let w = world_two_rooms(true);
         let cat = Catalog::default();
-        assert!(w.is_lit(&rid("start"), &cat));   // not dark
-        assert!(!w.is_lit(&rid("next"), &cat));   // dark, no light sources
+        assert!(w.is_lit(&rid("start"), &cat)); // not dark
+        assert!(!w.is_lit(&rid("next"), &cat)); // dark, no light sources
     }
 
     /// Build an Accessory descriptor that (maybe) emits light and (maybe) has a
     /// max durability — enough to drive `character_has_light` / `is_lit`.
-    fn lantern_desc(emits: Option<bool>, max_dur: Option<i64>) -> crate::world::descriptor::ItemDescriptor {
+    fn lantern_desc(
+        emits: Option<bool>,
+        max_dur: Option<i64>,
+    ) -> crate::world::descriptor::ItemDescriptor {
         use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType, SlotKind};
         ItemDescriptor {
             name: "Brass Lantern".into(),
@@ -734,7 +925,11 @@ mod tests {
             stat: crate::stats::StatType::Sanity,
             modifier: 0,
             properties: ItemProperties {
-                equippable: true, equipped: true, destroyable: false, usable: false, droppable: None,
+                equippable: true,
+                equipped: true,
+                destroyable: false,
+                usable: false,
+                droppable: None,
             },
             slot: Some(SlotKind::Hand),
             two_handed: None,
@@ -760,13 +955,14 @@ mod tests {
         use crate::world::ids::ItemId;
         use crate::world::snapshot::ItemSnapshot;
 
-        let mut w = world_two_rooms(/*next_dark=*/true);
+        let mut w = world_two_rooms(/*next_dark=*/ true);
         // Seat the pc as an occupant of the dark "next" room.
         if let Some(r) = w.rooms.get_mut(&rid("next")) {
             r.occupant_ids.push(cid("pc"));
         }
         let mut cat = Catalog::default();
-        cat.items.insert("lantern".into(), lantern_desc(Some(true), None));
+        cat.items
+            .insert("lantern".into(), lantern_desc(Some(true), None));
 
         // No equipped light yet → dark room stays unlit.
         assert!(!w.character_has_light(&cid("pc"), &cat));
@@ -774,15 +970,26 @@ mod tests {
 
         // Equip a non-broken lantern in the left hand → room is now lit.
         let item_id = ItemId("lantern-1".into());
-        w.items.insert(item_id.clone(), ItemSnapshot::Item {
-            id: item_id.clone(), behavior_key: "lantern".into(), durability: None, modifier: 0,
-        });
-        w.characters.get_mut(&cid("pc")).unwrap().equipment.insert("leftHand".into(), item_id.clone());
+        w.items.insert(
+            item_id.clone(),
+            ItemSnapshot::Item {
+                id: item_id.clone(),
+                behavior_key: "lantern".into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
+        w.characters
+            .get_mut(&cid("pc"))
+            .unwrap()
+            .equipment
+            .insert("leftHand".into(), item_id.clone());
         assert!(w.character_has_light(&cid("pc"), &cat));
         assert!(w.is_lit(&rid("next"), &cat));
 
         // Broken lantern (maxDurability set + durability 0) → not a light.
-        cat.items.insert("lantern".into(), lantern_desc(Some(true), Some(3)));
+        cat.items
+            .insert("lantern".into(), lantern_desc(Some(true), Some(3)));
         if let Some(ItemSnapshot::Item { durability, .. }) = w.items.get_mut(&item_id) {
             *durability = Some(0);
         }
@@ -807,14 +1014,21 @@ mod tests {
         use crate::world::ids::ItemId;
         use crate::world::snapshot::ItemSnapshot;
 
-        let mut w = world_two_rooms(/*next_dark=*/true);
+        let mut w = world_two_rooms(/*next_dark=*/ true);
         let mut cat = Catalog::default();
-        cat.items.insert("torch".into(), lantern_desc(Some(true), Some(2)));
+        cat.items
+            .insert("torch".into(), lantern_desc(Some(true), Some(2)));
 
         let item_id = ItemId("torch-1".into());
-        w.items.insert(item_id.clone(), ItemSnapshot::Item {
-            id: item_id.clone(), behavior_key: "torch".into(), durability: Some(0), modifier: 0,
-        });
+        w.items.insert(
+            item_id.clone(),
+            ItemSnapshot::Item {
+                id: item_id.clone(),
+                behavior_key: "torch".into(),
+                durability: Some(0),
+                modifier: 0,
+            },
+        );
         if let Some(r) = w.rooms.get_mut(&rid("next")) {
             r.light_source_ids.push(item_id.clone());
         }
@@ -830,28 +1044,67 @@ mod tests {
 
     #[test]
     fn entering_a_room_with_a_live_mob_emits_encounter_cue_and_codex() {
-        let mut w = world_two_rooms(/*next_dark=*/false);
+        let mut w = world_two_rooms(/*next_dark=*/ false);
         // Seat a live mob "grue" in the destination room "next".
         seat_mob(&mut w, "grue", "next");
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .unwrap();
         // encounter cue present, after the move action cue
-        let move_idx = cues.iter().position(|c| matches!(c, PresentationCue::Action { action: ActionKind::Move, .. })).unwrap();
-        let enc_idx = cues.iter().position(|c| matches!(c, PresentationCue::Encounter { .. })).unwrap();
-        assert!(enc_idx > move_idx, "encounter cue comes after the move action cue");
+        let move_idx = cues
+            .iter()
+            .position(|c| {
+                matches!(
+                    c,
+                    PresentationCue::Action {
+                        action: ActionKind::Move,
+                        ..
+                    }
+                )
+            })
+            .unwrap();
+        let enc_idx = cues
+            .iter()
+            .position(|c| matches!(c, PresentationCue::Encounter { .. }))
+            .unwrap();
+        assert!(
+            enc_idx > move_idx,
+            "encounter cue comes after the move action cue"
+        );
         match &cues[enc_idx] {
-            PresentationCue::Encounter { mob, room, sound: None } => {
-                assert_eq!(mob.id, "grue"); assert_eq!(room.id, "next");
+            PresentationCue::Encounter {
+                mob,
+                room,
+                sound: None,
+            } => {
+                assert_eq!(mob.id, "grue");
+                assert_eq!(room.id, "next");
             }
             other => panic!("expected Encounter cue, got {:?}", other),
         }
         // codex: mob record for grue exists AND precedes the room record for "next"
         let codex = w.codex.as_array().unwrap();
-        let mob_idx = codex.iter().position(|e| e["kind"] == serde_json::json!("mob") && e["key"] == serde_json::json!("grue")).unwrap();
-        let room_idx = codex.iter().position(|e| e["kind"] == serde_json::json!("room") && e["key"] == serde_json::json!("next")).unwrap();
-        assert!(mob_idx < room_idx, "mob codex record precedes the room codex record");
+        let mob_idx = codex
+            .iter()
+            .position(|e| {
+                e["kind"] == serde_json::json!("mob") && e["key"] == serde_json::json!("grue")
+            })
+            .unwrap();
+        let room_idx = codex
+            .iter()
+            .position(|e| {
+                e["kind"] == serde_json::json!("room") && e["key"] == serde_json::json!("next")
+            })
+            .unwrap();
+        assert!(
+            mob_idx < room_idx,
+            "mob codex record precedes the room codex record"
+        );
         // dedup: the composite key `${mover}:${occupant}` is recorded
-        assert!(w.campaign.encountered.iter().any(|k| k == "pc:grue"), "encountered key recorded for dedup");
+        assert!(
+            w.campaign.encountered.iter().any(|k| k == "pc:grue"),
+            "encountered key recorded for dedup"
+        );
     }
 
     #[test]
@@ -863,9 +1116,12 @@ mod tests {
             "baseChance": 100, "visited": [],
             "formations": [ { "behaviorKey": "conformance:wraith", "weight": 1 } ]
         });
-        if let Some(r) = w.rooms.get_mut(&rid("next")) { r.spawn_modifier = 1; }
+        if let Some(r) = w.rooms.get_mut(&rid("next")) {
+            r.spawn_modifier = 1;
+        }
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .unwrap();
 
         // wraith spawned into "next"
         let wid = CharacterId("campaign-mob:wraith".into());
@@ -873,9 +1129,23 @@ mod tests {
         assert!(w.rooms[&rid("next")].occupant_ids.contains(&wid));
 
         // encounter cue for the wraith comes AFTER the move action cue
-        let mv = cues.iter().position(|c| matches!(c, PresentationCue::Action { action: ActionKind::Move, .. })).unwrap();
+        let mv = cues
+            .iter()
+            .position(|c| {
+                matches!(
+                    c,
+                    PresentationCue::Action {
+                        action: ActionKind::Move,
+                        ..
+                    }
+                )
+            })
+            .unwrap();
         let enc = cues.iter().position(|c| matches!(c, PresentationCue::Encounter { mob, .. } if mob.id == "campaign-mob:wraith")).unwrap();
-        assert!(enc > mv, "spawned-mob encounter cue comes after the move action cue");
+        assert!(
+            enc > mv,
+            "spawned-mob encounter cue comes after the move action cue"
+        );
     }
 
     #[test]
@@ -886,12 +1156,16 @@ mod tests {
         let mut cues = Vec::new();
         if let Some(c) = w.characters.get_mut(&cid("pc")) {
             c.actions_per_round = 1; // next action exhausts the budget
-            c.stats.health = -3.0;   // reconcile floors this iff turn-end runs
+            c.stats.health = -3.0; // reconcile floors this iff turn-end runs
         }
-        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .unwrap();
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.actions_this_round, 1);
-        assert_eq!(ch.stats.health, 0.0, "cap-reaching move auto-ends turn -> reconcile floored base");
+        assert_eq!(
+            ch.stats.health, 0.0,
+            "cap-reaching move auto-ends turn -> reconcile floored base"
+        );
         assert!(ch.afflictions.is_active(Status::Ko));
     }
 
@@ -921,11 +1195,16 @@ mod tests {
         use crate::world::descriptor::Catalog;
         let mut w = world_two_rooms(false);
         w.make_north_exit_keyed("conformance:keyed-door"); // marks the north exit keyed
-        // set locked initial state on that exit
-        for ex in w.exits.values_mut() { if ex.behavior_key.is_some() { ex.state = serde_json::json!({ "unlocked": false }); } }
+                                                           // set locked initial state on that exit
+        for ex in w.exits.values_mut() {
+            if ex.behavior_key.is_some() {
+                ex.state = serde_json::json!({ "unlocked": false });
+            }
+        }
         let start_room = w.characters[&cid("pc")].current_room_id.clone();
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .unwrap();
         // did not move
         assert_eq!(w.characters[&cid("pc")].current_room_id, start_room);
         // fail message emitted
@@ -945,15 +1224,21 @@ mod tests {
         }
         // Locked without the key → the behavior's fail message.
         assert_eq!(
-            w.exit_block_reason(&cid("pc"), Direction::North, &Catalog::default()).as_deref(),
+            w.exit_block_reason(&cid("pc"), Direction::North, &Catalog::default())
+                .as_deref(),
             Some("The door is locked.")
         );
         // With the key, `can_pass` is true → no block.
         seed_held_item(&mut w, "pc", "brass-key");
-        assert_eq!(w.exit_block_reason(&cid("pc"), Direction::North, &Catalog::default()), None);
+        assert_eq!(
+            w.exit_block_reason(&cid("pc"), Direction::North, &Catalog::default()),
+            None
+        );
         // A pure query: the door state was never mutated (still locked; no run_script ran).
         assert!(
-            w.exits.values().all(|ex| ex.state.get("unlocked") == Some(&serde_json::json!(false))),
+            w.exits
+                .values()
+                .all(|ex| ex.state.get("unlocked") == Some(&serde_json::json!(false))),
             "exit_block_reason must not mutate door state"
         );
     }
@@ -963,18 +1248,28 @@ mod tests {
         use crate::world::descriptor::Catalog;
         let mut w = world_two_rooms(false);
         w.make_north_exit_keyed("conformance:keyed-door");
-        for ex in w.exits.values_mut() { if ex.behavior_key.is_some() { ex.state = serde_json::json!({ "unlocked": false }); } }
+        for ex in w.exits.values_mut() {
+            if ex.behavior_key.is_some() {
+                ex.state = serde_json::json!({ "unlocked": false });
+            }
+        }
         seed_held_item(&mut w, "pc", "brass-key"); // helper: item with behavior_key "brass-key" in pc inventory
         let start_room = w.characters[&cid("pc")].current_room_id.clone();
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .unwrap();
         // moved to the far room
         assert_ne!(w.characters[&cid("pc")].current_room_id, start_room);
         // unlock narration emitted
-        assert!(cues.iter().any(|c| matches!(c,
-            PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The door unlocks."))));
+        assert!(
+            cues.iter().any(|c| matches!(c,
+            PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The door unlocks.")))
+        );
         // state persisted
-        assert!(w.exits.values().any(|ex| ex.state.get("unlocked") == Some(&serde_json::json!(true))));
+        assert!(w
+            .exits
+            .values()
+            .any(|ex| ex.state.get("unlocked") == Some(&serde_json::json!(true))));
     }
 
     #[test]
@@ -983,17 +1278,24 @@ mod tests {
         let mut w = world_two_rooms(false);
         w.make_north_exit_keyed("nope:not-registered");
         let mut cues = Vec::new();
-        assert!(w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).is_err());
+        assert!(w
+            .go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .is_err());
     }
 
     /// Put a true Key (kind:"key") with `key_code` into `char_id`'s keyring.
     fn seed_held_key(w: &mut crate::world::World, char_id: &str, key_code: &str) {
         use crate::world::snapshot::ItemSnapshot;
         let item_id = crate::world::ids::ItemId(alloc::format!("key-{key_code}"));
-        w.items.insert(item_id.clone(), ItemSnapshot::Key {
-            id: item_id.clone(), name: alloc::format!("{key_code} key"),
-            key_code: key_code.into(), consume_on_use: false,
-        });
+        w.items.insert(
+            item_id.clone(),
+            ItemSnapshot::Key {
+                id: item_id.clone(),
+                name: alloc::format!("{key_code} key"),
+                key_code: key_code.into(),
+                consume_on_use: false,
+            },
+        );
         if let Some(c) = w.characters.get_mut(&cid(char_id)) {
             c.inventory.key_ids.push(item_id);
         }
@@ -1007,7 +1309,9 @@ mod tests {
         let mut w = world_two_rooms(false);
         w.make_north_exit_keyed("study-door");
         for ex in w.exits.values_mut() {
-            if ex.behavior_key.is_some() { ex.state = serde_json::json!({ "unlocked": false }); }
+            if ex.behavior_key.is_some() {
+                ex.state = serde_json::json!({ "unlocked": false });
+            }
         }
         let start_room = w.characters[&cid("pc")].current_room_id.clone();
         let mut cues = Vec::new();
@@ -1015,7 +1319,9 @@ mod tests {
         // 1. keyless: blocked, fail cue, no move
         w.go(&cid("pc"), Direction::North, &cat, &mut cues).unwrap();
         assert_eq!(w.characters[&cid("pc")].current_room_id, start_room);
-        assert!(cues.iter().any(|c| matches!(c, PresentationCue::Mechanic { cue }
+        assert!(cues
+            .iter()
+            .any(|c| matches!(c, PresentationCue::Mechanic { cue }
             if cue.text.as_deref() == Some("The study door won't budge — it's locked."))));
 
         // 2. with the brass key: unlock narration + move + persisted state
@@ -1023,15 +1329,24 @@ mod tests {
         let mut cues = Vec::new();
         w.go(&cid("pc"), Direction::North, &cat, &mut cues).unwrap();
         assert_ne!(w.characters[&cid("pc")].current_room_id, start_room);
-        assert!(cues.iter().any(|c| matches!(c, PresentationCue::Mechanic { cue }
+        assert!(cues
+            .iter()
+            .any(|c| matches!(c, PresentationCue::Mechanic { cue }
             if cue.text.as_deref() == Some("The door unlocks."))));
-        assert!(w.exits.values().any(|ex| ex.state.get("unlocked") == Some(&serde_json::json!(true))));
+        assert!(w
+            .exits
+            .values()
+            .any(|ex| ex.state.get("unlocked") == Some(&serde_json::json!(true))));
 
         // 3. re-pass back through the unlocked door: silent (no mechanic cue)
         let mut cues = Vec::new();
         w.go(&cid("pc"), Direction::South, &cat, &mut cues).unwrap();
-        assert!(!cues.iter().any(|c| matches!(c, PresentationCue::Mechanic { .. })),
-            "unlocked re-pass must be silent");
+        assert!(
+            !cues
+                .iter()
+                .any(|c| matches!(c, PresentationCue::Mechanic { .. })),
+            "unlocked re-pass must be silent"
+        );
     }
 
     /// Attach a `conformance:visit-counter` scene to `room` with the given phase and
@@ -1050,10 +1365,11 @@ mod tests {
 
     #[test]
     fn enter_scene_fires_after_occupant_add_and_emits_cue_before_visibility() {
-        let mut w = world_two_rooms(/*next_dark=*/true); // dark → a visibility cue follows
+        let mut w = world_two_rooms(/*next_dark=*/ true); // dark → a visibility cue follows
         attach_scene(&mut w, "next", "enter", 0);
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .unwrap();
 
         // scene mutated its own state (count 0 → 1), mover was an occupant when it fired
         let scene = &w.rooms[&rid("next")].scenes[0];
@@ -1062,9 +1378,26 @@ mod tests {
         // cue order: scene mechanic cue BEFORE the visibility cue BEFORE the move action cue
         let mech = cues.iter().position(|c| matches!(c,
             PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The Next stirs (visit 1)."))).unwrap();
-        let vis = cues.iter().position(|c| matches!(c, PresentationCue::Visibility { .. })).unwrap();
-        let mv = cues.iter().position(|c| matches!(c, PresentationCue::Action { action: ActionKind::Move, .. })).unwrap();
-        assert!(mech < vis && vis < mv, "scene cue precedes visibility precedes move; got {cues:?}");
+        let vis = cues
+            .iter()
+            .position(|c| matches!(c, PresentationCue::Visibility { .. }))
+            .unwrap();
+        let mv = cues
+            .iter()
+            .position(|c| {
+                matches!(
+                    c,
+                    PresentationCue::Action {
+                        action: ActionKind::Move,
+                        ..
+                    }
+                )
+            })
+            .unwrap();
+        assert!(
+            mech < vis && vis < mv,
+            "scene cue precedes visibility precedes move; got {cues:?}"
+        );
     }
 
     #[test]
@@ -1072,9 +1405,13 @@ mod tests {
         let mut w = world_two_rooms(false);
         attach_scene(&mut w, "start", "exit", 0);
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .unwrap();
         // exit scene on the departed room fired (count 0 → 1)
-        assert_eq!(w.rooms[&rid("start")].scenes[0].state["count"], serde_json::json!(1));
+        assert_eq!(
+            w.rooms[&rid("start")].scenes[0].state["count"],
+            serde_json::json!(1)
+        );
         // its cue is the FIRST cue (before any enter/visibility/move cue for the new room)
         assert!(matches!(&cues[0],
             PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The Start stirs (visit 1).")));
@@ -1086,12 +1423,16 @@ mod tests {
         attach_scene(&mut w, "start", "exit", 0);
         attach_scene(&mut w, "next", "enter", 0);
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .unwrap();
         let exit_idx = cues.iter().position(|c| matches!(c,
             PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The Start stirs (visit 1)."))).unwrap();
         let enter_idx = cues.iter().position(|c| matches!(c,
             PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The Next stirs (visit 1)."))).unwrap();
-        assert!(exit_idx < enter_idx, "old-room exit-scene cue precedes new-room enter-scene cue");
+        assert!(
+            exit_idx < enter_idx,
+            "old-room exit-scene cue precedes new-room enter-scene cue"
+        );
     }
 
     #[test]
@@ -1099,9 +1440,13 @@ mod tests {
         let mut w = world_two_rooms(false);
         attach_scene(&mut w, "next", "enter", 3); // already at the cap
         let mut cues = Vec::new();
-        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).unwrap();
+        w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .unwrap();
         // no mutation, no scene cue
-        assert_eq!(w.rooms[&rid("next")].scenes[0].state["count"], serde_json::json!(3));
+        assert_eq!(
+            w.rooms[&rid("next")].scenes[0].state["count"],
+            serde_json::json!(3)
+        );
         assert!(!cues.iter().any(|c| matches!(c,
             PresentationCue::Mechanic { cue } if cue.text.as_deref().map(|t| t.contains("stirs")).unwrap_or(false))));
     }
@@ -1111,11 +1456,15 @@ mod tests {
         let mut w = world_two_rooms(false);
         if let Some(r) = w.rooms.get_mut(&rid("next")) {
             r.scenes.push(crate::world::snapshot::SceneSnapshot {
-                id: "bad".into(), behavior_key: "nope:unregistered".into(),
-                phase: "enter".into(), state: serde_json::json!({}),
+                id: "bad".into(),
+                behavior_key: "nope:unregistered".into(),
+                phase: "enter".into(),
+                state: serde_json::json!({}),
             });
         }
         let mut cues = Vec::new();
-        assert!(w.go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues).is_err());
+        assert!(w
+            .go(&cid("pc"), Direction::North, &Catalog::default(), &mut cues)
+            .is_err());
     }
 }

@@ -4,16 +4,30 @@
 //! load-bearing assumption of the conformance gate: get one wrong and the byte
 //! diff fires. No randomness, no uuids — an id is a pure function of content.
 
-pub fn campaign_id(title: &str) -> String { format!("campaign:{title}") }
-pub fn room_id(name: &str) -> String { format!("room:{name}") }
-pub fn mob_id(name: &str) -> String { format!("mob:{name}") }
-pub fn npc_id(name: &str) -> String { format!("npc:{name}") }
-pub fn cache_id(name: &str) -> String { format!("cache:{name}") }
-pub fn loot_id(name: &str) -> String { format!("loot:{name}") }
+pub fn campaign_id(title: &str) -> String {
+    format!("campaign:{title}")
+}
+pub fn room_id(name: &str) -> String {
+    format!("room:{name}")
+}
+pub fn mob_id(name: &str) -> String {
+    format!("mob:{name}")
+}
+pub fn npc_id(name: &str) -> String {
+    format!("npc:{name}")
+}
+pub fn cache_id(name: &str) -> String {
+    format!("cache:{name}")
+}
+pub fn loot_id(name: &str) -> String {
+    format!("loot:{name}")
+}
 
 /// `player:{name}` — minted OUTSIDE the TS assembler (`oracle-session.ts:80`),
 /// folded in here because this crate's `assemble` also seats the party.
-pub fn player_id(name: &str) -> String { format!("player:{name}") }
+pub fn player_id(name: &str) -> String {
+    format!("player:{name}")
+}
 
 /// `exit:${[from, to].sort().join("|")}` (assembler.ts:332) over the two
 /// AUTHOR-SUPPLIED ROOM NAMES — not room ids, and not `from|to` order.
@@ -31,10 +45,18 @@ pub fn scene_id(room: &str, key: &str, phase: Option<&str>) -> String {
     format!("scene:{room}:{key}:{}", phase.unwrap_or("enter"))
 }
 
-pub fn loot_item_id(loot_name: &str, i: usize) -> String { format!("loot:{loot_name}:item#{i}") }
-pub fn mob_drop_id(mob_name: &str, i: usize) -> String { format!("mob:{mob_name}:drop#{i}") }
-pub fn room_light_id(room_name: &str, i: usize) -> String { format!("room:{room_name}:light#{i}") }
-pub fn npc_item_id(npc_name: &str, i: usize) -> String { format!("npc:{npc_name}:item#{i}") }
+pub fn loot_item_id(loot_name: &str, i: usize) -> String {
+    format!("loot:{loot_name}:item#{i}")
+}
+pub fn mob_drop_id(mob_name: &str, i: usize) -> String {
+    format!("mob:{mob_name}:drop#{i}")
+}
+pub fn room_light_id(room_name: &str, i: usize) -> String {
+    format!("room:{room_name}:light#{i}")
+}
+pub fn npc_item_id(npc_name: &str, i: usize) -> String {
+    format!("npc:{npc_name}:item#{i}")
+}
 
 #[cfg(test)]
 mod tests {
@@ -66,7 +88,10 @@ mod tests {
     #[test]
     fn scene_id_defaults_phase_to_enter() {
         assert_eq!(scene_id("start", "intro", None), "scene:start:intro:enter");
-        assert_eq!(scene_id("start", "intro", Some("exit")), "scene:start:intro:exit");
+        assert_eq!(
+            scene_id("start", "intro", Some("exit")),
+            "scene:start:intro:exit"
+        );
     }
 
     /// The infix differs by holder: item# / drop# / light#. Four rules, not one.
