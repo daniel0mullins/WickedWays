@@ -12,6 +12,13 @@
 FROM rust:1-slim-bookworm AS builder
 WORKDIR /app
 
+# Cap cargo's build parallelism. The cold wasm compile of the full Dioxus tree is
+# the most memory-hungry step of the build; unbounded parallel codegen has OOM-killed
+# it on memory-constrained build hosts (the process dies mid-compile with no rustc
+# error). Two jobs keeps peak RSS bounded at the cost of a slightly slower build, and
+# applies to both build steps below (wasm bundle + server binary).
+ENV CARGO_BUILD_JOBS=2
+
 # Prebuilt wasm-bindgen CLI (release tarball beats `cargo install` by minutes); the
 # version MUST match the `wasm-bindgen` crate in Cargo.lock (build-web.sh asserts it).
 # gcc is for rusqlite's bundled SQLite (the `cc` crate compiles it in-tree).
