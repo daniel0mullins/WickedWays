@@ -28,6 +28,15 @@ pub enum ItemSnapshot {
     },
 }
 
+impl ItemSnapshot {
+    /// The item's id, regardless of variant.
+    pub const fn id(&self) -> &ItemId {
+        match self {
+            ItemSnapshot::Item { id, .. } | ItemSnapshot::Key { id, .. } => id,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LootSnapshot {
@@ -74,6 +83,26 @@ pub struct Stats {
     pub energy: f64,
     pub sanity: f64,
     pub health: f64,
+}
+
+impl Stats {
+    /// The value of one stat, selected by `StatType`.
+    pub const fn get(&self, stat: crate::stats::StatType) -> f64 {
+        match stat {
+            crate::stats::StatType::Energy => self.energy,
+            crate::stats::StatType::Sanity => self.sanity,
+            crate::stats::StatType::Health => self.health,
+        }
+    }
+
+    /// Mutable access to one stat, selected by `StatType`.
+    pub const fn get_mut(&mut self, stat: crate::stats::StatType) -> &mut f64 {
+        match stat {
+            crate::stats::StatType::Energy => &mut self.energy,
+            crate::stats::StatType::Sanity => &mut self.sanity,
+            crate::stats::StatType::Health => &mut self.health,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

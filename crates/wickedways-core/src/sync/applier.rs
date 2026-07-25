@@ -10,7 +10,6 @@
 //! the same one crate produces and applies the delta.
 
 use crate::world::ids::{CharacterId, ItemId, LootId, MaterialCacheId, RoomId};
-use crate::world::snapshot::ItemSnapshot;
 use crate::world::World;
 
 use super::delta::{Delta, EntitySnapshot};
@@ -28,7 +27,7 @@ pub fn apply(replica: &mut World, delta: &Delta) {
                 replica.characters.insert(c.id.clone(), (**c).clone());
             }
             EntitySnapshot::Item(i) => {
-                replica.items.insert(item_id(i), (**i).clone());
+                replica.items.insert(i.id().clone(), (**i).clone());
             }
             EntitySnapshot::Loot(l) => {
                 replica.loot.insert(l.id.clone(), (**l).clone());
@@ -53,12 +52,6 @@ pub fn apply(replica: &mut World, delta: &Delta) {
     if let Some(cc) = &delta.campaign_core {
         replica.campaign = cc.core.clone();
         replica.codex = cc.codex.clone();
-    }
-}
-
-fn item_id(i: &ItemSnapshot) -> ItemId {
-    match i {
-        ItemSnapshot::Item { id, .. } | ItemSnapshot::Key { id, .. } => id.clone(),
     }
 }
 

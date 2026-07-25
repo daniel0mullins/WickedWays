@@ -145,11 +145,7 @@ impl World {
             return 0.0;
         };
 
-        let base = match stat {
-            StatType::Energy => ch.stats.energy,
-            StatType::Sanity => ch.stats.sanity,
-            StatType::Health => ch.stats.health,
-        };
+        let base = ch.stats.get(stat);
 
         // De-duplicate: a two-handed item occupies two slot-map entries.
         let equipped_ids: BTreeSet<&crate::world::ids::ItemId> = ch.equipment.values().collect();

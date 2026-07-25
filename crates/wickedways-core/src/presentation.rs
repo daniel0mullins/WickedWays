@@ -58,8 +58,9 @@ pub enum CampaignOutcome {
     Ended,
 }
 
-/// The action-cue discriminant — kept in lockstep with `ActionHistoryEntry`
-/// (Task 2). camelCase to match TS `ActionDetail["kind"]`.
+/// The action-cue discriminant. Each variant corresponds 1:1 to an
+/// `ActionHistoryEntry` variant — derive it via `From<&ActionHistoryEntry>`
+/// rather than naming both in parallel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -72,6 +73,22 @@ pub enum ActionKind {
     TakeDamage,
     Fumble,
     MechanicAction,
+}
+
+impl From<&crate::world::history::ActionHistoryEntry> for ActionKind {
+    fn from(entry: &crate::world::history::ActionHistoryEntry) -> Self {
+        use crate::world::history::ActionHistoryEntry as E;
+        match entry {
+            E::Attack { .. } => ActionKind::Attack,
+            E::Move { .. } => ActionKind::Move,
+            E::PickUp { .. } => ActionKind::PickUp,
+            E::Drop { .. } => ActionKind::Drop,
+            E::Escape { .. } => ActionKind::Escape,
+            E::TakeDamage { .. } => ActionKind::TakeDamage,
+            E::Fumble { .. } => ActionKind::Fumble,
+            E::MechanicAction { .. } => ActionKind::MechanicAction,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

@@ -561,14 +561,7 @@ fn get_field(subject: Ev, field: &str, cx: &mut Ctx) -> Ev {
         Ev::Damage(d) => match field {
             "amount" => Ev::Val(Value::Number(d.amount)),
             "target" => Ev::Val(Value::Str(d.target.0.clone())),
-            "stat" => Ev::Val(Value::Str(
-                match d.stat {
-                    crate::stats::StatType::Energy => "energy",
-                    crate::stats::StatType::Sanity => "sanity",
-                    crate::stats::StatType::Health => "health",
-                }
-                .into(),
-            )),
+            "stat" => Ev::Val(Value::Str(d.stat.as_str().into())),
             "source" => match &d.source {
                 Some(s) => Ev::Val(Value::Str(s.0.clone())),
                 None => Ev::Val(Value::Null),

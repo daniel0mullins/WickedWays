@@ -56,11 +56,7 @@ impl World {
     ) -> Result<(), ProceduralViolation> {
         self.require_party_member(actor)?;
         if let Some(c) = self.characters.get_mut(actor) {
-            let cur = match stat {
-                StatType::Health => &mut c.stats.health,
-                StatType::Sanity => &mut c.stats.sanity,
-                StatType::Energy => &mut c.stats.energy,
-            };
+            let cur = c.stats.get_mut(stat);
             *cur = (*cur + delta).max(0.0);
         }
         self.reconcile(actor, cat, cues);

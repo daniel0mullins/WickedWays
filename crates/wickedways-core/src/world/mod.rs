@@ -57,12 +57,6 @@ pub struct World {
     pub rng: Rng,
 }
 
-fn item_id(i: &ItemSnapshot) -> ItemId {
-    match i {
-        ItemSnapshot::Item { id, .. } | ItemSnapshot::Key { id, .. } => id.clone(),
-    }
-}
-
 impl World {
     /// Single pass: fold each entity array into its id-keyed store. No two-pass
     /// hydration — references are ids, so there is nothing to re-wire.
@@ -74,7 +68,7 @@ impl World {
                 .map(|c| (c.id.clone(), c))
                 .collect(),
             rooms: s.rooms.into_iter().map(|r| (r.id.clone(), r)).collect(),
-            items: s.items.into_iter().map(|i| (item_id(&i), i)).collect(),
+            items: s.items.into_iter().map(|i| (i.id().clone(), i)).collect(),
             loot: s.loot.into_iter().map(|l| (l.id.clone(), l)).collect(),
             material_caches: s
                 .material_caches

@@ -451,11 +451,7 @@ impl World {
 
         // Subtract from the base stat (no clamp here — reconcile floors it).
         if let Some(c) = self.characters.get_mut(target) {
-            match attack_stat {
-                StatType::Health => c.stats.health -= dealt,
-                StatType::Sanity => c.stats.sanity -= dealt,
-                StatType::Energy => c.stats.energy -= dealt,
-            }
+            *c.stats.get_mut(attack_stat) -= dealt;
         }
 
         // Each contributing armor piece wears one point.
