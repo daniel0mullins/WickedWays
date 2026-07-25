@@ -372,6 +372,7 @@ fn apply_action(
 mod tests {
     use super::*;
     use crate::world::ids::{CharacterId, RoomId};
+    use crate::world::test_support::{item_desc, props};
     use crate::world::test_support::{world_two_rooms, world_with_party};
 
     fn authority(world: World) -> SyncAuthority {
@@ -419,9 +420,7 @@ mod tests {
     fn commits_a_craft_that_spends_from_the_pool() {
         // A known recipe crafted through the sync path: the output item lands in the pc's inventory
         // and the pool is debited — the whole materials→craft wire end to end.
-        use crate::world::descriptor::{
-            ItemDescriptor, ItemProperties, ItemType, RecipeMeta, SlotKind,
-        };
+        use crate::world::descriptor::{ItemDescriptor, ItemType, RecipeMeta, SlotKind};
         let mut world = world_two_rooms(false);
         world.campaign.known_recipes.push("blade".into());
         world.campaign.materials = serde_json::json!({ "iron": 5 });
@@ -429,29 +428,19 @@ mod tests {
         items.insert(
             "items/blade".to_string(),
             ItemDescriptor {
-                name: "Iron Blade".into(),
-                r#type: ItemType::Weapon,
-                stat: crate::stats::StatType::Health,
-                modifier: 2,
-                properties: ItemProperties {
-                    equippable: true,
-                    equipped: false,
-                    destroyable: true,
-                    usable: false,
-                    droppable: None,
-                },
+                properties: props(true, true, false),
                 slot: Some(SlotKind::Hand),
-                two_handed: None,
-                emits_light: None,
                 max_durability: Some(4),
-                lore: None,
-                presentation: None,
-                key_code: None,
-                consume_on_use: None,
                 recipe: serde_json::json!({ "iron": 2 }),
                 teaches: serde_json::json!(null),
                 immunities: serde_json::json!([]),
                 grants_immunity: serde_json::json!(null),
+                ..item_desc(
+                    "Iron Blade",
+                    ItemType::Weapon,
+                    crate::stats::StatType::Health,
+                    2,
+                )
             },
         );
         let mut recipes = alloc::collections::BTreeMap::new();

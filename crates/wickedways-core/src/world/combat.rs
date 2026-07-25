@@ -485,11 +485,9 @@ mod tests {
     use crate::world::descriptor::Catalog;
     use crate::world::ids::{CharacterId, ItemId};
     use crate::world::snapshot::ItemSnapshot;
+    use crate::world::test_support::cid;
     use crate::world::test_support::world_with_party;
-
-    fn cid(s: &str) -> CharacterId {
-        CharacterId(s.into())
-    }
+    use crate::world::test_support::{item_desc, props};
 
     #[test]
     fn set_durability_writes_the_item() {
@@ -558,29 +556,10 @@ mod tests {
 
     fn weapon_desc(stat: StatType, modifier: i64, max_dur: Option<i64>) -> ItemDescriptor {
         ItemDescriptor {
-            name: "Test Weapon".into(),
-            r#type: ItemType::Weapon,
-            stat,
-            modifier,
-            properties: ItemProperties {
-                equippable: true,
-                equipped: false,
-                destroyable: true,
-                usable: false,
-                droppable: None,
-            },
+            properties: props(true, true, false),
             slot: Some(SlotKind::Hand),
-            two_handed: None,
-            emits_light: None,
             max_durability: max_dur,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc("Test Weapon", ItemType::Weapon, stat, modifier)
         }
     }
 

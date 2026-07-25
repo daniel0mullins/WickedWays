@@ -604,16 +604,15 @@ mod tests {
     use crate::world::afflictions::Status;
     use crate::world::descriptor::Catalog;
     use crate::world::formations::conformance::seat_test_mob;
-    use crate::world::ids::{CharacterId, RoomId};
+    use crate::world::ids::RoomId;
     use crate::world::snapshot::RoomSnapshot;
+    use crate::world::test_support::cid;
     use crate::world::test_support::world_with_party;
+    use crate::world::test_support::{item_desc, props};
     use crate::world::World;
     use alloc::collections::BTreeMap;
     use alloc::string::String;
 
-    fn cid(s: &str) -> CharacterId {
-        CharacterId(s.into())
-    }
     fn rid(s: &str) -> RoomId {
         RoomId(s.into())
     }
@@ -765,7 +764,6 @@ mod tests {
     use crate::world::intent::Intent;
     use crate::world::snapshot::{ItemSnapshot, LootSnapshot};
     use alloc::collections::BTreeSet;
-    use serde_json::json;
 
     fn iid(s: &str) -> ItemId {
         ItemId(s.into())
@@ -781,67 +779,25 @@ mod tests {
         items.insert(
             "items/sword".to_string(),
             ItemDescriptor {
-                name: "Sword".into(),
-                r#type: ItemType::Weapon,
-                stat: StatType::Health,
-                modifier: 3,
-                properties: ItemProperties {
-                    equippable: true,
-                    equipped: false,
-                    destroyable: true,
-                    usable: false,
-                    droppable: None,
-                },
+                properties: props(true, true, false),
                 slot: Some(SlotKind::Hand),
-                two_handed: None,
-                emits_light: None,
                 max_durability: Some(5),
-                lore: None,
-                presentation: None,
-                key_code: None,
-                consume_on_use: None,
-                recipe: json!({}),
-                teaches: json!(null),
-                immunities: json!([]),
-                grants_immunity: json!(null),
+                ..item_desc("Sword", ItemType::Weapon, StatType::Health, 3)
             },
         );
         items.insert(
             "items/herb".to_string(),
             ItemDescriptor {
-                name: "Herb".into(),
-                r#type: ItemType::Consumable,
-                stat: StatType::Health,
-                modifier: 2,
-                properties: ItemProperties {
-                    equippable: false,
-                    equipped: false,
-                    destroyable: false,
-                    usable: true,
-                    droppable: None,
-                },
-                slot: None,
-                two_handed: None,
-                emits_light: None,
-                max_durability: None,
+                properties: props(false, false, true),
                 lore: Some("Bitter leaves.".into()),
-                presentation: None,
-                key_code: None,
                 consume_on_use: Some(true),
-                recipe: json!({}),
-                teaches: json!(null),
-                immunities: json!([]),
-                grants_immunity: json!(null),
+                ..item_desc("Herb", ItemType::Consumable, StatType::Health, 2)
             },
         );
         // A required quest item (droppable: false) for the drop guard.
         items.insert(
             "items/locket".to_string(),
             ItemDescriptor {
-                name: "Locket".into(),
-                r#type: ItemType::Accessory,
-                stat: StatType::Sanity,
-                modifier: 0,
                 properties: ItemProperties {
                     equippable: false,
                     equipped: false,
@@ -849,18 +805,7 @@ mod tests {
                     usable: false,
                     droppable: Some(false),
                 },
-                slot: None,
-                two_handed: None,
-                emits_light: None,
-                max_durability: None,
-                lore: None,
-                presentation: None,
-                key_code: None,
-                consume_on_use: None,
-                recipe: json!({}),
-                teaches: json!(null),
-                immunities: json!([]),
-                grants_immunity: json!(null),
+                ..item_desc("Locket", ItemType::Accessory, StatType::Sanity, 0)
             },
         );
         Catalog {

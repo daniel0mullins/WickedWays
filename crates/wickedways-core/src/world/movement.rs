@@ -600,14 +600,9 @@ mod tests {
     use crate::presentation::{ActionKind, EntityRef, PresentationCue};
     use crate::world::history::ActionHistoryEntry;
     use crate::world::ids::{CharacterId, RoomId};
+    use crate::world::test_support::item_desc;
     use crate::world::test_support::world_two_rooms;
-
-    fn cid(s: &str) -> CharacterId {
-        CharacterId(s.into())
-    }
-    fn rid(s: &str) -> RoomId {
-        RoomId(s.into())
-    }
+    use crate::world::test_support::{cid, rid};
 
     /// Insert a minimal live Mob character `name` (id == name) into `room`, and push
     /// its id into that room's `occupant_ids`. Mirrors the CharacterSnapshot pattern
@@ -915,10 +910,6 @@ mod tests {
     ) -> crate::world::descriptor::ItemDescriptor {
         use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType, SlotKind};
         ItemDescriptor {
-            name: "Brass Lantern".into(),
-            r#type: ItemType::Accessory,
-            stat: crate::stats::StatType::Sanity,
-            modifier: 0,
             properties: ItemProperties {
                 equippable: true,
                 equipped: true,
@@ -927,17 +918,18 @@ mod tests {
                 droppable: None,
             },
             slot: Some(SlotKind::Hand),
-            two_handed: None,
             emits_light: emits,
             max_durability: max_dur,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
             recipe: serde_json::Value::Null,
             teaches: serde_json::Value::Null,
             immunities: serde_json::Value::Null,
             grants_immunity: serde_json::Value::Null,
+            ..item_desc(
+                "Brass Lantern",
+                ItemType::Accessory,
+                crate::stats::StatType::Sanity,
+                0,
+            )
         }
     }
 

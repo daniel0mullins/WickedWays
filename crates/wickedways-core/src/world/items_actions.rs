@@ -872,6 +872,8 @@ mod tests {
     use crate::world::ids::ItemId;
     use crate::world::snapshot::ItemSnapshot;
     use crate::world::test_support::world_with_party;
+    use crate::world::test_support::{cid, rid};
+    use crate::world::test_support::{item_desc, props};
     use alloc::collections::BTreeMap;
     use alloc::string::ToString;
     use serde_json::json;
@@ -880,9 +882,6 @@ mod tests {
 
     fn iid(s: &str) -> ItemId {
         serde_json::from_value(json!(s)).unwrap()
-    }
-    fn cid(s: &str) -> CharacterId {
-        CharacterId(s.into())
     }
 
     fn weapon_desc(slot: SlotKind, two_handed: Option<bool>) -> ItemDescriptor {
@@ -915,57 +914,26 @@ mod tests {
 
     fn accessory_desc(slot: SlotKind) -> ItemDescriptor {
         ItemDescriptor {
-            name: "Test Ring".into(),
-            r#type: ItemType::Accessory,
-            stat: crate::stats::StatType::Energy,
-            modifier: 1,
-            properties: ItemProperties {
-                equippable: true,
-                equipped: false,
-                destroyable: false,
-                usable: false,
-                droppable: None,
-            },
+            properties: props(true, false, false),
             slot: Some(slot),
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc(
+                "Test Ring",
+                ItemType::Accessory,
+                crate::stats::StatType::Energy,
+                1,
+            )
         }
     }
 
     fn non_equippable_desc() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Gold Coin".into(),
-            r#type: ItemType::Consumable,
-            stat: crate::stats::StatType::Health,
-            modifier: 0,
-            properties: ItemProperties {
-                equippable: false,
-                equipped: false,
-                destroyable: false,
-                usable: true,
-                droppable: None,
-            },
-            slot: None,
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            properties: props(false, false, true),
+            ..item_desc(
+                "Gold Coin",
+                ItemType::Consumable,
+                crate::stats::StatType::Health,
+                0,
+            )
         }
     }
 
@@ -1287,40 +1255,21 @@ mod tests {
 
     // ── take (loot → inventory) ────────────────────────────────────────────────
 
-    use crate::world::ids::{LootId, RoomId};
+    use crate::world::ids::LootId;
     use crate::world::snapshot::{LootSnapshot, RoomSnapshot};
 
     fn consumable_desc() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Old Coin".into(),
-            r#type: ItemType::Consumable,
-            stat: crate::stats::StatType::Health,
-            modifier: 0,
-            properties: ItemProperties {
-                equippable: false,
-                equipped: false,
-                destroyable: false,
-                usable: true,
-                droppable: None,
-            },
-            slot: None,
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            properties: props(false, false, true),
+            ..item_desc(
+                "Old Coin",
+                ItemType::Consumable,
+                crate::stats::StatType::Health,
+                0,
+            )
         }
     }
 
-    fn rid(s: &str) -> RoomId {
-        RoomId(s.into())
-    }
     fn lid(s: &str) -> LootId {
         LootId(s.into())
     }
@@ -1758,57 +1707,31 @@ mod tests {
 
     fn droppable_desc() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Rusty Dagger".into(),
-            r#type: ItemType::Weapon,
-            stat: crate::stats::StatType::Health,
-            modifier: 1,
-            properties: ItemProperties {
-                equippable: false,
-                equipped: false,
-                destroyable: true,
-                usable: false,
-                droppable: None, // None = freely droppable
-            },
-            slot: None,
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            properties: props(false, true, false),
+            ..item_desc(
+                "Rusty Dagger",
+                ItemType::Weapon,
+                crate::stats::StatType::Health,
+                1,
+            )
         }
     }
 
     fn required_item_desc() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Ancient Relic".into(),
-            r#type: ItemType::Consumable,
-            stat: crate::stats::StatType::Health,
-            modifier: 0,
             properties: ItemProperties {
                 equippable: false,
                 equipped: false,
                 destroyable: false,
                 usable: false,
-                droppable: Some(false), // required / quest item
+                droppable: Some(false),
             },
-            slot: None,
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc(
+                "Ancient Relic",
+                ItemType::Consumable,
+                crate::stats::StatType::Health,
+                0,
+            )
         }
     }
 
@@ -1872,29 +1795,13 @@ mod tests {
         cat_items.insert(
             "items/brass-key".to_string(),
             ItemDescriptor {
-                name: "Brass Key".into(),
-                r#type: ItemType::Key,
-                stat: crate::stats::StatType::Health,
-                modifier: 0,
-                properties: ItemProperties {
-                    equippable: false,
-                    equipped: false,
-                    destroyable: false,
-                    usable: false,
-                    droppable: None,
-                },
-                slot: None,
-                two_handed: None,
-                emits_light: None,
-                max_durability: None,
-                lore: None,
-                presentation: None,
                 key_code: Some("door-east".into()),
-                consume_on_use: None,
-                recipe: json!({}),
-                teaches: json!(null),
-                immunities: json!([]),
-                grants_immunity: json!(null),
+                ..item_desc(
+                    "Brass Key",
+                    ItemType::Key,
+                    crate::stats::StatType::Health,
+                    0,
+                )
             },
         );
         let cat = Catalog {
@@ -1991,85 +1898,39 @@ mod tests {
 
     fn usable_immunity_desc() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Panic Tonic".into(),
-            r#type: ItemType::Consumable,
-            stat: crate::stats::StatType::Health,
-            modifier: 0,
-            properties: ItemProperties {
-                equippable: false,
-                equipped: false,
-                destroyable: false,
-                usable: true,
-                droppable: None,
-            },
-            slot: None,
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
+            properties: props(false, false, true),
             consume_on_use: Some(true),
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
             grants_immunity: json!({ "statuses": ["panic"], "turns": 2 }),
+            ..item_desc(
+                "Panic Tonic",
+                ItemType::Consumable,
+                crate::stats::StatType::Health,
+                0,
+            )
         }
     }
 
     fn usable_desc() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Health Potion".into(),
-            r#type: ItemType::Consumable,
-            stat: crate::stats::StatType::Health,
-            modifier: 3,
-            properties: ItemProperties {
-                equippable: false,
-                equipped: false,
-                destroyable: false,
-                usable: true, // usable
-                droppable: None,
-            },
-            slot: None,
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
+            properties: props(false, false, true),
             consume_on_use: Some(true),
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc(
+                "Health Potion",
+                ItemType::Consumable,
+                crate::stats::StatType::Health,
+                3,
+            )
         }
     }
 
     fn non_usable_desc() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Old Journal".into(),
-            r#type: ItemType::Consumable,
-            stat: crate::stats::StatType::Health,
-            modifier: 0,
-            properties: ItemProperties {
-                equippable: false,
-                equipped: false,
-                destroyable: false,
-                usable: false, // NOT usable
-                droppable: None,
-            },
-            slot: None,
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc(
+                "Old Journal",
+                ItemType::Consumable,
+                crate::stats::StatType::Health,
+                0,
+            )
         }
     }
 

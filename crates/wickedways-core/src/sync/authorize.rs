@@ -119,13 +119,10 @@ fn denied(reason: &str) -> AuthResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::world::ids::{CharacterId, RoomId};
+    use crate::world::ids::RoomId;
+    use crate::world::test_support::cid;
     use crate::world::test_support::world_with_party;
     use alloc::boxed::Box;
-
-    fn cid(s: &str) -> CharacterId {
-        CharacterId(s.into())
-    }
 
     fn move_cmd(actor: &str) -> Command {
         Command::Move {

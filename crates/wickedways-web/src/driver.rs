@@ -337,14 +337,21 @@ pub async fn boot(cfg: &Config) -> Result<(AppTransport, SyncCoordinator, Catalo
     }
 }
 
+/// Both transport arms expose the same call — write the two-arm match once.
+macro_rules! delegate {
+    ($self:ident, $t:ident => $call:expr) => {
+        match $self {
+            AppTransport::Multi($t) => $call,
+            AppTransport::Single($t) => $call,
+        }
+    };
+}
+
 impl AppTransport {
     /// Submit a command, awaiting the authoritative verdict (the socket round-trip in multiplayer, an
     /// immediate resolve offline).
     pub async fn submit_async(&self, command: Command) -> SubmitResult {
-        match self {
-            AppTransport::Multi(t) => t.submit_async(command).await,
-            AppTransport::Single(t) => t.submit_async(command).await,
-        }
+        delegate!(self, t => t.submit_async(command).await)
     }
 
     /// A stream that ticks on every server push (another client's committed action, or a presence
@@ -361,28 +368,16 @@ impl AppTransport {
 
 impl SyncTransport for AppTransport {
     fn head(&self) -> u64 {
-        match self {
-            AppTransport::Multi(t) => t.head(),
-            AppTransport::Single(t) => t.head(),
-        }
+        delegate!(self, t => t.head())
     }
     fn submit(&mut self, command: Command) -> SubmitResult {
-        match self {
-            AppTransport::Multi(t) => t.submit(command),
-            AppTransport::Single(t) => t.submit(command),
-        }
+        delegate!(self, t => t.submit(command))
     }
     fn entries_since(&self, from_seq: u64) -> Vec<LogEntry> {
-        match self {
-            AppTransport::Multi(t) => t.entries_since(from_seq),
-            AppTransport::Single(t) => t.entries_since(from_seq),
-        }
+        delegate!(self, t => t.entries_since(from_seq))
     }
     fn load_snapshot(&self) -> (u64, CampaignSnapshot) {
-        match self {
-            AppTransport::Multi(t) => t.load_snapshot(),
-            AppTransport::Single(t) => t.load_snapshot(),
-        }
+        delegate!(self, t => t.load_snapshot())
     }
 }
 

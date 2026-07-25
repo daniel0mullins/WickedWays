@@ -1,11 +1,59 @@
-//! Test helpers for constructing minimal valid `World` instances.
-//! Extended by later tasks as needed.
+//! Test helpers shared across the crate's test modules: minimal valid `World`
+//! builders, id shorthands, and a fully-defaulted item descriptor.
 use crate::world::afflictions::Afflictions;
 use alloc::{collections::BTreeMap, string::String, vec, vec::Vec};
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use crate::presentation::CampaignOutcome;
+use crate::stats::StatType;
+use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType};
 use crate::world::ids::{CharacterId, ExitId, RoomId};
+
+/// Shorthand `CharacterId`.
+pub fn cid(s: &str) -> CharacterId {
+    CharacterId(s.into())
+}
+
+/// Shorthand `RoomId`.
+pub fn rid(s: &str) -> RoomId {
+    RoomId(s.into())
+}
+
+/// `ItemProperties` shorthand (`equipped: false`, `droppable: None`).
+pub fn props(equippable: bool, destroyable: bool, usable: bool) -> ItemProperties {
+    ItemProperties {
+        equippable,
+        equipped: false,
+        destroyable,
+        usable,
+        droppable: None,
+    }
+}
+
+/// A fully-defaulted `ItemDescriptor` — every optional field `None`, inert
+/// value fields empty, properties all-false. Customize per test with
+/// struct-update syntax: `ItemDescriptor { slot: Some(..), ..item_desc(..) }`.
+pub fn item_desc(name: &str, r#type: ItemType, stat: StatType, modifier: i64) -> ItemDescriptor {
+    ItemDescriptor {
+        name: name.into(),
+        r#type,
+        stat,
+        modifier,
+        properties: props(false, false, false),
+        slot: None,
+        two_handed: None,
+        emits_light: None,
+        max_durability: None,
+        lore: None,
+        presentation: None,
+        key_code: None,
+        consume_on_use: None,
+        recipe: json!({}),
+        teaches: json!(null),
+        immunities: json!([]),
+        grants_immunity: json!(null),
+    }
+}
 use crate::world::snapshot::{
     CampaignCoreSnapshot, CharacterKind, CharacterSnapshot, ExitSnapshot, InventorySnapshot,
     RoomSnapshot, SceneSnapshot, Stats,

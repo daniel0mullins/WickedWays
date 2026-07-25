@@ -116,13 +116,14 @@ pub fn apply_command(
 mod tests {
     use super::*;
     use crate::stats::StatType;
-    use crate::world::descriptor::{Catalog, ItemDescriptor, ItemProperties, ItemType, SlotKind};
+    use crate::world::descriptor::{Catalog, ItemDescriptor, ItemType, SlotKind};
     use crate::world::direction::Direction;
-    use crate::world::ids::{CharacterId, LootId, RoomId};
+    use crate::world::ids::{CharacterId, LootId};
     use crate::world::snapshot::{ItemSnapshot, LootSnapshot, RoomSnapshot};
+    use crate::world::test_support::rid;
     use crate::world::test_support::world_two_rooms;
+    use crate::world::test_support::{item_desc, props};
     use alloc::collections::BTreeMap;
-    use serde_json::json;
 
     // ── helpers ──────────────────────────────────────────────────────────────
 
@@ -132,63 +133,21 @@ mod tests {
     fn lid(s: &str) -> LootId {
         LootId(s.into())
     }
-    fn rid(s: &str) -> RoomId {
-        RoomId(s.into())
-    }
 
     fn weapon_desc() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Sword".into(),
-            r#type: ItemType::Weapon,
-            stat: StatType::Health,
-            modifier: 3,
-            properties: ItemProperties {
-                equippable: true,
-                equipped: false,
-                destroyable: true,
-                usable: false,
-                droppable: None,
-            },
+            properties: props(true, true, false),
             slot: Some(SlotKind::Hand),
-            two_handed: None,
-            emits_light: None,
             max_durability: Some(5),
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc("Sword", ItemType::Weapon, StatType::Health, 3)
         }
     }
 
     fn consumable_desc() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Herb".into(),
-            r#type: ItemType::Consumable,
-            stat: StatType::Health,
-            modifier: 2,
-            properties: ItemProperties {
-                equippable: false,
-                equipped: false,
-                destroyable: false,
-                usable: true,
-                droppable: None,
-            },
-            slot: None,
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
+            properties: props(false, false, true),
             consume_on_use: Some(true),
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc("Herb", ItemType::Consumable, StatType::Health, 2)
         }
     }
 

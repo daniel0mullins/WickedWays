@@ -116,11 +116,8 @@ mod tests {
     use super::*;
     use crate::world::afflictions::Status;
     use crate::world::ids::CharacterId;
+    use crate::world::test_support::cid;
     use crate::world::test_support::world_with_party;
-
-    fn cid(s: &str) -> CharacterId {
-        CharacterId(s.into())
-    }
 
     /// Build a world with one player and set a single active affliction on them.
     fn world_with_affliction(status: Status) -> (World, CharacterId) {

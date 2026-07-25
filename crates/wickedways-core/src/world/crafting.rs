@@ -11,7 +11,7 @@
 
 use alloc::collections::BTreeMap;
 use alloc::format;
-use alloc::string::{String, ToString};
+use alloc::string::String;
 
 use serde_json::{json, Value};
 
@@ -71,14 +71,6 @@ impl World {
     /// Whether the party already knows a recipe. Mirrors `Campaign.knows`.
     pub fn knows_recipe(&self, recipe_id: &str) -> bool {
         self.campaign.known_recipes.iter().any(|r| r == recipe_id)
-    }
-
-    /// Add a recipe to the party's known set (idempotent by id) — the party-wide
-    /// learn that a `teaches` pickup (or a genesis seed) drives.
-    pub fn discover_recipe(&mut self, recipe_id: &str) {
-        if !self.knows_recipe(recipe_id) {
-            self.campaign.known_recipes.push(recipe_id.to_string());
-        }
     }
 
     // ---- Character verbs --------------------------------------
@@ -351,12 +343,11 @@ impl World {
 mod tests {
     use super::*;
     use crate::stats::StatType;
-    use crate::world::descriptor::{
-        ItemDescriptor, ItemProperties, ItemType, RecipeMeta, SlotKind,
-    };
+    use crate::world::descriptor::{ItemDescriptor, ItemType, RecipeMeta, SlotKind};
     use crate::world::ids::RoomId;
     use crate::world::snapshot::MaterialCacheSnapshot;
     use crate::world::test_support::world_two_rooms;
+    use crate::world::test_support::{item_desc, props};
     use alloc::collections::BTreeMap;
 
     fn pc() -> CharacterId {
@@ -366,29 +357,11 @@ mod tests {
     /// A weapon descriptor with a material `recipe` composition (drives repair cost).
     fn weapon_desc(max_dur: Option<i64>, recipe: Value) -> ItemDescriptor {
         ItemDescriptor {
-            name: "Iron Blade".into(),
-            r#type: ItemType::Weapon,
-            stat: StatType::Health,
-            modifier: 2,
-            properties: ItemProperties {
-                equippable: true,
-                equipped: false,
-                destroyable: true,
-                usable: false,
-                droppable: None,
-            },
+            properties: props(true, true, false),
             slot: Some(SlotKind::Hand),
-            two_handed: None,
-            emits_light: None,
             max_durability: max_dur,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
             recipe,
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc("Iron Blade", ItemType::Weapon, StatType::Health, 2)
         }
     }
 

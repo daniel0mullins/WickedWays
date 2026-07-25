@@ -616,6 +616,7 @@ impl World {
 
 #[cfg(test)]
 mod tests {
+    use crate::world::test_support::{item_desc, props};
     // ── widened ViewModel tests ───────────────────────────────────────────────
 
     use crate::stats::StatType;
@@ -645,57 +646,24 @@ mod tests {
 
     fn sword_descriptor() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Iron Sword".into(),
-            r#type: ItemType::Weapon,
-            stat: StatType::Health,
-            modifier: 3,
-            properties: ItemProperties {
-                equippable: true,
-                equipped: false,
-                destroyable: true,
-                usable: false,
-                droppable: None,
-            },
+            properties: props(true, true, false),
             slot: Some(SlotKind::Hand),
-            two_handed: None,
-            emits_light: None,
             max_durability: Some(8),
             lore: Some("A trusty blade.".into()),
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc("Iron Sword", ItemType::Weapon, StatType::Health, 3)
         }
     }
 
     fn potion_descriptor() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Healing Potion".into(),
-            r#type: ItemType::Consumable,
-            stat: StatType::Health,
-            modifier: 2,
             properties: ItemProperties {
                 equippable: false,
                 equipped: false,
                 destroyable: false,
                 usable: true,
-                droppable: Some(false), // not droppable
+                droppable: Some(false),
             },
-            slot: None,
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc("Healing Potion", ItemType::Consumable, StatType::Health, 2)
         }
     }
 

@@ -165,10 +165,11 @@ impl World {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::test_support::{item_desc, props};
     use crate::{
         stats::StatType,
         world::{
-            descriptor::{Catalog, ItemDescriptor, ItemProperties, ItemType, SlotKind},
+            descriptor::{Catalog, ItemDescriptor, ItemType, SlotKind},
             ids::ItemId,
             snapshot::ItemSnapshot,
         },
@@ -178,29 +179,10 @@ mod tests {
 
     fn poker_descriptor() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Iron Poker".to_string(),
-            r#type: ItemType::Weapon,
-            stat: StatType::Health,
-            modifier: 3,
-            properties: ItemProperties {
-                equippable: true,
-                equipped: false,
-                destroyable: true,
-                usable: false,
-                droppable: None,
-            },
+            properties: props(true, true, false),
             slot: Some(SlotKind::Hand),
-            two_handed: None,
-            emits_light: None,
             max_durability: Some(8),
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc("Iron Poker", ItemType::Weapon, StatType::Health, 3)
         }
     }
 
@@ -292,29 +274,8 @@ mod tests {
         items.insert(
             "items/coin".to_string(),
             ItemDescriptor {
-                name: "Gold Coin".to_string(),
-                r#type: ItemType::Consumable,
-                stat: StatType::Health,
-                modifier: 0,
-                properties: ItemProperties {
-                    equippable: false,
-                    equipped: false,
-                    destroyable: false,
-                    usable: true,
-                    droppable: None,
-                },
-                slot: None,
-                two_handed: None,
-                emits_light: None,
-                max_durability: None,
-                lore: None,
-                presentation: None,
-                key_code: None,
-                consume_on_use: None,
-                recipe: json!({}),
-                teaches: json!(null),
-                immunities: json!([]),
-                grants_immunity: json!(null),
+                properties: props(false, false, true),
+                ..item_desc("Gold Coin", ItemType::Consumable, StatType::Health, 0)
             },
         );
         let cat = Catalog {
@@ -421,57 +382,18 @@ mod tests {
     /// Build a minimal descriptor for an accessory or weapon.
     fn accessory_descriptor(stat: StatType, modifier: i64) -> ItemDescriptor {
         ItemDescriptor {
-            name: "Test Ring".to_string(),
-            r#type: ItemType::Accessory,
-            stat,
-            modifier,
-            properties: ItemProperties {
-                equippable: true,
-                equipped: false,
-                destroyable: false,
-                usable: false,
-                droppable: None,
-            },
+            properties: props(true, false, false),
             slot: Some(SlotKind::Finger),
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc("Test Ring", ItemType::Accessory, stat, modifier)
         }
     }
 
     fn weapon_descriptor(stat: StatType, modifier: i64) -> ItemDescriptor {
         ItemDescriptor {
-            name: "Test Sword".to_string(),
-            r#type: ItemType::Weapon,
-            stat,
-            modifier,
-            properties: ItemProperties {
-                equippable: true,
-                equipped: false,
-                destroyable: true,
-                usable: false,
-                droppable: None,
-            },
+            properties: props(true, true, false),
             slot: Some(SlotKind::Hand),
-            two_handed: None,
-            emits_light: None,
             max_durability: Some(5),
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc("Test Sword", ItemType::Weapon, stat, modifier)
         }
     }
 

@@ -616,12 +616,9 @@ mod tests {
     use crate::world::ids::CharacterId;
     use crate::world::mechanics::Effect;
     use crate::world::snapshot::MechanicSnapshot;
+    use crate::world::test_support::cid;
     use crate::world::test_support::world_with_party;
     use alloc::vec::Vec;
-
-    fn cid(s: &str) -> CharacterId {
-        CharacterId(s.into())
-    }
 
     // world_with_party gives every character uniform stats:
     // health 5.0 / sanity 5.0 / energy 5.0 (test_support.rs); the second

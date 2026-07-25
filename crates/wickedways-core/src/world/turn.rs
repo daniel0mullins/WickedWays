@@ -327,14 +327,12 @@ impl World {
 mod tests {
     use super::*;
     use crate::presentation::{CampaignOutcome, PresentationCue};
-    use crate::world::ids::CharacterId;
+    use crate::world::test_support::cid;
+    use crate::world::test_support::{item_desc, props};
+
     // test-utils helper that builds a minimal started World with `party` ids,
     // `max_rounds`, round 0, outcome Ongoing, and a character per id.
     use crate::world::test_support::world_with_party;
-
-    fn cid(s: &str) -> CharacterId {
-        CharacterId(s.into())
-    }
 
     /// Seed the `conformance:dread` mechanic (registered under
     /// `cfg(any(test, feature = "conformance"))`, so always present in `cargo test`).
@@ -729,13 +727,10 @@ mod tests {
     fn start_turn_floors_negative_base_stats_persistently() {
         use crate::stats::StatType;
         use crate::world::afflictions::Status;
-        use crate::world::descriptor::{
-            Catalog, ItemDescriptor, ItemProperties, ItemType, SlotKind,
-        };
+        use crate::world::descriptor::{Catalog, ItemDescriptor, ItemType, SlotKind};
         use crate::world::ids::ItemId;
         use crate::world::snapshot::ItemSnapshot;
         use alloc::collections::BTreeMap;
-        use serde_json::json;
 
         // ── case 1: plain negative base sanity, no bonus ──────────────────────
         // base sanity = -3 → after floor: 0 → no Fear (0 is not > 0 && < 5)
@@ -768,29 +763,9 @@ mod tests {
         items.insert(
             "items/ring-san".to_string(),
             ItemDescriptor {
-                name: "Sanity Ring".to_string(),
-                r#type: ItemType::Accessory,
-                stat: StatType::Sanity,
-                modifier: 5,
-                properties: ItemProperties {
-                    equippable: true,
-                    equipped: false,
-                    destroyable: false,
-                    usable: false,
-                    droppable: None,
-                },
+                properties: props(true, false, false),
                 slot: Some(SlotKind::Finger),
-                two_handed: None,
-                emits_light: None,
-                max_durability: None,
-                lore: None,
-                presentation: None,
-                key_code: None,
-                consume_on_use: None,
-                recipe: json!({}),
-                teaches: json!(null),
-                immunities: json!([]),
-                grants_immunity: json!(null),
+                ..item_desc("Sanity Ring", ItemType::Accessory, StatType::Sanity, 5)
             },
         );
         let cat2 = Catalog {

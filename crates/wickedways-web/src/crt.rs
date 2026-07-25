@@ -692,6 +692,16 @@ fn duplicates_hud_stat(label: &str) -> bool {
     )
 }
 
+/// A labeled chip section — the dock/sidebar building block.
+fn chip_section(label: String, chips: Element) -> Element {
+    rsx! {
+        div { class: "section",
+            div { class: "section-label", {label} }
+            div { class: "chips", {chips} }
+        }
+    }
+}
+
 /// The fixed dock pinned to the bottom of the main column (between the transcript and the input): the
 /// current room's exits, kept in view as the transcript scrolls. Inventory and materials live in the
 /// right-hand [`side_bar`].
@@ -699,20 +709,17 @@ fn dock_bar(v: &ViewModel) -> Element {
     rsx! {
         div { class: "dock",
             if !v.exits.is_empty() || !v.locked_doors.is_empty() {
-                div { class: "section",
-                    div { class: "section-label", "Exits" }
-                    div { class: "chips",
-                        for e in v.exits.iter() {
-                            span { key: "{e.dir.as_key()}", class: "chip", "{e.dir.as_key()} → {e.to_name}" }
-                        }
-                        for d in v.locked_doors.iter() {
-                            span { key: "locked-{d.dir.as_key()}", class: "chip",
-                                "{d.dir.as_key()} → {d.name} "
-                                span { class: "meta", "(locked)" }
-                            }
+                {chip_section("Exits".into(), rsx! {
+                    for e in v.exits.iter() {
+                        span { key: "{e.dir.as_key()}", class: "chip", "{e.dir.as_key()} → {e.to_name}" }
+                    }
+                    for d in v.locked_doors.iter() {
+                        span { key: "locked-{d.dir.as_key()}", class: "chip",
+                            "{d.dir.as_key()} → {d.name} "
+                            span { class: "meta", "(locked)" }
                         }
                     }
-                }
+                })}
             }
         }
     }
@@ -723,31 +730,33 @@ fn dock_bar(v: &ViewModel) -> Element {
 fn side_bar(v: &ViewModel) -> Element {
     let inv = &v.inventory;
     let empty = inv.items.is_empty() && inv.keys.is_empty();
+    let label = format!(
+        "Inventory ({}/{})",
+        inv.items.len() + inv.keys.len(),
+        inv.slots
+    );
     rsx! {
-        div { class: "section",
-            div { class: "section-label", "Inventory ({inv.items.len() + inv.keys.len()}/{inv.slots})" }
-            if empty {
+        if empty {
+            div { class: "section",
+                div { class: "section-label", {label} }
                 div { class: "chip meta", "empty" }
-            } else {
-                div { class: "chips",
-                    for it in inv.items.iter() {
-                        span { key: "{it.id}", class: "chip", "{it.name}" }
-                    }
-                    for k in inv.keys.iter() {
-                        span { key: "{k.id}", class: "chip", "{k.name} ", span { class: "meta", "(key)" } }
-                    }
-                }
             }
+        } else {
+            {chip_section(label.clone(), rsx! {
+                for it in inv.items.iter() {
+                    span { key: "{it.id}", class: "chip", "{it.name}" }
+                }
+                for k in inv.keys.iter() {
+                    span { key: "{k.id}", class: "chip", "{k.name} ", span { class: "meta", "(key)" } }
+                }
+            })}
         }
         if !v.materials.is_empty() {
-            div { class: "section",
-                div { class: "section-label", "Materials" }
-                div { class: "chips",
-                    for m in v.materials.iter() {
-                        span { key: "mat-{m.component}", class: "chip", "{m.component} ×{m.quantity}" }
-                    }
+            {chip_section("Materials".into(), rsx! {
+                for m in v.materials.iter() {
+                    span { key: "mat-{m.component}", class: "chip", "{m.component} ×{m.quantity}" }
                 }
-            }
+            })}
         }
     }
 }

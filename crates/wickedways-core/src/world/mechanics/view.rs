@@ -166,12 +166,9 @@ const ALL_STATUSES_LOCAL: [Status; 4] = [Status::Confused, Status::Fear, Status:
 #[cfg(test)]
 mod tests {
     use crate::world::descriptor::Catalog;
-    use crate::world::ids::CharacterId;
-    use crate::world::test_support::world_with_party;
+    use crate::world::test_support::cid;
 
-    fn cid(s: &str) -> CharacterId {
-        CharacterId(s.into())
-    }
+    use crate::world::test_support::world_with_party;
 
     #[test]
     fn campaign_view_projects_party_effective_stats() {

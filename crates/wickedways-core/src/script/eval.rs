@@ -637,18 +637,15 @@ mod tests {
     use super::*;
     use crate::script::ast::{BinOp, Expr};
     use crate::script::value::Value;
+    use crate::world::test_support::cid;
     use alloc::collections::BTreeMap;
 
     use crate::presentation::StatusField;
     use crate::world::descriptor::Catalog;
-    use crate::world::ids::{CharacterId, ItemId};
+    use crate::world::ids::ItemId;
     use crate::world::mechanics::{Effect, TransformResult};
     use crate::world::snapshot::ItemSnapshot;
     use crate::world::test_support::world_with_party;
-
-    fn cid(s: &str) -> CharacterId {
-        CharacterId(s.into())
-    }
 
     fn s_lit(v: Value) -> Expr {
         Expr::Lit { value: v }

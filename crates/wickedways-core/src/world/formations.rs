@@ -334,6 +334,7 @@ impl World {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
@@ -421,12 +422,10 @@ mod tests {
 #[cfg(test)]
 mod spawn_tests {
     use crate::world::descriptor::Catalog;
-    use crate::world::ids::{CharacterId, RoomId};
+    use crate::world::ids::CharacterId;
+    use crate::world::test_support::rid;
     use crate::world::test_support::world_two_rooms;
-
-    fn rid(s: &str) -> RoomId {
-        RoomId(s.into())
-    }
+    use crate::world::test_support::{item_desc, props};
 
     /// Put a single `conformance:wraith` formation (weight 1) and a baseChance into
     /// the encounter table, and clear `visited`.
@@ -531,31 +530,14 @@ mod spawn_tests {
     /// `modifier`, no `durability`).
     fn rat_tail_desc() -> crate::world::descriptor::ItemDescriptor {
         use crate::stats::StatType;
-        use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType};
+        use crate::world::descriptor::{ItemDescriptor, ItemType};
         ItemDescriptor {
-            name: "Rat Tail".into(),
-            r#type: ItemType::Consumable,
-            stat: StatType::Health,
-            modifier: 0,
-            properties: ItemProperties {
-                equippable: false,
-                equipped: false,
-                destroyable: true,
-                usable: false,
-                droppable: None,
-            },
-            slot: None,
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
+            properties: props(false, true, false),
             recipe: serde_json::json!({}),
             teaches: serde_json::json!(null),
             immunities: serde_json::json!(null),
             grants_immunity: serde_json::json!(null),
+            ..item_desc("Rat Tail", ItemType::Consumable, StatType::Health, 0)
         }
     }
 
