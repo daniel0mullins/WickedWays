@@ -280,3 +280,25 @@ async fn two_clients_converge_over_a_real_websocket() {
     assert_eq!(after_a, after_b, "the two clients converge to the identical snapshot");
     assert_ne!(after_a, base, "the move actually advanced the state (a non-trivial delta was applied)");
 }
+
+/// The `/healthz` liveness probe answers `200 OK` with `ok` — the signal container orchestrators
+/// (and the platform health check) poll to confirm the one binary is serving. Driven over a raw TCP
+/// HTTP/1.1 request so it exercises the real router, not just the handler in isolation.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn healthz_probe_returns_200_ok() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let port = start_server().await;
+    let mut stream = TcpStream::connect(("127.0.0.1", port)).await.expect("connect");
+    stream
+        .write_all(b"GET /healthz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+        .await
+        .expect("write request");
+
+    let mut response = String::new();
+    stream.read_to_string(&mut response).await.expect("read response");
+
+    let status = response.lines().next().unwrap_or_default();
+    assert!(status.starts_with("HTTP/1.1 200"), "expected 200 status line, got {status:?}");
+    assert!(response.ends_with("ok"), "expected an `ok` body, got {response:?}");
+}

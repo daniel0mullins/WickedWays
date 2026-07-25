@@ -150,7 +150,6 @@ pub fn crt_app() -> Element {
                 let initial = project(&coord, &catalog);
                 if let Some(v) = &initial {
                     map_model.write().observe(v);
-                    narration.write().extend(narrator.write().render_room(v));
                     audio.update(v);
                 }
                 vm.set(initial);
@@ -332,10 +331,10 @@ pub fn crt_app() -> Element {
                                 if let (Some(intent), Some(b), Some(a)) = (intent_for_narration, &before_view, &after) {
                                     let action_lines = narrator.write().render_action(&intent, b, a);
                                     narration.write().extend(action_lines);
-                                    if matches!(intent, Intent::Move { .. }) {
-                                        let room_lines = narrator.write().render_room(a);
-                                        narration.write().extend(room_lines);
-                                    }
+                                    // The room name/description/occupants live in the persistent header
+                                    // (game_view), so entering a room updates that panel rather than
+                                    // re-printing the room into the transcript. The transcript stays an
+                                    // action + dialogue log.
                                     // Voice the action (attack/move/take/drop have a sound).
                                     if let Some(cue) = cue_for_intent(&intent) {
                                         audio.play_cue(&cue, a);
@@ -387,8 +386,6 @@ pub fn crt_app() -> Element {
                                     let restored = project(&coord, &catalog);
                                     narration.write().push("Restored.".into());
                                     if let Some(v) = &restored {
-                                        let lines = narrator.write().render_room(v);
-                                        narration.write().extend(lines);
                                         audio.update(v);
                                     }
                                     vm.set(restored);
@@ -412,8 +409,6 @@ pub fn crt_app() -> Element {
                                     let fresh = project(&coord, &catalog);
                                     if let Some(v) = &fresh {
                                         map_model.write().observe(v);
-                                        let lines = narrator.write().render_room(v);
-                                        narration.write().extend(lines);
                                         audio.update(v);
                                     }
                                     vm.set(fresh);
@@ -434,8 +429,6 @@ pub fn crt_app() -> Element {
                                     let reverted = project(&coord, &catalog);
                                     narration.write().push("Undone.".into());
                                     if let Some(v) = &reverted {
-                                        let lines = narrator.write().render_room(v);
-                                        narration.write().extend(lines);
                                         audio.update(v);
                                     }
                                     vm.set(reverted);
@@ -640,6 +633,11 @@ fn emphasis_class(field: &StatusField) -> &'static str {
 /// core HUD (location · turn · HP · SAN) plus the campaign's authored `StatusField` readout.
 fn hud_bar(v: &ViewModel, fields: &[StatusField]) -> Element {
     let s = &v.status;
+    // The HUD already shows turn / HP / SAN, so a campaign's authored StatusFields that just repeat
+    // them are redundant (e.g. Hollow House's `status-bar` mechanic emits "Sanity" and "Round").
+    // Drop those; keep any field the HUD doesn't cover (Energy, custom readouts).
+    let extra: Vec<StatusField> =
+        fields.iter().filter(|f| !duplicates_hud_stat(&f.label)).cloned().collect();
     rsx! {
         div { class: "hud",
             span { "{s.location_name}" }
@@ -650,14 +648,23 @@ fn hud_bar(v: &ViewModel, fields: &[StatusField]) -> Element {
             span { class: "sep", "·" }
             span { "SAN {s.sanity}" }
         }
-        if !fields.is_empty() {
+        if !extra.is_empty() {
             div { class: "campaign-status",
-                for f in fields.iter() {
+                for f in extra.iter() {
                     span { key: "sf-{f.label}", class: emphasis_class(f), "{f.label} {f.value}" }
                 }
             }
         }
     }
+}
+
+/// Whether a campaign `StatusField` label just repeats a stat the built-in HUD already shows
+/// (turn / HP / SAN), so the surface can drop it rather than print the value twice.
+fn duplicates_hud_stat(label: &str) -> bool {
+    matches!(
+        label.trim().to_lowercase().as_str(),
+        "sanity" | "san" | "health" | "hp" | "round" | "turn"
+    )
 }
 
 /// The fixed dock pinned to the bottom of the main column (between the transcript and the input): the
@@ -794,6 +801,24 @@ fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>
                     div { key: "n{i}", class: "line", {linked_line(line, &nouns, draft)} }
                 }
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::duplicates_hud_stat;
+
+    #[test]
+    fn hud_stat_dedup_drops_built_in_labels_case_insensitively() {
+        // Labels the built-in HUD already shows (turn / HP / SAN) are dropped from the campaign
+        // StatusField row, however the campaign cased them.
+        for redundant in ["Sanity", "SAN", "san", "Round", "round", "Health", "HP", "hp", " Turn "] {
+            assert!(duplicates_hud_stat(redundant), "{redundant:?} should be dropped");
+        }
+        // Anything the HUD doesn't cover stays.
+        for kept in ["Energy", "Dread", "Journal", "Keys"] {
+            assert!(!duplicates_hud_stat(kept), "{kept:?} should be kept");
         }
     }
 }

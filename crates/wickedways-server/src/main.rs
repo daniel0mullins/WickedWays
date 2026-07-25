@@ -1,7 +1,8 @@
 //! The WickedWays room-server binary (Phase 2c, sub-project C — slice 4).
 //!
 //! Reads its configuration from the environment, builds a [`RoomServer`](wickedways_server::server::RoomServer),
-//! and serves the axum `/ws` endpoint:
+//! and serves the axum `/ws` endpoint (plus a `GET /healthz` liveness probe → `200 "ok"` for
+//! container orchestrators):
 //!
 //! - `PORT`         — listen port (default `8080`).
 //! - `DB_PATH`      — SQLite path for durable campaigns; unset/empty ⇒ **ephemeral** (in-memory).

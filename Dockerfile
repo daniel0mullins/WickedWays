@@ -12,6 +12,13 @@
 FROM rust:1-slim-bookworm AS builder
 WORKDIR /app
 
+# Cap cargo's build parallelism. The cold wasm compile of the full Dioxus tree is
+# the most memory-hungry step of the build; unbounded parallel codegen has OOM-killed
+# it on memory-constrained build hosts (the process dies mid-compile with no rustc
+# error). Two jobs keeps peak RSS bounded at the cost of a slightly slower build, and
+# applies to both build steps below (wasm bundle + server binary).
+ENV CARGO_BUILD_JOBS=2
+
 # Prebuilt wasm-bindgen CLI (release tarball beats `cargo install` by minutes); the
 # version MUST match the `wasm-bindgen` crate in Cargo.lock (build-web.sh asserts it).
 # gcc is for rusqlite's bundled SQLite (the `cc` crate compiles it in-tree).
@@ -53,8 +60,12 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # ---- runtime: slim glibc base ----
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
+# curl is here for the HEALTHCHECK below (and any platform probe like Coolify's, which runs
+# `curl`/`wget` *inside* the container) hitting the server's GET /healthz — the slim base ships
+# neither, so without this the probe can't execute and the container is reported unhealthy despite
+# a working app.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates \
+ && apt-get install -y --no-install-recommends ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
 
 # The server binary was cp'd out of the cache-mounted `target/` to `/usr/local/bin` in the builder.
@@ -76,4 +87,11 @@ ENV PORT=8080 \
     GENESIS_DIR=/app/genesis \
     GM_IDENTITY=gm
 EXPOSE 8080
+
+# Container-native liveness probe: hit the server's GET /healthz (200 "ok" while it's serving). Shell
+# form so ${PORT} expands at runtime from the env above — or whatever the platform injects — rather
+# than being frozen at build time. start-period covers the (near-instant) boot before the first probe.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -fsS "http://localhost:${PORT}/healthz" || exit 1
+
 CMD ["wickedways-server"]
