@@ -1,10 +1,10 @@
-//! The narrator — cue/query/intent → prose (Phase 2c, sub-project D — slice 2).
+//! The narrator — cue/query/intent → prose.
 //!
-//! Ports `packages/play-surface/src/shared/narrator.ts` 1:1: a pure(-ish) translator from engine data
+//! A pure(-ish) translator from engine data
 //! (the [`ViewModel`], a resolved [`Intent`], [`PresentationCue`]s, [`MobAttack`]s) to the lines of
-//! prose the CRT transcript prints. The only state it carries is which rooms have been visited (kept
-//! for parity with the TS type even though — as in TS — the room description prints on every visit
-//! regardless; `first_visit` only paces presentation, which this client doesn't yet animate).
+//! prose the CRT transcript prints. The only state it carries is which rooms have been visited —
+//! the room description prints on every visit
+//! regardless; `first_visit` only paces presentation, which this client doesn't yet animate.
 
 use std::collections::BTreeSet;
 
@@ -23,7 +23,7 @@ fn sentence(items: &[String], head: &str) -> Option<String> {
     }
 }
 
-/// The room description split into presentation parts. Mirrors TS `RoomParts`.
+/// The room description split into presentation parts.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RoomParts {
     pub header: String,
@@ -104,7 +104,7 @@ impl Narrator {
                     }
                 }
                 PresentationCue::Encounter { mob, .. } => {
-                    lines.push(format!("A {} is here.", mob.name))
+                    lines.push(format!("A {} is here.", mob.name));
                 }
                 PresentationCue::Visibility { lit, .. } => lines.push(if *lit {
                     "Light spills into the room.".to_string()
@@ -117,10 +117,9 @@ impl Narrator {
                         lines.push(text.clone());
                     }
                 }
-                // movement/attack already implied by room re-render; keep terse
-                PresentationCue::Action { .. } => {}
-                // status cues render in the HUD, not the transcript
-                PresentationCue::Status { .. } => {}
+                // movement/attack already implied by room re-render (keep terse), and status cues
+                // render in the HUD, not the transcript
+                PresentationCue::Action { .. } | PresentationCue::Status { .. } => {}
             }
         }
         lines
@@ -243,8 +242,7 @@ impl Narrator {
                 let result = after.occupants.iter().find(|o| &o.id == target_id);
                 let name = target
                     .or(result)
-                    .map(|o| o.name.clone())
-                    .unwrap_or_else(|| "it".to_string());
+                    .map_or_else(|| "it".to_string(), |o| o.name.clone());
                 let was_defeated = target.and_then(|t| t.defeated).unwrap_or(false);
                 let now_defeated = result.and_then(|r| r.defeated).unwrap_or(false);
                 if now_defeated && !was_defeated {
@@ -282,7 +280,7 @@ impl Narrator {
     pub fn render_mob_attacks(&self, attacks: &[MobAttack]) -> Vec<String> {
         // Shares the single prose source with the solo turn loop (which emits the same lines as
         // mechanic cues); see `MobAttack::narration`.
-        attacks.iter().map(|a| a.narration()).collect()
+        attacks.iter().map(MobAttack::narration).collect()
     }
 }
 
@@ -300,8 +298,7 @@ fn strip_trailing_period(s: &str) -> String {
     let trimmed = s.trim_end();
     trimmed
         .strip_suffix('.')
-        .map(str::trim_end)
-        .unwrap_or(trimmed)
+        .map_or(trimmed, str::trim_end)
         .to_string()
 }
 

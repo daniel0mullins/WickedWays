@@ -1,6 +1,6 @@
-//! Clickable-noun segmentation (Phase 2c, sub-project D).
+//! Clickable-noun segmentation.
 //!
-//! Ports `play-surface/src/crt/link-nouns.ts`: split a line of prose into plain-text and **noun**
+//! Splits a line of prose into plain-text and **noun**
 //! segments. A segment with `noun` set is a clickable token — the CRT surface renders it as a `.noun`
 //! span whose click fills the prompt with `examine <noun>`. Matches each noun phrase
 //! case-insensitively on word boundaries, longest phrase first (so "Iron Fire-Poker" beats "iron"),
@@ -17,7 +17,7 @@ pub struct Segment {
     pub noun: Option<String>,
 }
 
-/// A "word" character for the boundary check — ASCII alphanumeric or underscore (JS `\w`).
+/// A "word" character for the boundary check — ASCII alphanumeric or underscore (the regex `\w`).
 fn is_word(c: char) -> bool {
     c.is_ascii_alphanumeric() || c == '_'
 }
@@ -55,7 +55,7 @@ pub fn link_nouns(line: &str, nouns: &[String]) -> Vec<Segment> {
     // Longest first so multi-word phrases beat single-word prefixes.
     filtered.sort_by_key(|nl| std::cmp::Reverse(nl.len()));
 
-    let lower: Vec<char> = chars.iter().map(|c| c.to_ascii_lowercase()).collect();
+    let lower: Vec<char> = chars.iter().map(char::to_ascii_lowercase).collect();
     let n = chars.len();
 
     // Does the lowercased noun `nl` match at exactly `pos`, on word boundaries both sides?
@@ -131,7 +131,7 @@ mod tests {
     use super::*;
 
     fn nouns(list: &[&str]) -> Vec<String> {
-        list.iter().map(|s| s.to_string()).collect()
+        list.iter().map(std::string::ToString::to_string).collect()
     }
 
     /// Reconstruct the original line from segments — must always be exact.

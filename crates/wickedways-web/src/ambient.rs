@@ -1,6 +1,6 @@
-//! The ambient bed (Phase 2c, sub-project D — slice 4, audio runtime).
+//! The ambient bed.
 //!
-//! Ports `audio/ambient.ts`: a continuous, sanity-reactive drone. Two detuned sawtooth oscillators
+//! A continuous, sanity-reactive drone. Two detuned sawtooth oscillators
 //! feed a fixed dark low-pass filter and a master gain — a deep sub-bass hum. Dread is expressed
 //! purely as BEAT RATE: the two oscillators beat at a frequency equal to their detune (Hz), so as
 //! tension rises the partner drifts further from the fundamental and the pulse quickens (slow calm
@@ -15,7 +15,7 @@ use web_sys::{
     AudioContext, BiquadFilterNode, BiquadFilterType, GainNode, OscillatorNode, OscillatorType,
 };
 
-// Tunable voice — dialed by ear on the running dev server (kept in sync with `ambient.ts`).
+// Tunable voice — dialed by ear on the running dev server.
 const BASE_HZ: f32 = 55.0; // A1 fundamental
 const DETUNE_HZ: f32 = 0.5; // calm beat rate: osc2 sits BASE + DETUNE (~0.5 Hz pulse)
 const DETUNE_SPREAD_HZ: f32 = 5.5; // beat rate at full dread: BASE + DETUNE + SPREAD (~6 Hz throb)

@@ -1,19 +1,19 @@
-//! The point-and-click Dioxus surface (Phase 2c, sub-project D — slice 3c).
+//! The point-and-click Dioxus surface.
 //!
-//! The click-driven counterpart to the CRT terminal (`main.rs`). It drives the same multiplayer loop
+//! The click-driven counterpart to the CRT terminal ([`crt`](crate::crt)). It drives the same
+//! multiplayer loop
 //! through the shared [`driver`](crate::driver) (connect → project → [`intent_to_command`] → submit →
 //! narrate → map) but presents it as a scene of clickable hotspots instead of a text prompt: the
 //! [`affordances`](crate::affordances) derive what each thing offers, the [`scene_layout`] places the
 //! hotspots, a contextual action menu turns a click into an [`Intent`], and the sidebar shows the
-//! status / inventory / running log. Ported from `packages/play-surface/src/pnc` (controller +
-//! components), reusing the already-ported [`Narrator`] and [`MapModel`].
+//! status / inventory / running log. It reuses the shared [`Narrator`] and [`MapModel`].
 //!
-//! Parity notes vs. the Lit surface: save-restore / settings menu and procedural audio are wired
-//! (slice 4) — a topbar 🔊 toggle enables the shared [`AudioRuntime`], which voices committed actions
+//! Save-restore, the settings menu, and procedural audio are wired —
+//! a topbar 🔊 toggle enables the shared [`AudioRuntime`], which voices committed actions
 //! and denials and runs the sanity-reactive ambient bed, just like the CRT surface. The welcome
 //! screen shows the campaign's title + intro from the client-side registry
 //! ([`welcome_for`](crate::driver::welcome_for)) — the manifest passthrough — and the campaign's
-//! authored `StatusField` readout now rides the sync delta's cues (absorbed by the coordinator), so
+//! authored `StatusField` readout rides the sync delta's cues (absorbed by the coordinator), so
 //! the status line shows it alongside the basic `ViewModel` projection. A dev `nextPlayer` control
 //! remains; `examine`/`read` render the generic look line, since per-entity lore / descriptions ride
 //! `PresentationCue`s the wire doesn't carry yet.
@@ -104,7 +104,7 @@ enum PncAction {
     ToggleAudio,
 }
 
-/// Append the room heading + description/body to the log (mirrors the controller's `printRoom`).
+/// Append the room heading + description/body to the log.
 fn print_room(mut log: Signal<Vec<LogLine>>, mut narrator: Signal<Narrator>, vm: &ViewModel) {
     let parts = narrator.write().render_room_parts(vm);
     log.write().push(LogLine::heading(parts.header));
@@ -188,7 +188,7 @@ pub fn pnc_app() -> Element {
                 let pushes = transport.push_notifications();
                 let mut events = futures_util::stream::select(
                     rx.map(PncEv::Act),
-                    pushes.map(|_| PncEv::Refresh),
+                    pushes.map(|()| PncEv::Refresh),
                 );
                 while let Some(ev) = events.next().await {
                     let action = match ev {
@@ -275,7 +275,7 @@ pub fn pnc_app() -> Element {
                                         status_fields.set(coord.status_fields().to_vec());
                                     }
                                     None => {
-                                        log.write().push(LogLine::plain("No save found.".into()))
+                                        log.write().push(LogLine::plain("No save found.".into()));
                                     }
                                 }
                             } else {
@@ -334,7 +334,7 @@ pub fn pnc_app() -> Element {
                                         status_fields.set(coord.status_fields().to_vec());
                                     }
                                     None => {
-                                        log.write().push(LogLine::plain("Nothing to undo.".into()))
+                                        log.write().push(LogLine::plain("Nothing to undo.".into()));
                                     }
                                 }
                             } else {
@@ -375,8 +375,10 @@ pub fn pnc_app() -> Element {
                             }
                             continue;
                         }
-                        PncAction::Run(ActionDescriptor::Examine { target_id, .. })
-                        | PncAction::Run(ActionDescriptor::Read { target_id, .. }) => {
+                        PncAction::Run(
+                            ActionDescriptor::Examine { target_id, .. }
+                            | ActionDescriptor::Read { target_id, .. },
+                        ) => {
                             if let Some(v) = project(&coord, &catalog) {
                                 if let Some(e) = v.scope.iter().find(|e| e.id == target_id) {
                                     let lines = narrator.read().render_examine(e);
@@ -480,7 +482,7 @@ pub fn pnc_app() -> Element {
         .as_ref()
         .map(|v| v.status.location_name.clone())
         .unwrap_or_default();
-    let finished = view.as_ref().map(|v| v.finished).unwrap_or(false);
+    let finished = view.as_ref().is_some_and(|v| v.finished);
 
     rsx! {
         style { "{PNC_CSS}" }
@@ -636,7 +638,7 @@ fn scene_view(
         div { class: "scene",
             for hs in perimeter.iter() {
                 {
-                    let pos = hs.dir.map(dir_position).unwrap_or(crate::scene_layout::ScenePosition { left: 50.0, top: 50.0 });
+                    let pos = hs.dir.map_or(crate::scene_layout::ScenePosition { left: 50.0, top: 50.0 }, dir_position);
                     let locked = hs.kind == HotspotKind::Locked;
                     let actions = hs.actions.clone();
                     let label = hs.label.clone();
@@ -646,7 +648,7 @@ fn scene_view(
                             key: "peri-{hs.key}",
                             class: "{cls}",
                             style: "left:{pos.left}%;top:{pos.top}%;z-index:2;",
-                            onclick: move |e| if !locked && !finished { offer(&actions, e, menu, driver) },
+                            onclick: move |e| if !locked && !finished { offer(&actions, &e, menu, driver) },
                             div { class: "door-marker" }
                             span { class: "label", "{label}" }
                         }
@@ -669,7 +671,7 @@ fn scene_view(
                             key: "body-{hs.key}",
                             class: "hotspot",
                             style: "left:{pos.left}%;top:{pos.top}%;z-index:1;",
-                            onclick: move |e| if !finished { offer(&actions, e, menu, driver) },
+                            onclick: move |e| if !finished { offer(&actions, &e, menu, driver) },
                             div { class: "{marker_cls}" }
                             span { class: "label", "{label}" }
                         }
@@ -680,11 +682,10 @@ fn scene_view(
     }
 }
 
-/// Open a menu for the hotspot's verbs at the click point, or fire a lone move-intent immediately
-/// (mirrors the controller's `offerActions`).
+/// Open a menu for the hotspot's verbs at the click point, or fire a lone move-intent immediately.
 fn offer(
     actions: &[ActionDescriptor],
-    e: Event<MouseData>,
+    e: &Event<MouseData>,
     mut menu: Signal<Option<ActionMenu>>,
     driver: Coroutine<PncAction>,
 ) {
@@ -800,7 +801,7 @@ fn crafting_view(
 }
 
 /// The inventory panel: an "Inventory" tab of numbered slots and a "Key Items" tab. Clicking a
-/// filled entry opens its verb menu (mirrors the controller's `inventory-activate` wiring).
+/// filled entry opens its verb menu.
 fn inventory_view(
     view: Option<&ViewModel>,
     finished: bool,

@@ -1,6 +1,6 @@
-//! The audio runtime (Phase 2c, sub-project D — slice 4, audio runtime).
+//! The audio runtime.
 //!
-//! Ports `audio/audio-runtime.ts`: the session-lived orchestrator that ties the four layers together
+//! The session-lived orchestrator that ties the four layers together
 //! (`AudioDirector → SoundPack → SoundSpec → AudioBackend`). It owns the procedural [`AudioEngine`]
 //! and the [`AmbientBed`], holds the active [`AudioDirector`] + [`SoundPack`], and gates everything on
 //! an enabled flag:

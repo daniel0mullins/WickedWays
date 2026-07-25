@@ -1,15 +1,14 @@
-//! Point-and-click affordances — ViewModel → clickable hotspots + inventory verbs (Phase 2c,
-//! sub-project D — slice 3).
+//! Point-and-click affordances — ViewModel → clickable hotspots + inventory verbs.
 //!
-//! Ports `packages/play-surface/src/pnc/affordances.ts` 1:1: the pure, framework-free logic that
+//! The pure, framework-free logic that
 //! derives what the player can click in a scene ([`scene_hotspots`]) and which verbs an inventory
 //! item offers ([`inventory_actions`]), gated by the entity's capabilities so the menu never offers a
 //! verb the engine would reject. It is the point-and-click analog of the CRT [`parser`](crate::parser)
-//! — browser-free, so it is unit-tested exhaustively on the host; a later slice's PnC components turn
+//! — browser-free, so it is unit-tested exhaustively on the host; the PnC components turn
 //! these descriptors into DOM (scene hotspots, the radial action menu, the inventory grid).
 //!
-//! Takes `&ViewModel`/`&ScopeEntity` (the only inputs the TS functions read), which keeps the port
-//! and its tests trivial and independent of the multiplayer/transport machinery.
+//! Takes `&ViewModel`/`&ScopeEntity` (the only inputs this logic needs), which keeps it and its
+//! tests trivial and independent of the multiplayer/transport machinery.
 
 use wickedways_core::world::direction::Direction;
 use wickedways_core::world::intent::Intent;
@@ -17,7 +16,7 @@ use wickedways_core::world::view::{ScopeEntity, ViewModel};
 
 use std::collections::BTreeSet;
 
-/// One selectable verb on a hotspot or inventory item. Mirrors the TS `ActionDescriptor` union: an
+/// One selectable verb on a hotspot or inventory item: an
 /// engine [`Intent`] to submit, or a free `examine`/`read` routed locally by the surface.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ActionDescriptor {
@@ -51,7 +50,7 @@ pub enum HotspotKind {
     Cache,
 }
 
-/// A clickable element in the current scene. Mirrors the TS `Hotspot`.
+/// A clickable element in the current scene.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Hotspot {
     /// Stable key: the direction key for exits/doors, the entity id otherwise.
@@ -62,14 +61,14 @@ pub struct Hotspot {
     /// Present for exits and locked doors.
     pub dir: Option<Direction>,
     /// The entity/room image, if the campaign supplied one (opaque passthrough — the surface owns
-    /// rendering it). Mirrors the TS `image?: string`, carried through as the core's `AssetRef`.
+    /// rendering it), carried through as the core's `AssetRef`.
     pub image: Option<serde_json::Value>,
     /// The verbs this hotspot offers; `[]` for locked doors (informational only).
     pub actions: Vec<ActionDescriptor>,
 }
 
 /// Capitalise a lowercase [`Direction`] key for display ("north" → "North"). Only the first byte is
-/// uppercased (so "northeast" → "Northeast", NOT "NorthEast") — matches the TS `cap`.
+/// uppercased (so "northeast" → "Northeast", NOT "NorthEast").
 fn cap(dir: Direction) -> String {
     let key = dir.as_key();
     let mut chars = key.chars();

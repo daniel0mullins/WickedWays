@@ -1,7 +1,7 @@
-//! The single-player transport (Phase 2c, sub-project D — slice 4).
+//! The single-player transport.
 //!
-//! "Single-player is multiplayer with one seat and an in-process authority" (the master-design
-//! carry): both modes drive a [`SyncCoordinator`], and only the transport differs. Multiplayer
+//! "Single-player is multiplayer with one seat and an in-process authority": both modes drive a
+//! [`SyncCoordinator`], and only the transport differs. Multiplayer
 //! injects [`WsTransport`](crate::transport::WsTransport) (a WebSocket to the room server);
 //! single-player injects this [`SinglePlayerTransport`], which wraps a local [`SyncAuthority`]
 //! directly — no socket, no server, fully offline.

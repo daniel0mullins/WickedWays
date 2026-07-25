@@ -1,9 +1,9 @@
-//! The CRT terminal surface (Phase 2c, sub-project D).
+//! The CRT terminal surface.
 //!
 //! The green-screen text adventure: it drives the multiplayer loop against the room server (or the
 //! offline single-player authority) through the shared [`driver`](crate::driver) (connect → project →
 //! [`intent_to_command`](crate::driver::intent_to_command) → narrate → map), renders the engine
-//! [`ViewModel`], and takes typed commands through the ported [`parse`](crate::parser::parse)r: the
+//! [`ViewModel`], and takes typed commands through the [`parse`](crate::parser::parse)r: the
 //! prompt turns a line of input into an [`Intent`], which the shell resolves into a sync `Command` (a
 //! `move`'s direction becomes the destination room id via the replica's exit graph) and submits;
 //! informational queries (look/exits/inventory/help) render locally against the current view. The
@@ -72,7 +72,7 @@ enum MetaEffect {
     Undo,
 }
 
-/// The one-at-a-time overlay (map or help), mirroring `crt-game.ts`'s `openMap`/`openHelp`.
+/// The one-at-a-time overlay (map or help) — opening one closes the other.
 #[derive(Clone, Debug, PartialEq)]
 enum Overlay {
     None,
@@ -162,7 +162,7 @@ pub fn crt_app() -> Element {
                 // when the turn reaches this client — no polling.
                 let pushes = transport.push_notifications();
                 let mut events =
-                    futures_util::stream::select(rx.map(Ev::Act), pushes.map(|_| Ev::Refresh));
+                    futures_util::stream::select(rx.map(Ev::Act), pushes.map(|()| Ev::Refresh));
                 while let Some(ev) = events.next().await {
                     let action = match ev {
                         Ev::Act(a) => a,
@@ -198,8 +198,8 @@ pub fn crt_app() -> Element {
                         }
                         Action::Input(text) => {
                             let view = project(&coord, &catalog);
-                            before_view = view.clone();
-                            let scope = view.as_ref().map(|v| v.scope.as_slice()).unwrap_or(&[]);
+                            before_view.clone_from(&view);
+                            let scope: &[_] = view.as_ref().map_or(&[], |v| v.scope.as_slice());
                             match parse(&text, scope) {
                                 ParseResult::Query(q) => {
                                     if let Some(v) = &view {
@@ -482,7 +482,7 @@ pub fn crt_app() -> Element {
         None => (rsx! {}, rsx! {}, rsx! {}),
     };
     let screen = match vmodel {
-        Some(v) => game_view(v, narration, draft),
+        Some(v) => game_view(&v, narration, draft),
         None => rsx! {
             div { class: "line system", "WICKEDWAYS" }
             div { class: "line", "status: {status}" }
@@ -576,8 +576,7 @@ pub fn crt_app() -> Element {
             // Same as the welcome gate: this renders outside `.backdrop`, so it carries the palette vars.
             div { class: "overlay", style: "{theme_vars}", onclick: move |_| overlay.set(Overlay::None),
                 // Clicks on the framed content don't dismiss (only the backdrop does) — matches the
-                // `.overlay-frame { cursor: default }` affordance and `crt-game.ts`, where frame
-                // clicks never close the overlay.
+                // `.overlay-frame { cursor: default }` affordance.
                 div { class: "overlay-frame", onclick: move |e| e.stop_propagation(),
                     match overlay() {
                         Overlay::Help(rows) => rsx! {
@@ -604,7 +603,7 @@ pub fn crt_app() -> Element {
 }
 
 /// Render one line of prose with the current scope's nouns as clickable spans; clicking a noun fills
-/// the prompt with `examine <noun>` (ported from `crt-transcript`/`crt-hud`'s noun linking).
+/// the prompt with `examine <noun>`.
 fn linked_line(line: &str, nouns: &[String], draft: Signal<String>) -> Element {
     rsx! {
         for (i, seg) in link_nouns(line, nouns).into_iter().enumerate() {
@@ -626,8 +625,7 @@ fn linked_line(line: &str, nouns: &[String], draft: Signal<String>) -> Element {
     }
 }
 
-/// The scope's clickable nouns — each entity's name + aliases, de-duplicated case-insensitively
-/// (mirrors the controller's `computeClickableNouns`).
+/// The scope's clickable nouns — each entity's name + aliases, de-duplicated case-insensitively.
 fn clickable_nouns(v: &ViewModel) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
     let mut out = Vec::new();
@@ -641,7 +639,7 @@ fn clickable_nouns(v: &ViewModel) -> Vec<String> {
     out
 }
 
-/// The CSS class for a status field by its (optional) emphasis (mirrors `crt-status`'s color-coding).
+/// The CSS class for a status field by its (optional) emphasis.
 fn emphasis_class(field: &StatusField) -> &'static str {
     match field.emphasis.as_deref() {
         Some("critical") => "status-field status-critical",
@@ -754,8 +752,8 @@ fn side_bar(v: &ViewModel) -> Element {
     }
 }
 
-fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>) -> Element {
-    let nouns = clickable_nouns(&v);
+fn game_view(v: &ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>) -> Element {
+    let nouns = clickable_nouns(v);
     rsx! {
         div { class: "room-name", "{v.room.name}" }
         div {

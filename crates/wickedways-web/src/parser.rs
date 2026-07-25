@@ -1,18 +1,18 @@
-//! The CRT command parser (Phase 2c, sub-project D — slice 2).
+//! The CRT command parser.
 //!
-//! Ports `packages/play-surface/src/crt/parser.ts` 1:1 — a pure function turning a line of terminal
+//! A pure function turning a line of terminal
 //! input into a [`ParseResult`] against the current scope (the entities the player can name). It is
 //! framework-free and browser-free, so it is unit-tested exhaustively on the host; the shell wires
 //! its output — [`Intent`]s become sync `Command`s, queries render locally.
 //!
-//! Takes `&[ScopeEntity]` (the ViewModel's `scope`) rather than the whole ViewModel — that is the
-//! only field the TS parser reads — which keeps the port and its tests trivial.
+//! Takes `&[ScopeEntity]` (the ViewModel's `scope`) rather than the whole ViewModel — the scope is
+//! the only input parsing needs — which keeps the parser and its tests trivial.
 
 use wickedways_core::world::direction::Direction;
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ScopeEntity;
 
-/// What a parsed line resolves to. Mirrors `ParseResult` in `parser.ts`.
+/// What a parsed line resolves to.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ParseResult {
     Intent(Intent),
@@ -44,7 +44,7 @@ pub enum Meta {
     Map,
 }
 
-/// `north`/`n`/… → a compass [`Direction`]. Mirrors the `DIRECTIONS` table.
+/// `north`/`n`/… → a compass [`Direction`].
 fn parse_dir(s: &str) -> Option<Direction> {
     use Direction::*;
     Some(match s {
@@ -160,7 +160,7 @@ fn noun_verb(verb: &str, t: &ScopeEntity) -> Option<Result<Intent, String>> {
     })
 }
 
-/// Parses one line of input against `scope`. Mirrors `parse()`.
+/// Parses one line of input against `scope`.
 pub fn parse(input: &str, scope: &[ScopeEntity]) -> ParseResult {
     let lowered = input.trim().to_lowercase();
     let tokens: Vec<&str> = lowered.split_whitespace().collect();
@@ -319,7 +319,7 @@ fn dedupe(entities: Vec<&ScopeEntity>) -> Vec<&ScopeEntity> {
 }
 
 /// Pull the first `"…"` segment from raw input: its trimmed contents (None if empty/absent) and the
-/// input with that segment removed. Mirrors `extractQuotedPrompt`.
+/// input with that segment removed.
 fn extract_quoted_prompt(input: &str) -> (Option<String>, String) {
     if let Some(open) = input.find('"') {
         if let Some(rel_close) = input[open + 1..].find('"') {
@@ -350,7 +350,10 @@ mod tests {
             id: id.into(),
             name: name.into(),
             kind: kind.into(),
-            aliases: aliases.iter().map(|s| s.to_string()).collect(),
+            aliases: aliases
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
             health: None,
             image: None,
             equippable: None,

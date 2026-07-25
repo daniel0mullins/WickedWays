@@ -1,11 +1,10 @@
-//! Cue → sound mapping (Phase 2c, sub-project D — slice 4, audio).
+//! Cue → sound mapping.
 //!
-//! Ports `packages/play-runtime/src/audio/cue-sound.ts`: a **pure, backend-agnostic** description of
-//! the one-shot procedural sound each event makes ([`SynthVoice`]), derived from the engine's
-//! [`PresentationCue`]/[`MobAttack`]. It never touches Web Audio, so it is unit-tested exhaustively on
-//! the host; a later slice's Web Audio runtime renders these voices (oscillator/noise + gain
-//! envelope). This is the foundation of the audio subtree, the audio analog of the affordances/scene
-//! logic that landed before their DOM.
+//! A **pure, backend-agnostic** description of the one-shot procedural sound each event makes
+//! ([`SynthVoice`]), derived from the engine's [`PresentationCue`]/[`MobAttack`]. It never touches
+//! Web Audio, so it is unit-tested exhaustively on the host; the Web Audio engine
+//! ([`audio_engine`](crate::audio_engine)) renders these voices (oscillator/noise + gain envelope).
+//! This is the foundation of the audio subtree.
 
 use wickedways_core::presentation::{ActionKind, CampaignOutcome, EntityRef, PresentationCue};
 use wickedways_core::world::intent::Intent;
@@ -21,7 +20,7 @@ pub enum Source {
     Noise,
 }
 
-/// A declarative, backend-agnostic one-shot procedural sound. Mirrors the TS `SynthVoice`.
+/// A declarative, backend-agnostic one-shot procedural sound.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SynthVoice {
     /// Oscillator waveform, or `Noise` for a white-noise burst.
@@ -39,19 +38,19 @@ pub struct SynthVoice {
 }
 
 /// Deterministic pitch multiplier in ~`[0.97, 1.03]` derived from an id string, so repeated events
-/// feel alive without `Math.random` (repo convention). Byte-faithful to the TS `detuneFactor`: a
-/// 32-bit-wrapping `h*31 + charCodeAt` hash (UTF-16 code units) folded into a `[0,1)` fraction.
+/// feel alive without `Math.random` (repo convention): a 32-bit-wrapping `h*31 + unit` hash over the
+/// id's UTF-16 code units, folded into a `[0,1)` fraction.
 pub fn detune_factor(id: &str) -> f64 {
     let mut h: i32 = 0;
     for unit in id.encode_utf16() {
         h = h.wrapping_mul(31).wrapping_add(i32::from(unit));
     }
-    // `Math.abs(h) % 1000` — `unsigned_abs` matches JS for i32::MIN (which `abs` would overflow on).
-    let frac = (h.unsigned_abs() % 1000) as f64 / 1000.0;
+    // Fold |h| into [0, 1000) — `unsigned_abs`, not `abs`, which would overflow on i32::MIN.
+    let frac = f64::from(h.unsigned_abs() % 1000) / 1000.0;
     0.97 + frac * 0.06
 }
 
-/// Maps a presentation cue to a sound, or `None` when the event is silent. Mirrors `soundForCue`.
+/// Maps a presentation cue to a sound, or `None` when the event is silent.
 pub fn sound_for_cue(cue: &PresentationCue) -> Option<SynthVoice> {
     match cue {
         PresentationCue::Action { action, actor, .. } => match action {
@@ -140,7 +139,7 @@ pub fn sound_for_cue(cue: &PresentationCue) -> Option<SynthVoice> {
     }
 }
 
-/// A mob's strike landing on the player. Mirrors `soundForMobAttack`.
+/// A mob's strike landing on the player.
 pub fn sound_for_mob_attack(_attack: &MobAttack) -> SynthVoice {
     SynthVoice {
         source: Source::Square,
@@ -152,7 +151,7 @@ pub fn sound_for_mob_attack(_attack: &MobAttack) -> SynthVoice {
     }
 }
 
-/// A short low buzz for a rejected command or illegal action. Mirrors `errorSound`.
+/// A short low buzz for a rejected command or illegal action.
 pub fn error_sound() -> SynthVoice {
     SynthVoice {
         source: Source::Square,
@@ -352,7 +351,7 @@ mod tests {
         assert_eq!(detune_factor("p1"), detune_factor("p1"));
         assert!(detune_factor("p1") > 0.9);
         assert!(detune_factor("p1") < 1.1);
-        // Byte-parity spot check against the TS hash for "p1":
+        // Spot check the hash fold for "p1":
         // h = ('p'=112)*31 + ('1'=49) = 3521 → 3521 % 1000 = 521 → 0.97 + 0.521*0.06 = 1.00126.
         assert!((detune_factor("p1") - 1.00126).abs() < 1e-9);
     }

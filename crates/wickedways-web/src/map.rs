@@ -1,10 +1,8 @@
-//! The shared fog-of-war map (Phase 2c, sub-project D — slice 2).
+//! The shared fog-of-war map.
 //!
-//! Ports `packages/play-runtime/src/map-model.ts` ([`MapModel`]) and
-//! `packages/play-surface/src/shared/map-view.ts` (pure layout + SVG emission) into one module: the
+//! The explored-map model ([`MapModel`]) plus pure layout + SVG emission in one module: the
 //! model is framework-free and unit-tested on the host; [`map_svg`] renders a laid-out map as Dioxus
-//! RSX (the wasm-only half), styled via the `.map-*` CSS classes carried over from the Lit surface
-//! (`assets/crt.css`).
+//! RSX (the wasm-only half), styled via the `.map-*` CSS classes (`assets/crt.css`).
 
 use std::collections::BTreeMap;
 
@@ -63,7 +61,7 @@ fn direction_delta(dir: Direction) -> (i32, i32) {
     }
 }
 
-/// `reverseDirection` (`src/lib/room.ts`) — the compass opposite.
+/// The compass opposite of `dir`.
 fn reverse_direction(dir: Direction) -> Direction {
     use Direction::*;
     match dir {
@@ -106,7 +104,7 @@ impl MapModel {
     }
 
     pub fn stubs_for(&self, id: &str) -> &[MapStub] {
-        self.stubs.get(id).map(Vec::as_slice).unwrap_or(&[])
+        self.stubs.get(id).map_or(&[], Vec::as_slice)
     }
 
     /// Record/refresh the room the player is currently in.
@@ -117,7 +115,7 @@ impl MapModel {
         self.rooms
             .entry(id.clone())
             .and_modify(|r| {
-                r.name = name.clone();
+                r.name.clone_from(&name);
                 r.has_remains = has_remains;
             })
             // Only the first room is created here (at the origin); every other room is placed by
@@ -286,8 +284,8 @@ pub fn layout_map(model: &MapModel) -> MapLayout {
     let max_x = rooms.iter().map(|r| r.x).max().unwrap();
     let max_y = rooms.iter().map(|r| r.y).max().unwrap();
 
-    let left = |r: &MapRoom| (r.x - min_x) as f64 * CELL + PAD;
-    let top = |r: &MapRoom| (r.y - min_y) as f64 * CELL + PAD;
+    let left = |r: &MapRoom| f64::from(r.x - min_x) * CELL + PAD;
+    let top = |r: &MapRoom| f64::from(r.y - min_y) * CELL + PAD;
     let cx = |r: &MapRoom| left(r) + BOX_W / 2.0;
     let cy = |r: &MapRoom| top(r) + BOX_H / 2.0;
 
@@ -326,22 +324,22 @@ pub fn layout_map(model: &MapModel) -> MapLayout {
             let (dx, dy) = direction_delta(s.dir);
             let x1 = cx(r);
             let y1 = cy(r);
-            let x2 = x1 + dx as f64 * STUB;
-            let y2 = y1 + dy as f64 * STUB;
+            let x2 = x1 + f64::from(dx) * STUB;
+            let y2 = y1 + f64::from(dy) * STUB;
             stubs.push(LaidStub {
                 x1,
                 y1,
                 x2,
                 y2,
-                qx: x2 + dx as f64 * 8.0,
-                qy: y2 + dy as f64 * 8.0,
+                qx: x2 + f64::from(dx) * 8.0,
+                qy: y2 + f64::from(dy) * 8.0,
                 locked: s.locked,
             });
         }
     }
 
-    let width = (max_x - min_x) as f64 * CELL + BOX_W + 2.0 * PAD;
-    let height = (max_y - min_y) as f64 * CELL + BOX_H + 2.0 * PAD;
+    let width = f64::from(max_x - min_x) * CELL + BOX_W + 2.0 * PAD;
+    let height = f64::from(max_y - min_y) * CELL + BOX_H + 2.0 * PAD;
     MapLayout {
         width,
         height,

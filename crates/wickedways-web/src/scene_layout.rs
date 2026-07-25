@@ -1,12 +1,12 @@
-//! Point-and-click scene geometry (Phase 2c, sub-project D — slice 3).
+//! Point-and-click scene geometry.
 //!
-//! Ports the pure placement logic of `packages/play-surface/src/pnc/components/pnc-scene.ts`: where
+//! The pure placement logic for where
 //! each [`Hotspot`] sits in the scene box. Exits and locked doors go on the perimeter by compass
 //! bearing ([`dir_position`]); occupants, loot, and floor items spread deterministically across a
 //! central band ([`body_position`]). [`partition_hotspots`] splits a hotspot list into those two
 //! groups in render order. This is the scene analog of [`map::layout_map`](crate::map::layout_map) —
-//! pure geometry the (later) Dioxus `pnc-scene` component consumes to place its DOM, so it is
-//! browser-free and unit-tested on the host.
+//! pure geometry the Dioxus scene view consumes to place its DOM, so it is browser-free and
+//! unit-tested on the host.
 
 use wickedways_core::world::direction::Direction;
 
@@ -20,8 +20,8 @@ pub struct ScenePosition {
     pub top: f64,
 }
 
-/// Every compass bearing's perimeter position inside the scene box. Mirrors the TS `DIR_POSITION`
-/// table exactly (percentages within the scene container).
+/// Every compass bearing's perimeter position inside the scene box (percentages within the scene
+/// container).
 pub fn dir_position(dir: Direction) -> ScenePosition {
     use Direction::*;
     let (left, top) = match dir {
@@ -39,13 +39,13 @@ pub fn dir_position(dir: Direction) -> ScenePosition {
 
 /// Deterministic placement for body hotspots (occupants, loot, floor items): spread evenly across a
 /// central horizontal band at 48% height. Same input always produces the same position, so
-/// re-renders are stable. Mirrors the TS `bodyPosition`.
+/// re-renders are stable.
 pub fn body_position(index: usize, total: usize) -> ScenePosition {
     let left = if total <= 1 {
         50.0
     } else {
-        // `20 + (index / (total - 1)) * 60`, rounded (JS `Math.round`; values are non-negative here
-        // so round-half-up and round-half-away-from-zero agree).
+        // `20 + (index / (total - 1)) * 60`, rounded (values are non-negative here, so
+        // round-half-up and round-half-away-from-zero agree).
         (20.0 + (index as f64 / (total - 1) as f64) * 60.0).round()
     };
     ScenePosition { left, top: 48.0 }
@@ -56,8 +56,6 @@ pub fn body_position(index: usize, total: usize) -> ScenePosition {
 /// - **perimeter**: exits and locked doors (they carry a `dir`) — placed by compass bearing and
 ///   stacked above the body (z-index 2) so a doorway stays clickable even with an occupant over it.
 /// - **body**: occupants, loot containers, floor items — spread across the central band (z-index 1).
-///
-/// Mirrors the two `.filter(...)` passes in `pnc-scene.ts`'s `render`.
 pub fn partition_hotspots(hotspots: &[Hotspot]) -> (Vec<&Hotspot>, Vec<&Hotspot>) {
     let perimeter = hotspots
         .iter()

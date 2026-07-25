@@ -1,8 +1,8 @@
-//! The `web-sys` WebSocket transport (Phase 2c, sub-project D — slice 1).
+//! The `web-sys` WebSocket transport.
 //!
-//! Wraps the warm [`Mirror`](crate::mirror::Mirror) with a browser [`WebSocket`], porting the socket
-//! half of `packages/client/src/websocket-transport.ts`. The reconciliation of B's **synchronous**
-//! [`SyncTransport`] trait with an async socket (the decision the plan flagged): every synchronous
+//! Wraps the warm [`Mirror`](crate::mirror::Mirror) with a browser [`WebSocket`]. This is how the
+//! **synchronous**
+//! [`SyncTransport`] trait reconciles with an async socket: every synchronous
 //! read (`head`/`entries_since`/`load_snapshot`) is served from the mirror, so only submit is truly
 //! async — [`submit_async`](WsTransport::submit_async) sends the frame and awaits the server's
 //! `committed`/`denied`. The [`SyncTransport::submit`] method is therefore a no-op on this transport;
@@ -99,7 +99,7 @@ impl Inner {
     }
 }
 
-/// Handles one inbound server frame, updating the mirror + resolving waiters. Mirrors `#onMessage`.
+/// Handles one inbound server frame, updating the mirror + resolving waiters.
 fn handle_message(inner: &Rc<RefCell<Inner>>, text: &str) {
     let Ok(msg) = serde_json::from_str::<ServerMsg>(text) else {
         return;
@@ -178,7 +178,7 @@ fn handle_message(inner: &Rc<RefCell<Inner>>, text: &str) {
             b.roster.players = players;
             b.notify_push();
         }
-        // chat/AV are sub-project E.
+        // Other frames (chat/AV) are ignored by this transport.
         _ => {}
     }
 }
@@ -202,7 +202,7 @@ pub struct WsTransport {
 
 impl WsTransport {
     /// Opens a transport and resolves once its mirror has caught up to the server head. Errors on an
-    /// auth denial during the handshake. Mirrors `connect` + `#handshake`.
+    /// auth denial during the handshake.
     pub async fn connect(url: &str, campaign_id: &str, token: &str) -> Result<WsTransport, String> {
         let ws = WebSocket::new(url).map_err(|e| format!("open socket: {e:?}"))?;
         let inner = Rc::new(RefCell::new(Inner::new()));
@@ -348,8 +348,7 @@ impl Drop for WsTransport {
     }
 }
 
-/// Resolves once the mirror's head reaches `target` (immediately if already there). Mirrors
-/// `#awaitHead`.
+/// Resolves once the mirror's head reaches `target` (immediately if already there).
 async fn await_head(inner: &Rc<RefCell<Inner>>, target: u64) {
     let rx = {
         let mut b = inner.borrow_mut();

@@ -1,4 +1,4 @@
-//! The multiplayer join lobby (Phase 2c, sub-project D).
+//! The multiplayer join lobby.
 //!
 //! The pre-game screen for a multiplayer campaign: a player **names their character**, **picks an
 //! archetype** (when the campaign offers them), and **joins a campaign by id**. The GM (the identity
@@ -89,7 +89,7 @@ pub fn build_joining_character(
     c.archetype_immunities = Vec::new();
     c.inventory.item_ids = Vec::new();
     c.inventory.key_ids = Vec::new();
-    c.equipment = Default::default();
+    c.equipment = std::collections::BTreeMap::default();
     c.history = Vec::new();
     c.actions_this_round = 0;
     Some(c)
@@ -192,8 +192,7 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
             let name = snap
                 .as_ref()
                 .and_then(|sn| sn.characters.iter().find(|c| c.id.0 == s.character_id))
-                .map(|c| c.name.clone())
-                .unwrap_or_else(|| s.character_id.clone());
+                .map_or_else(|| s.character_id.clone(), |c| c.name.clone());
             (name, s.owner.clone(), s.online)
         })
         .collect();

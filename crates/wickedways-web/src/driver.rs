@@ -1,7 +1,7 @@
-//! Shared surface driver (Phase 2c, sub-project D) — the framework-agnostic glue both the CRT and
+//! Shared surface driver — the framework-agnostic glue both the CRT and
 //! point-and-click Dioxus apps use to talk to the engine over the multiplayer transport.
 //!
-//! Extracted from the CRT `main.rs` when the PnC surface (slice 3) needed the same pieces: reading
+//! The pieces both surfaces need: reading
 //! the page-URL config ([`read_config`]), projecting the replica into a [`ViewModel`] ([`project`]),
 //! and resolving a parser [`Intent`] into a sync [`Command`] against the replica
 //! ([`intent_to_command`]). Keeping these in the lib means the two surfaces can never drift on how a
@@ -25,7 +25,7 @@ use crate::transport::WsTransport;
 // authority resolves commands against). `demo` is pre-`started` and catalog-free (the same snapshot
 // the room server serves and the transport tests seed); the others are `started: false` and carry a
 // catalog, so booting them auto-`BeginCampaign`s. Real manifest-driven assembly (in place of these
-// bundled snapshots) is a later increment.
+// bundled snapshots) is future work.
 const DEMO_GENESIS: &str = include_str!("../../../conformance/fixtures/sync-move.genesis.json");
 const CARETAKER_GENESIS: &str =
     include_str!("../../../conformance/fixtures/caretaker.genesis.json");
@@ -131,8 +131,7 @@ fn has_flag(key: &str) -> bool {
     web_sys::window()
         .and_then(|w| w.location().search().ok())
         .and_then(|s| web_sys::UrlSearchParams::new_with_str(&s).ok())
-        .map(|p| p.has(key))
-        .unwrap_or(false)
+        .is_some_and(|p| p.has(key))
 }
 
 /// Toggle browser fullscreen for the whole page (the `fullscreen`/`fs` verb and the surfaces'
@@ -210,7 +209,7 @@ fn random_suffix() -> String {
 /// multiplayer.
 pub fn read_config() -> Config {
     let mode = match query_param("mode").as_deref() {
-        Some("single") | Some("offline") | Some("solo") => Mode::Single,
+        Some("single" | "offline" | "solo") => Mode::Single,
         _ => Mode::Multi,
     };
     Config {
@@ -547,7 +546,7 @@ pub fn menu_campaigns(debug: bool) -> Vec<&'static CampaignInfo> {
 }
 
 /// A campaign's welcome-screen text — the `CampaignManifest` display passthrough consumed by both
-/// surfaces' welcome screens (ported from `crt-welcome` / `pnc-welcome`).
+/// surfaces' welcome screens.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct WelcomeText {
     pub title: String,
@@ -613,7 +612,7 @@ fn choose(slug: &str, surfaces: &[&str], surface: Option<&str>) -> LauncherRoute
 
 /// Resolve the launcher route from the `?campaign=` / `?surface=` params: an absent/unknown campaign
 /// — or a debug-only one without `debug` — → [`LauncherRoute::Menu`]; an available campaign follows
-/// [`choose`]. Mirrors the TS `bootLauncher` boot, plus the `?debug` gate.
+/// [`choose`].
 pub fn resolve_route(campaign: Option<&str>, surface: Option<&str>, debug: bool) -> LauncherRoute {
     match resolve_campaign_info(campaign) {
         // Route on the ORIGINAL id (a room id `<slug>~<token>` stays intact for the connection); the
@@ -894,8 +893,7 @@ mod tests {
             .replica()
             .characters
             .get(&caretaker.0)
-            .map(|c| c.visible)
-            .unwrap_or(true);
+            .is_none_or(|c| c.visible);
         assert!(
             !still_visible,
             "the caretaker vanishes after handing over the cellar key"
@@ -1046,7 +1044,7 @@ mod tests {
     fn a_solo_wait_advances_the_round_and_drains_dread_in_hollow_house() {
         // The single-player turn loop over the offline transport: `wait` passes the turn, and the
         // solo authority runs start_turn (dread drains sanity) → next_player (round advances). This
-        // is the machinery the multiplayer sync path skips and that the TS session provided.
+        // is the machinery the multiplayer sync path skips — solo mode supplies it locally.
         use wickedways_core::world::intent::Intent;
 
         let (snapshot, catalog) = bundled_campaign("hollow-house").unwrap();

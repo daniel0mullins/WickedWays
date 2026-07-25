@@ -1,7 +1,7 @@
-//! The soundpack / director layer (Phase 2c, sub-project D — slice 4, audio runtime).
+//! The soundpack / director layer.
 //!
 //! Layers 1–2 of the 4-layer audio architecture (`AudioDirector → SoundPack → SoundSpec →
-//! AudioBackend`), ported from `audio/contracts.ts`, `audio/default-pack.ts`, and `audio/tension.ts`:
+//! AudioBackend`):
 //!
 //! - An [`AudioDirector`] is the **audio brain** — it turns an engine [`PresentationCue`] into zero or
 //!   more discrete [`AudioCue`]s and reads a continuous `tension` (0–1) off the [`ViewModel`] DTO for
@@ -22,9 +22,9 @@ use wickedways_core::StatType;
 
 use crate::audio::{error_sound, sound_for_cue, sound_for_mob_attack, SynthVoice};
 
-/// How to produce one sound event. The `Synth` arm is rendered by the procedural engine; the
-/// `Sample` arm (a decoded `AudioBuffer` / asset path) is deferred — scored audio is a later slice,
-/// but the type stays an enum so it can be added without touching the contract.
+/// How to produce one sound event. The `Synth` arm is rendered by the procedural engine; a `Sample`
+/// arm (a decoded `AudioBuffer` / asset path) is deferred — scored audio is future work, but the
+/// type stays an enum so it can be added without touching the contract.
 #[derive(Clone, Debug, PartialEq)]
 pub enum SoundSpec {
     Synth { voice: SynthVoice },
@@ -89,8 +89,7 @@ pub struct CampaignAudio {
 }
 
 /// Map current sanity to a tension in `[0, 1]`, normalized against a baseline (the session
-/// high-water mark). At or above baseline → 0 (calm); zero sanity → 1 (tense). Mirrors
-/// `sanityToTension`.
+/// high-water mark). At or above baseline → 0 (calm); zero sanity → 1 (tense).
 pub fn sanity_to_tension(current: f64, baseline: f64) -> f64 {
     if baseline <= 0.0 {
         return 0.0;
@@ -113,8 +112,8 @@ impl SanityTension {
     }
 }
 
-/// Map an engine `PresentationCue` to base [`AudioCue`]s. Mirrors `cuesFor` — the same triggers the
-/// original `sound_for_cue` fired on.
+/// Map an engine `PresentationCue` to base [`AudioCue`]s — the same triggers `sound_for_cue` fires
+/// on.
 pub fn cues_for(cue: &PresentationCue) -> Vec<AudioCue> {
     match cue {
         PresentationCue::Action { action, actor, .. } => match action {
@@ -137,7 +136,7 @@ pub fn cues_for(cue: &PresentationCue) -> Vec<AudioCue> {
 }
 
 /// Base [`AudioCue`] → [`SynthVoice`], reusing the [`crate::audio`] voices by reconstructing a
-/// representative cue so the chiptune timbre is unchanged. Mirrors `voiceFor`.
+/// representative cue so the chiptune timbre is unchanged.
 fn voice_for(cue: &AudioCue) -> Option<SynthVoice> {
     let id = cue.entity_id.clone().unwrap_or_default();
     let actor = || EntityRef {
@@ -202,7 +201,7 @@ fn chiptune_ambient(tension: f64) -> AmbientDirective {
 }
 
 /// The default soundpack: covers every base cue with the original chiptune voices and passes tension
-/// straight through to the bed. Mirrors `defaultChiptunePack`.
+/// straight through to the bed.
 pub fn default_chiptune_pack() -> SoundPack {
     SoundPack {
         id: "chiptune",
@@ -213,7 +212,7 @@ pub fn default_chiptune_pack() -> SoundPack {
 }
 
 /// A stateless director: discrete cues via [`cues_for`], and a **flat** ambient bed (tension is always
-/// 0, ignoring the view). Mirrors `defaultDirector`.
+/// 0, ignoring the view).
 struct DefaultDirector;
 
 impl AudioDirector for DefaultDirector {
@@ -227,8 +226,7 @@ impl AudioDirector for DefaultDirector {
 
 /// The sanity-reactive director shipped for the bundled WickedWays campaigns: discrete cues via
 /// [`cues_for`], and tension from sanity vs. the session high-water mark (the ambient bed tightens as
-/// sanity drains). The analog of hollow-house's `createHollowHouseDirector` — every bundled campaign
-/// is sanity-driven horror.
+/// sanity drains) — every bundled campaign is sanity-driven horror.
 #[derive(Default)]
 struct SanityDirector {
     tension: SanityTension,
@@ -243,7 +241,7 @@ impl AudioDirector for SanityDirector {
     }
 }
 
-/// A fresh flat director (no view reactivity). Mirrors `defaultDirector`.
+/// A fresh flat director (no view reactivity).
 pub fn default_director() -> Box<dyn AudioDirector> {
     Box::new(DefaultDirector)
 }

@@ -1,14 +1,14 @@
-//! Single-player save/restore via `localStorage` (Phase 2c, sub-project D — slice 4).
+//! Single-player save/restore via `localStorage`.
 //!
-//! The offline analog of `packages/play-runtime/src/savestore.ts`: a save is the authoritative
-//! campaign [`CampaignSnapshot`] plus the surface's fog-of-war [`MapSnapshot`], serialized to JSON and
+//! A save is the authoritative campaign [`CampaignSnapshot`] plus the surface's fog-of-war
+//! [`MapSnapshot`], serialized to JSON and
 //! stored under a slot key in the browser's `localStorage`. Restore rebuilds a fresh
 //! [`SinglePlayerTransport`](crate::single_player::SinglePlayerTransport) from the snapshot and
 //! hydrates the map — the same "reset the authority to a snapshot" the room server does, but local.
 //!
 //! Only meaningful in single-player: multiplayer state lives on the server, so the surfaces gate
-//! save/restore on the offline mode. The persistence format is internal to this client (not shared
-//! with the TS savestore), so it uses plain Rust field names.
+//! save/restore on the offline mode. The persistence format is internal to this client, so it uses
+//! plain Rust field names.
 //!
 //! The `localStorage` I/O is `web-sys` (browser-only); the [`SaveBlob`] JSON format is host-tested.
 
