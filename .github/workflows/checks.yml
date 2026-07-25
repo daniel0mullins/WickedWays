@@ -1,9 +1,3 @@
-# PROPOSED replacement for .github/workflows/checks.yml.
-# This session's credentials lack the GitHub 'workflow' scope, so the change
-# could not be pushed to .github/workflows/ directly. To apply: copy this file
-# over .github/workflows/checks.yml (drop these header lines) and commit.
-name: Checks
-
 # Rust gate for the engine + Dioxus web client. The shipped product is the Rust
 # wasm client (see the root Dockerfile), so CI gates on Rust only; the legacy
 # TypeScript packages are no longer part of the build and are not checked here.
