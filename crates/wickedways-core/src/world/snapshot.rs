@@ -1,4 +1,4 @@
-//! Serde wire structs mirroring `src/lib/serialization/types.ts` —
+//! Serde wire structs mirroring —
 //! the leaf snapshots that compose a full `CampaignSnapshot`.
 use super::ids::*;
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
@@ -7,7 +7,7 @@ use serde_json::Value;
 #[cfg(feature = "ts")]
 use ts_rs::TS;
 
-/// TS `ItemSnapshot` — a discriminated union on `kind`.
+/// `ItemSnapshot` — a discriminated union on `kind`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ItemSnapshot {
@@ -60,7 +60,7 @@ pub struct MaterialCacheSnapshot {
 pub struct SceneSnapshot {
     pub id: String,
     pub behavior_key: String,
-    pub phase: String, // "enter" | "exit" — string this sub-plan
+    pub phase: String, // "enter" | "exit"
     pub state: Value,
 }
 
@@ -111,7 +111,7 @@ pub struct RoomSnapshot {
     pub id: RoomId,
     pub name: String,
     pub description: String,
-    /// Direction -> exitId. Direction enum deferred to sub-plan 2; key is the string.
+    /// Direction -> exitId, keyed by the direction's wire name.
     pub exits: BTreeMap<String, ExitId>,
     pub dark: bool,
     pub spawn_modifier: i64,
@@ -159,7 +159,7 @@ pub struct CharacterSnapshot {
     pub archetype_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<Value>,
-    /// TS `baseEscapeChance?: number` — integer-valued in practice (e.g. 50); typed i64 for
+    /// `baseEscapeChance?: number` — integer-valued in practice (e.g. 50); typed i64 for
     /// byte-faithful round-trip. Serde will error loudly on a fractional value rather than
     /// silently normalising it (unlike f64, which re-serialises 50 as 50.0).
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -1,13 +1,13 @@
 //! Victory-condition behaviors: a native `VictoryConditionBehavior` trait
 //! resolved by `behavior_key` (mirrors `exit_behavior` / `scene_behavior`).
 //! Behavior is compiled-in; only `{ key, narration? }` serialize. Byte-exact
-//! port of the TS `VictoryCondition.test` predicate (resolved from the registry
+//! port of the `VictoryCondition.test` predicate (resolved from the registry
 //! by key at round-end).
 use crate::world::descriptor::Catalog;
 use crate::world::mechanics::CampaignView;
 
 /// A first-party victory condition. Reads the campaign projection and returns
-/// whether the condition holds this round (TS `VictoryCondition.test`).
+/// whether the condition holds this round (`VictoryCondition.test`).
 pub trait VictoryConditionBehavior: Sync {
     fn test(&self, campaign: &CampaignView) -> bool;
 }

@@ -1,6 +1,6 @@
-//! The `selectArchetype` setup action (Phase 2c, sub-project A1).
+//! The `selectArchetype` setup action.
 //!
-//! Ports `PlayerCharacter.selectArchetype` (`src/lib/character/player-character.ts`): a setup-only,
+//! Ports `PlayerCharacter.selectArchetype`: a setup-only,
 //! once-only operation that applies a campaign archetype's effects to a character — the named base
 //! stats override the character's stats, the inventory-slot delta adjusts capacity (floored at 0),
 //! and the immunities become a standing passive trait. The archetype catalogue lives inert on

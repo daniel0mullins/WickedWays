@@ -885,7 +885,7 @@ mod tests {
             stat: crate::stats::StatType::Health,
             source: None,
         };
-        // the conformance-dread cap shape: amount > 3 ? Final(3) : Value(amount)
+        // the conformance-dread cap shape: amount > 3 ? Final(3): Value(amount)
         let body = DamageBody::IfElse {
             cond: Expr::Bin {
                 op: BinOp::Gt,

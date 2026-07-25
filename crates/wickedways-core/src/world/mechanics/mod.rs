@@ -19,14 +19,14 @@ use crate::world::ids::{CharacterId, ItemId};
 
 pub use view::{CampaignView, CharacterView, DamageView, RoomView};
 
-/// Per-mechanic-per-event effect cap (TS `MAX_EFFECTS_PER_EVENT`).
+/// Per-mechanic-per-event effect cap (`MAX_EFFECTS_PER_EVENT`).
 pub const MAX_EFFECTS_PER_EVENT: usize = 64;
 
-/// Every `Status` variant — the target of a `GrantImmunity` effect (TS `ALL_STATUSES`).
+/// Every `Status` variant — the target of a `GrantImmunity` effect (`ALL_STATUSES`).
 pub const ALL_STATUSES: [Status; 4] = [Status::Confused, Status::Fear, Status::Ko, Status::Panic];
 
-/// The closed effect union a mechanic hook may return (TS `Effect`). `amount`/`delta`
-/// are `f64` to match TS `number` and the f64 stat model.
+/// The closed effect union a mechanic hook may return (`Effect`). `amount`/`delta`
+/// are `f64` to match `number` and the f64 stat model.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Effect {
     Damage {
@@ -70,7 +70,7 @@ pub enum Effect {
     },
 }
 
-/// Result of `modify_damage` (TS `number | { value; final: true }`).
+/// Result of `modify_damage` (`number | { value; final: true }`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TransformResult {
     Value(f64),
@@ -86,7 +86,7 @@ pub struct HookCtx<'a> {
 }
 
 impl HookCtx<'_> {
-    /// Integer in `[1, n]` from the campaign rng (TS `roll(n)`).
+    /// Integer in `[1, n]` from the campaign rng (`roll(n)`).
     pub fn roll(&mut self, n: i64) -> i64 {
         let unit = self.rng.next_f64();
         i64::from(crate::dice::roll(n as u32, unit))
@@ -101,16 +101,16 @@ pub struct TurnCtx<'a> {
 pub struct ActionCtx<'a> {
     pub base: HookCtx<'a>,
     pub actor: CharacterView,
-    /// A projection of the action detail (TS `ActionCtx.action`).
+    /// A projection of the action detail (`ActionCtx.action`).
     pub action: ActionView,
 }
 
-/// Read-only projection of the action being recorded (TS `ActionDetail`).
+/// Read-only projection of the action being recorded (`ActionDetail`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct ActionView {
     pub kind: String,
-    /// Move payload — TS ActionDetail's "move" variant carries room {id,name}
-    /// (src/lib/character/history.ts:13). None for every other action kind.
+    /// Move payload — the "move" action kind carries `{id, name}` for the room
+    /// entered. `None` for every other action kind.
     pub room: Option<crate::world::history::RoomRef>,
 }
 
@@ -125,9 +125,9 @@ impl ActionView {
 }
 
 /// A first-party mechanic op. Stateless behavior; state lives in the snapshot and
-/// is handed in via `HookCtx.state`. Mirrors the TS `Mechanic` interface.
+/// is handed in via `HookCtx.state`. Mirrors the `Mechanic` interface.
 pub trait MechanicOp: Sync {
-    /// Authoring-time state seed (TS `initialState`). NEVER called on hydrate.
+    /// Authoring-time state seed (`initialState`). NEVER called on hydrate.
     fn init_state(&self, config: &Value) -> Value;
     fn on_round_start(&self, _cx: &mut HookCtx<'_>) -> Vec<Effect> {
         Vec::new()
@@ -147,7 +147,7 @@ pub trait MechanicOp: Sync {
     fn modify_damage(&self, d: &DamageView, _cx: &mut HookCtx<'_>) -> TransformResult {
         TransformResult::Value(d.amount)
     }
-    /// Run a named custom action (TS `CustomAction.run`). `None` = this op has no
+    /// Run a named custom action (`CustomAction.run`). `None` = this op has no
     /// action under `action_key` (→ a `ProceduralViolation` at the invoke site,
     /// mirroring TS's "has no action" throw). `cost` is v1-inert (every action costs 1).
     fn run_action(&self, _action_key: &str, _cx: &mut ActionCtx<'_>) -> Option<Vec<Effect>> {
@@ -157,7 +157,7 @@ pub trait MechanicOp: Sync {
 
 /// Resolve a first-party op by key. The compiled-in registry; the snapshot's
 /// `mechanics[].key` selects entries. Returns `None` for an unregistered key
-/// (surfaced as a `ProceduralViolation` by `validate_mechanics`, Task 3).
+/// (surfaced as a `ProceduralViolation` by `validate_mechanics`).
 pub fn mechanic_op(key: &str) -> Option<&'static dyn MechanicOp> {
     match key {
         #[cfg(any(test, feature = "conformance"))]

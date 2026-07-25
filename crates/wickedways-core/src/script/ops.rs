@@ -307,50 +307,50 @@ impl ScriptedScene<'_> {
 // THIS, not the legacy behavior.
 //
 // NORMALIZE + TOKENIZE a prompt string (`tokenize`):
-//   1. Lowercase (`str::to_lowercase`).
-//   2. Split on whitespace (`split_whitespace`).
-//   3. For each piece, strip ASCII-punctuation from BOTH EDGES ONLY — repeatedly
-//      trim leading/trailing chars where `char::is_ascii_punctuation()` is true.
-//      That set is EXACTLY  ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~
-//      Internal punctuation is KEPT: `don't` stays `don't`; `cellar?` -> `cellar`;
-//      `...hi...` -> `hi`.
-//   4. Drop pieces that became empty.
-//   5. The ORDERED result (`Vec<String>`, order preserved, NOT deduped) is used
-//      for Exact; its deduped form (`BTreeSet<String>`) is used for Fuzzy.
+// 1. Lowercase (`str::to_lowercase`).
+// 2. Split on whitespace (`split_whitespace`).
+// 3. For each piece, strip ASCII-punctuation from BOTH EDGES ONLY — repeatedly
+// trim leading/trailing chars where `char::is_ascii_punctuation()` is true.
+// That set is EXACTLY ! " # $ % & ' ( ) * +, -. /:; < = > ? @ [ \ ] ^ _ ` { | } ~
+// Internal punctuation is KEPT: `don't` stays `don't`; `cellar?` -> `cellar`;
+// `...hi...` -> `hi`.
+// 4. Drop pieces that became empty.
+// 5. The ORDERED result (`Vec<String>`, order preserved, NOT deduped) is used
+// for Exact; its deduped form (`BTreeSet<String>`) is used for Fuzzy.
 //
 // PER-ENTRY MATCH TEST:
-//   * Exact { text }: normalize `text` with the SAME `tokenize` procedure into an
-//     ordered `Vec<String>`; matches IFF the prompt's ordered token Vec EQUALS the
-//     trigger's ordered token Vec (whitespace- & edge-punct-insensitive, but
-//     full-phrase and order-exact).
-//   * Fuzzy { tokens }: normalize each trigger token atomically (lowercase +
-//     edge-punct-strip via `normalize_token`; NO whitespace split), drop any that
-//     become empty, and dedup; matches IFF EVERY normalized trigger token is in the
-//     prompt's token SET (subset; order-independent; extra prompt tokens are fine).
-//     `[].every(_)` is vacuously TRUE, so an all-punctuation trigger matches with
-//     SCORE 0. SCORE = the count of normalized-DEDUPED trigger tokens.
+// * Exact { text }: normalize `text` with the SAME `tokenize` procedure into an
+// ordered `Vec<String>`; matches IFF the prompt's ordered token Vec EQUALS the
+// trigger's ordered token Vec (whitespace- & edge-punct-insensitive, but
+// full-phrase and order-exact).
+// * Fuzzy { tokens }: normalize each trigger token atomically (lowercase +
+// edge-punct-strip via `normalize_token`; NO whitespace split), drop any that
+// become empty, and dedup; matches IFF EVERY normalized trigger token is in the
+// prompt's token SET (subset; order-independent; extra prompt tokens are fine).
+// `[].every(_)` is vacuously TRUE, so an all-punctuation trigger matches with
+// SCORE 0. SCORE = the count of normalized-DEDUPED trigger tokens.
 //
 // SELECTION (choose EXACTLY ONE entry, or `default`):
-//   1. BARE prompt — `None`, OR it tokenizes to an EMPTY set — selects `default`.
-//   2. Else scan `dialogue` in AUTHORED order:
-//        a. If ANY Exact entry matches -> the FIRST-authored matching Exact
-//           (Exact always beats Fuzzy).
-//        b. Else if any Fuzzy matches -> the HIGHEST-score Fuzzy; on a score tie,
-//           the FIRST-authored among them.
-//        c. Else -> `default`.
-//   3. Only the SINGLE selected entry (or `default`) contributes response + effects.
+// 1. BARE prompt — `None`, OR it tokenizes to an EMPTY set — selects `default`.
+// 2. Else scan `dialogue` in AUTHORED order:
+// a. If ANY Exact entry matches -> the FIRST-authored matching Exact
+// (Exact always beats Fuzzy).
+// b. Else if any Fuzzy matches -> the HIGHEST-score Fuzzy; on a score tie,
+// the FIRST-authored among them.
+// c. Else -> `default`.
+// 3. Only the SINGLE selected entry (or `default`) contributes response + effects.
 //
 // EMIT (`run_talk`):
-//   * The selected entry's `response` Expr is evaluated to a cue and ALWAYS emitted.
-//   * The selected entry's `effects` are returned HONORING `once`: a `once` entry
-//     yields effects only while its per-behavior latch is UNSET, and firing SETS the
-//     latch (a second talk re-emits the response but NO effects). A non-`once` entry
-//     yields its effects every time. Latch state lives in the NPC's per-behavior JSON
-//     state under `state["onceFired"][key]` (see `LATCH_FIELD`), keyed by the selected
-//     entry's identity (`"default"` for the default entry, else its decimal index in
-//     `dialogue`) — written through the same `SetState` seam mechanics use
-//     (`state_set_in`). The goldens key the latch this exact way; byte-parity
-//     depends on it.
+// * The selected entry's `response` Expr is evaluated to a cue and ALWAYS emitted.
+// * The selected entry's `effects` are returned HONORING `once`: a `once` entry
+// yields effects only while its per-behavior latch is UNSET, and firing SETS the
+// latch (a second talk re-emits the response but NO effects). A non-`once` entry
+// yields its effects every time. Latch state lives in the NPC's per-behavior JSON
+// state under `state["onceFired"][key]` (see `LATCH_FIELD`), keyed by the selected
+// entry's identity (`"default"` for the default entry, else its decimal index in
+// `dialogue`) — written through the same `SetState` seam mechanics use
+// (`state_set_in`). The goldens key the latch this exact way; byte-parity
+// depends on it.
 
 /// State object field holding the per-entry `once` latch (`{ key: true }`).
 const LATCH_FIELD: &str = "onceFired";

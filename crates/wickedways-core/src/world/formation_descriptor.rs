@@ -78,7 +78,7 @@ impl FormationDescriptor {
     /// drops requires an `ItemSnapshot` in `World.items` (resolved from the item
     /// catalog) plus an id in `inventory.item_ids`; `build`'s `Vec<CharacterSnapshot>`
     /// return type (and its lack of `Catalog` access) cannot supply that world state.
-    /// The drops are seeded by `World::maybe_spawn`'s descriptor arm (Task 2b), which
+    /// The drops are seeded by `World::maybe_spawn`'s descriptor arm, which
     /// owns `&mut World` + `&Catalog`, right after this `build` runs.
     pub fn build(&self) -> Vec<CharacterSnapshot> {
         self.mobs

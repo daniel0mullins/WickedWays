@@ -1,7 +1,7 @@
-//! The replication `Delta` and its producer, [`DeltaComputer`] (Phase 2c, sub-project B).
+//! The replication `Delta` and its producer, [`DeltaComputer`].
 //!
-//! Mirrors `src/lib/sync/types.ts` (`EntitySnapshot` / `Delta` / `CampaignCoreDelta`) and
-//! `src/lib/sync/delta-computer.ts`. A delta is computed the same way the TS oracle does it:
+//! The wire types are `EntitySnapshot` / `Delta` / `CampaignCoreDelta`. A delta is
+//! computed structurally, the same way the goldens pin it:
 //! **serialize before, apply the command, serialize after, and structurally diff the two
 //! snapshots** — no hand-maintained per-action delta code. Because the Rust
 //! [`CampaignSnapshot`](crate::world::snapshot::CampaignSnapshot) is already gated to TS
@@ -15,7 +15,7 @@
 //! guarantee plus after-order iteration.
 //!
 //! Note the delta covers **rooms/characters/items/loot/materialCaches + campaignCore** — the
-//! same five collections the TS `EntitySnapshot` union tags. Exits are not replicated by delta
+//! same five collections the `EntitySnapshot` union tags. Exits are not replicated by delta
 //! (there is no exit `EntitySnapshot` variant), matching the oracle.
 
 use alloc::boxed::Box;
@@ -33,7 +33,7 @@ use crate::world::snapshot::{
 
 /// A per-entity snapshot tagged so a replica applier can dispatch by entity type.
 /// Serializes as `{ "type": <tag>, "data": <snapshot> }` (adjacently tagged), mirroring
-/// the TS `EntitySnapshot` union. Payloads are boxed so the enum (which is carried in bulk
+/// the `EntitySnapshot` union. Payloads are boxed so the enum (which is carried in bulk
 /// inside a [`Delta`]'s `Vec`s) stays pointer-sized rather than the largest variant's ~536
 /// bytes; serde treats `Box<T>` transparently, so the wire shape is unchanged.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -54,7 +54,7 @@ pub struct CampaignCoreDelta {
 }
 
 /// The state change produced by an accepted command — created/changed entities, removed ids,
-/// and an optional campaign-core payload. Mirrors the TS `Delta`.
+/// and an optional campaign-core payload. Mirrors the `Delta`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Delta {

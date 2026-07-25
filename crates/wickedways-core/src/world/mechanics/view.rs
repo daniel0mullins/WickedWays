@@ -1,4 +1,4 @@
-//! Owned read-only projections handed to mechanic hooks (TS `CampaignView` etc.).
+//! Owned read-only projections handed to mechanic hooks (`CampaignView` etc.).
 //! Built once before a dispatch loop so hooks borrow only `state`+`rng` of `World`.
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -17,7 +17,7 @@ pub struct CampaignView {
     pub round: i64,
     pub max_rounds: i64,
     pub party: Vec<CharacterView>,
-    /// Always empty in v1 (TS `#campaignView` returns `rooms: []`).
+    /// Always empty in v1 (`#campaignView` returns `rooms: []`).
     pub rooms: Vec<RoomView>,
 }
 
@@ -36,16 +36,16 @@ pub struct CharacterView {
 }
 
 impl CharacterView {
-    /// TS `CharacterView.hasEquipped(itemKey)` — matches on item `behaviorKey`.
+    /// `CharacterView.hasEquipped(itemKey)` — matches on item `behaviorKey`.
     pub fn has_equipped(&self, key: &str) -> bool {
         self.equipped_keys.contains(key)
     }
-    /// TS `CharacterView.hasItem(itemKey)` — matches held (inventory) item `behaviorKey`.
+    /// `CharacterView.hasItem(itemKey)` — matches held (inventory) item `behaviorKey`.
     pub fn has_item(&self, key: &str) -> bool {
         self.held_keys.contains(key)
     }
     /// True if the character's keyring holds a key with this `keyCode`
-    /// (TS `c.inventory.keys.some((k) => k.keyCode === code)`).
+    /// (`c.inventory.keys.some((k) => k.keyCode === code)`).
     pub fn has_key(&self, code: &str) -> bool {
         self.key_codes.contains(code)
     }
@@ -57,11 +57,11 @@ pub struct RoomView {
     pub name: String,
     pub lit: bool,
     pub occupant_ids: Vec<String>,
-    /// Occupants as views (TS `room.occupants`), projected in `occupant_ids` order.
+    /// Occupants as views (`room.occupants`), projected in `occupant_ids` order.
     pub occupants: Vec<CharacterView>,
 }
 
-/// TS `DamageView` — `source` is always `None` at the one call site.
+/// `DamageView` — `source` is always `None` at the one call site.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DamageView {
     pub amount: f64,
@@ -71,7 +71,7 @@ pub struct DamageView {
 }
 
 impl World {
-    /// Build the owned party projection (TS `#campaignView` + `#characterView`).
+    /// Build the owned party projection (`#campaignView` + `#characterView`).
     /// `party_ids` order is preserved. `rooms` is intentionally empty (v1).
     pub fn build_campaign_view(&self, cat: &Catalog) -> CampaignView {
         let party = self
@@ -88,7 +88,7 @@ impl World {
         }
     }
 
-    /// Owned projection of a single room for scene hooks (TS `room` handed to
+    /// Owned projection of a single room for scene hooks (`room` handed to
     /// scene preconditions/scripts). `occupants` are projected in `occupant_ids`
     /// order via `character_view`. `None` if the room is absent.
     pub fn room_view(&self, room_id: &RoomId, cat: &Catalog) -> Option<RoomView> {
@@ -150,7 +150,7 @@ impl World {
         })
     }
 
-    /// The `behaviorKey` an item matches on (TS `item.behaviorKey`). Only catalog-backed
+    /// The `behaviorKey` an item matches on (`item.behaviorKey`). Only catalog-backed
     /// `Item`s carry one; keys resolve `None`.
     fn behavior_key_of(&self, iid: &crate::world::ids::ItemId) -> Option<String> {
         match self.items.get(iid) {

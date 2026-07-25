@@ -1,6 +1,6 @@
 //! Keyed-exit behaviors: a native `ExitBehavior` trait resolved by `behavior_key`
 //! (mirrors `mechanic_op`). Behavior is compiled-in; only the exit's `state`
-//! serializes. Byte-exact port of the TS `Exit` / `ExitBehavior` contract.
+//! serializes. Pinned byte-exact by the conformance goldens: the `Exit` / `ExitBehavior` contract.
 use alloc::string::String;
 use serde_json::Value;
 
@@ -8,10 +8,10 @@ use crate::world::mechanics::CharacterView;
 
 /// A first-party exit behavior. `state` is the exit's serialized `Value`.
 pub trait ExitBehavior: Sync {
-    /// TS `canPass` — all preconditions pass (read-only).
+    /// `canPass` — all preconditions pass (read-only).
     fn can_pass(&self, actor: &CharacterView, state: &Value) -> bool;
-    /// TS `runScript` — run on a successful pass; may mutate `state`; returns a
-    /// one-time narration line (TS `string | void`).
+    /// `runScript` — run on a successful pass; may mutate `state`; returns a
+    /// one-time narration line (`string | void`).
     fn run_script(&self, _actor: &CharacterView, _state: &mut Value) -> Option<String> {
         None
     }
@@ -35,8 +35,8 @@ pub fn exit_behavior(key: &str) -> Option<&'static dyn ExitBehavior> {
 }
 
 /// The resolved exit behavior for a key: a compiled-in native behavior, or a
-/// scripted behavior interpreted from `catalog.behaviors`. Mirrors
-/// `ResolvedMechanicOp` (Task 9), but for exits.
+/// scripted behavior interpreted from `catalog.behaviors`. The exit counterpart
+/// of `ResolvedMechanicOp`.
 pub enum ResolvedExitBehavior<'a> {
     Native(&'static dyn ExitBehavior),
     Scripted(crate::script::ops::ScriptedExit<'a>),

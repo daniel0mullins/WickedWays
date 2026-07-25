@@ -1,17 +1,17 @@
-//! The sync [`SyncAuthority`] — server + single-player resolution (Phase 2c, sub-project B).
+//! The sync [`SyncAuthority`] — server + single-player resolution.
 //!
-//! Mirrors `src/lib/sync/authority.ts`: `submit` runs **authorize → apply (restoring from the
+//! Mirrors: `submit` runs **authorize → apply (restoring from the
 //! pre-image on a [`ProceduralViolation`]) → diff → commit**, re-deriving the [`Delta`] from the
 //! command itself and appending an ordered [`LogEntry`]. The authoritative state is never left
 //! half-mutated. Named `SyncAuthority` to disambiguate from the single-player engine handle
 //! (`wickedways-wasm`'s `Authority`).
 //!
-//! **Scope (MVP).** [`apply_command`] dispatches the command subset the engine already supports
+//! **Scope.** [`apply_command`] dispatches the command subset the engine already supports
 //! (move/attack/equip/unequip/use/pickUp/drop/talk + begin/end/nextPlayer + join/seat/gm). Every
-//! other command kind is a clean [`SubmitResult::Denied`] (never a panic), pending sub-project A1/A2's
-//! remaining engine-action ports (craft/repair/harvest/light/loot-box/key transfer).
+//! other command kind is a clean [`SubmitResult::Denied`] (never a panic), pending the remaining
+//! engine actions (craft/repair/harvest/light/loot-box/key transfer).
 //!
-//! **Denial parity (deferred).** The TS `resolver.apply` resolves every argument id through an
+//! **Denial parity (deferred).** The `resolver.apply` resolves every argument id through an
 //! entity index that throws on a miss, so a command naming a nonexistent id is *denied*. The Rust
 //! engine methods validate ids themselves, but not always identically (e.g. `move_to` to an
 //! unknown room is a quiet no-op rather than a violation). Exact invalid-id denial parity with the
@@ -33,7 +33,7 @@ use super::command::Command;
 use super::delta::{diff, Delta};
 
 /// An ordered, broadcast entry: the command and the delta it produced. Serializes as the wire
-/// `WireLogEntry` (camelCase). Mirrors the TS `LogEntry`.
+/// `WireLogEntry` (camelCase). Mirrors the `LogEntry`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LogEntry {
@@ -44,8 +44,8 @@ pub struct LogEntry {
 }
 
 /// The outcome of [`SyncAuthority::submit`]: committed with its delta, or a terminal denial.
-/// A plain Rust enum — the wire framing (the TS `committed{seq,delta}` / `denied{reason}`
-/// server messages) is sub-project C's concern.
+/// A plain Rust enum — the wire framing (the `committed{seq,delta}` / `denied{reason}`
+/// server messages) is the room server's concern.
 #[derive(Clone, Debug, PartialEq)]
 pub enum SubmitResult {
     Committed { seq: u64, delta: Delta },
@@ -60,7 +60,7 @@ pub struct AuthorityOpts {
     /// The seq the log starts above (for resuming a persisted campaign). Default 0.
     pub start_seq: u64,
     /// Solo mode: run the full single-player turn loop (`start_turn` → action → mob reactions →
-    /// `next_player`) around each time-advancing command, mirroring the TS `GameSession.execute`.
+    /// `next_player`) around each time-advancing command, mirroring the `GameSession.execute`.
     /// The offline single-player host sets this; the multiplayer room server leaves it `false` (turn
     /// advancement and mob strikes are the GM's explicit `nextPlayer`/`mobAttack` there). Default
     /// `false`.
@@ -290,7 +290,7 @@ fn apply_command(
     Ok(cues)
 }
 
-/// Dispatches an authorized command to the engine. Mirrors `resolver.ts` `apply` for the supported
+/// Dispatches an authorized command to the engine. Mirrors `apply` for the supported
 /// subset; the engine resolves ids internally, so no separate entity index is needed. Fills `cues`
 /// with what the action produced. Unsupported command kinds return a [`ProceduralViolation`] (the
 /// caller turns it into a clean denial).

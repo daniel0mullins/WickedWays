@@ -1,6 +1,6 @@
 //! Encounter formations: a native `FormationBehavior` trait resolved by
 //! `behavior_key` (mirrors `mechanic_op`/`exit_behavior`/`scene_behavior`), plus
-//! `World::maybe_spawn` (the port of TS `EncounterTable.maybeSpawn`). Behavior is
+//! `World::maybe_spawn` (the port of `EncounterTable.maybeSpawn`). Behavior is
 //! compiled-in; only the encounter table's `visited`/`formations`/`baseChance`
 //! serialize.
 use alloc::string::ToString;
@@ -63,7 +63,7 @@ pub mod conformance {
 
     /// Build the fixed conformance mob. `origin`/`current_room_id` are left `None`
     /// here — `World::maybe_spawn` sets `origin = "campaign"` and the room. Modeled
-    /// on the mob shape the `mob-defeat` fixture round-trips: the TS `Mob`
+    /// on the mob shape the `mob-defeat` fixture round-trips: the `Mob`
     /// serializer (`Mob.serializeExtra`) ALWAYS emits `baseEscapeChance` (default
     /// 50), `materialDrops` (default `{}`), `lightAverse` (default `false`), and
     /// `naturalAttack` (default `{stat:"health",power:1}`), so a byte-faithful
@@ -163,7 +163,7 @@ pub mod conformance {
 }
 
 impl World {
-    /// Port of TS `EncounterTable.maybeSpawn` (`encounter-table.ts:82-102`). Marks
+    /// Port of `EncounterTable.maybeSpawn`. Marks
     /// the room visited (once), then — if unvisited, no active non-party occupant,
     /// formations present, and the threshold roll passes — selects one weighted
     /// formation, builds its mobs, and places each (origin "campaign", inserted into
@@ -273,7 +273,7 @@ impl World {
                 // `items` by reachability — a dangling inventory id diverges the
                 // gate). `build` returns snapshots in `d.mobs` order, so zip aligns
                 // each built mob with its spec. Drop id scheme = `{mob.id}:drop#{i}`
-                // (mirrors authored mobs, assembler.ts:230-234). A freshly authored
+                // (mirrors authored mobs). A freshly authored
                 // drop item serializes with `durability = descriptor.maxDurability`
                 // (omitted when absent) and `modifier = descriptor.modifier` — proven
                 // byte-for-byte by the `mob-drop` golden.
@@ -299,7 +299,7 @@ impl World {
                         );
                         mob.inventory.item_ids.push(item_id);
                     }
-                    // TS `Mob` widens slots to hold its drops (`mob.ts:77`); a spawned
+                    // `Mob` widens slots to hold its drops; a spawned
                     // mob starts at 0 slots, so slots = max(current, drops.len()).
                     let needed = spec.drops.len() as i64;
                     if mob.inventory.slots < needed {

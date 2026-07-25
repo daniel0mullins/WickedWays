@@ -59,11 +59,11 @@ impl World {
         cues: &mut Vec<PresentationCue>,
     ) -> Result<Option<LootId>, ProceduralViolation> {
         // 0. Affliction gate (is_move = false, NOT budgeted). The take wrapper
-        //    itself is not a registered (budgeted) action — only the inner
-        //    add-to-inventory step is — so on a Confused fizzle the budget is
-        //    NOT ticked. The successful take ticks the budget separately below
-        //    via the internal pick-up (which IS budgeted).
-        //    Fizzle → fumble, no loot → Ok(None).
+        // itself is not a registered (budgeted) action — only the inner
+        // add-to-inventory step is — so on a Confused fizzle the budget is
+        // NOT ticked. The successful take ticks the budget separately below
+        // via the internal pick-up (which IS budgeted).
+        // Fizzle → fumble, no loot → Ok(None).
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
@@ -148,11 +148,11 @@ impl World {
         }
 
         // 6b. RECORD_ENCOUNTER({kind:"item", item}) — every picked-up item is
-        //     recorded into the codex.
-        //     First-write-wins by `${kind}::${key}`. `type` and `slot` serialize
-        //     lowercase (descriptor.rs enum rename); twoHanded/emitsLight/presentation
-        //     are read from the catalog descriptor and included only when present
-        //     (absent ≠ false — the omission is pinned by the goldens).
+        // recorded into the codex.
+        // First-write-wins by `${kind}::${key}`. `type` and `slot` serialize
+        // lowercase (descriptor.rs enum rename); twoHanded/emitsLight/presentation
+        // are read from the catalog descriptor and included only when present
+        // (absent ≠ false — the omission is pinned by the goldens).
         {
             let round = self.campaign.round;
             let actor_id_str = actor.0.clone();
@@ -297,9 +297,8 @@ impl World {
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
-        // 0. Affliction gate (is_move = false, NOT budgeted). Mirrors
-        //    attemptAction(this.equip, false). Fizzle records a fumble but does
-        //    NOT tick the budget (equip is a free action).
+        // 0. Affliction gate (is_move = false, NOT budgeted). A fizzle records a
+        // fumble but does NOT tick the budget (equip is a free action).
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
@@ -470,9 +469,8 @@ impl World {
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
-        // 0. Affliction gate (is_move = false, NOT budgeted). Mirrors
-        //    attemptAction(this.unequip, false). Fizzle records a fumble but does
-        //    NOT tick the budget (unequip is a free action).
+        // 0. Affliction gate (is_move = false, NOT budgeted). A fizzle records a fumble but does
+        // NOT tick the budget (unequip is a free action).
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
@@ -619,8 +617,7 @@ impl World {
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
-        // 0. Affliction gate (is_move = false, budgeted). Mirrors
-        //    attemptAction(this.removeFromInventory, false).
+        // 0. Affliction gate (is_move = false, budgeted).
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
@@ -795,10 +792,10 @@ impl World {
         }
 
         // 2b. Reject use while KO'd. `use` is the always-allowed escape hatch under
-        //     Panic/Fear/Confused, but a KO'd character can do nothing at all.
-        //     Order matters: after the usable check, before grantsImmunity.
-        //     This is the ONLY affliction guard on `use`; the consume itself stays
-        //     gate-suppressed (no Panic/Fear/Confused fizzle gating on use).
+        // Panic/Fear/Confused, but a KO'd character can do nothing at all.
+        // Order matters: after the usable check, before grantsImmunity.
+        // This is the ONLY affliction guard on `use`; the consume itself stays
+        // gate-suppressed (no Panic/Fear/Confused fizzle gating on use).
         {
             let ch = self
                 .characters
@@ -810,9 +807,9 @@ impl World {
         }
 
         // 2c. Author use-behaviour (scripted onUse). Runs AFTER the usable/KO
-        //     guards and BEFORE grantsImmunity + consume. Absent script = no-op.
-        //     Effects flow through the collect-then-apply pipeline, capped at
-        //     MAX_EFFECTS_PER_EVENT.
+        // guards and BEFORE grantsImmunity + consume. Absent script = no-op.
+        // Effects flow through the collect-then-apply pipeline, capped at
+        // MAX_EFFECTS_PER_EVENT.
         if let crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } = &item_snap {
             if let Some(crate::script::ast::BehaviorScript::Item { script }) =
                 cat.behaviors.get(behavior_key)

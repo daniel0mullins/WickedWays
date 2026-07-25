@@ -1,11 +1,10 @@
-//! The sync **authorize gate** (Phase 2c, sub-project A).
+//! The sync **authorize gate**.
 //!
 //! A pure function of `(world, command)` — the game-rule gate that decides whether a
-//! command is permitted given the campaign's lifecycle/turn/GM state. Mirrors
-//! `src/lib/sync/resolver.ts` `Resolver.authorize` branch-for-branch. Deeper
+//! command is permitted given the campaign's lifecycle/turn/GM state. Deeper
 //! validation (does the target exist, is the move legal) stays in the engine actions,
 //! which throw [`ProceduralViolation`](crate::error::ProceduralViolation) — the sync
-//! `Authority` (sub-project B) turns that into a `denied` result on its
+//! `Authority` turns that into a `denied` result on its
 //! restore-on-violation path. This gate never mutates and never allocates world state.
 
 use alloc::string::{String, ToString};

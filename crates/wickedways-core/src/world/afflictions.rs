@@ -1,5 +1,5 @@
-//! Typed affliction data model — mirrors `src/lib/character/afflictions.ts` + `src/lib/status.ts`.
-//! Serialize shape is byte-identical to TS `AfflictionsSnapshot` / `Status`.
+//! Typed affliction data model — mirrors +.
+//! Serialize shape is byte-identical to `AfflictionsSnapshot` / `Status`.
 use alloc::{collections::BTreeMap, collections::BTreeSet, vec::Vec};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -13,7 +13,7 @@ use ts_rs::TS;
 // ---------------------------------------------------------------------------
 
 /// Adverse conditions a character can be afflicted with.
-/// Serde: `"ko"`, `"panic"`, `"confused"`, `"fear"` — matches TS `Status`.
+/// Serde: `"ko"`, `"panic"`, `"confused"`, `"fear"` — matches `Status`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "lowercase")]
@@ -110,7 +110,7 @@ impl Afflictions {
 
     /// Grant timed immunity to each status in `statuses` for `turns` turns,
     /// refreshing to max if already higher. KO is never immunizable.
-    /// Mirrors `afflictions.ts:182-192`.
+    /// Mirrors.
     pub fn grant_immunity(&mut self, statuses: &[Status], turns: i64) {
         for &s in statuses {
             if s == Status::Ko {
@@ -122,21 +122,21 @@ impl Afflictions {
         }
     }
 
-    // -- lifecycle (mirrors afflictions.ts:75-152) --
+    // -- lifecycle --
 
-    /// `passiveImmune.has(s) || (#immunity.get(s) ?? 0) > 0` (afflictions.ts:75-77).
+    /// `passiveImmune.has(s) || (#immunity.get(s) ?? 0) > 0`.
     fn immune(&self, s: Status, passive: &BTreeSet<Status>) -> bool {
         passive.contains(&s) || self.immunity.get(&s).copied().unwrap_or(0) > 0
     }
 
-    /// Drop a status out of its current episode entirely (afflictions.ts:80-84).
+    /// Drop a status out of its current episode entirely.
     fn clear_episode(&mut self, s: Status) {
         self.active.insert(s, false);
         self.shaken_off.retain(|x| *x != s);
         self.turns_active.insert(s, 0);
     }
 
-    /// `below` = stat is past the affliction threshold this resolution (afflictions.ts:87-93).
+    /// `below` = stat is past the affliction threshold this resolution.
     fn resolve(&mut self, s: Status, below: bool, passive: &BTreeSet<Status>) {
         if self.immune(s, passive) || !below {
             self.clear_episode(s);
@@ -148,7 +148,7 @@ impl Afflictions {
 
     /// Recomputes every flag from the current effective stats. Pure: no RNG, no timer
     /// mutation. `passive` is the set of equipment-conferred immunities.
-    /// Mirrors `applyFromStats` (afflictions.ts:99-128).
+    /// Mirrors `applyFromStats`.
     pub fn apply_from_stats(
         &mut self,
         health: f64,
@@ -174,14 +174,14 @@ impl Afflictions {
         } else if energy > 1.0 {
             self.resolve(Status::Confused, false, passive);
         } else if self.immune(Status::Confused, passive) {
-            // (0, 1] hold band + immunity hysteresis (afflictions.ts:119-127).
+            // (0, 1] hold band + immunity hysteresis.
             self.clear_episode(Status::Confused);
         }
     }
 
     /// The per-turn time step: roll each active non-KO status for an early clear
     /// (chance rises with `turns_active`), reconcile, then consume one turn of each
-    /// immunity timer. Mirrors `onTurnStart` (afflictions.ts:136-152).
+    /// immunity timer. Mirrors `onTurnStart`.
     ///
     /// RNG draw order IS the contract: clear rolls happen `for s in CLEARABLE`
     /// (`[Panic, Fear, Confused]`), only for active clearables, each
@@ -277,9 +277,9 @@ impl<'de> Deserialize<'de> for Afflictions {
 
 // ---------------------------------------------------------------------------
 // ts-rs: manual TS impl for Afflictions (hand serialize prevents derive).
-// The emitted shape mirrors TS `AfflictionsSnapshot`:
-//   { active: Partial<Record<Status,boolean>>, turnsActive: Partial<Record<Status,number>>,
-//     shakenOff: Status[], immunity: Partial<Record<Status,number>> }
+// The emitted shape mirrors `AfflictionsSnapshot`:
+// { active: Partial<Record<Status,boolean>>, turnsActive: Partial<Record<Status,number>>,
+// shakenOff: Status[], immunity: Partial<Record<Status,number>> }
 // ---------------------------------------------------------------------------
 
 #[cfg(feature = "ts")]
@@ -375,7 +375,7 @@ mod tests {
         assert!(!CLEARABLE.contains(&Status::Ko));
     }
 
-    // -- apply_from_stats threshold tests (mirror afflictions.ts:95-128) --
+    // -- apply_from_stats threshold tests --
 
     use crate::world::rng::Rng;
     use alloc::collections::BTreeSet;
@@ -430,7 +430,7 @@ mod tests {
         assert!(!a.is_active(Status::Panic));
     }
 
-    // -- on_turn_start roll-order + immunity tests (mirror afflictions.ts:130-152) --
+    // -- on_turn_start roll-order + immunity tests --
 
     #[test]
     fn on_turn_start_rolls_active_clearables_in_order_and_ticks_turns() {
@@ -490,7 +490,7 @@ mod tests {
     #[test]
     fn on_turn_start_decrements_immunity_after_reconcile() {
         let mut a = Afflictions::default();
-        a.immunity.insert(Status::Panic, 2); // grant_immunity lands in Task 4
+        a.immunity.insert(Status::Panic, 2); // seed the immunity directly
         let cfg = default_affliction_config();
         let mut rng = Rng::seeded(1);
         a.on_turn_start(10.0, 0.0, 5.0, &BTreeSet::new(), &cfg, &mut rng);
@@ -507,7 +507,7 @@ mod tests {
         assert!(!a.immunity.contains_key(&Status::Fear)); // 1 → removed
     }
 
-    // -- grant_immunity tests (mirrors afflictions.ts:182-192) --
+    // -- grant_immunity tests --
 
     #[test]
     fn grant_immunity_refreshes_to_max_and_resets_episode() {

@@ -1,4 +1,4 @@
-//! Typed action history — JSON byte-compatible with `src/lib/character/history.ts`.
+//! Typed action history — JSON byte-compatible with.
 use crate::stats::StatType;
 use crate::world::ids::{CharacterId, ItemId, RoomId};
 use alloc::string::String;

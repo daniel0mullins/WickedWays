@@ -1,4 +1,4 @@
-//! Mob-issued actions (Phase 2c, sub-project A2). First: `mobEscape` (`Mob.escape`).
+//! Mob-issued actions. First: `mobEscape` (`Mob.escape`).
 
 use alloc::vec::Vec;
 
@@ -13,7 +13,7 @@ use crate::world::ids::{CharacterId, RoomId};
 use crate::world::World;
 
 impl World {
-    /// A mob attempts to flee its room. Mirrors `Mob.escape` (`src/lib/character/mob.ts`):
+    /// A mob attempts to flee its room. Mirrors `Mob.escape`:
     /// affliction-gated (Confused → fumble, no-op); the escape threshold is
     /// `clamp(baseEscapeChance + effectiveStat(Health), 0, 100)`; a `roll(100)` under the threshold
     /// with at least one exit is a success, which draws a second roll to pick an exit and relocates

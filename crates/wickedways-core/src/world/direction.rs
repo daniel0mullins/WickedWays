@@ -1,4 +1,4 @@
-//! Compass directions — mirrors `src/lib/room.ts` `Directions` (`:19-31`).
+//! Compass directions — mirrors `Directions` (`:19-31`).
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "ts")]
 use ts_rs::TS;

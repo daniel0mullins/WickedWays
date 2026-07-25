@@ -1,15 +1,15 @@
-//! The actor-tagged multiplayer command union (Phase 2c, sub-project A).
+//! The actor-tagged multiplayer command union.
 //!
-//! Mirrors `src/lib/sync/types.ts` `Command` 1:1 — the serializable player/GM/NPC
+//! Mirrors `Command` 1:1 — the serializable player/GM/NPC
 //! intent where every entity reference is an id and every *turn-action* carries the
 //! acting character's `actorId`. This is the networked wire vocabulary the sync
-//! `Authority` (sub-project B) resolves and the room server (C) gates — distinct from
+//! `Authority` resolves and the room server (C) gates — distinct from
 //! the single-seat internal [`Command`](crate::world::command::Command), which carries
 //! no actor id and only exists for the conformance replay harness.
 //!
-//! Serde parity with the TS union is asserted byte-for-byte in the tests (this is the
-//! wire contract). ts-rs export is intentionally deferred to sub-project B, where the
-//! type first has to cross the JSON seam to a generated TS binding.
+//! Serde shapes are asserted byte-for-byte in the tests (this is the wire contract).
+//! ts-rs export is intentionally deferred until the type has to cross the JSON seam
+//! to a generated binding.
 
 use alloc::boxed::Box;
 use alloc::string::String;
@@ -19,8 +19,8 @@ use serde::{Deserialize, Serialize};
 use crate::world::ids::{CharacterId, ItemId, LootId, MaterialCacheId, RoomId};
 use crate::world::snapshot::CharacterSnapshot;
 
-/// A named equipment slot — the optional `slot` of an `equip` command. Mirrors
-/// `src/lib/equipment.ts` `EquipmentSlot` (the *named* slot, e.g. `leftHand`), which
+/// A named equipment slot — the optional `slot` of an `equip` command (the
+/// *named* slot, e.g. `leftHand`), which
 /// is finer-grained than the engine's [`SlotKind`](crate::world::descriptor::SlotKind)
 /// (the slot *kind*, e.g. `hand`). Serialized as its camelCase string.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -41,7 +41,7 @@ pub enum EquipmentSlot {
 }
 
 /// A serializable player/GM/NPC command. Every entity reference is an id; the tag is
-/// `kind` (camelCase). Mirrors the TS `Command` union field-for-field.
+/// `kind` (camelCase). Mirrors the `Command` union field-for-field.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Command {
@@ -79,7 +79,7 @@ pub enum Command {
         item_id: ItemId,
     },
     // Scrap a held item back into the shared material pool. A Rust-side extension beyond the TS
-    // `types.ts` union (the TS engine ran `destroy` through the item-action/session layer), like
+    // union (the TS engine ran `destroy` through the item-action/session layer), like
     // `talk`/`wait`: the Rust surfaces route every action through sync, so it needs a wire command.
     // Free — turn-gated, no budget tick.
     #[serde(rename_all = "camelCase")]
@@ -141,7 +141,7 @@ pub enum Command {
         cache_id: MaterialCacheId,
     },
     // ── free NPC interaction: dialogue (non-advancing; runs on your own turn) ──
-    // A Rust-side extension beyond the TS `types.ts` union: the original engine ran NPC
+    // A Rust-side extension beyond the TS union: the original engine ran NPC
     // dialogue through the single-seat session layer, but the Rust surfaces route every
     // action through sync, so `talk` needs a wire command to reach the authority. Free
     // (it spends no round/budget), but classified apart from the turn-actions above so it
@@ -210,7 +210,7 @@ pub enum Command {
 
 impl Command {
     /// `true` for player turn-actions (move, attack, equip, …) — the ones gated to
-    /// the active character's turn. Mirrors `types.ts` `TURN_ACTION_KINDS`.
+    /// the active character's turn. Mirrors `TURN_ACTION_KINDS`.
     pub fn is_turn_action(&self) -> bool {
         matches!(
             self,
@@ -303,7 +303,7 @@ impl Command {
     }
 
     /// The acting player's id for turn/setup commands; `None` for GM/lifecycle/NPC/join
-    /// commands. Mirrors `types.ts` `commandActorId`.
+    /// commands. Mirrors `commandActorId`.
     pub fn actor_id(&self) -> Option<&CharacterId> {
         match self {
             Command::Move { actor_id, .. }
@@ -338,7 +338,7 @@ mod tests {
     use alloc::vec;
     use serde_json::json;
 
-    /// Every non-join variant round-trips through the exact `src/lib/sync/types.ts`
+    /// Every non-join variant round-trips through the exact
     /// JSON shape (byte-for-byte field names + tag). This is the wire contract.
     #[test]
     fn command_json_shapes_mirror_ts_union() {

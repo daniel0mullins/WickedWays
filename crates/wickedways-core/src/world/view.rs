@@ -1136,7 +1136,7 @@ mod tests {
 
         // Scope order: occupants ++ loot-contents ++ inv-items ++ keys ++ loot-containers
         // We have: 1 occupant (Wraith), 1 loot content (Iron Sword in chest), 1 inv item (Healing Potion),
-        //          1 key (Brass Key), 1 loot container (chest1)
+        // 1 key (Brass Key), 1 loot container (chest1)
         assert_eq!(v.scope.len(), 5);
         assert_eq!(v.scope[0].kind, "occupant"); // Wraith
         assert_eq!(v.scope[0].name, "Wraith");

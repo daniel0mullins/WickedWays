@@ -1,4 +1,4 @@
-//! The id-keyed runtime world model (Phase 1).
+//! The id-keyed runtime world model.
 pub mod afflictions;
 pub mod archetype;
 mod combat;
@@ -91,7 +91,7 @@ impl World {
     /// The conformance gate canonicalizes the TS side to the same ordering.
     ///
     /// `items` is **reachability-derived**, mirroring the TS serializer
-    /// (`serialization/serializer.ts:54-112` `addItem`): only items referenced
+    /// ( `addItem`): only items referenced
     /// by a loot container's `content_ids`, a room's `light_source_ids`, or a
     /// character's inventory `item_ids`/`key_ids`/`equipment` are emitted.
     /// An item that has been dropped or consumed (removed from every inventory
@@ -147,7 +147,7 @@ mod tests {
     use super::*;
 
     fn sample_json() -> &'static str {
-        // reuse the Task 4 minimal full snapshot
+        // reuse the minimal full snapshot
         r#"{ "schemaVersion":6, "campaign":{ "id":"camp1","title":"HH","maxRounds":20,"round":0,
         "started":false,"outcome":"ongoing","winConditions":[],"loseConditions":[],
         "activeCharacterIndex":0,"partyIds":["c1"],"actedThisRound":[],"gmId":null,"materials":{},

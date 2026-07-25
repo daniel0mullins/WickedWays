@@ -56,7 +56,7 @@ pub enum Command {
         mechanic_key: String,
         action_key: String,
     },
-    /// Free, non-advancing: run an NPC's data-driven dialogue (NPC sub-plan 2).
+    /// Free, non-advancing: run an NPC's data-driven dialogue.
     /// `prompt` absent = bare `talk` (selects the NPC's `default` entry).
     #[serde(rename_all = "camelCase")]
     Talk {

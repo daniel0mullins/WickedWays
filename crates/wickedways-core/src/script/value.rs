@@ -173,7 +173,7 @@ mod tests {
     #[test]
     fn format_js_number_matches_number_prototype_tostring() {
         // Oracle values produced with: node -e 'for (const x of [16,2.5,0.1,3.6,-1.5,0,-0,15,7,3.2,
-        //   0.30000000000000004,1/3,1e21,1e-7,0.000001,123456789.123]) console.log(String(x))'
+        // 0.30000000000000004,1/3,1e21,1e-7,0.000001,123456789.123]) console.log(String(x))'
         let cases: &[(f64, &str)] = &[
             (16.0, "16"),
             (2.5, "2.5"),

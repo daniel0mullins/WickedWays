@@ -1,8 +1,8 @@
 //! Materials & crafting: the campaign material pool, harvesting caches, crafting
 //! recipes, and repairing gear.
 //!
-//! Ports `campaign.ts`'s pool ops (`canAfford`/`withdrawMaterials`/`claimMaterials`/
-//! `discoverRecipe`) and `character.ts`'s `harvest`/`craft`/`repair`. All three
+//! Ports's pool ops (`canAfford`/`withdrawMaterials`/`claimMaterials`/
+//! `discoverRecipe`) and's `harvest`/`craft`/`repair`. All three
 //! character verbs are **free** (no budget tick, no history) — they require the
 //! actor's turn (enforced upstream in the sync `authorize`) but never spend an
 //! action. Material deposits (harvest) still route through
@@ -24,7 +24,7 @@ use crate::world::snapshot::ItemSnapshot;
 use crate::world::World;
 
 impl World {
-    // ---- Campaign material pool (campaign.ts) --------------------------------
+    // ---- Campaign material pool --------------------------------
 
     /// Whether the shared pool holds every requested component at ≥ the requested
     /// quantity. Mirrors `Campaign.canAfford`.
@@ -73,16 +73,15 @@ impl World {
         self.campaign.known_recipes.iter().any(|r| r == recipe_id)
     }
 
-    /// Add a recipe to the party's known set (idempotent by id). Mirrors
-    /// `Campaign.discoverRecipe`'s knowledge half — the party-wide learn that a
-    /// `teaches` pickup (or a genesis seed) drives.
+    /// Add a recipe to the party's known set (idempotent by id) — the party-wide
+    /// learn that a `teaches` pickup (or a genesis seed) drives.
     pub fn discover_recipe(&mut self, recipe_id: &str) {
         if !self.knows_recipe(recipe_id) {
             self.campaign.known_recipes.push(recipe_id.to_string());
         }
     }
 
-    // ---- Character verbs (character.ts) --------------------------------------
+    // ---- Character verbs --------------------------------------
 
     /// Empty a material cache in the actor's current room into the shared pool.
     /// Idempotent: a depleted cache deposits nothing (anti-farming). **Free** — no
@@ -279,7 +278,7 @@ impl World {
 
     /// Scrap a held, destroyable item: deposit its material makeup (`recipe`) into
     /// the shared pool and consume the item. **Free** — no budget tick, and (like the
-    /// TS `relinquishItem` path) it logs no drop. Mirrors the item `destroy` action.
+    /// `relinquishItem` path) it logs no drop. Mirrors the item `destroy` action.
     ///
     /// # Errors
     /// `ProceduralViolation` if the item is not held or is not destroyable (e.g. a key).

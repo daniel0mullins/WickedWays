@@ -1,8 +1,8 @@
 //! Item resolution: snapshot + catalog → effective item identity.
 //!
-//! Mirrors `hydrateItem` (inventory.ts:723-734), `[HYDRATE]` (inventory.ts:443-448),
-//! and `isBroken` (inventory.ts:403-405).
-//! Also provides `World::effective_stat`, mirroring `character.ts:903-913`.
+//! Mirrors `hydrateItem`, `[HYDRATE]`,
+//! and `isBroken`.
+//! Also provides `World::effective_stat`, mirroring.
 use alloc::{collections::BTreeSet, format, string::String};
 
 use crate::{
@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// Internal projection of a fully-resolved item: descriptor fields merged with
-/// per-instance snapshot state.  Not serialized — used only inside the engine core.
+/// per-instance snapshot state. Not serialized — used only inside the engine core.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedItem {
     pub id: String,
@@ -56,7 +56,7 @@ pub fn resolve_item(
                 ProceduralViolation(format!("No item registered for key '{behavior_key}'"))
             })?;
 
-            // is_broken mirrors TS `get isBroken()`: maxDurability present AND durability === 0
+            // is_broken mirrors `get isBroken()`: maxDurability present AND durability === 0
             let is_broken = desc.max_durability.is_some() && *durability == Some(0);
 
             Ok(ResolvedItem {
@@ -81,9 +81,9 @@ pub fn resolve_item(
             id, name, key_code, ..
         } => {
             // Keys don't live in the catalog; all identity is in the snapshot.
-            // `stat` defaults to Health — mirrors TS `createKey` which uses StatType.Health.
-            // NOTE: TS `createKey` sets `properties` with no `droppable` field (undefined),
-            // so `droppable` must be `None` here — NOT `Some(false)`.  `None != Some(false)`
+            // `stat` defaults to Health — mirrors `createKey` which uses StatType.Health.
+            // NOTE: `createKey` sets `properties` with no `droppable` field (undefined),
+            // so `droppable` must be `None` here — NOT `Some(false)`. `None != Some(false)`
             // evaluates to `true` in the view projection, matching the TS oracle result of
             // `undefined !== false` = true (keys ARE droppable unless explicitly marked).
             Ok(ResolvedItem {
@@ -126,7 +126,7 @@ pub fn resolve_npc<'a>(key: &str, cat: &'a Catalog) -> Option<&'a crate::script:
 }
 
 impl World {
-    /// Mirrors `character.ts:903-913` (`effectiveStat`):
+    /// Mirrors (`effectiveStat`):
     /// returns `base_stat + Σ modifier` for each **equipped** accessory whose
     /// `stat` matches the requested `stat`.
     ///

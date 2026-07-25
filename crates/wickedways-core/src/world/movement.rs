@@ -258,14 +258,14 @@ impl World {
 
     /// Fire every scene of the given `phase` registered on `room_id`, in snapshot
     /// order. Each firing may mutate its own `state` and returns mechanic cues,
-    /// pushed onto `cues` as `PresentationCue::Mechanic`. Mirrors TS
+    /// pushed onto `cues` as `PresentationCue::Mechanic`. Mirrors
     /// `Room.enterRoom`/`exitRoom` → `scene.playScene(phase, room)`.
     ///
     /// An unregistered `behavior_key` on a matching-phase scene →
-    /// `Err(ProceduralViolation)` (mirrors TS `registry.scene()`'s `#require`).
+    /// `Err(ProceduralViolation)` (mirrors `registry.scene()`'s `#require`).
     ///
     /// `pub(crate)` (rather than private) so `World::maybe_spawn`
-    /// (`world/formations.rs`, sub-plan 6c-3) can fire enter-scenes silently for
+    /// (`world/formations.rs`) can fire enter-scenes silently for
     /// freshly-placed mobs.
     pub(crate) fn fire_scenes(
         &mut self,
@@ -400,7 +400,7 @@ impl World {
 
     /// Move `actor` to `room`, updating occupancy in both rooms, emitting a
     /// visibility cue if the destination is dark, then recording the action
-    /// (budget tick + history + action cue). Mirrors TS `Character.move` (:1018-1032)
+    /// (budget tick + history + action cue). Mirrors `Character.move`
     /// and `Character.#enterRoom`.
     ///
     /// Occupancy is a `Vec`: exit via `retain`, enter via `push` (guards against
@@ -413,7 +413,7 @@ impl World {
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
         // Exit old room — fire exit-phase scenes first (mover still an occupant),
-        // then retain all occupants that are not the actor. Mirrors TS
+        // then retain all occupants that are not the actor. Mirrors
         // `Room.exitRoom` (play "exit" scenes → delete occupant).
         if let Some(prev) = self
             .characters
@@ -437,12 +437,12 @@ impl World {
         }
 
         // Fire enter-phase scenes now that the actor is an occupant of `room`,
-        // BEFORE the visibility cue. Mirrors TS `Room.enterRoom` (add occupant →
+        // BEFORE the visibility cue. Mirrors `Room.enterRoom` (add occupant →
         // play "enter" scenes) inside `#enterRoom`, which runs before `move`'s
         // visibility cue.
         self.fire_scenes(room, "enter", actor, cat, cues)?;
 
-        // Visibility cue when the destination is dark (mirrors TS `move` :1021-1027).
+        // Visibility cue when the destination is dark (mirrors `move`:1021-1027).
         if !self.is_lit(room, cat) {
             let name = self
                 .rooms
@@ -458,18 +458,17 @@ impl World {
             });
         }
 
-        // After a successful move, replicate PlayerCharacter.move side-effects
-        // (player-character.ts :169-178): maybeSpawn (encounter table visited) and
-        // RECORD_ENCOUNTER for the room (codex).  Both apply only to player characters.
+        // After a successful move: maybe_spawn (encounter table visited) and the
+        // room codex record. Both apply only to player characters.
         let is_player = self
             .characters
             .get(actor)
             .is_some_and(|c| matches!(c.kind, crate::world::snapshot::CharacterKind::Player));
 
         // record_action(move): tick budget, append history, emit action cue.
-        // Budget tick mirrors TS `recordAction` (:530-532): `actions_this_round += 1`.
+        // Budget tick mirrors `recordAction`: `actions_this_round += 1`.
         // The `record_action` call below also conditionally ends the turn (reconcile)
-        // once the budget is exhausted, mirroring TS `recordAction` → `endTurn()`.
+        // once the budget is exhausted, mirroring `recordAction` → `endTurn()`.
         let round = self.campaign.round;
         let room_name = self
             .rooms
@@ -492,7 +491,7 @@ impl World {
             sound: None,
         });
         // record_action (budget tick + cap-triggered endTurn/reconcile) runs BEFORE
-        // the encounter cues: TS `PlayerCharacter.move` (player-character.ts:169-173)
+        // the encounter cues: `PlayerCharacter.move`
         // calls `super.move(room)` — which runs `recordAction` to completion, including
         // any `endTurn`/reconcile — THEN emits NOTE_ENCOUNTERS.
         self.record_action(
@@ -509,7 +508,7 @@ impl World {
             cues,
         )?;
 
-        // PlayerCharacter.move tail (player-character.ts:169-176), AFTER super.move's
+        // PlayerCharacter.move tail, AFTER super.move's
         // recordAction: maybeSpawn → NOTE_ENCOUNTERS → room codex. Spawned mobs land
         // before the occupant scan; spawn rng falls after any turn-end rng.
         if is_player {
@@ -944,7 +943,7 @@ mod tests {
 
     /// A dark room is lit by an occupant's equipped, non-broken, light-emitting
     /// hand item — and NOT lit if that item is broken or does not emit light.
-    /// Mirrors `room.ts` `isLit` → `character.ts` `hasLight` (occupant path).
+    /// Mirrors `isLit` → `hasLight` (occupant path).
     #[test]
     fn dark_room_lit_by_occupant_equipped_lantern() {
         use crate::world::descriptor::Catalog;

@@ -34,7 +34,7 @@ impl World {
         // Then the active player's start-room enter-scenes, into the SAME cue
         // buffer `take_startup_cues` returns. Fire-point PINNED here — AFTER the
         // round-0 dispatch — for gate parity: the TS oracle (oracle-session
-        // begin/startup) and TS `Campaign.beginCampaign` fire in this identical
+        // begin/startup) and `Campaign.beginCampaign` fire in this identical
         // order. Genesis is pristine (the TS boot places the PC WITHOUT firing
         // scenes), so this is the scene's first and only firing at campaign start.
         if let Ok(actor) = self.active_character_id() {
@@ -50,7 +50,7 @@ impl World {
     }
 
     /// Statuses immunized by equipped, non-broken gear or the selected archetype.
-    /// Mirrors `character.ts:#passiveImmunities` (character.ts:320-328): for each
+    /// Mirrors `character.ts:#passiveImmunities`: for each
     /// equipped item, skip if broken or lacking immunities, else union its
     /// `immunities`; then union the character's `archetype_immunities`.
     ///
@@ -99,8 +99,8 @@ impl World {
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
-        // Mirror TS `#floorAndSnapshot` (character.ts:308-317): persistently clamp
-        // base stats to max(0, x) BEFORE computing effective stats.  This ensures
+        // Mirror `#floorAndSnapshot`: persistently clamp
+        // base stats to max(0, x) BEFORE computing effective stats. This ensures
         // a negative base (e.g. from future damage) never bleeds into effective
         // values or affliction thresholds.
         if let Some(c) = self.characters.get_mut(actor) {
@@ -126,8 +126,8 @@ impl World {
         self.dispatch_turn(TurnPhase::Start, actor, cat, cues)
     }
 
-    /// End `actor`'s turn. Mirrors TS `Character.endTurn` (character.ts:1066-1070):
-    /// `events.onTurnEnd()` (sub-plan 6b), `#reconcile()`, `DISPATCH_TURN("end")`.
+    /// End `actor`'s turn. Mirrors `Character.endTurn`:
+    /// `events.onTurnEnd()`, `#reconcile()`, `DISPATCH_TURN("end")`.
     /// The reconcile floors base stats, re-applies affliction flags from effective
     /// stats, and latches KO on the rising edge; the mechanic hook fires AFTER it.
     /// RNG-free when no mechanics are seeded.
@@ -137,14 +137,14 @@ impl World {
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
-        // character events (events.onTurnEnd): no-op until sub-plan 6b.
-        // Reconcile THEN the mechanic hook (sub-plan 5's fixed ordering).
+        // Per-character turn-end events are not implemented yet.
+        // Reconcile THEN the mechanic hook.
         self.reconcile(actor, cat, cues);
         self.dispatch_turn(TurnPhase::End, actor, cat, cues)
     }
 
-    /// Single seam mirroring the budget half of TS `Character.recordAction`
-    /// (character.ts:530-537): when `budgeted`, increment `actions_this_round`
+    /// Single seam mirroring the budget half of `Character.recordAction`
+    ///: when `budgeted`, increment `actions_this_round`
     /// and dispatch `on_action` (DISPATCH_ACTION) with the caller-supplied
     /// `ActionView` (carrying the move room payload, else `room: None`); then —
     /// regardless of `budgeted`, matching TS where the cap
@@ -225,7 +225,7 @@ impl World {
         self.dispatch_round(RoundPhase::Start, cat, cues)
     }
 
-    /// Byte-exact port of TS `resolveOutcome` (victory.ts:46-63). Runs AFTER the
+    /// Behavior is pinned byte-exact by the conformance goldens. Runs AFTER the
     /// round increment, so `campaign.round` is current. Order: loss list, then
     /// win list, then the `round >= max_rounds` ceiling, then ongoing.
     fn resolve_outcome(
@@ -276,8 +276,8 @@ impl World {
         });
     }
 
-    /// TS `Campaign.outcomeNarration` getter (campaign.ts:275-289): derived from
-    /// the just-set `outcome`/`outcome_reason`.
+    /// The campaign's outcome narration: derived from the just-set
+    /// `outcome`/`outcome_reason`.
     fn outcome_narration(&self) -> Option<OutcomeNarration> {
         match self.campaign.outcome {
             CampaignOutcome::TimedOut => self.campaign.timeout_narration.clone(),
@@ -311,7 +311,7 @@ impl World {
         Ok(())
     }
 
-    /// TS `Campaign.endCampaign` (campaign.ts:466-469): the manual, GM-neutral
+    /// `Campaign.endCampaign`: the manual, GM-neutral
     /// end. Produces the `ended` outcome (no firing condition → `ended_narration`).
     pub fn end_campaign(
         &mut self,
@@ -358,7 +358,7 @@ mod tests {
             .collect()
     }
 
-    // ── mechanic fire-points (sub-plan 6a, Task 5) ────────────────────────────
+    // ── mechanic fire-points ────────────────────────────
 
     #[test]
     fn begin_campaign_fires_on_round_start() {
@@ -370,7 +370,7 @@ mod tests {
         assert_eq!(mechanic_texts(&cues), vec!["Dread stirs."]);
     }
 
-    /// Task 3: a start-room `onEnter` scene fires at begin_campaign — its cue
+    /// a start-room `onEnter` scene fires at begin_campaign — its cue
     /// surfaces in the SAME buffer `take_startup_cues` returns, it fires EXACTLY
     /// once (pristine genesis: count 0 → 1), and the fire-point is pinned AFTER
     /// the round-0 onRoundStart readout (identical order to the TS oracle /
@@ -722,7 +722,7 @@ mod tests {
         assert!(!ch.afflictions.is_active(Status::Fear));
     }
 
-    // Regression: mirrors #floorAndSnapshot (character.ts:308-317).
+    // Regression: mirrors #floorAndSnapshot.
     // Base stats must be persistently clamped to max(0, x) BEFORE computing
     // effective stats — so a negative base doesn't bleed into affliction thresholds.
     #[test]
@@ -738,7 +738,7 @@ mod tests {
         use serde_json::json;
 
         // ── case 1: plain negative base sanity, no bonus ──────────────────────
-        // base sanity = -3  → after floor: 0  → no Fear (0 is not > 0 && < 5)
+        // base sanity = -3 → after floor: 0 → no Fear (0 is not > 0 && < 5)
         let mut w1 = world_with_party(&["pc"], 10);
         if let Some(c) = w1.characters.get_mut(&cid("pc")) {
             c.stats.sanity = -3.0;
@@ -759,7 +759,7 @@ mod tests {
 
         // ── case 2: negative base sanity + accessory +5 ───────────────────────
         // TS oracle: max(0,-3)=0, effective=0+5=5 → NOT Fear (5 < 5 is false)
-        // Rust bug:  -3+5=2 → Fear (2 > 0 && 2 < 5 is true)  ← this must not happen
+        // Rust bug: -3+5=2 → Fear (2 > 0 && 2 < 5 is true) ← this must not happen
         let mut w2 = world_with_party(&["pc"], 10);
         let ring_id = ItemId("ring-san".into());
 
@@ -906,8 +906,7 @@ mod tests {
         );
     }
 
-    // Fix 2 (final-review, sub-plan 5): TS `recordAction`'s cap check
-    // (character.ts:530-537) sits OUTSIDE the `budgeted` block, so it must fire
+    // `record_action`'s cap check sits OUTSIDE the `budgeted` block, so it must fire
     // even for a FREE call (budgeted = false) — e.g. a free fumble routed through
     // `attemptAction`. This proves a free call at-cap still triggers `end_turn`
     // (reconcile), and crucially does NOT increment `actions_this_round`.

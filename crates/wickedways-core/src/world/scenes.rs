@@ -1,6 +1,6 @@
 //! Scene behaviors: a native `SceneBehavior` trait resolved by `behavior_key`
 //! (mirrors `exit_behavior`). Behavior is compiled-in; only the scene's `state`
-//! serializes. Byte-exact port of the TS `Scene` / `SceneBehavior` contract,
+//! serializes. Pinned byte-exact by the conformance goldens: the `Scene` / `SceneBehavior` contract,
 //! extended (6c-2) so a scene script emits mechanic cues.
 use alloc::vec::Vec;
 use serde_json::Value;
@@ -11,9 +11,9 @@ use crate::world::mechanics::RoomView;
 
 /// A first-party scene behavior. `state` is the scene's serialized `Value`.
 pub trait SceneBehavior: Sync {
-    /// TS `preconditions.every` — read-only over the room view + scene state.
+    /// `preconditions.every` — read-only over the room view + scene state.
     fn can_play(&self, room: &RoomView, state: &Value) -> bool;
-    /// TS `script` — runs on a matched phase + passing preconditions; may mutate
+    /// `script` — runs on a matched phase + passing preconditions; may mutate
     /// its own `state`; returns the mechanic cues to emit (empty = none).
     fn run_script(&self, room: &RoomView, state: &mut Value) -> Vec<MechanicCue>;
 }

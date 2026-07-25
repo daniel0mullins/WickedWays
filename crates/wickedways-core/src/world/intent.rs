@@ -1,6 +1,6 @@
-//! The surface-facing `Intent` boundary type (Phase 2a).
+//! The surface-facing `Intent` boundary type.
 //!
-//! Mirrors `packages/play-runtime/src/intent.ts` 1:1 — the parser-produced
+//! Mirrors 1:1 — the parser-produced
 //! player intents. Distinct from `Command` (`world/command.rs`), which
 //! additionally carries internal lifecycle ops (startTurn/endTurn/nextPlayer/
 //! endCampaign/mechanicAction) and has no `wait`/`talk`; `Command` stays the
@@ -73,7 +73,7 @@ pub enum Intent {
     Wait,
 }
 
-/// Port of `intent.ts` `isTimeAdvancing`: move/take/drop/use/attack/wait
+/// Port of `isTimeAdvancing`: move/take/drop/use/attack/wait
 /// advance the turn; open/equip/unequip/talk are free. `talk` is a free
 /// interaction (dialogue spends no round) — a co-located NPC just answers.
 pub fn is_time_advancing(intent: &Intent) -> bool {
@@ -94,8 +94,8 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn intent_json_shapes_mirror_ts_intent_union() {
-        // packages/play-runtime/src/intent.ts:3-13, byte-for-byte field names.
+    fn intent_json_wire_shapes_are_stable() {
+        // Byte-for-byte field names — the surface/engine wire contract.
         let cases = [
             json!({ "kind": "move", "dir": "north" }),
             json!({ "kind": "take", "targetId": "i1" }),

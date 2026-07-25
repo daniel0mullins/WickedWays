@@ -1,5 +1,5 @@
 //! Test helpers for constructing minimal valid `World` instances.
-//! Extended by later tasks (Task 4+) as needed.
+//! Extended by later tasks as needed.
 use crate::world::afflictions::Afflictions;
 use alloc::{collections::BTreeMap, string::String, vec, vec::Vec};
 use serde_json::Value;

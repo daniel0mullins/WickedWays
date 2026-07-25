@@ -1,5 +1,6 @@
-//! Mechanic dispatch (collect-then-apply) + effect application. Byte-exact port of
-//! `dispatch.ts` (`runReducers`, `runDamageTransformers`) and `apply.ts` (`applyEffect`).
+//! Mechanic dispatch (collect-then-apply) + effect application. The reducer,
+//! damage-transformer, and effect-application behavior is pinned byte-exact by
+//! the conformance goldens.
 use alloc::format;
 use alloc::vec::Vec;
 
@@ -30,7 +31,7 @@ pub enum TurnPhase {
 }
 
 impl World {
-    /// TS `campaign[FIND_CHARACTER]` (campaign.ts:753-757): effects resolve against
+    /// `campaign[FIND_CHARACTER]`: effects resolve against
     /// the PARTY only and throw when the target is absent. Error text is not
     /// gate-observable (a ProceduralViolation aborts replay before comparison).
     fn require_party_member(&self, target: &CharacterId) -> Result<(), ProceduralViolation> {
@@ -44,7 +45,7 @@ impl World {
         }
     }
 
-    /// TS `[ADJUST_STAT]` (character.ts:359-362): `stats[stat] = max(0, stats[stat]+delta)`
+    /// `[ADJUST_STAT]`: `stats[stat] = max(0, stats[stat]+delta)`
     /// then reconcile. The sole mechanic-facing stat mutator.
     pub fn adjust_stat(
         &mut self,
@@ -63,7 +64,7 @@ impl World {
         Ok(())
     }
 
-    /// Route one effect to state (TS `applyEffect`). Damage/Heal/AdjustStat reconcile
+    /// Route one effect to state (`applyEffect`). Damage/Heal/AdjustStat reconcile
     /// (via `adjust_stat`); GrantImmunity/Cue/Status do not. Damage/Heal/AdjustStat/
     /// GrantImmunity are party-only (see `require_party_member`); Cue/Status do not
     /// target a character. GiveItem/SetVisible are NOT party-restricted (they act on
@@ -88,7 +89,7 @@ impl World {
             } => self.adjust_stat(&target, stat, delta, cat, cues),
             Effect::GrantImmunity { target, turns } => {
                 self.require_party_member(&target)?;
-                // TS `Math.max(0, Math.trunc(turns))`; `as i64` truncates toward
+                // `Math.max(0, Math.trunc(turns))`; `as i64` truncates toward
                 // zero, so after the 0-floor the cast IS the trunc (core-only —
                 // `f64::trunc` needs std).
                 let t = turns.max(0.0) as i64;
@@ -279,7 +280,7 @@ impl World {
         Ok(())
     }
 
-    /// Dispatch `on_action` for a budgeted action (TS `[DISPATCH_ACTION]`).
+    /// Dispatch `on_action` for a budgeted action (`[DISPATCH_ACTION]`).
     pub fn dispatch_action(
         &mut self,
         actor: &CharacterId,
@@ -339,7 +340,7 @@ impl World {
     }
 
     /// Fold post-mitigation damage through each mechanic's `modify_damage`
-    /// (TS `runDamageTransformers`). Clamp `>= 0` after each step; a `Final`
+    /// (`runDamageTransformers`). Clamp `>= 0` after each step; a `Final`
     /// result emits `"{key} fixed damage at {value}."` and short-circuits.
     pub fn run_damage_transformers(
         &mut self,
@@ -401,7 +402,7 @@ impl World {
                 }
             }
         }
-        // Task 13: exit behavior keys resolve native-first then catalog; a
+        // exit behavior keys resolve native-first then catalog; a
         // scripted (non-native) exit behavior is also shape-checked at load.
         for exit in self.exits.values() {
             if let Some(key) = &exit.behavior_key {
@@ -417,7 +418,7 @@ impl World {
                 }
             }
         }
-        // Task 14: victory condition keys resolve native-first then catalog; a
+        // victory condition keys resolve native-first then catalog; a
         // scripted (non-native) victory behavior is also shape-checked at load.
         for c in self
             .campaign
@@ -437,7 +438,7 @@ impl World {
                 }
             }
         }
-        // NPC dialogue behaviors (NPC sub-plan 2): every NPC carrying an
+        // NPC dialogue behaviors: every NPC carrying an
         // `npc_behavior_key` must resolve to an `Npc` behavior (catalog-only, via
         // `resolve_npc` — there is no native NPC concept), and that behavior is
         // shape-checked at load like the other scripted families. Because
@@ -458,7 +459,7 @@ impl World {
                 }
             }
         }
-        // Room scene behaviors (Task 3): every room scene's `behavior_key` must
+        // Room scene behaviors: every room scene's `behavior_key` must
         // resolve via `resolve_scene` (native first, then a catalog descriptor) —
         // fail fast like the item/mechanic/npc/exit/victory loops. A scripted
         // (non-native) scene is also shape-checked at load. Mirrors the TS
@@ -498,7 +499,7 @@ impl World {
         Ok(())
     }
 
-    /// Invoke a mechanic's custom action (TS `useMechanicAction` + `INVOKE_MECHANIC_ACTION`).
+    /// Invoke a mechanic's custom action (`useMechanicAction` + `INVOKE_MECHANIC_ACTION`).
     /// Budgeted: gate → run the op's action → apply effects → record the `mechanicAction`
     /// (tick + `on_action` + cap-check → end_turn).
     pub fn use_mechanic_action(
@@ -819,7 +820,7 @@ mod tests {
         use crate::world::mechanics::Effect;
         let mut w = world_with_party(&["pc"], 10); // party = [pc]
         let mut cues = Vec::new();
-        // A Damage effect at a non-party id must error (TS FIND_CHARACTER is party-only + throws).
+        // A Damage effect at a non-party id must error (effect targets are party-only).
         let r = w.apply_effect(
             Effect::Damage {
                 target: cid("nobody"),
@@ -861,7 +862,7 @@ mod tests {
         assert!(r.is_err());
     }
 
-    // -- GiveItem + SetVisible (NPC sub-plan 1) --
+    // -- GiveItem + SetVisible --
 
     #[test]
     fn apply_give_item_routes_by_source_list_and_leaves_world_items() {
@@ -1335,7 +1336,7 @@ mod tests {
         assert!(err.0.contains("dread"));
     }
 
-    // -- scripted mechanics (Task 9) --
+    // -- scripted mechanics --
 
     /// A Catalog carrying the scripted HH-dread shape under key "dread".
     fn cat_with_scripted_dread() -> Catalog {

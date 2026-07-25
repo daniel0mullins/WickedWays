@@ -1,12 +1,12 @@
-//! Affliction action gating — mirrors `afflictions.ts` `gate(isMove)` (:158-175)
-//! and `character.ts` `attemptAction` (:421-434) + `recordAction` (:515-538).
+//! Affliction action gating — mirrors `gate(isMove)`
+//! and `attemptAction` + `recordAction`.
 //!
 //! Three verdicts:
 //! - **Block** — a hard block (KO, Panic-on-non-move, Fear-on-move). The mutator
 //!   throws `ProceduralViolation(reason)`; NO history/cue/budget side-effects.
 //! - **Fizzle** — an active Confused status rolled a failure. The mutator records a
 //!   `{kind:"fumble", action, round}` history entry AND emits an `{kind:"action",
-//!   action:"fumble", actor, sound}` cue UNCONDITIONALLY, ticks the budget ONLY IF
+//! action:"fumble", actor, sound}` cue UNCONDITIONALLY, ticks the budget ONLY IF
 //!   the method is budgeted, then skips the action body (returns its early-ok).
 //! - **Allow** — the action proceeds normally.
 //!
@@ -24,7 +24,7 @@ use crate::world::ids::CharacterId;
 use crate::world::World;
 
 /// The verdict from gating an attempted action against active afflictions.
-/// Mirrors TS `GateVerdict` (`{ kind: "allow" } | { kind: "fizzle" } | { kind: "block", reason }`).
+/// Mirrors `GateVerdict` (`{ kind: "allow" } | { kind: "fizzle" } | { kind: "block", reason }`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GateVerdict {
     Allow,
@@ -35,7 +35,7 @@ pub enum GateVerdict {
 impl World {
     /// Verdict for an attempted action by `actor`. Hard blocks (KO, Panic-on-non-move,
     /// Fear-on-move) come first; an active Confused then rolls a fizzle. Draws the rng
-    /// ONLY in the Confused branch. Mirrors `afflictions.ts:158-175`.
+    /// ONLY in the Confused branch. Mirrors.
     pub fn gate(&mut self, actor: &CharacterId, is_move: bool) -> GateVerdict {
         let (ko, panic, fear, confused) = match self.characters.get(actor) {
             Some(c) => (
@@ -66,7 +66,7 @@ impl World {
 
     /// Record a Confused fizzle: push a `{kind:"fumble", action, round}` history entry,
     /// emit an `{kind:"action", action:"fumble", actor, sound}` cue UNCONDITIONALLY, and
-    /// tick the budget ONLY IF `budgeted`. Mirrors `character.ts` `recordAction` (:515-538)
+    /// tick the budget ONLY IF `budgeted`. Mirrors `recordAction`
     /// for the `{kind:"fumble"}` detail. Returns `Result` because it delegates to
     /// `record_action`, which can propagate a dispatch error from the cap-triggered
     /// `end_turn`.
@@ -98,7 +98,7 @@ impl World {
             },
             sound: None,
         });
-        // Cap check runs UNCONDITIONALLY (matching TS `recordAction`, character.ts:
+        // Cap check runs UNCONDITIONALLY (matching `recordAction`, character.ts:
         // 530-537, where the cap check sits outside the budgeted block) — a free
         // fumble (`budgeted = false`) must still end the turn if already at cap.
         self.record_action(

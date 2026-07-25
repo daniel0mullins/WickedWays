@@ -1,4 +1,4 @@
-//! Campaign-lifecycle actions issued by the GM (Phase 2c, sub-project A2).
+//! Campaign-lifecycle actions issued by the GM.
 //!
 //! Ports the GM/lifecycle commands beyond begin/end/nextPlayer. First up: `transferGM`
 //! (`Campaign.transfer`) — hand the GM role to another character. Additional lifecycle actions
@@ -68,7 +68,7 @@ impl World {
         Ok(())
     }
 
-    /// Adds a self-service joining player to the campaign. Mirrors the TS `resolver.ts` `joinCampaign`
+    /// Adds a self-service joining player to the campaign. Mirrors the `joinCampaign`
     /// case + `PlayerCharacter.joinCampaign`: only players may join, a duplicate id is rejected (it
     /// would let a joiner shadow or hijack an existing seat), and the character is inserted and
     /// appended to the party. The created character propagates to every replica through the sync

@@ -1,6 +1,6 @@
-//! Combat damage — byte-exact port of `combatant.ts` `attack` (:49-93) and
-//! `character.ts` `takeDamage` (:930-971), `#reconcile` (:330-340),
-//! `#floorAndSnapshot` (:308-317), and `onKnockOut` (:342-347).
+//! Combat damage — byte-exact port of `attack` and
+//! `takeDamage`, `#reconcile`,
+//! `#floorAndSnapshot`, and `onKnockOut`.
 //!
 //! `take_damage` is internal-only (never a Command — TS only calls it from `attack`).
 //! The sole rng draw in the combat path is the 4a Confused fizzle in `gate`.
@@ -22,7 +22,7 @@ use crate::world::snapshot::{CharacterKind, ItemSnapshot, LootSnapshot};
 use crate::world::World;
 
 impl World {
-    /// Durability write seam (mirrors TS `SET_DURABILITY`). The ONLY place
+    /// Durability write seam (mirrors `SET_DURABILITY`). The ONLY place
     /// `ItemSnapshot::Item.durability` is mutated. No clamp — callers pass
     /// `durability - 1`, and only non-broken items (durability >= 1) ever wear.
     pub fn set_durability(&mut self, item: &ItemId, value: i64) {
@@ -33,7 +33,7 @@ impl World {
 
     /// Floor base stats, recompute afflictions from effective stats, and fire
     /// `on_knock_out` exactly once on a false→true KO transition. Byte-exact port
-    /// of `character.ts` `#reconcile` (:330-340) + `#floorAndSnapshot` (:308-317).
+    /// of `#reconcile` + `#floorAndSnapshot`.
     pub fn reconcile(
         &mut self,
         actor: &CharacterId,
@@ -72,7 +72,7 @@ impl World {
 
     /// Hook fired once when KO newly latches during `reconcile`. Players: no-op. Mobs:
     /// deposit materials + drop inventory into a `${mob.id}:remains` loot box. Byte-exact
-    /// port of `Mob.onKnockOut` (`mob.ts:174-215`).
+    /// port of `Mob.onKnockOut`.
     fn on_knock_out(
         &mut self,
         actor: &CharacterId,
@@ -165,7 +165,7 @@ impl World {
     }
 
     /// Throw if the actor cannot see (unlit room and not `sees_in_dark`).
-    /// Mirrors `character.ts` `requireVisibleTarget` (:266-271): checks only the
+    /// Mirrors `requireVisibleTarget`: checks only the
     /// actor's own visibility, not the target's location.
     pub(crate) fn require_visible_target(
         &self,
@@ -184,8 +184,7 @@ impl World {
     }
 
     /// The actor's unarmed strike (stat + power). Default `{ Health, 1 }`, parsed
-    /// from the `natural_attack` snapshot field. Mirrors `combatant.ts` `naturalAttack`
-    /// (:37-39) / `DEFAULT_NATURAL_ATTACK` (:13). Mob overrides land in sub-plan 4c.
+    /// from the `natural_attack` snapshot field.
     fn natural_attack(&self, actor: &CharacterId) -> (StatType, f64) {
         #[derive(serde::Deserialize)]
         struct NaturalAttackJson {
@@ -208,8 +207,8 @@ impl World {
     /// Attack `target`. Gated (affliction) then dark-checked; each equipped
     /// non-broken weapon adds its modifier to its stat (else a natural strike);
     /// damage lands per stat in [Health, Energy, Sanity] order; weapons wear one
-    /// point; a budgeted `attack` is recorded. Byte-exact port of `combatant.ts`
-    /// `attack` (:49-93).
+    /// point; a budgeted `attack` is recorded. Behavior is pinned byte-exact by
+    /// the conformance goldens.
     pub fn attack(
         &mut self,
         actor: &CharacterId,
@@ -309,9 +308,8 @@ impl World {
         Ok(())
     }
 
-    /// Append a codex entry, first-write-wins per `(kind, key)`. Mirrors `codex.ts`
-    /// `record()` (:226-232) + `buildEntry`. `firstSeen.characterId`/`roomId` are
-    /// omitted when `by`/`room` are `None` (matching TS `by?.id` / `where?.id`).
+    /// Append a codex entry, first-write-wins per `(kind, key)`.
+    /// `firstSeen.characterId`/`roomId` are omitted when `by`/`room` are `None`.
     pub(crate) fn record_codex(
         &mut self,
         kind: &str,
@@ -346,7 +344,7 @@ impl World {
 
     /// Merge a `MaterialMap` additively into `campaign.materials`, then record one
     /// `{kind:"material"}` codex entry per component. Port of `DEPOSIT_MATERIALS`
-    /// (`campaign.ts:580-587`) + the material `RECORD_ENCOUNTER` in `Mob.onKnockOut`.
+    /// + the material `RECORD_ENCOUNTER` in `Mob.onKnockOut`.
     pub fn deposit_materials(&mut self, materials: &Value, by: Option<&str>, room: Option<&str>) {
         let Some(obj) = materials.as_object() else {
             return;
@@ -358,7 +356,7 @@ impl World {
         // 1. Additive merge.
         if let Some(pool) = self.campaign.materials.as_object_mut() {
             for (component, qty) in obj {
-                // TS `#materials[c] = (#materials[c] ?? 0) + qty` adds the raw number,
+                // `#materials[c] = (#materials[c] ?? 0) + qty` adds the raw number,
                 // fractional or not — read both sides as f64 (matching MaterialMap's
                 // `number` values). `as_i64` would silently drop a fractional qty to 0.
                 let add = qty.as_f64().unwrap_or(0.0);
@@ -384,7 +382,7 @@ impl World {
 
     /// Apply an incoming hit to `target`'s `attack_stat` after armor + mitigation,
     /// wear contributing armor, reconcile, and record a NON-budgeted `takeDamage`.
-    /// Byte-exact port of `character.ts` `takeDamage` (:930-971). Internal only.
+    /// Behavior is pinned byte-exact by the conformance goldens. Internal only.
     pub fn take_damage(
         &mut self,
         target: &CharacterId,
@@ -465,11 +463,10 @@ impl World {
             sound: None,
         });
 
-        // TS `takeDamage` tail-routes through `recordAction(this.takeDamage, …)`
-        // (character.ts:966), whose cap check (:535-537) runs even for this
-        // non-budgeted action: an at-cap target's turn auto-ends here. `budgeted=false`
-        // → no increment / no on_action, cap-check only (same free-action path as the
-        // sub-plan-5 free fumble).
+        // `take_damage` tail-routes through `record_action`, whose cap check runs
+        // even for this non-budgeted action: an at-cap target's turn auto-ends
+        // here. `budgeted=false` → no increment / no on_action, cap-check only
+        // (the same free-action path as a free fumble).
         self.record_action(
             target,
             false,

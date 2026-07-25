@@ -1,6 +1,7 @@
-//! Transient, seeded PRNG for the World. Bit-exact port of `conformance/seeded-rng.ts`
-//! (mulberry32). NOT serialized — the TS engine re-injects `rng` on load; the conformance
-//! harness seeds both sides identically via `replay_commands(.., seed)`.
+//! Transient, seeded PRNG for the World: mulberry32, bit-exact so replays are
+//! reproducible. NOT serialized — the rng is re-injected on load, and the
+//! conformance harness seeds both sides identically via
+//! `replay_commands(.., seed)`.
 
 /// mulberry32 state. All ops are u32 wrapping / logical shifts, matching JS `Math.imul`
 /// (`wrapping_mul`), `>>>` (`>>` on u32), and `| 0` / `>>> 0` (u32 truncation).
@@ -14,7 +15,7 @@ impl Rng {
         Rng { a: seed }
     }
 
-    /// Advance and return the next float in [0, 1). Equivalent to the TS `mulberry32` closure.
+    /// Advance and return the next float in [0, 1). Equivalent to the `mulberry32` closure.
     pub fn next_f64(&mut self) -> f64 {
         self.a = self.a.wrapping_add(0x6d2b_79f5);
         let mut t = (self.a ^ (self.a >> 15)).wrapping_mul(1 | self.a);
