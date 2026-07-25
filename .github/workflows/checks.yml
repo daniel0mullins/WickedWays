@@ -1,3 +1,7 @@
+# PROPOSED replacement for .github/workflows/checks.yml.
+# This session's credentials lack the GitHub 'workflow' scope, so the change
+# could not be pushed to .github/workflows/ directly. To apply: copy this file
+# over .github/workflows/checks.yml (drop these header lines) and commit.
 name: Checks
 
 # Rust gate for the engine + Dioxus web client. The shipped product is the Rust
@@ -11,15 +15,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # Same version as rust-toolchain.toml — an explicit ref here overrides the
+      # toolchain file, so the two must be bumped together or fmt/clippy drift.
+      - uses: dtolnay/rust-toolchain@1.94.1
         with:
           # wasm32 target + clippy for the Dioxus web client (wickedways-web) gate below.
           targets: wasm32-unknown-unknown
-          components: clippy
+          components: clippy, rustfmt
+      # Formatting gate: the whole workspace is rustfmt-clean.
+      - run: cargo fmt --all --check
       # Whole-workspace tests: the engine core, the assembler + author golden gates,
       # the differential sync gate, the server, and the Dioxus web client's host tests.
       - run: cargo test --workspace
-      # The Dioxus web client: clippy on host + wasm32, and the wasm build itself.
-      - run: cargo clippy -p wickedways-web --all-targets -- -D warnings
+      # Whole-workspace clippy. --all-features so the ts/conformance
+      # feature-gated code is linted too (--all-targets alone skips it).
+      # Strictness beyond default clippy comes from [workspace.lints] in the
+      # root Cargo.toml, which crates opt into via `lints.workspace = true`.
+      - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      # no_std gate: wickedways-core must keep building without `std`.
+      - run: cargo build -p wickedways-core --no-default-features
+      # The Dioxus web client on its shipped target: clippy + the wasm build.
       - run: cargo clippy -p wickedways-web --all-targets --target wasm32-unknown-unknown -- -D warnings
       - run: cargo build -p wickedways-web --target wasm32-unknown-unknown
+      # The shipped wasm cdylib on its real target, with the features it ships with.
+      - run: cargo clippy -p wickedways-wasm --target wasm32-unknown-unknown --features conformance -- -D warnings
