@@ -22,7 +22,7 @@ use std::sync::{Arc, Mutex};
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
 use axum::response::Response;
-use axum::routing::any;
+use axum::routing::{any, get};
 use axum::Router;
 use serde_json::Value;
 use wickedways_core::sync::{AuthorityOpts, Command, SyncAuthority};
@@ -458,9 +458,20 @@ impl Connection {
 
 // ── the axum WebSocket adapter ────────────────────────────────────────────────────────────────
 
-/// An axum router serving the room server at `/ws`.
+/// An axum router serving the room server at `/ws`, plus a `/healthz` liveness probe.
 pub fn router(server: Arc<RoomServer>) -> Router {
-    Router::new().route("/ws", any(ws_handler)).with_state(server)
+    Router::new()
+        .route("/ws", any(ws_handler))
+        // Lightweight liveness/readiness probe (200 "ok") for container orchestrators — the whole
+        // app is one binary, so a live socket means the client + `/ws` are both up. Kept ahead of
+        // the `WEB_DIR` fallback so it never resolves to `index.html`.
+        .route("/healthz", get(healthz))
+        .with_state(server)
+}
+
+/// Health probe: returns `200 OK` with a tiny body while the server is accepting connections.
+async fn healthz() -> &'static str {
+    "ok"
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(server): State<Arc<RoomServer>>) -> Response {

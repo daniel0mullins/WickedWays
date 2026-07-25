@@ -60,8 +60,11 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # ---- runtime: slim glibc base ----
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
+# curl is here for the platform health probe (Coolify runs `curl`/`wget` *inside* the container,
+# hitting the server's GET /healthz) — the slim base ships neither, so without this the probe can't
+# execute and the platform reports the container unhealthy despite a working app.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates \
+ && apt-get install -y --no-install-recommends ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
 
 # The server binary was cp'd out of the cache-mounted `target/` to `/usr/local/bin` in the builder.
