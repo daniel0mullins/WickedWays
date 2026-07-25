@@ -424,7 +424,7 @@ impl Parser {
         // and literal values. Only legal as the `map` operand of `has`/`lookup`
         // (enforced at load, engine-side); here it just builds the `MapLit` node.
         if name == "mapLit" {
-            if args.len() % 2 != 0 {
+            if !args.len().is_multiple_of(2) {
                 return Err(CompileError::ExprParse {
                     span: name_span,
                     message: "mapLit expects alternating key/value arguments (an even count)"
