@@ -4,82 +4,96 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A type-safe, turn-based tabletop RPG engine in TypeScript (`src/`). **`README.md` is the
-authoritative architecture document** — it covers the campaign turn loop, character hierarchy,
-combat/mitigation math, status effects, mobs/encounters, loot, crafting, durability, equipment
-slots, keys, and dialogue in detail. Read it before making non-trivial changes; this file only
-adds the operational and convention notes not spelled out there.
+A turn-based tabletop horror-RPG engine written in **Rust** (`crates/`), shipped as a
+wasm-compiled web client. **`README.md` is the authoritative architecture document** — read it
+before non-trivial changes; this file adds only the operational and convention notes not spelled
+out there.
+
+The workspace:
+
+| Crate | Role |
+|---|---|
+| `wickedways-core` | The engine: world state, turn loop, combat, mechanics, the ops DSL, sync. `no_std`-capable (`alloc`-only without the `std` feature). |
+| `wickedways-author` | Compiles the TOML campaign-author format into a description + catalog. |
+| `wickedways-assemble` | Assembles a description + catalog (+ seated party) into a genesis snapshot. |
+| `wickedways-wasm` | The wasm-bindgen boundary: the stateful `Authority` handle; JSON strings cross the seam. |
+| `wickedways-transport` | The multiplayer wire protocol (serde only, engine-free). |
+| `wickedways-server` | The axum room server: per-campaign table actors, seat auth, SQLite persistence. |
+| `wickedways-web` | The Dioxus web client (the shipped product; see the root `Dockerfile`). |
+
+**Legacy, pending deletion:** the TypeScript engine (`src/`), its packages (`packages/`), the TS
+conformance harness (`conformance/*.test.ts`, `conformance/fixtures/*.gen.test.ts`), and
+`landing/` (a separate PHP marketing page). None are built or gated; don't extend them.
 
 ## Commands
 
 ```bash
-pnpm checks           # lint + typecheck + test, in sequence — run this before declaring work done
-pnpm test             # vitest run (whole suite, once)
-pnpm typecheck        # tsc --noEmit
-pnpm lint:fix         # eslint --fix
-pnpm build            # compile to dist/ via tsconfig.build.json (excludes *.test.ts + test-utils)
-pnpm docs:dev         # VitePress docs site with hot reload (docs-site/)
-pnpm docs:build       # build the docs site (runs TypeDoc, then VitePress)
+cargo test --workspace                                          # all suites, incl. the golden gates
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo fmt --all --check
+cargo build -p wickedways-core --no-default-features            # the no_std gate
+cargo clippy -p wickedways-web --all-targets --target wasm32-unknown-unknown -- -D warnings
+cargo build -p wickedways-web --target wasm32-unknown-unknown   # the shipped client
+cargo clippy -p wickedways-wasm --target wasm32-unknown-unknown --features conformance -- -D warnings
+pnpm docs:build                                                 # VitePress docs site (docs-site/)
 ```
 
-Run a **single test file** or filter by name:
+Run one test file or filter by name:
 
 ```bash
-pnpm vitest run src/lib/character/mob.test.ts          # one file
-pnpm vitest run -t "escape"                            # tests whose name matches "escape"
-pnpm vitest src/lib/character/mob.test.ts              # watch a single file
+cargo test -p wickedways-core combat                 # tests whose path/name matches
+cargo test -p wickedways-assemble --test replay_gate # one integration-test binary
 ```
 
-Tests are co-located (`foo.ts` ↔ `foo.test.ts`); the cross-cutting suite is
-`src/integration.test.ts`. Shared stubs/helpers live in `src/test-utils.ts`.
+The toolchain is pinned in `rust-toolchain.toml`; CI (`.github/workflows/checks.yml`) must use
+the same version or fmt/clippy drift.
 
-## Repo layout gotcha
+## Goldens: Rust + TOML are the source of truth
 
-This repo holds **two unrelated codebases**. The TypeScript engine is `src/`. The `landing/`
-directory plus `vendor/`, `composer.json`, and `composer.lock` are a separate **PHP marketing
-landing page** (Slim + Mailchimp subscribe form) — they are not part of the engine, not built by
-`npm run build`, and unaffected by the TS tooling. `src/index.ts` is intentionally empty: there is
-no barrel export, so consumers import directly from `src/lib/...`.
+`conformance/fixtures/` holds the golden corpus — see its `README.md` for the file classes.
+Four gates pin engine/compiler/assembler/sync behavior against committed goldens, which are
+**regression pins of the Rust engine's own output**. When a change intentionally alters
+behavior, regenerate deliberately and review the diff like code:
 
-The `docs-site/` directory is the VitePress documentation site (prose guide +
-TypeDoc API reference) published to GitHub Pages; like `landing/`, it is separate
-from the engine and not built by `pnpm build`.
+```bash
+UPDATE_GOLDENS=1 cargo test -p wickedways-author   --test gate
+UPDATE_GOLDENS=1 cargo test -p wickedways-assemble --test goldens
+UPDATE_GOLDENS=1 cargo test -p wickedways-assemble --test replay_gate
+UPDATE_GOLDENS=1 cargo test -p wickedways-assemble --test sync_gate
+```
+
+Regeneration is deterministic — a second run must produce a zero git diff. Never hand-edit a
+golden.
 
 ## Conventions that affect edits
 
-- **Symbol seams for protected state.** Mutations that must not be forgeable are routed through
-  exported `Symbol`s in `src/lib/inventory.ts` rather than public setters: `CLAIM`/`HELD_BY`
-  (ownership), `SET_DURABILITY`, `EQUIP`/`UNEQUIP`, `DEPOSIT_MATERIALS`, `GRANT_IMMUNITY`,
-  `CONSUME_VIA_USE`, `STASH_DROP`, `PLACE`, `SET_ORIGIN`. When adding state that external code
-  shouldn't be able to spoof, follow this pattern (expose a getter, gate writes behind a symbol)
-  instead of adding a public mutable field.
-
-- **Action budget by method identity.** Only methods registered in a character's `isActionMap`
-  count against the per-round budget; methods register themselves *by identity*, and
-  `recordAction(fn)` ignores unregistered functions. Several actions (`craft`, `repair`, `equip`,
-  `unequip`, `takeDamage`) are deliberately **free** (no budget tick, no history). Preserve a
-  method's budgeted/free status when refactoring, and don't detach-and-call action methods
-  (`unbound-method` is disabled precisely because they're passed as identity tokens).
-
-- **Branded IDs** (`src/lib/brand.d.ts`) give `CampaignId`, `CharacterId`, `ItemId`, etc. distinct
-  compile-time identities. Generate/convert through the proper helpers; don't cast a raw `string`
-  into a branded id to silence the compiler.
-
-- **Illegal operations throw `ProceduralViolation`** — lifecycle guards are intentional, not
-  defensive noise. New illegal-state transitions should throw the same way.
-
-- **All randomness goes through an injected `rng: () => number`** (constructor option), and dice
-  via `roll(n, rng)` in `src/lib/dice.ts`. Keep new randomized logic on the injected rng so tests
-  stay deterministic with a seeded generator.
-
-## TypeScript strictness
-
-`strict` + `noUncheckedIndexedAccess` + `noImplicitOverride`, `NodeNext` resolution. Indexed access
-yields `T | undefined` — handle the undefined case rather than asserting. Overrides must carry the
-`override` keyword. Underscore-prefixed args/vars are exempt from the unused-vars rule (used for the
-`set occupants(_)` style). Tests relax the `no-unsafe-*` rules for `as unknown as X` stubs.
+- **The Behavior-trait pattern.** Every extensible family follows the same idiom: a trait
+  (`MechanicOp`, `ExitBehavior`, `SceneBehavior`, `VictoryConditionBehavior`, `ItemBehavior`,
+  `FormationBehavior`), a native `key → &'static dyn` registry lookup, a
+  `Resolved{Native,Scripted}` enum falling back to `catalog.behaviors` scripts, and load-time
+  shape validation in `validate_mechanics`. Extend this pattern rather than inline-matching new
+  behavior. One deliberate exception: item behaviors validate **weaker** than the rest — an
+  item's `behavior_key` doubles as its catalog descriptor key, so a missing behavior entry is
+  legal (never make `validate_mechanics` reject a plain item).
+- **Illegal operations throw `ProceduralViolation`** — lifecycle guards are intentional. New
+  illegal-state transitions should do the same. Some error strings are replay-observable; the
+  golden gates will catch accidental changes.
+- **All randomness flows through `World.rng`** (mulberry32, seeded). Never draw from anywhere
+  else — replay determinism and the golden gates depend on it. `Date`/wall-clock access does not
+  exist in the engine.
+- **`no_std` discipline in `wickedways-core`.** Use `alloc::` imports (`alloc::format!`,
+  `alloc::string::ToString`, …) — a bare `std::` path compiles under default features but breaks
+  the `--no-default-features` build (CI gates it).
+- **Serialization stability.** Snapshot/wire shapes are pinned by the golden gates and saved
+  campaigns. Field renames or serde-attribute changes on snapshot types are behavior changes —
+  expect golden diffs and treat them accordingly.
+- **Lints.** The workspace lint policy lives in the root `Cargo.toml` (`[workspace.lints]`,
+  individually enabled pedantic subset); every crate opts in via `lints.workspace = true`. Keep
+  `-D warnings` clean; a new `#[allow]` needs a one-line justification comment.
 
 ## After adding a feature
 
-Per the project's standing convention, update `README.md` (and any relevant TSDoc) to reflect new
-mechanics before considering the work done — the README is treated as living documentation.
+Update `README.md` (and relevant rustdoc) to reflect new mechanics before considering the work
+done — the README is living documentation. If the feature changes engine-observable behavior,
+regenerate the goldens deliberately (see above) and include the reviewed diff in the same
+change.

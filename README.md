@@ -2,12 +2,18 @@
 
 ![Wicked Ways](src/assets/images/wicked+ways.png)
 
-A type-safe, turn-based tabletop RPG engine written in TypeScript. Wicked Ways models
-a party-based horror campaign: a Game Master and player characters take turns across a
-procedurally generated dungeon, fighting mobs, looting containers, talking to NPCs, and
-accumulating damage across three interlocking stats. Game rules are enforced both by the
-type system (branded IDs, hidden state) and at runtime (lifecycle guards that throw on
-illegal moves).
+A turn-based tabletop RPG engine written in Rust, shipped as a wasm web client.
+Wicked Ways models a party-based horror campaign: a Game Master and player characters
+take turns across a dungeon, fighting mobs, looting containers, talking to NPCs, and
+accumulating damage across three interlocking stats. Game rules are enforced by the
+type system (branded ids, closed effect enums) and at runtime (lifecycle guards that
+throw `ProceduralViolation` on illegal moves), and pinned by a golden-replay test
+corpus.
+
+The engine began life in TypeScript and has fully cut over to Rust; the remaining TS
+tree (`src/`, `packages/`) is legacy pending deletion. Sections below describing the
+game's *rules* apply to the engine as shipped; sections marked **Historical** describe
+the retired TS implementation.
 
 ## Documentation site
 
@@ -22,6 +28,35 @@ pnpm docs:build     # production build into docs-site/.vitepress/dist
 ```
 
 It deploys automatically on every push to `main` via `.github/workflows/docs.yml`.
+
+## Architecture: the Rust workspace
+
+Everything that ships lives in `crates/`:
+
+| Crate | Role |
+|---|---|
+| `wickedways-core` | The engine: world state, turn loop, combat, mechanics, the ops DSL, sync. `no_std`-capable (`alloc`-only without the `std` feature). |
+| `wickedways-author` | Compiles the TOML campaign-author format into a campaign description + behavior catalog. |
+| `wickedways-assemble` | Assembles a description + catalog (+ seated party) into a genesis snapshot. |
+| `wickedways-wasm` | The wasm-bindgen boundary: a stateful `Authority` handle; only JSON strings cross the seam. |
+| `wickedways-transport` | The multiplayer wire protocol (serde only, engine-free). |
+| `wickedways-server` | The axum room server: per-campaign table actors, seat-ownership auth, SQLite persistence. |
+| `wickedways-web` | The Dioxus web client — the shipped product (see the root `Dockerfile`). |
+
+The content pipeline: a campaign is authored in TOML, compiled by
+`wickedways-author` into a **description** (world layout) plus a **catalog** (item
+descriptors + scripted behaviors), assembled by `wickedways-assemble` into a
+**genesis snapshot**, and then driven by `wickedways-core` — single-player through
+the wasm `Authority`, multiplayer through the room server's `SyncAuthority`.
+
+Behavior is pinned by four golden gates run under `cargo test --workspace`
+(author, assembler, sync deltas, and a step-by-step engine replay of every
+committed command/facade recording). The goldens are regression pins of the Rust
+engine's own output — regenerate deliberately with `UPDATE_GOLDENS=1`, review the
+diff like code, and commit it; see `conformance/fixtures/README.md`. Formatting,
+lints (workspace-wide `-D warnings`), the `no_std` build, and the wasm targets are
+gated in CI (`.github/workflows/checks.yml`, toolchain pinned by
+`rust-toolchain.toml`).
 
 ## Core concepts
 
@@ -809,7 +844,7 @@ match wins (first authored); otherwise the highest-scoring fuzzy match (ties bre
 authored); otherwise — for a bare `talk`, or when nothing matches — the `default` entry.
 
 A resolved entry emits its `response` (a text cue) **and** its `effects`, run through the same
-`Effect` pipeline as scene mechanics (including sub-plan 1's `giveItem`/`setVisible`) and subject to
+`Effect` pipeline as scene mechanics (including `giveItem`/`setVisible`) and subject to
 the same `MAX_EFFECTS_PER_EVENT = 64` cap. The `once` flag latches the **effects only**: a `once`
 entry fires its effects a single time, recorded in the NPC's per-instance `npcState`
 (`{ "onceFired": { … } }`) that serializes with the character — so re-talking after the hand-off
@@ -899,6 +934,8 @@ const restored = deserializeCampaign(snap2, { registry });
 ```
 
 ## Campaign authoring
+
+> **Historical (TypeScript engine).** This section documents the retired TS authoring API (typed registry, fluent template builder). Campaigns are now authored in TOML and compiled by `wickedways-author` — see *Architecture* above and the `conformance/fixtures/*.toml` examples.
 
 The authoring layer lets you define a reusable campaign **template** — a complete
 world with rooms, exits, mobs, loot, material caches, archetypes, and starting
@@ -1131,11 +1168,13 @@ shifts — authors should treat item order as stable within a template.
 The campaign id (`campaign:<title>`) is mutable: a multi-campaign host may call `instantiate`
 and override the id for global uniqueness without affecting any other entity id.
 
-Runtime-minted entities (status effects, transient spawn, etc. — sub-plan 4c-2 onward) derive
+Runtime-minted entities (status effects, transient spawn, etc.) derive
 their ids from mint context rather than authored names, keeping the scheme consistent while
 accommodating entities that have no authored description.
 
 ## Swappable campaigns & play surfaces
+
+> **Historical (TypeScript engine).** This section documents the retired TS `packages/` runtime (manifests, play surfaces). The shipped client is the Dioxus app in `crates/wickedways-web`, which carries the CRT and point-and-click surfaces natively.
 
 The [`@wickedways/play`](packages/play/README.md) browser experience is built on three
 workspace packages that keep the runtime, the surface implementations, and the campaign
@@ -1146,7 +1185,7 @@ the full topology and per-surface documentation.
 
 | Package | Role |
 |---------|------|
-| `@wickedways/play-runtime` | Surface-independent runtime, audio engine, launcher, and **all contracts**: `CampaignManifest`, `PlaySurface`, `Theme`, `AudioDirector`, `SoundPack`, `CampaignAudio`. Zero Hollow-House / surface references. Its `GameSession` now delegates every turn to the Rust WASM `Authority` (see *Single-player cutover (Phase 2)*); the old `session.campaign` live-object getter is gone — surfaces and audio read the JSON `ViewModel`. |
+| `@wickedways/play-runtime` | Surface-independent runtime, audio engine, launcher, and **all contracts**: `CampaignManifest`, `PlaySurface`, `Theme`, `AudioDirector`, `SoundPack`, `CampaignAudio`. Zero Hollow-House / surface references. Its `GameSession` now delegates every turn to the Rust WASM `Authority` (see *The stateful WASM `Authority`* below); the old `session.campaign` live-object getter is gone — surfaces and audio read the JSON `ViewModel`. |
 | `@wickedways/play-surface` | Both play surfaces under one package, subpath-exported as `@wickedways/play-surface/crt` (CRT terminal) and `@wickedways/play-surface/pnc` (point-and-click). A `src/shared/` module (Narrator, map-view) is reused by both surfaces. |
 | `@wickedways/campaigns` | All player-facing campaigns under `src/<slug>/`; subpath-exported as `@wickedways/campaigns/hollow-house` and `@wickedways/campaigns/seed`. |
 | `@wickedways/play` | Thin deploy shell — registers campaigns + surfaces, calls `bootLauncher`. `Dockerfile` and `nginx.conf` ship from here. |
@@ -1444,7 +1483,7 @@ const replica = SyncCoordinator.join({ registry, transport });
 replica.start();
 ```
 
-**Rust port (Phase 2c, in progress).** The sync layer and room server are being ported to Rust
+**Rust port (landed).** The sync layer and room server are ported to Rust
 alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). Landed so far:
 
 - **The sync core** in [`crates/wickedways-core/src/sync/`](crates/wickedways-core/src/sync/): the
@@ -1515,6 +1554,8 @@ the sync core.
   `onTurnStart` / `onTurnEnd` for future passive effects.
 
 ## Tech stack & workflow
+
+> **Historical (TypeScript engine).** TS-era tooling for the legacy tree. The shipped engine builds with cargo — see *Architecture* above and `CLAUDE.md` for the current commands.
 
 - **Language:** TypeScript in `strict` mode with `NodeNext` module resolution and the extra
   `noUncheckedIndexedAccess` / `noImplicitOverride` guards.
@@ -1841,23 +1882,16 @@ have `avPolicy.enabled: true` (the demo genesis uses `DEFAULT_AV_POLICY`).
 **Symmetric-NAT note.** If two tabs on the same machine don't connect (rare but
 possible in some corp VPN setups), adding a TURN entry to `iceServers` resolves it.
 
-### Rust core (migration)
+### The Rust engine core, module by module
 
-The engine is being re-authored as a Rust core (`crates/wickedways-core`) compiled to
-WASM (`crates/wickedways-wasm`) per `docs/superpowers/specs/2026-06-30-rust-engine-core-design.md`.
-Phase 0 ports pure-leaf math (`roll`, the stat-mitigator cycle, the damage-mitigation
-formula) and proves the toolchain. Boundary types are defined in Rust and generated to
-`generated/bindings/` via ts-rs (do not hand-edit). Run the Phase 0 gate with:
-
-    pnpm run checks:phase0
-
-**Phase 2 has landed:** the single-player runtime now executes in the Rust core via a
-stateful WASM `Authority` — see *Single-player cutover (Phase 2)* below. Its acceptance
-gate is `pnpm run checks:phase2`.
+The sections below document `crates/wickedways-core`'s subsystems in detail — the
+mechanics op-registry, keyed exits, scenes, victory conditions, formations, the ops
+DSL, and the sync layer. They are the authoritative deep-dive on the engine as
+shipped.
 
 #### Mechanics: the op-registry (`crates/wickedways-core/src/world/mechanics/`)
 
-Sub-plan 6a ports the campaign mechanics system's extension points. On the Rust side,
+The campaign mechanics system's extension points. On the Rust side,
 mechanics are still **data** — a campaign's `{ key, state }` list (`campaign.mechanics`)
 — but instead of rebinding an author-registered TS closure, each `key` resolves to a
 compiled-in, stateless `impl MechanicOp` via the static lookup `mechanic_op(key)`; an
@@ -1897,12 +1931,12 @@ through the `Command::MechanicAction { mechanic_key, action_key }` command / the
 `INVOKE_MECHANIC_ACTION` — which is a **budgeted** action: it gates, runs the action's
 effects through `apply_all`, records an `ActionHistoryEntry::MechanicAction`, then
 ticks the budget and dispatches `on_action` via the shared `record_action` path (same
-signature as every other budgeted action). Scripted (Rhai-driven) mechanics remain out
-of scope and arrive in sub-plan 6b; until then every op is native, first-party Rust.
+signature as every other budgeted action). Data-driven mechanics are the ops DSL's
+`BehaviorScript::Mechanic` family — see *Scripted behaviors (the ops DSL)*.
 
 #### Keyed exits: the `ExitBehavior` registry (`crates/wickedways-core/src/world/exits.rs`)
 
-Sub-plan 6c-1 ports keyed-door traversal the same way sub-plan 6a ported mechanics: an
+Keyed-door traversal follows the same registry idiom as mechanics: an
 exit's `behavior_key` resolves to a compiled-in, stateless `impl ExitBehavior` via the
 static lookup `exit_behavior(key)`, rather than rebinding an author-registered TS
 closure; an unrecognized key surfaces as a `ProceduralViolation` at the `go` call site.
@@ -1920,12 +1954,12 @@ behavior, `conformance:keyed-door`, gates on `state.unlocked` or the actor holdi
 `"brass-key"`-keyed item, and flips `state.unlocked = true` (once, with narration) the
 first time a keyed actor passes.
 
-The `ViewModel`'s `exits`/`lockedDoors` fields remain deferred — the registry drives
-traversal, but nothing yet projects exit/lock state out to a renderer.
+The `ViewModel` projects exit/lock state to renderers via its `exits` /
+`lockedDoors` fields.
 
 #### Scenes: native `SceneBehavior` + data-driven `BehaviorScript::Scene` (`crates/wickedways-core/src/world/scenes.rs`)
 
-Sub-plan 6c-2 ports room-attached scene hooks the same way keyed exits were ported: a
+Room-attached scene hooks follow the same idiom as keyed exits: a
 scene's `behavior_key` resolves to a compiled-in, stateless `impl SceneBehavior` via the
 static lookup `scene_behavior(key)`; an unrecognized key surfaces as a
 `ProceduralViolation` at the firing site. `SceneBehavior` exposes `can_play(room, state)`
@@ -1935,7 +1969,7 @@ emit (`Vec<MechanicCue>`, empty meaning none) — mirroring the TS `Scene`'s
 `preconditions`/`script` contract, extended so the script can emit cues (the TS `script`
 was previously `void`-returning).
 
-**Scenes are also authorable as data (NPC sub-plan 3).** `resolve_scene(key, cat)` resolves
+**Scenes are also authorable as data.** `resolve_scene(key, cat)` resolves
 a scene's `behavior_key` **native-first**: a compiled-in `SceneBehavior` wins
 (`ResolvedScene::Native`), and only if no native behavior is registered does it fall back to
 a catalog [`BehaviorScript::Scene`](crates/wickedways-core/bindings/BehaviorScript.ts)
@@ -1994,7 +2028,7 @@ resolves via neither the native registry nor a catalog descriptor.
 
 #### Encounter spawning: the `FormationBehavior` registry (`crates/wickedways-core/src/world/formations.rs`)
 
-Sub-plan 6c-3 ports the roving-encounter table the same way keyed exits and scenes were
+The roving-encounter table follows the same idiom as keyed exits and scenes: it is
 ported: a registered formation's `behaviorKey` resolves to a compiled-in, stateless
 `impl FormationBehavior` via the static lookup `formation(key)`, rather than rebinding an
 author-registered TS factory. `FormationBehavior` exposes a single method,
@@ -2037,9 +2071,9 @@ any turn-end cues.
 same fixed mob), and `spawnModifier` is modeled as an integer rather than a fractional
 multiplier.
 
-#### Single-player cutover (Phase 2): the stateful WASM `Authority`
+#### The stateful WASM `Authority` (single-player runtime)
 
-Phase 2 moves the **single-player runtime** onto the Rust core. `GameSession`
+The **single-player runtime** rides the Rust core. `GameSession`
 (`packages/play-runtime/src/session.ts`) no longer runs the TypeScript engine directly — it
 delegates every turn to a stateful WASM handle, the Rust `Authority`
 (`crates/wickedways-wasm/src/authority.rs`; distinct from the multiplayer sync `Authority`
