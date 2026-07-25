@@ -1,9 +1,6 @@
-//! The [`apply`] delta applier — the replica half of the sync core (Phase 2c, sub-project B).
+//! The [`apply`] delta applier — the replica half of the sync core.
 //!
-//! Mirrors `src/lib/sync/delta-applier.ts`, but the Rust port is dramatically simpler. The TS
-//! applier needs a two-pass hydrate (construct created entities in id-resolvable order, then wire
-//! cross-references) because the TS campaign is a graph of **live objects holding object
-//! references**. The Rust [`World`] is a flat, id-keyed store of snapshots — entities reference
+//! Deliberately trivial: the [`World`] is a flat, id-keyed store of snapshots — entities reference
 //! each other by id, never by pointer — so applying a [`Delta`] is just: insert every
 //! created/changed entity into its map, remove every `removed` id, and replace the campaign core +
 //! codex. No ordering constraint, no hydration, no rng. A replica converges structurally because
@@ -39,7 +36,7 @@ pub fn apply(replica: &mut World, delta: &Delta) {
     }
 
     // removed — a bare id whose entity type is not tagged, so try each collection (only the owner
-    // removes). Mirrors the TS applier, where removal is a near-no-op on the replica's maps.
+    // removes).
     for id in &delta.removed {
         replica.rooms.remove(&RoomId(id.clone()));
         replica.characters.remove(&CharacterId(id.clone()));

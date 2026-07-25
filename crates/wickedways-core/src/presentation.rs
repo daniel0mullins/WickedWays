@@ -1,5 +1,5 @@
-//! Presentation cues — the engine emits intent; the surface owns presentation
-//! (invariant 6). JSON byte-compatible with `src/lib/presentation.ts`.
+//! Presentation cues — the engine emits intent; the surface owns presentation.
+//! JSON byte-compatible with the cue format the conformance goldens pin.
 use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 /// Opaque campaign-supplied asset reference (sound/image). Passthrough — the
-/// engine never inspects it. Never emitted by sub-plan 2 (seed has no sounds).
+/// engine never inspects it. The seed campaign defines no sounds.
 pub type AssetRef = serde_json::Value;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

@@ -1,9 +1,9 @@
-//! Movement primitives: `go` (direction-based) and `move_to` (room-id-based).
-//! Mirrors `src/lib/character/character.ts` `go` (:1047-1063) and `move`/`#enterRoom`
-//! (:1018-1032) plus `src/lib/room.ts` `isLit` (:113-211).
+//! Movement primitives: `go` (direction-based) and `move_to` (room-id-based),
+//! plus room lighting (`is_lit`). Behavior is pinned byte-exact by the
+//! conformance goldens.
 //!
 //! Scenes fire on room enter/exit via the `SceneBehavior` registry
-//! (`crate::world::scenes::scene_behavior`, sub-plan 6c-2): exit-phase scenes of
+//! (`crate::world::scenes::scene_behavior`): exit-phase scenes of
 //! the departed room fire before the occupant is removed, enter-phase scenes of
 //! the entered room fire after the occupant is added and before the visibility
 //! cue. An unregistered scene `behavior_key` surfaces as `Err(ProceduralViolation)`.
@@ -19,8 +19,8 @@ use alloc::format;
 use alloc::vec::Vec;
 
 impl World {
-    /// Whether `room` is currently lit. Mirrors `src/lib/room.ts` `get isLit`
-    /// (:206-212): a non-dark room is always lit; a dark room is lit iff it holds
+    /// Whether `room` is currently lit:
+    /// a non-dark room is always lit; a dark room is lit iff it holds
     /// a non-broken placed light source, OR an occupant carries an equipped,
     /// non-broken light. Needs `&Catalog` to read each item's `emits_light` and
     /// `max_durability` (broken-state).
@@ -31,8 +31,7 @@ impl World {
         if !r.dark {
             return true;
         }
-        // Placed light sources: any non-broken source lights the room
-        // (TS `for (const light of #lightSources.values()) if (!light.isBroken)`).
+        // Placed light sources: any non-broken source lights the room.
         for id in &r.light_source_ids {
             if let Some(snap) = self.items.get(id) {
                 if !self.item_is_broken(snap, cat) {
@@ -40,14 +39,14 @@ impl World {
                 }
             }
         }
-        // Occupant-carried light (TS `occupants.some((o) => o.hasLight)`).
+        // Occupant-carried light: any occupant with an equipped light counts.
         r.occupant_ids
             .iter()
             .any(|occ| self.character_has_light(occ, cat))
     }
 
     /// True when `char_id` has an equipped, non-broken, light-emitting item in a
-    /// hand slot. Mirrors `character.ts` `get hasLight` (:275-281): iterate the
+    /// hand slot: iterate the
     /// left/right hand slots; an item counts iff its descriptor `emitsLight` is
     /// `true` and the instance is not broken.
     pub fn character_has_light(&self, char_id: &CharacterId, cat: &Catalog) -> bool {
@@ -75,7 +74,7 @@ impl World {
         false
     }
 
-    /// Mirror of `Item.isBroken` (`inventory.ts:403-405`):
+    /// Broken test:
     /// `maxDurability !== undefined && durability === 0`. `max_durability` lives on
     /// the catalog descriptor; `durability` is the per-instance snapshot value.
     fn item_is_broken(&self, snap: &crate::world::snapshot::ItemSnapshot, cat: &Catalog) -> bool {
@@ -110,7 +109,7 @@ impl World {
     }
 
     /// Evaluate the exit in `dir` from the actor's current room, then call
-    /// `move_to`. Mirrors TS `Character.go` (:1047-1063).
+    /// `move_to`. Behavior is pinned byte-exact by the conformance goldens.
     ///
     /// - No exit in that direction → emits "You can't go that way." mechanic cue,
     ///   returns `Ok(())`, does NOT tick the budget.
@@ -172,8 +171,8 @@ impl World {
         let b = exit.endpoint_ids[1].clone();
         let dest = if a == here { b } else { a };
 
-        // A behavior-keyed exit: resolve the registry (sub-plan 6) and evaluate
-        // canPass / runScript-or-passMessage before moving. Mirrors TS `go` (:4-6).
+        // A behavior-keyed exit: resolve the registry and evaluate
+        // canPass / runScript-or-passMessage before moving.
         if let Some(key) = exit.behavior_key.clone() {
             let resolved =
                 crate::world::exits::resolve_exit_behavior(&key, cat).ok_or_else(|| {
@@ -226,8 +225,8 @@ impl World {
     /// there, a behavior-free exit, or a passable keyed exit).
     ///
     /// A **pure** query — it does NOT run the exit's `run_script` or mutate door state. The sync
-    /// `move` command carries a room id and lands via [`move_to`](Self::move_to), which (mirroring
-    /// TS `Character.move(room)`) performs no door check; the surfaces call this to gate a `move` the
+    /// `move` command carries a room id and lands via [`move_to`](Self::move_to), which
+    /// performs no door check; the surfaces call this to gate a `move` the
     /// way the single-seat [`go`](Self::go) does, so a locked door still bars the way client-side.
     pub fn exit_block_reason(
         &self,

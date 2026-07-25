@@ -1,9 +1,7 @@
-//! ViewModel projections — widened (sub-plan 3a).
+//! ViewModel projections — the widened `ViewModel` / `view`: item display,
+//! loot, inventory, scope, occupant health, health/sanity status fields.
 //!
-//! `ViewModel` / `view` (sub-plan 3a): item display, loot, inventory, scope,
-//! occupant health, health/sanity status fields.
-//!
-//! Mirrors `packages/play-runtime/src/viewmodel.ts:60-167`.
+//! The projection's shape and ordering are pinned by the conformance goldens.
 use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -31,7 +29,7 @@ pub struct ThinRoom {
     pub is_lit: bool,
 }
 
-/// A passable exit as the surface lists it. Mirrors `ExitView` (viewmodel.ts:27).
+/// A passable exit as the surface lists it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -40,7 +38,7 @@ pub struct ExitView {
     pub to_name: String,
 }
 
-/// An impassable (locked) exit. Mirrors `LockedDoorView` (viewmodel.ts:28).
+/// An impassable (locked) exit.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -49,10 +47,9 @@ pub struct LockedDoorView {
     pub dir: crate::world::direction::Direction,
 }
 
-// ─── sub-plan 3a: widened ViewModel ──────────────────────────────────────────
+// ─── widened ViewModel ────────────────────────────────────────────────────────
 
 /// A named entity that can appear in the scope (occupant, item, loot container).
-/// Mirrors `ScopeEntity` in `viewmodel.ts`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -156,11 +153,7 @@ pub struct RecipeView {
     pub affordable: bool,
 }
 
-/// The widened ViewModel (sub-plan 3a).
-///
-/// `exits` / `lockedDoors` / `status.locationName` shipped in Phase-2 Task 6.
-/// `defeated` on occupants shipped in sub-plan 4a. `caches` / `recipes` / `materials`
-/// shipped with crafting.
+/// The widened ViewModel.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -185,7 +178,7 @@ pub struct ViewModel {
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-/// `aliasesFor(behaviorKey, name, aliases)` — mirror of `viewmodel.ts:aliasesFor`.
+/// Alias list for a scope entity.
 ///
 /// Returns a deduplicated list: lowercased `name` first, then any catalog alias
 /// entries for `behavior_key`. If `behavior_key` is `None` (keys), returns just
@@ -196,9 +189,9 @@ fn aliases_for(behavior_key: Option<&str>, name: &str, catalog: &Catalog) -> Vec
     if let Some(key) = behavior_key {
         if let Some(table_aliases) = catalog.aliases.get(key) {
             for a in table_aliases {
-                // Catalog alias entries are pushed verbatim (NOT lowercased) —
-                // mirrors TS `[...new Set([name.toLowerCase(), ...fromTable])]`
-                // where fromTable is spread as-is.
+                // Catalog alias entries are pushed verbatim (NOT lowercased):
+                // only the leading name is lowercased. Pinned by the
+                // conformance goldens.
                 if !out.contains(a) {
                     out.push(a.clone());
                 }
@@ -243,7 +236,6 @@ fn item_scope_entity(
 
 impl World {
     /// Returns `true` if the character is currently KO.
-    /// Mirrors `o.status.includes(Status.KO)` in `viewmodel.ts`.
     pub fn is_ko(&self, id: &crate::world::ids::CharacterId) -> bool {
         self.characters.get(id).is_some_and(|c| {
             c.afflictions
@@ -251,10 +243,10 @@ impl World {
         })
     }
 
-    /// Mirrors `mob.ts:101-104` (`seesInDark === lightAverse`): a character sees in
-    /// the dark iff it is light-averse. Read only when the actor acts (attack/loot in
-    /// the dark); mobs don't act in Phase 1, so this is exercised by unit tests here
-    /// and by the differential gate in sub-plan 6 (mob turns).
+    /// A character sees in the dark iff it is light-averse
+    /// (`seesInDark === lightAverse`). Read only when the actor acts
+    /// (attack/loot in the dark); exercised by unit tests here and by the
+    /// mob-turn conformance gate.
     pub fn sees_in_dark(&self, actor: &crate::world::ids::CharacterId) -> bool {
         self.characters
             .get(actor)
@@ -262,9 +254,8 @@ impl World {
             .unwrap_or(false)
     }
 
-    /// Build the widened ViewModel (sub-plan 3a).
-    ///
-    /// Mirrors `view()` in `packages/play-runtime/src/viewmodel.ts:60-167`.
+    /// Build the widened ViewModel. Field contents and ordering are pinned by
+    /// the conformance goldens.
     ///
     /// - `occupants`: room occupants minus the active character, with `health`
     ///   from `effective_stat(occupant, Health, cat)`.
@@ -272,9 +263,9 @@ impl World {
     ///   `contents` resolved to `ScopeEntity`.
     /// - `inventory`: player's `item_ids` + `key_ids` as `ScopeEntity`;
     ///   `equipped_names` = names of items in the equipment slot map (in
-    ///   BTreeMap iteration order, no dedup — matches the TS straight `.map`);
+    ///   BTreeMap iteration order, no dedup);
     ///   `slots` from `inventory.slots`.
-    /// - `scope` (order matches TS exactly):
+    /// - `scope` (order is pinned):
     ///   occupants ++ loot-contents ++ inventory items ++ keys ++ loot containers.
     /// - `status`: `turn`, `max_turns`, `health`, `sanity` for active character.
     pub fn view(
@@ -297,9 +288,9 @@ impl World {
 
         let is_lit = self.is_lit(&room_id, cat);
 
-        // ── exits / lockedDoors (Phase 2 parity) ───────────────────────────
+        // ── exits / lockedDoors ────────────────────────────────────────────
         // Canonical order: alphabetical by direction key (BTreeMap iteration);
-        // the TS oracle sorts identically (viewmodel.ts, Phase-2 ordering decision).
+        // this ordering is pinned by the conformance goldens.
         let actor_view = self
             .character_view(&active_id, cat)
             .ok_or_else(|| ProceduralViolation("active character not found".into()))?;
@@ -318,9 +309,9 @@ impl World {
                 None => true,
                 Some(key) => {
                     // Resolve native FIRST, then scripted catalog behaviors —
-                    // identical to the `go` path (movement.rs:104) so the view's
-                    // classification matches the TS oracle's `exit.canPass(pc)`
-                    // for both native and scripted (catalog) doors.
+                    // identical to the `go` path in movement.rs, so the view's
+                    // passability classification agrees with movement for both
+                    // native and scripted (catalog) doors.
                     let resolved = crate::world::exits::resolve_exit_behavior(key, cat)
                         .ok_or_else(|| {
                             ProceduralViolation(format!("Exit behavior '{key}' is not registered."))
@@ -438,7 +429,7 @@ impl World {
             .filter_map(|snap| item_scope_entity(snap, cat).ok())
             .collect();
 
-        // ── equipped_names (BTreeMap order, no dedup — matches TS straight map) ─
+        // ── equipped_names (BTreeMap order, no dedup — pinned ordering) ────
         let mut equipped_names: Vec<String> = Vec::new();
         for item_id in active_char.equipment.values() {
             if let Some(snap) = self.items.get(item_id) {
@@ -475,7 +466,7 @@ impl World {
             })
             .collect();
 
-        // ── scope (mirrors TS order exactly) ──────────────────────────────────
+        // ── scope (ordering pinned by the conformance goldens) ────────────────
         // occupants ++ lootContentScope ++ items ++ keys ++ lootScope
         let loot_content_scope: Vec<ScopeEntity> =
             loot.iter().flat_map(|lv| lv.contents.clone()).collect();
@@ -578,7 +569,7 @@ impl World {
         scope.extend(inv_items.clone());
         scope.extend(inv_keys.clone());
         scope.extend(loot_scope);
-        // Crafting scope entities append after the TS-mirrored ordering.
+        // Crafting scope entities append after the pinned base ordering.
         scope.extend(caches.clone());
         scope.extend(recipe_scope);
 
@@ -625,7 +616,7 @@ impl World {
 
 #[cfg(test)]
 mod tests {
-    // ── widened ViewModel (sub-plan 3a) tests ─────────────────────────────────
+    // ── widened ViewModel tests ───────────────────────────────────────────────
 
     use crate::stats::StatType;
     use crate::world::descriptor::{Catalog, ItemDescriptor, ItemProperties, ItemType, SlotKind};
@@ -1003,7 +994,7 @@ mod tests {
 
     #[test]
     fn view_key_in_inventory_not_equippable_not_usable_droppable_true() {
-        // TS `createKey` omits `droppable` (undefined); resolve_item sets droppable: None;
+        // Keys carry no `droppable` property; resolve_item sets droppable: None;
         // item_scope_entity computes None != Some(false) = true, so droppable = Some(true).
         let w = build_world_for_view();
         let cat = build_catalog();
@@ -1163,7 +1154,7 @@ mod tests {
         );
     }
 
-    /// Task 6: `defeated` on occupant (character) entities, not on items.
+    /// `defeated` on occupant (character) entities, not on items.
     ///
     /// - A healthy occupant → `defeated == Some(false)`
     /// - A KO occupant → `defeated == Some(true)`
@@ -1212,8 +1203,8 @@ mod tests {
     }
 
     /// PnC "Talk" affordance: `talkable` is `Some(true)` for NPC occupants ONLY,
-    /// and `None` (→ omitted) for mobs, players, and items — byte-parity with the
-    /// TS oracle's conditional-spread emission.
+    /// and `None` (→ omitted) for mobs, players, and items — the omitted-vs-false
+    /// distinction is pinned byte-exact by the conformance goldens.
     #[test]
     fn view_occupant_talkable_field() {
         let mut w = build_world_for_view();
@@ -1396,7 +1387,7 @@ mod tests {
                 id: ExitId("door".into()),
                 endpoint_ids: [room_id("start"), room_id("crypt")],
                 behavior_key: Some("conformance:keyed-door".into()),
-                name: None, // → "door" fallback (viewmodel.ts:131 `exit.name ?? "door"`)
+                name: None, // → "door" fallback when the exit has no name
                 state: json!({ "unlocked": false }),
             },
         );

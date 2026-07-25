@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "ts")]
 use ts_rs::TS;
 
-/// The three core character stats. Serde values match the TS `StatType`
-/// string union exactly (`"energy" | "sanity" | "health"`).
+/// The three core character stats. Wire values are exactly
+/// `"energy" | "sanity" | "health"`, as pinned by the conformance goldens.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "lowercase")]
@@ -15,7 +15,7 @@ pub enum StatType {
 
 impl StatType {
     /// The stat that mitigates incoming damage against this one, forming the
-    /// cycle energy←health←sanity←energy (mirror of TS `MitigatorStatType`).
+    /// cycle energy←health←sanity←energy.
     pub const fn mitigator(self) -> StatType {
         match self {
             StatType::Energy => StatType::Health,
@@ -80,7 +80,7 @@ mod ts_export {
         CampaignOutcome::export_all().expect("export CampaignOutcome");
         ActionKind::export_all().expect("export ActionKind");
         PresentationCue::export_all().expect("export PresentationCue");
-        // Task 2: typed action history
+        // action history bindings
         ActionHistoryEntry::export_all().expect("export ActionHistoryEntry");
         RoomRef::export_all().expect("export RoomRef");
         TargetRef::export_all().expect("export TargetRef");
@@ -92,9 +92,9 @@ mod ts_export {
         LootId::export_all().expect("export LootId");
         MaterialCacheId::export_all().expect("export MaterialCacheId");
         ExitId::export_all().expect("export ExitId");
-        // Task 4: movement + direction
+        // movement + direction
         Direction::export_all().expect("export Direction");
-        // Task 1 (sub-plan 3a): item descriptor primitives
+        // item descriptor primitives
         use crate::world::descriptor::{
             Catalog, ItemDescriptor, ItemProperties, ItemType, Presentation, SlotKind,
         };
@@ -102,7 +102,7 @@ mod ts_export {
         SlotKind::export_all().expect("export SlotKind");
         ItemProperties::export_all().expect("export ItemProperties");
         Presentation::export_all().expect("export Presentation");
-        // Task 2 (sub-plan 3a): descriptor-data catalog
+        // descriptor-data catalog
         ItemDescriptor::export_all().expect("export ItemDescriptor");
         Catalog::export_all().expect("export Catalog");
         // Data-driven formations: MobSpec / NaturalAttack / FormationDescriptor (+ Stats)
@@ -112,7 +112,7 @@ mod ts_export {
         NaturalAttack::export_all().expect("export NaturalAttack");
         MobSpec::export_all().expect("export MobSpec");
         FormationDescriptor::export_all().expect("export FormationDescriptor");
-        // Task 5 (sub-plan 3a): widened ViewModel
+        // view model
         use crate::world::view::{
             Inventory, LootView, ScopeEntity, StatusView, ThinRoom, ViewModel,
         };
@@ -125,17 +125,17 @@ mod ts_export {
         use crate::world::view::{ExitView, LockedDoorView};
         ExitView::export_all().expect("export ExitView");
         LockedDoorView::export_all().expect("export LockedDoorView");
-        // Task 2 (sub-plan 4a): typed afflictions + Status
+        // typed afflictions + Status
         use crate::world::afflictions::{Afflictions, Status};
         Status::export_all().expect("export Status");
         Afflictions::export_all().expect("export Afflictions");
-        // Phase 2a: the Authority boundary types
+        // Authority boundary types
         use crate::world::intent::Intent;
         use crate::world::submit::{ExecuteResult, MobAttack};
         Intent::export_all().expect("export Intent");
         MobAttack::export_all().expect("export MobAttack");
         ExecuteResult::export_all().expect("export ExecuteResult");
-        // Scripted-ops DSL AST (scripted-ops plan, Task 10)
+        // scripted-ops DSL AST
         use crate::script::ast::{
             BehaviorScript, BinOp, DamageBody, DialogueEntry, DialogueMatch, EffectTemplate,
             ExitScript, Expr, FieldTemplate, ItemScript, MechanicHooks, MechanicScript, NpcScript,

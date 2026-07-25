@@ -1,4 +1,4 @@
-//! Engine lifecycle-guard error (mirrors TS `ProceduralViolation`).
+//! Engine lifecycle-guard error — illegal operations throw rather than no-op.
 use alloc::string::String;
 use core::fmt;
 

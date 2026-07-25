@@ -1,16 +1,15 @@
 //! The [`SyncTransport`] seam + [`InProcessTransport`] + [`SyncCoordinator`] — the client-side
-//! replica driver (Phase 2c, sub-project B, slice 4).
+//! replica driver.
 //!
-//! Mirrors `src/lib/sync/transport.ts` + `coordinator.ts`. A [`SyncCoordinator`] owns a local
+//! A [`SyncCoordinator`] owns a local
 //! replica [`World`], submits commands to an authority through a [`SyncTransport`], and applies the
 //! authoritative deltas the transport exposes — it never resolves commands itself and never
 //! optimistically mutates, so there is no rollback and no CAS conflict.
 //!
-//! The TS coordinator uses a *push* subscription (the transport calls a handler per committed
-//! entry). This in-process port is *pull*-based instead: after a submit — and on demand via
-//! [`SyncCoordinator::sync`] — the coordinator drains `entries_since` in order and applies each
-//! delta. Pull is sufficient (and far simpler in Rust) for the single-process and test paths; the
-//! genuinely-async push transport is a WebSocket concern for sub-projects C/D.
+//! The coordinator is *pull*-based: after a submit — and on demand via
+//! [`SyncCoordinator::sync`] — it drains `entries_since` in order and applies each
+//! delta. Pull is sufficient (and far simpler) for the single-process and test paths; a
+//! genuinely-async push subscription is a WebSocket-transport concern.
 
 use alloc::vec::Vec;
 
@@ -23,7 +22,7 @@ use super::authority::{LogEntry, SubmitResult, SyncAuthority};
 use super::command::Command;
 
 /// The ordered, broadcast surface a [`SyncCoordinator`] submits commands to and reads entries
-/// from. The in-process impl wraps a [`SyncAuthority`]; a WebSocket impl (C/D) forwards to the
+/// from. The in-process impl wraps a [`SyncAuthority`]; a WebSocket impl forwards to the
 /// room server. Only this trait and the coordinator need know the difference.
 pub trait SyncTransport {
     /// Highest committed seq.

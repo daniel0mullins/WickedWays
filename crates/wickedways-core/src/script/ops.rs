@@ -1,4 +1,4 @@
-//! Adapter ops: satisfy the existing Phase-1 traits by interpreting a stored AST.
+//! Adapter ops: satisfy the engine's behavior traits by interpreting a stored AST.
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -45,7 +45,7 @@ impl ScriptedMechanic<'_> {
             damage: None,
             element: None,
             rng: Some(base.rng),
-            rooms: RoomSource::None, // mechanics cannot see rooms (oracle parity)
+            rooms: RoomSource::None, // mechanics cannot see rooms (behavior the goldens pin)
         };
         eval_effects(body, &mut cx)
     }
@@ -156,8 +156,8 @@ impl ScriptedItem<'_> {
 
 /// An `ExitBehavior` bound to a borrowed script (built per fire-point by
 /// `resolve_exit_behavior` — no cloning of the AST). Exit contexts have no
-/// campaign view and no room resolver — matching the TS `ExitPrecondition(
-/// character, state)` contract (src/lib/exit.ts:12-14).
+/// campaign view and no room resolver — an exit predicate sees only the actor
+/// and the exit's own state.
 pub struct ScriptedExit<'a> {
     pub script: &'a ExitScript,
 }
@@ -197,11 +197,11 @@ impl ExitBehavior for ScriptedExit<'_> {
     }
 }
 
-/// Victory adapter (see plan deviation note 2). NOT a `VictoryConditionBehavior`
+/// Victory adapter. NOT a `VictoryConditionBehavior`
 /// impl — the trait's `test(&CampaignView)` cannot carry the World access the
 /// lazy `character.room` resolver needs; the `resolve_outcome` seam calls this
-/// directly for the Scripted arm. Victory is the ONE context the TS oracle
-/// evaluates against the LIVE campaign (`pc.currentRoom`), so it gets the lazy,
+/// directly for the Scripted arm. Victory is the ONE context evaluated against
+/// the LIVE campaign (characters' current rooms), so it gets the lazy,
 /// memoizing World-backed room resolver (mechanic/exit contexts stay `None`).
 pub struct ScriptedVictory<'a> {
     pub script: &'a VictoryScript,
@@ -227,7 +227,7 @@ impl ScriptedVictory<'_> {
     }
 }
 
-/// Scene adapter (NPC sub-plan 3), bound to a borrowed `SceneScript` (built per
+/// Scene adapter, bound to a borrowed `SceneScript` (built per
 /// fire-point by `resolve_scene`). A scene READS the room it fires in via the
 /// lazy, memoizing World-backed room resolver — the same access victory gets and
 /// the reason it is NOT a plain `SceneBehavior` impl (that trait carries only a
@@ -298,12 +298,13 @@ impl ScriptedScene<'_> {
     }
 }
 
-// ─── NPC dialogue matcher (NPC sub-plan 2) ──────────────────────────────────
+// ─── NPC dialogue matcher ────────────────────────────────────────────────────
 //
-// THE MATCHER ALGORITHM — this is the single source of truth. Task 3's TS oracle
-// and Task 4's fixture MUST mirror it byte-for-byte. It is a deliberate
-// improvement over the legacy TS `IDialogue` (which is OFF the conformance-gate
-// path and is NOT the reference); implement THIS, not the legacy code.
+// THE MATCHER ALGORITHM — this comment is the single source of truth, and the
+// conformance goldens/differential fixtures MUST mirror it byte-for-byte. It is
+// a deliberate improvement over the retired engine's legacy dialogue matcher,
+// which is OFF the conformance-gate path and is NOT the reference; implement
+// THIS, not the legacy behavior.
 //
 // NORMALIZE + TOKENIZE a prompt string (`tokenize`):
 //   1. Lowercase (`str::to_lowercase`).
@@ -348,7 +349,8 @@ impl ScriptedScene<'_> {
 //     state under `state["onceFired"][key]` (see `LATCH_FIELD`), keyed by the selected
 //     entry's identity (`"default"` for the default entry, else its decimal index in
 //     `dialogue`) — written through the same `SetState` seam mechanics use
-//     (`state_set_in`), so Task 3/4 must key the latch identically for byte-parity.
+//     (`state_set_in`). The goldens key the latch this exact way; byte-parity
+//     depends on it.
 
 /// State object field holding the per-entry `once` latch (`{ key: true }`).
 const LATCH_FIELD: &str = "onceFired";
@@ -424,7 +426,7 @@ fn select_entry<'a>(script: &'a NpcScript, prompt: Option<&str>) -> Selection<'a
                 .filter(|t| !t.is_empty())
                 .collect();
             // `[].every()` is vacuously true, so an emptied trigger still matches
-            // (score 0) — mirror this in the oracle.
+            // (score 0).
             if trigger.is_subset(&prompt_set) {
                 let score = trigger.len();
                 // Strict `>` keeps the earlier-authored entry on a tie.
@@ -453,7 +455,7 @@ pub struct ScriptedNpc<'a> {
 }
 
 impl ScriptedNpc<'_> {
-    /// The NPC's `examine` blurb (TS `Npc.description`).
+    /// The NPC's `examine` blurb.
     pub fn description(&self) -> &str {
         &self.script.description
     }
@@ -651,7 +653,7 @@ mod tests {
             .is_empty());
     }
 
-    // ─── NPC dialogue matcher + ScriptedNpc (NPC sub-plan 2) ─────────────────
+    // ─── NPC dialogue matcher + ScriptedNpc ──────────────────────────────────
 
     fn lit(s: &str) -> crate::script::ast::Expr {
         crate::script::ast::Expr::Lit {

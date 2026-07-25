@@ -1,14 +1,14 @@
 //! Equipment item actions: `equip` and `unequip` on `World`.
-//! Also: `take` (loot container → inventory), mirrors `player-character.ts:216-235`
-//! (takeFromLootBox) and `character.ts:547-573` (addToInventory).
+//! Also: `take` (loot container → inventory). Behavior is pinned byte-exact by
+//! the conformance goldens.
 //!
 //! `equip` and `unequip` are **free** — no budget tick, no history entry.
 //! `take` is **budgeted** — ticks `actions_this_round` and records a `pickUp` history entry.
 //!
 //! Visibility-flip note: we compute `is_lit` before/after and emit a
 //! `{ kind: "visibility", room, lit }` cue if it changes. `is_lit`
-//! (`movement.rs`) now folds in occupant-carried, equipped, non-broken light
-//! (mirroring `room.ts` `isLit` → `character.ts` `hasLight`), so equipping a
+//! (`movement.rs`) folds in occupant-carried, equipped, non-broken light,
+//! so equipping a
 //! light-emitting hand item in a dark room flips `is_lit` true and emits the
 //! net visibility cue here (and unequipping it flips back to dark).
 
@@ -29,8 +29,8 @@ use crate::world::ids::{CharacterId, ItemId, LootId};
 use crate::world::resolve::resolve_item;
 use crate::world::World;
 
-/// Parsed shape of the `grants_immunity` descriptor field.
-/// Mirrors TS `{ statuses: Status[], turns: number }` (inventory.ts:306).
+/// Parsed shape of the `grants_immunity` descriptor field:
+/// `{ statuses: Status[], turns: number }`.
 #[derive(Deserialize)]
 struct GrantsImmunity {
     statuses: Vec<Status>,
@@ -44,8 +44,7 @@ impl World {
     /// (so `apply_command` can auto-add it to the `opened` set), or `None` when a
     /// Confused fizzle short-circuits the take (fumble recorded, no loot moved).
     ///
-    /// Mirrors `player-character.ts:216-235` (takeFromLootBox) and
-    /// `character.ts:547-573` (addToInventory / pickUp).
+    /// Behavior is pinned byte-exact by the conformance goldens.
     ///
     /// # Errors
     /// - Actor has no `current_room_id` → `ProceduralViolation`.
@@ -59,14 +58,12 @@ impl World {
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<Option<LootId>, ProceduralViolation> {
-        // 0. Affliction gate (is_move = false, NOT budgeted). Mirrors
-        //    attemptAction(this.takeFromLootBox, false). `takeFromLootBox` is NOT
-        //    registered in `isActionMap` (player-character.ts:93-96 only registers
-        //    move/go; character.ts:501-503 addToInventory/removeFromInventory/
-        //    useMechanicAction), so on a Confused fizzle recordAction finds
-        //    `budgeted === false` and does NOT tick the budget (character.ts:530).
-        //    The successful take ticks the budget separately below via the internal
-        //    addToInventory/pickUp (which IS budgeted). Fizzle → fumble, no loot → Ok(None).
+        // 0. Affliction gate (is_move = false, NOT budgeted). The take wrapper
+        //    itself is not a registered (budgeted) action — only the inner
+        //    add-to-inventory step is — so on a Confused fizzle the budget is
+        //    NOT ticked. The successful take ticks the budget separately below
+        //    via the internal pick-up (which IS budgeted).
+        //    Fizzle → fumble, no loot → Ok(None).
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
@@ -103,7 +100,7 @@ impl World {
         };
 
         // 3. Visibility gate: !is_lit && !sees_in_dark(actor) → Err.
-        // Mob `lightAverse` override wired in sub-plan 4c; base always returns false.
+        // Only light-averse characters see in the dark; the base case is false.
         let sees_in_dark = self.sees_in_dark(actor);
         if !self.is_lit(&room_id, cat) && !sees_in_dark {
             return Err(ProceduralViolation("Cannot loot in the dark".into()));
@@ -150,13 +147,12 @@ impl World {
             }
         }
 
-        // 6b. RECORD_ENCOUNTER({kind:"item", item}) — mirrors character.ts:567
-        //     (addToInventory records every picked-up item into the codex) and the
-        //     item/key entry construction in codex.ts buildEntry (:141-170).
+        // 6b. RECORD_ENCOUNTER({kind:"item", item}) — every picked-up item is
+        //     recorded into the codex.
         //     First-write-wins by `${kind}::${key}`. `type` and `slot` serialize
         //     lowercase (descriptor.rs enum rename); twoHanded/emitsLight/presentation
-        //     are read from the catalog descriptor and included only when present,
-        //     matching the TS `!== undefined` / truthy guards.
+        //     are read from the catalog descriptor and included only when present
+        //     (absent ≠ false — the omission is pinned by the goldens).
         {
             let round = self.campaign.round;
             let actor_id_str = actor.0.clone();
@@ -176,7 +172,7 @@ impl World {
             };
 
             let (kind, key, mut snapshot) = if is_key {
-                // codex.ts:143-154 — key entry.
+                // Key entry.
                 let key_code = resolved.key_code.clone().unwrap_or_default();
                 let key = format!("{}:{}", key_code, resolved.name);
                 let consume_on_use = match &item_snap {
@@ -192,7 +188,7 @@ impl World {
                 });
                 ("key", key, snapshot)
             } else {
-                // codex.ts:155-169 — item entry. `type` serializes lowercase.
+                // Item entry. `type` serializes lowercase.
                 let type_str = serde_json::to_value(resolved.r#type)
                     .ok()
                     .and_then(|v| v.as_str().map(alloc::string::ToString::to_string))
@@ -215,7 +211,7 @@ impl World {
                 }
                 ("item", key, snapshot)
             };
-            // presentation (truthy guard in codex.ts) — applies to both item and key.
+            // presentation (included only when present) — applies to both item and key.
             if let Some(pres) = &resolved.presentation {
                 if let Ok(v) = serde_json::to_value(pres) {
                     snapshot["presentation"] = v;
@@ -286,7 +282,7 @@ impl World {
 
     /// Equip `item` on `actor`. Free — no budget tick, no history.
     ///
-    /// Logic mirrors `character.ts:685-747` exactly:
+    /// The sequence below is pinned byte-exact by the conformance goldens:
     /// 1. Item must be in `inventory.item_ids` (else `ProceduralViolation`).
     /// 2. `resolved.properties.equippable` must be true (else throw).
     /// 3. `resolved.slot` must be `Some` (else throw).
@@ -467,7 +463,6 @@ impl World {
     /// Unequip `item` from `actor`. Free — no budget tick, no history.
     ///
     /// Removes the item from every slot it occupies (a two-handed item occupies two).
-    /// Mirrors `character.ts:756-773`.
     pub fn unequip(
         &mut self,
         actor: &CharacterId,
@@ -493,7 +488,7 @@ impl World {
             .and_then(|c| c.current_room_id.clone());
         let was_lit = actor_room.as_ref().is_none_or(|r| self.is_lit(r, cat));
 
-        // Validate: item held AND equipped (mirrors character.ts:756-773 — no catalog lookup)
+        // Validate: item held AND equipped (no catalog lookup involved)
         {
             let ch = self
                 .characters
@@ -605,15 +600,14 @@ impl World {
     /// Drop `target` from the actor's inventory. **Budgeted** — ticks
     /// `actions_this_round` and records a `drop` history entry.
     ///
-    /// Mirrors `character.ts:583-604` (`removeFromInventory`) exactly:
-    /// the engine allows dropping any held non-key item regardless of `droppable`.
+    /// The engine allows dropping any held non-key item regardless of `droppable`.
     /// Required-item drop rejection (`droppable == Some(false)`) is enforced at
-    /// the session/authority layer (`session.ts:209`), not here.
+    /// the session/authority layer, not here.
     ///
-    /// The item is **not** placed into a room pile — `relinquishItem` only removes
-    /// it from the inventory (`character.ts:466`). It therefore becomes unreachable
-    /// and drops out of the emitted snapshot's `items` array (see `to_snapshot`'s
-    /// reachability filter, mirroring the TS serializer's reachable-graph walk).
+    /// The item is **not** placed into a room pile — the drop only removes it
+    /// from the inventory. It therefore becomes unreachable and drops out of
+    /// the emitted snapshot's `items` array (see `to_snapshot`'s
+    /// reachability filter).
     ///
     /// # Errors
     /// - `target` is not in `inventory.item_ids` → `ProceduralViolation`.
@@ -651,7 +645,7 @@ impl World {
 
         // 2. Resolve and check for key type.
         // NOTE: droppable == Some(false) (required-item) is intentionally NOT checked here.
-        // That guard belongs to the session/authority layer (session.ts:209), not the engine.
+        // That guard belongs to the session/authority layer, not the engine.
         let item_snap = self
             .items
             .get(target)
@@ -668,8 +662,8 @@ impl World {
         self.consume_from_inventory(actor, target, &resolved.name.clone(), cat, cues)
     }
 
-    /// Stow held items into a co-located loot container. Mirrors
-    /// `player-character.ts:251-276` (`putInLootBox`): affliction-gated (Confused → fumble,
+    /// Stow held items into a co-located loot container:
+    /// affliction-gated (Confused → fumble,
     /// no-op); rejects keys outright; moves only currently-held, non-key items, capped to the
     /// container's free space; each moved item is removed via the shared inventory tail (budget
     /// tick + `drop` history) and appended to the container's contents.
@@ -685,7 +679,7 @@ impl World {
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
-        // 0. Affliction gate (not budgeted). Fizzle → fumble, no-op (TS returns []).
+        // 0. Affliction gate (not budgeted). Fizzle → fumble, quiet no-op.
         match self.gate(actor, false) {
             crate::world::gate::GateVerdict::Block(r) => return Err(ProceduralViolation(r)),
             crate::world::gate::GateVerdict::Fizzle => {
@@ -761,8 +755,7 @@ impl World {
     /// `actions_this_round` and records a `drop` history entry (mirroring
     /// `CONSUME_VIA_USE → removeFromInventory`).
     ///
-    /// Mirrors `inventory.ts:607-631` (the `Use` action wrapper) and
-    /// `character.ts:440-442` (`CONSUME_VIA_USE → removeFromInventory`).
+    /// Behavior is pinned byte-exact by the conformance goldens.
     ///
     /// # Errors
     /// - `target` is not in `inventory.item_ids` → `ProceduralViolation`.
@@ -803,7 +796,7 @@ impl World {
 
         // 2b. Reject use while KO'd. `use` is the always-allowed escape hatch under
         //     Panic/Fear/Confused, but a KO'd character can do nothing at all.
-        //     Mirrors inventory.ts:617-618 (after usable check, before grantsImmunity).
+        //     Order matters: after the usable check, before grantsImmunity.
         //     This is the ONLY affliction guard on `use`; the consume itself stays
         //     gate-suppressed (no Panic/Fear/Confused fizzle gating on use).
         {
@@ -816,11 +809,10 @@ impl World {
             }
         }
 
-        // 2c. Author use-behaviour (scripted onUse). In TS this is
-        //     `actions[Use].call(holder)` + the `onUse` event, which run AFTER the
-        //     usable/KO guards and BEFORE grantsImmunity + consume
-        //     (src/lib/inventory.ts:620-627). Absent script = no-op. Effects flow
-        //     through the collect-then-apply pipeline, capped at MAX_EFFECTS_PER_EVENT.
+        // 2c. Author use-behaviour (scripted onUse). Runs AFTER the usable/KO
+        //     guards and BEFORE grantsImmunity + consume. Absent script = no-op.
+        //     Effects flow through the collect-then-apply pipeline, capped at
+        //     MAX_EFFECTS_PER_EVENT.
         if let crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } = &item_snap {
             if let Some(crate::script::ast::BehaviorScript::Item { script }) =
                 cat.behaviors.get(behavior_key)
@@ -855,7 +847,7 @@ impl World {
 
         // 3. Grant immunity if the descriptor carries grantsImmunity (before consuming).
         // `grants_immunity` is json!(null) when absent — from_value fails cleanly → skip.
-        // Mirrors inventory.ts:622-626: [GRANT_IMMUNITY](statuses, turns) before consume.
+        // Ordering: GRANT_IMMUNITY(statuses, turns) fires before the consume.
         if let Some(desc) = {
             if let crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } = &item_snap {
                 cat.items.get(behavior_key)
@@ -1934,9 +1926,9 @@ mod tests {
 
     #[test]
     fn drop_item_required_item_succeeds_at_engine_layer() {
-        // The engine mirrors removeFromInventory (character.ts:583-604) which does NOT
-        // check `droppable`. Required-item drop rejection is enforced at the
-        // session/authority layer (session.ts:209), not here.
+        // The engine's drop does NOT check `droppable`.
+        // Required-item drop rejection is enforced at the
+        // session/authority layer, not here.
         let cat = simple_cat_with("items/relic", required_item_desc());
         let (mut world, pc_id) = world_with_items(&[("relic-1", "items/relic")], &cat);
         let item_id = iid("relic-1");
@@ -2329,11 +2321,10 @@ mod tests {
         assert_eq!(result, None, "fizzled take returns None (no loot taken)");
 
         let ch = &world.characters[&pc_id];
-        // Fumble recorded but budget NOT ticked: the TS gate is on
-        // `takeFromLootBox` (player-character.ts:217), which is not registered in
-        // `isActionMap`, so recordAction finds `budgeted === false`
-        // (character.ts:530). Only a SUCCESSFUL take ticks, via the internal
-        // addToInventory/pickUp. Verified by the afflictions differential gate.
+        // Fumble recorded but budget NOT ticked: the gate sits on the take
+        // wrapper, which is not a registered (budgeted) action. Only a
+        // SUCCESSFUL take ticks, via the internal budgeted pick-up.
+        // Verified by the afflictions conformance gate.
         assert_eq!(
             ch.actions_this_round, 0,
             "fizzled take does NOT tick budget"

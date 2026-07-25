@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "ts")]
 use ts_rs::TS;
 
-/// The closed set of first-class script values (spec: value model). Serialized
-/// UNTAGGED so authored literals read as plain JSON (`5`, `"x"`, `true`, `[..]`,
-/// `null`). Numbers are f64 to match TS `number`.
+/// The closed set of first-class script values. Serialized UNTAGGED so
+/// authored literals read as plain JSON (`5`, `"x"`, `true`, `[..]`,
+/// `null`). Numbers are f64 (JS `number` semantics).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export, rename = "ScriptValue"))]
 #[serde(untagged)]

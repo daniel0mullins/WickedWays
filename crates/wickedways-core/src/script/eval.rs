@@ -21,7 +21,7 @@ use crate::world::World;
 
 /// Runtime evaluation result: plain values, plus the read-model SUBJECTS
 /// (characters/rooms/action/damage) which flow through expressions but are
-/// never first-class serialized values (spec: read model).
+/// never first-class serialized values.
 #[derive(Clone, Debug)]
 pub enum Ev {
     Val(Value),
@@ -60,7 +60,8 @@ pub enum CtxState<'a> {
 }
 
 /// Lazy, memoizing `character.room` resolver. `None` in mechanic/exit contexts
-/// (the TS oracle cannot see rooms there); `World` in victory contexts.
+/// (rooms are not readable there — behavior the conformance goldens pin);
+/// `World` in victory contexts.
 pub enum RoomSource<'a> {
     None,
     World {
@@ -91,7 +92,7 @@ pub struct Ctx<'a> {
     pub actor: Option<&'a CharacterView>,
     pub action: Option<&'a ActionView>,
     pub damage: Option<&'a DamageView>,
-    /// The bound quantifier element (Task 6). The language's ONLY binding.
+    /// The bound quantifier element. The language's ONLY binding.
     pub element: Option<Ev>,
     /// Injected rng stream. No v1 node draws from it; plumbed so a future
     /// `Roll` node keeps the determinism contract without a signature change.
@@ -117,7 +118,7 @@ impl<'a> Ctx<'a> {
 pub fn eval_expr(e: &Expr, cx: &mut Ctx<'_>) -> Ev {
     match e {
         Expr::Lit { value } => Ev::Val(value.clone()),
-        // A bare MapLit is only legal under Lookup/Has (load-time check, Task 9).
+        // A bare MapLit is only legal under Lookup/Has (load-time check).
         Expr::MapLit { .. } => Ev::Val(Value::Null),
         Expr::Not { expr } => Ev::Val(Value::Bool(!eval_expr(expr, cx).truthy())),
         Expr::IfElse { cond, then, r#else } => {
@@ -281,7 +282,7 @@ pub fn eval_effects(body: &[Stmt], cx: &mut Ctx<'_>) -> Vec<Effect> {
 /// Build a plain effect list from a bare template list (NPC dialogue `effects`).
 /// Unlike `eval_effects` there is no `Stmt` control flow: every template is built
 /// unconditionally, in order, and an unresolvable target drops just that one
-/// (mirroring `build_effect`'s `if (target !== undefined)` guard).
+/// (the same unresolvable-target guard as `build_effect`).
 pub fn eval_effect_templates(templates: &[EffectTemplate], cx: &mut Ctx<'_>) -> Vec<Effect> {
     templates
         .iter()
@@ -348,7 +349,8 @@ fn exec_stmts(
 }
 
 /// Resolve an effect-target expr to a `CharacterId` (a character subject or a
-/// string id). `None` skips the emit — the dread-shadow `if (target !== undefined)` shape.
+/// string id). `None` skips the emit — an unresolvable target drops that one
+/// effect, not the whole body.
 fn as_character_id(ev: Ev) -> Option<CharacterId> {
     match ev {
         Ev::Char(c) => Some(c.id),
@@ -375,7 +377,7 @@ fn as_number(ev: Ev) -> Option<f64> {
 }
 
 /// Build one closed `Effect` from a template; `None` when target/amount are
-/// unresolvable (skips that emit, mirroring the TS `if (target !== undefined)` guard).
+/// unresolvable (skips that emit rather than halting the body).
 fn build_effect(t: &EffectTemplate, cx: &mut Ctx<'_>) -> Option<Effect> {
     match t {
         EffectTemplate::Damage { target, amount } => Some(Effect::Damage {
@@ -460,7 +462,7 @@ pub(crate) fn state_set(state: &mut serde_json::Value, field: &str, v: serde_jso
     state[field] = v;
 }
 
-/// `state[map_field][key] = v`, auto-vivifying the map (TS `??=`).
+/// `state[map_field][key] = v`, auto-vivifying the map (JS `??=` semantics).
 pub(crate) fn state_set_in(
     state: &mut serde_json::Value,
     map_field: &str,
@@ -525,7 +527,7 @@ fn status_name(s: crate::world::afflictions::Status) -> &'static str {
 }
 
 /// Field access on a subject. Total: unknown field / non-subject -> Null.
-/// `char.room` resolves lazily in Task 4; `Action` fields widen in Task 8.
+/// `char.room` resolves lazily through the ctx's `RoomSource`.
 fn get_field(subject: Ev, field: &str, cx: &mut Ctx<'_>) -> Ev {
     match subject {
         Ev::Char(c) => match field {
@@ -617,8 +619,8 @@ fn eval_bin(op: BinOp, l: &Value, r: &Value) -> Value {
     }
 }
 
-/// Strict same-type equality (mirrors the oracle's `===` uses). Mixed types are
-/// never equal; `Null == Null` is true.
+/// Strict same-type equality (JS `===` semantics). Mixed types are never
+/// equal; `Null == Null` is true.
 fn vals_eq(l: &Value, r: &Value) -> bool {
     match (l, r) {
         (Value::Number(a), Value::Number(b)) => a == b,
@@ -1612,7 +1614,7 @@ mod tests {
             view: Some(&view),
             ..Ctx::empty()
         };
-        // the party-down oracle shape: every(party, status.includes("ko"))
+        // the party-down victory shape: every(party, status.includes("ko"))
         let pred = Box::new(Expr::Includes {
             list: Box::new(Expr::Get {
                 of: Box::new(Expr::Element),

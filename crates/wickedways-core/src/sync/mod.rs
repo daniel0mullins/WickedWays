@@ -1,11 +1,8 @@
-//! The multiplayer sync layer (Phase 2c).
+//! The multiplayer sync layer.
 //!
-//! Sub-project **A** lands here first: the actor-tagged [`Command`] union and the
-//! [`authorize`] gate — the networked command model the room server and clients speak,
-//! mirroring `src/lib/sync/types.ts` + `resolver.ts`. Sub-project **B** (the sync
-//! `Authority`, `Delta` diff/apply, log, and `Replica`) builds on top of this module.
-//!
-//! See `docs/superpowers/specs/2026-07-14-rust-phase-2c-a-command-vocabulary-design.md`.
+//! The actor-tagged [`Command`] union and the [`authorize`] gate form the
+//! networked command model the room server and clients speak; the sync
+//! [`SyncAuthority`], [`Delta`] diff/apply, log, and coordinator build on top.
 
 pub mod applier;
 pub mod authority;

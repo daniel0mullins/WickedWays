@@ -1,8 +1,6 @@
-//! Phase 2a: the ported `GameSession.execute` orchestration.
-//!
-//! `run_mob_reactions` — solo-GM turn driver, faithful port of
-//! `packages/play-runtime/src/session.ts:148-177`.
-//! (`ExecuteResult` + `World::submit` land in the next slice of this file.)
+//! The session `execute` orchestration: `run_mob_reactions` (the solo-GM turn
+//! driver), `ExecuteResult`, and `World::submit`. Behavior is pinned byte-exact
+//! by the conformance goldens.
 use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::string::String;
@@ -22,8 +20,7 @@ use crate::world::snapshot::CharacterKind;
 use crate::world::World;
 
 /// A single mob-on-player strike, surfaced for typed combat feedback.
-/// Mirrors the TS `MobAttack` (`session.ts:22`); `amount` is an effective-stat
-/// delta (f64 per sub-plan 4b's stat model).
+/// `amount` is an effective-stat delta (f64, per the stat model).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -65,9 +62,9 @@ impl World {
     /// can't act (afflicted → `ProceduralViolation` from `attack`) simply doesn't
     /// strike; a downed player is not piled on.
     ///
-    /// Faithful port of `session.ts` `runMobReactions` (:148-177):
+    /// Behavior is pinned byte-exact by the conformance goldens:
     /// - no current room or active player KO → empty
-    /// - snapshot of the occupant id list, in room order (TS `[...room.occupants]`)
+    /// - snapshot of the occupant id list taken up front, in room order
     /// - skip the active character, non-`Mob`s, KO'd mobs
     /// - per stat in [Health, Sanity, Energy] order: `before - after > 0` → push
     /// - break once the player is KO
@@ -111,7 +108,7 @@ impl World {
 
             let before: [f64; 3] = STATS.map(|s| self.effective_stat(active, s, cat));
             // A blocked (afflicted) mob's ProceduralViolation is swallowed —
-            // the mob simply doesn't strike (session.ts:165-168). All core
+            // the mob simply doesn't strike. All core
             // errors are ProceduralViolation, so every Err is the "skip" arm.
             if self.attack(&occ, active, cat, cues).is_err() {
                 continue;
@@ -141,9 +138,9 @@ impl World {
     }
 }
 
-/// Mirrors the TS `ExecuteResult` (`session.ts:24`): `mobAttacks` is present
-/// (possibly `[]`) on success and ABSENT on the error path; `error` carries the
-/// `ProceduralViolation` message verbatim.
+/// The submit result. `mobAttacks` is present (possibly `[]`) on success and
+/// ABSENT on the error path; `error` carries the `ProceduralViolation` message
+/// verbatim. This shape is pinned by the conformance goldens.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -158,8 +155,8 @@ pub struct ExecuteResult {
 }
 
 impl World {
-    /// The ported `GameSession.execute` flow (`session.ts:116-140`), minus the
-    /// host-side undo snapshot (undo stays host-side via `Authority::snapshot`):
+    /// The session execute flow, minus the host-side undo snapshot (undo stays
+    /// host-side via `Authority::snapshot`):
     /// classify → `start_turn` → dispatch → `run_mob_reactions` → `next_player`;
     /// free actions skip the wrap. A `ProceduralViolation` anywhere is caught
     /// and returned as `ExecuteResult.error` with the cues emitted so far.
@@ -180,7 +177,7 @@ impl World {
             self.dispatch_intent(&actor, intent, cat, opened, &mut cues)?;
             // Light-tied initiative (v1): a time-advancing MOVE into a LIT room does
             // not provoke mob reactions — a player who can see gets the drop on
-            // entry (spec: docs/superpowers/specs/2026-07-07-light-tied-mob-initiative-design.md).
+            // entry.
             // Entering a dark room still provokes (a light-averse mob ambushes; a
             // normal mob can't see you either). All other advancing actions are
             // unchanged.
@@ -192,7 +189,7 @@ impl World {
                     .is_some_and(|rid| self.is_lit(&rid, cat));
             // Solo GM: after a time-advancing action, live mobs sharing the
             // player's room strike back. Runs before next_player so a fatal blow
-            // is caught by the round's outcome check (session.ts:127-131).
+            // is caught by the round's outcome check.
             let mob_attacks = if advances && !entered_lit {
                 self.run_mob_reactions(&actor, cat, &mut cues)
             } else {
@@ -211,15 +208,15 @@ impl World {
             },
             Err(ProceduralViolation(msg)) => ExecuteResult {
                 cues,
-                mob_attacks: None, // TS error path returns { cues, error } — no mobAttacks key
+                mob_attacks: None, // error path returns { cues, error } — no mobAttacks key
                 error: Some(msg),
             },
         }
     }
 
     /// The intent → engine-op mapping, including the intent-level legality
-    /// guards that live in TS `GameSession.dispatch` (`session.ts:179-256`) but
-    /// NOT in the engine's `Command` handlers. Guard strings are verbatim TS.
+    /// guards that belong to session dispatch, NOT to the engine's `Command`
+    /// handlers. Guard strings are pinned verbatim by the conformance goldens.
     fn dispatch_intent(
         &mut self,
         actor: &CharacterId,
@@ -242,15 +239,15 @@ impl World {
                         "There's nothing like that to open here.".into(),
                     ));
                 }
-                // TS also calls pc.openLootBox(loot) — a co-location assert +
-                // contents peek with no mutation/cue (player-character.ts:201-204);
-                // co-location holds by construction here, so only the reveal remains.
+                // The original open path also did a co-location assert +
+                // contents peek with no mutation/cue; co-location holds by
+                // construction here, so only the reveal remains.
                 opened.insert(target_id);
                 Ok(())
             }
             Intent::Take { target_id } => {
-                // TS findInLoot (session.ts:249-256): searched BEFORE the engine
-                // gate/dark checks, throwing "You don't see that here.".
+                // Loot containers are searched BEFORE the engine gate/dark
+                // checks, throwing "You don't see that here.".
                 let room_id = self.current_room_id_of(actor)?;
                 let target = ItemId(target_id);
                 let containing = self.rooms.get(&room_id).and_then(|r| {
@@ -266,8 +263,8 @@ impl World {
                 let Some(loot_id) = containing else {
                     return Err(ProceduralViolation("You don't see that here.".into()));
                 };
-                // TS dispatch marks the container opened BEFORE takeFromLootBox
-                // (session.ts:196-201) — NOT after, the way apply_command's take
+                // Dispatch marks the container opened BEFORE the take runs —
+                // NOT after, the way apply_command's take
                 // returns it. So a take that opens a fresh container then FAILS
                 // (e.g. requireVisibleTarget in a dark room) still leaves the
                 // container revealed. Insert before the take attempt.
@@ -283,8 +280,7 @@ impl World {
                     .get(&item_id)
                     .ok_or_else(|| ProceduralViolation("You aren't carrying that.".into()))?;
                 let resolved = resolve_item(snap, cat)?;
-                // Required quest items (droppable === false) can't be set down
-                // (session.ts:208-211).
+                // Required quest items (droppable === false) can't be set down.
                 if resolved.properties.droppable == Some(false) {
                     return Err(ProceduralViolation(format!(
                         "You can't bring yourself to part with the {}.",
@@ -372,9 +368,8 @@ impl World {
     }
 
     /// Reads a held item, emitting its lore as a `mechanic` cue. Free, ungated,
-    /// non-consuming. Mirrors `GameSession.read` (session.ts:104-111) over
-    /// `Character.read` (character.ts:784-792): a non-held item is a quiet no-op
-    /// (the facade returned `[]` instead of surfacing the engine throw).
+    /// non-consuming. A non-held item is a quiet no-op — the session facade
+    /// returns `[]` instead of surfacing the engine throw.
     pub fn read_item(
         &mut self,
         actor: &CharacterId,
@@ -404,10 +399,10 @@ impl World {
         let resolved = resolve_item(snap, cat)?;
         let lore = resolved.lore.clone();
 
-        // Author read-behaviour (scripted onRead): runs BEFORE the lore cue
-        // (src/lib/character/character.ts:788-790 — run read closure, THEN emit
-        // lore). Absent script = no-op. Effects flow through the collect-then-apply
-        // pipeline, capped at MAX_EFFECTS_PER_EVENT (mirrors Task 3's use_item).
+        // Author read-behaviour (scripted onRead): runs BEFORE the lore cue —
+        // run the read closure, THEN emit lore. Absent script = no-op. Effects
+        // flow through the collect-then-apply pipeline, capped at
+        // MAX_EFFECTS_PER_EVENT (same as use_item).
         if let Some(key) = &behavior_key {
             if let Some(crate::script::ast::BehaviorScript::Item { script }) =
                 cat.behaviors.get(key)
@@ -450,7 +445,7 @@ impl World {
         Ok(())
     }
 
-    /// Run an NPC's data-driven dialogue (NPC sub-plan 2). Resolves the NPC's
+    /// Run an NPC's data-driven dialogue. Resolves the NPC's
     /// `npc_behavior_key` to an `NpcScript` (catalog-only, via `resolve_npc`);
     /// if it resolves, matches `prompt` to one dialogue entry, ALWAYS emits the
     /// selected entry's response as a `mechanic` cue, and applies its effects
@@ -521,12 +516,12 @@ impl World {
         Ok(())
     }
 
-    /// Emit an NPC's `examine` blurb (NPC sub-plan 2). Free + non-advancing. When
+    /// Emit an NPC's `examine` blurb. Free + non-advancing. When
     /// `target` is a co-located, VISIBLE NPC whose `npc_behavior_key` resolves to
     /// an `NpcScript`, pushes the script's `description` as a `mechanic` cue (the
     /// SAME cue shape as `read_item`'s lore). Any other target (non-NPC, hidden,
-    /// missing, no/unresolved key, or not in the actor's room) is a quiet no-op —
-    /// examining a non-NPC or the room, and CRT routing, are sub-plan 3b.
+    /// missing, no/unresolved key, or not in the actor's room) is a quiet no-op.
+    /// Examining a non-NPC or the room, and CRT routing, are not handled here.
     pub fn examine(
         &self,
         actor: &CharacterId,
@@ -578,8 +573,8 @@ impl World {
         &self,
         actor: &CharacterId,
     ) -> Result<crate::world::ids::RoomId, ProceduralViolation> {
-        // TS dispatch does `pc.currentRoom!` — a missing room is unreachable in
-        // normal play; we surface it as a violation rather than a panic.
+        // A missing room is unreachable in normal play; we surface it as a
+        // violation rather than a panic.
         self.characters
             .get(actor)
             .and_then(|c| c.current_room_id.clone())
@@ -591,7 +586,7 @@ impl World {
         actor: &CharacterId,
         item: &ItemId,
     ) -> Result<(), ProceduralViolation> {
-        // TS checks pc.inventory.items (NOT keys) — session.ts:206/216/228.
+        // Only inventory items are checked (NOT keys).
         let held = self
             .characters
             .get(actor)
@@ -708,8 +703,8 @@ mod tests {
 
     #[test]
     fn blocked_mob_violation_is_swallowed() {
-        // Panic blocks non-move actions (gate.rs:53) — the mob's attack throws,
-        // runMobReactions catches ProceduralViolation and skips (session.ts:165-168).
+        // Panic blocks non-move actions (see gate.rs) — the mob's attack throws,
+        // run_mob_reactions catches ProceduralViolation and skips the striker.
         let mut w = world_with_pc_in_room();
         seat_test_mob(&mut w, "wraith", "room1");
         w.characters
@@ -977,7 +972,7 @@ mod tests {
         let mut w = world_for_submit();
         let (r, _) = submit_one(&mut w, Intent::Wait);
         assert_eq!(r.error, None);
-        assert_eq!(r.mob_attacks, Some(Vec::new())); // TS: mobAttacks present ([]) on success
+        assert_eq!(r.mob_attacks, Some(Vec::new())); // mobAttacks present ([]) on success
                                                      // single-member party: next_player wraps → round 0 → 1
         assert_eq!(w.campaign.round, 1);
     }
@@ -1041,8 +1036,8 @@ mod tests {
 
     #[test]
     fn failed_after_open_take_still_marks_container_opened() {
-        // Carried-check A: TS dispatch marks `opened` BEFORE takeFromLootBox
-        // (session.ts:196-201). A dark room makes the take fail AFTER the open,
+        // Dispatch marks `opened` BEFORE the take runs.
+        // A dark room makes the take fail AFTER the open,
         // so the container must remain revealed even though nothing was taken.
         let mut w = world_for_submit();
         w.rooms.get_mut(&rid("room1")).unwrap().dark = true;
@@ -1130,7 +1125,7 @@ mod tests {
         assert_eq!(attacks[0].name, "wraith");
     }
 
-    // ── legality guards: exact TS strings, no state change ──────────────────
+    // ── legality guards: exact pinned strings, no state change ──────────────
 
     #[test]
     fn error_results_use_exact_ts_strings_and_omit_mob_attacks() {
@@ -1311,7 +1306,7 @@ mod tests {
     #[test]
     fn error_path_still_returns_cues_emitted_before_the_throw() {
         // Advancing intent: start_turn runs (mutating), then the guard throws.
-        // TS returns { cues-so-far, error } and does NOT roll back (session.ts:134-138).
+        // Submit returns { cues-so-far, error } and does NOT roll back.
         let mut w = world_for_submit();
         let (r, _) = submit_one(
             &mut w,
@@ -1412,8 +1407,8 @@ mod tests {
 
     #[test]
     fn read_item_not_held_is_a_quiet_no_op() {
-        // Mirrors GameSession.read (session.ts:104-111): returns [] rather than
-        // surfacing Character.read's throw.
+        // read_item returns [] rather than surfacing the engine's
+        // not-held throw.
         let mut w = world_for_submit();
         let mut cues = Vec::new();
         w.read_item(&cid("pc"), &iid("item-herb"), &cat_with_items(), &mut cues)
@@ -1430,7 +1425,7 @@ mod tests {
         assert!(cues.is_empty());
     }
 
-    // ── talk → dialogue + examine → description (NPC sub-plan 2, T3a) ─────────
+    // ── talk → dialogue + examine → description ───────────────────────────────
 
     use crate::script::ast::{
         BehaviorScript, DialogueEntry, DialogueMatch, EffectTemplate, Expr, NpcScript,

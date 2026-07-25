@@ -1,5 +1,5 @@
 /// Rolls a die with `sides` faces from a pre-drawn uniform `unit` in `[0, 1)`.
-/// Pure mirror of the TS `roll(sides, rng)`: `floor(unit * sides) + 1`.
+/// Pure: `floor(unit * sides) + 1`.
 pub fn roll(sides: u32, unit: f64) -> u32 {
     (unit * f64::from(sides)) as u32 + 1
 }
