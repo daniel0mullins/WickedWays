@@ -134,12 +134,11 @@ pub fn coerce_str(v: &Value) -> String {
 /// reachable through `StateGetIn`, which indexes them directly).
 pub fn json_to_value(j: &serde_json::Value) -> Value {
     match j {
-        serde_json::Value::Null => Value::Null,
+        serde_json::Value::Null | serde_json::Value::Object(_) => Value::Null,
         serde_json::Value::Bool(b) => Value::Bool(*b),
         serde_json::Value::Number(n) => Value::Number(n.as_f64().unwrap_or(f64::NAN)),
         serde_json::Value::String(s) => Value::Str(s.clone()),
         serde_json::Value::Array(items) => Value::List(items.iter().map(json_to_value).collect()),
-        serde_json::Value::Object(_) => Value::Null,
     }
 }
 

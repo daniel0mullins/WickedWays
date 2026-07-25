@@ -19,3 +19,6 @@ ts-rs = { version = "10", optional = true, features = ["no-serde-warnings"] }
 
 [dev-dependencies]
 proptest = "1"
+
+[lints]
+workspace = true

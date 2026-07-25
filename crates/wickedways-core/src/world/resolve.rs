@@ -210,9 +210,9 @@ mod tests {
         Catalog {
             items,
             aliases: BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         }
     }
 
@@ -320,9 +320,9 @@ mod tests {
         let cat = Catalog {
             items,
             aliases: BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         };
 
         let snap = ItemSnapshot::Item {
@@ -586,9 +586,9 @@ mod tests {
         let cat = Catalog {
             items,
             aliases: BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         };
 
         // Item in World.items
@@ -632,9 +632,9 @@ mod tests {
         let cat = Catalog {
             items,
             aliases: BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         };
 
         world.items.insert(
@@ -674,9 +674,9 @@ mod tests {
         let cat = Catalog {
             items,
             aliases: BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         };
 
         // Item exists in World.items (in inventory) but NOT in equipment map
@@ -718,9 +718,9 @@ mod tests {
         let cat = Catalog {
             items,
             aliases: BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         };
 
         world.items.insert(

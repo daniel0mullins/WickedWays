@@ -114,7 +114,7 @@ impl<'a> Ctx<'a> {
     }
 }
 
-pub fn eval_expr(e: &Expr, cx: &mut Ctx) -> Ev {
+pub fn eval_expr(e: &Expr, cx: &mut Ctx<'_>) -> Ev {
     match e {
         Expr::Lit { value } => Ev::Val(value.clone()),
         // A bare MapLit is only legal under Lookup/Has (load-time check, Task 9).
@@ -260,7 +260,7 @@ pub fn eval_expr(e: &Expr, cx: &mut Ctx) -> Ev {
 }
 
 /// Truthiness of a predicate body's single result (predicate contexts).
-pub fn eval_predicate(e: &Expr, cx: &mut Ctx) -> bool {
+pub fn eval_predicate(e: &Expr, cx: &mut Ctx<'_>) -> bool {
     eval_expr(e, cx).truthy()
 }
 
@@ -271,7 +271,7 @@ enum Flow {
 }
 
 /// Evaluate an effect body (mechanic hooks / actions) into an ordered effect list.
-pub fn eval_effects(body: &[Stmt], cx: &mut Ctx) -> Vec<Effect> {
+pub fn eval_effects(body: &[Stmt], cx: &mut Ctx<'_>) -> Vec<Effect> {
     let mut effects = Vec::new();
     let mut pass = None;
     let _ = exec_stmts(body, cx, &mut effects, &mut pass);
@@ -282,7 +282,7 @@ pub fn eval_effects(body: &[Stmt], cx: &mut Ctx) -> Vec<Effect> {
 /// Unlike `eval_effects` there is no `Stmt` control flow: every template is built
 /// unconditionally, in order, and an unresolvable target drops just that one
 /// (mirroring `build_effect`'s `if (target !== undefined)` guard).
-pub fn eval_effect_templates(templates: &[EffectTemplate], cx: &mut Ctx) -> Vec<Effect> {
+pub fn eval_effect_templates(templates: &[EffectTemplate], cx: &mut Ctx<'_>) -> Vec<Effect> {
     templates
         .iter()
         .filter_map(|t| build_effect(t, cx))
@@ -290,7 +290,7 @@ pub fn eval_effect_templates(templates: &[EffectTemplate], cx: &mut Ctx) -> Vec<
 }
 
 /// Evaluate a `run_script` exit body into its optional narration (last `Pass` wins).
-pub fn eval_script(body: &[Stmt], cx: &mut Ctx) -> Option<String> {
+pub fn eval_script(body: &[Stmt], cx: &mut Ctx<'_>) -> Option<String> {
     let mut effects = Vec::new();
     let mut pass = None;
     let _ = exec_stmts(body, cx, &mut effects, &mut pass);
@@ -299,7 +299,7 @@ pub fn eval_script(body: &[Stmt], cx: &mut Ctx) -> Option<String> {
 
 fn exec_stmts(
     stmts: &[Stmt],
-    cx: &mut Ctx,
+    cx: &mut Ctx<'_>,
     effects: &mut Vec<Effect>,
     pass: &mut Option<String>,
 ) -> Flow {
@@ -376,7 +376,7 @@ fn as_number(ev: Ev) -> Option<f64> {
 
 /// Build one closed `Effect` from a template; `None` when target/amount are
 /// unresolvable (skips that emit, mirroring the TS `if (target !== undefined)` guard).
-fn build_effect(t: &EffectTemplate, cx: &mut Ctx) -> Option<Effect> {
+fn build_effect(t: &EffectTemplate, cx: &mut Ctx<'_>) -> Option<Effect> {
     match t {
         EffectTemplate::Damage { target, amount } => Some(Effect::Damage {
             target: as_character_id(eval_expr(target, cx))?,
@@ -432,7 +432,7 @@ fn build_effect(t: &EffectTemplate, cx: &mut Ctx) -> Option<Effect> {
 
 /// Evaluate a `modify_damage` body into a `TransformResult`. A non-number result
 /// falls back to `Value(d.amount)` (identity, total).
-pub fn eval_damage(body: &DamageBody, d: &DamageView, cx: &mut Ctx) -> TransformResult {
+pub fn eval_damage(body: &DamageBody, d: &DamageView, cx: &mut Ctx<'_>) -> TransformResult {
     match body {
         DamageBody::Value { expr } => match as_number(eval_expr(expr, cx)) {
             Some(n) => TransformResult::Value(n),
@@ -470,7 +470,10 @@ pub(crate) fn state_set_in(
     if !state.is_object() {
         *state = serde_json::json!({});
     }
-    if !state.get(map_field).map(|m| m.is_object()).unwrap_or(false) {
+    if !state
+        .get(map_field)
+        .is_some_and(serde_json::Value::is_object)
+    {
         state[map_field] = serde_json::json!({});
     }
     state[map_field][key] = v;
@@ -479,7 +482,7 @@ pub(crate) fn state_set_in(
 /// Bounded quantification. Binds `Ctx.element` per iteration (saving/restoring
 /// any outer binding, so nesting shadows correctly). `every([])` is vacuously
 /// true, `some([])` false — JS Array semantics.
-fn quantify(list: &Expr, pred: &Expr, cx: &mut Ctx, every: bool) -> bool {
+fn quantify(list: &Expr, pred: &Expr, cx: &mut Ctx<'_>, every: bool) -> bool {
     let items: Vec<Ev> = match eval_expr(list, cx) {
         Ev::Chars(cs) => cs.into_iter().map(Ev::Char).collect(),
         Ev::Val(Value::List(vs)) => vs.into_iter().map(Ev::Val).collect(),
@@ -505,16 +508,8 @@ fn quantify(list: &Expr, pred: &Expr, cx: &mut Ctx, every: bool) -> bool {
 
 fn index_list(l: Ev, i: usize) -> Ev {
     match l {
-        Ev::Chars(cs) => cs
-            .get(i)
-            .cloned()
-            .map(Ev::Char)
-            .unwrap_or(Ev::Val(Value::Null)),
-        Ev::Val(Value::List(vs)) => vs
-            .get(i)
-            .cloned()
-            .map(Ev::Val)
-            .unwrap_or(Ev::Val(Value::Null)),
+        Ev::Chars(cs) => cs.get(i).cloned().map_or(Ev::Val(Value::Null), Ev::Char),
+        Ev::Val(Value::List(vs)) => vs.get(i).cloned().map_or(Ev::Val(Value::Null), Ev::Val),
         _ => Ev::Val(Value::Null),
     }
 }
@@ -531,7 +526,7 @@ fn status_name(s: crate::world::afflictions::Status) -> &'static str {
 
 /// Field access on a subject. Total: unknown field / non-subject -> Null.
 /// `char.room` resolves lazily in Task 4; `Action` fields widen in Task 8.
-fn get_field(subject: Ev, field: &str, cx: &mut Ctx) -> Ev {
+fn get_field(subject: Ev, field: &str, cx: &mut Ctx<'_>) -> Ev {
     match subject {
         Ev::Char(c) => match field {
             "sanity" => Ev::Val(Value::Number(c.sanity)),
@@ -1166,7 +1161,7 @@ mod tests {
             view: Some(&view),
             ..Ctx::empty()
         };
-        let val = |e: &Expr, cx: &mut Ctx| eval_expr(e, cx).into_value();
+        let val = |e: &Expr, cx: &mut Ctx<'_>| eval_expr(e, cx).into_value();
 
         assert_eq!(val(&Expr::Round, &mut cx), Value::Number(0.0));
         assert_eq!(val(&Expr::MaxRounds, &mut cx), Value::Number(10.0));
@@ -1327,7 +1322,7 @@ mod tests {
             of: Box::new(Expr::Actor),
             field: "room".into(),
         };
-        let val = |e: &Expr, cx: &mut Ctx| eval_expr(e, cx).into_value();
+        let val = |e: &Expr, cx: &mut Ctx<'_>| eval_expr(e, cx).into_value();
 
         assert_eq!(
             val(
@@ -1389,7 +1384,7 @@ mod tests {
                 state: CtxState::Read(&state),
                 ..Ctx::empty()
             };
-            let val = |e: &Expr, cx: &mut Ctx| eval_expr(e, cx).into_value();
+            let val = |e: &Expr, cx: &mut Ctx<'_>| eval_expr(e, cx).into_value();
             assert_eq!(
                 val(
                     &Expr::StateGet {
@@ -1655,7 +1650,7 @@ mod tests {
             action: Some(&mv),
             ..Ctx::empty()
         };
-        let val = |e: &Expr, cx: &mut Ctx| eval_expr(e, cx).into_value();
+        let val = |e: &Expr, cx: &mut Ctx<'_>| eval_expr(e, cx).into_value();
         assert_eq!(
             val(
                 &Expr::Get {

@@ -198,9 +198,9 @@ mod tests {
         Catalog {
             items,
             aliases: BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         }
     }
 

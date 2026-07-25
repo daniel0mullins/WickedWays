@@ -57,7 +57,7 @@ impl World {
         }
         if confused {
             let cfg = default_affliction_config();
-            if (roll(100, self.rng.next_f64()) as i64) <= cfg.confused_fail_chance {
+            if i64::from(roll(100, self.rng.next_f64())) <= cfg.confused_fail_chance {
                 return GateVerdict::Fizzle;
             }
         }
@@ -104,7 +104,7 @@ impl World {
         self.record_action(
             actor,
             budgeted,
-            crate::world::mechanics::ActionView::of("fumble"),
+            &crate::world::mechanics::ActionView::of("fumble"),
             cat,
             cues,
         )
@@ -179,8 +179,8 @@ mod tests {
 
         // Peek the first draw the gate will consume.
         let mut peek = w.rng.clone();
-        let r =
-            (roll(100, peek.next_f64()) as i64) <= default_affliction_config().confused_fail_chance;
+        let r = i64::from(roll(100, peek.next_f64()))
+            <= default_affliction_config().confused_fail_chance;
         let verdict = w.gate(&actor, false);
         if r {
             assert_eq!(verdict, GateVerdict::Fizzle, "roll<=50 should fizzle");

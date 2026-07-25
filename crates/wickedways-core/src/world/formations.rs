@@ -180,8 +180,7 @@ impl World {
             .encounter_table
             .get("visited")
             .and_then(|v| v.as_array())
-            .map(|a| a.iter().any(|v| v.as_str() == Some(&room.0)))
-            .unwrap_or(false);
+            .is_some_and(|a| a.iter().any(|v| v.as_str() == Some(&room.0)));
         if already {
             return Ok(Vec::new());
         }
@@ -237,18 +236,18 @@ impl World {
             .campaign
             .encounter_table
             .get("baseChance")
-            .and_then(|v| v.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .unwrap_or(0);
-        let spawn_mod = self.rooms.get(room).map(|r| r.spawn_modifier).unwrap_or(1);
+        let spawn_mod = self.rooms.get(room).map_or(1, |r| r.spawn_modifier);
         let threshold = (base * spawn_mod).clamp(0, 100);
-        let r = crate::dice::roll(100, self.rng.next_f64()) as i64;
+        let r = i64::from(crate::dice::roll(100, self.rng.next_f64()));
         if r > threshold {
             return Ok(Vec::new());
         }
 
         // 6. weighted select (2nd rng draw).
         let total: i64 = formations.iter().map(|(_, w)| *w).sum();
-        let mut pick = crate::dice::roll(total as u32, self.rng.next_f64()) as i64;
+        let mut pick = i64::from(crate::dice::roll(total as u32, self.rng.next_f64()));
         let mut chosen: Option<&str> = None;
         for (k, w) in &formations {
             pick -= *w;

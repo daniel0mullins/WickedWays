@@ -32,7 +32,7 @@ impl ScriptedMechanic<'_> {
     fn run_body(
         &self,
         body: Option<&Vec<Stmt>>,
-        base: &mut HookCtx,
+        base: &mut HookCtx<'_>,
         actor: Option<&crate::world::mechanics::CharacterView>,
         action: Option<&crate::world::mechanics::ActionView>,
     ) -> Vec<Effect> {
@@ -55,13 +55,13 @@ impl MechanicOp for ScriptedMechanic<'_> {
     fn init_state(&self, _config: &Json) -> Json {
         self.script.init.clone()
     }
-    fn on_round_start(&self, cx: &mut HookCtx) -> Vec<Effect> {
+    fn on_round_start(&self, cx: &mut HookCtx<'_>) -> Vec<Effect> {
         self.run_body(self.script.hooks.on_round_start.as_ref(), cx, None, None)
     }
-    fn on_round_end(&self, cx: &mut HookCtx) -> Vec<Effect> {
+    fn on_round_end(&self, cx: &mut HookCtx<'_>) -> Vec<Effect> {
         self.run_body(self.script.hooks.on_round_end.as_ref(), cx, None, None)
     }
-    fn on_turn_start(&self, cx: &mut TurnCtx) -> Vec<Effect> {
+    fn on_turn_start(&self, cx: &mut TurnCtx<'_>) -> Vec<Effect> {
         let actor = cx.actor.clone();
         self.run_body(
             self.script.hooks.on_turn_start.as_ref(),
@@ -70,7 +70,7 @@ impl MechanicOp for ScriptedMechanic<'_> {
             None,
         )
     }
-    fn on_turn_end(&self, cx: &mut TurnCtx) -> Vec<Effect> {
+    fn on_turn_end(&self, cx: &mut TurnCtx<'_>) -> Vec<Effect> {
         let actor = cx.actor.clone();
         self.run_body(
             self.script.hooks.on_turn_end.as_ref(),
@@ -79,7 +79,7 @@ impl MechanicOp for ScriptedMechanic<'_> {
             None,
         )
     }
-    fn on_action(&self, cx: &mut ActionCtx) -> Vec<Effect> {
+    fn on_action(&self, cx: &mut ActionCtx<'_>) -> Vec<Effect> {
         let actor = cx.actor.clone();
         let action = cx.action.clone();
         self.run_body(
@@ -89,7 +89,7 @@ impl MechanicOp for ScriptedMechanic<'_> {
             Some(&action),
         )
     }
-    fn modify_damage(&self, d: &DamageView, cx: &mut HookCtx) -> TransformResult {
+    fn modify_damage(&self, d: &DamageView, cx: &mut HookCtx<'_>) -> TransformResult {
         match &self.script.hooks.modify_damage {
             None => TransformResult::Value(d.amount),
             Some(body) => {
@@ -107,7 +107,7 @@ impl MechanicOp for ScriptedMechanic<'_> {
             }
         }
     }
-    fn run_action(&self, action_key: &str, cx: &mut ActionCtx) -> Option<Vec<Effect>> {
+    fn run_action(&self, action_key: &str, cx: &mut ActionCtx<'_>) -> Option<Vec<Effect>> {
         let body = self.script.actions.get(action_key)?;
         let actor = cx.actor.clone();
         let action = cx.action.clone();
@@ -128,7 +128,7 @@ impl ScriptedItem<'_> {
     fn run_body(
         &self,
         body: Option<&Vec<Stmt>>,
-        base: &mut HookCtx,
+        base: &mut HookCtx<'_>,
         actor: &CharacterView,
     ) -> Vec<Effect> {
         let Some(body) = body else { return Vec::new() };
@@ -145,11 +145,11 @@ impl ScriptedItem<'_> {
         eval_effects(body, &mut cx)
     }
 
-    pub fn run_use(&self, base: &mut HookCtx, actor: &CharacterView) -> Vec<Effect> {
+    pub fn run_use(&self, base: &mut HookCtx<'_>, actor: &CharacterView) -> Vec<Effect> {
         self.run_body(self.script.on_use.as_ref(), base, actor)
     }
 
-    pub fn run_read(&self, base: &mut HookCtx, actor: &CharacterView) -> Vec<Effect> {
+    pub fn run_read(&self, base: &mut HookCtx<'_>, actor: &CharacterView) -> Vec<Effect> {
         self.run_body(self.script.on_read.as_ref(), base, actor)
     }
 }
@@ -465,7 +465,7 @@ impl ScriptedNpc<'_> {
     pub fn run_talk(
         &self,
         prompt: Option<&str>,
-        base: &mut HookCtx,
+        base: &mut HookCtx<'_>,
         actor: &CharacterView,
     ) -> (Vec<MechanicCue>, Vec<Effect>) {
         let sel = select_entry(self.script, prompt);
@@ -675,7 +675,10 @@ mod tests {
     fn fuzzy(tokens: &[&str], resp: &str) -> DialogueEntry {
         entry(
             DialogueMatch::Fuzzy {
-                tokens: tokens.iter().map(|t| t.to_string()).collect(),
+                tokens: tokens
+                    .iter()
+                    .map(std::string::ToString::to_string)
+                    .collect(),
             },
             resp,
         )

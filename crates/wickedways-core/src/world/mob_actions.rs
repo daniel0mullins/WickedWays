@@ -68,7 +68,7 @@ impl World {
                     .map(|e| other_side(&e.endpoint_ids, rid))
             });
             if let Some(dest) = destination {
-                self.move_to(mob, dest, cat, cues)?;
+                self.move_to(mob, &dest, cat, cues)?;
             }
         }
 

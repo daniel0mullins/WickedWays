@@ -94,8 +94,7 @@ impl World {
                 .find(|lid| {
                     self.loot
                         .get(*lid)
-                        .map(|l| l.content_ids.contains(target))
-                        .unwrap_or(false)
+                        .is_some_and(|l| l.content_ids.contains(target))
                 })
                 .cloned()
                 .ok_or_else(|| {
@@ -172,8 +171,7 @@ impl World {
                 crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } => cat
                     .items
                     .get(behavior_key)
-                    .map(|d| (d.two_handed, d.emits_light))
-                    .unwrap_or((None, None)),
+                    .map_or((None, None), |d| (d.two_handed, d.emits_light)),
                 crate::world::snapshot::ItemSnapshot::Key { .. } => (None, None),
             };
 
@@ -279,7 +277,7 @@ impl World {
         self.record_action(
             actor,
             true,
-            crate::world::mechanics::ActionView::of("pickUp"),
+            &crate::world::mechanics::ActionView::of("pickUp"),
             cat,
             cues,
         )?;
@@ -320,10 +318,7 @@ impl World {
             .characters
             .get(actor)
             .and_then(|c| c.current_room_id.clone());
-        let was_lit = actor_room
-            .as_ref()
-            .map(|r| self.is_lit(r, cat))
-            .unwrap_or(true);
+        let was_lit = actor_room.as_ref().is_none_or(|r| self.is_lit(r, cat));
 
         // 1. Item must be in actor's inventory.item_ids
         {
@@ -496,10 +491,7 @@ impl World {
             .characters
             .get(actor)
             .and_then(|c| c.current_room_id.clone());
-        let was_lit = actor_room
-            .as_ref()
-            .map(|r| self.is_lit(r, cat))
-            .unwrap_or(true);
+        let was_lit = actor_room.as_ref().is_none_or(|r| self.is_lit(r, cat));
 
         // Validate: item held AND equipped (mirrors character.ts:756-773 — no catalog lookup)
         {
@@ -603,7 +595,7 @@ impl World {
         self.record_action(
             actor,
             true,
-            crate::world::mechanics::ActionView::of("drop"),
+            &crate::world::mechanics::ActionView::of("drop"),
             cat,
             cues,
         )?;
@@ -712,8 +704,7 @@ impl World {
         let co_located = self
             .rooms
             .get(&room_id)
-            .map(|r| r.loot_ids.contains(loot_id))
-            .unwrap_or(false);
+            .is_some_and(|r| r.loot_ids.contains(loot_id));
         if !co_located {
             return Err(ProceduralViolation(
                 "The loot container is not here.".into(),
@@ -1024,9 +1015,9 @@ mod tests {
         Catalog {
             items,
             aliases: BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         }
     }
 
@@ -1919,9 +1910,9 @@ mod tests {
         let cat = Catalog {
             items: cat_items,
             aliases: alloc::collections::BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         };
 
         let (mut world, pc_id) = world_with_items(&[("key-x", "items/brass-key")], &cat);
@@ -2215,8 +2206,8 @@ mod tests {
             items,
             aliases: BTreeMap::new(),
             behaviors,
-            formations: Default::default(),
-            recipes: Default::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         };
 
         let (mut world, pc_id) = world_with_items(&[("potion-1", "items/potion")], &cat);
@@ -2283,7 +2274,7 @@ mod tests {
         let fail = default_affliction_config().confused_fail_chance;
         loop {
             let mut peek = world.rng.clone();
-            let r = (crate::dice::roll(100, peek.next_f64()) as i64) <= fail;
+            let r = i64::from(crate::dice::roll(100, peek.next_f64())) <= fail;
             if r {
                 break;
             }
@@ -2350,7 +2341,7 @@ mod tests {
         assert_eq!(ch.history.len(), 1);
         match &ch.history[0] {
             ActionHistoryEntry::Fumble { round: 0, action } => {
-                assert_eq!(action, "takeFromLootBox")
+                assert_eq!(action, "takeFromLootBox");
             }
             other => panic!("expected Fumble history, got {:?}", other),
         }

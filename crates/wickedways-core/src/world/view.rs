@@ -245,13 +245,10 @@ impl World {
     /// Returns `true` if the character is currently KO.
     /// Mirrors `o.status.includes(Status.KO)` in `viewmodel.ts`.
     pub fn is_ko(&self, id: &crate::world::ids::CharacterId) -> bool {
-        self.characters
-            .get(id)
-            .map(|c| {
-                c.afflictions
-                    .is_active(crate::world::afflictions::Status::Ko)
-            })
-            .unwrap_or(false)
+        self.characters.get(id).is_some_and(|c| {
+            c.afflictions
+                .is_active(crate::world::afflictions::Status::Ko)
+        })
     }
 
     /// Mirrors `mob.ts:101-104` (`seesInDark === lightAverse`): a character sees in
@@ -363,12 +360,8 @@ impl World {
                     .map(|c| c.name.clone())
                     .unwrap_or_default();
                 let health = self.effective_stat(id, StatType::Health, cat);
-                let is_kind = |k: CharacterKind| {
-                    self.characters
-                        .get(id)
-                        .map(|c| c.kind == k)
-                        .unwrap_or(false)
-                };
+                let is_kind =
+                    |k: CharacterKind| self.characters.get(id).is_some_and(|c| c.kind == k);
                 let talkable = if is_kind(CharacterKind::Npc) {
                     Some(true)
                 } else {
@@ -728,9 +721,9 @@ mod tests {
         Catalog {
             items,
             aliases,
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         }
     }
 

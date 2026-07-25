@@ -104,8 +104,7 @@ impl World {
             let is_mob = self
                 .characters
                 .get(&occ)
-                .map(|c| c.kind == CharacterKind::Mob)
-                .unwrap_or(false);
+                .is_some_and(|c| c.kind == CharacterKind::Mob);
             if !is_mob || self.is_ko(&occ) {
                 continue;
             }
@@ -190,8 +189,7 @@ impl World {
                     .characters
                     .get(&actor)
                     .and_then(|c| c.current_room_id.clone())
-                    .map(|rid| self.is_lit(&rid, cat))
-                    .unwrap_or(false);
+                    .is_some_and(|rid| self.is_lit(&rid, cat));
             // Solo GM: after a time-advancing action, live mobs sharing the
             // player's room strike back. Runs before next_player so a fatal blow
             // is caught by the round's outcome check (session.ts:127-131).
@@ -238,8 +236,7 @@ impl World {
                 let in_room = self
                     .rooms
                     .get(&room_id)
-                    .map(|r| r.loot_ids.iter().any(|l| l.0 == target_id))
-                    .unwrap_or(false);
+                    .is_some_and(|r| r.loot_ids.iter().any(|l| l.0 == target_id));
                 if !in_room {
                     return Err(ProceduralViolation(
                         "There's nothing like that to open here.".into(),
@@ -262,8 +259,7 @@ impl World {
                         .find(|lid| {
                             self.loot
                                 .get(lid)
-                                .map(|l| l.content_ids.contains(&target))
-                                .unwrap_or(false)
+                                .is_some_and(|l| l.content_ids.contains(&target))
                         })
                         .cloned()
                 });
@@ -307,8 +303,7 @@ impl World {
                 let equipped = self
                     .characters
                     .get(actor)
-                    .map(|c| c.equipment.values().any(|i| i == &item_id))
-                    .unwrap_or(false);
+                    .is_some_and(|c| c.equipment.values().any(|i| i == &item_id));
                 if !equipped {
                     return Err(ProceduralViolation("That isn't equipped.".into()));
                 }
@@ -325,8 +320,7 @@ impl World {
                 let in_room = self
                     .rooms
                     .get(&room_id)
-                    .map(|r| r.occupant_ids.contains(&target))
-                    .unwrap_or(false);
+                    .is_some_and(|r| r.occupant_ids.contains(&target));
                 if !in_room {
                     return Err(ProceduralViolation(
                         "There's nothing like that to attack here.".into(),
@@ -352,13 +346,11 @@ impl World {
                 let in_room = self
                     .rooms
                     .get(&room_id)
-                    .map(|r| r.occupant_ids.contains(&target))
-                    .unwrap_or(false);
+                    .is_some_and(|r| r.occupant_ids.contains(&target));
                 let is_visible_npc = self
                     .characters
                     .get(&target)
-                    .map(|c| c.kind == CharacterKind::Npc && c.visible)
-                    .unwrap_or(false);
+                    .is_some_and(|c| c.kind == CharacterKind::Npc && c.visible);
                 if !in_room || !is_visible_npc {
                     return Err(ProceduralViolation(
                         "There's no one here to talk to.".into(),
@@ -393,8 +385,7 @@ impl World {
         let held = self
             .characters
             .get(actor)
-            .map(|c| c.inventory.item_ids.contains(item))
-            .unwrap_or(false);
+            .is_some_and(|c| c.inventory.item_ids.contains(item));
         if !held {
             return Ok(());
         }
@@ -546,8 +537,7 @@ impl World {
         let is_visible_npc = self
             .characters
             .get(target)
-            .map(|c| c.kind == CharacterKind::Npc && c.visible)
-            .unwrap_or(false);
+            .is_some_and(|c| c.kind == CharacterKind::Npc && c.visible);
         let co_located = self
             .characters
             .get(actor)
@@ -605,8 +595,7 @@ impl World {
         let held = self
             .characters
             .get(actor)
-            .map(|c| c.inventory.item_ids.contains(item))
-            .unwrap_or(false);
+            .is_some_and(|c| c.inventory.item_ids.contains(item));
         if held {
             Ok(())
         } else {
@@ -885,8 +874,8 @@ mod tests {
             items,
             aliases: BTreeMap::new(),
             behaviors: BTreeMap::new(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         }
     }
 
@@ -1115,7 +1104,7 @@ mod tests {
         );
         assert_eq!(r.error, None);
         assert_eq!(
-            r.mob_attacks.as_ref().map(|v| v.len()),
+            r.mob_attacks.as_ref().map(std::vec::Vec::len),
             Some(1),
             "a light-averse mob still ambushes on a dark-room entry"
         );
@@ -1127,7 +1116,7 @@ mod tests {
         let mut w = crate::world::test_support::world_two_rooms(/*next_dark=*/ false);
         seat_test_mob(&mut w, "wraith", "start"); // co-located with the PC
         let (r, _) = submit_one(&mut w, Intent::Wait);
-        assert_eq!(r.mob_attacks.as_ref().map(|v| v.len()), Some(1));
+        assert_eq!(r.mob_attacks.as_ref().map(std::vec::Vec::len), Some(1));
     }
 
     #[test]

@@ -132,7 +132,7 @@ impl SyncCoordinator {
                 // surfaces can render the status bar (state alone can't reconstruct it).
                 for cue in &entry.delta.cues {
                     if let PresentationCue::Status { fields } = cue {
-                        self.latest_status = fields.clone();
+                        self.latest_status.clone_from(fields);
                     }
                 }
                 self.last_applied = entry.seq;

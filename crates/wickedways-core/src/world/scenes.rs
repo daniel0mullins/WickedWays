@@ -61,13 +61,20 @@ pub mod conformance {
 
     /// Fires while `state.count < 3` AND the room is occupied.
     pub fn visit_can_play(state: &Value, occupied: bool) -> bool {
-        let count = state.get("count").and_then(|v| v.as_i64()).unwrap_or(0);
+        let count = state
+            .get("count")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0);
         count < 3 && occupied
     }
 
     /// Increments `state.count` and returns one cue naming the room + new count.
     pub fn visit_run_script(room_name: &str, state: &mut Value) -> Vec<MechanicCue> {
-        let count = state.get("count").and_then(|v| v.as_i64()).unwrap_or(0) + 1;
+        let count = state
+            .get("count")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0)
+            + 1;
         state["count"] = json!(count);
         alloc::vec![MechanicCue {
             text: Some(alloc::format!("The {room_name} stirs (visit {count}).")),

@@ -89,7 +89,7 @@ impl HookCtx<'_> {
     /// Integer in `[1, n]` from the campaign rng (TS `roll(n)`).
     pub fn roll(&mut self, n: i64) -> i64 {
         let unit = self.rng.next_f64();
-        crate::dice::roll(n as u32, unit) as i64
+        i64::from(crate::dice::roll(n as u32, unit))
     }
 }
 
@@ -129,28 +129,28 @@ impl ActionView {
 pub trait MechanicOp: Sync {
     /// Authoring-time state seed (TS `initialState`). NEVER called on hydrate.
     fn init_state(&self, config: &Value) -> Value;
-    fn on_round_start(&self, _cx: &mut HookCtx) -> Vec<Effect> {
+    fn on_round_start(&self, _cx: &mut HookCtx<'_>) -> Vec<Effect> {
         Vec::new()
     }
-    fn on_round_end(&self, _cx: &mut HookCtx) -> Vec<Effect> {
+    fn on_round_end(&self, _cx: &mut HookCtx<'_>) -> Vec<Effect> {
         Vec::new()
     }
-    fn on_turn_start(&self, _cx: &mut TurnCtx) -> Vec<Effect> {
+    fn on_turn_start(&self, _cx: &mut TurnCtx<'_>) -> Vec<Effect> {
         Vec::new()
     }
-    fn on_turn_end(&self, _cx: &mut TurnCtx) -> Vec<Effect> {
+    fn on_turn_end(&self, _cx: &mut TurnCtx<'_>) -> Vec<Effect> {
         Vec::new()
     }
-    fn on_action(&self, _cx: &mut ActionCtx) -> Vec<Effect> {
+    fn on_action(&self, _cx: &mut ActionCtx<'_>) -> Vec<Effect> {
         Vec::new()
     }
-    fn modify_damage(&self, d: &DamageView, _cx: &mut HookCtx) -> TransformResult {
+    fn modify_damage(&self, d: &DamageView, _cx: &mut HookCtx<'_>) -> TransformResult {
         TransformResult::Value(d.amount)
     }
     /// Run a named custom action (TS `CustomAction.run`). `None` = this op has no
     /// action under `action_key` (→ a `ProceduralViolation` at the invoke site,
     /// mirroring TS's "has no action" throw). `cost` is v1-inert (every action costs 1).
-    fn run_action(&self, _action_key: &str, _cx: &mut ActionCtx) -> Option<Vec<Effect>> {
+    fn run_action(&self, _action_key: &str, _cx: &mut ActionCtx<'_>) -> Option<Vec<Effect>> {
         None
     }
 }

@@ -204,7 +204,7 @@ impl Afflictions {
             self.turns_active.insert(s, turns);
             let odds = &config.clear[&s];
             let p = (odds.base + odds.increment * (turns - 1)).clamp(0, 100);
-            if (roll(100, rng.next_f64()) as i64) <= p && !self.shaken_off.contains(&s) {
+            if i64::from(roll(100, rng.next_f64())) <= p && !self.shaken_off.contains(&s) {
                 self.shaken_off.push(s);
             }
         }

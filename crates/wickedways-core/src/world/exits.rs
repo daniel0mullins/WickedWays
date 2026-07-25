@@ -81,7 +81,7 @@ pub mod conformance {
     pub fn door_can_pass(state: &Value, has_key: bool) -> bool {
         state
             .get("unlocked")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false)
             || has_key
     }
@@ -90,7 +90,7 @@ pub mod conformance {
     pub fn door_run_script(state: &mut Value, has_key: bool) -> Option<String> {
         let unlocked = state
             .get("unlocked")
-            .and_then(|v| v.as_bool())
+            .and_then(serde_json::Value::as_bool)
             .unwrap_or(false);
         if !unlocked && has_key {
             state["unlocked"] = json!(true);

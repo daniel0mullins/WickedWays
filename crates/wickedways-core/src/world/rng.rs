@@ -19,7 +19,7 @@ impl Rng {
         self.a = self.a.wrapping_add(0x6d2b_79f5);
         let mut t = (self.a ^ (self.a >> 15)).wrapping_mul(1 | self.a);
         t = (t.wrapping_add((t ^ (t >> 7)).wrapping_mul(61 | t))) ^ t;
-        ((t ^ (t >> 14)) as f64) / 4_294_967_296.0
+        f64::from(t ^ (t >> 14)) / 4_294_967_296.0
     }
 }
 

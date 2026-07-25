@@ -16,7 +16,6 @@ use crate::world::ids::{CharacterId, RoomId};
 use crate::world::World;
 use alloc::collections::BTreeSet;
 use alloc::format;
-use alloc::string::ToString;
 use alloc::vec::Vec;
 
 impl World {
@@ -202,7 +201,11 @@ impl World {
                 let ex = self.exits.get_mut(&exit_id).expect("exit present");
                 behavior.run_script(&actor_view, &mut ex.state)
             }
-            .or_else(|| behavior.pass_message().map(|s| s.to_string()));
+            .or_else(|| {
+                behavior
+                    .pass_message()
+                    .map(alloc::string::ToString::to_string)
+            });
             if let Some(l) = line {
                 cues.push(PresentationCue::Mechanic {
                     cue: MechanicCue {
@@ -211,11 +214,11 @@ impl World {
                     },
                 });
             }
-            return self.move_to(actor, dest, cat, cues);
+            return self.move_to(actor, &dest, cat, cues);
         }
 
         // Behavior-free exit: always passable.
-        self.move_to(actor, dest, cat, cues)
+        self.move_to(actor, &dest, cat, cues)
     }
 
     /// Whether a keyed-exit behavior blocks `actor` from moving through the exit in `dir`. Returns
@@ -277,8 +280,7 @@ impl World {
         let has_match = self
             .rooms
             .get(room_id)
-            .map(|r| r.scenes.iter().any(|s| s.phase == phase))
-            .unwrap_or(false);
+            .is_some_and(|r| r.scenes.iter().any(|s| s.phase == phase));
         if !has_match {
             return Ok(());
         }
@@ -293,7 +295,7 @@ impl World {
         // (RoomSource::World), so they resolve by index and re-borrow `self` fresh each
         // iteration — their effects flow through the shared collect-then-apply pipeline
         // (`apply_all`), whose cues surface inline.
-        let scene_count = self.rooms.get(room_id).map(|r| r.scenes.len()).unwrap_or(0);
+        let scene_count = self.rooms.get(room_id).map_or(0, |r| r.scenes.len());
         let mut emitted: Vec<MechanicCue> = Vec::new();
         // FOOTGUN (mixed families in one room+phase): `view` above is built ONCE,
         // pre-loop, so a Native scene always reads PRE-loop world state. A Scripted
@@ -407,7 +409,7 @@ impl World {
     pub fn move_to(
         &mut self,
         actor: &CharacterId,
-        room: RoomId,
+        room: &RoomId,
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
@@ -429,7 +431,7 @@ impl World {
         if let Some(c) = self.characters.get_mut(actor) {
             c.current_room_id = Some(room.clone());
         }
-        if let Some(r) = self.rooms.get_mut(&room) {
+        if let Some(r) = self.rooms.get_mut(room) {
             if !r.occupant_ids.contains(actor) {
                 r.occupant_ids.push(actor.clone());
             }
@@ -439,13 +441,13 @@ impl World {
         // BEFORE the visibility cue. Mirrors TS `Room.enterRoom` (add occupant →
         // play "enter" scenes) inside `#enterRoom`, which runs before `move`'s
         // visibility cue.
-        self.fire_scenes(&room, "enter", actor, cat, cues)?;
+        self.fire_scenes(room, "enter", actor, cat, cues)?;
 
         // Visibility cue when the destination is dark (mirrors TS `move` :1021-1027).
-        if !self.is_lit(&room, cat) {
+        if !self.is_lit(room, cat) {
             let name = self
                 .rooms
-                .get(&room)
+                .get(room)
                 .map(|r| r.name.clone())
                 .unwrap_or_default();
             cues.push(PresentationCue::Visibility {
@@ -463,8 +465,7 @@ impl World {
         let is_player = self
             .characters
             .get(actor)
-            .map(|c| matches!(c.kind, crate::world::snapshot::CharacterKind::Player))
-            .unwrap_or(false);
+            .is_some_and(|c| matches!(c.kind, crate::world::snapshot::CharacterKind::Player));
 
         // record_action(move): tick budget, append history, emit action cue.
         // Budget tick mirrors TS `recordAction` (:530-532): `actions_this_round += 1`.
@@ -473,7 +474,7 @@ impl World {
         let round = self.campaign.round;
         let room_name = self
             .rooms
-            .get(&room)
+            .get(room)
             .map(|r| r.name.clone())
             .unwrap_or_default();
         if let Some(c) = self.characters.get_mut(actor) {
@@ -498,7 +499,7 @@ impl World {
         self.record_action(
             actor,
             true,
-            crate::world::mechanics::ActionView {
+            &crate::world::mechanics::ActionView {
                 kind: "move".into(),
                 room: Some(RoomRef {
                     id: room.clone(),
@@ -514,14 +515,14 @@ impl World {
         // before the occupant scan; spawn rng falls after any turn-end rng.
         if is_player {
             // maybeSpawn: roll/select/build/place (marks visited; fires enter-scenes silently).
-            self.maybe_spawn(&room, cat)?;
+            self.maybe_spawn(room, cat)?;
 
             // NOTE_ENCOUNTERS: scan occupants (now incl. spawned), skip party/KO, dedup on
             // "{actor}:{occ}" in campaign.encountered; record mob codex; stage encounter cues.
             let party: BTreeSet<CharacterId> = self.campaign.party_ids.iter().cloned().collect();
             let occupants: Vec<CharacterId> = self
                 .rooms
-                .get(&room)
+                .get(room)
                 .map(|r| r.occupant_ids.clone())
                 .unwrap_or_default();
             let mut encounter_refs: Vec<EntityRef> = Vec::new();
@@ -549,7 +550,7 @@ impl World {
                     .unwrap_or_default();
                 self.record_codex(
                     "mob", &name,
-                    serde_json::json!({ "name": name, "stats": { "health": stats.0, "sanity": stats.1, "energy": stats.2 } }),
+                    &serde_json::json!({ "name": name, "stats": { "health": stats.0, "sanity": stats.1, "energy": stats.2 } }),
                     Some(&actor.0), Some(&room.0),
                 );
                 encounter_refs.push(self.entity_ref_char(&occ));
@@ -557,20 +558,16 @@ impl World {
 
             // RECORD_ENCOUNTER({kind:"room"}): first-write-wins room codex entry.
             let room_id_str = room.0.clone();
-            let already_in_codex = self
-                .codex
-                .as_array()
-                .map(|arr| {
-                    arr.iter().any(|e| {
-                        e.get("kind").and_then(|v| v.as_str()) == Some("room")
-                            && e.get("key").and_then(|v| v.as_str()) == Some(&room_id_str)
-                    })
+            let already_in_codex = self.codex.as_array().is_some_and(|arr| {
+                arr.iter().any(|e| {
+                    e.get("kind").and_then(|v| v.as_str()) == Some("room")
+                        && e.get("key").and_then(|v| v.as_str()) == Some(&room_id_str)
                 })
-                .unwrap_or(false);
+            });
             if !already_in_codex {
                 let (room_name_str, room_desc) = self
                     .rooms
-                    .get(&room)
+                    .get(room)
                     .map(|r| (r.name.clone(), r.description.clone()))
                     .unwrap_or_default();
                 let entry = serde_json::json!({
@@ -1448,7 +1445,7 @@ mod tests {
             serde_json::json!(3)
         );
         assert!(!cues.iter().any(|c| matches!(c,
-            PresentationCue::Mechanic { cue } if cue.text.as_deref().map(|t| t.contains("stirs")).unwrap_or(false))));
+            PresentationCue::Mechanic { cue } if cue.text.as_deref().is_some_and(|t| t.contains("stirs")))));
     }
 
     #[test]

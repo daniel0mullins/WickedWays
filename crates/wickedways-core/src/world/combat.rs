@@ -40,14 +40,10 @@ impl World {
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) {
-        let was_ko = self
-            .characters
-            .get(actor)
-            .map(|c| {
-                c.afflictions
-                    .is_active(crate::world::afflictions::Status::Ko)
-            })
-            .unwrap_or(false);
+        let was_ko = self.characters.get(actor).is_some_and(|c| {
+            c.afflictions
+                .is_active(crate::world::afflictions::Status::Ko)
+        });
 
         // #floorAndSnapshot: persistently clamp base stats to max(0.0, x).
         if let Some(c) = self.characters.get_mut(actor) {
@@ -65,14 +61,10 @@ impl World {
                 .apply_from_stats(health, sanity, energy, &passive);
         }
 
-        let is_ko = self
-            .characters
-            .get(actor)
-            .map(|c| {
-                c.afflictions
-                    .is_active(crate::world::afflictions::Status::Ko)
-            })
-            .unwrap_or(false);
+        let is_ko = self.characters.get(actor).is_some_and(|c| {
+            c.afflictions
+                .is_active(crate::world::afflictions::Status::Ko)
+        });
         if !was_ko && is_ko {
             self.on_knock_out(actor, cat, cues);
         }
@@ -90,8 +82,7 @@ impl World {
         let is_mob = self
             .characters
             .get(actor)
-            .map(|c| matches!(c.kind, CharacterKind::Mob))
-            .unwrap_or(false);
+            .is_some_and(|c| matches!(c.kind, CharacterKind::Mob));
         if !is_mob {
             return;
         }
@@ -113,7 +104,7 @@ impl World {
 
         // 1. Materials deposit + codex records (before the item drop).
         if let Some(md) = &material_drops {
-            if md.as_object().map(|o| !o.is_empty()).unwrap_or(false) {
+            if md.as_object().is_some_and(|o| !o.is_empty()) {
                 let by = self.active_character_id().ok().map(|c| c.0);
                 let room_str = room_id.as_ref().map(|r| r.0.clone());
                 self.deposit_materials(md, by.as_deref(), room_str.as_deref());
@@ -253,14 +244,14 @@ impl World {
         ];
         if weapons.is_empty() {
             let (nstat, npow) = self.natural_attack(actor);
-            for e in matrix.iter_mut() {
+            for e in &mut matrix {
                 if e.0 == nstat {
                     e.1 += npow;
                 }
             }
         } else {
             for w in &weapons {
-                for e in matrix.iter_mut() {
+                for e in &mut matrix {
                     if e.0 == w.stat {
                         e.1 += w.modifier as f64;
                     }
@@ -311,7 +302,7 @@ impl World {
         self.record_action(
             actor,
             true,
-            crate::world::mechanics::ActionView::of("attack"),
+            &crate::world::mechanics::ActionView::of("attack"),
             cat,
             cues,
         )?;
@@ -325,20 +316,16 @@ impl World {
         &mut self,
         kind: &str,
         key: &str,
-        snapshot: Value,
+        snapshot: &Value,
         by: Option<&str>,
         room: Option<&str>,
     ) {
-        let exists = self
-            .codex
-            .as_array()
-            .map(|a| {
-                a.iter().any(|e| {
-                    e.get("kind").and_then(|v| v.as_str()) == Some(kind)
-                        && e.get("key").and_then(|v| v.as_str()) == Some(key)
-                })
+        let exists = self.codex.as_array().is_some_and(|a| {
+            a.iter().any(|e| {
+                e.get("kind").and_then(|v| v.as_str()) == Some(kind)
+                    && e.get("key").and_then(|v| v.as_str()) == Some(key)
             })
-            .unwrap_or(false);
+        });
         if exists {
             return;
         }
@@ -375,7 +362,10 @@ impl World {
                 // fractional or not — read both sides as f64 (matching MaterialMap's
                 // `number` values). `as_i64` would silently drop a fractional qty to 0.
                 let add = qty.as_f64().unwrap_or(0.0);
-                let cur = pool.get(component).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let cur = pool
+                    .get(component)
+                    .and_then(serde_json::Value::as_f64)
+                    .unwrap_or(0.0);
                 pool.insert(component.clone(), json!(cur + add));
             }
         }
@@ -385,7 +375,7 @@ impl World {
             self.record_codex(
                 "material",
                 &component,
-                json!({ "type": component }),
+                &json!({ "type": component }),
                 by,
                 room,
             );
@@ -428,8 +418,7 @@ impl World {
             .characters
             .get(target)
             .and_then(|c| c.current_room_id.clone())
-            .map(|rid| self.is_lit(&rid, cat))
-            .unwrap_or(false);
+            .is_some_and(|rid| self.is_lit(&rid, cat));
 
         let final_strength = compute_mitigated_damage(DamageInput {
             attack_strength,
@@ -439,7 +428,7 @@ impl World {
             room_lit,
         });
         let dealt = self.run_damage_transformers(
-            crate::world::mechanics::DamageView {
+            &crate::world::mechanics::DamageView {
                 amount: final_strength,
                 target: target.clone(),
                 stat: attack_stat,
@@ -484,7 +473,7 @@ impl World {
         self.record_action(
             target,
             false,
-            crate::world::mechanics::ActionView::of("takeDamage"),
+            &crate::world::mechanics::ActionView::of("takeDamage"),
             cat,
             cues,
         )?;
@@ -560,7 +549,7 @@ mod tests {
             source: None,
         };
         assert_eq!(
-            w.run_damage_transformers(dv, &mut cues, &Catalog::default()),
+            w.run_damage_transformers(&dv, &mut cues, &Catalog::default()),
             7.5
         );
         assert!(cues.is_empty());
@@ -621,9 +610,9 @@ mod tests {
         let cat = Catalog {
             items,
             aliases: BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         };
         w.items.insert(
             wpn.clone(),
@@ -797,9 +786,9 @@ mod tests {
         let cat = Catalog {
             items,
             aliases: BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         };
         w.items.insert(
             armor_id.clone(),
@@ -822,7 +811,7 @@ mod tests {
         assert_eq!(w.characters[&cid("pc")].stats.health, 3.0);
         match &w.items[&armor_id] {
             ItemSnapshot::Item { durability, .. } => {
-                assert_eq!(*durability, Some(1), "armor wore 1")
+                assert_eq!(*durability, Some(1), "armor wore 1");
             }
             _ => panic!(),
         }
@@ -889,9 +878,9 @@ mod tests {
         let cat = Catalog {
             items,
             aliases: BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         };
         w.items.insert(
             armor_id.clone(),

@@ -155,7 +155,7 @@ impl World {
         &mut self,
         actor: &CharacterId,
         budgeted: bool,
-        action: crate::world::mechanics::ActionView,
+        action: &crate::world::mechanics::ActionView,
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
@@ -168,8 +168,7 @@ impl World {
         let at_cap = self
             .characters
             .get(actor)
-            .map(|c| c.actions_this_round == c.actions_per_round)
-            .unwrap_or(false);
+            .is_some_and(|c| c.actions_this_round == c.actions_per_round);
         if at_cap {
             self.end_turn(actor, cat, cues)?;
         }
@@ -268,7 +267,7 @@ impl World {
         cues: &mut Vec<PresentationCue>,
     ) {
         self.campaign.outcome = outcome;
-        self.campaign.outcome_reason = reason.clone();
+        self.campaign.outcome_reason.clone_from(&reason);
         let narration = self.outcome_narration();
         cues.push(PresentationCue::Resolution {
             outcome,
@@ -599,7 +598,7 @@ mod tests {
         w.record_action(
             &cid("pc"),
             true,
-            crate::world::mechanics::ActionView::of("attack"),
+            &crate::world::mechanics::ActionView::of("attack"),
             &Catalog::default(),
             &mut cues,
         )
@@ -797,9 +796,9 @@ mod tests {
         let cat2 = Catalog {
             items,
             aliases: BTreeMap::new(),
-            behaviors: Default::default(),
-            formations: Default::default(),
-            recipes: Default::default(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
         };
 
         // Insert item into world and equip it
@@ -868,7 +867,7 @@ mod tests {
         w.record_action(
             &cid("pc"),
             true,
-            crate::world::mechanics::ActionView::of("attack"),
+            &crate::world::mechanics::ActionView::of("attack"),
             &Catalog::default(),
             &mut cues,
         )
@@ -894,7 +893,7 @@ mod tests {
         w.record_action(
             &cid("pc"),
             true,
-            crate::world::mechanics::ActionView::of("attack"),
+            &crate::world::mechanics::ActionView::of("attack"),
             &Catalog::default(),
             &mut cues,
         )
@@ -925,7 +924,7 @@ mod tests {
         w.record_action(
             &cid("pc"),
             false,
-            crate::world::mechanics::ActionView::of("attack"),
+            &crate::world::mechanics::ActionView::of("attack"),
             &Catalog::default(),
             &mut cues,
         )

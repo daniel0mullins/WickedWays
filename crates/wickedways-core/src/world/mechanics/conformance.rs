@@ -52,21 +52,26 @@ impl MechanicOp for Dread {
     fn init_state(&self, _config: &Value) -> Value {
         json!({ "ticks": 0 })
     }
-    fn on_round_start(&self, _cx: &mut HookCtx) -> Vec<Effect> {
+    fn on_round_start(&self, _cx: &mut HookCtx<'_>) -> Vec<Effect> {
         vec![cue("Dread stirs.")]
     }
-    fn on_turn_start(&self, _cx: &mut TurnCtx) -> Vec<Effect> {
+    fn on_turn_start(&self, _cx: &mut TurnCtx<'_>) -> Vec<Effect> {
         vec![cue("The dread watches.")]
     }
-    fn on_turn_end(&self, _cx: &mut TurnCtx) -> Vec<Effect> {
+    fn on_turn_end(&self, _cx: &mut TurnCtx<'_>) -> Vec<Effect> {
         vec![cue("The dread recedes.")]
     }
-    fn on_action(&self, _cx: &mut ActionCtx) -> Vec<Effect> {
+    fn on_action(&self, _cx: &mut ActionCtx<'_>) -> Vec<Effect> {
         vec![cue("The dread notices.")]
     }
-    fn on_round_end(&self, cx: &mut HookCtx) -> Vec<Effect> {
+    fn on_round_end(&self, cx: &mut HookCtx<'_>) -> Vec<Effect> {
         // Mutate persisted state: ticks += 1.
-        let ticks = cx.state.get("ticks").and_then(|v| v.as_i64()).unwrap_or(0) + 1;
+        let ticks = cx
+            .state
+            .get("ticks")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0)
+            + 1;
         cx.state["ticks"] = json!(ticks);
         // Target the first party member (fixtures use a single-PC party).
         let Some(target) = cx.view.party.first().map(|c| c.id.clone()) else {
@@ -81,10 +86,10 @@ impl MechanicOp for Dread {
             cue("Dread deepens."),
         ]
     }
-    fn modify_damage(&self, d: &DamageView, _cx: &mut HookCtx) -> TransformResult {
+    fn modify_damage(&self, d: &DamageView, _cx: &mut HookCtx<'_>) -> TransformResult {
         cap(d.amount)
     }
-    fn run_action(&self, action_key: &str, cx: &mut ActionCtx) -> Option<Vec<Effect>> {
+    fn run_action(&self, action_key: &str, cx: &mut ActionCtx<'_>) -> Option<Vec<Effect>> {
         match action_key {
             "brace" => Some(brace_effects(&cx.actor.id)),
             _ => None,
@@ -108,11 +113,11 @@ impl MechanicOp for EffectCount {
     fn init_state(&self, _config: &Value) -> Value {
         json!({ "n": 0 })
     }
-    fn on_round_end(&self, cx: &mut HookCtx) -> Vec<Effect> {
+    fn on_round_end(&self, cx: &mut HookCtx<'_>) -> Vec<Effect> {
         let n = cx
             .state
             .get("n")
-            .and_then(|v| v.as_i64())
+            .and_then(serde_json::Value::as_i64)
             .unwrap_or(0)
             .max(0);
         (0..n).map(|_| cue("x")).collect()

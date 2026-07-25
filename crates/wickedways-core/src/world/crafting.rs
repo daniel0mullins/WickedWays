@@ -107,8 +107,7 @@ impl World {
         let in_room = self
             .rooms
             .get(&room_id)
-            .map(|r| r.material_cache_ids.iter().any(|id| id == cache_id))
-            .unwrap_or(false);
+            .is_some_and(|r| r.material_cache_ids.iter().any(|id| id == cache_id));
         if !in_room {
             return Err(ProceduralViolation(
                 "Cannot harvest a material cache that is not in the current room".into(),
@@ -214,14 +213,12 @@ impl World {
         let held = self
             .characters
             .get(actor)
-            .map(|c| c.inventory.item_ids.iter().any(|i| i == item_id))
-            .unwrap_or(false);
+            .is_some_and(|c| c.inventory.item_ids.iter().any(|i| i == item_id));
         // Keys carry no durability; reject them with a clear reason.
         if self
             .characters
             .get(actor)
-            .map(|c| c.inventory.key_ids.iter().any(|i| i == item_id))
-            .unwrap_or(false)
+            .is_some_and(|c| c.inventory.key_ids.iter().any(|i| i == item_id))
         {
             return Err(ProceduralViolation("Keys cannot be repaired.".into()));
         }
@@ -256,8 +253,7 @@ impl World {
         let recipe = cat
             .items
             .get(behavior_key)
-            .map(|d| d.recipe.clone())
-            .unwrap_or_else(|| json!({}));
+            .map_or_else(|| json!({}), |d| d.recipe.clone());
         let mut cost: BTreeMap<String, i64> = BTreeMap::new();
         if let Some(obj) = recipe.as_object() {
             for (component, qty) in obj {
@@ -297,8 +293,7 @@ impl World {
         let held = self
             .characters
             .get(actor)
-            .map(|c| c.inventory.item_ids.iter().any(|i| i == item_id))
-            .unwrap_or(false);
+            .is_some_and(|c| c.inventory.item_ids.iter().any(|i| i == item_id));
         if !held {
             return Err(ProceduralViolation(
                 "Cannot destroy an item the character is not holding.".into(),
@@ -325,8 +320,7 @@ impl World {
             ItemSnapshot::Item { behavior_key, .. } => cat
                 .items
                 .get(behavior_key)
-                .map(|d| d.recipe.clone())
-                .unwrap_or_else(|| json!({})),
+                .map_or_else(|| json!({}), |d| d.recipe.clone()),
             ItemSnapshot::Key { .. } => json!({}),
         };
         self.deposit_materials(&recipe, Some(&actor.0), room.as_ref().map(|r| r.0.as_str()));
@@ -635,7 +629,7 @@ mod tests {
 
         match &world.items[&bid] {
             ItemSnapshot::Item { durability, .. } => {
-                assert_eq!(*durability, Some(4), "restored to full")
+                assert_eq!(*durability, Some(4), "restored to full");
             }
             _ => panic!(),
         }

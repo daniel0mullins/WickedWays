@@ -190,7 +190,7 @@ impl World {
         let mut queued: Vec<Effect> = Vec::new();
         {
             let rng = &mut self.rng;
-            for m in self.campaign.mechanics.iter_mut() {
+            for m in &mut self.campaign.mechanics {
                 let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat)
                 else {
                     return Err(ProceduralViolation(format!(
@@ -244,7 +244,7 @@ impl World {
         let mut queued: Vec<Effect> = Vec::new();
         {
             let rng = &mut self.rng;
-            for m in self.campaign.mechanics.iter_mut() {
+            for m in &mut self.campaign.mechanics {
                 let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat)
                 else {
                     return Err(ProceduralViolation(format!(
@@ -283,7 +283,7 @@ impl World {
     pub fn dispatch_action(
         &mut self,
         actor: &CharacterId,
-        action: ActionView,
+        action: &ActionView,
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
@@ -302,7 +302,7 @@ impl World {
         let mut queued: Vec<Effect> = Vec::new();
         {
             let rng = &mut self.rng;
-            for m in self.campaign.mechanics.iter_mut() {
+            for m in &mut self.campaign.mechanics {
                 let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat)
                 else {
                     return Err(ProceduralViolation(format!(
@@ -343,7 +343,7 @@ impl World {
     /// result emits `"{key} fixed damage at {value}."` and short-circuits.
     pub fn run_damage_transformers(
         &mut self,
-        dv: DamageView,
+        dv: &DamageView,
         cues: &mut Vec<PresentationCue>,
         cat: &Catalog,
     ) -> f64 {
@@ -353,7 +353,7 @@ impl World {
         let view = self.build_campaign_view(cat);
         let mut value = dv.amount;
         let rng = &mut self.rng;
-        for m in self.campaign.mechanics.iter_mut() {
+        for m in &mut self.campaign.mechanics {
             let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat) else {
                 continue;
             };
@@ -581,7 +581,7 @@ impl World {
             actor: self.entity_ref_char(actor),
             sound: None,
         });
-        self.record_action(actor, true, ActionView::of("mechanicAction"), cat, cues)
+        self.record_action(actor, true, &ActionView::of("mechanicAction"), cat, cues)
     }
 }
 
@@ -1089,7 +1089,7 @@ mod tests {
             .unwrap();
         w.dispatch_action(
             &cid("pc"),
-            crate::world::mechanics::ActionView::of("move"),
+            &crate::world::mechanics::ActionView::of("move"),
             &Catalog::default(),
             &mut cues,
         )
@@ -1132,7 +1132,7 @@ mod tests {
         };
         let mut cues = Vec::new();
         assert_eq!(
-            w.run_damage_transformers(dv.clone(), &mut cues, &Catalog::default()),
+            w.run_damage_transformers(&dv, &mut cues, &Catalog::default()),
             3.5
         );
         // Dread's modify_damage: amount(3.5) > 3.0 -> Final(3.0), short-circuits
@@ -1142,7 +1142,7 @@ mod tests {
             state: serde_json::json!({"ticks": 0}),
         });
         assert_eq!(
-            w.run_damage_transformers(dv, &mut cues, &Catalog::default()),
+            w.run_damage_transformers(&dv, &mut cues, &Catalog::default()),
             3.0
         );
         assert_eq!(cues.len(), 1);
@@ -1194,7 +1194,7 @@ mod tests {
         let fail = default_affliction_config().confused_fail_chance;
         loop {
             let mut peek = world.rng.clone();
-            let r = (crate::dice::roll(100, peek.next_f64()) as i64) <= fail;
+            let r = i64::from(crate::dice::roll(100, peek.next_f64())) <= fail;
             if r {
                 break;
             }
@@ -1227,7 +1227,7 @@ mod tests {
         assert_eq!(ch.history.len(), 1);
         match &ch.history[0] {
             ActionHistoryEntry::Fumble { round: 0, action } => {
-                assert_eq!(action, "useMechanicAction")
+                assert_eq!(action, "useMechanicAction");
             }
             other => panic!("expected Fumble history, got {:?}", other),
         }

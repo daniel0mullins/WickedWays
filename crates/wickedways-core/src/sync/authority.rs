@@ -53,7 +53,7 @@ pub enum SubmitResult {
 }
 
 /// Construction options for a [`SyncAuthority`].
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct AuthorityOpts {
     /// Checkpoint every N commits (the `load_snapshot` freshness cadence). Default 20.
     pub snapshot_every: u64,
@@ -161,8 +161,7 @@ impl SyncAuthority {
                     .world
                     .characters
                     .get(actor)
-                    .map(|c| c.actions_this_round >= c.actions_per_round)
-                    .unwrap_or(false);
+                    .is_some_and(|c| c.actions_this_round >= c.actions_per_round);
                 if spent {
                     return SubmitResult::Denied {
                         reason: "You have no actions left this turn.".into(),
@@ -258,8 +257,7 @@ fn apply_command(
         let budget_spent = world
             .characters
             .get(&actor)
-            .map(|c| c.actions_this_round >= c.actions_per_round)
-            .unwrap_or(true);
+            .is_none_or(|c| c.actions_this_round >= c.actions_per_round);
         if budget_spent || matches!(command, Command::Wait { .. }) {
             // Light-tied initiative (movement.rs): ending the turn by moving INTO a LIT room gets the
             // drop — no mob reactions. Every other case (and moving into the dark) provokes.
@@ -268,8 +266,7 @@ fn apply_command(
                     .characters
                     .get(&actor)
                     .and_then(|c| c.current_room_id.clone())
-                    .map(|rid| world.is_lit(&rid, cat))
-                    .unwrap_or(false);
+                    .is_some_and(|rid| world.is_lit(&rid, cat));
             if !entered_lit {
                 let attacks = world.run_mob_reactions(&actor, cat, &mut cues);
                 // Surface each strike as prose (the wire carries no `MobAttack` list); the HUD already
@@ -304,7 +301,7 @@ fn apply_action(
     cues: &mut Vec<PresentationCue>,
 ) -> Result<(), ProceduralViolation> {
     let result: Result<(), ProceduralViolation> = match command {
-        Command::Move { actor_id, room_id } => world.move_to(actor_id, room_id.clone(), cat, cues),
+        Command::Move { actor_id, room_id } => world.move_to(actor_id, room_id, cat, cues),
         Command::Attack {
             actor_id,
             target_id,
@@ -352,9 +349,8 @@ fn apply_action(
         Command::JoinCampaign { character } => world.join_campaign((**character).clone()),
         Command::BeginCampaign => world.begin_campaign(cat, cues),
         Command::EndCampaign => world.end_campaign(cues),
-        Command::NextPlayer => world.next_player(cat, cues),
         // A player ending their own turn advances the active seat, exactly like the GM's nextPlayer.
-        Command::EndTurn { .. } => world.next_player(cat, cues),
+        Command::NextPlayer | Command::EndTurn { .. } => world.next_player(cat, cues),
         // Materials & crafting — all FREE actions (turn-gated by `authorize`, no budget tick).
         Command::Harvest { actor_id, cache_id } => world.harvest(actor_id, cache_id, cat, cues),
         Command::Craft {

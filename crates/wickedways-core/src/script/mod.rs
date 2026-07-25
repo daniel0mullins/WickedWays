@@ -95,10 +95,9 @@ fn check_stmts(stmts: &[Stmt], allow_pass: bool, allow_emit: bool) -> Result<(),
     for s in stmts {
         match s {
             Stmt::Pass { .. } if !allow_pass => return Err("Pass is not legal in an effect body"),
-            Stmt::Pass { value } => check_expr(value)?,
             Stmt::Emit { .. } if !allow_emit => return Err("Emit is not legal in an exit script"),
             Stmt::Emit { effect } => check_effect(effect)?,
-            Stmt::Guard { cond } => check_expr(cond)?,
+            Stmt::Pass { value: e } | Stmt::Guard { cond: e } => check_expr(e)?,
             Stmt::When { cond, then } => {
                 check_expr(cond)?;
                 check_stmts(then, allow_pass, allow_emit)?;
