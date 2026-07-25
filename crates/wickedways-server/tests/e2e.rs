@@ -1,11 +1,11 @@
-//! Two-client convergence e2e over a real WebSocket (Phase 2c, sub-project C — slice 4).
+//! Two-client convergence e2e over a real WebSocket.
 //!
-//! The end-to-end proof C exists for: two independent clients connect to the axum `/ws` server over
-//! real sockets, seed a replica from `getSnapshot`, and — when one client submits a command — both
-//! apply the server's authoritative delta (the submitter via `committed`, the other via `entry`) and
-//! **converge to the identical snapshot**. Because the exchange is real `ClientMsg`/`ServerMsg` bytes
-//! on the wire, this also exercises wire parity end-to-end (the `transport` module's serde shapes are
-//! additionally unit-checked against the TS union in `src/transport.rs`).
+//! The end-to-end proof the room server exists for: two independent clients connect to the axum
+//! `/ws` server over real sockets, seed a replica from `getSnapshot`, and — when one client submits
+//! a command — both apply the server's authoritative delta (the submitter via `committed`, the other
+//! via `entry`) and **converge to the identical snapshot**. Because the exchange is real
+//! `ClientMsg`/`ServerMsg` bytes on the wire, this also exercises the wire serde shapes end-to-end
+//! (they are additionally unit-checked in the `wickedways-transport` crate).
 
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};

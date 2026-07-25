@@ -1,4 +1,4 @@
-//! The WickedWays room-server binary (Phase 2c, sub-project C — slice 4).
+//! The WickedWays room-server binary.
 //!
 //! Reads its configuration from the environment, builds a [`RoomServer`](wickedways_server::server::RoomServer),
 //! and serves the axum `/ws` endpoint (plus a `GET /healthz` liveness probe → `200 "ok"` for
@@ -15,7 +15,7 @@
 //! - `WEB_DIR`      — directory of the bundled Dioxus web client served as a fallback under `/ws` (default `./dist`; empty ⇒ off). Unmatched paths fall back to `index.html` so `?campaign=…`/`?surface=…` deep-links load.
 //!
 //! `verify_token` here is the development default (identity = the token string, empty rejected) —
-//! a real deployment injects a proper verifier. Chat/AV are sub-project E.
+//! a real deployment injects a proper verifier. Chat/AV are not implemented yet.
 
 use std::sync::Arc;
 
@@ -98,8 +98,7 @@ async fn main() {
     };
     let addr = listener
         .local_addr()
-        .map(|a| a.to_string())
-        .unwrap_or_else(|_| format!("0.0.0.0:{port}"));
+        .map_or_else(|_| format!("0.0.0.0:{port}"), |a| a.to_string());
     println!(
         "wickedways-server listening on {addr} — /ws ({}), web client: {}",
         if durable { "durable" } else { "ephemeral" },

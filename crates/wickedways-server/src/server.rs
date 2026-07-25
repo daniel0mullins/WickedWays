@@ -1,19 +1,20 @@
-//! The room server: connection lifecycle + axum WebSocket handler (Phase 2c, sub-project C — slice 3).
+//! The room server: connection lifecycle + axum WebSocket handler.
 //!
-//! Ports the **multiplayer** message loop of `packages/server/src/server.ts`: a host-configured
-//! [`RoomServer`] holds a [`Table`](crate::table::Table) actor per campaign (built lazily from
-//! `genesis_for`), gates every append by seat ownership, and drives presence/roster. Each connection
-//! authenticates on `join`; writes (`submit`) require an authenticated connection and a seat the
-//! caller owns. The only server-owned gate is seat ownership, checked against the actor the server
-//! reads from the command itself — no client-supplied actor envelope exists to forge.
+//! The **multiplayer** message loop: a host-configured [`RoomServer`] holds a
+//! [`Table`](crate::table::Table) actor per campaign (built lazily from `genesis_for`), gates every
+//! append by seat ownership, and drives presence/roster. Each connection authenticates on `join`;
+//! writes (`submit`) require an authenticated connection and a seat the caller owns. The only
+//! server-owned gate is seat ownership, checked against the actor the server reads from the command
+//! itself — no client-supplied actor envelope exists to forge.
 //!
-//! Chat and A/V (`chatSend`/`callJoin`/`signal`/…) are **sub-project E**: an inbound chat/AV frame is
-//! simply an unknown `ClientMsg` variant here (rejected as malformed) until E adds the arms.
+//! Chat and A/V (`chatSend`/`callJoin`/`signal`/…) are **not implemented yet**: an inbound chat/AV
+//! frame is simply an unknown `ClientMsg` variant here (rejected as malformed) until those arms are
+//! added.
 //!
 //! The axum `/ws` handler is a thin adapter: it bridges the synchronous [`Subscriber`] callback the
 //! `Table` expects to the async WebSocket sink via an unbounded channel, then feeds parsed frames to
 //! [`Connection::handle`]. The connection lifecycle logic lives on [`Connection`] so it is unit-tested
-//! directly against a recording sink; the two-client over-a-real-socket proof is slice 4.
+//! directly against a recording sink; the two-client over-a-real-socket proof lives in `tests/e2e.rs`.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -52,8 +53,8 @@ pub type CatalogFor = Box<dyn Fn(&str) -> Option<Catalog> + Send + Sync>;
 /// Optional display-name resolver for the `players` roster; defaults to the identity string.
 pub type DisplayNameFor = Box<dyn Fn(&str) -> String + Send + Sync>;
 
-/// Construction options for a [`RoomServer`]. Mirrors `ServerOptions` (multiplayer fields only; the
-/// chat/AV options — `chat_store`, `ice_servers`, … — are sub-project E).
+/// Construction options for a [`RoomServer`] (multiplayer fields only; the chat/AV options —
+/// `chat_store`, `ice_servers`, … — do not exist yet).
 pub struct ServerOptions {
     pub verify_token: VerifyToken,
     pub gm_identity_for: GmIdentityFor,
@@ -82,8 +83,8 @@ pub struct RoomServer {
     /// campaign → identity → live-connection count (an identity is online while any connection lives).
     online: Mutex<HashMap<String, HashMap<String, u32>>>,
     /// Serializes campaign loads so two concurrent `join`s for the same campaign don't build two
-    /// authorities (the inflight-dedup the TS `loading` map provides). Global rather than
-    /// per-campaign because loads are rare; a future optimization is per-campaign inflight tracking.
+    /// authorities (inflight dedup). Global rather than per-campaign because loads are rare; a
+    /// future optimization is per-campaign inflight tracking.
     load_lock: tokio::sync::Mutex<()>,
     next_conn: AtomicU64,
 }
@@ -138,9 +139,8 @@ impl RoomServer {
                 let id = campaign_id.to_string();
                 match tokio::task::spawn_blocking(move || store.load(&id)).await {
                     Ok(Ok(rec)) => rec,
-                    // Load failure (or the blocking task dying) is treated as "campaign not found",
-                    // exactly like the TS store-rejection path — the campaign is not wedged, a later
-                    // ensure_loaded retries.
+                    // Load failure (or the blocking task dying) is treated as "campaign not found"
+                    // — the campaign is not wedged, a later ensure_loaded retries.
                     _ => return None,
                 }
             }
@@ -209,7 +209,7 @@ impl RoomServer {
     fn bump(&self, campaign_id: &str, identity: &str, delta: i64) {
         let mut online = self.online.lock().unwrap();
         let inner = online.entry(campaign_id.to_string()).or_default();
-        let n = (*inner.get(identity).unwrap_or(&0) as i64 + delta).max(0);
+        let n = (i64::from(*inner.get(identity).unwrap_or(&0)) + delta).max(0);
         if n == 0 {
             inner.remove(identity);
         } else {
@@ -239,8 +239,7 @@ impl RoomServer {
         self.opts
             .display_name_for
             .as_ref()
-            .map(|f| f(identity))
-            .unwrap_or_else(|| identity.to_string())
+            .map_or_else(|| identity.to_string(), |f| f(identity))
     }
 
     /// Builds the current presence message (seat owners + GM, each with its online flag).
@@ -367,21 +366,21 @@ impl Connection {
                         identity,
                     },
                 )
-                .await
+                .await;
             }
             ClientMsg::UnassignSeat {
                 campaign_id,
                 character_id,
             } => {
                 self.on_gm_control(&campaign_id, GmOp::Unassign { character_id })
-                    .await
+                    .await;
             }
             ClientMsg::TransferGm {
                 campaign_id,
                 identity,
             } => {
                 self.on_gm_control(&campaign_id, GmOp::TransferGm { identity })
-                    .await
+                    .await;
             }
         }
     }
@@ -451,7 +450,7 @@ impl Connection {
                 let character_id = character_id.clone();
                 let claimer = identity.clone();
                 Some(Box::new(move |m: &mut Membership| {
-                    m.claim(&character_id, claimer)
+                    m.claim(&character_id, claimer);
                 }))
             }
             _ => None,
@@ -556,9 +555,9 @@ async fn serve_socket(mut socket: WebSocket, server: Arc<RoomServer>) {
                             Err(_) => conn.reply(ServerMsg::Error { message: "Malformed message".into() }),
                         },
                     },
-                    Some(Ok(Message::Close(_))) | None => break,
+                    // Clean close, stream end, and socket error all end the session.
+                    Some(Ok(Message::Close(_)) | Err(_)) | None => break,
                     Some(Ok(_)) => {} // ignore binary/ping/pong
-                    Some(Err(_)) => break,
                 }
             }
             outgoing = out_rx.recv() => {

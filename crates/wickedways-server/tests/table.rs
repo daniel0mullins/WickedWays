@@ -1,12 +1,11 @@
-//! `Table` behavioural tests (Phase 2c, sub-project C — slice 2).
+//! `Table` behavioural tests.
 //!
-//! Ports `packages/server/src/table.test.ts` (ack/broadcast, deny-to-sender, flush-before-ack,
-//! reload-on-persist-failure) and adds the two guarantees the Rust actor makes that the TS class
-//! could not: in-order submit serialization through the actor, and an atomic seat-claim + commit.
+//! Covers ack/broadcast, deny-to-sender, flush-before-ack, and reload-on-persist-failure, plus the
+//! two guarantees the actor adds: in-order submit serialization through the actor, and an atomic
+//! seat-claim + commit.
 //!
-//! Uses the committed `sync-move` genesis (a started two-player campaign, so `nextPlayer` commits) —
-//! the same fixture the sync gate replays — because core's snapshot builders are `#[cfg(test)]`
-//! private to that crate.
+//! Uses the committed `sync-move` genesis (a started two-player campaign, so `nextPlayer` commits)
+//! because core's snapshot builders are `#[cfg(test)]` private to that crate.
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -118,7 +117,7 @@ impl CampaignStore for MockStore {
     }
 }
 
-// ── ported from table.test.ts ─────────────────────────────────────────────────────────────────
+// ── core Table behaviour ──────────────────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn acks_the_submitter_with_committed_and_broadcasts_entry_to_others() {
@@ -203,7 +202,7 @@ async fn rolls_back_and_denies_when_persist_fails() {
     );
 }
 
-// ── guarantees the Rust actor adds ────────────────────────────────────────────────────────────
+// ── guarantees the actor adds ─────────────────────────────────────────────────────────────────
 
 #[tokio::test]
 async fn the_actor_serializes_concurrent_submits() {

@@ -1,4 +1,4 @@
-//! `actor_of` for a `joinCampaign` command (Phase 2c, sub-project C — slice 1).
+//! `actor_of` for a `joinCampaign` command.
 //!
 //! A join command carries a full `CharacterSnapshot`, which is impractical to hand-write, so this
 //! borrows a real character from the committed `sync-move` genesis fixture and asserts the derived

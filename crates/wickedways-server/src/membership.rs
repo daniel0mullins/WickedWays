@@ -1,6 +1,5 @@
-//! Seat ownership (Phase 2c, sub-project C — slice 1).
+//! Seat ownership: the seat/GM map, plus the [`actor_of`] helper.
 //!
-//! Ports `packages/server/src/membership.ts` (the seat/GM map) plus `server.ts`'s `actorOf` helper.
 //! This is **server-side protocol state** — not part of the campaign snapshot — so the server can
 //! gate appends by seat ownership without reading opaque engine payloads. Seeded with the GM at room
 //! creation; mutated by self-service join (self-claim) and GM control messages.
@@ -13,9 +12,9 @@ use crate::transport::Actor;
 /// One campaign's seat-ownership map: which identity owns each character seat, plus the GM identity.
 ///
 /// Seats are held in an **insertion-ordered** `Vec` rather than a sorted map so
-/// [`seats`](Membership::seats)/[`to_state`](Membership::to_state) preserve claim order, matching
-/// the TS `Map` the oracle serializes (assigning an already-owned seat updates it in place, keeping
-/// its position — exactly `Map.set` semantics). Party sizes are tiny, so the linear scans are free.
+/// [`seats`](Membership::seats)/[`to_state`](Membership::to_state) preserve claim order (assigning
+/// an already-owned seat updates it in place, keeping its position). Party sizes are tiny, so the
+/// linear scans are free.
 pub struct Membership {
     gm_identity: String,
     seats: Vec<(String, String)>,
@@ -60,7 +59,7 @@ impl Membership {
 
     // `claim` and `assign` are intentionally distinct despite identical bodies: `claim` =
     // self-service join (a player binds their own seat); `assign` = GM override (host reassigns any
-    // seat). Keep them separate so semantic callers stay explicit — mirrors the TS note.
+    // seat). Keep them separate so semantic callers stay explicit.
 
     /// Binds a newly-joined character to its claiming identity (self-service join).
     pub fn claim(&mut self, character_id: &str, identity: impl Into<String>) {
@@ -99,7 +98,7 @@ impl Membership {
         m
     }
 
-    /// `Map.set` semantics: update an existing seat in place (keeping its position), else append.
+    /// Updates an existing seat in place (keeping its position), else appends.
     fn set_seat(&mut self, character_id: &str, identity: String) {
         if let Some(entry) = self.seats.iter_mut().find(|(c, _)| c == character_id) {
             entry.1 = identity;
@@ -111,8 +110,7 @@ impl Membership {
 
 /// Derives the seat an append acts as, read straight from the command (no client-supplied envelope
 /// exists to forge). `join` self-claims the joining character's seat; a turn/setup command acts as
-/// its `actorId` seat; everything else (GM / lifecycle / NPC) acts as the GM. Ports `server.ts`'s
-/// `actorOf`.
+/// its `actorId` seat; everything else (GM / lifecycle / NPC) acts as the GM.
 pub fn actor_of(command: &Command) -> Actor {
     if let Command::JoinCampaign { character } = command {
         return Actor::Join {

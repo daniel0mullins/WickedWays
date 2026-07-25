@@ -1,12 +1,11 @@
-//! Durable campaign persistence (Phase 2c, sub-project C — slice 1).
+//! Durable campaign persistence.
 //!
-//! Ports `packages/server/src/store.ts` + `sqlite-store.ts`: the [`CampaignStore`] contract, the
-//! [`CampaignRecord`]/[`MembershipState`] durable shapes, and the [`SqliteStore`] implementation
-//! (one row per campaign, WAL, a single-row upsert so snapshot + membership are written atomically).
+//! The [`CampaignStore`] contract, the [`CampaignRecord`]/[`MembershipState`] durable shapes, and
+//! the [`SqliteStore`] implementation (one row per campaign, WAL, a single-row upsert so snapshot +
+//! membership are written atomically).
 //!
-//! The TS `CampaignStore` is async (host-injected `Promise`s). The Rust store is deliberately
-//! **synchronous**: rusqlite is a blocking library, and the per-campaign `Table` actor (slice 2)
-//! serializes all store access and drives it off the async runtime via
+//! The store is deliberately **synchronous**: rusqlite is a blocking library, and the per-campaign
+//! `Table` actor serializes all store access and drives it off the async runtime via
 //! `tokio::task::spawn_blocking`. Keeping the trait sync means the actor owns the one blocking
 //! boundary and the store stays a plain, testable value.
 
@@ -20,8 +19,8 @@ use serde::{Deserialize, Serialize};
 use wickedways_core::CampaignSnapshot;
 
 /// Server-side serializable form of a [`Membership`](crate::membership::Membership): the GM
-/// identity + `[characterId, identity]` seat pairs. Mirrors `store.ts` `MembershipState` (the seat
-/// list serializes as an array of two-element arrays, exactly like the TS tuple type).
+/// identity + `[characterId, identity]` seat pairs. On the wire the seat list serializes as an
+/// array of two-element arrays.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MembershipState {
@@ -29,7 +28,7 @@ pub struct MembershipState {
     pub seats: Vec<(String, String)>,
 }
 
-/// One campaign's full durable state, written atomically. Mirrors `store.ts` `CampaignRecord`.
+/// One campaign's full durable state, written atomically.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CampaignRecord {
     /// The committed head this snapshot represents.
@@ -86,7 +85,7 @@ pub trait CampaignStore: Send + Sync {
 
 /// A [`CampaignStore`] backed by SQLite (rusqlite, bundled). One row per campaign; each [`save`] is
 /// a single-row upsert, so snapshot and membership land atomically (no torn read). WAL mode for
-/// crash safety. Ports `sqlite-store.ts` — same schema, same SQL, parameterized statements only.
+/// crash safety. Parameterized statements only.
 ///
 /// The [`Connection`] is wrapped in a [`Mutex`] to satisfy `Sync` (rusqlite's connection is `Send`
 /// but not `Sync`); contention is nil in practice because the per-campaign actor already serializes

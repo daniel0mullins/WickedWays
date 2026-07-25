@@ -1,18 +1,17 @@
-//! The per-campaign coordinator + actor (Phase 2c, sub-project C — slice 2).
+//! The per-campaign coordinator + actor.
 //!
-//! Ports `packages/server/src/table.ts`. A [`Table`] wraps the engine [`SyncAuthority`] (the single
-//! source of truth) and the participant set, emitting ordered [`ServerMsg`]s through subscriber
-//! callbacks: the submitter gets `committed{seq,delta}`, every other participant gets
-//! `entry{seq,delta}`. With a store installed, a commit is persisted **before** it is acked/broadcast
-//! (flush-before-ack); a persist failure rolls the campaign back via [`reload`](Table::reload) and
-//! denies the submitter. Named `Table` (not `Room`) to avoid colliding with the engine's `Room`.
+//! A [`Table`] wraps the engine [`SyncAuthority`] (the single source of truth) and the participant
+//! set, emitting ordered [`ServerMsg`]s through subscriber callbacks: the submitter gets
+//! `committed{seq,delta}`, every other participant gets `entry{seq,delta}`. With a store installed,
+//! a commit is persisted **before** it is acked/broadcast (flush-before-ack); a persist failure
+//! rolls the campaign back via [`reload`](Table::reload) and denies the submitter. Named `Table`
+//! (not `Room`) to avoid colliding with the engine's `Room`.
 //!
 //! On top of the core, [`spawn_table`] runs a `Table` as a **per-campaign tokio actor**: a single
 //! task drains an mpsc queue, so every submit → persist → ack is processed strictly in order with no
-//! shared mutable state across `.await`. That is the concurrency decision the TS code flags but
-//! cannot make (its `persist` thunk "would need per-campaign submit serialization" under a genuinely
-//! async store, `table.ts`/`server.ts`); different campaigns still run concurrently, each on its own
-//! task. Store I/O runs on the blocking pool via `spawn_blocking` (rusqlite is synchronous).
+//! shared mutable state across `.await` — the per-campaign submit serialization a genuinely async
+//! store requires. Different campaigns still run concurrently, each on its own task. Store I/O runs
+//! on the blocking pool via `spawn_blocking` (rusqlite is synchronous).
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -32,25 +31,25 @@ use crate::transport::{ServerMsg, WireLogEntry};
 pub type ConnId = u64;
 
 /// A connected participant: receives ordered server messages for one [`Table`]. The real transport
-/// (slice 3) feeds a WebSocket sink; tests feed a closure over a shared buffer.
+/// feeds a WebSocket sink; tests feed a closure over a shared buffer.
 pub type Subscriber = Arc<dyn Fn(ServerMsg) + Send + Sync>;
 
 /// Runs after the in-memory commit and before persistence, so a seat-claim it performs on the
 /// membership is written in the SAME atomic `save` as the commit (closes the orphaned-character
-/// window on join). Ported from `table.ts`'s `onCommit`.
+/// window on join).
 pub type OnCommit = Box<dyn FnOnce(&mut Membership) + Send>;
 
 /// The outcome of [`Table::submit`]: committed with its seq, or not committed (denied or
 /// persist-failed). The wire messages are emitted to subscribers as a side effect; this is the
-/// caller-facing summary (mirrors `table.ts`'s return object).
+/// caller-facing summary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SubmitOutcome {
     Committed { seq: u64 },
     NotCommitted,
 }
 
-/// A GM seat-control mutation, applied to the membership and persisted atomically by
-/// [`Table::gm_mutate`]. Mirrors the `assignSeat`/`unassignSeat`/`transferGM` arms of `server.ts`.
+/// A GM seat-control mutation (the `assignSeat`/`unassignSeat`/`transferGM` client messages),
+/// applied to the membership and persisted atomically by [`Table::gm_mutate`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GmOp {
     Assign {
@@ -78,15 +77,14 @@ pub struct Table {
     authority: SyncAuthority,
     membership: Membership,
     participants: HashMap<ConnId, Subscriber>,
-    /// Durable store; `None` = ephemeral (persist/reload are no-ops), matching the TS default hooks.
+    /// Durable store; `None` = ephemeral (persist/reload are no-ops).
     store: Option<Arc<dyn CampaignStore>>,
     campaign_id: String,
     /// Kept so [`reload`](Table::reload) can rebuild the authority identically to how it was built.
     catalog: Catalog,
     snapshot_every: u64,
     /// The state to fall back to on `reload` when the store holds no record yet (a never-persisted
-    /// campaign): the snapshot/seq/GM the table was constructed with. Mirrors the TS
-    /// `genesisFor(id)` + `new Membership(gmIdentityFor(id))` fallback.
+    /// campaign): the snapshot/seq/GM the table was constructed with.
     base_snapshot: CampaignSnapshot,
     base_seq: u64,
     base_gm_identity: String,
@@ -135,12 +133,12 @@ impl Table {
         self.authority.snapshot()
     }
 
-    /// Read access to the seat map (presence/roster in slice 3).
+    /// Read access to the seat map (presence/roster).
     pub fn membership(&self) -> &Membership {
         &self.membership
     }
 
-    /// Mutable access to the seat map (GM control messages in slice 3).
+    /// Mutable access to the seat map (GM control messages).
     pub fn membership_mut(&mut self) -> &mut Membership {
         &mut self.membership
     }
@@ -161,7 +159,7 @@ impl Table {
         self.participants.remove(&conn);
     }
 
-    /// Sends the authority's latest checkpoint to `requester` (read-only; pre-auth in slice 3).
+    /// Sends the authority's latest checkpoint to `requester` (read-only; the server allows it pre-auth).
     pub fn send_snapshot(&self, requester: &Subscriber) {
         let (seq, snapshot) = self.authority.load_snapshot();
         requester(ServerMsg::Snapshot {
@@ -171,7 +169,7 @@ impl Table {
     }
 
     /// Sends a server message to every current participant (used for presence).
-    pub fn broadcast(&self, msg: ServerMsg) {
+    pub fn broadcast(&self, msg: &ServerMsg) {
         for p in self.participants.values() {
             p(msg.clone());
         }
@@ -236,8 +234,8 @@ impl Table {
 
     /// Applies a GM seat-control mutation and persists it atomically (the mutation + the current
     /// snapshot land in one `save`). On a persist failure, reloads the last durable record
-    /// (discarding the mutation) and returns `Err`. Mirrors the TS `assignSeat`/… → persist →
-    /// reload-on-failure sequence, done under the actor so it cannot interleave with a submit.
+    /// (discarding the mutation) and returns `Err`. Done under the actor so it cannot interleave
+    /// with a submit.
     pub async fn gm_mutate(&mut self, op: GmOp) -> Result<(), ()> {
         match op {
             GmOp::Assign {
@@ -279,7 +277,7 @@ impl Table {
 
     /// Rebuilds the authority + membership from the last durable record (no-op without a store),
     /// discarding any un-persisted commit. Falls back to the construction state when the store holds
-    /// no record yet. Mirrors the TS `reload` hook.
+    /// no record yet.
     pub async fn reload(&mut self) {
         let Some(store) = self.store.clone() else {
             return;
@@ -585,7 +583,7 @@ pub fn spawn_table(table: Table) -> TableHandle {
                     let _ = reply.send(());
                 }
                 TableMsg::Broadcast { msg, reply } => {
-                    table.broadcast(msg);
+                    table.broadcast(&msg);
                     let _ = reply.send(());
                 }
                 TableMsg::Head { reply } => {

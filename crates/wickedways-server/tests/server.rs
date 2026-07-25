@@ -1,9 +1,9 @@
-//! Room-server connection-lifecycle tests (Phase 2c, sub-project C — slice 3).
+//! Room-server connection-lifecycle tests.
 //!
-//! Ports the multiplayer cases of `packages/server/src/server.test.ts` by driving [`Connection`]
-//! directly against a recording sink (the real two-client-over-a-socket proof is slice 4): auth
-//! gating, seat ownership / anti-impersonation, GM control, presence/online, join backfill,
-//! getSnapshot, and — with a store — persist + resume, load-failure, and schema fail-closed.
+//! Drives [`Connection`] directly against a recording sink (the real two-client-over-a-socket proof
+//! is `tests/e2e.rs`): auth gating, seat ownership / anti-impersonation, GM control,
+//! presence/online, join backfill, getSnapshot, and — with a store — persist + resume, load-failure,
+//! and schema fail-closed.
 //!
 //! Uses the committed `sync-move` genesis (a started two-player campaign): Ada (`ffc61507…`, active)
 //! and Ben (`e6b4cedd…`), with Ada's legal first move to room `edcaeddd…`.
@@ -30,7 +30,7 @@ fn genesis() -> CampaignSnapshot {
         .expect("parse genesis")
 }
 
-/// A room server whose only known campaign is `demo`; an empty token is rejected (`t || null`).
+/// A room server whose only known campaign is `demo`; an empty token is rejected.
 fn server(store: Option<Arc<dyn CampaignStore>>) -> Arc<RoomServer> {
     let g = genesis();
     RoomServer::new(ServerOptions {
