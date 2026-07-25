@@ -6,7 +6,7 @@
 //! Mirrors `packages/play-runtime/src/viewmodel.ts:60-167`.
 use alloc::collections::BTreeSet;
 use alloc::format;
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "ts")]
