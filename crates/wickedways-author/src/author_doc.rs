@@ -100,8 +100,8 @@ pub struct ExitEntry {
     pub one_way: Option<bool>,
 }
 
-/// A `[[items]]` entry. A `keyCode` entry lowers to a key `ItemDescriptor`
-/// (unchanged from the MVP); a `type = "consumable"` entry carries the consumable
+/// A `[[items]]` entry. A `keyCode` entry lowers to a key `ItemDescriptor`;
+/// a `type = "consumable"` entry carries the consumable
 /// descriptor fields below (`stat`/`modifier`/`usable`/`destroyable` + the inert
 /// `recipe` crafting map — author-data, since consumables vary in recipe).
 #[derive(Clone, Debug, PartialEq, Deserialize)]
@@ -213,7 +213,8 @@ pub struct Behaviors {
 
 /// A `[[mechanics]]` entry: a placed mechanic. `key` names the
 /// `[behaviors.mechanic.<key>]` body (the shared-key link); `config` is inert
-/// author-data (mechanic-specific configuration), deferred this slice.
+/// author-data (mechanic-specific configuration) carried through to the
+/// description untouched.
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct MechanicEntryToml {
@@ -546,7 +547,7 @@ mod tests {
         assert_eq!(doc.mechanics.len(), 1);
         let m = &doc.mechanics[0];
         assert_eq!(m.key, "dwindling-light");
-        // config is inert author-data (deferred this slice): { threshold = 3 }.
+        // config is inert author-data, carried through untouched: { threshold = 3 }.
         let config = m.config.as_ref().expect("config present");
         assert_eq!(
             config.get("threshold").and_then(toml::Value::as_integer),

@@ -3,15 +3,14 @@
 //! expressions. A modding trust boundary — panic-free on author input: every
 //! failure is a [`CompileError`], never an `unwrap`/`expect`/`panic!`.
 //!
-//! Implemented so far: `guard` / `when` / `set state.<f> = …` / `emit cue(…)` /
-//! `emit adjustStat(…)` / `emit giveItem(…)` / `emit setVisible(…)`, the plain and
-//! subscripted `set` targets (`set state.<f> = …` → `SetState`; `set state.m[k] = …`
-//! → `SetStateIn`), plus `pass <expr>` in **script** bodies (via [`parse_script`]).
-//! The still-deferred forms — `emit` of any effect other than
-//! `cue`/`adjustStat`/`giveItem`/`setVisible` — are REJECTED with a clear
-//! `CompileError` rather than silently mis-lowered, so a later slice can land them
-//! without a hidden behavior change. `pass` outside a script body is likewise an
-//! error.
+//! Statement forms: `guard` / `when`, the plain and subscripted `set` targets
+//! (`set state.<f> = …` → `SetState`; `set state.m[k] = …` → `SetStateIn`),
+//! `emit` of the full effect family (`cue` / `adjustStat` / `giveItem` /
+//! `setVisible` / `status` / `damage` / `heal` / `grantImmunity`), plus
+//! `pass <expr>` in **script** bodies (via [`parse_script`]). An unknown
+//! statement keyword or effect name is REJECTED with a clear `CompileError`
+//! rather than silently mis-lowered; `pass` outside a script body is likewise
+//! an error.
 //!
 //! [`parse_effects`] parses an **emit-only** block into a `Vec<EffectTemplate>`
 //! (dialogue/effect bodies): any non-`emit` statement is an error.
@@ -377,7 +376,7 @@ fn parse_emit(rest: &str, base: Span) -> Result<Stmt, CompileError> {
                 effect: EffectTemplate::Status { fields },
             })
         }
-        // The effect family is now complete; an unrecognized name is an error.
+        // The effect family above is exhaustive; an unrecognized name is an error.
         _ => Err(CompileError::ExprParse {
             span: base,
             message: format!(
@@ -423,16 +422,14 @@ fn parse_field(src: &str, base: Span) -> Result<FieldTemplate, CompileError> {
             ),
         });
     }
-    let label = match parse_expr(field_args[0].trim(), base)? {
-        wickedways_core::script::ast::Expr::Lit {
-            value: wickedways_core::script::value::Value::Str(s),
-        } => s,
-        _ => {
-            return Err(CompileError::ExprParse {
-                span: base,
-                message: "field's first argument (label) must be a string literal".into(),
-            });
-        }
+    let wickedways_core::script::ast::Expr::Lit {
+        value: wickedways_core::script::value::Value::Str(label),
+    } = parse_expr(field_args[0].trim(), base)?
+    else {
+        return Err(CompileError::ExprParse {
+            span: base,
+            message: "field's first argument (label) must be a string literal".into(),
+        });
     };
     let value = parse_expr(field_args[1].trim(), base)?;
     let emphasis = match field_args.get(2) {
@@ -600,9 +597,9 @@ mod tests {
     use crate::error::{CompileError, Span};
     use serde_json::json;
 
-    /// The differential gate's number normalization (copied verbatim from the
-    /// `expr` test module / `wickedways-assemble/tests/goldens.rs`, per the
-    /// plan's Global Constraints — "copy it; do not re-derive"). `Value::Number`
+    /// The differential gate's number normalization, copied verbatim from the
+    /// `expr` test module / `wickedways-assemble/tests/goldens.rs` (keep the
+    /// copies identical; do not re-derive it). `Value::Number`
     /// is an `f64`, so a numeric literal always serializes as a whole float
     /// (`0.0`), while these tests write it as a bare int (`0`) — and
     /// `serde_json`'s `Number` equality distinguishes `0.0` from `0`. Collapsing
@@ -776,7 +773,7 @@ mod tests {
 
     #[test]
     fn unknown_effect_is_rejected() {
-        // The effect family is complete; an unknown effect name still errors.
+        // The effect family is exhaustive; an unknown effect name errors.
         assert!(matches!(
             parse_stmts("emit frobnicate(actor, 6)", Span { line: 1, col: 1 }).unwrap_err(),
             CompileError::ExprParse { .. }

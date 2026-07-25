@@ -2,8 +2,8 @@
 //! [`DamageBody`] mini-AST. A modding trust boundary — panic-free on author
 //! input: every failure is a [`CompileError`], never an `unwrap`/`panic!`.
 //!
-//! Grammar (mirrors the TS `modifyDamage` closures, e.g. the conformance dread's
-//! `d => d.amount > 3 ? { value: 3, final: true } : d.amount`):
+//! Grammar (e.g. the conformance dread's cap,
+//! `damage.amount > 3 ? final 3 : damage.amount`):
 //!
 //! ```text
 //! body := `final` <expr>                 -> DamageBody::Final   (halts the fold)
@@ -153,8 +153,9 @@ mod tests {
     const BASE: Span = Span { line: 1, col: 1 };
 
     /// Collapse integer-valued floats to ints (the differential gate's number
-    /// normalization, copied per the plan's Global Constraints) so a `lit 3`
-    /// serialized as `3.0` compares equal to the `3` written in the assertions.
+    /// normalization, copied verbatim from `wickedways-assemble/tests/goldens.rs`)
+    /// so a `lit 3` serialized as `3.0` compares equal to the `3` written in the
+    /// assertions.
     fn canon_numbers(v: &serde_json::Value) -> serde_json::Value {
         use serde_json::Value;
         match v {

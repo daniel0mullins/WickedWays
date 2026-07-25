@@ -34,7 +34,7 @@ use crate::CompiledCampaign;
 const EXPR_BASE: Span = Span { line: 1, col: 1 };
 
 /// Lower a parsed author document. Infallible for the description half, but keeps
-/// the fallible signature: the catalog half (Task 5) surfaces `CompileError`s.
+/// the fallible signature: the catalog half surfaces `CompileError`s.
 pub(crate) fn lower(doc: &AuthorDoc) -> Result<CompiledCampaign, CompileError> {
     let description = lower_description(doc);
     let catalog = lower_catalog(doc)?;
@@ -212,9 +212,9 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
     }
 }
 
-/// Lower the CATALOG half: the item descriptors and the scripted behaviors
-/// (exit predicates + victory tests). Aliases/formations/recipes are empty for
-/// the MVP surface, matching the oracle catalog.
+/// Lower the CATALOG half: the item descriptors + aliases, the scripted behavior
+/// families (exit / scene / item / npc / mechanic / victory), and the formation
+/// and recipe metadata.
 fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
     let mut items = BTreeMap::new();
     // Each item's `aliases` (if any) → a `catalog.aliases[<key>]` entry.
@@ -369,11 +369,11 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
 
 /// Lower one author item to its catalog descriptor. Two shapes:
 ///
-/// - A `keyCode`-bearing entry is a KEY item: it reproduces the TS `createKey`
-///   descriptor exactly — `type: key`, `stat: health`, `modifier: 0`, the
-///   non-equippable/non-destroyable property quadruple, `recipe: { item: 1 }`,
-///   and `consumeOnUse: false` (the MVP surface carries no `consumeOnUse`, so it
-///   defaults off).
+/// - A `keyCode`-bearing entry is a KEY item: it reproduces the fixed key
+///   descriptor shape the goldens pin — `type: key`, `stat: health`,
+///   `modifier: 0`, the non-equippable/non-destroyable property quadruple,
+///   `recipe: { item: 1 }`, and `consumeOnUse: false` (the author surface
+///   carries no `consumeOnUse`, so it defaults off).
 /// - Otherwise a CONSUMABLE: `type`/`stat`/`modifier` come from the surface, the
 ///   `properties` quadruple is `equippable:false, equipped:false, destroyable,
 ///   usable` (the latter two from the surface), and `recipe` is READ from the
@@ -385,7 +385,7 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
 /// `null`.
 fn lower_item(item: &ItemEntry) -> ItemDescriptor {
     if item.key_code.is_some() {
-        // KEY item — the existing `createKey` descriptor, unchanged.
+        // KEY item — the fixed descriptor shape the goldens pin.
         let mut recipe = Map::new();
         recipe.insert("item".to_string(), Value::Number(1.into()));
         return ItemDescriptor {

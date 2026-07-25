@@ -15,9 +15,9 @@ mod tests {
     use crate::error::{CompileError, Span};
     use serde_json::{json, Value};
 
-    /// The differential gate's number normalization (copied verbatim from
-    /// `wickedways-assemble/tests/goldens.rs`, per the plan's Global Constraints
-    /// — "copy it; do not re-derive"). `Value::Number` is an `f64`, so a numeric
+    /// The differential gate's number normalization, copied verbatim from
+    /// `wickedways-assemble/tests/goldens.rs` (keep the copies identical; do
+    /// not re-derive it). `Value::Number` is an `f64`, so a numeric
     /// literal always serializes as a whole float (`0.0`, `42.0`), while these
     /// tests write it as a bare int (`0`, `42`) — and `serde_json`'s `Number`
     /// equality distinguishes `0.0` from `0`. Collapsing integer-valued floats to
@@ -369,7 +369,7 @@ mod tests {
 
     #[test]
     fn subscript_zero_still_index_not_first() {
-        // The deliberate MVP rule survives: `[0]` is Index, only `first(...)` is First.
+        // The deliberate rule: `[0]` is Index, only `first(...)` is First.
         assert_eq!(
             p("party[0]"),
             json!({"kind":"index","list":{"kind":"party"},"index":{"kind":"lit","value":0}})

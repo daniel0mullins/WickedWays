@@ -159,7 +159,8 @@ mod tests {
 
     #[test]
     fn absent_actions_and_modify_damage_stay_empty() {
-        // No `actions`/`modifyDamage` -> empty map + absent transform (the #62 shape).
+        // No `actions`/`modifyDamage` -> empty map + absent transform (the
+        // serialized shape the goldens pin).
         let v = script_json("onTurnStart = \"emit cue('x')\"");
         assert_eq!(v["actions"], json!({}));
         assert_eq!(v["hooks"].get("modifyDamage"), None);

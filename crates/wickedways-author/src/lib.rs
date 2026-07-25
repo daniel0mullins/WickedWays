@@ -22,8 +22,8 @@ pub struct CompiledCampaign {
 
 /// Parse the friendly TOML surface and lower it — expressions, statement bodies,
 /// and behaviors alike — into the [`CampaignDescription`] + [`Catalog`] pair that
-/// `wickedways_assemble::assemble` consumes. The crate compiles exit / victory /
-/// scene / item behaviors today; npc and mechanic families land in later slices.
+/// `wickedways_assemble::assemble` consumes. Every behavior family the surface
+/// defines — exit / victory / scene / item / npc / mechanic — is compiled.
 pub fn compile(toml_src: &str) -> Result<CompiledCampaign, CompileError> {
     let doc: author_doc::AuthorDoc =
         toml::from_str(toml_src).map_err(|e| CompileError::TomlParse {
