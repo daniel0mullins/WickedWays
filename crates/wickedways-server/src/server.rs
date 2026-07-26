@@ -1,19 +1,20 @@
-//! The room server: connection lifecycle + axum WebSocket handler (Phase 2c, sub-project C — slice 3).
+//! The room server: connection lifecycle + axum WebSocket handler.
 //!
-//! Ports the **multiplayer** message loop of `packages/server/src/server.ts`: a host-configured
-//! [`RoomServer`] holds a [`Table`](crate::table::Table) actor per campaign (built lazily from
-//! `genesis_for`), gates every append by seat ownership, and drives presence/roster. Each connection
-//! authenticates on `join`; writes (`submit`) require an authenticated connection and a seat the
-//! caller owns. The only server-owned gate is seat ownership, checked against the actor the server
-//! reads from the command itself — no client-supplied actor envelope exists to forge.
+//! The **multiplayer** message loop: a host-configured [`RoomServer`] holds a
+//! [`Table`](crate::table::Table) actor per campaign (built lazily from `genesis_for`), gates every
+//! append by seat ownership, and drives presence/roster. Each connection authenticates on `join`;
+//! writes (`submit`) require an authenticated connection and a seat the caller owns. The only
+//! server-owned gate is seat ownership, checked against the actor the server reads from the command
+//! itself — no client-supplied actor envelope exists to forge.
 //!
-//! Chat and A/V (`chatSend`/`callJoin`/`signal`/…) are **sub-project E**: an inbound chat/AV frame is
-//! simply an unknown `ClientMsg` variant here (rejected as malformed) until E adds the arms.
+//! Chat and A/V (`chatSend`/`callJoin`/`signal`/…) are **not implemented yet**: an inbound chat/AV
+//! frame is simply an unknown `ClientMsg` variant here (rejected as malformed) until those arms are
+//! added.
 //!
 //! The axum `/ws` handler is a thin adapter: it bridges the synchronous [`Subscriber`] callback the
 //! `Table` expects to the async WebSocket sink via an unbounded channel, then feeds parsed frames to
 //! [`Connection::handle`]. The connection lifecycle logic lives on [`Connection`] so it is unit-tested
-//! directly against a recording sink; the two-client over-a-real-socket proof is slice 4.
+//! directly against a recording sink; the two-client over-a-real-socket proof lives in `tests/e2e.rs`.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -33,7 +34,9 @@ use wickedways_core::{CampaignSnapshot, World};
 
 use crate::membership::{actor_of, Membership};
 use crate::store::{CampaignStore, MembershipState};
-use crate::table::{spawn_table, ConnId, GmOp, OnCommit, SubmitOutcome, Subscriber, Table, TableHandle};
+use crate::table::{
+    spawn_table, ConnId, GmOp, OnCommit, SubmitOutcome, Subscriber, Table, TableHandle,
+};
 use crate::transport::{Actor, ClientMsg, GmPresence, PlayerEntry, PresenceEntry, ServerMsg};
 
 /// Host-supplied verifier: maps a connection token to its authenticated identity, or `None` to deny.
@@ -50,8 +53,8 @@ pub type CatalogFor = Box<dyn Fn(&str) -> Option<Catalog> + Send + Sync>;
 /// Optional display-name resolver for the `players` roster; defaults to the identity string.
 pub type DisplayNameFor = Box<dyn Fn(&str) -> String + Send + Sync>;
 
-/// Construction options for a [`RoomServer`]. Mirrors `ServerOptions` (multiplayer fields only; the
-/// chat/AV options — `chat_store`, `ice_servers`, … — are sub-project E).
+/// Construction options for a [`RoomServer`] (multiplayer fields only; the chat/AV options —
+/// `chat_store`, `ice_servers`, … — do not exist yet).
 pub struct ServerOptions {
     pub verify_token: VerifyToken,
     pub gm_identity_for: GmIdentityFor,
@@ -80,8 +83,8 @@ pub struct RoomServer {
     /// campaign → identity → live-connection count (an identity is online while any connection lives).
     online: Mutex<HashMap<String, HashMap<String, u32>>>,
     /// Serializes campaign loads so two concurrent `join`s for the same campaign don't build two
-    /// authorities (the inflight-dedup the TS `loading` map provides). Global rather than
-    /// per-campaign because loads are rare; a future optimization is per-campaign inflight tracking.
+    /// authorities (inflight dedup). Global rather than per-campaign because loads are rare; a
+    /// future optimization is per-campaign inflight tracking.
     load_lock: tokio::sync::Mutex<()>,
     next_conn: AtomicU64,
 }
@@ -136,9 +139,8 @@ impl RoomServer {
                 let id = campaign_id.to_string();
                 match tokio::task::spawn_blocking(move || store.load(&id)).await {
                     Ok(Ok(rec)) => rec,
-                    // Load failure (or the blocking task dying) is treated as "campaign not found",
-                    // exactly like the TS store-rejection path — the campaign is not wedged, a later
-                    // ensure_loaded retries.
+                    // Load failure (or the blocking task dying) is treated as "campaign not found"
+                    // — the campaign is not wedged, a later ensure_loaded retries.
                     _ => return None,
                 }
             }
@@ -154,7 +156,11 @@ impl RoomServer {
                     );
                     return None; // fail closed — do NOT build a genesis table (that would overwrite the record)
                 }
-                (rec.snapshot, rec.seq, Membership::from_state(rec.membership))
+                (
+                    rec.snapshot,
+                    rec.seq,
+                    Membership::from_state(rec.membership),
+                )
             }
             None => {
                 let genesis = (self.opts.genesis_for)(campaign_id)?;
@@ -180,14 +186,22 @@ impl RoomServer {
         let authority = SyncAuthority::new(
             world,
             catalog.clone(),
-            AuthorityOpts { snapshot_every, start_seq: seq, solo: false, manage_turns: true },
+            AuthorityOpts {
+                snapshot_every,
+                start_seq: seq,
+                solo: false,
+                manage_turns: true,
+            },
         );
         let mut table = Table::new(authority, membership, campaign_id, catalog, snapshot_every);
         if let Some(store) = &self.opts.store {
             table.set_store(store.clone());
         }
         let handle = spawn_table(table);
-        self.tables.lock().unwrap().insert(campaign_id.to_string(), handle.clone());
+        self.tables
+            .lock()
+            .unwrap()
+            .insert(campaign_id.to_string(), handle.clone());
         Some(handle)
     }
 
@@ -195,7 +209,7 @@ impl RoomServer {
     fn bump(&self, campaign_id: &str, identity: &str, delta: i64) {
         let mut online = self.online.lock().unwrap();
         let inner = online.entry(campaign_id.to_string()).or_default();
-        let n = (*inner.get(identity).unwrap_or(&0) as i64 + delta).max(0);
+        let n = (i64::from(*inner.get(identity).unwrap_or(&0)) + delta).max(0);
         if n == 0 {
             inner.remove(identity);
         } else {
@@ -225,8 +239,7 @@ impl RoomServer {
         self.opts
             .display_name_for
             .as_ref()
-            .map(|f| f(identity))
-            .unwrap_or_else(|| identity.to_string())
+            .map_or_else(|| identity.to_string(), |f| f(identity))
     }
 
     /// Builds the current presence message (seat owners + GM, each with its online flag).
@@ -280,7 +293,10 @@ impl RoomServer {
                 identity,
             })
             .collect();
-        Some(ServerMsg::Players { campaign_id: campaign_id.to_string(), players })
+        Some(ServerMsg::Players {
+            campaign_id: campaign_id.to_string(),
+            players,
+        })
     }
 
     async fn broadcast_roster(&self, campaign_id: &str) {
@@ -306,7 +322,13 @@ pub struct Connection {
 impl Connection {
     /// A fresh, unauthenticated connection.
     pub fn new(server: Arc<RoomServer>, send: Subscriber, conn_id: ConnId) -> Self {
-        Self { server, send, conn_id, identity: None, joined: HashSet::new() }
+        Self {
+            server,
+            send,
+            conn_id,
+            identity: None,
+            joined: HashSet::new(),
+        }
     }
 
     fn reply(&self, msg: ServerMsg) {
@@ -314,23 +336,51 @@ impl Connection {
     }
 
     fn denied(&self, reason: &str) {
-        self.reply(ServerMsg::Denied { reason: reason.to_string() });
+        self.reply(ServerMsg::Denied {
+            reason: reason.to_string(),
+        });
     }
 
     /// Handles one parsed client message. Multiplayer arms only.
     pub async fn handle(&mut self, msg: ClientMsg) {
         match msg {
-            ClientMsg::Join { campaign_id, token, from_seq } => self.on_join(campaign_id, token, from_seq).await,
-            ClientMsg::Submit { campaign_id, command } => self.on_submit(campaign_id, command).await,
+            ClientMsg::Join {
+                campaign_id,
+                token,
+                from_seq,
+            } => self.on_join(campaign_id, token, from_seq).await,
+            ClientMsg::Submit {
+                campaign_id,
+                command,
+            } => self.on_submit(campaign_id, command).await,
             ClientMsg::GetSnapshot { campaign_id } => self.on_get_snapshot(campaign_id).await,
-            ClientMsg::AssignSeat { campaign_id, character_id, identity } => {
-                self.on_gm_control(&campaign_id, GmOp::Assign { character_id, identity }).await
+            ClientMsg::AssignSeat {
+                campaign_id,
+                character_id,
+                identity,
+            } => {
+                self.on_gm_control(
+                    &campaign_id,
+                    GmOp::Assign {
+                        character_id,
+                        identity,
+                    },
+                )
+                .await;
             }
-            ClientMsg::UnassignSeat { campaign_id, character_id } => {
-                self.on_gm_control(&campaign_id, GmOp::Unassign { character_id }).await
+            ClientMsg::UnassignSeat {
+                campaign_id,
+                character_id,
+            } => {
+                self.on_gm_control(&campaign_id, GmOp::Unassign { character_id })
+                    .await;
             }
-            ClientMsg::TransferGm { campaign_id, identity } => {
-                self.on_gm_control(&campaign_id, GmOp::TransferGm { identity }).await
+            ClientMsg::TransferGm {
+                campaign_id,
+                identity,
+            } => {
+                self.on_gm_control(&campaign_id, GmOp::TransferGm { identity })
+                    .await;
             }
         }
     }
@@ -399,7 +449,9 @@ impl Connection {
             Actor::Join { character_id } => {
                 let character_id = character_id.clone();
                 let claimer = identity.clone();
-                Some(Box::new(move |m: &mut Membership| m.claim(&character_id, claimer)))
+                Some(Box::new(move |m: &mut Membership| {
+                    m.claim(&character_id, claimer);
+                }))
             }
             _ => None,
         };
@@ -413,7 +465,10 @@ impl Connection {
         // Read-only; pre-auth allowed.
         match self.server.ensure_loaded(&campaign_id).await {
             Some(table) => table.get_snapshot(self.send.clone()).await,
-            None => self.reply(ServerMsg::Snapshot { seq: 0, snapshot: Value::Null }),
+            None => self.reply(ServerMsg::Snapshot {
+                seq: 0,
+                snapshot: Value::Null,
+            }),
         }
     }
 
@@ -500,9 +555,9 @@ async fn serve_socket(mut socket: WebSocket, server: Arc<RoomServer>) {
                             Err(_) => conn.reply(ServerMsg::Error { message: "Malformed message".into() }),
                         },
                     },
-                    Some(Ok(Message::Close(_))) | None => break,
+                    // Clean close, stream end, and socket error all end the session.
+                    Some(Ok(Message::Close(_)) | Err(_)) | None => break,
                     Some(Ok(_)) => {} // ignore binary/ping/pong
-                    Some(Err(_)) => break,
                 }
             }
             outgoing = out_rx.recv() => {
@@ -517,4 +572,3 @@ async fn serve_socket(mut socket: WebSocket, server: Arc<RoomServer>) {
     }
     conn.on_close().await;
 }
-

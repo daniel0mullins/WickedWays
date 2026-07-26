@@ -1,6 +1,6 @@
-//! Combat damage — byte-exact port of `combatant.ts` `attack` (:49-93) and
-//! `character.ts` `takeDamage` (:930-971), `#reconcile` (:330-340),
-//! `#floorAndSnapshot` (:308-317), and `onKnockOut` (:342-347).
+//! Combat damage — byte-exact port of `attack` and
+//! `takeDamage`, `#reconcile`,
+//! `#floorAndSnapshot`, and `onKnockOut`.
 //!
 //! `take_damage` is internal-only (never a Command — TS only calls it from `attack`).
 //! The sole rng draw in the combat path is the 4a Confused fizzle in `gate`.
@@ -22,7 +22,7 @@ use crate::world::snapshot::{CharacterKind, ItemSnapshot, LootSnapshot};
 use crate::world::World;
 
 impl World {
-    /// Durability write seam (mirrors TS `SET_DURABILITY`). The ONLY place
+    /// Durability write seam (mirrors `SET_DURABILITY`). The ONLY place
     /// `ItemSnapshot::Item.durability` is mutated. No clamp — callers pass
     /// `durability - 1`, and only non-broken items (durability >= 1) ever wear.
     pub fn set_durability(&mut self, item: &ItemId, value: i64) {
@@ -33,13 +33,17 @@ impl World {
 
     /// Floor base stats, recompute afflictions from effective stats, and fire
     /// `on_knock_out` exactly once on a false→true KO transition. Byte-exact port
-    /// of `character.ts` `#reconcile` (:330-340) + `#floorAndSnapshot` (:308-317).
-    pub fn reconcile(&mut self, actor: &CharacterId, cat: &Catalog, cues: &mut Vec<PresentationCue>) {
-        let was_ko = self
-            .characters
-            .get(actor)
-            .map(|c| c.afflictions.is_active(crate::world::afflictions::Status::Ko))
-            .unwrap_or(false);
+    /// of `#reconcile` + `#floorAndSnapshot`.
+    pub fn reconcile(
+        &mut self,
+        actor: &CharacterId,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) {
+        let was_ko = self.characters.get(actor).is_some_and(|c| {
+            c.afflictions
+                .is_active(crate::world::afflictions::Status::Ko)
+        });
 
         // #floorAndSnapshot: persistently clamp base stats to max(0.0, x).
         if let Some(c) = self.characters.get_mut(actor) {
@@ -53,14 +57,14 @@ impl World {
         let energy = self.effective_stat(actor, StatType::Energy, cat);
         let passive = self.passive_immune(actor, cat);
         if let Some(c) = self.characters.get_mut(actor) {
-            c.afflictions.apply_from_stats(health, sanity, energy, &passive);
+            c.afflictions
+                .apply_from_stats(health, sanity, energy, &passive);
         }
 
-        let is_ko = self
-            .characters
-            .get(actor)
-            .map(|c| c.afflictions.is_active(crate::world::afflictions::Status::Ko))
-            .unwrap_or(false);
+        let is_ko = self.characters.get(actor).is_some_and(|c| {
+            c.afflictions
+                .is_active(crate::world::afflictions::Status::Ko)
+        });
         if !was_ko && is_ko {
             self.on_knock_out(actor, cat, cues);
         }
@@ -68,15 +72,26 @@ impl World {
 
     /// Hook fired once when KO newly latches during `reconcile`. Players: no-op. Mobs:
     /// deposit materials + drop inventory into a `${mob.id}:remains` loot box. Byte-exact
-    /// port of `Mob.onKnockOut` (`mob.ts:174-215`).
-    fn on_knock_out(&mut self, actor: &CharacterId, _cat: &Catalog, _cues: &mut Vec<PresentationCue>) {
-        let is_mob = self.characters.get(actor)
-            .map(|c| matches!(c.kind, CharacterKind::Mob)).unwrap_or(false);
-        if !is_mob { return; }
+    /// port of `Mob.onKnockOut`.
+    fn on_knock_out(
+        &mut self,
+        actor: &CharacterId,
+        _cat: &Catalog,
+        _cues: &mut Vec<PresentationCue>,
+    ) {
+        let is_mob = self
+            .characters
+            .get(actor)
+            .is_some_and(|c| matches!(c.kind, CharacterKind::Mob));
+        if !is_mob {
+            return;
+        }
 
         // Snapshot drop-relevant fields.
         let (material_drops, room_id, is_room_origin, item_ids, key_ids, mob_name) = {
-            let Some(c) = self.characters.get(actor) else { return };
+            let Some(c) = self.characters.get(actor) else {
+                return;
+            };
             (
                 c.material_drops.clone(),
                 c.current_room_id.clone(),
@@ -89,7 +104,7 @@ impl World {
 
         // 1. Materials deposit + codex records (before the item drop).
         if let Some(md) = &material_drops {
-            if md.as_object().map(|o| !o.is_empty()).unwrap_or(false) {
+            if md.as_object().is_some_and(|o| !o.is_empty()) {
                 let by = self.active_character_id().ok().map(|c| c.0);
                 let room_str = room_id.as_ref().map(|r| r.0.clone());
                 self.deposit_materials(md, by.as_deref(), room_str.as_deref());
@@ -98,8 +113,14 @@ impl World {
 
         // 2. Item/key drop.
         let Some(room) = room_id else { return };
-        let keys = if is_room_origin { key_ids } else { alloc::vec::Vec::new() };
-        if item_ids.is_empty() && keys.is_empty() { return; }
+        let keys = if is_room_origin {
+            key_ids
+        } else {
+            alloc::vec::Vec::new()
+        };
+        if item_ids.is_empty() && keys.is_empty() {
+            return;
+        }
 
         // Relinquish from the mob's inventory.
         if let Some(c) = self.characters.get_mut(actor) {
@@ -115,12 +136,15 @@ impl World {
         let capacity = item_ids.len() as i64 + 2;
         let mut content_ids = item_ids;
         content_ids.extend(keys);
-        self.loot.insert(box_id.clone(), LootSnapshot {
-            id: box_id.clone(),
-            description: alloc::format!("{}'s remains", mob_name),
-            capacity,
-            content_ids,
-        });
+        self.loot.insert(
+            box_id.clone(),
+            LootSnapshot {
+                id: box_id.clone(),
+                description: alloc::format!("{}'s remains", mob_name),
+                capacity,
+                content_ids,
+            },
+        );
         if let Some(r) = self.rooms.get_mut(&room) {
             r.loot_ids.push(box_id);
         }
@@ -129,7 +153,9 @@ impl World {
     /// Resolve a character's equipped items (de-duplicating two-handed items that
     /// occupy two slots), mirroring `effective_stat`'s equipped-set derivation.
     fn equipped_resolved(&self, actor: &CharacterId, cat: &Catalog) -> Vec<ResolvedItem> {
-        let Some(ch) = self.characters.get(actor) else { return Vec::new() };
+        let Some(ch) = self.characters.get(actor) else {
+            return Vec::new();
+        };
         let equipped_ids: BTreeSet<&ItemId> = ch.equipment.values().collect();
         equipped_ids
             .into_iter()
@@ -139,9 +165,14 @@ impl World {
     }
 
     /// Throw if the actor cannot see (unlit room and not `sees_in_dark`).
-    /// Mirrors `character.ts` `requireVisibleTarget` (:266-271): checks only the
+    /// Mirrors `requireVisibleTarget`: checks only the
     /// actor's own visibility, not the target's location.
-    pub(crate) fn require_visible_target(&self, actor: &CharacterId, verb: &str, cat: &Catalog) -> Result<(), ProceduralViolation> {
+    pub(crate) fn require_visible_target(
+        &self,
+        actor: &CharacterId,
+        verb: &str,
+        cat: &Catalog,
+    ) -> Result<(), ProceduralViolation> {
         if let Some(ch) = self.characters.get(actor) {
             if let Some(room_id) = &ch.current_room_id {
                 if !self.is_lit(room_id, cat) && !self.sees_in_dark(actor) {
@@ -153,14 +184,20 @@ impl World {
     }
 
     /// The actor's unarmed strike (stat + power). Default `{ Health, 1 }`, parsed
-    /// from the `natural_attack` snapshot field. Mirrors `combatant.ts` `naturalAttack`
-    /// (:37-39) / `DEFAULT_NATURAL_ATTACK` (:13). Mob overrides land in sub-plan 4c.
+    /// from the `natural_attack` snapshot field.
     fn natural_attack(&self, actor: &CharacterId) -> (StatType, f64) {
         #[derive(serde::Deserialize)]
-        struct NaturalAttackJson { stat: StatType, power: f64 }
+        struct NaturalAttackJson {
+            stat: StatType,
+            power: f64,
+        }
         let default = (StatType::Health, 1.0);
-        let Some(ch) = self.characters.get(actor) else { return default };
-        let Some(v) = &ch.natural_attack else { return default };
+        let Some(ch) = self.characters.get(actor) else {
+            return default;
+        };
+        let Some(v) = &ch.natural_attack else {
+            return default;
+        };
         match serde_json::from_value::<NaturalAttackJson>(v.clone()) {
             Ok(na) => (na.stat, na.power),
             Err(_) => default,
@@ -170,8 +207,8 @@ impl World {
     /// Attack `target`. Gated (affliction) then dark-checked; each equipped
     /// non-broken weapon adds its modifier to its stat (else a natural strike);
     /// damage lands per stat in [Health, Energy, Sanity] order; weapons wear one
-    /// point; a budgeted `attack` is recorded. Byte-exact port of `combatant.ts`
-    /// `attack` (:49-93).
+    /// point; a budgeted `attack` is recorded. Behavior is pinned byte-exact by
+    /// the conformance goldens.
     pub fn attack(
         &mut self,
         actor: &CharacterId,
@@ -206,14 +243,14 @@ impl World {
         ];
         if weapons.is_empty() {
             let (nstat, npow) = self.natural_attack(actor);
-            for e in matrix.iter_mut() {
+            for e in &mut matrix {
                 if e.0 == nstat {
                     e.1 += npow;
                 }
             }
         } else {
             for w in &weapons {
-                for e in matrix.iter_mut() {
+                for e in &mut matrix {
                     if e.0 == w.stat {
                         e.1 += w.modifier as f64;
                     }
@@ -250,7 +287,10 @@ impl World {
         if let Some(c) = self.characters.get_mut(actor) {
             c.history.push(ActionHistoryEntry::Attack {
                 round,
-                target: TargetRef { id: target.clone(), name: target_name },
+                target: TargetRef {
+                    id: target.clone(),
+                    name: target_name,
+                },
             });
         }
         cues.push(PresentationCue::Action {
@@ -258,33 +298,57 @@ impl World {
             actor: self.entity_ref_char(actor),
             sound: None,
         });
-        self.record_action(actor, true, crate::world::mechanics::ActionView::of("attack"), cat, cues)?;
+        self.record_action(
+            actor,
+            true,
+            &crate::world::mechanics::ActionView::of("attack"),
+            cat,
+            cues,
+        )?;
         Ok(())
     }
 
-    /// Append a codex entry, first-write-wins per `(kind, key)`. Mirrors `codex.ts`
-    /// `record()` (:226-232) + `buildEntry`. `firstSeen.characterId`/`roomId` are
-    /// omitted when `by`/`room` are `None` (matching TS `by?.id` / `where?.id`).
-    pub(crate) fn record_codex(&mut self, kind: &str, key: &str, snapshot: Value, by: Option<&str>, room: Option<&str>) {
-        let exists = self.codex.as_array().map(|a| a.iter().any(|e| {
-            e.get("kind").and_then(|v| v.as_str()) == Some(kind)
-                && e.get("key").and_then(|v| v.as_str()) == Some(key)
-        })).unwrap_or(false);
-        if exists { return; }
+    /// Append a codex entry, first-write-wins per `(kind, key)`.
+    /// `firstSeen.characterId`/`roomId` are omitted when `by`/`room` are `None`.
+    pub(crate) fn record_codex(
+        &mut self,
+        kind: &str,
+        key: &str,
+        snapshot: &Value,
+        by: Option<&str>,
+        room: Option<&str>,
+    ) {
+        let exists = self.codex.as_array().is_some_and(|a| {
+            a.iter().any(|e| {
+                e.get("kind").and_then(|v| v.as_str()) == Some(kind)
+                    && e.get("key").and_then(|v| v.as_str()) == Some(key)
+            })
+        });
+        if exists {
+            return;
+        }
         let round = self.campaign.round;
         let mut first_seen = serde_json::Map::new();
         first_seen.insert("round".into(), json!(round));
-        if let Some(b) = by { first_seen.insert("characterId".into(), json!(b)); }
-        if let Some(r) = room { first_seen.insert("roomId".into(), json!(r)); }
+        if let Some(b) = by {
+            first_seen.insert("characterId".into(), json!(b));
+        }
+        if let Some(r) = room {
+            first_seen.insert("roomId".into(), json!(r));
+        }
         let entry = json!({ "kind": kind, "key": key, "snapshot": snapshot, "firstSeen": Value::Object(first_seen) });
-        if let Some(arr) = self.codex.as_array_mut() { arr.push(entry); }
+        if let Some(arr) = self.codex.as_array_mut() {
+            arr.push(entry);
+        }
     }
 
     /// Merge a `MaterialMap` additively into `campaign.materials`, then record one
     /// `{kind:"material"}` codex entry per component. Port of `DEPOSIT_MATERIALS`
-    /// (`campaign.ts:580-587`) + the material `RECORD_ENCOUNTER` in `Mob.onKnockOut`.
+    /// + the material `RECORD_ENCOUNTER` in `Mob.onKnockOut`.
     pub fn deposit_materials(&mut self, materials: &Value, by: Option<&str>, room: Option<&str>) {
-        let Some(obj) = materials.as_object() else { return };
+        let Some(obj) = materials.as_object() else {
+            return;
+        };
         // Ensure the pool is an object.
         if !self.campaign.materials.is_object() {
             self.campaign.materials = json!({});
@@ -292,24 +356,33 @@ impl World {
         // 1. Additive merge.
         if let Some(pool) = self.campaign.materials.as_object_mut() {
             for (component, qty) in obj {
-                // TS `#materials[c] = (#materials[c] ?? 0) + qty` adds the raw number,
+                // `#materials[c] = (#materials[c] ?? 0) + qty` adds the raw number,
                 // fractional or not — read both sides as f64 (matching MaterialMap's
                 // `number` values). `as_i64` would silently drop a fractional qty to 0.
                 let add = qty.as_f64().unwrap_or(0.0);
-                let cur = pool.get(component).and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let cur = pool
+                    .get(component)
+                    .and_then(serde_json::Value::as_f64)
+                    .unwrap_or(0.0);
                 pool.insert(component.clone(), json!(cur + add));
             }
         }
         // 2. One codex record per component (deduped material::<component>).
         let components: Vec<alloc::string::String> = obj.keys().cloned().collect();
         for component in components {
-            self.record_codex("material", &component, json!({ "type": component }), by, room);
+            self.record_codex(
+                "material",
+                &component,
+                &json!({ "type": component }),
+                by,
+                room,
+            );
         }
     }
 
     /// Apply an incoming hit to `target`'s `attack_stat` after armor + mitigation,
     /// wear contributing armor, reconcile, and record a NON-budgeted `takeDamage`.
-    /// Byte-exact port of `character.ts` `takeDamage` (:930-971). Internal only.
+    /// Behavior is pinned byte-exact by the conformance goldens. Internal only.
     pub fn take_damage(
         &mut self,
         target: &CharacterId,
@@ -343,8 +416,7 @@ impl World {
             .characters
             .get(target)
             .and_then(|c| c.current_room_id.clone())
-            .map(|rid| self.is_lit(&rid, cat))
-            .unwrap_or(false);
+            .is_some_and(|rid| self.is_lit(&rid, cat));
 
         let final_strength = compute_mitigated_damage(DamageInput {
             attack_strength,
@@ -354,7 +426,7 @@ impl World {
             room_lit,
         });
         let dealt = self.run_damage_transformers(
-            crate::world::mechanics::DamageView {
+            &crate::world::mechanics::DamageView {
                 amount: final_strength,
                 target: target.clone(),
                 stat: attack_stat,
@@ -366,11 +438,7 @@ impl World {
 
         // Subtract from the base stat (no clamp here — reconcile floors it).
         if let Some(c) = self.characters.get_mut(target) {
-            match attack_stat {
-                StatType::Health => c.stats.health -= dealt,
-                StatType::Sanity => c.stats.sanity -= dealt,
-                StatType::Energy => c.stats.energy -= dealt,
-            }
+            *c.stats.get_mut(attack_stat) -= dealt;
         }
 
         // Each contributing armor piece wears one point.
@@ -395,12 +463,17 @@ impl World {
             sound: None,
         });
 
-        // TS `takeDamage` tail-routes through `recordAction(this.takeDamage, …)`
-        // (character.ts:966), whose cap check (:535-537) runs even for this
-        // non-budgeted action: an at-cap target's turn auto-ends here. `budgeted=false`
-        // → no increment / no on_action, cap-check only (same free-action path as the
-        // sub-plan-5 free fumble).
-        self.record_action(target, false, crate::world::mechanics::ActionView::of("takeDamage"), cat, cues)?;
+        // `take_damage` tail-routes through `record_action`, whose cap check runs
+        // even for this non-budgeted action: an at-cap target's turn auto-ends
+        // here. `budgeted=false` → no increment / no on_action, cap-check only
+        // (the same free-action path as a free fumble).
+        self.record_action(
+            target,
+            false,
+            &crate::world::mechanics::ActionView::of("takeDamage"),
+            cat,
+            cues,
+        )?;
         Ok(())
     }
 }
@@ -412,18 +485,23 @@ mod tests {
     use crate::world::descriptor::Catalog;
     use crate::world::ids::{CharacterId, ItemId};
     use crate::world::snapshot::ItemSnapshot;
+    use crate::world::test_support::cid;
     use crate::world::test_support::world_with_party;
-
-    fn cid(s: &str) -> CharacterId { CharacterId(s.into()) }
+    use crate::world::test_support::{item_desc, props};
 
     #[test]
     fn set_durability_writes_the_item() {
         let mut w = world_with_party(&["pc"], 10);
         let id = ItemId("sword".into());
-        w.items.insert(id.clone(), ItemSnapshot::Item {
-            id: id.clone(), behavior_key: "items/sword".into(),
-            durability: Some(3), modifier: 2,
-        });
+        w.items.insert(
+            id.clone(),
+            ItemSnapshot::Item {
+                id: id.clone(),
+                behavior_key: "items/sword".into(),
+                durability: Some(3),
+                modifier: 2,
+            },
+        );
         w.set_durability(&id, 2);
         match &w.items[&id] {
             ItemSnapshot::Item { durability, .. } => assert_eq!(*durability, Some(2)),
@@ -436,7 +514,9 @@ mod tests {
         // health driven negative → reconcile floors base to 0 AND latches KO.
         let mut w = world_with_party(&["pc"], 10);
         let mut cues = Vec::new();
-        if let Some(c) = w.characters.get_mut(&cid("pc")) { c.stats.health = -2.5; }
+        if let Some(c) = w.characters.get_mut(&cid("pc")) {
+            c.stats.health = -2.5;
+        }
         w.reconcile(&cid("pc"), &Catalog::default(), &mut cues);
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.stats.health, 0.0, "base health floored to 0");
@@ -458,9 +538,15 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let mut cues = Vec::new();
         let dv = crate::world::mechanics::DamageView {
-            amount: 7.5, target: cid("pc"), stat: StatType::Health, source: None,
+            amount: 7.5,
+            target: cid("pc"),
+            stat: StatType::Health,
+            source: None,
         };
-        assert_eq!(w.run_damage_transformers(dv, &mut cues, &Catalog::default()), 7.5);
+        assert_eq!(
+            w.run_damage_transformers(&dv, &mut cues, &Catalog::default()),
+            7.5
+        );
         assert!(cues.is_empty());
     }
 
@@ -470,12 +556,10 @@ mod tests {
 
     fn weapon_desc(stat: StatType, modifier: i64, max_dur: Option<i64>) -> ItemDescriptor {
         ItemDescriptor {
-            name: "Test Weapon".into(), r#type: ItemType::Weapon, stat, modifier,
-            properties: ItemProperties { equippable: true, equipped: false, destroyable: true, usable: false, droppable: None },
-            slot: Some(SlotKind::Hand), two_handed: None, emits_light: None,
-            max_durability: max_dur, lore: None, presentation: None, key_code: None,
-            consume_on_use: None, recipe: json!({}), teaches: json!(null),
-            immunities: json!([]), grants_immunity: json!(null),
+            properties: props(true, true, false),
+            slot: Some(SlotKind::Hand),
+            max_durability: max_dur,
+            ..item_desc("Test Weapon", ItemType::Weapon, stat, modifier)
         }
     }
 
@@ -495,12 +579,31 @@ mod tests {
         let mut cues = Vec::new();
         let wpn = ItemId("axe".into());
         let mut items = BTreeMap::new();
-        items.insert("items/axe".to_string(), weapon_desc(StatType::Health, 5, Some(3)));
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() };
-        w.items.insert(wpn.clone(), ItemSnapshot::Item {
-            id: wpn.clone(), behavior_key: "items/axe".into(), durability: Some(3), modifier: 5,
-        });
-        w.characters.get_mut(&cid("ada")).unwrap().equipment.insert("hand".into(), wpn.clone());
+        items.insert(
+            "items/axe".to_string(),
+            weapon_desc(StatType::Health, 5, Some(3)),
+        );
+        let cat = Catalog {
+            items,
+            aliases: BTreeMap::new(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
+        };
+        w.items.insert(
+            wpn.clone(),
+            ItemSnapshot::Item {
+                id: wpn.clone(),
+                behavior_key: "items/axe".into(),
+                durability: Some(3),
+                modifier: 5,
+            },
+        );
+        w.characters
+            .get_mut(&cid("ada"))
+            .unwrap()
+            .equipment
+            .insert("hand".into(), wpn.clone());
 
         w.attack(&cid("ada"), &cid("ben"), &cat, &mut cues).unwrap();
 
@@ -515,11 +618,16 @@ mod tests {
         assert_eq!(w.characters[&cid("ada")].actions_this_round, 1);
         assert_eq!(w.characters[&cid("ben")].actions_this_round, 0);
         // attacker recorded an Attack; last cue is the attack cue on the attacker.
-        assert!(matches!(w.characters[&cid("ada")].history.last().unwrap(),
-            ActionHistoryEntry::Attack { .. }));
+        assert!(matches!(
+            w.characters[&cid("ada")].history.last().unwrap(),
+            ActionHistoryEntry::Attack { .. }
+        ));
         match cues.last().unwrap() {
-            PresentationCue::Action { action: ActionKind::Attack, actor, sound: None } =>
-                assert_eq!(actor.id, "ada"),
+            PresentationCue::Action {
+                action: ActionKind::Attack,
+                actor,
+                sound: None,
+            } => assert_eq!(actor.id, "ada"),
             other => panic!("expected attack cue, got {:?}", other),
         }
     }
@@ -537,8 +645,14 @@ mod tests {
     fn attack_ko_actor_is_blocked() {
         let (mut w, cat) = duel_world();
         let mut cues = Vec::new();
-        w.characters.get_mut(&cid("ada")).unwrap().afflictions.set_active(Status::Ko, true);
-        let err = w.attack(&cid("ada"), &cid("ben"), &cat, &mut cues).unwrap_err();
+        w.characters
+            .get_mut(&cid("ada"))
+            .unwrap()
+            .afflictions
+            .set_active(Status::Ko, true);
+        let err = w
+            .attack(&cid("ada"), &cid("ben"), &cat, &mut cues)
+            .unwrap_err();
         assert_eq!(err.0, "Cannot act while KO'd.");
         // blocked before any damage.
         assert_eq!(w.characters[&cid("ben")].stats.health, 5.0);
@@ -551,18 +665,44 @@ mod tests {
         let mut opened = BTreeSet::new();
         let mut cues = Vec::new();
         // active character is index 0 = "ada".
-        apply_command(&mut w, Command::Attack { target_id: "ben".into() }, &cat, &mut opened, &mut cues).unwrap();
+        apply_command(
+            &mut w,
+            Command::Attack {
+                target_id: "ben".into(),
+            },
+            &cat,
+            &mut opened,
+            &mut cues,
+        )
+        .unwrap();
         assert_eq!(w.characters[&cid("ben")].stats.health, 4.0); // unarmed natural 1
     }
 
     fn armor_desc(stat: StatType, modifier: i64, max_dur: Option<i64>) -> ItemDescriptor {
         ItemDescriptor {
-            name: "Test Armor".into(), r#type: ItemType::Armor, stat, modifier,
-            properties: ItemProperties { equippable: true, equipped: false, destroyable: true, usable: false, droppable: None },
-            slot: Some(SlotKind::Torso), two_handed: None, emits_light: None,
-            max_durability: max_dur, lore: None, presentation: None, key_code: None,
-            consume_on_use: None, recipe: json!({}), teaches: json!(null),
-            immunities: json!([]), grants_immunity: json!(null),
+            name: "Test Armor".into(),
+            r#type: ItemType::Armor,
+            stat,
+            modifier,
+            properties: ItemProperties {
+                equippable: true,
+                equipped: false,
+                destroyable: true,
+                usable: false,
+                droppable: None,
+            },
+            slot: Some(SlotKind::Torso),
+            two_handed: None,
+            emits_light: None,
+            max_durability: max_dur,
+            lore: None,
+            presentation: None,
+            key_code: None,
+            consume_on_use: None,
+            recipe: json!({}),
+            teaches: json!(null),
+            immunities: json!([]),
+            grants_immunity: json!(null),
         }
     }
 
@@ -573,7 +713,14 @@ mod tests {
         // dealt = max(0,5-0) * max(0,10-5)*0.2 * 1 = 5 * 1.0 = 5.0 → health 5-5 = 0 → KO.
         let mut w = world_with_party(&["pc"], 10);
         let mut cues = Vec::new();
-        w.take_damage(&cid("pc"), 5.0, StatType::Health, &Catalog::default(), &mut cues).unwrap();
+        w.take_damage(
+            &cid("pc"),
+            5.0,
+            StatType::Health,
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         let ch = w.characters.get(&cid("pc")).unwrap();
         assert_eq!(ch.stats.health, 0.0);
         assert!(ch.afflictions.is_active(Status::Ko));
@@ -588,7 +735,11 @@ mod tests {
         }
         // cue: takeDamage on the TARGET.
         match cues.last().unwrap() {
-            PresentationCue::Action { action: ActionKind::TakeDamage, actor, sound: None } => {
+            PresentationCue::Action {
+                action: ActionKind::TakeDamage,
+                actor,
+                sound: None,
+            } => {
                 assert_eq!(actor.id, "pc");
             }
             other => panic!("expected takeDamage cue, got {:?}", other),
@@ -604,19 +755,40 @@ mod tests {
         let mut cues = Vec::new();
         let armor_id = ItemId("armor".into());
         let mut items = BTreeMap::new();
-        items.insert("items/armor".to_string(), armor_desc(StatType::Health, 3, Some(2)));
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() };
-        w.items.insert(armor_id.clone(), ItemSnapshot::Item {
-            id: armor_id.clone(), behavior_key: "items/armor".into(),
-            durability: Some(2), modifier: 3,
-        });
-        w.characters.get_mut(&cid("pc")).unwrap().equipment.insert("torso".into(), armor_id.clone());
+        items.insert(
+            "items/armor".to_string(),
+            armor_desc(StatType::Health, 3, Some(2)),
+        );
+        let cat = Catalog {
+            items,
+            aliases: BTreeMap::new(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
+        };
+        w.items.insert(
+            armor_id.clone(),
+            ItemSnapshot::Item {
+                id: armor_id.clone(),
+                behavior_key: "items/armor".into(),
+                durability: Some(2),
+                modifier: 3,
+            },
+        );
+        w.characters
+            .get_mut(&cid("pc"))
+            .unwrap()
+            .equipment
+            .insert("torso".into(), armor_id.clone());
 
-        w.take_damage(&cid("pc"), 5.0, StatType::Health, &cat, &mut cues).unwrap();
+        w.take_damage(&cid("pc"), 5.0, StatType::Health, &cat, &mut cues)
+            .unwrap();
 
         assert_eq!(w.characters[&cid("pc")].stats.health, 3.0);
         match &w.items[&armor_id] {
-            ItemSnapshot::Item { durability, .. } => assert_eq!(*durability, Some(1), "armor wore 1"),
+            ItemSnapshot::Item { durability, .. } => {
+                assert_eq!(*durability, Some(1), "armor wore 1");
+            }
             _ => panic!(),
         }
     }
@@ -646,7 +818,10 @@ mod tests {
         assert_eq!(w.campaign.materials, json!({ "metal": 3.0, "bone": 1.0 }));
         // one codex record per component, deduped by material::<component>
         let codex = w.codex.as_array().unwrap();
-        let mats: Vec<_> = codex.iter().filter(|e| e["kind"] == json!("material")).collect();
+        let mats: Vec<_> = codex
+            .iter()
+            .filter(|e| e["kind"] == json!("material"))
+            .collect();
         assert_eq!(mats.len(), 2);
         let metal = mats.iter().find(|e| e["key"] == json!("metal")).unwrap();
         assert_eq!(metal["snapshot"], json!({ "type": "metal" }));
@@ -655,7 +830,13 @@ mod tests {
         // re-deposit does not duplicate codex records (first-write-wins)
         w.deposit_materials(&json!({ "metal": 5 }), Some("pc"), Some("hall"));
         assert_eq!(w.campaign.materials["metal"], json!(8.0)); // pool still merges
-        let mats2: Vec<_> = w.codex.as_array().unwrap().iter().filter(|e| e["kind"] == json!("material")).collect();
+        let mats2: Vec<_> = w
+            .codex
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|e| e["kind"] == json!("material"))
+            .collect();
         assert_eq!(mats2.len(), 2); // no new material::metal record
     }
 
@@ -666,15 +847,34 @@ mod tests {
         let mut cues = Vec::new();
         let armor_id = ItemId("armor".into());
         let mut items = BTreeMap::new();
-        items.insert("items/armor".to_string(), armor_desc(StatType::Health, 3, Some(2)));
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() };
-        w.items.insert(armor_id.clone(), ItemSnapshot::Item {
-            id: armor_id.clone(), behavior_key: "items/armor".into(),
-            durability: Some(0), modifier: 3,
-        });
-        w.characters.get_mut(&cid("pc")).unwrap().equipment.insert("torso".into(), armor_id.clone());
+        items.insert(
+            "items/armor".to_string(),
+            armor_desc(StatType::Health, 3, Some(2)),
+        );
+        let cat = Catalog {
+            items,
+            aliases: BTreeMap::new(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
+        };
+        w.items.insert(
+            armor_id.clone(),
+            ItemSnapshot::Item {
+                id: armor_id.clone(),
+                behavior_key: "items/armor".into(),
+                durability: Some(0),
+                modifier: 3,
+            },
+        );
+        w.characters
+            .get_mut(&cid("pc"))
+            .unwrap()
+            .equipment
+            .insert("torso".into(), armor_id.clone());
 
-        w.take_damage(&cid("pc"), 5.0, StatType::Health, &cat, &mut cues).unwrap();
+        w.take_damage(&cid("pc"), 5.0, StatType::Health, &cat, &mut cues)
+            .unwrap();
 
         // No mitigation: dealt = 5 * (10-5)*0.2 = 5.0 → health 0.
         assert_eq!(w.characters[&cid("pc")].stats.health, 0.0);
@@ -698,9 +898,19 @@ mod tests {
         }
         // A Health hit that does not itself KO; the observable effect is the
         // cap-triggered end_turn reconcile flooring the negative sanity.
-        w.take_damage(&cid("pc"), 1.0, StatType::Health, &Catalog::default(), &mut cues).unwrap();
+        w.take_damage(
+            &cid("pc"),
+            1.0,
+            StatType::Health,
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         let ch = w.characters.get(&cid("pc")).unwrap();
-        assert_eq!(ch.stats.sanity, 0.0, "cap-triggered end_turn reconcile floored base sanity");
+        assert_eq!(
+            ch.stats.sanity, 0.0,
+            "cap-triggered end_turn reconcile floored base sanity"
+        );
     }
 
     #[test]
@@ -710,15 +920,25 @@ mod tests {
         let mut cues = Vec::new();
         if let Some(c) = w.characters.get_mut(&cid("pc")) {
             c.actions_this_round = 0; // below cap (< 2)
-            c.stats.sanity = -4.0;    // stays negative if end_turn does NOT run
+            c.stats.sanity = -4.0; // stays negative if end_turn does NOT run
         }
-        w.take_damage(&cid("pc"), 1.0, StatType::Health, &Catalog::default(), &mut cues).unwrap();
+        w.take_damage(
+            &cid("pc"),
+            1.0,
+            StatType::Health,
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         // take_damage's OWN reconcile floors base stats too — so sanity WILL be 0 here.
         // To isolate the cap-check, assert budget did not advance and no extra reconcile
         // side-effect beyond take_damage's own. The meaningful assertion is that no
         // end_turn-only effect occurred; with no mechanics, end_turn == reconcile == idempotent.
         let ch = w.characters.get(&cid("pc")).unwrap();
-        assert_eq!(ch.actions_this_round, 0, "below-cap take_damage does not tick budget");
+        assert_eq!(
+            ch.actions_this_round, 0,
+            "below-cap take_damage does not tick budget"
+        );
     }
 
     /// Stronger observable proof (brief §Step 1 note): seed `conformance:dread`
@@ -739,7 +959,14 @@ mod tests {
         if let Some(c) = w.characters.get_mut(&cid("pc")) {
             c.actions_this_round = c.actions_per_round; // at cap
         }
-        w.take_damage(&cid("pc"), 1.0, StatType::Health, &Catalog::default(), &mut cues).unwrap();
+        w.take_damage(
+            &cid("pc"),
+            1.0,
+            StatType::Health,
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         let texts: Vec<Option<alloc::string::String>> = cues
             .iter()
             .filter_map(|c| match c {
@@ -787,11 +1014,18 @@ mod tests {
             c.inventory.item_ids = alloc::vec![ItemId("mob:goblin:drop#0".into())];
             c.inventory.key_ids = alloc::vec![ItemId("mob:goblin:key#0".into())];
         }
-        w.items.insert(ItemId("mob:goblin:drop#0".into()), ItemSnapshot::Item {
-            id: ItemId("mob:goblin:drop#0".into()), behavior_key: "items/coin".into(),
-            durability: None, modifier: 0,
-        });
-        w.rooms.entry(RoomId("hall".into())).or_insert_with(|| test_room("hall"));
+        w.items.insert(
+            ItemId("mob:goblin:drop#0".into()),
+            ItemSnapshot::Item {
+                id: ItemId("mob:goblin:drop#0".into()),
+                behavior_key: "items/coin".into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
+        w.rooms
+            .entry(RoomId("hall".into()))
+            .or_insert_with(|| test_room("hall"));
         let mut cues = Vec::new();
         // Directly fire the hook as reconcile would on the KO edge, with "hero" as the active attacker.
         w.campaign.active_character_index = 0; // hero
@@ -804,10 +1038,13 @@ mod tests {
         let b = w.loot.get(&box_id).expect("remains box created");
         assert_eq!(b.description, "goblin's remains");
         assert_eq!(b.capacity, 3);
-        assert_eq!(b.content_ids, alloc::vec![
-            ItemId("mob:goblin:drop#0".into()),
-            ItemId("mob:goblin:key#0".into()),
-        ]);
+        assert_eq!(
+            b.content_ids,
+            alloc::vec![
+                ItemId("mob:goblin:drop#0".into()),
+                ItemId("mob:goblin:key#0".into()),
+            ]
+        );
         // placed in the room; mob inventory emptied
         assert!(w.rooms[&RoomId("hall".into())].loot_ids.contains(&box_id));
         assert!(w.characters[&gid].inventory.item_ids.is_empty());
@@ -837,14 +1074,21 @@ mod tests {
             c.current_room_id = Some(RoomId("hall".into()));
             // no items/keys — a materials-only mob keeps the second-fire check simple
         }
-        w.rooms.entry(RoomId("hall".into())).or_insert_with(|| test_room("hall"));
+        w.rooms
+            .entry(RoomId("hall".into()))
+            .or_insert_with(|| test_room("hall"));
         let mut cues = Vec::new();
         w.on_knock_out(&gid, &Catalog::default(), &mut cues);
         w.on_knock_out(&gid, &Catalog::default(), &mut cues);
         // bone deposited twice (deposit is not edge-guarded inside on_knock_out — reconcile is),
         // but the material CODEX record is deduped to one.
-        let mats = w.codex.as_array().unwrap().iter()
-            .filter(|e| e["kind"] == json!("material")).count();
+        let mats = w
+            .codex
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|e| e["kind"] == json!("material"))
+            .count();
         assert_eq!(mats, 1);
     }
 }

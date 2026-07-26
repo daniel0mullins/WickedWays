@@ -1,6 +1,6 @@
 //! Scene behaviors: a native `SceneBehavior` trait resolved by `behavior_key`
 //! (mirrors `exit_behavior`). Behavior is compiled-in; only the scene's `state`
-//! serializes. Byte-exact port of the TS `Scene` / `SceneBehavior` contract,
+//! serializes. Pinned byte-exact by the conformance goldens: the `Scene` / `SceneBehavior` contract,
 //! extended (6c-2) so a scene script emits mechanic cues.
 use alloc::vec::Vec;
 use serde_json::Value;
@@ -11,9 +11,9 @@ use crate::world::mechanics::RoomView;
 
 /// A first-party scene behavior. `state` is the scene's serialized `Value`.
 pub trait SceneBehavior: Sync {
-    /// TS `preconditions.every` — read-only over the room view + scene state.
+    /// `preconditions.every` — read-only over the room view + scene state.
     fn can_play(&self, room: &RoomView, state: &Value) -> bool;
-    /// TS `script` — runs on a matched phase + passing preconditions; may mutate
+    /// `script` — runs on a matched phase + passing preconditions; may mutate
     /// its own `state`; returns the mechanic cues to emit (empty = none).
     fn run_script(&self, room: &RoomView, state: &mut Value) -> Vec<MechanicCue>;
 }
@@ -61,13 +61,20 @@ pub mod conformance {
 
     /// Fires while `state.count < 3` AND the room is occupied.
     pub fn visit_can_play(state: &Value, occupied: bool) -> bool {
-        let count = state.get("count").and_then(|v| v.as_i64()).unwrap_or(0);
+        let count = state
+            .get("count")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0);
         count < 3 && occupied
     }
 
     /// Increments `state.count` and returns one cue naming the room + new count.
     pub fn visit_run_script(room_name: &str, state: &mut Value) -> Vec<MechanicCue> {
-        let count = state.get("count").and_then(|v| v.as_i64()).unwrap_or(0) + 1;
+        let count = state
+            .get("count")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0)
+            + 1;
         state["count"] = json!(count);
         alloc::vec![MechanicCue {
             text: Some(alloc::format!("The {room_name} stirs (visit {count}).")),

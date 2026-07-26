@@ -16,3 +16,11 @@ ts-rs = { version = "10", optional = true, features = ["no-serde-warnings"] }
 
 # NOTE: `rand` and `uuid` are deliberately absent. Ids are derived, never generated.
 # Adding either is a spec violation.
+
+[dev-dependencies]
+# The replay gate compiles the `conformance:` native behaviors in — several
+# replay fixtures reference them.
+wickedways-core = { path = "../wickedways-core", features = ["conformance"] }
+
+[lints]
+workspace = true

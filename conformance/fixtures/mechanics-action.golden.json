@@ -1,95 +1,86 @@
 {
-  "seed": 1,
   "commands": [
     {
+      "actionKey": "brace",
       "kind": "mechanicAction",
-      "mechanicKey": "conformance:dread",
-      "actionKey": "brace"
+      "mechanicKey": "conformance:dread"
     }
   ],
+  "seed": 1,
   "steps": [
     {
       "command": {
+        "actionKey": "brace",
         "kind": "mechanicAction",
-        "mechanicKey": "conformance:dread",
-        "actionKey": "brace"
+        "mechanicKey": "conformance:dread"
       },
       "cues": [
         {
-          "kind": "mechanic",
           "cue": {
             "text": "You brace against the dread."
-          }
+          },
+          "kind": "mechanic"
         },
         {
-          "kind": "action",
           "action": "mechanicAction",
           "actor": {
             "id": "player:Ada",
             "name": "Ada"
-          }
+          },
+          "kind": "action"
         },
         {
-          "kind": "mechanic",
           "cue": {
             "text": "The dread notices."
-          }
+          },
+          "kind": "mechanic"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Mechanics Action (conformance)",
-          "title": "Mechanics Action (conformance)",
-          "maxRounds": 20,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "fighter",
-              "name": "Fighter",
               "baseStats": {
+                "energy": 10,
                 "health": 10,
-                "sanity": 10,
-                "energy": 10
-              }
+                "sanity": 10
+              },
+              "id": "fighter",
+              "name": "Fighter"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
           },
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Mechanics Action (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
           "mechanics": [
             {
               "key": "conformance:dread",
@@ -97,44 +88,33 @@
                 "ticks": 0
               }
             }
-          ]
+          ],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Mechanics Action (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 11,
-              "energy": 10
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 2,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "fighter",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -146,72 +126,95 @@
                 "round": 0
               },
               {
+                "action": "brace",
                 "kind": "mechanicAction",
                 "mechanic": "conformance:dread",
-                "action": "brace",
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "fighter"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 11.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          }
+        ],
+        "exits": [],
         "items": [],
         "loot": [],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [],
         "status": {
+          "health": 10.0,
           "locationName": "Hall",
-          "turn": 0,
           "maxTurns": 20,
-          "sanity": 11,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 11.0,
+          "turn": 0
+        }
       }
     }
   ]

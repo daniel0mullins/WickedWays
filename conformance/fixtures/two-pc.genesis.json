@@ -1,239 +1,239 @@
 {
-  "schemaVersion": 6,
   "campaign": {
-    "id": "campaign:Two PC (conformance)",
-    "title": "Two PC (conformance)",
-    "maxRounds": 20,
-    "round": 0,
-    "started": false,
-    "outcome": "ongoing",
-    "winConditions": [],
-    "loseConditions": [],
+    "actedThisRound": [],
+    "actionSounds": {},
     "activeCharacterIndex": 0,
+    "archetypes": [
+      {
+        "baseStats": {
+          "energy": 8.0,
+          "health": 10.0,
+          "sanity": 8.0
+        },
+        "id": "delver",
+        "name": "Delver"
+      }
+    ],
+    "avPolicy": {
+      "enabled": true,
+      "maxParticipants": 6,
+      "video": true
+    },
+    "chatPolicy": {
+      "backfillWindow": 200,
+      "edit": true,
+      "enabled": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "whisper": true
+    },
+    "claims": [],
+    "encounterTable": {
+      "baseChance": 0,
+      "formations": [],
+      "visited": [
+        "room:A"
+      ]
+    },
+    "encountered": [],
+    "gmId": "player:Ada",
+    "id": "campaign:Two PC (conformance)",
+    "knownRecipes": [],
+    "loseConditions": [],
+    "materials": {},
+    "maxRounds": 20,
+    "mechanics": [],
+    "outcome": "ongoing",
     "partyIds": [
       "player:Ada",
       "player:Ben"
     ],
-    "actedThisRound": [],
-    "gmId": "player:Ada",
-    "materials": {},
-    "claims": [],
-    "encountered": [],
-    "knownRecipes": [],
-    "archetypes": [
-      {
-        "id": "delver",
-        "name": "Delver",
-        "baseStats": {
-          "health": 10,
-          "sanity": 8,
-          "energy": 8
-        }
-      }
-    ],
-    "actionSounds": {},
-    "encounterTable": {
-      "baseChance": 0,
-      "visited": [
-        "room:A"
-      ],
-      "formations": []
-    },
-    "chatPolicy": {
-      "enabled": true,
-      "whisper": true,
-      "edit": true,
-      "reactions": true,
-      "readReceipts": true,
-      "typing": true,
-      "backfillWindow": 200
-    },
-    "avPolicy": {
-      "enabled": true,
-      "video": true,
-      "maxParticipants": 6
-    },
-    "mechanics": []
+    "round": 0,
+    "started": false,
+    "title": "Two PC (conformance)",
+    "winConditions": []
   },
-  "rooms": [
+  "characters": [
     {
-      "id": "room:A",
-      "name": "A",
-      "description": "A vaulted antechamber.",
-      "exits": {
-        "northeast": "exit:A|B",
-        "south": "exit:A|C"
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
       },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [
-        "player:Ada",
-        "player:Ben"
+      "archetypeId": "delver",
+      "archetypeImmunities": [],
+      "currentRoomId": "room:A",
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:A",
+            "name": "A"
+          },
+          "round": 0
+        }
       ],
-      "lootIds": [],
-      "materialCacheIds": [
-        "cache:Vein"
-      ],
-      "lightSourceIds": [
-        "room:A:light#0"
-      ],
-      "scenes": []
+      "id": "player:Ada",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 5
+      },
+      "kind": "player",
+      "name": "Ada",
+      "stats": {
+        "energy": 8.0,
+        "health": 10.0,
+        "sanity": 8.0
+      }
     },
     {
-      "id": "room:B",
-      "name": "B",
-      "description": "A slanted gallery.",
-      "exits": {
-        "southwest": "exit:A|B"
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
       },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
+      "archetypeId": "delver",
+      "archetypeImmunities": [],
+      "currentRoomId": "room:A",
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:A",
+            "name": "A"
+          },
+          "round": 0
+        }
+      ],
+      "id": "player:Ben",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 5
+      },
+      "kind": "player",
+      "name": "Ben",
+      "stats": {
+        "energy": 8.0,
+        "health": 10.0,
+        "sanity": 8.0
+      }
+    }
+  ],
+  "codex": [
     {
-      "id": "room:C",
-      "name": "C",
-      "description": "A one-way oubliette.",
-      "exits": {},
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
+      "firstSeen": {
+        "characterId": "player:Ada",
+        "roomId": "room:A",
+        "round": 0
+      },
+      "key": "room:A",
+      "kind": "room",
+      "snapshot": {
+        "description": "A vaulted antechamber.",
+        "name": "A"
+      }
     }
   ],
   "exits": [
     {
-      "id": "exit:A|B",
       "endpointIds": [
         "room:A",
         "room:B"
       ],
+      "id": "exit:A|B",
       "state": {}
     },
     {
-      "id": "exit:A|C",
       "endpointIds": [
         "room:A",
         "room:C"
       ],
+      "id": "exit:A|C",
       "state": {}
-    }
-  ],
-  "characters": [
-    {
-      "kind": "player",
-      "id": "player:Ada",
-      "name": "Ada",
-      "stats": {
-        "health": 10,
-        "sanity": 8,
-        "energy": 8
-      },
-      "actionsPerRound": 3,
-      "actionsThisRound": 1,
-      "currentRoomId": "room:A",
-      "inventory": {
-        "slots": 5,
-        "itemIds": [],
-        "keyIds": []
-      },
-      "equipment": {},
-      "history": [
-        {
-          "kind": "move",
-          "room": {
-            "id": "room:A",
-            "name": "A"
-          },
-          "round": 0
-        }
-      ],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
-      },
-      "archetypeId": "delver"
-    },
-    {
-      "kind": "player",
-      "id": "player:Ben",
-      "name": "Ben",
-      "stats": {
-        "health": 10,
-        "sanity": 8,
-        "energy": 8
-      },
-      "actionsPerRound": 3,
-      "actionsThisRound": 1,
-      "currentRoomId": "room:A",
-      "inventory": {
-        "slots": 5,
-        "itemIds": [],
-        "keyIds": []
-      },
-      "equipment": {},
-      "history": [
-        {
-          "kind": "move",
-          "room": {
-            "id": "room:A",
-            "name": "A"
-          },
-          "round": 0
-        }
-      ],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
-      },
-      "archetypeId": "delver"
     }
   ],
   "items": [
     {
-      "kind": "item",
-      "id": "room:A:light#0",
       "behaviorKey": "items/two-pc-torch",
+      "id": "room:A:light#0",
+      "kind": "item",
       "modifier": 0
     }
   ],
   "loot": [],
   "materialCaches": [
     {
-      "id": "cache:Vein",
       "contents": {
-        "metal": 3,
-        "glass": 2
+        "glass": 2,
+        "metal": 3
       },
-      "depleted": false
+      "depleted": false,
+      "id": "cache:Vein"
     }
   ],
-  "codex": [
+  "rooms": [
     {
-      "kind": "room",
-      "key": "room:A",
-      "snapshot": {
-        "name": "A",
-        "description": "A vaulted antechamber."
+      "dark": false,
+      "description": "A vaulted antechamber.",
+      "exits": {
+        "northeast": "exit:A|B",
+        "south": "exit:A|C"
       },
-      "firstSeen": {
-        "round": 0,
-        "characterId": "player:Ada",
-        "roomId": "room:A"
-      }
+      "id": "room:A",
+      "lightSourceIds": [
+        "room:A:light#0"
+      ],
+      "lootIds": [],
+      "materialCacheIds": [
+        "cache:Vein"
+      ],
+      "name": "A",
+      "occupantIds": [
+        "player:Ada",
+        "player:Ben"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A slanted gallery.",
+      "exits": {
+        "southwest": "exit:A|B"
+      },
+      "id": "room:B",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "B",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A one-way oubliette.",
+      "exits": {},
+      "id": "room:C",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "C",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
     }
-  ]
+  ],
+  "schemaVersion": 6
 }

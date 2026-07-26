@@ -2,8 +2,8 @@
 //! [`DamageBody`] mini-AST. A modding trust boundary — panic-free on author
 //! input: every failure is a [`CompileError`], never an `unwrap`/`panic!`.
 //!
-//! Grammar (mirrors the TS `modifyDamage` closures, e.g. the conformance dread's
-//! `d => d.amount > 3 ? { value: 3, final: true } : d.amount`):
+//! Grammar (e.g. the conformance dread's cap,
+//! `damage.amount > 3 ? final 3 : damage.amount`):
 //!
 //! ```text
 //! body := `final` <expr>                 -> DamageBody::Final   (halts the fold)
@@ -63,14 +63,22 @@ fn parse_damage_body_at(src: &str, base: Span, depth: usize) -> Result<DamageBod
         let then = parse_damage_body_at(&rest[..colon], base, depth + 1)?;
         // `:` is one ASCII byte, so `colon + 1` is a char boundary.
         let els = parse_damage_body_at(&rest[colon + 1..], base, depth + 1)?;
-        return Ok(DamageBody::IfElse { cond, then: Box::new(then), r#else: Box::new(els) });
+        return Ok(DamageBody::IfElse {
+            cond,
+            then: Box::new(then),
+            r#else: Box::new(els),
+        });
     }
     // `final <expr>` -> Final (the value that halts the transformer chain).
     if let Some(rest) = strip_final_keyword(src) {
-        return Ok(DamageBody::Final { expr: parse_expr(rest.trim(), base)? });
+        return Ok(DamageBody::Final {
+            expr: parse_expr(rest.trim(), base)?,
+        });
     }
     // Otherwise a bare value expression.
-    Ok(DamageBody::Value { expr: parse_expr(src, base)? })
+    Ok(DamageBody::Value {
+        expr: parse_expr(src, base)?,
+    })
 }
 
 /// String-state tracker (both quote kinds): `None` outside a string, `Some(q)`
@@ -145,14 +153,18 @@ mod tests {
     const BASE: Span = Span { line: 1, col: 1 };
 
     /// Collapse integer-valued floats to ints (the differential gate's number
-    /// normalization, copied per the plan's Global Constraints) so a `lit 3`
-    /// serialized as `3.0` compares equal to the `3` written in the assertions.
+    /// normalization, copied verbatim from `wickedways-assemble/tests/goldens.rs`)
+    /// so a `lit 3` serialized as `3.0` compares equal to the `3` written in the
+    /// assertions.
     fn canon_numbers(v: &serde_json::Value) -> serde_json::Value {
         use serde_json::Value;
         match v {
             Value::Number(n) => {
                 if let Some(f) = n.as_f64() {
-                    if f.is_finite() && f.fract() == 0.0 && n.as_i64().is_none() && n.as_u64().is_none()
+                    if f.is_finite()
+                        && f.fract() == 0.0
+                        && n.as_i64().is_none()
+                        && n.as_u64().is_none()
                     {
                         if f >= 0.0 && f <= u64::MAX as f64 {
                             return Value::Number((f as u64).into());
@@ -165,9 +177,11 @@ mod tests {
                 v.clone()
             }
             Value::Array(a) => Value::Array(a.iter().map(canon_numbers).collect()),
-            Value::Object(o) => {
-                Value::Object(o.iter().map(|(k, x)| (k.clone(), canon_numbers(x))).collect())
-            }
+            Value::Object(o) => Value::Object(
+                o.iter()
+                    .map(|(k, x)| (k.clone(), canon_numbers(x)))
+                    .collect(),
+            ),
             _ => v.clone(),
         }
     }
@@ -185,12 +199,15 @@ mod tests {
     #[test]
     fn dread_damage_cap() {
         // The conformance dread transform: cap at 3 (halting), else pass through.
-        assert_eq!(d("damage.amount > 3 ? final 3 : damage.amount"), json!({
-            "kind":"ifElse",
-            "cond":{"kind":"bin","op":"gt","left":amount(),"right":{"kind":"lit","value":3}},
-            "then":{"kind":"final","expr":{"kind":"lit","value":3}},
-            "else":{"kind":"value","expr":amount()}
-        }));
+        assert_eq!(
+            d("damage.amount > 3 ? final 3 : damage.amount"),
+            json!({
+                "kind":"ifElse",
+                "cond":{"kind":"bin","op":"gt","left":amount(),"right":{"kind":"lit","value":3}},
+                "then":{"kind":"final","expr":{"kind":"lit","value":3}},
+                "else":{"kind":"value","expr":amount()}
+            })
+        );
     }
 
     #[test]
@@ -200,21 +217,27 @@ mod tests {
 
     #[test]
     fn final_only_body() {
-        assert_eq!(d("final 0"), json!({"kind":"final","expr":{"kind":"lit","value":0}}));
+        assert_eq!(
+            d("final 0"),
+            json!({"kind":"final","expr":{"kind":"lit","value":0}})
+        );
     }
 
     #[test]
     fn nested_ternary_chains_right() {
         // a ? final 5 : b ? final 3 : v  ->  IfElse(a, Final 5, IfElse(b, Final 3, Value v))
-        assert_eq!(d("damage.amount > 5 ? final 5 : damage.amount > 3 ? final 3 : damage.amount"), json!({
-            "kind":"ifElse",
-            "cond":{"kind":"bin","op":"gt","left":amount(),"right":{"kind":"lit","value":5}},
-            "then":{"kind":"final","expr":{"kind":"lit","value":5}},
-            "else":{"kind":"ifElse",
-                "cond":{"kind":"bin","op":"gt","left":amount(),"right":{"kind":"lit","value":3}},
-                "then":{"kind":"final","expr":{"kind":"lit","value":3}},
-                "else":{"kind":"value","expr":amount()}}
-        }));
+        assert_eq!(
+            d("damage.amount > 5 ? final 5 : damage.amount > 3 ? final 3 : damage.amount"),
+            json!({
+                "kind":"ifElse",
+                "cond":{"kind":"bin","op":"gt","left":amount(),"right":{"kind":"lit","value":5}},
+                "then":{"kind":"final","expr":{"kind":"lit","value":5}},
+                "else":{"kind":"ifElse",
+                    "cond":{"kind":"bin","op":"gt","left":amount(),"right":{"kind":"lit","value":3}},
+                    "then":{"kind":"final","expr":{"kind":"lit","value":3}},
+                    "else":{"kind":"value","expr":amount()}}
+            })
+        );
     }
 
     #[test]
@@ -237,9 +260,15 @@ mod tests {
     fn deeply_nested_ternary_errors_not_panics() {
         // A deeply-chained transform is a clean error, not a stack-overflow abort
         // (or a quadratic hang).
-        let body = format!("{}final 0{}", "damage.amount > 1 ? ".repeat(4000), " : final 1".repeat(4000));
-        assert!(matches!(parse_damage_body(&body, BASE).unwrap_err(),
-            CompileError::ExprParse { .. }));
+        let body = format!(
+            "{}final 0{}",
+            "damage.amount > 1 ? ".repeat(4000),
+            " : final 1".repeat(4000)
+        );
+        assert!(matches!(
+            parse_damage_body(&body, BASE).unwrap_err(),
+            CompileError::ExprParse { .. }
+        ));
     }
 
     #[test]

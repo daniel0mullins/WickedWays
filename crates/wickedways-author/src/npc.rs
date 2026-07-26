@@ -14,7 +14,11 @@ pub(crate) fn to_npc_script(entry: &NpcBehaviorEntry) -> Result<NpcScript, Compi
     Ok(NpcScript {
         description: entry.description.clone(),
         default: to_entry(&entry.default)?,
-        dialogue: entry.dialogue.iter().map(to_entry).collect::<Result<_, _>>()?,
+        dialogue: entry
+            .dialogue
+            .iter()
+            .map(to_entry)
+            .collect::<Result<_, _>>()?,
     })
 }
 
@@ -22,9 +26,13 @@ fn to_entry(e: &DialogueEntryToml) -> Result<DialogueEntry, CompileError> {
     Ok(DialogueEntry {
         match_: match &e.match_ {
             MatchToml::Exact(text) => DialogueMatch::Exact { text: text.clone() },
-            MatchToml::Fuzzy { fuzzy } => DialogueMatch::Fuzzy { tokens: fuzzy.clone() },
+            MatchToml::Fuzzy { fuzzy } => DialogueMatch::Fuzzy {
+                tokens: fuzzy.clone(),
+            },
         },
-        response: Expr::Lit { value: Value::Str(e.response.clone()) },
+        response: Expr::Lit {
+            value: Value::Str(e.response.clone()),
+        },
         effects: match &e.effects {
             Some(src) => parse_effects(src, Span { line: 1, col: 1 })?,
             None => Vec::new(),
@@ -46,7 +54,8 @@ mod tests {
 
     #[test]
     fn default_exact_and_a_fuzzy_entry() {
-        let v = script_json(r#"
+        let v = script_json(
+            r#"
             description = "A stooped caretaker."
             [default]
             match = ""
@@ -56,18 +65,22 @@ mod tests {
             [[dialogue]]
             match = { fuzzy = ["key", "cellar"] }
             response = "It opens the cellar."
-        "#);
-        assert_eq!(v, json!({
-            "description":"A stooped caretaker.",
-            "default":{
-                "match":{"kind":"exact","text":""},
-                "response":{"kind":"lit","value":"Take the key."},
-                "effects":[{"kind":"setVisible","target":{"kind":"lit","value":"npc:C"},"visible":{"kind":"lit","value":false}}],
-                "once":true},
-            "dialogue":[{
-                "match":{"kind":"fuzzy","tokens":["key","cellar"]},
-                "response":{"kind":"lit","value":"It opens the cellar."},
-                "effects":[],"once":false}]
-        }));
+        "#,
+        );
+        assert_eq!(
+            v,
+            json!({
+                "description":"A stooped caretaker.",
+                "default":{
+                    "match":{"kind":"exact","text":""},
+                    "response":{"kind":"lit","value":"Take the key."},
+                    "effects":[{"kind":"setVisible","target":{"kind":"lit","value":"npc:C"},"visible":{"kind":"lit","value":false}}],
+                    "once":true},
+                "dialogue":[{
+                    "match":{"kind":"fuzzy","tokens":["key","cellar"]},
+                    "response":{"kind":"lit","value":"It opens the cellar."},
+                    "effects":[],"once":false}]
+            })
+        );
     }
 }

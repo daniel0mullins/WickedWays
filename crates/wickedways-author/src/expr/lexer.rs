@@ -1,7 +1,7 @@
 //! Tokenizer for the infix expression language.
 //!
 //! Turns an author's single-line expression string into a flat `Vec<(Token,
-//! Span)>`. The MVP keeps expressions single-line, so each token's span is
+//! Span)>`. Expressions are single-line, so each token's span is
 //! `base` offset by the token's starting char index (`line = base.line`,
 //! `col = base.col + char_index`) — this points diagnostics back into the TOML
 //! file. Strings use single OR double quotes (`'...'` / `"..."`), matching the
@@ -46,7 +46,7 @@ pub enum Token {
 
 /// Tokenize `src`. Every token carries the span of its first character.
 ///
-/// `base` is where the expression string starts in the TOML file; because MVP
+/// `base` is where the expression string starts in the TOML file; because
 /// expressions are single-line, a token starting at char index `i` gets span
 /// `{ line: base.line, col: base.col + i }`.
 pub fn tokenize(src: &str, base: Span) -> Result<Vec<(Token, Span)>, CompileError> {
@@ -55,7 +55,10 @@ pub fn tokenize(src: &str, base: Span) -> Result<Vec<(Token, Span)>, CompileErro
     let mut out: Vec<(Token, Span)> = Vec::new();
     let mut i = 0usize;
 
-    let span_at = |i: usize| Span { line: base.line, col: base.col + i };
+    let span_at = |i: usize| Span {
+        line: base.line,
+        col: base.col + i,
+    };
 
     while i < chars.len() {
         let c = chars[i];
@@ -72,12 +75,36 @@ pub fn tokenize(src: &str, base: Span) -> Result<Vec<(Token, Span)>, CompileErro
         // two-char operators first, then single-char
         let next = chars.get(i + 1).copied();
         match (c, next) {
-            ('&', Some('&')) => { out.push((Token::AndAnd, start_span)); i += 2; continue; }
-            ('|', Some('|')) => { out.push((Token::OrOr, start_span)); i += 2; continue; }
-            ('=', Some('=')) => { out.push((Token::EqEq, start_span)); i += 2; continue; }
-            ('!', Some('=')) => { out.push((Token::NotEq, start_span)); i += 2; continue; }
-            ('<', Some('=')) => { out.push((Token::Lte, start_span)); i += 2; continue; }
-            ('>', Some('=')) => { out.push((Token::Gte, start_span)); i += 2; continue; }
+            ('&', Some('&')) => {
+                out.push((Token::AndAnd, start_span));
+                i += 2;
+                continue;
+            }
+            ('|', Some('|')) => {
+                out.push((Token::OrOr, start_span));
+                i += 2;
+                continue;
+            }
+            ('=', Some('=')) => {
+                out.push((Token::EqEq, start_span));
+                i += 2;
+                continue;
+            }
+            ('!', Some('=')) => {
+                out.push((Token::NotEq, start_span));
+                i += 2;
+                continue;
+            }
+            ('<', Some('=')) => {
+                out.push((Token::Lte, start_span));
+                i += 2;
+                continue;
+            }
+            ('>', Some('=')) => {
+                out.push((Token::Gte, start_span));
+                i += 2;
+                continue;
+            }
             _ => {}
         }
 
@@ -87,7 +114,7 @@ pub fn tokenize(src: &str, base: Span) -> Result<Vec<(Token, Span)>, CompileErro
             ')' => Some(Token::RParen),
             '[' => Some(Token::LBracket),
             ']' => Some(Token::RBracket),
-            '.' if !next.map(|n| n.is_ascii_digit()).unwrap_or(false) => Some(Token::Dot),
+            '.' if !next.is_some_and(|n| n.is_ascii_digit()) => Some(Token::Dot),
             ',' => Some(Token::Comma),
             '?' => Some(Token::Question),
             ':' => Some(Token::Colon),

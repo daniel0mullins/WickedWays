@@ -1,15 +1,17 @@
-//! The sync differential gate (Phase 2c, sub-project B).
+//! The sync replay gate.
 //!
 //! Replays a committed command sequence through the native
 //! [`SyncAuthority`](wickedways_core::sync::SyncAuthority) and asserts each authoritative
-//! `{ seq, delta }` matches the TS sync `Authority` byte-for-byte. The goldens are emitted by
-//! `conformance/fixtures/sync-move.gen.test.ts` (driving `src/lib/sync/authority.ts`).
+//! `{ seq, delta }` matches the committed golden. The goldens are regression pins of the
+//! authority's own deltas — regenerate deliberately with
+//! `UPDATE_GOLDENS=1 cargo test -p wickedways-assemble --test sync_gate`, review the diff,
+//! and commit it (second regeneration run = zero git diff).
 //!
 //! Lives in `wickedways-assemble`'s integration tests because CI already runs
 //! `cargo test -p wickedways-assemble` (pure Rust, no wasm) — the same home as the assembler
-//! genesis gate. This is B's acceptance mechanism: a command "matches the oracle" only when its
-//! delta *content*, not just its serde shape, is identical. As A1/A2 land engine actions, each new
-//! command extends this differential corpus.
+//! genesis gate. The acceptance bar: a command "matches" only when its delta *content*,
+//! not just its serde shape, is identical. Each newly supported engine command extends
+//! this corpus.
 
 use std::path::{Path, PathBuf};
 
@@ -27,18 +29,33 @@ fn read(name: &str) -> String {
     std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()))
 }
 
+fn updating() -> bool {
+    std::env::var_os("UPDATE_GOLDENS").is_some_and(|v| v == "1")
+}
+
+/// Write a regenerated golden: 2-space pretty JSON + trailing newline (the
+/// committed format).
+fn write_golden(name: &str, v: &Value) {
+    let p = fixtures().join(name);
+    let mut s = serde_json::to_string_pretty(v).expect("serialize golden");
+    s.push('\n');
+    std::fs::write(&p, s).unwrap_or_else(|e| panic!("write {}: {e}", p.display()));
+}
+
 /// The `<name>.catalog.json` path if that fixture ships a catalog, else `None`.
 fn catalog_path(name: &str) -> Option<PathBuf> {
     let p = fixtures().join(format!("{name}.catalog.json"));
     p.exists().then_some(p)
 }
 
-/// Collapse integer-valued floats to ints so a Rust `5.0` compares equal to a TS-emitted `5`.
+/// Collapse integer-valued floats to ints so a Rust `5.0` compares equal to a legacy `5`.
+/// After a full regeneration this is an identity transform.
 fn canon_numbers(v: &Value) -> Value {
     match v {
         Value::Number(n) => {
             if let Some(f) = n.as_f64() {
-                if f.is_finite() && f.fract() == 0.0 && n.as_i64().is_none() && n.as_u64().is_none() {
+                if f.is_finite() && f.fract() == 0.0 && n.as_i64().is_none() && n.as_u64().is_none()
+                {
                     if (0.0..=u64::MAX as f64).contains(&f) {
                         return Value::Number((f as u64).into());
                     }
@@ -50,14 +67,18 @@ fn canon_numbers(v: &Value) -> Value {
             v.clone()
         }
         Value::Array(a) => Value::Array(a.iter().map(canon_numbers).collect()),
-        Value::Object(o) => Value::Object(o.iter().map(|(k, x)| (k.clone(), canon_numbers(x))).collect()),
+        Value::Object(o) => Value::Object(
+            o.iter()
+                .map(|(k, x)| (k.clone(), canon_numbers(x)))
+                .collect(),
+        ),
         _ => v.clone(),
     }
 }
 
 /// Canonicalize a `Delta`: `changed`/`created`/`removed` are id-keyed **sets** (element order is not
-/// semantic — the applier writes each entity by id independently), so sort them, mirroring
-/// `conformance/canonical-json.ts`'s treatment of the top-level entity arrays. Rust emits them in
+/// semantic — the applier writes each entity by id independently), so sort them — the same
+/// treatment the conformance canonicalizer gives the top-level entity arrays. Rust emits them in
 /// BTreeMap (sorted-id) order and the TS oracle in reachable-walk order; both canonicalize equal.
 fn canon_delta(v: &Value) -> Value {
     let mut d = canon_numbers(v);
@@ -93,7 +114,7 @@ fn run_gate(name: &str) {
     let golden: Value =
         serde_json::from_str(&read(&format!("{name}.golden.json"))).expect("parse golden");
 
-    // A rng-drawing fixture (e.g. combat) records the `seed` the TS side fed its Authority as
+    // A rng-drawing fixture (e.g. combat) records the `seed` the oracle fed its rng as
     // `mulberry32(seed)`; seed the Rust World's rng with the same value so both draw the identical
     // stream. Rust's `Rng::seeded` is the verified mulberry32 twin.
     if let Some(seed) = golden.get("seed").and_then(Value::as_u64) {
@@ -107,20 +128,42 @@ fn run_gate(name: &str) {
         .unwrap_or_default();
     let mut auth = SyncAuthority::new(world, catalog, AuthorityOpts::default());
 
-    let steps = golden["steps"].as_array().expect("golden.steps is an array");
+    let steps = golden["steps"]
+        .as_array()
+        .expect("golden.steps is an array")
+        .clone();
 
+    let mut steps_out: Vec<Value> = Vec::new();
     for (i, step) in steps.iter().enumerate() {
         let command: Command =
             serde_json::from_value(step["command"].clone()).expect("parse command");
         match auth.submit(command) {
             SubmitResult::Committed { seq, delta } => {
-                assert_eq!(seq, step["seq"].as_u64().unwrap(), "{name} step {i}: seq");
+                // The stored delta is canonical: state-only (no `cues`),
+                // entity/removal sets sorted.
                 let got = canon_delta(&serde_json::to_value(&delta).unwrap());
-                let want = canon_delta(&step["delta"]);
-                assert_eq!(got, want, "{name} step {i}: delta must match the TS oracle");
+                if updating() {
+                    // The recorded command is the INPUT — echoed verbatim.
+                    steps_out.push(serde_json::json!({
+                        "command": step["command"],
+                        "seq": seq,
+                        "delta": got,
+                    }));
+                } else {
+                    assert_eq!(seq, step["seq"].as_u64().unwrap(), "{name} step {i}: seq");
+                    let want = canon_delta(&step["delta"]);
+                    assert_eq!(got, want, "{name} step {i}: delta must match the golden");
+                }
             }
-            SubmitResult::Denied { reason } => panic!("{name} step {i}: unexpectedly denied: {reason}"),
+            SubmitResult::Denied { reason } => {
+                panic!("{name} step {i}: unexpectedly denied: {reason}")
+            }
         }
+    }
+    if updating() {
+        let mut out = golden.clone();
+        out["steps"] = Value::Array(steps_out);
+        write_golden(&format!("{name}.golden.json"), &out);
     }
 }
 
@@ -130,13 +173,13 @@ fn sync_move_deltas_match_the_ts_oracle() {
     run_gate("sync-move");
 }
 
-/// `selectArchetype` over a pre-start single-player campaign (A1's first engine-action port).
+/// `selectArchetype` over a pre-start single-player campaign.
 #[test]
 fn sync_archetype_delta_matches_the_ts_oracle() {
     run_gate("sync-archetype");
 }
 
-/// `transferGM` over a started two-player campaign (A2's first lifecycle-command port).
+/// `transferGM` over a started two-player campaign.
 #[test]
 fn sync_transfergm_delta_matches_the_ts_oracle() {
     run_gate("sync-transfergm");
@@ -149,8 +192,8 @@ fn sync_leave_delta_matches_the_ts_oracle() {
     run_gate("sync-leave");
 }
 
-/// `putInLootBox` — the first loot-mechanic port and first fixture that ships a catalog (the moved
-/// item's descriptor is resolved by behaviour key).
+/// `putInLootBox` — the first fixture that ships a catalog (the moved item's descriptor is
+/// resolved by behaviour key).
 #[test]
 fn sync_loot_delta_matches_the_ts_oracle() {
     run_gate("sync-loot");
@@ -163,8 +206,8 @@ fn sync_mobattack_delta_matches_the_ts_oracle() {
     run_gate("sync-mobattack");
 }
 
-/// `mobEscape` — the final A2 command and the one genuinely-new mechanic (escape roll → flee through
-/// an exit). Exercises the full success path: two rng draws + relocation + the `escape` history.
+/// `mobEscape` — an escape roll → flee through an exit. Exercises the full success path: two rng
+/// draws + relocation + the `escape` history.
 #[test]
 fn sync_mobescape_delta_matches_the_ts_oracle() {
     run_gate("sync-mobescape");

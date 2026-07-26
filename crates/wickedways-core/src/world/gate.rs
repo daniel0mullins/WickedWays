@@ -1,12 +1,12 @@
-//! Affliction action gating — mirrors `afflictions.ts` `gate(isMove)` (:158-175)
-//! and `character.ts` `attemptAction` (:421-434) + `recordAction` (:515-538).
+//! Affliction action gating — mirrors `gate(isMove)`
+//! and `attemptAction` + `recordAction`.
 //!
 //! Three verdicts:
 //! - **Block** — a hard block (KO, Panic-on-non-move, Fear-on-move). The mutator
 //!   throws `ProceduralViolation(reason)`; NO history/cue/budget side-effects.
 //! - **Fizzle** — an active Confused status rolled a failure. The mutator records a
 //!   `{kind:"fumble", action, round}` history entry AND emits an `{kind:"action",
-//!   action:"fumble", actor, sound}` cue UNCONDITIONALLY, ticks the budget ONLY IF
+//! action:"fumble", actor, sound}` cue UNCONDITIONALLY, ticks the budget ONLY IF
 //!   the method is budgeted, then skips the action body (returns its early-ok).
 //! - **Allow** — the action proceeds normally.
 //!
@@ -24,7 +24,7 @@ use crate::world::ids::CharacterId;
 use crate::world::World;
 
 /// The verdict from gating an attempted action against active afflictions.
-/// Mirrors TS `GateVerdict` (`{ kind: "allow" } | { kind: "fizzle" } | { kind: "block", reason }`).
+/// Mirrors `GateVerdict` (`{ kind: "allow" } | { kind: "fizzle" } | { kind: "block", reason }`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GateVerdict {
     Allow,
@@ -35,7 +35,7 @@ pub enum GateVerdict {
 impl World {
     /// Verdict for an attempted action by `actor`. Hard blocks (KO, Panic-on-non-move,
     /// Fear-on-move) come first; an active Confused then rolls a fizzle. Draws the rng
-    /// ONLY in the Confused branch. Mirrors `afflictions.ts:158-175`.
+    /// ONLY in the Confused branch. Mirrors.
     pub fn gate(&mut self, actor: &CharacterId, is_move: bool) -> GateVerdict {
         let (ko, panic, fear, confused) = match self.characters.get(actor) {
             Some(c) => (
@@ -57,7 +57,7 @@ impl World {
         }
         if confused {
             let cfg = default_affliction_config();
-            if (roll(100, self.rng.next_f64()) as i64) <= cfg.confused_fail_chance {
+            if i64::from(roll(100, self.rng.next_f64())) <= cfg.confused_fail_chance {
                 return GateVerdict::Fizzle;
             }
         }
@@ -66,7 +66,7 @@ impl World {
 
     /// Record a Confused fizzle: push a `{kind:"fumble", action, round}` history entry,
     /// emit an `{kind:"action", action:"fumble", actor, sound}` cue UNCONDITIONALLY, and
-    /// tick the budget ONLY IF `budgeted`. Mirrors `character.ts` `recordAction` (:515-538)
+    /// tick the budget ONLY IF `budgeted`. Mirrors `recordAction`
     /// for the `{kind:"fumble"}` detail. Returns `Result` because it delegates to
     /// `record_action`, which can propagate a dispatch error from the cap-triggered
     /// `end_turn`.
@@ -92,13 +92,22 @@ impl World {
         }
         cues.push(PresentationCue::Action {
             action: ActionKind::Fumble,
-            actor: EntityRef { id: actor.0.clone(), name: actor_name },
+            actor: EntityRef {
+                id: actor.0.clone(),
+                name: actor_name,
+            },
             sound: None,
         });
-        // Cap check runs UNCONDITIONALLY (matching TS `recordAction`, character.ts:
+        // Cap check runs UNCONDITIONALLY (matching `recordAction`, character.ts:
         // 530-537, where the cap check sits outside the budgeted block) — a free
         // fumble (`budgeted = false`) must still end the turn if already at cap.
-        self.record_action(actor, budgeted, crate::world::mechanics::ActionView::of("fumble"), cat, cues)
+        self.record_action(
+            actor,
+            budgeted,
+            &crate::world::mechanics::ActionView::of("fumble"),
+            cat,
+            cues,
+        )
     }
 }
 
@@ -107,15 +116,18 @@ mod tests {
     use super::*;
     use crate::world::afflictions::Status;
     use crate::world::ids::CharacterId;
+    use crate::world::test_support::cid;
     use crate::world::test_support::world_with_party;
-
-    fn cid(s: &str) -> CharacterId { CharacterId(s.into()) }
 
     /// Build a world with one player and set a single active affliction on them.
     fn world_with_affliction(status: Status) -> (World, CharacterId) {
         let mut w = world_with_party(&["pc"], 10);
         let id = cid("pc");
-        w.characters.get_mut(&id).unwrap().afflictions.set_active(status, true);
+        w.characters
+            .get_mut(&id)
+            .unwrap()
+            .afflictions
+            .set_active(status, true);
         (w, id)
     }
 
@@ -164,7 +176,8 @@ mod tests {
 
         // Peek the first draw the gate will consume.
         let mut peek = w.rng.clone();
-        let r = (roll(100, peek.next_f64()) as i64) <= default_affliction_config().confused_fail_chance;
+        let r = i64::from(roll(100, peek.next_f64()))
+            <= default_affliction_config().confused_fail_chance;
         let verdict = w.gate(&actor, false);
         if r {
             assert_eq!(verdict, GateVerdict::Fizzle, "roll<=50 should fizzle");
@@ -180,14 +193,24 @@ mod tests {
         let actor = cid("pc");
         let before = w.rng.clone();
         let _ = w.gate(&actor, false);
-        assert_eq!(w.rng, before, "gate should not draw rng when no affliction active");
+        assert_eq!(
+            w.rng, before,
+            "gate should not draw rng when no affliction active"
+        );
 
         // Confused → gate draws exactly one rng value.
-        w.characters.get_mut(&actor).unwrap().afflictions.set_active(Status::Confused, true);
+        w.characters
+            .get_mut(&actor)
+            .unwrap()
+            .afflictions
+            .set_active(Status::Confused, true);
         let mut expect = w.rng.clone();
         expect.next_f64();
         let _ = w.gate(&actor, false);
-        assert_eq!(w.rng, expect, "gate should draw exactly one rng value when Confused");
+        assert_eq!(
+            w.rng, expect,
+            "gate should draw exactly one rng value when Confused"
+        );
     }
 
     #[test]
@@ -203,7 +226,14 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let actor = cid("pc");
         let mut cues = Vec::new();
-        w.record_fumble(&actor, "takeFromLootBox", true, &Catalog::default(), &mut cues).unwrap();
+        w.record_fumble(
+            &actor,
+            "takeFromLootBox",
+            true,
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
 
         let ch = &w.characters[&actor];
         assert_eq!(ch.actions_this_round, 1, "budgeted fumble ticks budget");
@@ -216,7 +246,11 @@ mod tests {
         }
         assert_eq!(cues.len(), 1);
         match &cues[0] {
-            PresentationCue::Action { action: ActionKind::Fumble, actor, sound: None } => {
+            PresentationCue::Action {
+                action: ActionKind::Fumble,
+                actor,
+                sound: None,
+            } => {
                 assert_eq!(actor.id, "pc");
             }
             other => panic!("expected Action(fumble) cue, got {:?}", other),
@@ -228,11 +262,16 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let actor = cid("pc");
         let mut cues = Vec::new();
-        w.record_fumble(&actor, "equip", false, &Catalog::default(), &mut cues).unwrap();
+        w.record_fumble(&actor, "equip", false, &Catalog::default(), &mut cues)
+            .unwrap();
 
         let ch = &w.characters[&actor];
         assert_eq!(ch.actions_this_round, 0, "free fumble does NOT tick budget");
-        assert_eq!(ch.history.len(), 1, "free fumble still records a Fumble entry");
+        assert_eq!(
+            ch.history.len(),
+            1,
+            "free fumble still records a Fumble entry"
+        );
         assert_eq!(cues.len(), 1, "free fumble still emits a fumble cue");
     }
 }

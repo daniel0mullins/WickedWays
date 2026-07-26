@@ -1,4 +1,4 @@
-//! The WickedWays Dioxus web client (Phase 2c, sub-project D) — the binary entry point.
+//! The WickedWays Dioxus web client — the binary entry point.
 //!
 //! `main` launches the [`launcher`](wickedways_web::launcher): without `?campaign=` it shows the
 //! campaign menu; with a campaign it deep-links or shows the surface picker, then mounts the chosen

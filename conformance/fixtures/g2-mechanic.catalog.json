@@ -1,46 +1,46 @@
 {
-  "items": {},
   "aliases": {},
   "behaviors": {
     "dread": {
       "family": "mechanic",
       "script": {
-        "init": {},
+        "actions": {},
         "hooks": {
           "onTurnStart": [
             {
-              "kind": "guard",
               "cond": {
-                "kind": "not",
                 "expr": {
+                  "itemKey": "lantern",
                   "kind": "hasEquipped",
                   "of": {
                     "kind": "actor"
-                  },
-                  "itemKey": "lantern"
-                }
-              }
+                  }
+                },
+                "kind": "not"
+              },
+              "kind": "guard"
             },
             {
-              "kind": "emit",
               "effect": {
-                "kind": "adjustStat",
-                "target": {
-                  "kind": "actor"
-                },
-                "stat": "sanity",
                 "delta": {
                   "kind": "lit",
-                  "value": -1
+                  "value": -1.0
+                },
+                "kind": "adjustStat",
+                "stat": "sanity",
+                "target": {
+                  "kind": "actor"
                 }
-              }
+              },
+              "kind": "emit"
             }
           ]
         },
-        "actions": {}
+        "init": {}
       }
     }
   },
   "formations": {},
+  "items": {},
   "recipes": {}
 }

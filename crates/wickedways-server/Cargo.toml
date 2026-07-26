@@ -3,9 +3,9 @@ name = "wickedways-server"
 version = "0.0.1"
 edition = "2021"
 
-# The Rust room server (Phase 2c, sub-project C). Hosts a native `SyncAuthority`
+# The room server. Hosts a native `SyncAuthority`
 # per campaign, gates appends by seat ownership, persists durably, and speaks the
-# `transport-shared` wire protocol. Native-only (std) — not a wasm target.
+# `wickedways-transport` wire protocol. Native-only (std) — not a wasm target.
 
 [[bin]]
 name = "wickedways-server"
@@ -22,7 +22,7 @@ axum = { version = "0.8", features = ["ws"] }
 tower-http = { version = "0.6", features = ["fs"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "net", "time"] }
 # rusqlite is synchronous; the per-campaign Table actor serializes access and
-# drives store calls via tokio::task::spawn_blocking (see the C plan). `bundled`
+# drives store calls via tokio::task::spawn_blocking. `bundled`
 # compiles SQLite in-tree so there is no system-lib dependency.
 rusqlite = { version = "0.32", features = ["bundled"] }
 
@@ -30,7 +30,10 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 # derived by the core, never generated here.
 
 [dev-dependencies]
-# A real WebSocket client for the two-client convergence e2e (slice 4). tokio-tungstenite
+# A real WebSocket client for the two-client convergence e2e test. tokio-tungstenite
 # is already in the tree (axum's ws feature pulls it); pinning it here makes it a client.
 tokio-tungstenite = "0.29"
 futures-util = "0.3"
+
+[lints]
+workspace = true

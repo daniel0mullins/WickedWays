@@ -7,7 +7,7 @@ pub const MITIGATION_PER_POINT: f64 = 0.2;
 pub const LIGHT_VULNERABILITY: f64 = 1.5;
 
 /// Pure inputs to the mitigation formula. Field names cross the boundary in
-/// camelCase to match the TS `DamageInput` (invariant 1).
+/// camelCase — the wire shape is pinned by the conformance goldens.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export, rename_all = "camelCase"))]
 #[serde(rename_all = "camelCase")]
@@ -19,8 +19,8 @@ pub struct DamageInput {
     pub room_lit: bool,
 }
 
-/// Mirror of TS `computeMitigatedDamage`. Identical IEEE-754 operation order so
-/// results are byte-identical (invariant 3).
+/// Mitigation formula. The IEEE-754 operation order is load-bearing: the
+/// replay goldens pin results byte-for-byte, so do not reassociate the math.
 pub fn compute_mitigated_damage(input: DamageInput) -> f64 {
     let mitigated_strength = (input.attack_strength - input.armor_sum).max(0.0);
     let damage_multiplier = (MAX_STAT - input.mitigator).max(0.0) * MITIGATION_PER_POINT;

@@ -1,13 +1,14 @@
-//! The construct pass (`src/lib/authoring/assembler.ts:170-359`).
+//! The construct pass: a validated `CampaignDescription` becomes the pre-seating
+//! snapshot entities.
 //!
 //! Order is load-bearing. Two orderings matter and they are DIFFERENT:
-//!   * The *assembler* declaration order (`assembler.ts`) governs which entities
-//!     exist and how ids/state are minted (mechanics run in declared order, etc.).
-//!   * The snapshot's `Vec` ordering is the *serializer* traversal order
-//!     (`src/lib/serialization/serializer.ts`), NOT the declaration order — the
-//!     six entity arrays (`rooms`, `exits`, `characters`, `items`, `loot`,
-//!     `materialCaches`) come out in BFS/first-encounter order. We reproduce that
-//!     traversal exactly, because the byte-parity gate compares arrays by order.
+//!   * The *declaration* order governs which entities exist and how ids/state are
+//!     minted (mechanics run in declared order, etc.).
+//!   * The snapshot's `Vec` ordering is the *golden serializer's* traversal order,
+//!     NOT the declaration order — the six entity arrays (`rooms`, `exits`,
+//!     `characters`, `items`, `loot`, `materialCaches`) come out in
+//!     BFS/first-encounter order. We reproduce that traversal exactly, because the
+//!     byte-parity gate compares arrays by order.
 //!
 //! No randomness. No `HashMap`/`HashSet`. No panics/`unwrap`/`expect`.
 
@@ -18,9 +19,7 @@ use serde_json::{json, Value};
 use wickedways_core::presentation::CampaignOutcome;
 use wickedways_core::world::afflictions::Afflictions;
 use wickedways_core::world::descriptor::{Catalog, ItemType};
-use wickedways_core::world::ids::{
-    CharacterId, ExitId, ItemId, LootId, MaterialCacheId, RoomId,
-};
+use wickedways_core::world::ids::{CharacterId, ExitId, ItemId, LootId, MaterialCacheId, RoomId};
 use wickedways_core::world::snapshot::{
     CampaignCoreSnapshot, CampaignSnapshot, CharacterKind, CharacterSnapshot, ExitSnapshot,
     InventorySnapshot, ItemSnapshot, LootSnapshot, MaterialCacheSnapshot, MechanicSnapshot,
@@ -33,18 +32,22 @@ use crate::ids;
 
 /// `description + catalog -> CampaignSnapshot` (player-less, pre-begin).
 ///
-/// Seating (party members, GM, `started`) is Task 7; this produces
+/// Seating (party members, GM) is the seating pass's job; this produces
 /// `party_ids: []`, `gm_id: None`, `started: false`, `round: 0`.
 pub fn construct(
     desc: &CampaignDescription,
     catalog: &Catalog,
 ) -> Result<CampaignSnapshot, AssembleError> {
-    // ---- assembler.ts:171-198 — campaign-core scalar fields ----
+    // ---- campaign-core scalar fields ----
     let win_conditions = desc.win_conditions.iter().map(condition_snapshot).collect();
-    let lose_conditions = desc.lose_conditions.iter().map(condition_snapshot).collect();
+    let lose_conditions = desc
+        .lose_conditions
+        .iter()
+        .map(condition_snapshot)
+        .collect();
 
     // Mechanics, in declared order. State == `catalog.behaviors[key].script.init`
-    // (the scripted-ops DSL carries as data what TS computed via `initialState`).
+    // (the scripted-ops DSL carries the initial state as data).
     let mechanics: Vec<MechanicSnapshot> = desc
         .mechanics
         .iter()
@@ -82,10 +85,11 @@ pub fn construct(
     // Every character we build, keyed by id; only room occupants get serialized.
     let mut char_builds: BTreeMap<CharacterId, CharBuild> = BTreeMap::new();
 
-    // caches (assembler.ts:211-216) — attached to their room below.
-    // loot (assembler.ts:218-229) — box + contents, placed in its room.
+    // loot — box + contents, placed in its room.
     for l in &desc.loot {
-        let Some(&idx) = room_index.get(&l.room) else { continue };
+        let Some(&idx) = room_index.get(&l.room) else {
+            continue;
+        };
         let box_id = ids::loot_id(&l.name);
         let mut contents: Vec<ItemSnapshot> = Vec::new();
         for (i, key) in l.items.iter().enumerate() {
@@ -99,15 +103,17 @@ pub fn construct(
                 id: LootId(box_id),
                 description: l.description.clone().unwrap_or_else(|| l.name.clone()),
                 capacity,
-                content_ids: contents.iter().map(|it| item_id(it).clone()).collect(),
+                content_ids: contents.iter().map(|it| it.id().clone()).collect(),
             },
             contents,
         });
     }
 
-    // caches (assembler.ts:211-216) — deposited into their room.
+    // caches — deposited into their room.
     for c in &desc.caches {
-        let Some(&idx) = room_index.get(&c.room) else { continue };
+        let Some(&idx) = room_index.get(&c.room) else {
+            continue;
+        };
         rooms[idx].caches.push(MaterialCacheSnapshot {
             id: MaterialCacheId(ids::cache_id(&c.name)),
             contents: serde_json::to_value(&c.materials).unwrap_or_else(|_| json!({})),
@@ -115,9 +121,11 @@ pub fn construct(
         });
     }
 
-    // room light sources (assembler.ts:249-253).
+    // room light sources.
     for r in &desc.rooms {
-        let Some(&idx) = room_index.get(&r.name) else { continue };
+        let Some(&idx) = room_index.get(&r.name) else {
+            continue;
+        };
         for (i, key) in r.lights.iter().enumerate() {
             if let Some(snap) = item_snapshot(catalog, key, ids::room_light_id(&r.name, i)) {
                 rooms[idx].light_items.push(snap);
@@ -125,33 +133,36 @@ pub fn construct(
         }
     }
 
-    // mobs (assembler.ts:231-242) built, then wired into rooms (assembler.ts:269-273).
+    // mobs — built, then wired into rooms.
     // A mob with no room is never placed => unreachable => not serialized.
     for m in &desc.mobs {
         let Some(room) = &m.room else { continue };
-        let Some(&idx) = room_index.get(room) else { continue };
+        let Some(&idx) = room_index.get(room) else {
+            continue;
+        };
         let build = build_mob(m, catalog, &rooms[idx].id);
         rooms[idx].occupant_ids.push(build.snapshot.id.clone());
         char_builds.insert(build.snapshot.id.clone(), build);
     }
 
-    // npcs (assembler.ts:277-301) — placed AFTER mobs, so a shared room lists
-    // mobs before npcs in occupant order.
+    // npcs — placed AFTER mobs, so a shared room lists mobs before npcs in
+    // occupant order.
     for n in &desc.npcs {
         let Some(room) = &n.room else { continue };
-        let Some(&idx) = room_index.get(room) else { continue };
+        let Some(&idx) = room_index.get(room) else {
+            continue;
+        };
         let build = build_npc(n, catalog, &rooms[idx].id);
         rooms[idx].occupant_ids.push(build.snapshot.id.clone());
         char_builds.insert(build.snapshot.id.clone(), build);
     }
 
-    // exits (assembler.ts:308-333) — dedup by unordered room-id pair; the FIRST
-    // declaration for a pair wins (its from/to fix `endpointIds`).
+    // exits — dedup by unordered room-id pair; the FIRST declaration for a pair
+    // wins (its from/to fix `endpointIds`).
     let mut exit_snaps: BTreeMap<String, ExitSnapshot> = BTreeMap::new();
     let mut wired: BTreeSet<String> = BTreeSet::new();
     for e in &desc.exits {
-        let (Some(&from_idx), Some(&to_idx)) =
-            (room_index.get(&e.from), room_index.get(&e.to))
+        let (Some(&from_idx), Some(&to_idx)) = (room_index.get(&e.from), room_index.get(&e.to))
         else {
             continue;
         };
@@ -184,9 +195,11 @@ pub fn construct(
         }
     }
 
-    // scenes (assembler.ts:336-347) — registered on their room in declared order.
+    // scenes — registered on their room in declared order.
     for s in &desc.scenes {
-        let Some(&idx) = room_index.get(&s.room) else { continue };
+        let Some(&idx) = room_index.get(&s.room) else {
+            continue;
+        };
         rooms[idx].scenes.push(SceneSnapshot {
             id: ids::scene_id(&s.room, &s.key, s.phase.as_deref()),
             behavior_key: s.key.clone(),
@@ -195,13 +208,13 @@ pub fn construct(
         });
     }
 
-    // ---- Serializer traversal (serializer.ts) — produces the ordered Vecs ----
+    // ---- Serializer traversal — produces the ordered Vecs ----
     // Room BFS is seeded with every room in declaration order, so processing
     // order == declaration order.
     let room_snaps: Vec<RoomSnapshot> = rooms.iter().map(RoomBuild::to_snapshot).collect();
 
     // exits[]: first-encounter order across rooms, then each room's exits in
-    // insertion order (serializer.ts:83-89).
+    // insertion order.
     let mut exits: Vec<ExitSnapshot> = Vec::new();
     let mut seen_exits: BTreeSet<String> = BTreeSet::new();
     for rb in &rooms {
@@ -246,7 +259,7 @@ pub fn construct(
     let mut items: Vec<ItemSnapshot> = Vec::new();
     let mut seen_items: BTreeSet<String> = BTreeSet::new();
     let mut add_item = |items: &mut Vec<ItemSnapshot>, snap: &ItemSnapshot| {
-        if seen_items.insert(item_id(snap).0.clone()) {
+        if seen_items.insert(snap.id().0.clone()) {
             items.push(snap.clone());
         }
     };
@@ -274,7 +287,8 @@ pub fn construct(
         }
     }
 
-    // materials pool + claims (assembler.ts:354-357 -> Campaign.claimMaterials).
+    // materials pool + claims — first claim per source wins; quantities accumulate
+    // per component.
     let mut materials: BTreeMap<String, i64> = BTreeMap::new();
     let mut claims: Vec<String> = Vec::new();
     let mut claimed: BTreeSet<String> = BTreeSet::new();
@@ -287,7 +301,7 @@ pub fn construct(
         }
     }
 
-    // encounterTable (assembler.ts:190 + EncounterTable[SERIALIZE]).
+    // encounterTable, in its serialized shape: baseChance, visited, weighted formations.
     let encounter_table = json!({
         "baseChance": desc.opts.base_encounter_chance.unwrap_or(20),
         "visited": [],
@@ -324,7 +338,8 @@ pub fn construct(
         encountered: Vec::new(),
         // `knownRecipes` is populated straight from `desc.recipes` (the declared keys).
         // Recipe metadata (outputName/materials) for the codex is resolved separately
-        // below from `catalog.recipes`; recipe-key *validation* is deferred to G2.
+        // below from `catalog.recipes`; recipe-key *validation* is deliberately
+        // deferred (see the DELIBERATE DIVERGENCE note in validate.rs).
         known_recipes: desc.recipes.clone(),
         archetypes: serde_json::to_value(&desc.archetypes).unwrap_or_else(|_| json!([])),
         action_sounds: json!({}),
@@ -335,11 +350,10 @@ pub fn construct(
     };
 
     // Genesis codex: one recipe entry per declared recipe key (declaration
-    // order), resolving `outputName`/`materials` from `catalog.recipes` (the
-    // registry metadata the exporter now carries). `firstSeen` is `{round:0}`
-    // only — the party/room discovery fields belong to seating's codex (Task 7),
-    // appended after these. An unregistered recipe key is skipped (trust
-    // boundary), not a panic.
+    // order), resolving `outputName`/`materials` from `catalog.recipes`.
+    // `firstSeen` is `{round:0}` only — the party/room discovery fields belong
+    // to seating's codex entries, appended after these. An unregistered recipe
+    // key is skipped (trust boundary), not a panic.
     let codex = Value::Array(
         desc.recipes
             .iter()
@@ -405,7 +419,7 @@ impl RoomBuild {
             occupant_ids: self.occupant_ids.clone(),
             loot_ids: self.loot.iter().map(|lb| lb.snapshot.id.clone()).collect(),
             material_cache_ids: self.caches.iter().map(|c| c.id.clone()).collect(),
-            light_source_ids: self.light_items.iter().map(|it| item_id(it).clone()).collect(),
+            light_source_ids: self.light_items.iter().map(|it| it.id().clone()).collect(),
             scenes: self.scenes.clone(),
         }
     }
@@ -468,14 +482,6 @@ fn item_snapshot(catalog: &Catalog, key: &str, id: String) -> Option<ItemSnapsho
     })
 }
 
-/// The item id, regardless of variant.
-fn item_id(snap: &ItemSnapshot) -> &ItemId {
-    match snap {
-        ItemSnapshot::Item { id, .. } => id,
-        ItemSnapshot::Key { id, .. } => id,
-    }
-}
-
 fn build_mob(m: &MobDef, catalog: &Catalog, room_id: &str) -> CharBuild {
     let mut item_snaps = Vec::new();
     let mut key_snaps = Vec::new();
@@ -504,7 +510,11 @@ fn build_mob(m: &MobDef, catalog: &Catalog, room_id: &str) -> CharBuild {
         actions_per_round: m.actions_per_round.unwrap_or(2),
         actions_this_round: 0,
         current_room_id: Some(RoomId(room_id.to_string())),
-        inventory: InventorySnapshot { slots, item_ids, key_ids },
+        inventory: InventorySnapshot {
+            slots,
+            item_ids,
+            key_ids,
+        },
         equipment: BTreeMap::new(),
         history: Vec::new(),
         archetype_immunities: Vec::new(),
@@ -523,7 +533,12 @@ fn build_mob(m: &MobDef, catalog: &Catalog, room_id: &str) -> CharBuild {
         npc_state: Value::Null,
         visible: true,
     };
-    CharBuild { snapshot, item_snaps, key_snaps, equip_snaps: Vec::new() }
+    CharBuild {
+        snapshot,
+        item_snaps,
+        key_snaps,
+        equip_snaps: Vec::new(),
+    }
 }
 
 fn build_npc(n: &NpcDef, catalog: &Catalog, room_id: &str) -> CharBuild {
@@ -553,7 +568,11 @@ fn build_npc(n: &NpcDef, catalog: &Catalog, room_id: &str) -> CharBuild {
         actions_per_round: 3,
         actions_this_round: 0,
         current_room_id: Some(RoomId(room_id.to_string())),
-        inventory: InventorySnapshot { slots: 5, item_ids, key_ids },
+        inventory: InventorySnapshot {
+            slots: 5,
+            item_ids,
+            key_ids,
+        },
         equipment: BTreeMap::new(),
         history: Vec::new(),
         archetype_immunities: Vec::new(),
@@ -568,11 +587,16 @@ fn build_npc(n: &NpcDef, catalog: &Catalog, room_id: &str) -> CharBuild {
         npc_state: Value::Null,
         visible: true,
     };
-    CharBuild { snapshot, item_snaps, key_snaps, equip_snaps: Vec::new() }
+    CharBuild {
+        snapshot,
+        item_snaps,
+        key_snaps,
+        equip_snaps: Vec::new(),
+    }
 }
 
-/// Compass opposite (`src/lib/room.ts` REVERSE) — used to place the auto-reverse
-/// leg of a two-way exit into the destination room under the opposite direction.
+/// Compass opposite — used to place the auto-reverse leg of a two-way exit into
+/// the destination room under the opposite direction.
 fn reverse_direction(d: &str) -> String {
     match d {
         "north" => "south",
@@ -588,7 +612,7 @@ fn reverse_direction(d: &str) -> String {
     .to_string()
 }
 
-/// `DEFAULT_CHAT_POLICY` (`src/lib/chat-policy.ts`).
+/// The default chat policy: every feature on, backfill window 200.
 fn default_chat_policy() -> Value {
     json!({
         "enabled": true,
@@ -601,7 +625,7 @@ fn default_chat_policy() -> Value {
     })
 }
 
-/// `DEFAULT_AV_POLICY` (`src/lib/av-policy.ts`).
+/// The default A/V policy.
 fn default_av_policy() -> Value {
     json!({ "enabled": true, "video": true, "maxParticipants": 6 })
 }
@@ -637,7 +661,7 @@ mod tests {
         assert!(!snap.campaign.started);
         assert!(snap.campaign.party_ids.is_empty());
         assert!(snap.campaign.gm_id.is_none());
-        assert_eq!(snap.campaign.max_rounds, 100); // opts.maxRounds ?? 100
+        assert_eq!(snap.campaign.max_rounds, 100); // the opts.maxRounds default
     }
 
     /// Branded ids are transparent tuple structs — `pub struct RoomId(pub String)`
@@ -652,12 +676,16 @@ mod tests {
     }
 
     /// A single exit is one ExitSnapshot, wired into BOTH rooms' `exits` maps
-    /// (unless `oneWay`). assembler.ts:313-315 dedups by unordered endpoint pair.
+    /// (unless `oneWay`); dedup is by unordered endpoint pair.
     #[test]
     fn a_two_way_exit_appears_once_and_links_both_rooms() {
         let snap = construct(&minimal(), &Catalog::default()).expect("construct");
         assert_eq!(snap.exits.len(), 1);
-        let start = snap.rooms.iter().find(|r| r.id.0 == "room:start").expect("start");
+        let start = snap
+            .rooms
+            .iter()
+            .find(|r| r.id.0 == "room:start")
+            .expect("start");
         assert!(start.exits.values().any(|e| e.0 == "exit:next|start"));
     }
 }

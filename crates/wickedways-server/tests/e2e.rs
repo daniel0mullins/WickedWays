@@ -1,11 +1,11 @@
-//! Two-client convergence e2e over a real WebSocket (Phase 2c, sub-project C — slice 4).
+//! Two-client convergence e2e over a real WebSocket.
 //!
-//! The end-to-end proof C exists for: two independent clients connect to the axum `/ws` server over
-//! real sockets, seed a replica from `getSnapshot`, and — when one client submits a command — both
-//! apply the server's authoritative delta (the submitter via `committed`, the other via `entry`) and
-//! **converge to the identical snapshot**. Because the exchange is real `ClientMsg`/`ServerMsg` bytes
-//! on the wire, this also exercises wire parity end-to-end (the `transport` module's serde shapes are
-//! additionally unit-checked against the TS union in `src/transport.rs`).
+//! The end-to-end proof the room server exists for: two independent clients connect to the axum
+//! `/ws` server over real sockets, seed a replica from `getSnapshot`, and — when one client submits
+//! a command — both apply the server's authoritative delta (the submitter via `committed`, the other
+//! via `entry`) and **converge to the identical snapshot**. Because the exchange is real
+//! `ClientMsg`/`ServerMsg` bytes on the wire, this also exercises the wire serde shapes end-to-end
+//! (they are additionally unit-checked in the `wickedways-transport` crate).
 
 use futures_util::{SinkExt, StreamExt};
 use serde_json::{json, Value};
@@ -13,15 +13,16 @@ use tokio::net::TcpStream;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{connect_async, MaybeTlsStream, WebSocketStream};
 use wickedways_core::sync::{apply_delta, Delta};
+use wickedways_core::world::descriptor::Catalog;
 use wickedways_core::{CampaignSnapshot, World};
 use wickedways_server::server::{router, RoomServer, ServerOptions};
 use wickedways_server::transport::{ClientMsg, ServerMsg};
-use wickedways_core::world::descriptor::Catalog;
 
 fn genesis() -> CampaignSnapshot {
     let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../conformance/fixtures/sync-move.genesis.json");
-    serde_json::from_str(&std::fs::read_to_string(&p).expect("read genesis")).expect("parse genesis")
+    serde_json::from_str(&std::fs::read_to_string(&p).expect("read genesis"))
+        .expect("parse genesis")
 }
 
 /// Binds an ephemeral-store room server (campaign `demo`) on a free port and serves it in the
@@ -39,7 +40,9 @@ async fn start_server() -> u16 {
         rng_seed: None,
     };
     let app = router(RoomServer::new(opts));
-    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .expect("bind");
     let port = listener.local_addr().expect("addr").port();
     tokio::spawn(async move {
         axum::serve(listener, app).await.expect("serve");
@@ -62,7 +65,10 @@ impl Client {
 
     async fn send(&mut self, msg: ClientMsg) {
         let text = serde_json::to_string(&msg).unwrap();
-        self.ws.send(Message::Text(text.into())).await.expect("send");
+        self.ws
+            .send(Message::Text(text.into()))
+            .await
+            .expect("send");
     }
 
     /// Reads server frames until one satisfies `pred`, returning it (intermediate frames — presence,
@@ -90,10 +96,22 @@ impl Client {
 
     /// Joins `campaign` as `token`, then seeds a replica `World` from a `getSnapshot`.
     async fn join_and_seed(&mut self, campaign: &str, token: &str) -> World {
-        self.send(ClientMsg::Join { campaign_id: campaign.into(), token: token.into(), from_seq: 0 }).await;
-        self.send(ClientMsg::GetSnapshot { campaign_id: campaign.into() }).await;
-        let snap = self.recv_until("snapshot", |m| matches!(m, ServerMsg::Snapshot { .. })).await;
-        let ServerMsg::Snapshot { snapshot, .. } = snap else { unreachable!() };
+        self.send(ClientMsg::Join {
+            campaign_id: campaign.into(),
+            token: token.into(),
+            from_seq: 0,
+        })
+        .await;
+        self.send(ClientMsg::GetSnapshot {
+            campaign_id: campaign.into(),
+        })
+        .await;
+        let snap = self
+            .recv_until("snapshot", |m| matches!(m, ServerMsg::Snapshot { .. }))
+            .await;
+        let ServerMsg::Snapshot { snapshot, .. } = snap else {
+            unreachable!()
+        };
         World::from_snapshot(serde_json::from_value(snapshot).expect("snapshot"))
     }
 }
@@ -105,13 +123,15 @@ fn delta_from(value: Value) -> Delta {
 fn covenant_genesis() -> CampaignSnapshot {
     let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../conformance/fixtures/covenant.genesis.json");
-    serde_json::from_str(&std::fs::read_to_string(&p).expect("read covenant genesis")).expect("parse")
+    serde_json::from_str(&std::fs::read_to_string(&p).expect("read covenant genesis"))
+        .expect("parse")
 }
 
 fn covenant_catalog() -> Catalog {
     let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../conformance/fixtures/covenant.catalog.json");
-    serde_json::from_str(&std::fs::read_to_string(&p).expect("read covenant catalog")).expect("parse")
+    serde_json::from_str(&std::fs::read_to_string(&p).expect("read covenant catalog"))
+        .expect("parse")
 }
 
 /// Binds a room server seeding the multiplayer Covenant campaign. `with_catalog` mirrors the
@@ -122,7 +142,9 @@ async fn start_covenant_server(with_catalog: bool) -> u16 {
     let g = covenant_genesis();
     let cat = covenant_catalog();
     let catalog_for: Option<wickedways_server::server::CatalogFor> = if with_catalog {
-        Some(Box::new(move |id: &str| (id == "covenant").then(|| cat.clone())))
+        Some(Box::new(move |id: &str| {
+            (id == "covenant").then(|| cat.clone())
+        }))
     } else {
         None
     };
@@ -137,7 +159,9 @@ async fn start_covenant_server(with_catalog: bool) -> u16 {
         rng_seed: None,
     };
     let app = router(RoomServer::new(opts));
-    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0)).await.expect("bind");
+    let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+        .await
+        .expect("bind");
     let port = listener.local_addr().expect("addr").port();
     tokio::spawn(async move {
         axum::serve(listener, app).await.expect("serve");
@@ -173,21 +197,42 @@ async fn a_self_join_is_pushed_to_the_other_clients() {
     let mut rowan = Client::connect(port).await;
     let _ = rowan.join_and_seed("covenant", "rowan").await;
     rowan
-        .send(ClientMsg::Submit { campaign_id: "covenant".into(), command: warden_join_command("player:Rowan", "Rowan") })
+        .send(ClientMsg::Submit {
+            campaign_id: "covenant".into(),
+            command: warden_join_command("player:Rowan", "Rowan"),
+        })
         .await;
 
     // The joiner's own submit is acknowledged as committed…
-    let committed = rowan.recv_until("join committed", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
-    assert!(matches!(committed, ServerMsg::Committed { .. }), "join should commit, got {committed:?}");
+    let committed = rowan
+        .recv_until("join committed", |m| {
+            matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })
+        })
+        .await;
+    assert!(
+        matches!(committed, ServerMsg::Committed { .. }),
+        "join should commit, got {committed:?}"
+    );
 
     // …and the GM — who took no action — is PUSHED the same join as a log entry whose delta creates
     // the new character. No polling: the server replicated it over the live subscription.
-    let entry = gm.recv_until("pushed join entry", |m| matches!(m, ServerMsg::Entry { .. })).await;
-    let ServerMsg::Entry { entry } = entry else { unreachable!() };
+    let entry = gm
+        .recv_until("pushed join entry", |m| {
+            matches!(m, ServerMsg::Entry { .. })
+        })
+        .await;
+    let ServerMsg::Entry { entry } = entry else {
+        unreachable!()
+    };
     // A created entity rides as `{ "type": "character", "data": { ...snapshot } }`.
-    let created = entry.delta["created"].as_array().cloned().unwrap_or_default();
+    let created = entry.delta["created"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
     assert!(
-        created.iter().any(|e| e["data"]["id"] == json!("player:Rowan")),
+        created
+            .iter()
+            .any(|e| e["data"]["id"] == json!("player:Rowan")),
         "the pushed delta creates the joined character, got created={created:?}",
     );
 }
@@ -203,13 +248,32 @@ async fn covenant_round_resolves_with_its_per_campaign_catalog() {
     let mut gm = Client::connect(port).await;
     let _ = gm.join_and_seed("covenant", "gm").await;
 
-    gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "beginCampaign" }) }).await;
-    let begun = gm.recv_until("begin committed", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
-    assert!(matches!(begun, ServerMsg::Committed { .. }), "beginCampaign should commit, got {begun:?}");
+    gm.send(ClientMsg::Submit {
+        campaign_id: "covenant".into(),
+        command: json!({ "kind": "beginCampaign" }),
+    })
+    .await;
+    let begun = gm
+        .recv_until("begin committed", |m| {
+            matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })
+        })
+        .await;
+    assert!(
+        matches!(begun, ServerMsg::Committed { .. }),
+        "beginCampaign should commit, got {begun:?}"
+    );
 
     // The lone GM seat: a single nextPlayer wraps the round → resolve_outcome runs the victory.
-    gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "nextPlayer" }) }).await;
-    let wrap = gm.recv_until("wrap", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
+    gm.send(ClientMsg::Submit {
+        campaign_id: "covenant".into(),
+        command: json!({ "kind": "nextPlayer" }),
+    })
+    .await;
+    let wrap = gm
+        .recv_until("wrap", |m| {
+            matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })
+        })
+        .await;
     assert!(
         matches!(wrap, ServerMsg::Committed { .. }),
         "the round-wrap resolves twin-wards-held and commits, got {wrap:?}",
@@ -225,11 +289,25 @@ async fn without_its_catalog_the_covenant_round_wrap_is_denied() {
     let mut gm = Client::connect(port).await;
     let _ = gm.join_and_seed("covenant", "gm").await;
 
-    gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "beginCampaign" }) }).await;
-    let _ = gm.recv_until("begin", |m| matches!(m, ServerMsg::Committed { .. })).await;
+    gm.send(ClientMsg::Submit {
+        campaign_id: "covenant".into(),
+        command: json!({ "kind": "beginCampaign" }),
+    })
+    .await;
+    let _ = gm
+        .recv_until("begin", |m| matches!(m, ServerMsg::Committed { .. }))
+        .await;
 
-    gm.send(ClientMsg::Submit { campaign_id: "covenant".into(), command: json!({ "kind": "nextPlayer" }) }).await;
-    let wrap = gm.recv_until("wrap", |m| matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })).await;
+    gm.send(ClientMsg::Submit {
+        campaign_id: "covenant".into(),
+        command: json!({ "kind": "nextPlayer" }),
+    })
+    .await;
+    let wrap = gm
+        .recv_until("wrap", |m| {
+            matches!(m, ServerMsg::Committed { .. } | ServerMsg::Denied { .. })
+        })
+        .await;
     assert!(
         matches!(wrap, ServerMsg::Denied { .. }),
         "without its catalog the round-wrap can't resolve twin-wards-held, got {wrap:?}",
@@ -253,8 +331,16 @@ async fn two_clients_converge_over_a_real_websocket() {
     // the same id-sorted order (a raw snapshot is in reachable-walk order — a difference the sync
     // gate canonicalizes too; here both sides go through `World`, so they line up).
     let base = World::from_snapshot(genesis()).to_snapshot();
-    assert_eq!(replica_a.to_snapshot(), base, "replica A seeds from the genesis checkpoint");
-    assert_eq!(replica_b.to_snapshot(), base, "replica B seeds from the genesis checkpoint");
+    assert_eq!(
+        replica_a.to_snapshot(),
+        base,
+        "replica A seeds from the genesis checkpoint"
+    );
+    assert_eq!(
+        replica_b.to_snapshot(),
+        base,
+        "replica B seeds from the genesis checkpoint"
+    );
 
     // The GM submits `nextPlayer`. A is the submitter → `committed`; B, the other participant →
     // `entry`. Both carry the SAME authoritative delta (here a campaign-core advance).
@@ -264,21 +350,35 @@ async fn two_clients_converge_over_a_real_websocket() {
     })
     .await;
 
-    let committed = a.recv_until("committed", |m| matches!(m, ServerMsg::Committed { .. })).await;
-    let ServerMsg::Committed { seq, delta } = committed else { unreachable!() };
+    let committed = a
+        .recv_until("committed", |m| matches!(m, ServerMsg::Committed { .. }))
+        .await;
+    let ServerMsg::Committed { seq, delta } = committed else {
+        unreachable!()
+    };
     assert_eq!(seq, 1, "the first commit is seq 1");
     apply_delta(&mut replica_a, &delta_from(delta));
 
-    let entry = b.recv_until("entry", |m| matches!(m, ServerMsg::Entry { .. })).await;
-    let ServerMsg::Entry { entry } = entry else { unreachable!() };
+    let entry = b
+        .recv_until("entry", |m| matches!(m, ServerMsg::Entry { .. }))
+        .await;
+    let ServerMsg::Entry { entry } = entry else {
+        unreachable!()
+    };
     assert_eq!(entry.seq, 1, "B sees the same seq");
     apply_delta(&mut replica_b, &delta_from(entry.delta));
 
     // Convergence: both replicas reach the identical post-move snapshot, and it actually changed.
     let after_a = replica_a.to_snapshot();
     let after_b = replica_b.to_snapshot();
-    assert_eq!(after_a, after_b, "the two clients converge to the identical snapshot");
-    assert_ne!(after_a, base, "the move actually advanced the state (a non-trivial delta was applied)");
+    assert_eq!(
+        after_a, after_b,
+        "the two clients converge to the identical snapshot"
+    );
+    assert_ne!(
+        after_a, base,
+        "the move actually advanced the state (a non-trivial delta was applied)"
+    );
 }
 
 /// The `/healthz` liveness probe answers `200 OK` with `ok` — the signal container orchestrators
@@ -289,16 +389,27 @@ async fn healthz_probe_returns_200_ok() {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     let port = start_server().await;
-    let mut stream = TcpStream::connect(("127.0.0.1", port)).await.expect("connect");
+    let mut stream = TcpStream::connect(("127.0.0.1", port))
+        .await
+        .expect("connect");
     stream
         .write_all(b"GET /healthz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
         .await
         .expect("write request");
 
     let mut response = String::new();
-    stream.read_to_string(&mut response).await.expect("read response");
+    stream
+        .read_to_string(&mut response)
+        .await
+        .expect("read response");
 
     let status = response.lines().next().unwrap_or_default();
-    assert!(status.starts_with("HTTP/1.1 200"), "expected 200 status line, got {status:?}");
-    assert!(response.ends_with("ok"), "expected an `ok` body, got {response:?}");
+    assert!(
+        status.starts_with("HTTP/1.1 200"),
+        "expected 200 status line, got {status:?}"
+    );
+    assert!(
+        response.ends_with("ok"),
+        "expected an `ok` body, got {response:?}"
+    );
 }

@@ -1,4 +1,4 @@
-//! Adapter ops: satisfy the existing Phase-1 traits by interpreting a stored AST.
+//! Adapter ops: satisfy the engine's behavior traits by interpreting a stored AST.
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
@@ -32,7 +32,7 @@ impl ScriptedMechanic<'_> {
     fn run_body(
         &self,
         body: Option<&Vec<Stmt>>,
-        base: &mut HookCtx,
+        base: &mut HookCtx<'_>,
         actor: Option<&crate::world::mechanics::CharacterView>,
         action: Option<&crate::world::mechanics::ActionView>,
     ) -> Vec<Effect> {
@@ -45,7 +45,7 @@ impl ScriptedMechanic<'_> {
             damage: None,
             element: None,
             rng: Some(base.rng),
-            rooms: RoomSource::None, // mechanics cannot see rooms (oracle parity)
+            rooms: RoomSource::None, // mechanics cannot see rooms (behavior the goldens pin)
         };
         eval_effects(body, &mut cx)
     }
@@ -55,26 +55,41 @@ impl MechanicOp for ScriptedMechanic<'_> {
     fn init_state(&self, _config: &Json) -> Json {
         self.script.init.clone()
     }
-    fn on_round_start(&self, cx: &mut HookCtx) -> Vec<Effect> {
+    fn on_round_start(&self, cx: &mut HookCtx<'_>) -> Vec<Effect> {
         self.run_body(self.script.hooks.on_round_start.as_ref(), cx, None, None)
     }
-    fn on_round_end(&self, cx: &mut HookCtx) -> Vec<Effect> {
+    fn on_round_end(&self, cx: &mut HookCtx<'_>) -> Vec<Effect> {
         self.run_body(self.script.hooks.on_round_end.as_ref(), cx, None, None)
     }
-    fn on_turn_start(&self, cx: &mut TurnCtx) -> Vec<Effect> {
+    fn on_turn_start(&self, cx: &mut TurnCtx<'_>) -> Vec<Effect> {
         let actor = cx.actor.clone();
-        self.run_body(self.script.hooks.on_turn_start.as_ref(), &mut cx.base, Some(&actor), None)
+        self.run_body(
+            self.script.hooks.on_turn_start.as_ref(),
+            &mut cx.base,
+            Some(&actor),
+            None,
+        )
     }
-    fn on_turn_end(&self, cx: &mut TurnCtx) -> Vec<Effect> {
+    fn on_turn_end(&self, cx: &mut TurnCtx<'_>) -> Vec<Effect> {
         let actor = cx.actor.clone();
-        self.run_body(self.script.hooks.on_turn_end.as_ref(), &mut cx.base, Some(&actor), None)
+        self.run_body(
+            self.script.hooks.on_turn_end.as_ref(),
+            &mut cx.base,
+            Some(&actor),
+            None,
+        )
     }
-    fn on_action(&self, cx: &mut ActionCtx) -> Vec<Effect> {
+    fn on_action(&self, cx: &mut ActionCtx<'_>) -> Vec<Effect> {
         let actor = cx.actor.clone();
         let action = cx.action.clone();
-        self.run_body(self.script.hooks.on_action.as_ref(), &mut cx.base, Some(&actor), Some(&action))
+        self.run_body(
+            self.script.hooks.on_action.as_ref(),
+            &mut cx.base,
+            Some(&actor),
+            Some(&action),
+        )
     }
-    fn modify_damage(&self, d: &DamageView, cx: &mut HookCtx) -> TransformResult {
+    fn modify_damage(&self, d: &DamageView, cx: &mut HookCtx<'_>) -> TransformResult {
         match &self.script.hooks.modify_damage {
             None => TransformResult::Value(d.amount),
             Some(body) => {
@@ -92,7 +107,7 @@ impl MechanicOp for ScriptedMechanic<'_> {
             }
         }
     }
-    fn run_action(&self, action_key: &str, cx: &mut ActionCtx) -> Option<Vec<Effect>> {
+    fn run_action(&self, action_key: &str, cx: &mut ActionCtx<'_>) -> Option<Vec<Effect>> {
         let body = self.script.actions.get(action_key)?;
         let actor = cx.actor.clone();
         let action = cx.action.clone();
@@ -113,7 +128,7 @@ impl ScriptedItem<'_> {
     fn run_body(
         &self,
         body: Option<&Vec<Stmt>>,
-        base: &mut HookCtx,
+        base: &mut HookCtx<'_>,
         actor: &CharacterView,
     ) -> Vec<Effect> {
         let Some(body) = body else { return Vec::new() };
@@ -129,20 +144,22 @@ impl ScriptedItem<'_> {
         };
         eval_effects(body, &mut cx)
     }
+}
 
-    pub fn run_use(&self, base: &mut HookCtx, actor: &CharacterView) -> Vec<Effect> {
+impl crate::world::item_behavior::ItemBehavior for ScriptedItem<'_> {
+    fn on_use(&self, base: &mut HookCtx<'_>, actor: &CharacterView) -> Vec<Effect> {
         self.run_body(self.script.on_use.as_ref(), base, actor)
     }
 
-    pub fn run_read(&self, base: &mut HookCtx, actor: &CharacterView) -> Vec<Effect> {
+    fn on_read(&self, base: &mut HookCtx<'_>, actor: &CharacterView) -> Vec<Effect> {
         self.run_body(self.script.on_read.as_ref(), base, actor)
     }
 }
 
 /// An `ExitBehavior` bound to a borrowed script (built per fire-point by
 /// `resolve_exit_behavior` — no cloning of the AST). Exit contexts have no
-/// campaign view and no room resolver — matching the TS `ExitPrecondition(
-/// character, state)` contract (src/lib/exit.ts:12-14).
+/// campaign view and no room resolver — an exit predicate sees only the actor
+/// and the exit's own state.
 pub struct ScriptedExit<'a> {
     pub script: &'a ExitScript,
 }
@@ -174,15 +191,19 @@ impl ExitBehavior for ScriptedExit<'_> {
         };
         eval_script(&self.script.run_script, &mut cx)
     }
-    fn pass_message(&self) -> Option<&str> { self.script.pass_message.as_deref() }
-    fn fail_message(&self) -> Option<&str> { self.script.fail_message.as_deref() }
+    fn pass_message(&self) -> Option<&str> {
+        self.script.pass_message.as_deref()
+    }
+    fn fail_message(&self) -> Option<&str> {
+        self.script.fail_message.as_deref()
+    }
 }
 
-/// Victory adapter (see plan deviation note 2). NOT a `VictoryConditionBehavior`
+/// Victory adapter. NOT a `VictoryConditionBehavior`
 /// impl — the trait's `test(&CampaignView)` cannot carry the World access the
 /// lazy `character.room` resolver needs; the `resolve_outcome` seam calls this
-/// directly for the Scripted arm. Victory is the ONE context the TS oracle
-/// evaluates against the LIVE campaign (`pc.currentRoom`), so it gets the lazy,
+/// directly for the Scripted arm. Victory is the ONE context evaluated against
+/// the LIVE campaign (characters' current rooms), so it gets the lazy,
 /// memoizing World-backed room resolver (mechanic/exit contexts stay `None`).
 pub struct ScriptedVictory<'a> {
     pub script: &'a VictoryScript,
@@ -198,13 +219,17 @@ impl ScriptedVictory<'_> {
             damage: None,
             element: None,
             rng: None,
-            rooms: RoomSource::World { world, cat, cache: BTreeMap::new() },
+            rooms: RoomSource::World {
+                world,
+                cat,
+                cache: BTreeMap::new(),
+            },
         };
         eval_predicate(&self.script.test, &mut cx)
     }
 }
 
-/// Scene adapter (NPC sub-plan 3), bound to a borrowed `SceneScript` (built per
+/// Scene adapter, bound to a borrowed `SceneScript` (built per
 /// fire-point by `resolve_scene`). A scene READS the room it fires in via the
 /// lazy, memoizing World-backed room resolver — the same access victory gets and
 /// the reason it is NOT a plain `SceneBehavior` impl (that trait carries only a
@@ -233,7 +258,11 @@ impl ScriptedScene<'_> {
             damage: None,
             element: None,
             rng: None,
-            rooms: RoomSource::World { world, cat, cache: alloc::collections::BTreeMap::new() },
+            rooms: RoomSource::World {
+                world,
+                cat,
+                cache: alloc::collections::BTreeMap::new(),
+            },
         }
     }
 
@@ -247,7 +276,9 @@ impl ScriptedScene<'_> {
         world: &World,
         cat: &Catalog,
     ) -> bool {
-        let Some(pred) = &self.script.can_play else { return true };
+        let Some(pred) = &self.script.can_play else {
+            return true;
+        };
         let mut cx = self.ctx(CtxState::Read(state), view, actor, world, cat);
         eval_predicate(pred, &mut cx)
     }
@@ -269,57 +300,59 @@ impl ScriptedScene<'_> {
     }
 }
 
-// ─── NPC dialogue matcher (NPC sub-plan 2) ──────────────────────────────────
+// ─── NPC dialogue matcher ────────────────────────────────────────────────────
 //
-// THE MATCHER ALGORITHM — this is the single source of truth. Task 3's TS oracle
-// and Task 4's fixture MUST mirror it byte-for-byte. It is a deliberate
-// improvement over the legacy TS `IDialogue` (which is OFF the conformance-gate
-// path and is NOT the reference); implement THIS, not the legacy code.
+// THE MATCHER ALGORITHM — this comment is the single source of truth, and the
+// conformance goldens/differential fixtures MUST mirror it byte-for-byte. It is
+// a deliberate improvement over the retired engine's legacy dialogue matcher,
+// which is OFF the conformance-gate path and is NOT the reference; implement
+// THIS, not the legacy behavior.
 //
 // NORMALIZE + TOKENIZE a prompt string (`tokenize`):
-//   1. Lowercase (`str::to_lowercase`).
-//   2. Split on whitespace (`split_whitespace`).
-//   3. For each piece, strip ASCII-punctuation from BOTH EDGES ONLY — repeatedly
-//      trim leading/trailing chars where `char::is_ascii_punctuation()` is true.
-//      That set is EXACTLY  ! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ \ ] ^ _ ` { | } ~
-//      Internal punctuation is KEPT: `don't` stays `don't`; `cellar?` -> `cellar`;
-//      `...hi...` -> `hi`.
-//   4. Drop pieces that became empty.
-//   5. The ORDERED result (`Vec<String>`, order preserved, NOT deduped) is used
-//      for Exact; its deduped form (`BTreeSet<String>`) is used for Fuzzy.
+// 1. Lowercase (`str::to_lowercase`).
+// 2. Split on whitespace (`split_whitespace`).
+// 3. For each piece, strip ASCII-punctuation from BOTH EDGES ONLY — repeatedly
+// trim leading/trailing chars where `char::is_ascii_punctuation()` is true.
+// That set is EXACTLY ! " # $ % & ' ( ) * +, -. /:; < = > ? @ [ \ ] ^ _ ` { | } ~
+// Internal punctuation is KEPT: `don't` stays `don't`; `cellar?` -> `cellar`;
+// `...hi...` -> `hi`.
+// 4. Drop pieces that became empty.
+// 5. The ORDERED result (`Vec<String>`, order preserved, NOT deduped) is used
+// for Exact; its deduped form (`BTreeSet<String>`) is used for Fuzzy.
 //
 // PER-ENTRY MATCH TEST:
-//   * Exact { text }: normalize `text` with the SAME `tokenize` procedure into an
-//     ordered `Vec<String>`; matches IFF the prompt's ordered token Vec EQUALS the
-//     trigger's ordered token Vec (whitespace- & edge-punct-insensitive, but
-//     full-phrase and order-exact).
-//   * Fuzzy { tokens }: normalize each trigger token atomically (lowercase +
-//     edge-punct-strip via `normalize_token`; NO whitespace split), drop any that
-//     become empty, and dedup; matches IFF EVERY normalized trigger token is in the
-//     prompt's token SET (subset; order-independent; extra prompt tokens are fine).
-//     `[].every(_)` is vacuously TRUE, so an all-punctuation trigger matches with
-//     SCORE 0. SCORE = the count of normalized-DEDUPED trigger tokens.
+// * Exact { text }: normalize `text` with the SAME `tokenize` procedure into an
+// ordered `Vec<String>`; matches IFF the prompt's ordered token Vec EQUALS the
+// trigger's ordered token Vec (whitespace- & edge-punct-insensitive, but
+// full-phrase and order-exact).
+// * Fuzzy { tokens }: normalize each trigger token atomically (lowercase +
+// edge-punct-strip via `normalize_token`; NO whitespace split), drop any that
+// become empty, and dedup; matches IFF EVERY normalized trigger token is in the
+// prompt's token SET (subset; order-independent; extra prompt tokens are fine).
+// `[].every(_)` is vacuously TRUE, so an all-punctuation trigger matches with
+// SCORE 0. SCORE = the count of normalized-DEDUPED trigger tokens.
 //
 // SELECTION (choose EXACTLY ONE entry, or `default`):
-//   1. BARE prompt — `None`, OR it tokenizes to an EMPTY set — selects `default`.
-//   2. Else scan `dialogue` in AUTHORED order:
-//        a. If ANY Exact entry matches -> the FIRST-authored matching Exact
-//           (Exact always beats Fuzzy).
-//        b. Else if any Fuzzy matches -> the HIGHEST-score Fuzzy; on a score tie,
-//           the FIRST-authored among them.
-//        c. Else -> `default`.
-//   3. Only the SINGLE selected entry (or `default`) contributes response + effects.
+// 1. BARE prompt — `None`, OR it tokenizes to an EMPTY set — selects `default`.
+// 2. Else scan `dialogue` in AUTHORED order:
+// a. If ANY Exact entry matches -> the FIRST-authored matching Exact
+// (Exact always beats Fuzzy).
+// b. Else if any Fuzzy matches -> the HIGHEST-score Fuzzy; on a score tie,
+// the FIRST-authored among them.
+// c. Else -> `default`.
+// 3. Only the SINGLE selected entry (or `default`) contributes response + effects.
 //
 // EMIT (`run_talk`):
-//   * The selected entry's `response` Expr is evaluated to a cue and ALWAYS emitted.
-//   * The selected entry's `effects` are returned HONORING `once`: a `once` entry
-//     yields effects only while its per-behavior latch is UNSET, and firing SETS the
-//     latch (a second talk re-emits the response but NO effects). A non-`once` entry
-//     yields its effects every time. Latch state lives in the NPC's per-behavior JSON
-//     state under `state["onceFired"][key]` (see `LATCH_FIELD`), keyed by the selected
-//     entry's identity (`"default"` for the default entry, else its decimal index in
-//     `dialogue`) — written through the same `SetState` seam mechanics use
-//     (`state_set_in`), so Task 3/4 must key the latch identically for byte-parity.
+// * The selected entry's `response` Expr is evaluated to a cue and ALWAYS emitted.
+// * The selected entry's `effects` are returned HONORING `once`: a `once` entry
+// yields effects only while its per-behavior latch is UNSET, and firing SETS the
+// latch (a second talk re-emits the response but NO effects). A non-`once` entry
+// yields its effects every time. Latch state lives in the NPC's per-behavior JSON
+// state under `state["onceFired"][key]` (see `LATCH_FIELD`), keyed by the selected
+// entry's identity (`"default"` for the default entry, else its decimal index in
+// `dialogue`) — written through the same `SetState` seam mechanics use
+// (`state_set_in`). The goldens key the latch this exact way; byte-parity
+// depends on it.
 
 /// State object field holding the per-entry `once` latch (`{ key: true }`).
 const LATCH_FIELD: &str = "onceFired";
@@ -331,7 +364,11 @@ fn tokenize(s: &str) -> Vec<String> {
         .split_whitespace()
         .filter_map(|piece| {
             let t = piece.trim_matches(|c: char| c.is_ascii_punctuation());
-            if t.is_empty() { None } else { Some(t.to_string()) }
+            if t.is_empty() {
+                None
+            } else {
+                Some(t.to_string())
+            }
         })
         .collect()
 }
@@ -354,7 +391,10 @@ struct Selection<'a> {
 /// Run the selection algorithm (see module comment above). Pure: depends only on
 /// the script and the prompt.
 fn select_entry<'a>(script: &'a NpcScript, prompt: Option<&str>) -> Selection<'a> {
-    let default_sel = || Selection { entry: &script.default, key: "default".to_string() };
+    let default_sel = || Selection {
+        entry: &script.default,
+        key: "default".to_string(),
+    };
 
     // 1. Bare prompt (None or empties to nothing) -> default.
     let ordered = match prompt {
@@ -370,7 +410,10 @@ fn select_entry<'a>(script: &'a NpcScript, prompt: Option<&str>) -> Selection<'a
     for (i, entry) in script.dialogue.iter().enumerate() {
         if let DialogueMatch::Exact { text } = &entry.match_ {
             if tokenize(text) == ordered {
-                return Selection { entry, key: i.to_string() };
+                return Selection {
+                    entry,
+                    key: i.to_string(),
+                };
             }
         }
     }
@@ -385,7 +428,7 @@ fn select_entry<'a>(script: &'a NpcScript, prompt: Option<&str>) -> Selection<'a
                 .filter(|t| !t.is_empty())
                 .collect();
             // `[].every()` is vacuously true, so an emptied trigger still matches
-            // (score 0) — mirror this in the oracle.
+            // (score 0).
             if trigger.is_subset(&prompt_set) {
                 let score = trigger.len();
                 // Strict `>` keeps the earlier-authored entry on a tie.
@@ -396,7 +439,10 @@ fn select_entry<'a>(script: &'a NpcScript, prompt: Option<&str>) -> Selection<'a
         }
     }
     match best {
-        Some((_, entry, i)) => Selection { entry, key: i.to_string() },
+        Some((_, entry, i)) => Selection {
+            entry,
+            key: i.to_string(),
+        },
         // 2c. Nothing matched -> default.
         None => default_sel(),
     }
@@ -411,7 +457,7 @@ pub struct ScriptedNpc<'a> {
 }
 
 impl ScriptedNpc<'_> {
-    /// The NPC's `examine` blurb (TS `Npc.description`).
+    /// The NPC's `examine` blurb.
     pub fn description(&self) -> &str {
         &self.script.description
     }
@@ -423,7 +469,7 @@ impl ScriptedNpc<'_> {
     pub fn run_talk(
         &self,
         prompt: Option<&str>,
-        base: &mut HookCtx,
+        base: &mut HookCtx<'_>,
         actor: &CharacterView,
     ) -> (Vec<MechanicCue>, Vec<Effect>) {
         let sel = select_entry(self.script, prompt);
@@ -449,7 +495,9 @@ impl ScriptedNpc<'_> {
         };
         // Response is always emitted (same cue-build path as EffectTemplate::Cue).
         let cue = MechanicCue {
-            text: Some(coerce_str(&eval_expr(&sel.entry.response, &mut cx).into_value())),
+            text: Some(coerce_str(
+                &eval_expr(&sel.entry.response, &mut cx).into_value(),
+            )),
             sound: None,
         };
         let effects = if once && already {
@@ -471,6 +519,7 @@ impl ScriptedNpc<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::item_behavior::ItemBehavior;
 
     #[test]
     fn scripted_item_on_use_emits_adjust_stat_for_actor() {
@@ -493,7 +542,9 @@ mod tests {
                 effect: EffectTemplate::AdjustStat {
                     target: Expr::Actor,
                     stat: StatType::Sanity,
-                    delta: Expr::Lit { value: Value::Number(6.0) },
+                    delta: Expr::Lit {
+                        value: Value::Number(6.0)
+                    },
                 },
             }]),
             on_read: None,
@@ -501,12 +552,20 @@ mod tests {
 
         let mut rng = crate::world::rng::Rng::seeded(0);
         let mut state = serde_json::Value::Null;
-        let mut base = HookCtx { state: &mut state, view: &view, rng: &mut rng };
-        let effects = ScriptedItem { script: &script }.run_use(&mut base, &actor);
+        let mut base = HookCtx {
+            state: &mut state,
+            view: &view,
+            rng: &mut rng,
+        };
+        let effects = ScriptedItem { script: &script }.on_use(&mut base, &actor);
 
         assert_eq!(effects.len(), 1);
         match &effects[0] {
-            Effect::AdjustStat { target, stat, delta } => {
+            Effect::AdjustStat {
+                target,
+                stat,
+                delta,
+            } => {
                 assert_eq!(target.0, "pc");
                 assert_eq!(*stat, StatType::Sanity);
                 assert!((*delta - 6.0).abs() < 1e-9);
@@ -537,19 +596,29 @@ mod tests {
                 effect: EffectTemplate::AdjustStat {
                     target: Expr::Actor,
                     stat: StatType::Energy,
-                    delta: Expr::Lit { value: Value::Number(-2.0) },
+                    delta: Expr::Lit {
+                        value: Value::Number(-2.0)
+                    },
                 },
             }]),
         };
 
         let mut rng = crate::world::rng::Rng::seeded(0);
         let mut state = serde_json::Value::Null;
-        let mut base = HookCtx { state: &mut state, view: &view, rng: &mut rng };
-        let effects = ScriptedItem { script: &script }.run_read(&mut base, &actor);
+        let mut base = HookCtx {
+            state: &mut state,
+            view: &view,
+            rng: &mut rng,
+        };
+        let effects = ScriptedItem { script: &script }.on_read(&mut base, &actor);
 
         assert_eq!(effects.len(), 1);
         match &effects[0] {
-            Effect::AdjustStat { target, stat, delta } => {
+            Effect::AdjustStat {
+                target,
+                stat,
+                delta,
+            } => {
                 assert_eq!(target.0, "pc");
                 assert_eq!(*stat, StatType::Energy);
                 assert!((*delta + 2.0).abs() < 1e-9);
@@ -571,23 +640,37 @@ mod tests {
         let actor = w
             .character_view(&crate::world::ids::CharacterId("pc".into()), &cat)
             .unwrap();
-        let script = ItemScript { on_use: None, on_read: None };
+        let script = ItemScript {
+            on_use: None,
+            on_read: None,
+        };
         let mut rng = crate::world::rng::Rng::seeded(0);
         let mut state = serde_json::Value::Null;
-        let mut base = HookCtx { state: &mut state, view: &view, rng: &mut rng };
+        let mut base = HookCtx {
+            state: &mut state,
+            view: &view,
+            rng: &mut rng,
+        };
         assert!(ScriptedItem { script: &script }
-            .run_read(&mut base, &actor)
+            .on_read(&mut base, &actor)
             .is_empty());
     }
 
-    // ─── NPC dialogue matcher + ScriptedNpc (NPC sub-plan 2) ─────────────────
+    // ─── NPC dialogue matcher + ScriptedNpc ──────────────────────────────────
 
     fn lit(s: &str) -> crate::script::ast::Expr {
-        crate::script::ast::Expr::Lit { value: crate::script::value::Value::Str(s.into()) }
+        crate::script::ast::Expr::Lit {
+            value: crate::script::value::Value::Str(s.into()),
+        }
     }
 
     fn entry(m: DialogueMatch, resp: &str) -> DialogueEntry {
-        DialogueEntry { match_: m, response: lit(resp), effects: Vec::new(), once: false }
+        DialogueEntry {
+            match_: m,
+            response: lit(resp),
+            effects: Vec::new(),
+            once: false,
+        }
     }
 
     fn exact(text: &str, resp: &str) -> DialogueEntry {
@@ -596,7 +679,12 @@ mod tests {
 
     fn fuzzy(tokens: &[&str], resp: &str) -> DialogueEntry {
         entry(
-            DialogueMatch::Fuzzy { tokens: tokens.iter().map(|t| t.to_string()).collect() },
+            DialogueMatch::Fuzzy {
+                tokens: tokens
+                    .iter()
+                    .map(std::string::ToString::to_string)
+                    .collect(),
+            },
             resp,
         )
     }
@@ -623,7 +711,11 @@ mod tests {
             .character_view(&crate::world::ids::CharacterId("pc".into()), &cat)
             .unwrap();
         let mut rng = crate::world::rng::Rng::seeded(0);
-        let mut base = HookCtx { state, view: &view, rng: &mut rng };
+        let mut base = HookCtx {
+            state,
+            view: &view,
+            rng: &mut rng,
+        };
         ScriptedNpc { script }.run_talk(prompt, &mut base, &actor)
     }
 
@@ -657,7 +749,10 @@ mod tests {
     #[test]
     fn exact_beats_fuzzy_even_when_authored_later() {
         // Fuzzy["hello"] also subsets the prompt, but Exact wins outright.
-        let script = npc(alloc::vec![fuzzy(&["hello"], "FUZZY"), exact("hello there", "EXACT")]);
+        let script = npc(alloc::vec![
+            fuzzy(&["hello"], "FUZZY"),
+            exact("hello there", "EXACT")
+        ]);
         let mut state = Json::Null;
         let (cues, _) = talk(&script, Some("hello there"), &mut state);
         assert_eq!(cue(&cues), "EXACT");
@@ -692,7 +787,10 @@ mod tests {
 
     #[test]
     fn fuzzy_score_tie_selects_first_authored() {
-        let script = npc(alloc::vec![fuzzy(&["cellar"], "FIRST"), fuzzy(&["key"], "SECOND")]);
+        let script = npc(alloc::vec![
+            fuzzy(&["cellar"], "FIRST"),
+            fuzzy(&["key"], "SECOND")
+        ]);
         let mut state = Json::Null;
         let (cues, _) = talk(&script, Some("cellar key"), &mut state);
         assert_eq!(cue(&cues), "FIRST");
@@ -741,7 +839,9 @@ mod tests {
         use crate::stats::StatType;
 
         let give = DialogueEntry {
-            match_: DialogueMatch::Fuzzy { tokens: alloc::vec!["give".into()] },
+            match_: DialogueMatch::Fuzzy {
+                tokens: alloc::vec!["give".into()],
+            },
             response: lit("HERE"),
             effects: alloc::vec![EffectTemplate::AdjustStat {
                 target: crate::script::ast::Expr::Actor,
@@ -770,7 +870,9 @@ mod tests {
         use crate::stats::StatType;
 
         let give = DialogueEntry {
-            match_: DialogueMatch::Fuzzy { tokens: alloc::vec!["give".into()] },
+            match_: DialogueMatch::Fuzzy {
+                tokens: alloc::vec!["give".into()],
+            },
             response: lit("HERE"),
             effects: alloc::vec![EffectTemplate::AdjustStat {
                 target: crate::script::ast::Expr::Actor,
@@ -789,6 +891,8 @@ mod tests {
     }
 
     fn lit_num(n: f64) -> crate::script::ast::Expr {
-        crate::script::ast::Expr::Lit { value: crate::script::value::Value::Number(n) }
+        crate::script::ast::Expr::Lit {
+            value: crate::script::value::Value::Number(n),
+        }
     }
 }

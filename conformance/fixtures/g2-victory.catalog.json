@@ -1,44 +1,86 @@
 {
-  "items": {},
   "aliases": {},
   "behaviors": {
+    "party-down": {
+      "family": "victory",
+      "script": {
+        "test": {
+          "kind": "bin",
+          "left": {
+            "kind": "bin",
+            "left": {
+              "kind": "length",
+              "list": {
+                "kind": "party"
+              }
+            },
+            "op": "gt",
+            "right": {
+              "kind": "lit",
+              "value": 0.0
+            }
+          },
+          "op": "and",
+          "right": {
+            "kind": "every",
+            "list": {
+              "kind": "party"
+            },
+            "pred": {
+              "kind": "includes",
+              "list": {
+                "field": "status",
+                "kind": "get",
+                "of": {
+                  "kind": "element"
+                }
+              },
+              "value": {
+                "kind": "lit",
+                "value": "ko"
+              }
+            }
+          }
+        }
+      }
+    },
     "reached-attic-with-journal": {
       "family": "victory",
       "script": {
         "test": {
           "kind": "bin",
-          "op": "and",
           "left": {
             "kind": "bin",
-            "op": "eq",
             "left": {
+              "field": "name",
               "kind": "get",
               "of": {
+                "field": "room",
                 "kind": "get",
                 "of": {
                   "kind": "first",
                   "list": {
                     "kind": "party"
                   }
-                },
-                "field": "room"
-              },
-              "field": "name"
+                }
+              }
             },
+            "op": "eq",
             "right": {
               "kind": "lit",
               "value": "Attic"
             }
           },
+          "op": "and",
           "right": {
+            "itemKey": "journal",
             "kind": "hasItem",
             "of": {
               "kind": "first",
               "list": {
                 "kind": "party"
               }
-            },
-            "itemKey": "journal"
+            }
           }
         }
       }
@@ -53,60 +95,17 @@
           },
           "pred": {
             "kind": "bin",
-            "op": "lte",
             "left": {
+              "field": "sanity",
               "kind": "get",
               "of": {
                 "kind": "element"
-              },
-              "field": "sanity"
-            },
-            "right": {
-              "kind": "lit",
-              "value": 0
-            }
-          }
-        }
-      }
-    },
-    "party-down": {
-      "family": "victory",
-      "script": {
-        "test": {
-          "kind": "bin",
-          "op": "and",
-          "left": {
-            "kind": "bin",
-            "op": "gt",
-            "left": {
-              "kind": "length",
-              "list": {
-                "kind": "party"
               }
             },
+            "op": "lte",
             "right": {
               "kind": "lit",
-              "value": 0
-            }
-          },
-          "right": {
-            "kind": "every",
-            "list": {
-              "kind": "party"
-            },
-            "pred": {
-              "kind": "includes",
-              "list": {
-                "kind": "get",
-                "of": {
-                  "kind": "element"
-                },
-                "field": "status"
-              },
-              "value": {
-                "kind": "lit",
-                "value": "ko"
-              }
+              "value": 0.0
             }
           }
         }
@@ -114,5 +113,6 @@
     }
   },
   "formations": {},
+  "items": {},
   "recipes": {}
 }

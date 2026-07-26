@@ -1,38 +1,38 @@
 {
-  "title": "Caretaker",
-  "opts": {},
   "archetypes": [],
-  "rooms": [
-    {
-      "name": "Foyer",
-      "description": "The gloom of the foyer."
-    }
-  ],
-  "startRoom": "Foyer",
-  "exits": [],
-  "mobs": [],
-  "loot": [],
   "caches": [],
+  "exits": [],
+  "formations": [],
+  "loot": [],
+  "loseConditions": [],
+  "materials": [],
+  "mechanics": [],
+  "mobs": [],
   "npcs": [
     {
-      "name": "Caretaker",
-      "stats": {
-        "health": 1,
-        "sanity": 1,
-        "energy": 1
-      },
-      "room": "Foyer",
       "behavior": "caretaker",
       "holds": [
         "cellar-key"
-      ]
+      ],
+      "name": "Caretaker",
+      "room": "Foyer",
+      "stats": {
+        "energy": 1.0,
+        "health": 1.0,
+        "sanity": 1.0
+      }
     }
   ],
-  "formations": [],
-  "scenes": [],
+  "opts": {},
   "recipes": [],
-  "materials": [],
-  "winConditions": [],
-  "loseConditions": [],
-  "mechanics": []
+  "rooms": [
+    {
+      "description": "The gloom of the foyer.",
+      "name": "Foyer"
+    }
+  ],
+  "scenes": [],
+  "startRoom": "Foyer",
+  "title": "Caretaker",
+  "winConditions": []
 }

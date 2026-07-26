@@ -1,54 +1,23 @@
 {
-  "items": {
-    "cellar-key": {
-      "name": "Cellar Key",
-      "type": "key",
-      "stat": "health",
-      "modifier": 0,
-      "properties": {
-        "equippable": false,
-        "equipped": false,
-        "destroyable": false,
-        "usable": false
-      },
-      "keyCode": "cellar",
-      "consumeOnUse": false,
-      "recipe": {
-        "item": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    }
-  },
   "aliases": {},
   "behaviors": {
     "caretaker": {
       "family": "npc",
       "script": {
-        "description": "A stooped caretaker in a moth-eaten coat, keys trembling at his belt.",
         "default": {
-          "match": {
-            "kind": "exact",
-            "text": ""
-          },
-          "response": {
-            "kind": "lit",
-            "value": "Take the cellar key. I am leaving now."
-          },
           "effects": [
             {
-              "kind": "giveItem",
               "from": {
                 "kind": "lit",
                 "value": "npc:Caretaker"
               },
-              "to": {
-                "kind": "actor"
-              },
               "item": {
                 "kind": "lit",
                 "value": "npc:Caretaker:item#0"
+              },
+              "kind": "giveItem",
+              "to": {
+                "kind": "actor"
               }
             },
             {
@@ -63,10 +32,20 @@
               }
             }
           ],
-          "once": true
+          "match": {
+            "kind": "exact",
+            "text": ""
+          },
+          "once": true,
+          "response": {
+            "kind": "lit",
+            "value": "Take the cellar key. I am leaving now."
+          }
         },
+        "description": "A stooped caretaker in a moth-eaten coat, keys trembling at his belt.",
         "dialogue": [
           {
+            "effects": [],
             "match": {
               "kind": "fuzzy",
               "tokens": [
@@ -74,17 +53,38 @@
                 "cellar"
               ]
             },
+            "once": false,
             "response": {
               "kind": "lit",
               "value": "It opens the cellar."
-            },
-            "effects": [],
-            "once": false
+            }
           }
         ]
       }
     }
   },
   "formations": {},
+  "items": {
+    "cellar-key": {
+      "consumeOnUse": false,
+      "grantsImmunity": null,
+      "immunities": null,
+      "keyCode": "cellar",
+      "modifier": 0,
+      "name": "Cellar Key",
+      "properties": {
+        "destroyable": false,
+        "equippable": false,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {
+        "item": 1
+      },
+      "stat": "health",
+      "teaches": null,
+      "type": "key"
+    }
+  },
   "recipes": {}
 }

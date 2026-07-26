@@ -1,10 +1,8 @@
-//! The shared fog-of-war map (Phase 2c, sub-project D — slice 2).
+//! The shared fog-of-war map.
 //!
-//! Ports `packages/play-runtime/src/map-model.ts` ([`MapModel`]) and
-//! `packages/play-surface/src/shared/map-view.ts` (pure layout + SVG emission) into one module: the
+//! The explored-map model ([`MapModel`]) plus pure layout + SVG emission in one module: the
 //! model is framework-free and unit-tested on the host; [`map_svg`] renders a laid-out map as Dioxus
-//! RSX (the wasm-only half), styled via the `.map-*` CSS classes carried over from the Lit surface
-//! (`assets/crt.css`).
+//! RSX (the wasm-only half), styled via the `.map-*` CSS classes (`assets/crt.css`).
 
 use std::collections::BTreeMap;
 
@@ -63,7 +61,7 @@ fn direction_delta(dir: Direction) -> (i32, i32) {
     }
 }
 
-/// `reverseDirection` (`src/lib/room.ts`) — the compass opposite.
+/// The compass opposite of `dir`.
 fn reverse_direction(dir: Direction) -> Direction {
     use Direction::*;
     match dir {
@@ -106,7 +104,7 @@ impl MapModel {
     }
 
     pub fn stubs_for(&self, id: &str) -> &[MapStub] {
-        self.stubs.get(id).map(Vec::as_slice).unwrap_or(&[])
+        self.stubs.get(id).map_or(&[], Vec::as_slice)
     }
 
     /// Record/refresh the room the player is currently in.
@@ -117,12 +115,18 @@ impl MapModel {
         self.rooms
             .entry(id.clone())
             .and_modify(|r| {
-                r.name = name.clone();
+                r.name.clone_from(&name);
                 r.has_remains = has_remains;
             })
             // Only the first room is created here (at the origin); every other room is placed by
             // `record_move` before it is first observed.
-            .or_insert_with(|| MapRoom { id: id.clone(), name, x: 0, y: 0, has_remains });
+            .or_insert_with(|| MapRoom {
+                id: id.clone(),
+                name,
+                x: 0,
+                y: 0,
+                has_remains,
+            });
         self.current_id = Some(id.clone());
 
         // Directions already traversed from this room get no stub.
@@ -138,12 +142,18 @@ impl MapModel {
         let mut stubs: Vec<MapStub> = Vec::new();
         for ex in &view.exits {
             if !traversed.contains(&ex.dir) {
-                stubs.push(MapStub { dir: ex.dir, locked: false });
+                stubs.push(MapStub {
+                    dir: ex.dir,
+                    locked: false,
+                });
             }
         }
         for d in &view.locked_doors {
             if !traversed.contains(&d.dir) {
-                stubs.push(MapStub { dir: d.dir, locked: true });
+                stubs.push(MapStub {
+                    dir: d.dir,
+                    locked: true,
+                });
             }
         }
         self.stubs.insert(id, stubs);
@@ -156,7 +166,13 @@ impl MapModel {
                 let (dx, dy) = direction_delta(dir);
                 self.rooms.insert(
                     to_id.to_string(),
-                    MapRoom { id: to_id.to_string(), name: to_id.to_string(), x: from.x + dx, y: from.y + dy, has_remains: false },
+                    MapRoom {
+                        id: to_id.to_string(),
+                        name: to_id.to_string(),
+                        x: from.x + dx,
+                        y: from.y + dy,
+                        has_remains: false,
+                    },
                 );
             }
         }
@@ -167,7 +183,12 @@ impl MapModel {
         // A traversed edge is an open passage: you can only walk through a door once it's unlocked,
         // so edges are never locked (locked doors render as dashed *stubs* until walked).
         if !known {
-            self.edges.push(MapEdge { a: from_id.to_string(), b: to_id.to_string(), dir, locked: false });
+            self.edges.push(MapEdge {
+                a: from_id.to_string(),
+                b: to_id.to_string(),
+                dir,
+                locked: false,
+            });
         }
         if let Some(from_stubs) = self.stubs.get_mut(from_id) {
             from_stubs.retain(|s| s.dir != dir);
@@ -178,7 +199,11 @@ impl MapModel {
         MapSnapshot {
             rooms: self.rooms(),
             edges: self.edges.clone(),
-            stubs: self.stubs.iter().map(|(id, s)| (id.clone(), s.clone())).collect(),
+            stubs: self
+                .stubs
+                .iter()
+                .map(|(id, s)| (id.clone(), s.clone()))
+                .collect(),
             current_id: self.current_id.clone(),
         }
     }
@@ -247,7 +272,11 @@ pub struct MapLayout {
 pub fn layout_map(model: &MapModel) -> MapLayout {
     let rooms = model.rooms();
     if rooms.is_empty() {
-        return MapLayout { width: BOX_W + 2.0 * PAD, height: BOX_H + 2.0 * PAD, ..Default::default() };
+        return MapLayout {
+            width: BOX_W + 2.0 * PAD,
+            height: BOX_H + 2.0 * PAD,
+            ..Default::default()
+        };
     }
 
     let min_x = rooms.iter().map(|r| r.x).min().unwrap();
@@ -255,22 +284,38 @@ pub fn layout_map(model: &MapModel) -> MapLayout {
     let max_x = rooms.iter().map(|r| r.x).max().unwrap();
     let max_y = rooms.iter().map(|r| r.y).max().unwrap();
 
-    let left = |r: &MapRoom| (r.x - min_x) as f64 * CELL + PAD;
-    let top = |r: &MapRoom| (r.y - min_y) as f64 * CELL + PAD;
+    let left = |r: &MapRoom| f64::from(r.x - min_x) * CELL + PAD;
+    let top = |r: &MapRoom| f64::from(r.y - min_y) * CELL + PAD;
     let cx = |r: &MapRoom| left(r) + BOX_W / 2.0;
     let cy = |r: &MapRoom| top(r) + BOX_H / 2.0;
 
     let current = model.current_id();
     let boxes: Vec<LaidBox> = rooms
         .iter()
-        .map(|r| LaidBox { x: left(r), y: top(r), w: BOX_W, h: BOX_H, label: r.name.clone(), current: Some(r.id.as_str()) == current, remains: r.has_remains })
+        .map(|r| LaidBox {
+            x: left(r),
+            y: top(r),
+            w: BOX_W,
+            h: BOX_H,
+            label: r.name.clone(),
+            current: Some(r.id.as_str()) == current,
+            remains: r.has_remains,
+        })
         .collect();
 
     let by_id: BTreeMap<&str, &MapRoom> = rooms.iter().map(|r| (r.id.as_str(), r)).collect();
     let mut links: Vec<LaidLink> = Vec::new();
     for e in model.edges() {
-        let (Some(a), Some(b)) = (by_id.get(e.a.as_str()), by_id.get(e.b.as_str())) else { continue };
-        links.push(LaidLink { x1: cx(a), y1: cy(a), x2: cx(b), y2: cy(b), locked: e.locked });
+        let (Some(a), Some(b)) = (by_id.get(e.a.as_str()), by_id.get(e.b.as_str())) else {
+            continue;
+        };
+        links.push(LaidLink {
+            x1: cx(a),
+            y1: cy(a),
+            x2: cx(b),
+            y2: cy(b),
+            locked: e.locked,
+        });
     }
 
     let mut stubs: Vec<LaidStub> = Vec::new();
@@ -279,15 +324,29 @@ pub fn layout_map(model: &MapModel) -> MapLayout {
             let (dx, dy) = direction_delta(s.dir);
             let x1 = cx(r);
             let y1 = cy(r);
-            let x2 = x1 + dx as f64 * STUB;
-            let y2 = y1 + dy as f64 * STUB;
-            stubs.push(LaidStub { x1, y1, x2, y2, qx: x2 + dx as f64 * 8.0, qy: y2 + dy as f64 * 8.0, locked: s.locked });
+            let x2 = x1 + f64::from(dx) * STUB;
+            let y2 = y1 + f64::from(dy) * STUB;
+            stubs.push(LaidStub {
+                x1,
+                y1,
+                x2,
+                y2,
+                qx: x2 + f64::from(dx) * 8.0,
+                qy: y2 + f64::from(dy) * 8.0,
+                locked: s.locked,
+            });
         }
     }
 
-    let width = (max_x - min_x) as f64 * CELL + BOX_W + 2.0 * PAD;
-    let height = (max_y - min_y) as f64 * CELL + BOX_H + 2.0 * PAD;
-    MapLayout { width, height, boxes, links, stubs }
+    let width = f64::from(max_x - min_x) * CELL + BOX_W + 2.0 * PAD;
+    let height = f64::from(max_y - min_y) * CELL + BOX_H + 2.0 * PAD;
+    MapLayout {
+        width,
+        height,
+        boxes,
+        links,
+        stubs,
+    }
 }
 
 /// Thin RSX emitter: turn a layout into an `<svg>`. Styled via the `.map-*` CSS classes.
@@ -352,22 +411,40 @@ pub fn map_svg(layout: &MapLayout) -> Element {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wickedways_core::world::view::{ExitView, LockedDoorView, ScopeEntity, StatusView, ThinRoom};
     use wickedways_core::presentation::CampaignOutcome;
+    use wickedways_core::world::view::{
+        ExitView, LockedDoorView, ScopeEntity, StatusView, ThinRoom,
+    };
 
     fn vm(id: &str, name: &str) -> ViewModel {
         ViewModel {
-            room: ThinRoom { id: id.into(), name: name.into(), description: String::new(), is_lit: true },
+            room: ThinRoom {
+                id: id.into(),
+                name: name.into(),
+                description: String::new(),
+                is_lit: true,
+            },
             exits: Vec::new(),
             locked_doors: Vec::new(),
             occupants: Vec::new(),
             loot: Vec::new(),
             caches: Vec::new(),
-            inventory: wickedways_core::world::view::Inventory { items: Vec::new(), keys: Vec::new(), equipped_names: Vec::new(), slots: 0 },
+            inventory: wickedways_core::world::view::Inventory {
+                items: Vec::new(),
+                keys: Vec::new(),
+                equipped_names: Vec::new(),
+                slots: 0,
+            },
             scope: Vec::new(),
             materials: Vec::new(),
             recipes: Vec::new(),
-            status: StatusView { location_name: name.into(), turn: 0, max_turns: 1, health: 10.0, sanity: 10.0 },
+            status: StatusView {
+                location_name: name.into(),
+                turn: 0,
+                max_turns: 1,
+                health: 10.0,
+                sanity: 10.0,
+            },
             outcome: CampaignOutcome::Ongoing,
             finished: false,
         }
@@ -389,9 +466,21 @@ mod tests {
         let mut m = MapModel::new();
         let mut v = vm("hall", "Hall");
         v.occupants = vec![ScopeEntity {
-            id: "w".into(), name: "Wraith".into(), aliases: Vec::new(), kind: "occupant".into(),
-            health: Some(0.0), image: None, equippable: None, usable: None, has_lore: None,
-            droppable: None, destroyable: None, damaged: None, defeated: Some(true), talkable: None, player: None,
+            id: "w".into(),
+            name: "Wraith".into(),
+            aliases: Vec::new(),
+            kind: "occupant".into(),
+            health: Some(0.0),
+            image: None,
+            equippable: None,
+            usable: None,
+            has_lore: None,
+            droppable: None,
+            destroyable: None,
+            damaged: None,
+            defeated: Some(true),
+            talkable: None,
+            player: None,
         }];
         m.observe(&v);
         assert!(m.rooms()[0].has_remains);
@@ -401,8 +490,14 @@ mod tests {
     fn observe_records_unexplored_exits_as_stubs() {
         let mut m = MapModel::new();
         let mut v = vm("hall", "Hall");
-        v.exits = vec![ExitView { dir: Direction::North, to_name: "Landing".into() }];
-        v.locked_doors = vec![LockedDoorView { name: "Iron Door".into(), dir: Direction::East }];
+        v.exits = vec![ExitView {
+            dir: Direction::North,
+            to_name: "Landing".into(),
+        }];
+        v.locked_doors = vec![LockedDoorView {
+            name: "Iron Door".into(),
+            dir: Direction::East,
+        }];
         m.observe(&v);
         let stubs = m.stubs_for("hall");
         assert_eq!(stubs.len(), 2);
@@ -414,12 +509,18 @@ mod tests {
     fn record_move_places_the_new_room_relative_to_the_origin_and_drops_the_stub() {
         let mut m = MapModel::new();
         let mut v = vm("hall", "Hall");
-        v.exits = vec![ExitView { dir: Direction::North, to_name: "Landing".into() }];
+        v.exits = vec![ExitView {
+            dir: Direction::North,
+            to_name: "Landing".into(),
+        }];
         m.observe(&v);
         m.record_move("hall", Direction::North, "landing");
         let landing = m.rooms().into_iter().find(|r| r.id == "landing").unwrap();
         assert_eq!((landing.x, landing.y), (0, -1));
-        assert!(m.stubs_for("hall").is_empty(), "the traversed stub is dropped");
+        assert!(
+            m.stubs_for("hall").is_empty(),
+            "the traversed stub is dropped"
+        );
         assert_eq!(m.edges().len(), 1);
     }
 
@@ -430,7 +531,11 @@ mod tests {
         m.record_move("hall", Direction::North, "landing");
         m.observe(&vm("landing", "Landing"));
         m.record_move("landing", Direction::South, "hall");
-        assert_eq!(m.edges().len(), 1, "the reverse traversal reuses the same edge");
+        assert_eq!(
+            m.edges().len(),
+            1,
+            "the reverse traversal reuses the same edge"
+        );
     }
 
     #[test]
@@ -439,9 +544,15 @@ mod tests {
         m.observe(&vm("hall", "Hall"));
         m.record_move("hall", Direction::North, "landing");
         let mut back = vm("landing", "Landing");
-        back.exits = vec![ExitView { dir: Direction::South, to_name: "Hall".into() }];
+        back.exits = vec![ExitView {
+            dir: Direction::South,
+            to_name: "Hall".into(),
+        }];
         m.observe(&back);
-        assert!(m.stubs_for("landing").is_empty(), "south is already traversed (as the edge's reverse)");
+        assert!(
+            m.stubs_for("landing").is_empty(),
+            "south is already traversed (as the edge's reverse)"
+        );
     }
 
     #[test]

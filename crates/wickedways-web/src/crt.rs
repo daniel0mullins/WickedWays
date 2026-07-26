@@ -1,9 +1,9 @@
-//! The CRT terminal surface (Phase 2c, sub-project D).
+//! The CRT terminal surface.
 //!
 //! The green-screen text adventure: it drives the multiplayer loop against the room server (or the
 //! offline single-player authority) through the shared [`driver`](crate::driver) (connect → project →
 //! [`intent_to_command`](crate::driver::intent_to_command) → narrate → map), renders the engine
-//! [`ViewModel`], and takes typed commands through the ported [`parse`](crate::parser::parse)r: the
+//! [`ViewModel`], and takes typed commands through the [`parse`](crate::parser::parse)r: the
 //! prompt turns a line of input into an [`Intent`], which the shell resolves into a sync `Command` (a
 //! `move`'s direction becomes the destination room id via the replica's exit graph) and submits;
 //! informational queries (look/exits/inventory/help) render locally against the current view. The
@@ -34,8 +34,8 @@ use crate::audio::cue_for_intent;
 use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
-    boot, boot_single, has_actions_left, intent_to_command, is_gm, is_my_turn, project, read_config,
-    rebuild_single, toggle_fullscreen, welcome_for, Mode, GM_IDENTITY,
+    boot, boot_single, has_actions_left, intent_to_command, is_gm, is_my_turn, project,
+    read_config, rebuild_single, toggle_fullscreen, welcome_for, Mode, GM_IDENTITY,
 };
 use crate::link_nouns::{link_nouns, Segment};
 use crate::map::{layout_map, map_svg, MapModel};
@@ -72,7 +72,7 @@ enum MetaEffect {
     Undo,
 }
 
-/// The one-at-a-time overlay (map or help), mirroring `crt-game.ts`'s `openMap`/`openHelp`.
+/// The one-at-a-time overlay (map or help) — opening one closes the other.
 #[derive(Clone, Debug, PartialEq)]
 enum Overlay {
     None,
@@ -155,13 +155,14 @@ pub fn crt_app() -> Element {
                 vm.set(initial);
                 status_fields.set(coord.status_fields().to_vec());
                 my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
-                                my_actions_left.set(has_actions_left(coord.replica(), single));
+                my_actions_left.set(has_actions_left(coord.replica(), single));
 
                 // Loop over UI actions AND server pushes: a pushed entry (another client's move, or the
                 // GM advancing the turn) re-syncs + re-projects, so play stays live and `my_turn` flips
                 // when the turn reaches this client — no polling.
                 let pushes = transport.push_notifications();
-                let mut events = futures_util::stream::select(rx.map(Ev::Act), pushes.map(|_| Ev::Refresh));
+                let mut events =
+                    futures_util::stream::select(rx.map(Ev::Act), pushes.map(|()| Ev::Refresh));
                 while let Some(ev) = events.next().await {
                     let action = match ev {
                         Ev::Act(a) => a,
@@ -175,7 +176,7 @@ pub fn crt_app() -> Element {
                             vm.set(after);
                             status_fields.set(coord.status_fields().to_vec());
                             my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
-                                my_actions_left.set(has_actions_left(coord.replica(), single));
+                            my_actions_left.set(has_actions_left(coord.replica(), single));
                             continue;
                         }
                     };
@@ -197,8 +198,8 @@ pub fn crt_app() -> Element {
                         }
                         Action::Input(text) => {
                             let view = project(&coord, &catalog);
-                            before_view = view.clone();
-                            let scope = view.as_ref().map(|v| v.scope.as_slice()).unwrap_or(&[]);
+                            before_view.clone_from(&view);
+                            let scope: &[_] = view.as_ref().map_or(&[], |v| v.scope.as_slice());
                             match parse(&text, scope) {
                                 ParseResult::Query(q) => {
                                     if let Some(v) = &view {
@@ -225,24 +226,32 @@ pub fn crt_app() -> Element {
                                     }
                                     None
                                 }
-                                ParseResult::Intent(intent) => match intent_to_command(coord.replica(), &catalog, &intent) {
-                                    Ok(cmd) => {
-                                        intent_for_narration = Some(intent);
-                                        Some(cmd)
+                                ParseResult::Intent(intent) => {
+                                    match intent_to_command(coord.replica(), &catalog, &intent) {
+                                        Ok(cmd) => {
+                                            intent_for_narration = Some(intent);
+                                            Some(cmd)
+                                        }
+                                        Err(note) => {
+                                            narration.write().push(note);
+                                            None
+                                        }
                                     }
-                                    Err(note) => {
-                                        narration.write().push(note);
-                                        None
-                                    }
-                                },
+                                }
                                 ParseResult::Examine(t) => {
                                     let lines = narrator.write().render_examine(&t);
                                     narration.write().extend(lines);
                                     None
                                 }
                                 ParseResult::Ambiguous(cands) => {
-                                    let names = cands.iter().map(|e| e.name.clone()).collect::<Vec<_>>().join(", ");
-                                    narration.write().push(format!("Which do you mean: {names}?"));
+                                    let names = cands
+                                        .iter()
+                                        .map(|e| e.name.clone())
+                                        .collect::<Vec<_>>()
+                                        .join(", ");
+                                    narration
+                                        .write()
+                                        .push(format!("Which do you mean: {names}?"));
                                     None
                                 }
                                 ParseResult::Meta(meta) => {
@@ -257,7 +266,12 @@ pub fn crt_app() -> Element {
                                         Meta::Fullscreen => {
                                             let entering = toggle_fullscreen();
                                             narration.write().push(
-                                                if entering { "Fullscreen on." } else { "Fullscreen off." }.into(),
+                                                if entering {
+                                                    "Fullscreen on."
+                                                } else {
+                                                    "Fullscreen off."
+                                                }
+                                                .into(),
                                             );
                                         }
                                         // The Enter keypress that submitted this line is the user
@@ -301,8 +315,10 @@ pub fn crt_app() -> Element {
                         // Capture the pre-command state for `undo` (single-player only): a snapshot +
                         // the current fog-of-war map, pushed onto the stack only once the command
                         // actually commits.
-                        let undo_point = (cfg.mode == Mode::Single)
-                            .then(|| SaveBlob { snapshot: coord.snapshot(), map: map_model.read().serialize() });
+                        let undo_point = (cfg.mode == Mode::Single).then(|| SaveBlob {
+                            snapshot: coord.snapshot(),
+                            map: map_model.read().serialize(),
+                        });
                         match transport.submit_async(cmd).await {
                             SubmitResult::Committed { seq, delta } => {
                                 if let Some(point) = undo_point {
@@ -328,8 +344,11 @@ pub fn crt_app() -> Element {
                                 if let Some(a) = &after {
                                     map_model.write().observe(a);
                                 }
-                                if let (Some(intent), Some(b), Some(a)) = (intent_for_narration, &before_view, &after) {
-                                    let action_lines = narrator.write().render_action(&intent, b, a);
+                                if let (Some(intent), Some(b), Some(a)) =
+                                    (intent_for_narration, &before_view, &after)
+                                {
+                                    let action_lines =
+                                        narrator.write().render_action(&intent, b, a);
                                     narration.write().extend(action_lines);
                                     // The room name/description/occupants live in the persistent header
                                     // (game_view), so entering a room updates that panel rather than
@@ -368,7 +387,10 @@ pub fn crt_app() -> Element {
                     // rebind. Both are single-player only — multiplayer state lives on the server.
                     match meta_effect {
                         Some(MetaEffect::Save) if cfg.mode == Mode::Single => {
-                            let blob = SaveBlob { snapshot: coord.snapshot(), map: map_model.read().serialize() };
+                            let blob = SaveBlob {
+                                snapshot: coord.snapshot(),
+                                map: map_model.read().serialize(),
+                            };
                             match savestore::save("slot1", &blob) {
                                 Ok(()) => narration.write().push("Saved.".into()),
                                 Err(e) => narration.write().push(format!("Save failed: {e}")),
@@ -437,13 +459,15 @@ pub fn crt_app() -> Element {
                                 None => narration.write().push("Nothing to undo.".into()),
                             }
                         }
-                        Some(_) => narration.write().push("(save/restore/restart/undo is single-player only)".into()),
+                        Some(_) => narration
+                            .write()
+                            .push("(save/restore/restart/undo is single-player only)".into()),
                         None => {}
                     }
 
                     // Recompute whose turn it is after the action (a nextPlayer/move can move the seat).
                     my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
-                                my_actions_left.set(has_actions_left(coord.replica(), single));
+                    my_actions_left.set(has_actions_left(coord.replica(), single));
                 }
             }
         }
@@ -458,7 +482,7 @@ pub fn crt_app() -> Element {
         None => (rsx! {}, rsx! {}, rsx! {}),
     };
     let screen = match vmodel {
-        Some(v) => game_view(v, narration, draft),
+        Some(v) => game_view(&v, narration, draft),
         None => rsx! {
             div { class: "line system", "WICKEDWAYS" }
             div { class: "line", "status: {status}" }
@@ -552,8 +576,7 @@ pub fn crt_app() -> Element {
             // Same as the welcome gate: this renders outside `.backdrop`, so it carries the palette vars.
             div { class: "overlay", style: "{theme_vars}", onclick: move |_| overlay.set(Overlay::None),
                 // Clicks on the framed content don't dismiss (only the backdrop does) — matches the
-                // `.overlay-frame { cursor: default }` affordance and `crt-game.ts`, where frame
-                // clicks never close the overlay.
+                // `.overlay-frame { cursor: default }` affordance.
                 div { class: "overlay-frame", onclick: move |e| e.stop_propagation(),
                     match overlay() {
                         Overlay::Help(rows) => rsx! {
@@ -580,7 +603,7 @@ pub fn crt_app() -> Element {
 }
 
 /// Render one line of prose with the current scope's nouns as clickable spans; clicking a noun fills
-/// the prompt with `examine <noun>` (ported from `crt-transcript`/`crt-hud`'s noun linking).
+/// the prompt with `examine <noun>`.
 fn linked_line(line: &str, nouns: &[String], draft: Signal<String>) -> Element {
     rsx! {
         for (i, seg) in link_nouns(line, nouns).into_iter().enumerate() {
@@ -602,8 +625,7 @@ fn linked_line(line: &str, nouns: &[String], draft: Signal<String>) -> Element {
     }
 }
 
-/// The scope's clickable nouns — each entity's name + aliases, de-duplicated case-insensitively
-/// (mirrors the controller's `computeClickableNouns`).
+/// The scope's clickable nouns — each entity's name + aliases, de-duplicated case-insensitively.
 fn clickable_nouns(v: &ViewModel) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
     let mut out = Vec::new();
@@ -617,7 +639,7 @@ fn clickable_nouns(v: &ViewModel) -> Vec<String> {
     out
 }
 
-/// The CSS class for a status field by its (optional) emphasis (mirrors `crt-status`'s color-coding).
+/// The CSS class for a status field by its (optional) emphasis.
 fn emphasis_class(field: &StatusField) -> &'static str {
     match field.emphasis.as_deref() {
         Some("critical") => "status-field status-critical",
@@ -636,8 +658,11 @@ fn hud_bar(v: &ViewModel, fields: &[StatusField]) -> Element {
     // The HUD already shows turn / HP / SAN, so a campaign's authored StatusFields that just repeat
     // them are redundant (e.g. Hollow House's `status-bar` mechanic emits "Sanity" and "Round").
     // Drop those; keep any field the HUD doesn't cover (Energy, custom readouts).
-    let extra: Vec<StatusField> =
-        fields.iter().filter(|f| !duplicates_hud_stat(&f.label)).cloned().collect();
+    let extra: Vec<StatusField> = fields
+        .iter()
+        .filter(|f| !duplicates_hud_stat(&f.label))
+        .cloned()
+        .collect();
     rsx! {
         div { class: "hud",
             span { "{s.location_name}" }
@@ -667,6 +692,16 @@ fn duplicates_hud_stat(label: &str) -> bool {
     )
 }
 
+/// A labeled chip section — the dock/sidebar building block.
+fn chip_section(label: String, chips: Element) -> Element {
+    rsx! {
+        div { class: "section",
+            div { class: "section-label", {label} }
+            div { class: "chips", {chips} }
+        }
+    }
+}
+
 /// The fixed dock pinned to the bottom of the main column (between the transcript and the input): the
 /// current room's exits, kept in view as the transcript scrolls. Inventory and materials live in the
 /// right-hand [`side_bar`].
@@ -674,20 +709,17 @@ fn dock_bar(v: &ViewModel) -> Element {
     rsx! {
         div { class: "dock",
             if !v.exits.is_empty() || !v.locked_doors.is_empty() {
-                div { class: "section",
-                    div { class: "section-label", "Exits" }
-                    div { class: "chips",
-                        for e in v.exits.iter() {
-                            span { key: "{e.dir.as_key()}", class: "chip", "{e.dir.as_key()} → {e.to_name}" }
-                        }
-                        for d in v.locked_doors.iter() {
-                            span { key: "locked-{d.dir.as_key()}", class: "chip",
-                                "{d.dir.as_key()} → {d.name} "
-                                span { class: "meta", "(locked)" }
-                            }
+                {chip_section("Exits".into(), rsx! {
+                    for e in v.exits.iter() {
+                        span { key: "{e.dir.as_key()}", class: "chip", "{e.dir.as_key()} → {e.to_name}" }
+                    }
+                    for d in v.locked_doors.iter() {
+                        span { key: "locked-{d.dir.as_key()}", class: "chip",
+                            "{d.dir.as_key()} → {d.name} "
+                            span { class: "meta", "(locked)" }
                         }
                     }
-                }
+                })}
             }
         }
     }
@@ -698,37 +730,39 @@ fn dock_bar(v: &ViewModel) -> Element {
 fn side_bar(v: &ViewModel) -> Element {
     let inv = &v.inventory;
     let empty = inv.items.is_empty() && inv.keys.is_empty();
+    let label = format!(
+        "Inventory ({}/{})",
+        inv.items.len() + inv.keys.len(),
+        inv.slots
+    );
     rsx! {
-        div { class: "section",
-            div { class: "section-label", "Inventory ({inv.items.len() + inv.keys.len()}/{inv.slots})" }
-            if empty {
+        if empty {
+            div { class: "section",
+                div { class: "section-label", {label} }
                 div { class: "chip meta", "empty" }
-            } else {
-                div { class: "chips",
-                    for it in inv.items.iter() {
-                        span { key: "{it.id}", class: "chip", "{it.name}" }
-                    }
-                    for k in inv.keys.iter() {
-                        span { key: "{k.id}", class: "chip", "{k.name} ", span { class: "meta", "(key)" } }
-                    }
-                }
             }
+        } else {
+            {chip_section(label.clone(), rsx! {
+                for it in inv.items.iter() {
+                    span { key: "{it.id}", class: "chip", "{it.name}" }
+                }
+                for k in inv.keys.iter() {
+                    span { key: "{k.id}", class: "chip", "{k.name} ", span { class: "meta", "(key)" } }
+                }
+            })}
         }
         if !v.materials.is_empty() {
-            div { class: "section",
-                div { class: "section-label", "Materials" }
-                div { class: "chips",
-                    for m in v.materials.iter() {
-                        span { key: "mat-{m.component}", class: "chip", "{m.component} ×{m.quantity}" }
-                    }
+            {chip_section("Materials".into(), rsx! {
+                for m in v.materials.iter() {
+                    span { key: "mat-{m.component}", class: "chip", "{m.component} ×{m.quantity}" }
                 }
-            }
+            })}
         }
     }
 }
 
-fn game_view(v: ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>) -> Element {
-    let nouns = clickable_nouns(&v);
+fn game_view(v: &ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>) -> Element {
+    let nouns = clickable_nouns(v);
     rsx! {
         div { class: "room-name", "{v.room.name}" }
         div {
@@ -813,8 +847,13 @@ mod tests {
     fn hud_stat_dedup_drops_built_in_labels_case_insensitively() {
         // Labels the built-in HUD already shows (turn / HP / SAN) are dropped from the campaign
         // StatusField row, however the campaign cased them.
-        for redundant in ["Sanity", "SAN", "san", "Round", "round", "Health", "HP", "hp", " Turn "] {
-            assert!(duplicates_hud_stat(redundant), "{redundant:?} should be dropped");
+        for redundant in [
+            "Sanity", "SAN", "san", "Round", "round", "Health", "HP", "hp", " Turn ",
+        ] {
+            assert!(
+                duplicates_hud_stat(redundant),
+                "{redundant:?} should be dropped"
+            );
         }
         // Anything the HUD doesn't cover stays.
         for kept in ["Energy", "Dread", "Journal", "Keys"] {

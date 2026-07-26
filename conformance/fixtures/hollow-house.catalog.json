@@ -1,186 +1,13 @@
 {
-  "items": {
-    "lantern": {
-      "name": "Brass Lantern",
-      "type": "weapon",
-      "stat": "health",
-      "modifier": 0,
-      "properties": {
-        "equippable": true,
-        "equipped": false,
-        "destroyable": true,
-        "usable": false
-      },
-      "slot": "hand",
-      "emitsLight": true,
-      "recipe": {
-        "item": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    },
-    "journal": {
-      "name": "Water-Stained Journal",
-      "type": "consumable",
-      "stat": "health",
-      "modifier": 0,
-      "properties": {
-        "equippable": false,
-        "equipped": false,
-        "destroyable": true,
-        "usable": false,
-        "droppable": false
-      },
-      "lore": "The journal's spine cracks as you open it. The early pages are a household's ordinary griefs — debts, a failing orchard, a wife taken too young. Then the hand changes. \"We buried her in the cellar because the ground outside would not hold her. By the third night she had climbed halfway back.\" The ink grows frantic: a child who never wept, a face in the dark that was almost hers, an iron key forged to keep the cellar door honest. The last entries are barely words — \"it wears her now; it wears all of us, in time\" — and beneath them, pressed flat and brown, a sprig of the lilies they laid on a coffin that never stayed shut. Whoever kept this journal loved the house once. It did not love them back.",
-      "recipe": {
-        "item": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    },
-    "poker": {
-      "name": "Iron Fire-Poker",
-      "type": "weapon",
-      "stat": "health",
-      "modifier": 5,
-      "properties": {
-        "equippable": true,
-        "equipped": false,
-        "destroyable": true,
-        "usable": false
-      },
-      "slot": "hand",
-      "maxDurability": 8,
-      "recipe": {
-        "metal": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    },
-    "laudanum": {
-      "name": "Vial of Laudanum",
-      "type": "consumable",
-      "stat": "sanity",
-      "modifier": 6,
-      "properties": {
-        "equippable": false,
-        "equipped": false,
-        "destroyable": true,
-        "usable": true
-      },
-      "recipe": {
-        "healing": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    },
-    "rat-tail": {
-      "name": "Rat Tail",
-      "type": "consumable",
-      "stat": "sanity",
-      "modifier": 1,
-      "properties": {
-        "equippable": false,
-        "equipped": false,
-        "destroyable": true,
-        "usable": true
-      },
-      "recipe": {
-        "item": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    },
-    "brass-key": {
-      "name": "Brass Key",
-      "type": "key",
-      "stat": "health",
-      "modifier": 0,
-      "properties": {
-        "equippable": false,
-        "equipped": false,
-        "destroyable": false,
-        "usable": false
-      },
-      "keyCode": "brass",
-      "consumeOnUse": false,
-      "recipe": {
-        "item": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    },
-    "iron-key": {
-      "name": "Iron Key",
-      "type": "key",
-      "stat": "health",
-      "modifier": 0,
-      "properties": {
-        "equippable": false,
-        "equipped": false,
-        "destroyable": false,
-        "usable": false
-      },
-      "keyCode": "iron",
-      "consumeOnUse": false,
-      "recipe": {
-        "item": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    },
-    "cellar-key": {
-      "name": "Cellar Key",
-      "type": "key",
-      "stat": "health",
-      "modifier": 0,
-      "properties": {
-        "equippable": false,
-        "equipped": false,
-        "destroyable": false,
-        "usable": false
-      },
-      "keyCode": "cellar",
-      "consumeOnUse": false,
-      "recipe": {
-        "item": 1
-      },
-      "teaches": null,
-      "immunities": null,
-      "grantsImmunity": null
-    }
-  },
   "aliases": {
-    "lantern": [
-      "lantern",
-      "lamp",
-      "light"
-    ],
-    "journal": [
-      "journal",
-      "diary",
-      "book"
-    ],
-    "poker": [
-      "poker",
-      "fire-poker",
-      "iron"
-    ],
-    "laudanum": [
-      "laudanum",
-      "vial",
-      "tonic"
-    ],
     "brass-key": [
       "brass key",
       "brass",
+      "key"
+    ],
+    "cellar-key": [
+      "cellar key",
+      "cellar",
       "key"
     ],
     "iron-key": [
@@ -188,501 +15,63 @@
       "iron",
       "key"
     ],
-    "cellar-key": [
-      "cellar key",
-      "cellar",
-      "key"
+    "journal": [
+      "journal",
+      "diary",
+      "book"
+    ],
+    "lantern": [
+      "lantern",
+      "lamp",
+      "light"
+    ],
+    "laudanum": [
+      "laudanum",
+      "vial",
+      "tonic"
+    ],
+    "poker": [
+      "poker",
+      "fire-poker",
+      "iron"
     ]
   },
   "behaviors": {
-    "dread": {
-      "family": "mechanic",
-      "script": {
-        "init": {},
-        "hooks": {
-          "onTurnStart": [
-            {
-              "kind": "guard",
-              "cond": {
-                "kind": "not",
-                "expr": {
-                  "kind": "hasEquipped",
-                  "of": {
-                    "kind": "actor"
-                  },
-                  "itemKey": "lantern"
-                }
-              }
-            },
-            {
-              "kind": "emit",
-              "effect": {
-                "kind": "adjustStat",
-                "target": {
-                  "kind": "actor"
-                },
-                "stat": "sanity",
-                "delta": {
-                  "kind": "lit",
-                  "value": -1
-                }
-              }
-            }
-          ]
-        },
-        "actions": {}
-      }
-    },
-    "storyteller": {
-      "family": "mechanic",
-      "script": {
-        "init": {
-          "seen": {}
-        },
-        "hooks": {
-          "onAction": [
-            {
-              "kind": "guard",
-              "cond": {
-                "kind": "bin",
-                "op": "eq",
-                "left": {
-                  "kind": "get",
-                  "of": {
-                    "kind": "action"
-                  },
-                  "field": "kind"
-                },
-                "right": {
-                  "kind": "lit",
-                  "value": "move"
-                }
-              }
-            },
-            {
-              "kind": "guard",
-              "cond": {
-                "kind": "has",
-                "map": {
-                  "kind": "mapLit",
-                  "entries": {
-                    "Parlor": "A page of the journal clears: 'They would not let me bury her properly. The parlor still smells of lilies.'",
-                    "Study": "The journal's hand grows frantic here: 'The thing in the cellar wears her face now. The iron key keeps it down.'",
-                    "Nursery": "An entry, water-blurred: 'The child never cried. That was the first wrong thing.'",
-                    "Cellar": "The last legible page: 'If you are reading this in the dark, you have already lost the light. I am sorry.'",
-                    "Attic": "The final entry is unfinished — but you understand it now, standing where it ends."
-                  }
-                },
-                "key": {
-                  "kind": "get",
-                  "of": {
-                    "kind": "get",
-                    "of": {
-                      "kind": "action"
-                    },
-                    "field": "room"
-                  },
-                  "field": "name"
-                }
-              }
-            },
-            {
-              "kind": "guard",
-              "cond": {
-                "kind": "hasItem",
-                "of": {
-                  "kind": "actor"
-                },
-                "itemKey": "journal"
-              }
-            },
-            {
-              "kind": "guard",
-              "cond": {
-                "kind": "not",
-                "expr": {
-                  "kind": "stateGetIn",
-                  "mapField": "seen",
-                  "key": {
-                    "kind": "get",
-                    "of": {
-                      "kind": "get",
-                      "of": {
-                        "kind": "action"
-                      },
-                      "field": "room"
-                    },
-                    "field": "name"
-                  },
-                  "default": false
-                }
-              }
-            },
-            {
-              "kind": "setStateIn",
-              "mapField": "seen",
-              "key": {
-                "kind": "get",
-                "of": {
-                  "kind": "get",
-                  "of": {
-                    "kind": "action"
-                  },
-                  "field": "room"
-                },
-                "field": "name"
-              },
-              "value": {
-                "kind": "lit",
-                "value": true
-              }
-            },
-            {
-              "kind": "emit",
-              "effect": {
-                "kind": "cue",
-                "text": {
-                  "kind": "lookup",
-                  "map": {
-                    "kind": "mapLit",
-                    "entries": {
-                      "Parlor": "A page of the journal clears: 'They would not let me bury her properly. The parlor still smells of lilies.'",
-                      "Study": "The journal's hand grows frantic here: 'The thing in the cellar wears her face now. The iron key keeps it down.'",
-                      "Nursery": "An entry, water-blurred: 'The child never cried. That was the first wrong thing.'",
-                      "Cellar": "The last legible page: 'If you are reading this in the dark, you have already lost the light. I am sorry.'",
-                      "Attic": "The final entry is unfinished — but you understand it now, standing where it ends."
-                    }
-                  },
-                  "key": {
-                    "kind": "get",
-                    "of": {
-                      "kind": "get",
-                      "of": {
-                        "kind": "action"
-                      },
-                      "field": "room"
-                    },
-                    "field": "name"
-                  }
-                }
-              }
-            }
-          ]
-        },
-        "actions": {}
-      }
-    },
-    "status-bar": {
-      "family": "mechanic",
-      "script": {
-        "init": {},
-        "hooks": {
-          "onRoundStart": [
-            {
-              "kind": "guard",
-              "cond": {
-                "kind": "bin",
-                "op": "gt",
-                "left": {
-                  "kind": "length",
-                  "list": {
-                    "kind": "party"
-                  }
-                },
-                "right": {
-                  "kind": "lit",
-                  "value": 0
-                }
-              }
-            },
-            {
-              "kind": "emit",
-              "effect": {
-                "kind": "status",
-                "fields": [
-                  {
-                    "label": "Sanity",
-                    "value": {
-                      "kind": "str",
-                      "num": {
-                        "kind": "get",
-                        "of": {
-                          "kind": "first",
-                          "list": {
-                            "kind": "party"
-                          }
-                        },
-                        "field": "sanity"
-                      }
-                    },
-                    "emphasis": {
-                      "kind": "ifElse",
-                      "cond": {
-                        "kind": "bin",
-                        "op": "lte",
-                        "left": {
-                          "kind": "get",
-                          "of": {
-                            "kind": "first",
-                            "list": {
-                              "kind": "party"
-                            }
-                          },
-                          "field": "sanity"
-                        },
-                        "right": {
-                          "kind": "lit",
-                          "value": 3
-                        }
-                      },
-                      "then": {
-                        "kind": "lit",
-                        "value": "critical"
-                      },
-                      "else": {
-                        "kind": "ifElse",
-                        "cond": {
-                          "kind": "bin",
-                          "op": "lte",
-                          "left": {
-                            "kind": "get",
-                            "of": {
-                              "kind": "first",
-                              "list": {
-                                "kind": "party"
-                              }
-                            },
-                            "field": "sanity"
-                          },
-                          "right": {
-                            "kind": "lit",
-                            "value": 6
-                          }
-                        },
-                        "then": {
-                          "kind": "lit",
-                          "value": "warn"
-                        },
-                        "else": {
-                          "kind": "lit",
-                          "value": "normal"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "label": "Round",
-                    "value": {
-                      "kind": "concat",
-                      "parts": [
-                        {
-                          "kind": "str",
-                          "num": {
-                            "kind": "round"
-                          }
-                        },
-                        {
-                          "kind": "lit",
-                          "value": "/"
-                        },
-                        {
-                          "kind": "str",
-                          "num": {
-                            "kind": "maxRounds"
-                          }
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }
-            }
-          ],
-          "onTurnEnd": [
-            {
-              "kind": "emit",
-              "effect": {
-                "kind": "status",
-                "fields": [
-                  {
-                    "label": "Sanity",
-                    "value": {
-                      "kind": "str",
-                      "num": {
-                        "kind": "get",
-                        "of": {
-                          "kind": "actor"
-                        },
-                        "field": "sanity"
-                      }
-                    },
-                    "emphasis": {
-                      "kind": "ifElse",
-                      "cond": {
-                        "kind": "bin",
-                        "op": "lte",
-                        "left": {
-                          "kind": "get",
-                          "of": {
-                            "kind": "actor"
-                          },
-                          "field": "sanity"
-                        },
-                        "right": {
-                          "kind": "lit",
-                          "value": 3
-                        }
-                      },
-                      "then": {
-                        "kind": "lit",
-                        "value": "critical"
-                      },
-                      "else": {
-                        "kind": "ifElse",
-                        "cond": {
-                          "kind": "bin",
-                          "op": "lte",
-                          "left": {
-                            "kind": "get",
-                            "of": {
-                              "kind": "actor"
-                            },
-                            "field": "sanity"
-                          },
-                          "right": {
-                            "kind": "lit",
-                            "value": 6
-                          }
-                        },
-                        "then": {
-                          "kind": "lit",
-                          "value": "warn"
-                        },
-                        "else": {
-                          "kind": "lit",
-                          "value": "normal"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "label": "Round",
-                    "value": {
-                      "kind": "concat",
-                      "parts": [
-                        {
-                          "kind": "str",
-                          "num": {
-                            "kind": "round"
-                          }
-                        },
-                        {
-                          "kind": "lit",
-                          "value": "/"
-                        },
-                        {
-                          "kind": "str",
-                          "num": {
-                            "kind": "maxRounds"
-                          }
-                        }
-                      ]
-                    }
-                  }
-                ]
-              }
-            }
-          ]
-        },
-        "actions": {}
-      }
-    },
-    "study-door": {
-      "family": "exit",
-      "script": {
-        "canPass": {
-          "kind": "bin",
-          "op": "or",
-          "left": {
-            "kind": "stateGet",
-            "field": "unlocked",
-            "default": false
-          },
-          "right": {
-            "kind": "hasKey",
-            "of": {
-              "kind": "actor"
-            },
-            "keyCode": "brass"
-          }
-        },
-        "runScript": [
-          {
-            "kind": "when",
-            "cond": {
-              "kind": "not",
-              "expr": {
-                "kind": "stateGet",
-                "field": "unlocked",
-                "default": false
-              }
-            },
-            "then": [
-              {
-                "kind": "setState",
-                "field": "unlocked",
-                "value": {
-                  "kind": "lit",
-                  "value": true
-                }
-              },
-              {
-                "kind": "pass",
-                "value": {
-                  "kind": "lit",
-                  "value": "The brass key turns; the study door swings open."
-                }
-              }
-            ]
-          }
-        ],
-        "failMessage": "The study door won't budge — it's locked."
-      }
-    },
     "attic-door": {
       "family": "exit",
       "script": {
         "canPass": {
           "kind": "bin",
-          "op": "or",
           "left": {
-            "kind": "stateGet",
+            "default": false,
             "field": "unlocked",
-            "default": false
+            "kind": "stateGet"
           },
+          "op": "or",
           "right": {
+            "keyCode": "iron",
             "kind": "hasKey",
             "of": {
               "kind": "actor"
-            },
-            "keyCode": "iron"
+            }
           }
         },
+        "failMessage": "The attic door won't budge — it's locked.",
         "runScript": [
           {
-            "kind": "when",
             "cond": {
-              "kind": "not",
               "expr": {
-                "kind": "stateGet",
+                "default": false,
                 "field": "unlocked",
-                "default": false
-              }
+                "kind": "stateGet"
+              },
+              "kind": "not"
             },
+            "kind": "when",
             "then": [
               {
-                "kind": "setState",
                 "field": "unlocked",
+                "kind": "setState",
                 "value": {
                   "kind": "lit",
                   "value": true
@@ -697,240 +86,26 @@
               }
             ]
           }
-        ],
-        "failMessage": "The attic door won't budge — it's locked."
-      }
-    },
-    "cellar-door": {
-      "family": "exit",
-      "script": {
-        "canPass": {
-          "kind": "bin",
-          "op": "or",
-          "left": {
-            "kind": "stateGet",
-            "field": "unlocked",
-            "default": false
-          },
-          "right": {
-            "kind": "hasKey",
-            "of": {
-              "kind": "actor"
-            },
-            "keyCode": "cellar"
-          }
-        },
-        "runScript": [
-          {
-            "kind": "when",
-            "cond": {
-              "kind": "not",
-              "expr": {
-                "kind": "stateGet",
-                "field": "unlocked",
-                "default": false
-              }
-            },
-            "then": [
-              {
-                "kind": "setState",
-                "field": "unlocked",
-                "value": {
-                  "kind": "lit",
-                  "value": true
-                }
-              },
-              {
-                "kind": "pass",
-                "value": {
-                  "kind": "lit",
-                  "value": "The cellar key turns; the cellar door swings open."
-                }
-              }
-            ]
-          }
-        ],
-        "failMessage": "The cellar door won't budge — it's locked."
-      }
-    },
-    "laudanum": {
-      "family": "item",
-      "script": {
-        "onUse": [
-          {
-            "kind": "emit",
-            "effect": {
-              "kind": "adjustStat",
-              "target": {
-                "kind": "actor"
-              },
-              "stat": "sanity",
-              "delta": {
-                "kind": "lit",
-                "value": 6
-              }
-            }
-          }
         ]
-      }
-    },
-    "rat-tail": {
-      "family": "item",
-      "script": {
-        "onUse": [
-          {
-            "kind": "emit",
-            "effect": {
-              "kind": "adjustStat",
-              "target": {
-                "kind": "actor"
-              },
-              "stat": "sanity",
-              "delta": {
-                "kind": "lit",
-                "value": 1
-              }
-            }
-          }
-        ]
-      }
-    },
-    "reached-attic-with-journal": {
-      "family": "victory",
-      "script": {
-        "test": {
-          "kind": "bin",
-          "op": "and",
-          "left": {
-            "kind": "bin",
-            "op": "eq",
-            "left": {
-              "kind": "get",
-              "of": {
-                "kind": "get",
-                "of": {
-                  "kind": "first",
-                  "list": {
-                    "kind": "party"
-                  }
-                },
-                "field": "room"
-              },
-              "field": "name"
-            },
-            "right": {
-              "kind": "lit",
-              "value": "Attic"
-            }
-          },
-          "right": {
-            "kind": "hasItem",
-            "of": {
-              "kind": "first",
-              "list": {
-                "kind": "party"
-              }
-            },
-            "itemKey": "journal"
-          }
-        }
-      }
-    },
-    "sanity-zero": {
-      "family": "victory",
-      "script": {
-        "test": {
-          "kind": "some",
-          "list": {
-            "kind": "party"
-          },
-          "pred": {
-            "kind": "bin",
-            "op": "lte",
-            "left": {
-              "kind": "get",
-              "of": {
-                "kind": "element"
-              },
-              "field": "sanity"
-            },
-            "right": {
-              "kind": "lit",
-              "value": 0
-            }
-          }
-        }
-      }
-    },
-    "party-down": {
-      "family": "victory",
-      "script": {
-        "test": {
-          "kind": "bin",
-          "op": "and",
-          "left": {
-            "kind": "bin",
-            "op": "gt",
-            "left": {
-              "kind": "length",
-              "list": {
-                "kind": "party"
-              }
-            },
-            "right": {
-              "kind": "lit",
-              "value": 0
-            }
-          },
-          "right": {
-            "kind": "every",
-            "list": {
-              "kind": "party"
-            },
-            "pred": {
-              "kind": "includes",
-              "list": {
-                "kind": "get",
-                "of": {
-                  "kind": "element"
-                },
-                "field": "status"
-              },
-              "value": {
-                "kind": "lit",
-                "value": "ko"
-              }
-            }
-          }
-        }
       }
     },
     "caretaker": {
       "family": "npc",
       "script": {
-        "description": "A stooped caretaker in a moth-eaten coat, a ring of iron keys trembling at his belt. He will not meet your eyes.",
         "default": {
-          "match": {
-            "kind": "exact",
-            "text": ""
-          },
-          "response": {
-            "kind": "lit",
-            "value": "Take the cellar key. I have no more use for it, nor for this house. I am leaving now, and I will not come back."
-          },
           "effects": [
             {
-              "kind": "giveItem",
               "from": {
                 "kind": "lit",
                 "value": "npc:Caretaker"
               },
-              "to": {
-                "kind": "actor"
-              },
               "item": {
                 "kind": "lit",
                 "value": "npc:Caretaker:item#0"
+              },
+              "kind": "giveItem",
+              "to": {
+                "kind": "actor"
               }
             },
             {
@@ -945,8 +120,17 @@
               }
             }
           ],
-          "once": true
+          "match": {
+            "kind": "exact",
+            "text": ""
+          },
+          "once": true,
+          "response": {
+            "kind": "lit",
+            "value": "Take the cellar key. I have no more use for it, nor for this house. I am leaving now, and I will not come back."
+          }
         },
+        "description": "A stooped caretaker in a moth-eaten coat, a ring of iron keys trembling at his belt. He will not meet your eyes.",
         "dialogue": []
       }
     },
@@ -956,84 +140,900 @@
         "canPlay": null,
         "onEnter": [
           {
-            "kind": "emit",
             "effect": {
               "kind": "cue",
               "text": {
                 "kind": "lit",
                 "value": "The front door thuds shut behind you and will not open again. In the gloom of the foyer, a stooped figure waits, a ring of keys shaking in his hand."
               }
+            },
+            "kind": "emit"
+          }
+        ]
+      }
+    },
+    "cellar-door": {
+      "family": "exit",
+      "script": {
+        "canPass": {
+          "kind": "bin",
+          "left": {
+            "default": false,
+            "field": "unlocked",
+            "kind": "stateGet"
+          },
+          "op": "or",
+          "right": {
+            "keyCode": "cellar",
+            "kind": "hasKey",
+            "of": {
+              "kind": "actor"
             }
+          }
+        },
+        "failMessage": "The cellar door won't budge — it's locked.",
+        "runScript": [
+          {
+            "cond": {
+              "expr": {
+                "default": false,
+                "field": "unlocked",
+                "kind": "stateGet"
+              },
+              "kind": "not"
+            },
+            "kind": "when",
+            "then": [
+              {
+                "field": "unlocked",
+                "kind": "setState",
+                "value": {
+                  "kind": "lit",
+                  "value": true
+                }
+              },
+              {
+                "kind": "pass",
+                "value": {
+                  "kind": "lit",
+                  "value": "The cellar key turns; the cellar door swings open."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "dread": {
+      "family": "mechanic",
+      "script": {
+        "actions": {},
+        "hooks": {
+          "onTurnStart": [
+            {
+              "cond": {
+                "expr": {
+                  "itemKey": "lantern",
+                  "kind": "hasEquipped",
+                  "of": {
+                    "kind": "actor"
+                  }
+                },
+                "kind": "not"
+              },
+              "kind": "guard"
+            },
+            {
+              "effect": {
+                "delta": {
+                  "kind": "lit",
+                  "value": -1.0
+                },
+                "kind": "adjustStat",
+                "stat": "sanity",
+                "target": {
+                  "kind": "actor"
+                }
+              },
+              "kind": "emit"
+            }
+          ]
+        },
+        "init": {}
+      }
+    },
+    "laudanum": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "effect": {
+              "delta": {
+                "kind": "lit",
+                "value": 6.0
+              },
+              "kind": "adjustStat",
+              "stat": "sanity",
+              "target": {
+                "kind": "actor"
+              }
+            },
+            "kind": "emit"
+          }
+        ]
+      }
+    },
+    "party-down": {
+      "family": "victory",
+      "script": {
+        "test": {
+          "kind": "bin",
+          "left": {
+            "kind": "bin",
+            "left": {
+              "kind": "length",
+              "list": {
+                "kind": "party"
+              }
+            },
+            "op": "gt",
+            "right": {
+              "kind": "lit",
+              "value": 0.0
+            }
+          },
+          "op": "and",
+          "right": {
+            "kind": "every",
+            "list": {
+              "kind": "party"
+            },
+            "pred": {
+              "kind": "includes",
+              "list": {
+                "field": "status",
+                "kind": "get",
+                "of": {
+                  "kind": "element"
+                }
+              },
+              "value": {
+                "kind": "lit",
+                "value": "ko"
+              }
+            }
+          }
+        }
+      }
+    },
+    "rat-tail": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "effect": {
+              "delta": {
+                "kind": "lit",
+                "value": 1.0
+              },
+              "kind": "adjustStat",
+              "stat": "sanity",
+              "target": {
+                "kind": "actor"
+              }
+            },
+            "kind": "emit"
+          }
+        ]
+      }
+    },
+    "reached-attic-with-journal": {
+      "family": "victory",
+      "script": {
+        "test": {
+          "kind": "bin",
+          "left": {
+            "kind": "bin",
+            "left": {
+              "field": "name",
+              "kind": "get",
+              "of": {
+                "field": "room",
+                "kind": "get",
+                "of": {
+                  "kind": "first",
+                  "list": {
+                    "kind": "party"
+                  }
+                }
+              }
+            },
+            "op": "eq",
+            "right": {
+              "kind": "lit",
+              "value": "Attic"
+            }
+          },
+          "op": "and",
+          "right": {
+            "itemKey": "journal",
+            "kind": "hasItem",
+            "of": {
+              "kind": "first",
+              "list": {
+                "kind": "party"
+              }
+            }
+          }
+        }
+      }
+    },
+    "sanity-zero": {
+      "family": "victory",
+      "script": {
+        "test": {
+          "kind": "some",
+          "list": {
+            "kind": "party"
+          },
+          "pred": {
+            "kind": "bin",
+            "left": {
+              "field": "sanity",
+              "kind": "get",
+              "of": {
+                "kind": "element"
+              }
+            },
+            "op": "lte",
+            "right": {
+              "kind": "lit",
+              "value": 0.0
+            }
+          }
+        }
+      }
+    },
+    "status-bar": {
+      "family": "mechanic",
+      "script": {
+        "actions": {},
+        "hooks": {
+          "onRoundStart": [
+            {
+              "cond": {
+                "kind": "bin",
+                "left": {
+                  "kind": "length",
+                  "list": {
+                    "kind": "party"
+                  }
+                },
+                "op": "gt",
+                "right": {
+                  "kind": "lit",
+                  "value": 0.0
+                }
+              },
+              "kind": "guard"
+            },
+            {
+              "effect": {
+                "fields": [
+                  {
+                    "emphasis": {
+                      "cond": {
+                        "kind": "bin",
+                        "left": {
+                          "field": "sanity",
+                          "kind": "get",
+                          "of": {
+                            "kind": "first",
+                            "list": {
+                              "kind": "party"
+                            }
+                          }
+                        },
+                        "op": "lte",
+                        "right": {
+                          "kind": "lit",
+                          "value": 3.0
+                        }
+                      },
+                      "else": {
+                        "cond": {
+                          "kind": "bin",
+                          "left": {
+                            "field": "sanity",
+                            "kind": "get",
+                            "of": {
+                              "kind": "first",
+                              "list": {
+                                "kind": "party"
+                              }
+                            }
+                          },
+                          "op": "lte",
+                          "right": {
+                            "kind": "lit",
+                            "value": 6.0
+                          }
+                        },
+                        "else": {
+                          "kind": "lit",
+                          "value": "normal"
+                        },
+                        "kind": "ifElse",
+                        "then": {
+                          "kind": "lit",
+                          "value": "warn"
+                        }
+                      },
+                      "kind": "ifElse",
+                      "then": {
+                        "kind": "lit",
+                        "value": "critical"
+                      }
+                    },
+                    "label": "Sanity",
+                    "value": {
+                      "kind": "str",
+                      "num": {
+                        "field": "sanity",
+                        "kind": "get",
+                        "of": {
+                          "kind": "first",
+                          "list": {
+                            "kind": "party"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "label": "Round",
+                    "value": {
+                      "kind": "concat",
+                      "parts": [
+                        {
+                          "kind": "str",
+                          "num": {
+                            "kind": "round"
+                          }
+                        },
+                        {
+                          "kind": "lit",
+                          "value": "/"
+                        },
+                        {
+                          "kind": "str",
+                          "num": {
+                            "kind": "maxRounds"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "kind": "status"
+              },
+              "kind": "emit"
+            }
+          ],
+          "onTurnEnd": [
+            {
+              "effect": {
+                "fields": [
+                  {
+                    "emphasis": {
+                      "cond": {
+                        "kind": "bin",
+                        "left": {
+                          "field": "sanity",
+                          "kind": "get",
+                          "of": {
+                            "kind": "actor"
+                          }
+                        },
+                        "op": "lte",
+                        "right": {
+                          "kind": "lit",
+                          "value": 3.0
+                        }
+                      },
+                      "else": {
+                        "cond": {
+                          "kind": "bin",
+                          "left": {
+                            "field": "sanity",
+                            "kind": "get",
+                            "of": {
+                              "kind": "actor"
+                            }
+                          },
+                          "op": "lte",
+                          "right": {
+                            "kind": "lit",
+                            "value": 6.0
+                          }
+                        },
+                        "else": {
+                          "kind": "lit",
+                          "value": "normal"
+                        },
+                        "kind": "ifElse",
+                        "then": {
+                          "kind": "lit",
+                          "value": "warn"
+                        }
+                      },
+                      "kind": "ifElse",
+                      "then": {
+                        "kind": "lit",
+                        "value": "critical"
+                      }
+                    },
+                    "label": "Sanity",
+                    "value": {
+                      "kind": "str",
+                      "num": {
+                        "field": "sanity",
+                        "kind": "get",
+                        "of": {
+                          "kind": "actor"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "label": "Round",
+                    "value": {
+                      "kind": "concat",
+                      "parts": [
+                        {
+                          "kind": "str",
+                          "num": {
+                            "kind": "round"
+                          }
+                        },
+                        {
+                          "kind": "lit",
+                          "value": "/"
+                        },
+                        {
+                          "kind": "str",
+                          "num": {
+                            "kind": "maxRounds"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "kind": "status"
+              },
+              "kind": "emit"
+            }
+          ]
+        },
+        "init": {}
+      }
+    },
+    "storyteller": {
+      "family": "mechanic",
+      "script": {
+        "actions": {},
+        "hooks": {
+          "onAction": [
+            {
+              "cond": {
+                "kind": "bin",
+                "left": {
+                  "field": "kind",
+                  "kind": "get",
+                  "of": {
+                    "kind": "action"
+                  }
+                },
+                "op": "eq",
+                "right": {
+                  "kind": "lit",
+                  "value": "move"
+                }
+              },
+              "kind": "guard"
+            },
+            {
+              "cond": {
+                "key": {
+                  "field": "name",
+                  "kind": "get",
+                  "of": {
+                    "field": "room",
+                    "kind": "get",
+                    "of": {
+                      "kind": "action"
+                    }
+                  }
+                },
+                "kind": "has",
+                "map": {
+                  "entries": {
+                    "Attic": "The final entry is unfinished — but you understand it now, standing where it ends.",
+                    "Cellar": "The last legible page: 'If you are reading this in the dark, you have already lost the light. I am sorry.'",
+                    "Nursery": "An entry, water-blurred: 'The child never cried. That was the first wrong thing.'",
+                    "Parlor": "A page of the journal clears: 'They would not let me bury her properly. The parlor still smells of lilies.'",
+                    "Study": "The journal's hand grows frantic here: 'The thing in the cellar wears her face now. The iron key keeps it down.'"
+                  },
+                  "kind": "mapLit"
+                }
+              },
+              "kind": "guard"
+            },
+            {
+              "cond": {
+                "itemKey": "journal",
+                "kind": "hasItem",
+                "of": {
+                  "kind": "actor"
+                }
+              },
+              "kind": "guard"
+            },
+            {
+              "cond": {
+                "expr": {
+                  "default": false,
+                  "key": {
+                    "field": "name",
+                    "kind": "get",
+                    "of": {
+                      "field": "room",
+                      "kind": "get",
+                      "of": {
+                        "kind": "action"
+                      }
+                    }
+                  },
+                  "kind": "stateGetIn",
+                  "mapField": "seen"
+                },
+                "kind": "not"
+              },
+              "kind": "guard"
+            },
+            {
+              "key": {
+                "field": "name",
+                "kind": "get",
+                "of": {
+                  "field": "room",
+                  "kind": "get",
+                  "of": {
+                    "kind": "action"
+                  }
+                }
+              },
+              "kind": "setStateIn",
+              "mapField": "seen",
+              "value": {
+                "kind": "lit",
+                "value": true
+              }
+            },
+            {
+              "effect": {
+                "kind": "cue",
+                "text": {
+                  "key": {
+                    "field": "name",
+                    "kind": "get",
+                    "of": {
+                      "field": "room",
+                      "kind": "get",
+                      "of": {
+                        "kind": "action"
+                      }
+                    }
+                  },
+                  "kind": "lookup",
+                  "map": {
+                    "entries": {
+                      "Attic": "The final entry is unfinished — but you understand it now, standing where it ends.",
+                      "Cellar": "The last legible page: 'If you are reading this in the dark, you have already lost the light. I am sorry.'",
+                      "Nursery": "An entry, water-blurred: 'The child never cried. That was the first wrong thing.'",
+                      "Parlor": "A page of the journal clears: 'They would not let me bury her properly. The parlor still smells of lilies.'",
+                      "Study": "The journal's hand grows frantic here: 'The thing in the cellar wears her face now. The iron key keeps it down.'"
+                    },
+                    "kind": "mapLit"
+                  }
+                }
+              },
+              "kind": "emit"
+            }
+          ]
+        },
+        "init": {
+          "seen": {}
+        }
+      }
+    },
+    "study-door": {
+      "family": "exit",
+      "script": {
+        "canPass": {
+          "kind": "bin",
+          "left": {
+            "default": false,
+            "field": "unlocked",
+            "kind": "stateGet"
+          },
+          "op": "or",
+          "right": {
+            "keyCode": "brass",
+            "kind": "hasKey",
+            "of": {
+              "kind": "actor"
+            }
+          }
+        },
+        "failMessage": "The study door won't budge — it's locked.",
+        "runScript": [
+          {
+            "cond": {
+              "expr": {
+                "default": false,
+                "field": "unlocked",
+                "kind": "stateGet"
+              },
+              "kind": "not"
+            },
+            "kind": "when",
+            "then": [
+              {
+                "field": "unlocked",
+                "kind": "setState",
+                "value": {
+                  "kind": "lit",
+                  "value": true
+                }
+              },
+              {
+                "kind": "pass",
+                "value": {
+                  "kind": "lit",
+                  "value": "The brass key turns; the study door swings open."
+                }
+              }
+            ]
           }
         ]
       }
     }
   },
   "formations": {
-    "rat-single": {
-      "mobs": [
-        {
-          "name": "Rat",
-          "stats": {
-            "health": 2,
-            "sanity": 2,
-            "energy": 3
-          },
-          "naturalAttack": {
-            "stat": "health",
-            "power": 1
-          },
-          "drops": [
-            "rat-tail"
-          ],
-          "baseEscapeChance": 50,
-          "lightAverse": false,
-          "materialDrops": {},
-          "actionsPerRound": 2
-        }
-      ]
-    },
     "rat-pair": {
       "mobs": [
         {
-          "name": "Rat",
-          "stats": {
-            "health": 2,
-            "sanity": 2,
-            "energy": 3
-          },
-          "naturalAttack": {
-            "stat": "health",
-            "power": 1
-          },
+          "actionsPerRound": 2,
+          "baseEscapeChance": 50,
           "drops": [
             "rat-tail"
           ],
-          "baseEscapeChance": 50,
           "lightAverse": false,
           "materialDrops": {},
-          "actionsPerRound": 2
+          "name": "Rat",
+          "naturalAttack": {
+            "power": 1.0,
+            "stat": "health"
+          },
+          "stats": {
+            "energy": 3.0,
+            "health": 2.0,
+            "sanity": 2.0
+          }
         },
         {
-          "name": "Rat",
-          "stats": {
-            "health": 2,
-            "sanity": 2,
-            "energy": 3
-          },
-          "naturalAttack": {
-            "stat": "health",
-            "power": 1
-          },
+          "actionsPerRound": 2,
+          "baseEscapeChance": 50,
           "drops": [
             "rat-tail"
           ],
-          "baseEscapeChance": 50,
           "lightAverse": false,
           "materialDrops": {},
-          "actionsPerRound": 2
+          "name": "Rat",
+          "naturalAttack": {
+            "power": 1.0,
+            "stat": "health"
+          },
+          "stats": {
+            "energy": 3.0,
+            "health": 2.0,
+            "sanity": 2.0
+          }
         }
       ]
+    },
+    "rat-single": {
+      "mobs": [
+        {
+          "actionsPerRound": 2,
+          "baseEscapeChance": 50,
+          "drops": [
+            "rat-tail"
+          ],
+          "lightAverse": false,
+          "materialDrops": {},
+          "name": "Rat",
+          "naturalAttack": {
+            "power": 1.0,
+            "stat": "health"
+          },
+          "stats": {
+            "energy": 3.0,
+            "health": 2.0,
+            "sanity": 2.0
+          }
+        }
+      ]
+    }
+  },
+  "items": {
+    "brass-key": {
+      "consumeOnUse": false,
+      "grantsImmunity": null,
+      "immunities": null,
+      "keyCode": "brass",
+      "modifier": 0,
+      "name": "Brass Key",
+      "properties": {
+        "destroyable": false,
+        "equippable": false,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {
+        "item": 1
+      },
+      "stat": "health",
+      "teaches": null,
+      "type": "key"
+    },
+    "cellar-key": {
+      "consumeOnUse": false,
+      "grantsImmunity": null,
+      "immunities": null,
+      "keyCode": "cellar",
+      "modifier": 0,
+      "name": "Cellar Key",
+      "properties": {
+        "destroyable": false,
+        "equippable": false,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {
+        "item": 1
+      },
+      "stat": "health",
+      "teaches": null,
+      "type": "key"
+    },
+    "iron-key": {
+      "consumeOnUse": false,
+      "grantsImmunity": null,
+      "immunities": null,
+      "keyCode": "iron",
+      "modifier": 0,
+      "name": "Iron Key",
+      "properties": {
+        "destroyable": false,
+        "equippable": false,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {
+        "item": 1
+      },
+      "stat": "health",
+      "teaches": null,
+      "type": "key"
+    },
+    "journal": {
+      "grantsImmunity": null,
+      "immunities": null,
+      "lore": "The journal's spine cracks as you open it. The early pages are a household's ordinary griefs — debts, a failing orchard, a wife taken too young. Then the hand changes. \"We buried her in the cellar because the ground outside would not hold her. By the third night she had climbed halfway back.\" The ink grows frantic: a child who never wept, a face in the dark that was almost hers, an iron key forged to keep the cellar door honest. The last entries are barely words — \"it wears her now; it wears all of us, in time\" — and beneath them, pressed flat and brown, a sprig of the lilies they laid on a coffin that never stayed shut. Whoever kept this journal loved the house once. It did not love them back.",
+      "modifier": 0,
+      "name": "Water-Stained Journal",
+      "properties": {
+        "destroyable": true,
+        "droppable": false,
+        "equippable": false,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {
+        "item": 1
+      },
+      "stat": "health",
+      "teaches": null,
+      "type": "consumable"
+    },
+    "lantern": {
+      "emitsLight": true,
+      "grantsImmunity": null,
+      "immunities": null,
+      "modifier": 0,
+      "name": "Brass Lantern",
+      "properties": {
+        "destroyable": true,
+        "equippable": true,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {
+        "item": 1
+      },
+      "slot": "hand",
+      "stat": "health",
+      "teaches": null,
+      "type": "weapon"
+    },
+    "laudanum": {
+      "grantsImmunity": null,
+      "immunities": null,
+      "modifier": 6,
+      "name": "Vial of Laudanum",
+      "properties": {
+        "destroyable": true,
+        "equippable": false,
+        "equipped": false,
+        "usable": true
+      },
+      "recipe": {
+        "healing": 1
+      },
+      "stat": "sanity",
+      "teaches": null,
+      "type": "consumable"
+    },
+    "poker": {
+      "grantsImmunity": null,
+      "immunities": null,
+      "maxDurability": 8,
+      "modifier": 5,
+      "name": "Iron Fire-Poker",
+      "properties": {
+        "destroyable": true,
+        "equippable": true,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {
+        "metal": 1
+      },
+      "slot": "hand",
+      "stat": "health",
+      "teaches": null,
+      "type": "weapon"
+    },
+    "rat-tail": {
+      "grantsImmunity": null,
+      "immunities": null,
+      "modifier": 1,
+      "name": "Rat Tail",
+      "properties": {
+        "destroyable": true,
+        "equippable": false,
+        "equipped": false,
+        "usable": true
+      },
+      "recipe": {
+        "item": 1
+      },
+      "stat": "sanity",
+      "teaches": null,
+      "type": "consumable"
     }
   },
   "recipes": {}

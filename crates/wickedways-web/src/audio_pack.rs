@@ -1,7 +1,7 @@
-//! The soundpack / director layer (Phase 2c, sub-project D — slice 4, audio runtime).
+//! The soundpack / director layer.
 //!
 //! Layers 1–2 of the 4-layer audio architecture (`AudioDirector → SoundPack → SoundSpec →
-//! AudioBackend`), ported from `audio/contracts.ts`, `audio/default-pack.ts`, and `audio/tension.ts`:
+//! AudioBackend`):
 //!
 //! - An [`AudioDirector`] is the **audio brain** — it turns an engine [`PresentationCue`] into zero or
 //!   more discrete [`AudioCue`]s and reads a continuous `tension` (0–1) off the [`ViewModel`] DTO for
@@ -22,9 +22,9 @@ use wickedways_core::StatType;
 
 use crate::audio::{error_sound, sound_for_cue, sound_for_mob_attack, SynthVoice};
 
-/// How to produce one sound event. The `Synth` arm is rendered by the procedural engine; the
-/// `Sample` arm (a decoded `AudioBuffer` / asset path) is deferred — scored audio is a later slice,
-/// but the type stays an enum so it can be added without touching the contract.
+/// How to produce one sound event. The `Synth` arm is rendered by the procedural engine; a `Sample`
+/// arm (a decoded `AudioBuffer` / asset path) is deferred — scored audio is future work, but the
+/// type stays an enum so it can be added without touching the contract.
 #[derive(Clone, Debug, PartialEq)]
 pub enum SoundSpec {
     Synth { voice: SynthVoice },
@@ -42,10 +42,16 @@ pub struct AudioCue {
 
 impl AudioCue {
     fn bare(kind: &str) -> Self {
-        Self { kind: kind.into(), entity_id: None }
+        Self {
+            kind: kind.into(),
+            entity_id: None,
+        }
     }
     fn of(kind: &str, entity_id: &str) -> Self {
-        Self { kind: kind.into(), entity_id: Some(entity_id.into()) }
+        Self {
+            kind: kind.into(),
+            entity_id: Some(entity_id.into()),
+        }
     }
 }
 
@@ -83,8 +89,7 @@ pub struct CampaignAudio {
 }
 
 /// Map current sanity to a tension in `[0, 1]`, normalized against a baseline (the session
-/// high-water mark). At or above baseline → 0 (calm); zero sanity → 1 (tense). Mirrors
-/// `sanityToTension`.
+/// high-water mark). At or above baseline → 0 (calm); zero sanity → 1 (tense).
 pub fn sanity_to_tension(current: f64, baseline: f64) -> f64 {
     if baseline <= 0.0 {
         return 0.0;
@@ -107,8 +112,8 @@ impl SanityTension {
     }
 }
 
-/// Map an engine `PresentationCue` to base [`AudioCue`]s. Mirrors `cuesFor` — the same triggers the
-/// original `sound_for_cue` fired on.
+/// Map an engine `PresentationCue` to base [`AudioCue`]s — the same triggers `sound_for_cue` fires
+/// on.
 pub fn cues_for(cue: &PresentationCue) -> Vec<AudioCue> {
     match cue {
         PresentationCue::Action { action, actor, .. } => match action {
@@ -131,12 +136,24 @@ pub fn cues_for(cue: &PresentationCue) -> Vec<AudioCue> {
 }
 
 /// Base [`AudioCue`] → [`SynthVoice`], reusing the [`crate::audio`] voices by reconstructing a
-/// representative cue so the chiptune timbre is unchanged. Mirrors `voiceFor`.
+/// representative cue so the chiptune timbre is unchanged.
 fn voice_for(cue: &AudioCue) -> Option<SynthVoice> {
     let id = cue.entity_id.clone().unwrap_or_default();
-    let actor = || EntityRef { id: id.clone(), name: String::new() };
-    let nowhere = || EntityRef { id: String::new(), name: String::new() };
-    let action = |kind| sound_for_cue(&PresentationCue::Action { action: kind, actor: actor(), sound: None });
+    let actor = || EntityRef {
+        id: id.clone(),
+        name: String::new(),
+    };
+    let nowhere = || EntityRef {
+        id: String::new(),
+        name: String::new(),
+    };
+    let action = |kind| {
+        sound_for_cue(&PresentationCue::Action {
+            action: kind,
+            actor: actor(),
+            sound: None,
+        })
+    };
     match cue.kind.as_str() {
         "strike" => action(ActionKind::Attack),
         "takeDamage" => action(ActionKind::TakeDamage),
@@ -144,12 +161,31 @@ fn voice_for(cue: &AudioCue) -> Option<SynthVoice> {
         "pickup" => action(ActionKind::PickUp),
         "drop" => action(ActionKind::Drop),
         "move" => action(ActionKind::Move),
-        "light" => sound_for_cue(&PresentationCue::Visibility { room: nowhere(), lit: true }),
-        "encounter" => sound_for_cue(&PresentationCue::Encounter { mob: actor(), room: nowhere(), sound: None }),
+        "light" => sound_for_cue(&PresentationCue::Visibility {
+            room: nowhere(),
+            lit: true,
+        }),
+        "encounter" => sound_for_cue(&PresentationCue::Encounter {
+            mob: actor(),
+            room: nowhere(),
+            sound: None,
+        }),
         // Reserved for custom directors; no default engine event maps to "death".
-        "death" => Some(sound_for_mob_attack(&MobAttack { name: String::new(), stat: StatType::Sanity, amount: 1.0 })),
-        "win" => sound_for_cue(&PresentationCue::Resolution { outcome: CampaignOutcome::Won, reason: None, narration: None }),
-        "lose" => sound_for_cue(&PresentationCue::Resolution { outcome: CampaignOutcome::Lost, reason: None, narration: None }),
+        "death" => Some(sound_for_mob_attack(&MobAttack {
+            name: String::new(),
+            stat: StatType::Sanity,
+            amount: 1.0,
+        })),
+        "win" => sound_for_cue(&PresentationCue::Resolution {
+            outcome: CampaignOutcome::Won,
+            reason: None,
+            narration: None,
+        }),
+        "lose" => sound_for_cue(&PresentationCue::Resolution {
+            outcome: CampaignOutcome::Lost,
+            reason: None,
+            narration: None,
+        }),
         _ => None,
     }
 }
@@ -159,17 +195,24 @@ fn chiptune_voice(cue: &AudioCue) -> Option<SoundSpec> {
 }
 
 fn chiptune_ambient(tension: f64) -> AmbientDirective {
-    AmbientDirective { bed_tension: tension }
+    AmbientDirective {
+        bed_tension: tension,
+    }
 }
 
 /// The default soundpack: covers every base cue with the original chiptune voices and passes tension
-/// straight through to the bed. Mirrors `defaultChiptunePack`.
+/// straight through to the bed.
 pub fn default_chiptune_pack() -> SoundPack {
-    SoundPack { id: "chiptune", label: "Chiptune", voice: chiptune_voice, ambient: chiptune_ambient }
+    SoundPack {
+        id: "chiptune",
+        label: "Chiptune",
+        voice: chiptune_voice,
+        ambient: chiptune_ambient,
+    }
 }
 
 /// A stateless director: discrete cues via [`cues_for`], and a **flat** ambient bed (tension is always
-/// 0, ignoring the view). Mirrors `defaultDirector`.
+/// 0, ignoring the view).
 struct DefaultDirector;
 
 impl AudioDirector for DefaultDirector {
@@ -183,8 +226,7 @@ impl AudioDirector for DefaultDirector {
 
 /// The sanity-reactive director shipped for the bundled WickedWays campaigns: discrete cues via
 /// [`cues_for`], and tension from sanity vs. the session high-water mark (the ambient bed tightens as
-/// sanity drains). The analog of hollow-house's `createHollowHouseDirector` — every bundled campaign
-/// is sanity-driven horror.
+/// sanity drains) — every bundled campaign is sanity-driven horror.
 #[derive(Default)]
 struct SanityDirector {
     tension: SanityTension,
@@ -199,7 +241,7 @@ impl AudioDirector for SanityDirector {
     }
 }
 
-/// A fresh flat director (no view reactivity). Mirrors `defaultDirector`.
+/// A fresh flat director (no view reactivity).
 pub fn default_director() -> Box<dyn AudioDirector> {
     Box::new(DefaultDirector)
 }
@@ -212,7 +254,10 @@ pub fn sanity_director() -> Box<dyn AudioDirector> {
 /// The audio config for the bundled WickedWays campaigns: a sanity-reactive director over the default
 /// chiptune pack, so the ambient bed breathes with the active character's sanity.
 pub fn wickedways_campaign_audio() -> CampaignAudio {
-    CampaignAudio { make_director: sanity_director, soundpacks: vec![default_chiptune_pack()] }
+    CampaignAudio {
+        make_director: sanity_director,
+        soundpacks: vec![default_chiptune_pack()],
+    }
 }
 
 #[cfg(test)]
@@ -220,7 +265,17 @@ mod tests {
     use super::*;
 
     const BASE: &[&str] = &[
-        "strike", "death", "pickup", "drop", "move", "light", "encounter", "win", "lose", "error", "takeDamage",
+        "strike",
+        "death",
+        "pickup",
+        "drop",
+        "move",
+        "light",
+        "encounter",
+        "win",
+        "lose",
+        "error",
+        "takeDamage",
     ];
 
     #[test]
@@ -228,26 +283,46 @@ mod tests {
         let pack = default_chiptune_pack();
         for &kind in BASE {
             let spec = (pack.voice)(&AudioCue::bare(kind));
-            assert!(matches!(spec, Some(SoundSpec::Synth { .. })), "{kind} should voice a synth spec");
+            assert!(
+                matches!(spec, Some(SoundSpec::Synth { .. })),
+                "{kind} should voice a synth spec"
+            );
         }
     }
 
     #[test]
     fn default_pack_maps_tension_straight_to_the_bed() {
-        assert_eq!((default_chiptune_pack().ambient)(0.7), AmbientDirective { bed_tension: 0.7 });
+        assert_eq!(
+            (default_chiptune_pack().ambient)(0.7),
+            AmbientDirective { bed_tension: 0.7 }
+        );
     }
 
     #[test]
     fn an_unknown_cue_is_silent() {
-        assert_eq!((default_chiptune_pack().voice)(&AudioCue::bare("nonsense")), None);
+        assert_eq!(
+            (default_chiptune_pack().voice)(&AudioCue::bare("nonsense")),
+            None
+        );
     }
 
     #[test]
     fn cues_for_maps_attack_to_strike_and_take_damage_distinctly() {
-        let actor = EntityRef { id: "m".into(), name: "Wraith".into() };
-        let strike = cues_for(&PresentationCue::Action { action: ActionKind::Attack, actor: actor.clone(), sound: None });
+        let actor = EntityRef {
+            id: "m".into(),
+            name: "Wraith".into(),
+        };
+        let strike = cues_for(&PresentationCue::Action {
+            action: ActionKind::Attack,
+            actor: actor.clone(),
+            sound: None,
+        });
         assert_eq!(strike, vec![AudioCue::of("strike", "m")]);
-        let hurt = cues_for(&PresentationCue::Action { action: ActionKind::TakeDamage, actor, sound: None });
+        let hurt = cues_for(&PresentationCue::Action {
+            action: ActionKind::TakeDamage,
+            actor,
+            sound: None,
+        });
         assert_eq!(hurt, vec![AudioCue::of("takeDamage", "m")]);
         assert_ne!(strike, hurt);
     }
@@ -259,7 +334,10 @@ mod tests {
         assert_eq!(t.observe(16.0), 0.0);
         // Sanity drops below the mark → tension rises.
         let mid = t.observe(8.0);
-        assert!(mid > 0.0 && mid < 1.0, "half sanity → mid tension, got {mid}");
+        assert!(
+            mid > 0.0 && mid < 1.0,
+            "half sanity → mid tension, got {mid}"
+        );
         assert!((mid - 0.5).abs() < 1e-9, "8/16 → 1 - 0.5 = 0.5");
         // Zero sanity → fully tense.
         assert_eq!(t.observe(0.0), 1.0);

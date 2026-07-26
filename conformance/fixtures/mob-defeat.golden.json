@@ -1,12 +1,11 @@
 {
-  "seed": 1,
   "commands": [
     {
       "kind": "startTurn"
     },
     {
-      "kind": "go",
-      "dir": "north"
+      "dir": "north",
+      "kind": "go"
     },
     {
       "kind": "attack",
@@ -24,10 +23,11 @@
     },
     {
       "kind": "take",
-      "targetId": "mob:Ghoul:drop#0",
-      "lootId": "mob:Ghoul:remains"
+      "lootId": "mob:Ghoul:remains",
+      "targetId": "mob:Ghoul:drop#0"
     }
   ],
+  "seed": 1,
   "steps": [
     {
       "command": {
@@ -35,127 +35,116 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Mob Defeat (conformance)",
-          "title": "Mob Defeat (conformance)",
-          "maxRounds": 20,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "fighter",
-              "name": "Fighter",
               "baseStats": {
+                "energy": 10,
                 "health": 10,
-                "sanity": 10,
-                "energy": 10
-              }
+                "sanity": 10
+              },
+              "id": "fighter",
+              "name": "Fighter"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
           },
-          "mechanics": []
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Mob Defeat (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Mob Defeat (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {
-              "north": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Crypt",
-            "name": "Crypt",
-            "description": "A dark crypt.",
-            "exits": {
-              "south": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "mob:Ghoul"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Crypt|Hall",
-            "endpointIds": [
-              "room:Hall",
-              "room:Crypt"
-            ],
-            "state": {}
-          }
-        ],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
             },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Crypt",
+            "equipment": {},
+            "history": [],
+            "id": "mob:Ghoul",
+            "inventory": {
+              "itemIds": [
+                "mob:Ghoul:drop#0"
+              ],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {
+              "item": 2
+            },
+            "name": "Ghoul",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 4.0,
+              "sanity": 4.0
+            }
+          },
+          {
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "player:Ada:item#items/dagger"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "fighter",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {
               "leftHand": "player:Ada:item#items/dagger"
             },
@@ -169,193 +158,211 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "player:Ada:item#items/dagger",
                     "name": "Iron Dagger"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "player:Ada:item#items/dagger"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "fighter"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
           },
           {
-            "kind": "mob",
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "stats": {
-              "health": 4,
-              "sanity": 4,
-              "energy": 4
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
             },
-            "actionsPerRound": 2,
-            "actionsThisRound": 0,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 2,
-              "itemIds": [
-                "mob:Ghoul:drop#0"
-              ],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {
-              "item": 2
-            },
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
+            "key": "weapon:Iron Dagger",
+            "kind": "item",
+            "snapshot": {
+              "name": "Iron Dagger",
+              "slot": "hand",
+              "type": "weapon"
             }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Crypt"
+            ],
+            "id": "exit:Crypt|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
+            "behaviorKey": "items/bone-relic",
+            "id": "mob:Ghoul:drop#0",
             "kind": "item",
-            "id": "player:Ada:item#items/dagger",
-            "behaviorKey": "items/dagger",
-            "durability": 5,
-            "modifier": 3
+            "modifier": 1
           },
           {
+            "behaviorKey": "items/dagger",
+            "durability": 5,
+            "id": "player:Ada:item#items/dagger",
             "kind": "item",
-            "id": "mob:Ghoul:drop#0",
-            "behaviorKey": "items/bone-relic",
-            "modifier": 1
+            "modifier": 3
           }
         ],
         "loot": [],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
+            "dark": false,
+            "description": "A dark crypt.",
+            "exits": {
+              "south": "exit:Crypt|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "id": "room:Crypt",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Crypt",
+            "occupantIds": [
+              "mob:Ghoul"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "weapon:Iron Dagger",
-            "snapshot": {
-              "name": "Iron Dagger",
-              "type": "weapon",
-              "slot": "hand"
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Crypt|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "north",
             "toName": "Crypt"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [
+            "Iron Dagger"
+          ],
           "items": [
             {
-              "id": "player:Ada:item#items/dagger",
-              "name": "Iron Dagger",
               "aliases": [
                 "iron dagger",
                 "dagger"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": true,
               "equippable": true,
-              "usable": false,
               "hasLore": false,
-              "droppable": true
+              "id": "player:Ada:item#items/dagger",
+              "kind": "item",
+              "name": "Iron Dagger",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [
-            "Iron Dagger"
-          ],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "player:Ada:item#items/dagger",
-            "name": "Iron Dagger",
             "aliases": [
               "iron dagger",
               "dagger"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
+            "name": "Iron Dagger",
+            "usable": false
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Hall",
-          "turn": 0,
           "maxTurns": 20,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 10.0,
+          "turn": 0
+        }
       }
     },
     {
       "command": {
-        "kind": "go",
-        "dir": "north"
+        "dir": "north",
+        "kind": "go"
       },
       "cues": [
         {
-          "kind": "action",
           "action": "move",
           "actor": {
             "id": "player:Ada",
             "name": "Ada"
-          }
+          },
+          "kind": "action"
         },
         {
           "kind": "encounter",
@@ -370,129 +377,119 @@
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Mob Defeat (conformance)",
-          "title": "Mob Defeat (conformance)",
-          "maxRounds": 20,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [
-            "player:Ada:mob:Ghoul"
-          ],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "fighter",
-              "name": "Fighter",
               "baseStats": {
+                "energy": 10,
                 "health": 10,
-                "sanity": 10,
-                "energy": 10
-              }
+                "sanity": 10
+              },
+              "id": "fighter",
+              "name": "Fighter"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall",
-              "room:Crypt"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
-        },
-        "rooms": [
-          {
-            "id": "room:Crypt",
-            "name": "Crypt",
-            "description": "A dark crypt.",
-            "exits": {
-              "south": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "mob:Ghoul",
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {
-              "north": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Crypt|Hall",
-            "endpointIds": [
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
               "room:Hall",
               "room:Crypt"
-            ],
-            "state": {}
-          }
-        ],
+            ]
+          },
+          "encountered": [
+            "player:Ada:mob:Ghoul"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:Mob Defeat (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Mob Defeat (conformance)",
+          "winConditions": []
+        },
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
             },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Crypt",
+            "equipment": {},
+            "history": [],
+            "id": "mob:Ghoul",
+            "inventory": {
+              "itemIds": [
+                "mob:Ghoul:drop#0"
+              ],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {
+              "item": 2
+            },
+            "name": "Ghoul",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 4.0,
+              "sanity": 4.0
+            }
+          },
+          {
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "player:Ada:item#items/dagger"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "fighter",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Crypt",
             "equipment": {
               "leftHand": "player:Ada:item#items/dagger"
             },
@@ -506,13 +503,13 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "player:Ada:item#items/dagger",
                     "name": "Iron Dagger"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
@@ -524,219 +521,236 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "player:Ada:item#items/dagger"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "fighter"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
           },
           {
-            "kind": "mob",
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "stats": {
-              "health": 4,
-              "sanity": 4,
-              "energy": 4
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
             },
-            "actionsPerRound": 2,
-            "actionsThisRound": 0,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 2,
-              "itemIds": [
-                "mob:Ghoul:drop#0"
-              ],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {
-              "item": 2
-            },
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
+            "key": "weapon:Iron Dagger",
+            "kind": "item",
+            "snapshot": {
+              "name": "Iron Dagger",
+              "slot": "hand",
+              "type": "weapon"
             }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "Ghoul",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Ghoul",
+              "stats": {
+                "energy": 4.0,
+                "health": 4.0,
+                "sanity": 4.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "room:Crypt",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dark crypt.",
+              "name": "Crypt"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Crypt"
+            ],
+            "id": "exit:Crypt|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
+            "behaviorKey": "items/bone-relic",
+            "id": "mob:Ghoul:drop#0",
             "kind": "item",
-            "id": "player:Ada:item#items/dagger",
-            "behaviorKey": "items/dagger",
-            "durability": 5,
-            "modifier": 3
+            "modifier": 1
           },
           {
+            "behaviorKey": "items/dagger",
+            "durability": 5,
+            "id": "player:Ada:item#items/dagger",
             "kind": "item",
-            "id": "mob:Ghoul:drop#0",
-            "behaviorKey": "items/bone-relic",
-            "modifier": 1
+            "modifier": 3
           }
         ],
         "loot": [],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
+            "dark": false,
+            "description": "A dark crypt.",
+            "exits": {
+              "south": "exit:Crypt|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "id": "room:Crypt",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Crypt",
+            "occupantIds": [
+              "mob:Ghoul",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "weapon:Iron Dagger",
-            "snapshot": {
-              "name": "Iron Dagger",
-              "type": "weapon",
-              "slot": "hand"
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Crypt|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "mob",
-            "key": "Ghoul",
-            "snapshot": {
-              "name": "Ghoul",
-              "stats": {
-                "health": 4,
-                "sanity": 4,
-                "energy": 4
-              }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          },
-          {
-            "kind": "room",
-            "key": "room:Crypt",
-            "snapshot": {
-              "name": "Crypt",
-              "description": "A dark crypt."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Crypt",
-          "name": "Crypt",
-          "description": "A dark crypt.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "south",
             "toName": "Hall"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [
-          {
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "aliases": [
-              "ghoul"
-            ],
-            "kind": "occupant",
-            "health": 4,
-            "defeated": false
-          }
-        ],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [
+            "Iron Dagger"
+          ],
           "items": [
             {
-              "id": "player:Ada:item#items/dagger",
-              "name": "Iron Dagger",
               "aliases": [
                 "iron dagger",
                 "dagger"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": true,
               "equippable": true,
-              "usable": false,
               "hasLore": false,
-              "droppable": true
+              "id": "player:Ada:item#items/dagger",
+              "kind": "item",
+              "name": "Iron Dagger",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [
-            "Iron Dagger"
-          ],
           "slots": 5
         },
-        "scope": [
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [
           {
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
             "aliases": [
               "ghoul"
             ],
+            "defeated": false,
+            "health": 4.0,
+            "id": "mob:Ghoul",
             "kind": "occupant",
-            "health": 4,
-            "defeated": false
+            "name": "Ghoul"
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A dark crypt.",
+          "id": "room:Crypt",
+          "isLit": true,
+          "name": "Crypt"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "ghoul"
+            ],
+            "defeated": false,
+            "health": 4.0,
+            "id": "mob:Ghoul",
+            "kind": "occupant",
+            "name": "Ghoul"
           },
           {
-            "id": "player:Ada:item#items/dagger",
-            "name": "Iron Dagger",
             "aliases": [
               "iron dagger",
               "dagger"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
+            "name": "Iron Dagger",
+            "usable": false
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Crypt",
-          "turn": 0,
           "maxTurns": 20,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 10.0,
+          "turn": 0
+        }
       }
     },
     {
@@ -746,563 +760,148 @@
       },
       "cues": [
         {
-          "kind": "action",
           "action": "takeDamage",
           "actor": {
             "id": "mob:Ghoul",
             "name": "Ghoul"
-          }
+          },
+          "kind": "action"
         },
         {
-          "kind": "action",
           "action": "attack",
           "actor": {
             "id": "player:Ada",
             "name": "Ada"
-          }
+          },
+          "kind": "action"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Mob Defeat (conformance)",
-          "title": "Mob Defeat (conformance)",
-          "maxRounds": 20,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [
-            "player:Ada:mob:Ghoul"
-          ],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "fighter",
-              "name": "Fighter",
               "baseStats": {
+                "energy": 10,
                 "health": 10,
-                "sanity": 10,
-                "energy": 10
-              }
+                "sanity": 10
+              },
+              "id": "fighter",
+              "name": "Fighter"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall",
-              "room:Crypt"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
-        },
-        "rooms": [
-          {
-            "id": "room:Crypt",
-            "name": "Crypt",
-            "description": "A dark crypt.",
-            "exits": {
-              "south": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "mob:Ghoul",
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {
-              "north": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Crypt|Hall",
-            "endpointIds": [
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
               "room:Hall",
               "room:Crypt"
-            ],
-            "state": {}
-          }
-        ],
+            ]
+          },
+          "encountered": [
+            "player:Ada:mob:Ghoul"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:Mob Defeat (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Mob Defeat (conformance)",
+          "winConditions": []
+        },
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
-            },
-            "actionsPerRound": 3,
-            "actionsThisRound": 2,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "player:Ada:item#items/dagger"
-              ],
-              "keyIds": []
-            },
-            "equipment": {
-              "leftHand": "player:Ada:item#items/dagger"
-            },
-            "history": [
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Hall",
-                  "name": "Hall"
-                },
-                "round": 0
-              },
-              {
-                "kind": "pickUp",
-                "items": [
-                  {
-                    "id": "player:Ada:item#items/dagger",
-                    "name": "Iron Dagger"
-                  }
-                ],
-                "round": 0
-              },
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Crypt",
-                  "name": "Crypt"
-                },
-                "round": 0
-              },
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "mob:Ghoul",
-                  "name": "Ghoul"
-                },
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "fighter"
-          },
-          {
-            "kind": "mob",
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "stats": {
-              "health": 0.39999999999999947,
-              "sanity": 4,
-              "energy": 4
-            },
             "actionsPerRound": 2,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 2,
-              "itemIds": [
-                "mob:Ghoul:drop#0"
-              ],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "takeDamage",
-                "amount": 3.6000000000000005,
-                "stat": "health",
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
             "afflictions": {
               "active": {
                 "fear": true
               },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0
-              },
+              "immunity": {},
               "shakenOff": [],
-              "immunity": {}
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
             },
-            "origin": "room",
+            "archetypeImmunities": [],
             "baseEscapeChance": 50,
+            "currentRoomId": "room:Crypt",
+            "equipment": {},
+            "history": [
+              {
+                "amount": 3.6000000000000005,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              }
+            ],
+            "id": "mob:Ghoul",
+            "inventory": {
+              "itemIds": [
+                "mob:Ghoul:drop#0"
+              ],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
             "materialDrops": {
               "item": 2
             },
-            "lightAverse": false,
+            "name": "Ghoul",
             "naturalAttack": {
-              "stat": "health",
-              "power": 1
-            }
-          }
-        ],
-        "items": [
-          {
-            "kind": "item",
-            "id": "player:Ada:item#items/dagger",
-            "behaviorKey": "items/dagger",
-            "durability": 4,
-            "modifier": 3
-          },
-          {
-            "kind": "item",
-            "id": "mob:Ghoul:drop#0",
-            "behaviorKey": "items/bone-relic",
-            "modifier": 1
-          }
-        ],
-        "loot": [],
-        "materialCaches": [],
-        "codex": [
-          {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
+              "power": 1,
+              "stat": "health"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "item",
-            "key": "weapon:Iron Dagger",
-            "snapshot": {
-              "name": "Iron Dagger",
-              "type": "weapon",
-              "slot": "hand"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "mob",
-            "key": "Ghoul",
-            "snapshot": {
-              "name": "Ghoul",
-              "stats": {
-                "health": 4,
-                "sanity": 4,
-                "energy": 4
-              }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          },
-          {
-            "kind": "room",
-            "key": "room:Crypt",
-            "snapshot": {
-              "name": "Crypt",
-              "description": "A dark crypt."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          }
-        ]
-      },
-      "view": {
-        "room": {
-          "id": "room:Crypt",
-          "name": "Crypt",
-          "description": "A dark crypt.",
-          "isLit": true
-        },
-        "exits": [
-          {
-            "dir": "south",
-            "toName": "Hall"
-          }
-        ],
-        "lockedDoors": [],
-        "occupants": [
-          {
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "aliases": [
-              "ghoul"
-            ],
-            "kind": "occupant",
-            "health": 0.39999999999999947,
-            "defeated": false
-          }
-        ],
-        "loot": [],
-        "inventory": {
-          "items": [
-            {
-              "id": "player:Ada:item#items/dagger",
-              "name": "Iron Dagger",
-              "aliases": [
-                "iron dagger",
-                "dagger"
-              ],
-              "kind": "item",
-              "equippable": true,
-              "usable": false,
-              "hasLore": false,
-              "droppable": true
-            }
-          ],
-          "keys": [],
-          "equippedNames": [
-            "Iron Dagger"
-          ],
-          "slots": 5
-        },
-        "scope": [
-          {
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "aliases": [
-              "ghoul"
-            ],
-            "kind": "occupant",
-            "health": 0.39999999999999947,
-            "defeated": false
-          },
-          {
-            "id": "player:Ada:item#items/dagger",
-            "name": "Iron Dagger",
-            "aliases": [
-              "iron dagger",
-              "dagger"
-            ],
-            "kind": "item",
-            "equippable": true,
-            "usable": false,
-            "hasLore": false,
-            "droppable": true
-          }
-        ],
-        "status": {
-          "locationName": "Crypt",
-          "turn": 0,
-          "maxTurns": 20,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
-      }
-    },
-    {
-      "command": {
-        "kind": "attack",
-        "targetId": "mob:Ghoul"
-      },
-      "cues": [
-        {
-          "kind": "action",
-          "action": "takeDamage",
-          "actor": {
-            "id": "mob:Ghoul",
-            "name": "Ghoul"
-          }
-        },
-        {
-          "kind": "action",
-          "action": "attack",
-          "actor": {
-            "id": "player:Ada",
-            "name": "Ada"
-          }
-        }
-      ],
-      "snapshot": {
-        "schemaVersion": 6,
-        "campaign": {
-          "id": "campaign:Mob Defeat (conformance)",
-          "title": "Mob Defeat (conformance)",
-          "maxRounds": 20,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {
-            "item": 2
-          },
-          "claims": [],
-          "encountered": [
-            "player:Ada:mob:Ghoul"
-          ],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "fighter",
-              "name": "Fighter",
-              "baseStats": {
-                "health": 10,
-                "sanity": 10,
-                "energy": 10
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall",
-              "room:Crypt"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
-        },
-        "rooms": [
-          {
-            "id": "room:Crypt",
-            "name": "Crypt",
-            "description": "A dark crypt.",
-            "exits": {
-              "south": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "mob:Ghoul",
-              "player:Ada"
-            ],
-            "lootIds": [
-              "mob:Ghoul:remains"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {
-              "north": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Crypt|Hall",
-            "endpointIds": [
-              "room:Hall",
-              "room:Crypt"
-            ],
-            "state": {}
-          }
-        ],
-        "characters": [
-          {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
+            "origin": "room",
             "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
-            },
+              "energy": 4.0,
+              "health": 0.39999999999999947,
+              "sanity": 4.0
+            }
+          },
+          {
             "actionsPerRound": 3,
-            "actionsThisRound": 3,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "player:Ada:item#items/dagger"
-              ],
-              "keyIds": []
+            "actionsThisRound": 2,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "fighter",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Crypt",
             "equipment": {
               "leftHand": "player:Ada:item#items/dagger"
             },
@@ -1316,13 +915,13 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "player:Ada:item#items/dagger",
                     "name": "Iron Dagger"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
@@ -1335,317 +934,755 @@
               },
               {
                 "kind": "attack",
+                "round": 0,
                 "target": {
                   "id": "mob:Ghoul",
                   "name": "Ghoul"
-                },
-                "round": 0
-              },
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "mob:Ghoul",
-                  "name": "Ghoul"
-                },
-                "round": 0
+                }
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "player:Ada:item#items/dagger"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "fighter"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
           },
           {
-            "kind": "mob",
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "stats": {
-              "health": 0,
-              "sanity": 4,
-              "energy": 4
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
             },
-            "actionsPerRound": 2,
-            "actionsThisRound": 0,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 2,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "takeDamage",
-                "amount": 3.6000000000000005,
-                "stat": "health",
-                "round": 0
-              },
-              {
-                "kind": "takeDamage",
-                "amount": 3.6000000000000005,
-                "stat": "health",
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "ko": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0,
-                "fear": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {
-              "item": 2
-            },
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
+            "key": "weapon:Iron Dagger",
+            "kind": "item",
+            "snapshot": {
+              "name": "Iron Dagger",
+              "slot": "hand",
+              "type": "weapon"
             }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "Ghoul",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Ghoul",
+              "stats": {
+                "energy": 4.0,
+                "health": 4.0,
+                "sanity": 4.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "room:Crypt",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dark crypt.",
+              "name": "Crypt"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Crypt"
+            ],
+            "id": "exit:Crypt|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
-            "kind": "item",
-            "id": "mob:Ghoul:drop#0",
             "behaviorKey": "items/bone-relic",
+            "id": "mob:Ghoul:drop#0",
+            "kind": "item",
             "modifier": 1
           },
           {
-            "kind": "item",
-            "id": "player:Ada:item#items/dagger",
             "behaviorKey": "items/dagger",
-            "durability": 3,
+            "durability": 4,
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
             "modifier": 3
           }
         ],
-        "loot": [
+        "loot": [],
+        "materialCaches": [],
+        "rooms": [
           {
-            "id": "mob:Ghoul:remains",
-            "description": "Ghoul's remains",
-            "capacity": 3,
-            "contentIds": [
-              "mob:Ghoul:drop#0"
-            ]
+            "dark": false,
+            "description": "A dark crypt.",
+            "exits": {
+              "south": "exit:Crypt|Hall"
+            },
+            "id": "room:Crypt",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Crypt",
+            "occupantIds": [
+              "mob:Ghoul",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          },
+          {
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Crypt|Hall"
+            },
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           }
         ],
-        "materialCaches": [],
-        "codex": [
-          {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "item",
-            "key": "weapon:Iron Dagger",
-            "snapshot": {
-              "name": "Iron Dagger",
-              "type": "weapon",
-              "slot": "hand"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "mob",
-            "key": "Ghoul",
-            "snapshot": {
-              "name": "Ghoul",
-              "stats": {
-                "health": 4,
-                "sanity": 4,
-                "energy": 4
-              }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          },
-          {
-            "kind": "room",
-            "key": "room:Crypt",
-            "snapshot": {
-              "name": "Crypt",
-              "description": "A dark crypt."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          },
-          {
-            "kind": "material",
-            "key": "item",
-            "snapshot": {
-              "type": "item"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          }
-        ]
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Crypt",
-          "name": "Crypt",
-          "description": "A dark crypt.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "south",
             "toName": "Hall"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [
-          {
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "aliases": [
-              "ghoul"
-            ],
-            "kind": "occupant",
-            "health": 0,
-            "defeated": true
-          }
-        ],
-        "loot": [
-          {
-            "id": "mob:Ghoul:remains",
-            "description": "Ghoul's remains",
-            "opened": false,
-            "contents": [
-              {
-                "id": "mob:Ghoul:drop#0",
-                "name": "Bone Relic",
-                "aliases": [
-                  "bone relic",
-                  "relic"
-                ],
-                "kind": "item",
-                "equippable": true,
-                "usable": false,
-                "hasLore": false,
-                "droppable": true
-              }
-            ]
-          }
-        ],
+        "finished": false,
         "inventory": {
+          "equippedNames": [
+            "Iron Dagger"
+          ],
           "items": [
             {
-              "id": "player:Ada:item#items/dagger",
-              "name": "Iron Dagger",
               "aliases": [
                 "iron dagger",
                 "dagger"
               ],
-              "kind": "item",
+              "damaged": true,
+              "destroyable": true,
+              "droppable": true,
               "equippable": true,
-              "usable": false,
               "hasLore": false,
-              "droppable": true
+              "id": "player:Ada:item#items/dagger",
+              "kind": "item",
+              "name": "Iron Dagger",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [
-            "Iron Dagger"
-          ],
           "slots": 5
         },
-        "scope": [
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [
           {
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
             "aliases": [
               "ghoul"
             ],
+            "defeated": false,
+            "health": 0.39999999999999947,
+            "id": "mob:Ghoul",
             "kind": "occupant",
-            "health": 0,
-            "defeated": true
-          },
+            "name": "Ghoul"
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A dark crypt.",
+          "id": "room:Crypt",
+          "isLit": true,
+          "name": "Crypt"
+        },
+        "scope": [
           {
-            "id": "mob:Ghoul:drop#0",
-            "name": "Bone Relic",
             "aliases": [
-              "bone relic",
-              "relic"
+              "ghoul"
             ],
-            "kind": "item",
-            "equippable": true,
-            "usable": false,
-            "hasLore": false,
-            "droppable": true
+            "defeated": false,
+            "health": 0.39999999999999947,
+            "id": "mob:Ghoul",
+            "kind": "occupant",
+            "name": "Ghoul"
           },
           {
-            "id": "player:Ada:item#items/dagger",
-            "name": "Iron Dagger",
             "aliases": [
               "iron dagger",
               "dagger"
             ],
-            "kind": "item",
+            "damaged": true,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
+            "name": "Iron Dagger",
+            "usable": false
+          }
+        ],
+        "status": {
+          "health": 10.0,
+          "locationName": "Crypt",
+          "maxTurns": 20,
+          "sanity": 10.0,
+          "turn": 0
+        }
+      }
+    },
+    {
+      "command": {
+        "kind": "attack",
+        "targetId": "mob:Ghoul"
+      },
+      "cues": [
+        {
+          "action": "takeDamage",
+          "actor": {
+            "id": "mob:Ghoul",
+            "name": "Ghoul"
+          },
+          "kind": "action"
+        },
+        {
+          "action": "attack",
+          "actor": {
+            "id": "player:Ada",
+            "name": "Ada"
+          },
+          "kind": "action"
+        }
+      ],
+      "snapshot": {
+        "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 10,
+                "health": 10,
+                "sanity": 10
+              },
+              "id": "fighter",
+              "name": "Fighter"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall",
+              "room:Crypt"
+            ]
+          },
+          "encountered": [
+            "player:Ada:mob:Ghoul"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:Mob Defeat (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {
+            "item": 2.0
+          },
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Mob Defeat (conformance)",
+          "winConditions": []
+        },
+        "characters": [
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
+            },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Crypt",
+            "equipment": {},
+            "history": [
+              {
+                "amount": 3.6000000000000005,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              },
+              {
+                "amount": 3.6000000000000005,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              }
+            ],
+            "id": "mob:Ghoul",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {
+              "item": 2
+            },
+            "name": "Ghoul",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 0.0,
+              "sanity": 4.0
+            }
           },
           {
+            "actionsPerRound": 3,
+            "actionsThisRound": 3,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
+            },
+            "archetypeId": "fighter",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Crypt",
+            "equipment": {
+              "leftHand": "player:Ada:item#items/dagger"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "items": [
+                  {
+                    "id": "player:Ada:item#items/dagger",
+                    "name": "Iron Dagger"
+                  }
+                ],
+                "kind": "pickUp",
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              },
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "mob:Ghoul",
+                  "name": "Ghoul"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "mob:Ghoul",
+                  "name": "Ghoul"
+                }
+              }
+            ],
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "player:Ada:item#items/dagger"
+              ],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "weapon:Iron Dagger",
+            "kind": "item",
+            "snapshot": {
+              "name": "Iron Dagger",
+              "slot": "hand",
+              "type": "weapon"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "Ghoul",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Ghoul",
+              "stats": {
+                "energy": 4.0,
+                "health": 4.0,
+                "sanity": 4.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "room:Crypt",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dark crypt.",
+              "name": "Crypt"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "item",
+            "kind": "material",
+            "snapshot": {
+              "type": "item"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Crypt"
+            ],
+            "id": "exit:Crypt|Hall",
+            "state": {}
+          }
+        ],
+        "items": [
+          {
+            "behaviorKey": "items/bone-relic",
+            "id": "mob:Ghoul:drop#0",
+            "kind": "item",
+            "modifier": 1
+          },
+          {
+            "behaviorKey": "items/dagger",
+            "durability": 3,
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
+            "modifier": 3
+          }
+        ],
+        "loot": [
+          {
+            "capacity": 3,
+            "contentIds": [
+              "mob:Ghoul:drop#0"
+            ],
+            "description": "Ghoul's remains",
+            "id": "mob:Ghoul:remains"
+          }
+        ],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A dark crypt.",
+            "exits": {
+              "south": "exit:Crypt|Hall"
+            },
+            "id": "room:Crypt",
+            "lightSourceIds": [],
+            "lootIds": [
+              "mob:Ghoul:remains"
+            ],
+            "materialCacheIds": [],
+            "name": "Crypt",
+            "occupantIds": [
+              "mob:Ghoul",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          },
+          {
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Crypt|Hall"
+            },
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [
+            "Iron Dagger"
+          ],
+          "items": [
+            {
+              "aliases": [
+                "iron dagger",
+                "dagger"
+              ],
+              "damaged": true,
+              "destroyable": true,
+              "droppable": true,
+              "equippable": true,
+              "hasLore": false,
+              "id": "player:Ada:item#items/dagger",
+              "kind": "item",
+              "name": "Iron Dagger",
+              "usable": false
+            }
+          ],
+          "keys": [],
+          "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [
+          {
+            "contents": [
+              {
+                "aliases": [
+                  "bone relic",
+                  "relic"
+                ],
+                "damaged": false,
+                "destroyable": true,
+                "droppable": true,
+                "equippable": true,
+                "hasLore": false,
+                "id": "mob:Ghoul:drop#0",
+                "kind": "item",
+                "name": "Bone Relic",
+                "usable": false
+              }
+            ],
+            "description": "Ghoul's remains",
             "id": "mob:Ghoul:remains",
-            "name": "Ghoul's remains",
+            "opened": false
+          }
+        ],
+        "materials": [
+          {
+            "component": "item",
+            "quantity": 2
+          }
+        ],
+        "occupants": [
+          {
+            "aliases": [
+              "ghoul"
+            ],
+            "defeated": true,
+            "health": 0.0,
+            "id": "mob:Ghoul",
+            "kind": "occupant",
+            "name": "Ghoul"
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A dark crypt.",
+          "id": "room:Crypt",
+          "isLit": true,
+          "name": "Crypt"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "ghoul"
+            ],
+            "defeated": true,
+            "health": 0.0,
+            "id": "mob:Ghoul",
+            "kind": "occupant",
+            "name": "Ghoul"
+          },
+          {
+            "aliases": [
+              "bone relic",
+              "relic"
+            ],
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
+            "equippable": true,
+            "hasLore": false,
+            "id": "mob:Ghoul:drop#0",
+            "kind": "item",
+            "name": "Bone Relic",
+            "usable": false
+          },
+          {
+            "aliases": [
+              "iron dagger",
+              "dagger"
+            ],
+            "damaged": true,
+            "destroyable": true,
+            "droppable": true,
+            "equippable": true,
+            "hasLore": false,
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
+            "name": "Iron Dagger",
+            "usable": false
+          },
+          {
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "mob:Ghoul:remains",
+            "kind": "loot",
+            "name": "Ghoul's remains"
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Crypt",
-          "turn": 0,
           "maxTurns": 20,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 10.0,
+          "turn": 0
+        }
       }
     },
     {
@@ -1654,133 +1691,138 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Mob Defeat (conformance)",
-          "title": "Mob Defeat (conformance)",
-          "maxRounds": 20,
-          "round": 1,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {
-            "item": 2
-          },
-          "claims": [],
-          "encountered": [
-            "player:Ada:mob:Ghoul"
-          ],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "fighter",
-              "name": "Fighter",
               "baseStats": {
+                "energy": 10,
                 "health": 10,
-                "sanity": 10,
-                "energy": 10
-              }
+                "sanity": 10
+              },
+              "id": "fighter",
+              "name": "Fighter"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall",
-              "room:Crypt"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
-        },
-        "rooms": [
-          {
-            "id": "room:Crypt",
-            "name": "Crypt",
-            "description": "A dark crypt.",
-            "exits": {
-              "south": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "mob:Ghoul",
-              "player:Ada"
-            ],
-            "lootIds": [
-              "mob:Ghoul:remains"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {
-              "north": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Crypt|Hall",
-            "endpointIds": [
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
               "room:Hall",
               "room:Crypt"
-            ],
-            "state": {}
-          }
-        ],
+            ]
+          },
+          "encountered": [
+            "player:Ada:mob:Ghoul"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:Mob Defeat (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {
+            "item": 2.0
+          },
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 1,
+          "started": true,
+          "title": "Mob Defeat (conformance)",
+          "winConditions": []
+        },
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Crypt",
+            "equipment": {},
+            "history": [
+              {
+                "amount": 3.6000000000000005,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              },
+              {
+                "amount": 3.6000000000000005,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              }
+            ],
+            "id": "mob:Ghoul",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {
+              "item": 2
+            },
+            "name": "Ghoul",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 0.0,
+              "sanity": 4.0
+            }
+          },
+          {
             "actionsPerRound": 3,
             "actionsThisRound": 3,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "player:Ada:item#items/dagger"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "fighter",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Crypt",
             "equipment": {
               "leftHand": "player:Ada:item#items/dagger"
             },
@@ -1794,13 +1836,13 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "player:Ada:item#items/dagger",
                     "name": "Iron Dagger"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
@@ -1813,317 +1855,328 @@
               },
               {
                 "kind": "attack",
+                "round": 0,
                 "target": {
                   "id": "mob:Ghoul",
                   "name": "Ghoul"
-                },
-                "round": 0
+                }
               },
               {
                 "kind": "attack",
+                "round": 0,
                 "target": {
                   "id": "mob:Ghoul",
                   "name": "Ghoul"
-                },
-                "round": 0
+                }
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "player:Ada:item#items/dagger"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "fighter"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
           },
           {
-            "kind": "mob",
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "stats": {
-              "health": 0,
-              "sanity": 4,
-              "energy": 4
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
             },
-            "actionsPerRound": 2,
-            "actionsThisRound": 0,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 2,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "takeDamage",
-                "amount": 3.6000000000000005,
-                "stat": "health",
-                "round": 0
-              },
-              {
-                "kind": "takeDamage",
-                "amount": 3.6000000000000005,
-                "stat": "health",
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "ko": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0,
-                "fear": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {
-              "item": 2
-            },
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
+            "key": "weapon:Iron Dagger",
+            "kind": "item",
+            "snapshot": {
+              "name": "Iron Dagger",
+              "slot": "hand",
+              "type": "weapon"
             }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "Ghoul",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Ghoul",
+              "stats": {
+                "energy": 4.0,
+                "health": 4.0,
+                "sanity": 4.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "room:Crypt",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dark crypt.",
+              "name": "Crypt"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "item",
+            "kind": "material",
+            "snapshot": {
+              "type": "item"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Crypt"
+            ],
+            "id": "exit:Crypt|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
-            "kind": "item",
-            "id": "mob:Ghoul:drop#0",
             "behaviorKey": "items/bone-relic",
+            "id": "mob:Ghoul:drop#0",
+            "kind": "item",
             "modifier": 1
           },
           {
-            "kind": "item",
-            "id": "player:Ada:item#items/dagger",
             "behaviorKey": "items/dagger",
             "durability": 3,
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
             "modifier": 3
           }
         ],
         "loot": [
           {
-            "id": "mob:Ghoul:remains",
-            "description": "Ghoul's remains",
             "capacity": 3,
             "contentIds": [
               "mob:Ghoul:drop#0"
-            ]
+            ],
+            "description": "Ghoul's remains",
+            "id": "mob:Ghoul:remains"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
+            "dark": false,
+            "description": "A dark crypt.",
+            "exits": {
+              "south": "exit:Crypt|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "id": "room:Crypt",
+            "lightSourceIds": [],
+            "lootIds": [
+              "mob:Ghoul:remains"
+            ],
+            "materialCacheIds": [],
+            "name": "Crypt",
+            "occupantIds": [
+              "mob:Ghoul",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "weapon:Iron Dagger",
-            "snapshot": {
-              "name": "Iron Dagger",
-              "type": "weapon",
-              "slot": "hand"
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Crypt|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "mob",
-            "key": "Ghoul",
-            "snapshot": {
-              "name": "Ghoul",
-              "stats": {
-                "health": 4,
-                "sanity": 4,
-                "energy": 4
-              }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          },
-          {
-            "kind": "room",
-            "key": "room:Crypt",
-            "snapshot": {
-              "name": "Crypt",
-              "description": "A dark crypt."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          },
-          {
-            "kind": "material",
-            "key": "item",
-            "snapshot": {
-              "type": "item"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Crypt",
-          "name": "Crypt",
-          "description": "A dark crypt.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "south",
             "toName": "Hall"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [
-          {
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "aliases": [
-              "ghoul"
-            ],
-            "kind": "occupant",
-            "health": 0,
-            "defeated": true
-          }
-        ],
-        "loot": [
-          {
-            "id": "mob:Ghoul:remains",
-            "description": "Ghoul's remains",
-            "opened": false,
-            "contents": [
-              {
-                "id": "mob:Ghoul:drop#0",
-                "name": "Bone Relic",
-                "aliases": [
-                  "bone relic",
-                  "relic"
-                ],
-                "kind": "item",
-                "equippable": true,
-                "usable": false,
-                "hasLore": false,
-                "droppable": true
-              }
-            ]
-          }
-        ],
+        "finished": false,
         "inventory": {
+          "equippedNames": [
+            "Iron Dagger"
+          ],
           "items": [
             {
-              "id": "player:Ada:item#items/dagger",
-              "name": "Iron Dagger",
               "aliases": [
                 "iron dagger",
                 "dagger"
               ],
-              "kind": "item",
+              "damaged": true,
+              "destroyable": true,
+              "droppable": true,
               "equippable": true,
-              "usable": false,
               "hasLore": false,
-              "droppable": true
+              "id": "player:Ada:item#items/dagger",
+              "kind": "item",
+              "name": "Iron Dagger",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [
-            "Iron Dagger"
-          ],
           "slots": 5
         },
-        "scope": [
+        "lockedDoors": [],
+        "loot": [
           {
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
+            "contents": [
+              {
+                "aliases": [
+                  "bone relic",
+                  "relic"
+                ],
+                "damaged": false,
+                "destroyable": true,
+                "droppable": true,
+                "equippable": true,
+                "hasLore": false,
+                "id": "mob:Ghoul:drop#0",
+                "kind": "item",
+                "name": "Bone Relic",
+                "usable": false
+              }
+            ],
+            "description": "Ghoul's remains",
+            "id": "mob:Ghoul:remains",
+            "opened": false
+          }
+        ],
+        "materials": [
+          {
+            "component": "item",
+            "quantity": 2
+          }
+        ],
+        "occupants": [
+          {
             "aliases": [
               "ghoul"
             ],
+            "defeated": true,
+            "health": 0.0,
+            "id": "mob:Ghoul",
             "kind": "occupant",
-            "health": 0,
-            "defeated": true
+            "name": "Ghoul"
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A dark crypt.",
+          "id": "room:Crypt",
+          "isLit": true,
+          "name": "Crypt"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "ghoul"
+            ],
+            "defeated": true,
+            "health": 0.0,
+            "id": "mob:Ghoul",
+            "kind": "occupant",
+            "name": "Ghoul"
           },
           {
-            "id": "mob:Ghoul:drop#0",
-            "name": "Bone Relic",
             "aliases": [
               "bone relic",
               "relic"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "mob:Ghoul:drop#0",
+            "kind": "item",
+            "name": "Bone Relic",
+            "usable": false
           },
           {
-            "id": "player:Ada:item#items/dagger",
-            "name": "Iron Dagger",
             "aliases": [
               "iron dagger",
               "dagger"
             ],
-            "kind": "item",
+            "damaged": true,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
+            "name": "Iron Dagger",
+            "usable": false
           },
           {
-            "id": "mob:Ghoul:remains",
-            "name": "Ghoul's remains",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "mob:Ghoul:remains",
+            "kind": "loot",
+            "name": "Ghoul's remains"
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Crypt",
-          "turn": 1,
           "maxTurns": 20,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 10.0,
+          "turn": 1
+        }
       }
     },
     {
@@ -2132,133 +2185,138 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Mob Defeat (conformance)",
-          "title": "Mob Defeat (conformance)",
-          "maxRounds": 20,
-          "round": 1,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {
-            "item": 2
-          },
-          "claims": [],
-          "encountered": [
-            "player:Ada:mob:Ghoul"
-          ],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "fighter",
-              "name": "Fighter",
               "baseStats": {
+                "energy": 10,
                 "health": 10,
-                "sanity": 10,
-                "energy": 10
-              }
+                "sanity": 10
+              },
+              "id": "fighter",
+              "name": "Fighter"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall",
-              "room:Crypt"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
-        },
-        "rooms": [
-          {
-            "id": "room:Crypt",
-            "name": "Crypt",
-            "description": "A dark crypt.",
-            "exits": {
-              "south": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "mob:Ghoul",
-              "player:Ada"
-            ],
-            "lootIds": [
-              "mob:Ghoul:remains"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {
-              "north": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Crypt|Hall",
-            "endpointIds": [
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
               "room:Hall",
               "room:Crypt"
-            ],
-            "state": {}
-          }
-        ],
+            ]
+          },
+          "encountered": [
+            "player:Ada:mob:Ghoul"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:Mob Defeat (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {
+            "item": 2.0
+          },
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 1,
+          "started": true,
+          "title": "Mob Defeat (conformance)",
+          "winConditions": []
+        },
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Crypt",
+            "equipment": {},
+            "history": [
+              {
+                "amount": 3.6000000000000005,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              },
+              {
+                "amount": 3.6000000000000005,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              }
+            ],
+            "id": "mob:Ghoul",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {
+              "item": 2
+            },
+            "name": "Ghoul",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 0.0,
+              "sanity": 4.0
+            }
+          },
+          {
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "player:Ada:item#items/dagger"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "fighter",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Crypt",
             "equipment": {
               "leftHand": "player:Ada:item#items/dagger"
             },
@@ -2272,13 +2330,13 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "player:Ada:item#items/dagger",
                     "name": "Iron Dagger"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
@@ -2291,464 +2349,479 @@
               },
               {
                 "kind": "attack",
+                "round": 0,
                 "target": {
                   "id": "mob:Ghoul",
                   "name": "Ghoul"
-                },
-                "round": 0
+                }
               },
               {
                 "kind": "attack",
+                "round": 0,
                 "target": {
                   "id": "mob:Ghoul",
                   "name": "Ghoul"
-                },
-                "round": 0
+                }
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "player:Ada:item#items/dagger"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "fighter"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
           },
           {
-            "kind": "mob",
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "stats": {
-              "health": 0,
-              "sanity": 4,
-              "energy": 4
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
             },
-            "actionsPerRound": 2,
-            "actionsThisRound": 0,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 2,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "takeDamage",
-                "amount": 3.6000000000000005,
-                "stat": "health",
-                "round": 0
-              },
-              {
-                "kind": "takeDamage",
-                "amount": 3.6000000000000005,
-                "stat": "health",
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "ko": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0,
-                "fear": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {
-              "item": 2
-            },
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
+            "key": "weapon:Iron Dagger",
+            "kind": "item",
+            "snapshot": {
+              "name": "Iron Dagger",
+              "slot": "hand",
+              "type": "weapon"
             }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "Ghoul",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Ghoul",
+              "stats": {
+                "energy": 4.0,
+                "health": 4.0,
+                "sanity": 4.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "room:Crypt",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dark crypt.",
+              "name": "Crypt"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "item",
+            "kind": "material",
+            "snapshot": {
+              "type": "item"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Crypt"
+            ],
+            "id": "exit:Crypt|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
-            "kind": "item",
-            "id": "mob:Ghoul:drop#0",
             "behaviorKey": "items/bone-relic",
+            "id": "mob:Ghoul:drop#0",
+            "kind": "item",
             "modifier": 1
           },
           {
-            "kind": "item",
-            "id": "player:Ada:item#items/dagger",
             "behaviorKey": "items/dagger",
             "durability": 3,
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
             "modifier": 3
           }
         ],
         "loot": [
           {
-            "id": "mob:Ghoul:remains",
-            "description": "Ghoul's remains",
             "capacity": 3,
             "contentIds": [
               "mob:Ghoul:drop#0"
-            ]
+            ],
+            "description": "Ghoul's remains",
+            "id": "mob:Ghoul:remains"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
+            "dark": false,
+            "description": "A dark crypt.",
+            "exits": {
+              "south": "exit:Crypt|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "id": "room:Crypt",
+            "lightSourceIds": [],
+            "lootIds": [
+              "mob:Ghoul:remains"
+            ],
+            "materialCacheIds": [],
+            "name": "Crypt",
+            "occupantIds": [
+              "mob:Ghoul",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "weapon:Iron Dagger",
-            "snapshot": {
-              "name": "Iron Dagger",
-              "type": "weapon",
-              "slot": "hand"
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Crypt|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "mob",
-            "key": "Ghoul",
-            "snapshot": {
-              "name": "Ghoul",
-              "stats": {
-                "health": 4,
-                "sanity": 4,
-                "energy": 4
-              }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          },
-          {
-            "kind": "room",
-            "key": "room:Crypt",
-            "snapshot": {
-              "name": "Crypt",
-              "description": "A dark crypt."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          },
-          {
-            "kind": "material",
-            "key": "item",
-            "snapshot": {
-              "type": "item"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Crypt",
-          "name": "Crypt",
-          "description": "A dark crypt.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "south",
             "toName": "Hall"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [
-          {
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "aliases": [
-              "ghoul"
-            ],
-            "kind": "occupant",
-            "health": 0,
-            "defeated": true
-          }
-        ],
-        "loot": [
-          {
-            "id": "mob:Ghoul:remains",
-            "description": "Ghoul's remains",
-            "opened": false,
-            "contents": [
-              {
-                "id": "mob:Ghoul:drop#0",
-                "name": "Bone Relic",
-                "aliases": [
-                  "bone relic",
-                  "relic"
-                ],
-                "kind": "item",
-                "equippable": true,
-                "usable": false,
-                "hasLore": false,
-                "droppable": true
-              }
-            ]
-          }
-        ],
+        "finished": false,
         "inventory": {
+          "equippedNames": [
+            "Iron Dagger"
+          ],
           "items": [
             {
-              "id": "player:Ada:item#items/dagger",
-              "name": "Iron Dagger",
               "aliases": [
                 "iron dagger",
                 "dagger"
               ],
-              "kind": "item",
+              "damaged": true,
+              "destroyable": true,
+              "droppable": true,
               "equippable": true,
-              "usable": false,
               "hasLore": false,
-              "droppable": true
+              "id": "player:Ada:item#items/dagger",
+              "kind": "item",
+              "name": "Iron Dagger",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [
-            "Iron Dagger"
-          ],
           "slots": 5
         },
-        "scope": [
+        "lockedDoors": [],
+        "loot": [
           {
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
+            "contents": [
+              {
+                "aliases": [
+                  "bone relic",
+                  "relic"
+                ],
+                "damaged": false,
+                "destroyable": true,
+                "droppable": true,
+                "equippable": true,
+                "hasLore": false,
+                "id": "mob:Ghoul:drop#0",
+                "kind": "item",
+                "name": "Bone Relic",
+                "usable": false
+              }
+            ],
+            "description": "Ghoul's remains",
+            "id": "mob:Ghoul:remains",
+            "opened": false
+          }
+        ],
+        "materials": [
+          {
+            "component": "item",
+            "quantity": 2
+          }
+        ],
+        "occupants": [
+          {
             "aliases": [
               "ghoul"
             ],
+            "defeated": true,
+            "health": 0.0,
+            "id": "mob:Ghoul",
             "kind": "occupant",
-            "health": 0,
-            "defeated": true
+            "name": "Ghoul"
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A dark crypt.",
+          "id": "room:Crypt",
+          "isLit": true,
+          "name": "Crypt"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "ghoul"
+            ],
+            "defeated": true,
+            "health": 0.0,
+            "id": "mob:Ghoul",
+            "kind": "occupant",
+            "name": "Ghoul"
           },
           {
-            "id": "mob:Ghoul:drop#0",
-            "name": "Bone Relic",
             "aliases": [
               "bone relic",
               "relic"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "mob:Ghoul:drop#0",
+            "kind": "item",
+            "name": "Bone Relic",
+            "usable": false
           },
           {
-            "id": "player:Ada:item#items/dagger",
-            "name": "Iron Dagger",
             "aliases": [
               "iron dagger",
               "dagger"
             ],
-            "kind": "item",
+            "damaged": true,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
+            "name": "Iron Dagger",
+            "usable": false
           },
           {
-            "id": "mob:Ghoul:remains",
-            "name": "Ghoul's remains",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "mob:Ghoul:remains",
+            "kind": "loot",
+            "name": "Ghoul's remains"
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Crypt",
-          "turn": 1,
           "maxTurns": 20,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 10.0,
+          "turn": 1
+        }
       }
     },
     {
       "command": {
         "kind": "take",
-        "targetId": "mob:Ghoul:drop#0",
-        "lootId": "mob:Ghoul:remains"
+        "lootId": "mob:Ghoul:remains",
+        "targetId": "mob:Ghoul:drop#0"
       },
       "cues": [
         {
-          "kind": "action",
           "action": "pickUp",
           "actor": {
             "id": "player:Ada",
             "name": "Ada"
-          }
+          },
+          "kind": "action"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Mob Defeat (conformance)",
-          "title": "Mob Defeat (conformance)",
-          "maxRounds": 20,
-          "round": 1,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {
-            "item": 2
-          },
-          "claims": [],
-          "encountered": [
-            "player:Ada:mob:Ghoul"
-          ],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "fighter",
-              "name": "Fighter",
               "baseStats": {
+                "energy": 10,
                 "health": 10,
-                "sanity": 10,
-                "energy": 10
-              }
+                "sanity": 10
+              },
+              "id": "fighter",
+              "name": "Fighter"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall",
-              "room:Crypt"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
-        },
-        "rooms": [
-          {
-            "id": "room:Crypt",
-            "name": "Crypt",
-            "description": "A dark crypt.",
-            "exits": {
-              "south": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "mob:Ghoul",
-              "player:Ada"
-            ],
-            "lootIds": [
-              "mob:Ghoul:remains"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {
-              "north": "exit:Crypt|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Crypt|Hall",
-            "endpointIds": [
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
               "room:Hall",
               "room:Crypt"
-            ],
-            "state": {}
-          }
-        ],
+            ]
+          },
+          "encountered": [
+            "player:Ada:mob:Ghoul"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:Mob Defeat (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {
+            "item": 2.0
+          },
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 1,
+          "started": true,
+          "title": "Mob Defeat (conformance)",
+          "winConditions": []
+        },
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {
+                "ko": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Crypt",
+            "equipment": {},
+            "history": [
+              {
+                "amount": 3.6000000000000005,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              },
+              {
+                "amount": 3.6000000000000005,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              }
+            ],
+            "id": "mob:Ghoul",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {
+              "item": 2
+            },
+            "name": "Ghoul",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 0.0,
+              "sanity": 4.0
+            }
+          },
+          {
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "player:Ada:item#items/dagger",
-                "mob:Ghoul:drop#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "fighter",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Crypt",
             "equipment": {
               "leftHand": "player:Ada:item#items/dagger"
             },
@@ -2762,13 +2835,13 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "player:Ada:item#items/dagger",
                     "name": "Iron Dagger"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
@@ -2781,338 +2854,350 @@
               },
               {
                 "kind": "attack",
+                "round": 0,
                 "target": {
                   "id": "mob:Ghoul",
                   "name": "Ghoul"
-                },
-                "round": 0
+                }
               },
               {
                 "kind": "attack",
+                "round": 0,
                 "target": {
                   "id": "mob:Ghoul",
                   "name": "Ghoul"
-                },
-                "round": 0
+                }
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "mob:Ghoul:drop#0",
                     "name": "Bone Relic"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 1
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "player:Ada:item#items/dagger",
+                "mob:Ghoul:drop#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "fighter"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
           },
           {
-            "kind": "mob",
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "stats": {
-              "health": 0,
-              "sanity": 4,
-              "energy": 4
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
             },
-            "actionsPerRound": 2,
-            "actionsThisRound": 0,
-            "currentRoomId": "room:Crypt",
-            "inventory": {
-              "slots": 2,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "takeDamage",
-                "amount": 3.6000000000000005,
-                "stat": "health",
-                "round": 0
-              },
-              {
-                "kind": "takeDamage",
-                "amount": 3.6000000000000005,
-                "stat": "health",
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "ko": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0,
-                "fear": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {
-              "item": 2
-            },
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
+            "key": "weapon:Iron Dagger",
+            "kind": "item",
+            "snapshot": {
+              "name": "Iron Dagger",
+              "slot": "hand",
+              "type": "weapon"
             }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "Ghoul",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Ghoul",
+              "stats": {
+                "energy": 4.0,
+                "health": 4.0,
+                "sanity": 4.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "room:Crypt",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dark crypt.",
+              "name": "Crypt"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "item",
+            "kind": "material",
+            "snapshot": {
+              "type": "item"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 1
+            },
+            "key": "accessory:Bone Relic",
+            "kind": "item",
+            "snapshot": {
+              "name": "Bone Relic",
+              "slot": "finger",
+              "type": "accessory"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Crypt"
+            ],
+            "id": "exit:Crypt|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
+            "behaviorKey": "items/bone-relic",
+            "id": "mob:Ghoul:drop#0",
             "kind": "item",
-            "id": "player:Ada:item#items/dagger",
-            "behaviorKey": "items/dagger",
-            "durability": 3,
-            "modifier": 3
+            "modifier": 1
           },
           {
+            "behaviorKey": "items/dagger",
+            "durability": 3,
+            "id": "player:Ada:item#items/dagger",
             "kind": "item",
-            "id": "mob:Ghoul:drop#0",
-            "behaviorKey": "items/bone-relic",
-            "modifier": 1
+            "modifier": 3
           }
         ],
         "loot": [
           {
-            "id": "mob:Ghoul:remains",
-            "description": "Ghoul's remains",
             "capacity": 3,
-            "contentIds": []
+            "contentIds": [],
+            "description": "Ghoul's remains",
+            "id": "mob:Ghoul:remains"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
+            "dark": false,
+            "description": "A dark crypt.",
+            "exits": {
+              "south": "exit:Crypt|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "id": "room:Crypt",
+            "lightSourceIds": [],
+            "lootIds": [
+              "mob:Ghoul:remains"
+            ],
+            "materialCacheIds": [],
+            "name": "Crypt",
+            "occupantIds": [
+              "mob:Ghoul",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "weapon:Iron Dagger",
-            "snapshot": {
-              "name": "Iron Dagger",
-              "type": "weapon",
-              "slot": "hand"
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Crypt|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "mob",
-            "key": "Ghoul",
-            "snapshot": {
-              "name": "Ghoul",
-              "stats": {
-                "health": 4,
-                "sanity": 4,
-                "energy": 4
-              }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          },
-          {
-            "kind": "room",
-            "key": "room:Crypt",
-            "snapshot": {
-              "name": "Crypt",
-              "description": "A dark crypt."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          },
-          {
-            "kind": "material",
-            "key": "item",
-            "snapshot": {
-              "type": "item"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
-          },
-          {
-            "kind": "item",
-            "key": "accessory:Bone Relic",
-            "snapshot": {
-              "name": "Bone Relic",
-              "type": "accessory",
-              "slot": "finger"
-            },
-            "firstSeen": {
-              "round": 1,
-              "characterId": "player:Ada",
-              "roomId": "room:Crypt"
-            }
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Crypt",
-          "name": "Crypt",
-          "description": "A dark crypt.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "south",
             "toName": "Hall"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [
-          {
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
-            "aliases": [
-              "ghoul"
-            ],
-            "kind": "occupant",
-            "health": 0,
-            "defeated": true
-          }
-        ],
-        "loot": [
-          {
-            "id": "mob:Ghoul:remains",
-            "description": "Ghoul's remains",
-            "opened": true,
-            "contents": []
-          }
-        ],
+        "finished": false,
         "inventory": {
+          "equippedNames": [
+            "Iron Dagger"
+          ],
           "items": [
             {
-              "id": "player:Ada:item#items/dagger",
-              "name": "Iron Dagger",
               "aliases": [
                 "iron dagger",
                 "dagger"
               ],
-              "kind": "item",
+              "damaged": true,
+              "destroyable": true,
+              "droppable": true,
               "equippable": true,
-              "usable": false,
               "hasLore": false,
-              "droppable": true
+              "id": "player:Ada:item#items/dagger",
+              "kind": "item",
+              "name": "Iron Dagger",
+              "usable": false
             },
             {
-              "id": "mob:Ghoul:drop#0",
-              "name": "Bone Relic",
               "aliases": [
                 "bone relic",
                 "relic"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": true,
               "equippable": true,
-              "usable": false,
               "hasLore": false,
-              "droppable": true
+              "id": "mob:Ghoul:drop#0",
+              "kind": "item",
+              "name": "Bone Relic",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [
-            "Iron Dagger"
-          ],
           "slots": 5
         },
-        "scope": [
+        "lockedDoors": [],
+        "loot": [
           {
-            "id": "mob:Ghoul",
-            "name": "Ghoul",
+            "contents": [],
+            "description": "Ghoul's remains",
+            "id": "mob:Ghoul:remains",
+            "opened": true
+          }
+        ],
+        "materials": [
+          {
+            "component": "item",
+            "quantity": 2
+          }
+        ],
+        "occupants": [
+          {
             "aliases": [
               "ghoul"
             ],
+            "defeated": true,
+            "health": 0.0,
+            "id": "mob:Ghoul",
             "kind": "occupant",
-            "health": 0,
-            "defeated": true
+            "name": "Ghoul"
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A dark crypt.",
+          "id": "room:Crypt",
+          "isLit": true,
+          "name": "Crypt"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "ghoul"
+            ],
+            "defeated": true,
+            "health": 0.0,
+            "id": "mob:Ghoul",
+            "kind": "occupant",
+            "name": "Ghoul"
           },
           {
-            "id": "player:Ada:item#items/dagger",
-            "name": "Iron Dagger",
             "aliases": [
               "iron dagger",
               "dagger"
             ],
-            "kind": "item",
+            "damaged": true,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
+            "name": "Iron Dagger",
+            "usable": false
           },
           {
-            "id": "mob:Ghoul:drop#0",
-            "name": "Bone Relic",
             "aliases": [
               "bone relic",
               "relic"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
             "equippable": true,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "mob:Ghoul:drop#0",
+            "kind": "item",
+            "name": "Bone Relic",
+            "usable": false
           },
           {
-            "id": "mob:Ghoul:remains",
-            "name": "Ghoul's remains",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "mob:Ghoul:remains",
+            "kind": "loot",
+            "name": "Ghoul's remains"
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Crypt",
-          "turn": 1,
           "maxTurns": 20,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 10.0,
+          "turn": 1
+        }
       }
     }
   ]

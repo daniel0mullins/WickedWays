@@ -1,28 +1,28 @@
 {
-  "title": "Status Bar",
-  "opts": {},
   "archetypes": [],
-  "rooms": [
-    {
-      "name": "Hall",
-      "description": "A cold stone hall."
-    }
-  ],
-  "startRoom": "Hall",
-  "exits": [],
-  "mobs": [],
-  "loot": [],
   "caches": [],
-  "npcs": [],
+  "exits": [],
   "formations": [],
-  "scenes": [],
-  "recipes": [],
-  "materials": [],
-  "winConditions": [],
+  "loot": [],
   "loseConditions": [],
+  "materials": [],
   "mechanics": [
     {
       "key": "status-bar"
     }
-  ]
+  ],
+  "mobs": [],
+  "npcs": [],
+  "opts": {},
+  "recipes": [],
+  "rooms": [
+    {
+      "description": "A cold stone hall.",
+      "name": "Hall"
+    }
+  ],
+  "scenes": [],
+  "startRoom": "Hall",
+  "title": "Status Bar",
+  "winConditions": []
 }

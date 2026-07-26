@@ -1,76 +1,76 @@
 {
-  "title": "Mobs",
-  "opts": {},
   "archetypes": [],
-  "rooms": [
-    {
-      "name": "Hall",
-      "description": "A long central hall."
-    },
-    {
-      "name": "Nursery",
-      "description": "A child's room, long abandoned."
-    },
-    {
-      "name": "Cellar",
-      "description": "The cellar below."
-    }
-  ],
-  "startRoom": "Hall",
+  "caches": [],
   "exits": [
     {
-      "from": "Hall",
       "direction": "north",
+      "from": "Hall",
       "to": "Nursery"
     },
     {
-      "from": "Hall",
       "direction": "south",
+      "from": "Hall",
       "to": "Cellar"
     }
   ],
+  "formations": [],
+  "loot": [],
+  "loseConditions": [],
+  "materials": [],
+  "mechanics": [],
   "mobs": [
     {
-      "name": "Wraith",
-      "stats": {
-        "health": 6,
-        "sanity": 5,
-        "energy": 5
-      },
-      "room": "Nursery",
       "drops": [
         "brass-key"
       ],
+      "name": "Wraith",
       "naturalAttack": {
-        "stat": "sanity",
-        "power": 3
+        "power": 3,
+        "stat": "sanity"
+      },
+      "room": "Nursery",
+      "stats": {
+        "energy": 5.0,
+        "health": 6.0,
+        "sanity": 5.0
       }
     },
     {
-      "name": "Revenant",
-      "stats": {
-        "health": 10,
-        "sanity": 8,
-        "energy": 6
-      },
-      "room": "Cellar",
       "drops": [
         "iron-key"
       ],
+      "name": "Revenant",
       "naturalAttack": {
-        "stat": "sanity",
-        "power": 2
+        "power": 2,
+        "stat": "sanity"
+      },
+      "room": "Cellar",
+      "stats": {
+        "energy": 6.0,
+        "health": 10.0,
+        "sanity": 8.0
       }
     }
   ],
-  "loot": [],
-  "caches": [],
   "npcs": [],
-  "formations": [],
-  "scenes": [],
+  "opts": {},
   "recipes": [],
-  "materials": [],
-  "winConditions": [],
-  "loseConditions": [],
-  "mechanics": []
+  "rooms": [
+    {
+      "description": "A long central hall.",
+      "name": "Hall"
+    },
+    {
+      "description": "A child's room, long abandoned.",
+      "name": "Nursery"
+    },
+    {
+      "description": "The cellar below.",
+      "name": "Cellar"
+    }
+  ],
+  "scenes": [],
+  "startRoom": "Hall",
+  "title": "Mobs",
+  "winConditions": []
 }

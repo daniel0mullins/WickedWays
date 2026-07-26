@@ -1,5 +1,6 @@
-//! Mechanic dispatch (collect-then-apply) + effect application. Byte-exact port of
-//! `dispatch.ts` (`runReducers`, `runDamageTransformers`) and `apply.ts` (`applyEffect`).
+//! Mechanic dispatch (collect-then-apply) + effect application. The reducer,
+//! damage-transformer, and effect-application behavior is pinned byte-exact by
+//! the conformance goldens.
 use alloc::format;
 use alloc::vec::Vec;
 
@@ -11,20 +12,26 @@ use crate::world::gate::GateVerdict;
 use crate::world::history::ActionHistoryEntry;
 use crate::world::ids::CharacterId;
 use crate::world::mechanics::{
-    ActionCtx, ActionView, DamageView, Effect, HookCtx, TransformResult,
-    ALL_STATUSES, MAX_EFFECTS_PER_EVENT,
+    ActionCtx, ActionView, DamageView, Effect, HookCtx, TransformResult, ALL_STATUSES,
+    MAX_EFFECTS_PER_EVENT,
 };
 use crate::world::World;
 
 /// Which round hook to run.
 #[derive(Clone, Copy)]
-pub enum RoundPhase { Start, End }
+pub enum RoundPhase {
+    Start,
+    End,
+}
 /// Which turn hook to run.
 #[derive(Clone, Copy)]
-pub enum TurnPhase { Start, End }
+pub enum TurnPhase {
+    Start,
+    End,
+}
 
 impl World {
-    /// TS `campaign[FIND_CHARACTER]` (campaign.ts:753-757): effects resolve against
+    /// `campaign[FIND_CHARACTER]`: effects resolve against
     /// the PARTY only and throw when the target is absent. Error text is not
     /// gate-observable (a ProceduralViolation aborts replay before comparison).
     fn require_party_member(&self, target: &CharacterId) -> Result<(), ProceduralViolation> {
@@ -32,12 +39,13 @@ impl World {
             Ok(())
         } else {
             Err(ProceduralViolation(format!(
-                "Effect target '{}' is not in the party.", target.0
+                "Effect target '{}' is not in the party.",
+                target.0
             )))
         }
     }
 
-    /// TS `[ADJUST_STAT]` (character.ts:359-362): `stats[stat] = max(0, stats[stat]+delta)`
+    /// `[ADJUST_STAT]`: `stats[stat] = max(0, stats[stat]+delta)`
     /// then reconcile. The sole mechanic-facing stat mutator.
     pub fn adjust_stat(
         &mut self,
@@ -49,25 +57,24 @@ impl World {
     ) -> Result<(), ProceduralViolation> {
         self.require_party_member(actor)?;
         if let Some(c) = self.characters.get_mut(actor) {
-            let cur = match stat {
-                StatType::Health => &mut c.stats.health,
-                StatType::Sanity => &mut c.stats.sanity,
-                StatType::Energy => &mut c.stats.energy,
-            };
+            let cur = c.stats.get_mut(stat);
             *cur = (*cur + delta).max(0.0);
         }
         self.reconcile(actor, cat, cues);
         Ok(())
     }
 
-    /// Route one effect to state (TS `applyEffect`). Damage/Heal/AdjustStat reconcile
+    /// Route one effect to state (`applyEffect`). Damage/Heal/AdjustStat reconcile
     /// (via `adjust_stat`); GrantImmunity/Cue/Status do not. Damage/Heal/AdjustStat/
     /// GrantImmunity are party-only (see `require_party_member`); Cue/Status do not
     /// target a character. GiveItem/SetVisible are NOT party-restricted (they act on
     /// any character, e.g. a non-party NPC handing over a key and vanishing).
-    pub fn apply_effect(&mut self, e: Effect, cat: &Catalog, cues: &mut Vec<PresentationCue>)
-        -> Result<(), ProceduralViolation>
-    {
+    pub fn apply_effect(
+        &mut self,
+        e: Effect,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
         match e {
             Effect::Damage { target, amount } => {
                 self.adjust_stat(&target, StatType::Health, -amount.max(0.0), cat, cues)
@@ -75,12 +82,14 @@ impl World {
             Effect::Heal { target, amount } => {
                 self.adjust_stat(&target, StatType::Health, amount.max(0.0), cat, cues)
             }
-            Effect::AdjustStat { target, stat, delta } => {
-                self.adjust_stat(&target, stat, delta, cat, cues)
-            }
+            Effect::AdjustStat {
+                target,
+                stat,
+                delta,
+            } => self.adjust_stat(&target, stat, delta, cat, cues),
             Effect::GrantImmunity { target, turns } => {
                 self.require_party_member(&target)?;
-                // TS `Math.max(0, Math.trunc(turns))`; `as i64` truncates toward
+                // `Math.max(0, Math.trunc(turns))`; `as i64` truncates toward
                 // zero, so after the 0-floor the cast IS the trunc (core-only —
                 // `f64::trunc` needs std).
                 let t = turns.max(0.0) as i64;
@@ -89,8 +98,14 @@ impl World {
                 }
                 Ok(())
             }
-            Effect::Cue { cue } => { cues.push(PresentationCue::Mechanic { cue }); Ok(()) }
-            Effect::Status { fields } => { cues.push(PresentationCue::Status { fields }); Ok(()) }
+            Effect::Cue { cue } => {
+                cues.push(PresentationCue::Mechanic { cue });
+                Ok(())
+            }
+            Effect::Status { fields } => {
+                cues.push(PresentationCue::Status { fields });
+                Ok(())
+            }
             Effect::GiveItem { from, to, item } => {
                 // Which of `from`'s two inventory lists holds `item` decides routing
                 // (mirrors take/drop's key_ids-vs-item_ids split): a key moves
@@ -98,19 +113,25 @@ impl World {
                 // hold it, else the carrying guard fires (error text not
                 // gate-observable; it aborts replay before comparison).
                 let held_as_key = self.characters.get(&from).and_then(|c| {
-                    if c.inventory.key_ids.contains(&item) { Some(true) }
-                    else if c.inventory.item_ids.contains(&item) { Some(false) }
-                    else { None }
+                    if c.inventory.key_ids.contains(&item) {
+                        Some(true)
+                    } else if c.inventory.item_ids.contains(&item) {
+                        Some(false)
+                    } else {
+                        None
+                    }
                 });
                 let Some(is_key) = held_as_key else {
                     return Err(ProceduralViolation(format!(
-                        "Cannot give item '{}': the character does not hold it.", item.0
+                        "Cannot give item '{}': the character does not hold it.",
+                        item.0
                     )));
                 };
                 // Recipient must exist before we move the id out of `from`.
                 if !self.characters.contains_key(&to) {
                     return Err(ProceduralViolation(format!(
-                        "Give-item recipient '{}' not found.", to.0
+                        "Give-item recipient '{}' not found.",
+                        to.0
                     )));
                 }
                 // Remove from `from` (retain over both lists — an id is unique to one).
@@ -122,8 +143,11 @@ impl World {
                 // intentionally untouched (the ItemSnapshot stays — reachability
                 // follows the new holder).
                 if let Some(c) = self.characters.get_mut(&to) {
-                    if is_key { c.inventory.key_ids.push(item); }
-                    else { c.inventory.item_ids.push(item); }
+                    if is_key {
+                        c.inventory.key_ids.push(item);
+                    } else {
+                        c.inventory.item_ids.push(item);
+                    }
                 }
                 Ok(())
             }
@@ -140,9 +164,12 @@ impl World {
     }
 
     /// Apply a queued effect batch in order (collect-then-apply tail).
-    pub(crate) fn apply_all(&mut self, effects: Vec<Effect>, cat: &Catalog, cues: &mut Vec<PresentationCue>)
-        -> Result<(), ProceduralViolation>
-    {
+    pub(crate) fn apply_all(
+        &mut self,
+        effects: Vec<Effect>,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
         for e in effects {
             self.apply_effect(e, cat, cues)?;
         }
@@ -164,21 +191,28 @@ impl World {
         let mut queued: Vec<Effect> = Vec::new();
         {
             let rng = &mut self.rng;
-            for m in self.campaign.mechanics.iter_mut() {
-                let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat) else {
+            for m in &mut self.campaign.mechanics {
+                let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat)
+                else {
                     return Err(ProceduralViolation(format!(
-                        "Mechanic '{}' is not registered.", m.key
+                        "Mechanic '{}' is not registered.",
+                        m.key
                     )));
                 };
                 let op = resolved.as_op();
-                let mut cx = HookCtx { state: &mut m.state, view: &view, rng: &mut *rng };
+                let mut cx = HookCtx {
+                    state: &mut m.state,
+                    view: &view,
+                    rng: &mut *rng,
+                };
                 let effects = match phase {
                     RoundPhase::Start => op.on_round_start(&mut cx),
                     RoundPhase::End => op.on_round_end(&mut cx),
                 };
                 if effects.len() > MAX_EFFECTS_PER_EVENT {
                     return Err(ProceduralViolation(format!(
-                        "Mechanic '{}' emitted too many effects.", m.key
+                        "Mechanic '{}' emitted too many effects.",
+                        m.key
                     )));
                 }
                 queued.extend(effects);
@@ -211,15 +245,23 @@ impl World {
         let mut queued: Vec<Effect> = Vec::new();
         {
             let rng = &mut self.rng;
-            for m in self.campaign.mechanics.iter_mut() {
-                let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat) else {
+            for m in &mut self.campaign.mechanics {
+                let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat)
+                else {
                     return Err(ProceduralViolation(format!(
-                        "Mechanic '{}' is not registered.", m.key
+                        "Mechanic '{}' is not registered.",
+                        m.key
                     )));
                 };
                 let op = resolved.as_op();
-                let Some(av) = actor_view.clone() else { continue };
-                let base = HookCtx { state: &mut m.state, view: &view, rng: &mut *rng };
+                let Some(av) = actor_view.clone() else {
+                    continue;
+                };
+                let base = HookCtx {
+                    state: &mut m.state,
+                    view: &view,
+                    rng: &mut *rng,
+                };
                 let mut cx = crate::world::mechanics::TurnCtx { base, actor: av };
                 let effects = match phase {
                     TurnPhase::Start => op.on_turn_start(&mut cx),
@@ -227,7 +269,8 @@ impl World {
                 };
                 if effects.len() > MAX_EFFECTS_PER_EVENT {
                     return Err(ProceduralViolation(format!(
-                        "Mechanic '{}' emitted too many effects.", m.key
+                        "Mechanic '{}' emitted too many effects.",
+                        m.key
                     )));
                 }
                 queued.extend(effects);
@@ -237,11 +280,11 @@ impl World {
         Ok(())
     }
 
-    /// Dispatch `on_action` for a budgeted action (TS `[DISPATCH_ACTION]`).
+    /// Dispatch `on_action` for a budgeted action (`[DISPATCH_ACTION]`).
     pub fn dispatch_action(
         &mut self,
         actor: &CharacterId,
-        action: ActionView,
+        action: &ActionView,
         cat: &Catalog,
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
@@ -260,22 +303,33 @@ impl World {
         let mut queued: Vec<Effect> = Vec::new();
         {
             let rng = &mut self.rng;
-            for m in self.campaign.mechanics.iter_mut() {
-                let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat) else {
+            for m in &mut self.campaign.mechanics {
+                let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat)
+                else {
                     return Err(ProceduralViolation(format!(
-                        "Mechanic '{}' is not registered.", m.key
+                        "Mechanic '{}' is not registered.",
+                        m.key
                     )));
                 };
                 let op = resolved.as_op();
-                let Some(av) = actor_view.clone() else { continue };
-                let base = HookCtx { state: &mut m.state, view: &view, rng: &mut *rng };
+                let Some(av) = actor_view.clone() else {
+                    continue;
+                };
+                let base = HookCtx {
+                    state: &mut m.state,
+                    view: &view,
+                    rng: &mut *rng,
+                };
                 let mut cx = crate::world::mechanics::ActionCtx {
-                    base, actor: av, action: action.clone(),
+                    base,
+                    actor: av,
+                    action: action.clone(),
                 };
                 let effects = op.on_action(&mut cx);
                 if effects.len() > MAX_EFFECTS_PER_EVENT {
                     return Err(ProceduralViolation(format!(
-                        "Mechanic '{}' emitted too many effects.", m.key
+                        "Mechanic '{}' emitted too many effects.",
+                        m.key
                     )));
                 }
                 queued.extend(effects);
@@ -286,11 +340,11 @@ impl World {
     }
 
     /// Fold post-mitigation damage through each mechanic's `modify_damage`
-    /// (TS `runDamageTransformers`). Clamp `>= 0` after each step; a `Final`
+    /// (`runDamageTransformers`). Clamp `>= 0` after each step; a `Final`
     /// result emits `"{key} fixed damage at {value}."` and short-circuits.
     pub fn run_damage_transformers(
         &mut self,
-        dv: DamageView,
+        dv: &DamageView,
         cues: &mut Vec<PresentationCue>,
         cat: &Catalog,
     ) -> f64 {
@@ -300,11 +354,20 @@ impl World {
         let view = self.build_campaign_view(cat);
         let mut value = dv.amount;
         let rng = &mut self.rng;
-        for m in self.campaign.mechanics.iter_mut() {
-            let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat) else { continue };
+        for m in &mut self.campaign.mechanics {
+            let Some(resolved) = crate::world::mechanics::resolve_mechanic_op(&m.key, cat) else {
+                continue;
+            };
             let op = resolved.as_op();
-            let stepped = DamageView { amount: value, ..dv.clone() };
-            let mut cx = HookCtx { state: &mut m.state, view: &view, rng: &mut *rng };
+            let stepped = DamageView {
+                amount: value,
+                ..dv.clone()
+            };
+            let mut cx = HookCtx {
+                state: &mut m.state,
+                view: &view,
+                rng: &mut *rng,
+            };
             match op.modify_damage(&stepped, &mut cx) {
                 TransformResult::Value(v) => value = v.max(0.0),
                 TransformResult::Final(v) => {
@@ -329,7 +392,8 @@ impl World {
         for m in &self.campaign.mechanics {
             if crate::world::mechanics::resolve_mechanic_op(&m.key, cat).is_none() {
                 return Err(ProceduralViolation(format!(
-                    "Mechanic '{}' is not registered.", m.key
+                    "Mechanic '{}' is not registered.",
+                    m.key
                 )));
             }
             if let Some(b) = cat.behaviors.get(&m.key) {
@@ -338,7 +402,27 @@ impl World {
                 }
             }
         }
-        // Task 13: exit behavior keys resolve native-first then catalog; a
+        // Item behaviors are validated STRICTLY WEAKER than every other family:
+        // `behavior_key` doubles as the `cat.items` descriptor key and most items
+        // carry no behavior entry, so a missing key is NOT an error (a
+        // resolve-or-reject loop here would fail hydrate for every plain item).
+        // Only an explicit Item-family script is shape-checked at load; a native
+        // behavior needs no check, and a foreign-family binding under the same
+        // key stays a silent no-op, matching the use_item/read_item call sites.
+        for item in self.items.values() {
+            let crate::world::snapshot::ItemSnapshot::Item { behavior_key, .. } = item else {
+                continue;
+            };
+            if crate::world::item_behavior::item_behavior(behavior_key).is_some() {
+                continue;
+            }
+            if let Some(b @ crate::script::ast::BehaviorScript::Item { .. }) =
+                cat.behaviors.get(behavior_key)
+            {
+                crate::script::validate_behavior(behavior_key, b)?;
+            }
+        }
+        // exit behavior keys resolve native-first then catalog; a
         // scripted (non-native) exit behavior is also shape-checked at load.
         for exit in self.exits.values() {
             if let Some(key) = &exit.behavior_key {
@@ -354,12 +438,18 @@ impl World {
                 }
             }
         }
-        // Task 14: victory condition keys resolve native-first then catalog; a
+        // victory condition keys resolve native-first then catalog; a
         // scripted (non-native) victory behavior is also shape-checked at load.
-        for c in self.campaign.lose_conditions.iter().chain(self.campaign.win_conditions.iter()) {
+        for c in self
+            .campaign
+            .lose_conditions
+            .iter()
+            .chain(self.campaign.win_conditions.iter())
+        {
             if crate::world::victory::resolve_victory(&c.key, cat).is_none() {
                 return Err(ProceduralViolation(format!(
-                    "No condition registered for key '{}'.", c.key
+                    "No condition registered for key '{}'.",
+                    c.key
                 )));
             }
             if let Some(b) = cat.behaviors.get(&c.key) {
@@ -368,7 +458,7 @@ impl World {
                 }
             }
         }
-        // NPC dialogue behaviors (NPC sub-plan 2): every NPC carrying an
+        // NPC dialogue behaviors: every NPC carrying an
         // `npc_behavior_key` must resolve to an `Npc` behavior (catalog-only, via
         // `resolve_npc` — there is no native NPC concept), and that behavior is
         // shape-checked at load like the other scripted families. Because
@@ -389,7 +479,7 @@ impl World {
                 }
             }
         }
-        // Room scene behaviors (Task 3): every room scene's `behavior_key` must
+        // Room scene behaviors: every room scene's `behavior_key` must
         // resolve via `resolve_scene` (native first, then a catalog descriptor) —
         // fail fast like the item/mechanic/npc/exit/victory loops. A scripted
         // (non-native) scene is also shape-checked at load. Mirrors the TS
@@ -398,7 +488,8 @@ impl World {
             for scene in &room.scenes {
                 if crate::world::scenes::resolve_scene(&scene.behavior_key, cat).is_none() {
                     return Err(ProceduralViolation(format!(
-                        "Scene behavior '{}' is not registered.", scene.behavior_key
+                        "Scene behavior '{}' is not registered.",
+                        scene.behavior_key
                     )));
                 }
                 if let Some(b) = cat.behaviors.get(&scene.behavior_key) {
@@ -409,11 +500,18 @@ impl World {
             }
         }
         // Formation keys (encounter table is an untyped Value; read behaviorKey like maybe_spawn).
-        if let Some(arr) = self.campaign.encounter_table.get("formations").and_then(|v| v.as_array()) {
+        if let Some(arr) = self
+            .campaign
+            .encounter_table
+            .get("formations")
+            .and_then(|v| v.as_array())
+        {
             for f in arr {
                 if let Some(key) = f.get("behaviorKey").and_then(|v| v.as_str()) {
                     if crate::world::formations::resolve_formation(key, cat).is_none() {
-                        return Err(ProceduralViolation(format!("Formation '{key}' is not registered.")));
+                        return Err(ProceduralViolation(format!(
+                            "Formation '{key}' is not registered."
+                        )));
                     }
                 }
             }
@@ -421,7 +519,7 @@ impl World {
         Ok(())
     }
 
-    /// Invoke a mechanic's custom action (TS `useMechanicAction` + `INVOKE_MECHANIC_ACTION`).
+    /// Invoke a mechanic's custom action (`useMechanicAction` + `INVOKE_MECHANIC_ACTION`).
     /// Budgeted: gate → run the op's action → apply effects → record the `mechanicAction`
     /// (tick + `on_action` + cap-check → end_turn).
     pub fn use_mechanic_action(
@@ -448,36 +546,44 @@ impl World {
             .mechanics
             .iter()
             .position(|m| m.key == mechanic_key)
-            .ok_or_else(|| ProceduralViolation(format!(
-                "Mechanic '{}' is not enabled.", mechanic_key
-            )))?;
-        let resolved = crate::world::mechanics::resolve_mechanic_op(mechanic_key, cat)
-            .ok_or_else(|| ProceduralViolation(format!(
-                "Mechanic '{}' is not registered.", mechanic_key
-            )))?;
+            .ok_or_else(|| {
+                ProceduralViolation(format!("Mechanic '{}' is not enabled.", mechanic_key))
+            })?;
+        let resolved =
+            crate::world::mechanics::resolve_mechanic_op(mechanic_key, cat).ok_or_else(|| {
+                ProceduralViolation(format!("Mechanic '{}' is not registered.", mechanic_key))
+            })?;
         let op = resolved.as_op();
         let view = self.build_campaign_view(cat);
-        let actor_view = self.character_view(actor, cat).ok_or_else(|| ProceduralViolation(format!(
-            "Actor '{}' not found.", actor.0
-        )))?;
+        let actor_view = self
+            .character_view(actor, cat)
+            .ok_or_else(|| ProceduralViolation(format!("Actor '{}' not found.", actor.0)))?;
         let effects = {
             let rng = &mut self.rng;
             let m = &mut self.campaign.mechanics[idx];
             let mut cx = ActionCtx {
-                base: HookCtx { state: &mut m.state, view: &view, rng },
+                base: HookCtx {
+                    state: &mut m.state,
+                    view: &view,
+                    rng,
+                },
                 actor: actor_view,
                 action: ActionView::of("mechanicAction"),
             };
             match op.run_action(action_key, &mut cx) {
                 Some(e) => e,
-                None => return Err(ProceduralViolation(format!(
-                    "Mechanic '{}' has no action '{}'.", mechanic_key, action_key
-                ))),
+                None => {
+                    return Err(ProceduralViolation(format!(
+                        "Mechanic '{}' has no action '{}'.",
+                        mechanic_key, action_key
+                    )))
+                }
             }
         };
         if effects.len() > MAX_EFFECTS_PER_EVENT {
             return Err(ProceduralViolation(format!(
-                "Mechanic '{}' emitted too many effects.", mechanic_key
+                "Mechanic '{}' emitted too many effects.",
+                mechanic_key
             )));
         }
         self.apply_all(effects, cat, cues)?;
@@ -496,14 +602,13 @@ impl World {
             actor: self.entity_ref_char(actor),
             sound: None,
         });
-        self.record_action(actor, true, ActionView::of("mechanicAction"), cat, cues)
+        self.record_action(actor, true, &ActionView::of("mechanicAction"), cat, cues)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use alloc::vec::Vec;
     use crate::presentation::{MechanicCue, PresentationCue};
     use crate::stats::StatType;
     use crate::world::afflictions::Status;
@@ -511,9 +616,9 @@ mod tests {
     use crate::world::ids::CharacterId;
     use crate::world::mechanics::Effect;
     use crate::world::snapshot::MechanicSnapshot;
+    use crate::world::test_support::cid;
     use crate::world::test_support::world_with_party;
-
-    fn cid(s: &str) -> CharacterId { CharacterId(s.into()) }
+    use alloc::vec::Vec;
 
     // world_with_party gives every character uniform stats:
     // health 5.0 / sanity 5.0 / energy 5.0 (test_support.rs); the second
@@ -535,19 +640,27 @@ mod tests {
     /// `movement.rs`'s `seat_mob` / the mob-defeat combat tests, minus the room seating
     /// (not needed for turn-hook dispatch).
     fn seed_mob(w: &mut crate::world::World, name: &str) {
-        use alloc::collections::BTreeMap;
         use crate::world::afflictions::Afflictions;
         use crate::world::snapshot::{CharacterKind, CharacterSnapshot, InventorySnapshot, Stats};
+        use alloc::collections::BTreeMap;
         let id = CharacterId(name.into());
         let snap = CharacterSnapshot {
             kind: CharacterKind::Mob,
             id: id.clone(),
             name: name.into(),
-            stats: Stats { health: 4.0, sanity: 0.0, energy: 3.0 },
+            stats: Stats {
+                health: 4.0,
+                sanity: 0.0,
+                energy: 3.0,
+            },
             actions_per_round: 1,
             actions_this_round: 0,
             current_room_id: None,
-            inventory: InventorySnapshot { slots: 0, item_ids: Vec::new(), key_ids: Vec::new() },
+            inventory: InventorySnapshot {
+                slots: 0,
+                item_ids: Vec::new(),
+                key_ids: Vec::new(),
+            },
             equipment: BTreeMap::new(),
             history: Vec::new(),
             archetype_immunities: Vec::new(),
@@ -570,9 +683,14 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10); // health 5.0
         let mut cues = Vec::new();
         w.apply_effect(
-            Effect::Damage { target: cid("pc"), amount: 3.0 },
-            &Catalog::default(), &mut cues,
-        ).unwrap();
+            Effect::Damage {
+                target: cid("pc"),
+                amount: 3.0,
+            },
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         assert_eq!(w.characters[&cid("pc")].stats.health, 2.0);
     }
 
@@ -581,9 +699,14 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let mut cues = Vec::new();
         w.apply_effect(
-            Effect::Damage { target: cid("pc"), amount: -5.0 }, // max(0,-5)=0
-            &Catalog::default(), &mut cues,
-        ).unwrap();
+            Effect::Damage {
+                target: cid("pc"),
+                amount: -5.0,
+            }, // max(0,-5)=0
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         assert_eq!(w.characters[&cid("pc")].stats.health, 5.0);
     }
 
@@ -592,14 +715,24 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let mut cues = Vec::new();
         w.apply_effect(
-            Effect::Heal { target: cid("pc"), amount: -4.0 }, // max(0,-4)=0
-            &Catalog::default(), &mut cues,
-        ).unwrap();
+            Effect::Heal {
+                target: cid("pc"),
+                amount: -4.0,
+            }, // max(0,-4)=0
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         assert_eq!(w.characters[&cid("pc")].stats.health, 5.0);
         w.apply_effect(
-            Effect::Heal { target: cid("pc"), amount: 2.5 },
-            &Catalog::default(), &mut cues,
-        ).unwrap();
+            Effect::Heal {
+                target: cid("pc"),
+                amount: 2.5,
+            },
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         assert_eq!(w.characters[&cid("pc")].stats.health, 7.5);
     }
 
@@ -608,12 +741,24 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10); // sanity 5.0
         let mut cues = Vec::new();
         w.apply_effect(
-            Effect::AdjustStat { target: cid("pc"), stat: StatType::Sanity, delta: -9.0 },
-            &Catalog::default(), &mut cues,
-        ).unwrap();
-        assert_eq!(w.characters[&cid("pc")].stats.sanity, 0.0, "delta unclamped, result floored");
+            Effect::AdjustStat {
+                target: cid("pc"),
+                stat: StatType::Sanity,
+                delta: -9.0,
+            },
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
+        assert_eq!(
+            w.characters[&cid("pc")].stats.sanity,
+            0.0,
+            "delta unclamped, result floored"
+        );
         // Sanity 0 → reconcile latches Panic (proves adjust_stat reconciled).
-        assert!(w.characters[&cid("pc")].afflictions.is_active(Status::Panic));
+        assert!(w.characters[&cid("pc")]
+            .afflictions
+            .is_active(Status::Panic));
     }
 
     #[test]
@@ -624,15 +769,23 @@ mod tests {
         w.characters.get_mut(&cid("pc")).unwrap().stats.sanity = 0.0;
         let mut cues = Vec::new();
         w.apply_effect(
-            Effect::GrantImmunity { target: cid("pc"), turns: 2.9 }, // trunc -> 2
-            &Catalog::default(), &mut cues,
-        ).unwrap();
+            Effect::GrantImmunity {
+                target: cid("pc"),
+                turns: 2.9,
+            }, // trunc -> 2
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         let a = &w.characters[&cid("pc")].afflictions;
         assert_eq!(a.immunity_of(Status::Panic), 2);
         assert_eq!(a.immunity_of(Status::Fear), 2);
         assert_eq!(a.immunity_of(Status::Confused), 2);
         assert_eq!(a.immunity_of(Status::Ko), 0, "KO is never immunizable");
-        assert!(!a.is_active(Status::Panic), "GrantImmunity must NOT reconcile");
+        assert!(
+            !a.is_active(Status::Panic),
+            "GrantImmunity must NOT reconcile"
+        );
         assert!(cues.is_empty());
     }
 
@@ -641,10 +794,20 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let mut cues = Vec::new();
         w.apply_effect(
-            Effect::GrantImmunity { target: cid("pc"), turns: -3.7 }, // max(0,trunc(-3.7))=0
-            &Catalog::default(), &mut cues,
-        ).unwrap();
-        assert_eq!(w.characters[&cid("pc")].afflictions.immunity_of(Status::Panic), 0);
+            Effect::GrantImmunity {
+                target: cid("pc"),
+                turns: -3.7,
+            }, // max(0,trunc(-3.7))=0
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
+        assert_eq!(
+            w.characters[&cid("pc")]
+                .afflictions
+                .immunity_of(Status::Panic),
+            0
+        );
     }
 
     #[test]
@@ -652,9 +815,16 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let mut cues = Vec::new();
         w.apply_effect(
-            Effect::Cue { cue: MechanicCue { text: Some("boo".into()), sound: None } },
-            &Catalog::default(), &mut cues,
-        ).unwrap();
+            Effect::Cue {
+                cue: MechanicCue {
+                    text: Some("boo".into()),
+                    sound: None,
+                },
+            },
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         assert_eq!(cues.len(), 1);
         assert!(matches!(cues[0], PresentationCue::Mechanic { .. }));
         assert_eq!(w.characters[&cid("pc")].stats.health, 5.0);
@@ -667,17 +837,30 @@ mod tests {
         use crate::world::mechanics::Effect;
         let mut w = world_with_party(&["pc"], 10); // party = [pc]
         let mut cues = Vec::new();
-        // A Damage effect at a non-party id must error (TS FIND_CHARACTER is party-only + throws).
+        // A Damage effect at a non-party id must error (effect targets are party-only).
         let r = w.apply_effect(
-            Effect::Damage { target: cid("nobody"), amount: 1.0 },
-            &Catalog::default(), &mut cues,
+            Effect::Damage {
+                target: cid("nobody"),
+                amount: 1.0,
+            },
+            &Catalog::default(),
+            &mut cues,
         );
-        assert!(r.is_err(), "effect targeting a non-party id must be a ProceduralViolation");
+        assert!(
+            r.is_err(),
+            "effect targeting a non-party id must be a ProceduralViolation"
+        );
         // A party target succeeds.
-        assert!(w.apply_effect(
-            Effect::Heal { target: cid("pc"), amount: 1.0 },
-            &Catalog::default(), &mut cues,
-        ).is_ok());
+        assert!(w
+            .apply_effect(
+                Effect::Heal {
+                    target: cid("pc"),
+                    amount: 1.0
+                },
+                &Catalog::default(),
+                &mut cues,
+            )
+            .is_ok());
     }
 
     #[test]
@@ -686,13 +869,17 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let mut cues = Vec::new();
         let r = w.apply_effect(
-            Effect::GrantImmunity { target: cid("nobody"), turns: 1.0 },
-            &Catalog::default(), &mut cues,
+            Effect::GrantImmunity {
+                target: cid("nobody"),
+                turns: 1.0,
+            },
+            &Catalog::default(),
+            &mut cues,
         );
         assert!(r.is_err());
     }
 
-    // -- GiveItem + SetVisible (NPC sub-plan 1) --
+    // -- GiveItem + SetVisible --
 
     #[test]
     fn apply_give_item_routes_by_source_list_and_leaves_world_items() {
@@ -704,35 +891,91 @@ mod tests {
         let mut w = world_with_party(&["giver", "taker"], 10);
         let item = ItemId("book-1".into());
         let key = ItemId("key-1".into());
-        w.items.insert(item.clone(), ItemSnapshot::Item {
-            id: item.clone(), behavior_key: "items/book".into(), durability: None, modifier: 0,
-        });
-        w.items.insert(key.clone(), ItemSnapshot::Key {
-            id: key.clone(), name: "Brass Key".into(), key_code: "door".into(), consume_on_use: false,
-        });
-        w.characters.get_mut(&cid("giver")).unwrap().inventory.item_ids.push(item.clone());
-        w.characters.get_mut(&cid("giver")).unwrap().inventory.key_ids.push(key.clone());
+        w.items.insert(
+            item.clone(),
+            ItemSnapshot::Item {
+                id: item.clone(),
+                behavior_key: "items/book".into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
+        w.items.insert(
+            key.clone(),
+            ItemSnapshot::Key {
+                id: key.clone(),
+                name: "Brass Key".into(),
+                key_code: "door".into(),
+                consume_on_use: false,
+            },
+        );
+        w.characters
+            .get_mut(&cid("giver"))
+            .unwrap()
+            .inventory
+            .item_ids
+            .push(item.clone());
+        w.characters
+            .get_mut(&cid("giver"))
+            .unwrap()
+            .inventory
+            .key_ids
+            .push(key.clone());
         let items_before = w.items.len();
 
         let mut cues = Vec::new();
         w.apply_effect(
-            Effect::GiveItem { from: cid("giver"), to: cid("taker"), item: item.clone() },
-            &Catalog::default(), &mut cues,
-        ).unwrap();
+            Effect::GiveItem {
+                from: cid("giver"),
+                to: cid("taker"),
+                item: item.clone(),
+            },
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         w.apply_effect(
-            Effect::GiveItem { from: cid("giver"), to: cid("taker"), item: key.clone() },
-            &Catalog::default(), &mut cues,
-        ).unwrap();
+            Effect::GiveItem {
+                from: cid("giver"),
+                to: cid("taker"),
+                item: key.clone(),
+            },
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
 
         let giver = &w.characters[&cid("giver")];
         let taker = &w.characters[&cid("taker")];
-        assert!(!giver.inventory.item_ids.contains(&item), "item left giver's item_ids");
-        assert!(!giver.inventory.key_ids.contains(&key), "key left giver's key_ids");
-        assert!(taker.inventory.item_ids.contains(&item), "non-key routes to taker's item_ids");
-        assert!(taker.inventory.key_ids.contains(&key), "key routes to taker's key_ids");
-        assert!(!taker.inventory.key_ids.contains(&item), "non-key must not land in key_ids");
-        assert!(!taker.inventory.item_ids.contains(&key), "key must not land in item_ids");
-        assert_eq!(w.items.len(), items_before, "World.items unchanged (snapshots stay)");
+        assert!(
+            !giver.inventory.item_ids.contains(&item),
+            "item left giver's item_ids"
+        );
+        assert!(
+            !giver.inventory.key_ids.contains(&key),
+            "key left giver's key_ids"
+        );
+        assert!(
+            taker.inventory.item_ids.contains(&item),
+            "non-key routes to taker's item_ids"
+        );
+        assert!(
+            taker.inventory.key_ids.contains(&key),
+            "key routes to taker's key_ids"
+        );
+        assert!(
+            !taker.inventory.key_ids.contains(&item),
+            "non-key must not land in key_ids"
+        );
+        assert!(
+            !taker.inventory.item_ids.contains(&key),
+            "key must not land in item_ids"
+        );
+        assert_eq!(
+            w.items.len(),
+            items_before,
+            "World.items unchanged (snapshots stay)"
+        );
     }
 
     #[test]
@@ -742,10 +985,18 @@ mod tests {
         let mut cues = Vec::new();
         // giver holds nothing → carrying guard fires (ProceduralViolation).
         let r = w.apply_effect(
-            Effect::GiveItem { from: cid("giver"), to: cid("taker"), item: ItemId("ghost".into()) },
-            &Catalog::default(), &mut cues,
+            Effect::GiveItem {
+                from: cid("giver"),
+                to: cid("taker"),
+                item: ItemId("ghost".into()),
+            },
+            &Catalog::default(),
+            &mut cues,
         );
-        assert!(r.is_err(), "giving an unheld item must be a ProceduralViolation");
+        assert!(
+            r.is_err(),
+            "giving an unheld item must be a ProceduralViolation"
+        );
     }
 
     #[test]
@@ -754,15 +1005,31 @@ mod tests {
         assert!(w.characters[&cid("pc")].visible, "characters start visible");
         let mut cues = Vec::new();
         w.apply_effect(
-            Effect::SetVisible { target: cid("pc"), visible: false },
-            &Catalog::default(), &mut cues,
-        ).unwrap();
-        assert!(!w.characters[&cid("pc")].visible, "SetVisible(false) hides the character");
+            Effect::SetVisible {
+                target: cid("pc"),
+                visible: false,
+            },
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
+        assert!(
+            !w.characters[&cid("pc")].visible,
+            "SetVisible(false) hides the character"
+        );
         w.apply_effect(
-            Effect::SetVisible { target: cid("pc"), visible: true },
-            &Catalog::default(), &mut cues,
-        ).unwrap();
-        assert!(w.characters[&cid("pc")].visible, "SetVisible(true) reveals again (reversible)");
+            Effect::SetVisible {
+                target: cid("pc"),
+                visible: true,
+            },
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
+        assert!(
+            w.characters[&cid("pc")].visible,
+            "SetVisible(true) reveals again (reversible)"
+        );
     }
 
     // -- dispatch + validate --
@@ -772,8 +1039,12 @@ mod tests {
         let mut w = world_with_party(&["pc"], 10);
         let rng_before = w.rng.clone();
         let mut cues = Vec::new();
-        w.dispatch_round(RoundPhase::Start, &Catalog::default(), &mut cues).unwrap();
-        assert_eq!(w.rng, rng_before, "empty mechanics fast path must not touch rng");
+        w.dispatch_round(RoundPhase::Start, &Catalog::default(), &mut cues)
+            .unwrap();
+        assert_eq!(
+            w.rng, rng_before,
+            "empty mechanics fast path must not touch rng"
+        );
         assert!(cues.is_empty());
     }
 
@@ -785,14 +1056,27 @@ mod tests {
             state: serde_json::json!({"ticks": 0}),
         });
         let mut cues = Vec::new();
-        w.dispatch_round(RoundPhase::Start, &Catalog::default(), &mut cues).unwrap();
-        w.dispatch_round(RoundPhase::End, &Catalog::default(), &mut cues).unwrap();
+        w.dispatch_round(RoundPhase::Start, &Catalog::default(), &mut cues)
+            .unwrap();
+        w.dispatch_round(RoundPhase::End, &Catalog::default(), &mut cues)
+            .unwrap();
         // on_round_start: "Dread stirs."; on_round_end: AdjustStat(Sanity,-1) then
         // "Dread deepens." — health untouched, sanity ticks down, ticks persisted.
-        assert_eq!(w.characters[&cid("pc")].stats.health, 5.0, "dread never touches health");
-        assert_eq!(w.characters[&cid("pc")].stats.sanity, 4.0, "on_round_end ticks Sanity -1");
+        assert_eq!(
+            w.characters[&cid("pc")].stats.health,
+            5.0,
+            "dread never touches health"
+        );
+        assert_eq!(
+            w.characters[&cid("pc")].stats.sanity,
+            4.0,
+            "on_round_end ticks Sanity -1"
+        );
         assert_eq!(cues.len(), 2, "\"Dread stirs.\" + \"Dread deepens.\"");
-        assert_eq!(w.campaign.mechanics[0].state, serde_json::json!({"ticks": 1}));
+        assert_eq!(
+            w.campaign.mechanics[0].state,
+            serde_json::json!({"ticks": 1})
+        );
     }
 
     #[test]
@@ -803,7 +1087,9 @@ mod tests {
             state: serde_json::json!({}),
         });
         let mut cues = Vec::new();
-        let err = w.dispatch_round(RoundPhase::Start, &Catalog::default(), &mut cues).unwrap_err();
+        let err = w
+            .dispatch_round(RoundPhase::Start, &Catalog::default(), &mut cues)
+            .unwrap_err();
         assert!(err.0.contains("nope"));
     }
 
@@ -815,14 +1101,17 @@ mod tests {
             state: serde_json::json!({"ticks": 0}),
         });
         let mut cues = Vec::new();
-        w.dispatch_turn(TurnPhase::Start, &cid("pc"), &Catalog::default(), &mut cues).unwrap();
-        w.dispatch_turn(TurnPhase::End, &cid("pc"), &Catalog::default(), &mut cues).unwrap();
+        w.dispatch_turn(TurnPhase::Start, &cid("pc"), &Catalog::default(), &mut cues)
+            .unwrap();
+        w.dispatch_turn(TurnPhase::End, &cid("pc"), &Catalog::default(), &mut cues)
+            .unwrap();
         w.dispatch_action(
             &cid("pc"),
-            crate::world::mechanics::ActionView::of("move"),
+            &crate::world::mechanics::ActionView::of("move"),
             &Catalog::default(),
             &mut cues,
-        ).unwrap();
+        )
+        .unwrap();
         // "The dread watches." + "The dread recedes." + "The dread notices."
         assert_eq!(cues.len(), 3);
     }
@@ -838,8 +1127,11 @@ mod tests {
         let mut cues = Vec::new();
         w.dispatch_turn(
             crate::world::mechanics::dispatch::TurnPhase::End,
-            &cid("ghoul"), &Catalog::default(), &mut cues,
-        ).unwrap();
+            &cid("ghoul"),
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         assert!(
             cues.iter().any(|c| matches!(c,
                 PresentationCue::Mechanic { cue } if cue.text.as_deref() == Some("The dread recedes."))),
@@ -857,14 +1149,20 @@ mod tests {
             source: None,
         };
         let mut cues = Vec::new();
-        assert_eq!(w.run_damage_transformers(dv.clone(), &mut cues, &Catalog::default()), 3.5);
+        assert_eq!(
+            w.run_damage_transformers(&dv, &mut cues, &Catalog::default()),
+            3.5
+        );
         // Dread's modify_damage: amount(3.5) > 3.0 -> Final(3.0), short-circuits
         // with a "{key} fixed damage at {value}." cue.
         w.campaign.mechanics.push(MechanicSnapshot {
             key: "conformance:dread".into(),
             state: serde_json::json!({"ticks": 0}),
         });
-        assert_eq!(w.run_damage_transformers(dv, &mut cues, &Catalog::default()), 3.0);
+        assert_eq!(
+            w.run_damage_transformers(&dv, &mut cues, &Catalog::default()),
+            3.0
+        );
         assert_eq!(cues.len(), 1);
         assert!(matches!(cues[0], PresentationCue::Mechanic { .. }));
     }
@@ -879,7 +1177,8 @@ mod tests {
             state: serde_json::json!({"n": 64}),
         });
         let mut cues = Vec::new();
-        w.dispatch_round(RoundPhase::End, &Catalog::default(), &mut cues).unwrap();
+        w.dispatch_round(RoundPhase::End, &Catalog::default(), &mut cues)
+            .unwrap();
         assert_eq!(cues.len(), 64);
     }
 
@@ -891,7 +1190,9 @@ mod tests {
             state: serde_json::json!({"n": 65}),
         });
         let mut cues = Vec::new();
-        let err = w.dispatch_round(RoundPhase::End, &Catalog::default(), &mut cues).unwrap_err();
+        let err = w
+            .dispatch_round(RoundPhase::End, &Catalog::default(), &mut cues)
+            .unwrap_err();
         assert!(err.0.contains("too many effects"));
     }
 
@@ -902,12 +1203,19 @@ mod tests {
     /// `prime_confused_fizzle` helper.
     fn prime_confused_fizzle(world: &mut crate::world::World, actor: &CharacterId) {
         use crate::world::afflictions::{default_affliction_config, Status};
-        world.characters.get_mut(actor).unwrap().afflictions.set_active(Status::Confused, true);
+        world
+            .characters
+            .get_mut(actor)
+            .unwrap()
+            .afflictions
+            .set_active(Status::Confused, true);
         let fail = default_affliction_config().confused_fail_chance;
         loop {
             let mut peek = world.rng.clone();
-            let r = (crate::dice::roll(100, peek.next_f64()) as i64) <= fail;
-            if r { break; }
+            let r = i64::from(crate::dice::roll(100, peek.next_f64())) <= fail;
+            if r {
+                break;
+            }
             world.rng.next_f64(); // burn a non-fizzling draw
         }
     }
@@ -918,34 +1226,66 @@ mod tests {
         let mut w = with_dread(world_with_party(&["pc"], 10));
         prime_confused_fizzle(&mut w, &cid("pc"));
         let mut cues = Vec::new();
-        w.use_mechanic_action(&cid("pc"), "conformance:dread", "brace", &Catalog::default(), &mut cues).unwrap();
+        w.use_mechanic_action(
+            &cid("pc"),
+            "conformance:dread",
+            "brace",
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
 
         let ch = &w.characters[&cid("pc")];
         // useMechanicAction IS budgeted, so a fizzle still ticks the budget.
         assert_eq!(ch.actions_this_round, 1, "budgeted fizzle ticks budget");
-        assert_eq!(ch.stats.sanity, 5.0, "brace's effects must NOT apply on fizzle");
+        assert_eq!(
+            ch.stats.sanity, 5.0,
+            "brace's effects must NOT apply on fizzle"
+        );
         assert_eq!(ch.history.len(), 1);
         match &ch.history[0] {
-            ActionHistoryEntry::Fumble { round: 0, action } => assert_eq!(action, "useMechanicAction"),
+            ActionHistoryEntry::Fumble { round: 0, action } => {
+                assert_eq!(action, "useMechanicAction");
+            }
             other => panic!("expected Fumble history, got {:?}", other),
         }
-        assert!(cues.iter().any(|c| matches!(c,
-            PresentationCue::Action { action: crate::presentation::ActionKind::Fumble, .. })));
+        assert!(cues.iter().any(|c| matches!(
+            c,
+            PresentationCue::Action {
+                action: crate::presentation::ActionKind::Fumble,
+                ..
+            }
+        )));
     }
 
     #[test]
     fn use_mechanic_action_not_enabled_errors() {
         let mut w = world_with_party(&["pc"], 10); // no mechanics
         let mut cues = Vec::new();
-        let r = w.use_mechanic_action(&cid("pc"), "conformance:dread", "brace", &Catalog::default(), &mut cues);
-        assert!(r.is_err(), "invoking an action on a non-enabled mechanic must error");
+        let r = w.use_mechanic_action(
+            &cid("pc"),
+            "conformance:dread",
+            "brace",
+            &Catalog::default(),
+            &mut cues,
+        );
+        assert!(
+            r.is_err(),
+            "invoking an action on a non-enabled mechanic must error"
+        );
     }
 
     #[test]
     fn use_mechanic_action_missing_action_errors() {
         let mut w = with_dread(world_with_party(&["pc"], 10));
         let mut cues = Vec::new();
-        let r = w.use_mechanic_action(&cid("pc"), "conformance:dread", "nope", &Catalog::default(), &mut cues);
+        let r = w.use_mechanic_action(
+            &cid("pc"),
+            "conformance:dread",
+            "nope",
+            &Catalog::default(),
+            &mut cues,
+        );
         assert!(r.is_err(), "invoking an undefined action key must error");
     }
 
@@ -954,7 +1294,14 @@ mod tests {
         use crate::world::history::ActionHistoryEntry;
         let mut w = with_dread(world_with_party(&["pc"], 10)); // sanity 5, actions_per_round 2
         let mut cues = Vec::new();
-        w.use_mechanic_action(&cid("pc"), "conformance:dread", "brace", &Catalog::default(), &mut cues).unwrap();
+        w.use_mechanic_action(
+            &cid("pc"),
+            "conformance:dread",
+            "brace",
+            &Catalog::default(),
+            &mut cues,
+        )
+        .unwrap();
         let ch = w.characters.get(&cid("pc")).unwrap();
         // brace healed sanity +1
         assert_eq!(ch.stats.sanity, 6.0);
@@ -965,20 +1312,34 @@ mod tests {
             ActionHistoryEntry::MechanicAction { mechanic, action, .. }
             if mechanic == "conformance:dread" && action == "brace")));
         // cue order: brace mechanic cue, then the mechanicAction Action cue, then on_action
-        let texts: Vec<Option<&str>> = cues.iter().map(|c| match c {
-            PresentationCue::Mechanic { cue } => cue.text.as_deref(),
-            _ => None,
-        }).collect();
+        let texts: Vec<Option<&str>> = cues
+            .iter()
+            .map(|c| match c {
+                PresentationCue::Mechanic { cue } => cue.text.as_deref(),
+                _ => None,
+            })
+            .collect();
         assert!(texts.contains(&Some("You brace against the dread.")));
-        assert!(texts.contains(&Some("The dread notices.")), "on_action fired for the budgeted mechanicAction");
-        assert!(cues.iter().any(|c| matches!(c,
-            PresentationCue::Action { action: crate::presentation::ActionKind::MechanicAction, .. })));
+        assert!(
+            texts.contains(&Some("The dread notices.")),
+            "on_action fired for the budgeted mechanicAction"
+        );
+        assert!(cues.iter().any(|c| matches!(
+            c,
+            PresentationCue::Action {
+                action: crate::presentation::ActionKind::MechanicAction,
+                ..
+            }
+        )));
     }
 
     #[test]
     fn validate_mechanics_rejects_unregistered_and_accepts_registered() {
         let mut w = world_with_party(&["pc"], 10);
-        assert!(w.validate_mechanics(&Catalog::default()).is_ok(), "no mechanics is valid");
+        assert!(
+            w.validate_mechanics(&Catalog::default()).is_ok(),
+            "no mechanics is valid"
+        );
         w.campaign.mechanics.push(MechanicSnapshot {
             key: "conformance:dread".into(),
             state: serde_json::json!({}),
@@ -992,7 +1353,7 @@ mod tests {
         assert!(err.0.contains("dread"));
     }
 
-    // -- scripted mechanics (Task 9) --
+    // -- scripted mechanics --
 
     /// A Catalog carrying the scripted HH-dread shape under key "dread".
     fn cat_with_scripted_dread() -> Catalog {
@@ -1015,14 +1376,21 @@ mod tests {
     fn dispatch_turn_runs_a_scripted_mechanic_from_the_catalog() {
         let mut w = world_with_party(&["pc"], 10); // sanity 5
         w.campaign.mechanics.push(MechanicSnapshot {
-            key: "dread".into(), state: serde_json::json!({}),
+            key: "dread".into(),
+            state: serde_json::json!({}),
         });
         let cat = cat_with_scripted_dread();
         let mut cues = Vec::new();
-        w.dispatch_turn(TurnPhase::Start, &cid("pc"), &cat, &mut cues).unwrap();
-        assert_eq!(w.characters[&cid("pc")].stats.sanity, 4.0, "scripted AdjustStat applied");
+        w.dispatch_turn(TurnPhase::Start, &cid("pc"), &cat, &mut cues)
+            .unwrap();
+        assert_eq!(
+            w.characters[&cid("pc")].stats.sanity,
+            4.0,
+            "scripted AdjustStat applied"
+        );
         // missing hooks are no-ops (defaulted trait behavior)
-        w.dispatch_round(RoundPhase::Start, &cat, &mut cues).unwrap();
+        w.dispatch_round(RoundPhase::Start, &cat, &mut cues)
+            .unwrap();
         assert_eq!(w.characters[&cid("pc")].stats.sanity, 4.0);
         assert!(cues.is_empty(), "no cues from a cue-less script");
     }
@@ -1043,9 +1411,15 @@ mod tests {
     fn validate_mechanics_accepts_scripted_and_rejects_unknown_with_cat() {
         let mut w = world_with_party(&["pc"], 10);
         let cat = cat_with_scripted_dread();
-        w.campaign.mechanics.push(MechanicSnapshot { key: "dread".into(), state: serde_json::json!({}) });
+        w.campaign.mechanics.push(MechanicSnapshot {
+            key: "dread".into(),
+            state: serde_json::json!({}),
+        });
         assert!(w.validate_mechanics(&cat).is_ok());
-        w.campaign.mechanics.push(MechanicSnapshot { key: "storyteller".into(), state: serde_json::json!({}) });
+        w.campaign.mechanics.push(MechanicSnapshot {
+            key: "storyteller".into(),
+            state: serde_json::json!({}),
+        });
         let err = w.validate_mechanics(&cat).unwrap_err();
         assert!(err.0.contains("Mechanic 'storyteller' is not registered."));
     }
@@ -1061,9 +1435,81 @@ mod tests {
                     { "kind": "pass", "value": { "kind": "lit", "value": "nope" } }
                 ] }
             } } }
-        })).unwrap();
+        }))
+        .unwrap();
         let mut w = world_with_party(&["pc"], 10);
-        w.campaign.mechanics.push(MechanicSnapshot { key: "bad".into(), state: serde_json::json!({}) });
+        w.campaign.mechanics.push(MechanicSnapshot {
+            key: "bad".into(),
+            state: serde_json::json!({}),
+        });
+        assert!(w.validate_mechanics(&cat).is_err());
+    }
+
+    #[test]
+    fn validate_mechanics_accepts_plain_items_without_behavior_entries() {
+        // The item rule is strictly weaker than the other families: behavior_key
+        // doubles as the cat.items descriptor key, so an item with no behaviors
+        // entry (and even no descriptor here) must NOT fail load validation.
+        let mut w = world_with_party(&["pc"], 10);
+        w.items.insert(
+            crate::world::ids::ItemId("i1".into()),
+            crate::world::snapshot::ItemSnapshot::Item {
+                id: crate::world::ids::ItemId("i1".into()),
+                behavior_key: "lantern".into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
+        assert!(w.validate_mechanics(&Catalog::default()).is_ok());
+    }
+
+    #[test]
+    fn validate_mechanics_ignores_foreign_family_binding_on_an_item_key() {
+        // An Exit-family script under an item's key stays a silent no-op at the
+        // dispatch sites, so validation must not reject it either.
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "behaviors": { "lantern": { "family": "exit", "script": {
+                "canPass": { "kind": "lit", "value": true }
+            } } }
+        }))
+        .unwrap();
+        let mut w = world_with_party(&["pc"], 10);
+        w.items.insert(
+            crate::world::ids::ItemId("i1".into()),
+            crate::world::snapshot::ItemSnapshot::Item {
+                id: crate::world::ids::ItemId("i1".into()),
+                behavior_key: "lantern".into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
+        assert!(w.validate_mechanics(&cat).is_ok());
+    }
+
+    #[test]
+    fn validate_mechanics_rejects_an_ill_shaped_item_script() {
+        // A Pass statement inside on_use (an effect body) is ill-shaped; an
+        // explicit Item-family binding IS shape-checked at load.
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "behaviors": { "lantern": { "family": "item", "script": {
+                "onUse": [
+                    { "kind": "pass", "value": { "kind": "lit", "value": "nope" } }
+                ]
+            } } }
+        }))
+        .unwrap();
+        let mut w = world_with_party(&["pc"], 10);
+        w.items.insert(
+            crate::world::ids::ItemId("i1".into()),
+            crate::world::snapshot::ItemSnapshot::Item {
+                id: crate::world::ids::ItemId("i1".into()),
+                behavior_key: "lantern".into(),
+                durability: None,
+                modifier: 0,
+            },
+        );
         assert!(w.validate_mechanics(&cat).is_err());
     }
 
@@ -1074,7 +1520,9 @@ mod tests {
         let exit_id = w.exits.keys().next().unwrap().clone();
         w.exits.get_mut(&exit_id).unwrap().behavior_key = Some("ghost-door".into());
         let err = w.validate_mechanics(&Catalog::default()).unwrap_err();
-        assert!(err.0.contains("Exit behavior 'ghost-door' is not registered."));
+        assert!(err
+            .0
+            .contains("Exit behavior 'ghost-door' is not registered."));
     }
 
     #[test]
@@ -1082,10 +1530,13 @@ mod tests {
         use crate::world::snapshot::VictoryConditionSnapshot;
         let mut w = world_with_party(&["pc"], 10);
         w.campaign.win_conditions.push(VictoryConditionSnapshot {
-            key: "ghost-win".into(), narration: None,
+            key: "ghost-win".into(),
+            narration: None,
         });
         let err = w.validate_mechanics(&Catalog::default()).unwrap_err();
-        assert!(err.0.contains("No condition registered for key 'ghost-win'."));
+        assert!(err
+            .0
+            .contains("No condition registered for key 'ghost-win'."));
     }
 
     #[test]
@@ -1112,7 +1563,8 @@ mod tests {
                 "baseEscapeChance": 50,
                 "actionsPerRound": 1
             } ] } }
-        })).unwrap();
+        }))
+        .unwrap();
         assert!(
             w.validate_mechanics(&cat).is_ok(),
             "a descriptor-registered formation key passes"
@@ -1132,19 +1584,28 @@ mod tests {
                         "text": { "kind": "lit", "value": "You brace." } } }
                 ] }
             } } }
-        })).unwrap();
-        let Some(BehaviorScript::Mechanic { script }) = cat.behaviors.get("m") else { panic!() };
+        }))
+        .unwrap();
+        let Some(BehaviorScript::Mechanic { script }) = cat.behaviors.get("m") else {
+            panic!()
+        };
         let op = crate::script::ops::ScriptedMechanic { script };
         // init_state returns the literal seed and ignores config
-        assert_eq!(crate::world::mechanics::MechanicOp::init_state(&op, &serde_json::json!(null)),
-                   serde_json::json!({}));
+        assert_eq!(
+            crate::world::mechanics::MechanicOp::init_state(&op, &serde_json::json!(null)),
+            serde_json::json!({})
+        );
         let w = world_with_party(&["pc"], 10);
         let view = w.build_campaign_view(&Catalog::default());
         let actor = w.character_view(&cid("pc"), &Catalog::default()).unwrap();
         let mut state = serde_json::json!({});
         let mut rng = w.rng.clone();
         let mut cx = crate::world::mechanics::ActionCtx {
-            base: crate::world::mechanics::HookCtx { state: &mut state, view: &view, rng: &mut rng },
+            base: crate::world::mechanics::HookCtx {
+                state: &mut state,
+                view: &view,
+                rng: &mut rng,
+            },
             actor,
             action: crate::world::mechanics::ActionView::of("mechanicAction"),
         };

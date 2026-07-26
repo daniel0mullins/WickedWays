@@ -1,5 +1,4 @@
 {
-  "seed": 4190,
   "commands": [
     {
       "kind": "nextPlayer"
@@ -14,6 +13,7 @@
       "kind": "nextPlayer"
     }
   ],
+  "seed": 4190,
   "steps": [
     {
       "command": {
@@ -21,14 +21,64 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [
+            "player:Ada"
+          ],
+          "actionSounds": {},
+          "activeCharacterIndex": 1,
+          "archetypes": [
+            {
+              "baseStats": {},
+              "id": "delver",
+              "name": "Delver"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 20,
+            "formations": [],
+            "visited": [
+              "room:Start"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Victory Lost (conformance)",
-          "title": "Victory Lost (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [
+            {
+              "key": "conformance:round-reached",
+              "narration": {
+                "text": "lose"
+              }
+            }
+          ],
+          "materials": {},
           "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada",
+            "player:Ben"
+          ],
           "round": 0,
           "started": true,
-          "outcome": "ongoing",
+          "title": "Victory Lost (conformance)",
           "winConditions": [
             {
               "key": "conformance:round-reached",
@@ -36,222 +86,177 @@
                 "text": "win"
               }
             }
-          ],
-          "loseConditions": [
-            {
-              "key": "conformance:round-reached",
-              "narration": {
-                "text": "lose"
-              }
-            }
-          ],
-          "activeCharacterIndex": 1,
-          "partyIds": [
-            "player:Ada",
-            "player:Ben"
-          ],
-          "actedThisRound": [
-            "player:Ada"
-          ],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "delver",
-              "name": "Delver",
-              "baseStats": {}
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 20,
-            "visited": [
-              "room:Start"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          ]
         },
+        "characters": [
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Start",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Start",
+                  "name": "Start"
+                },
+                "round": 0
+              }
+            ],
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Start",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Start",
+                  "name": "Start"
+                },
+                "round": 0
+              }
+            ],
+            "id": "player:Ben",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ben",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Start",
+              "round": 0
+            },
+            "key": "room:Start",
+            "kind": "room",
+            "snapshot": {
+              "description": "the entrance",
+              "name": "Start"
+            }
+          }
+        ],
+        "exits": [],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
         "rooms": [
           {
-            "id": "room:Start",
-            "name": "Start",
+            "dark": false,
             "description": "the entrance",
             "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
+            "id": "room:Start",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Start",
             "occupantIds": [
               "player:Ada",
               "player:Ben"
             ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
+            "scenes": [],
+            "spawnModifier": 1
           }
         ],
-        "exits": [],
-        "characters": [
-          {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
-            },
-            "actionsPerRound": 3,
-            "actionsThisRound": 1,
-            "currentRoomId": "room:Start",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Start",
-                  "name": "Start"
-                },
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
-          },
-          {
-            "kind": "player",
-            "id": "player:Ben",
-            "name": "Ben",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
-            },
-            "actionsPerRound": 3,
-            "actionsThisRound": 1,
-            "currentRoomId": "room:Start",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Start",
-                  "name": "Start"
-                },
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
-          }
-        ],
-        "items": [],
-        "loot": [],
-        "materialCaches": [],
-        "codex": [
-          {
-            "kind": "room",
-            "key": "room:Start",
-            "snapshot": {
-              "name": "Start",
-              "description": "the entrance"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Start"
-            }
-          }
-        ]
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Start",
-          "name": "Start",
-          "description": "the entrance",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
         "lockedDoors": [],
+        "loot": [],
+        "materials": [],
         "occupants": [
           {
-            "id": "player:Ada",
-            "name": "Ada",
             "aliases": [
               "ada"
             ],
+            "defeated": false,
+            "health": 10.0,
+            "id": "player:Ada",
             "kind": "occupant",
-            "health": 10,
-            "defeated": false
+            "name": "Ada",
+            "player": true
           }
         ],
-        "loot": [],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "the entrance",
+          "id": "room:Start",
+          "isLit": true,
+          "name": "Start"
         },
         "scope": [
           {
-            "id": "player:Ada",
-            "name": "Ada",
             "aliases": [
               "ada"
             ],
+            "defeated": false,
+            "health": 10.0,
+            "id": "player:Ada",
             "kind": "occupant",
-            "health": 10,
-            "defeated": false
+            "name": "Ada",
+            "player": true
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Start",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 10.0,
+          "turn": 0
+        }
       }
     },
     {
@@ -260,259 +265,43 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Victory Lost (conformance)",
-          "title": "Victory Lost (conformance)",
-          "maxRounds": 10,
-          "round": 1,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [
-            {
-              "key": "conformance:round-reached",
-              "narration": {
-                "text": "win"
-              }
-            }
-          ],
-          "loseConditions": [
-            {
-              "key": "conformance:round-reached",
-              "narration": {
-                "text": "lose"
-              }
-            }
-          ],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada",
-            "player:Ben"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
+              "baseStats": {},
               "id": "delver",
-              "name": "Delver",
-              "baseStats": {}
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 20,
-            "visited": [
-              "room:Start"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 20,
+            "formations": [],
+            "visited": [
+              "room:Start"
+            ]
           },
-          "mechanics": []
-        },
-        "rooms": [
-          {
-            "id": "room:Start",
-            "name": "Start",
-            "description": "the entrance",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada",
-              "player:Ben"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
-        "characters": [
-          {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
-            },
-            "actionsPerRound": 3,
-            "actionsThisRound": 1,
-            "currentRoomId": "room:Start",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Start",
-                  "name": "Start"
-                },
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
-          },
-          {
-            "kind": "player",
-            "id": "player:Ben",
-            "name": "Ben",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
-            },
-            "actionsPerRound": 3,
-            "actionsThisRound": 1,
-            "currentRoomId": "room:Start",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Start",
-                  "name": "Start"
-                },
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
-          }
-        ],
-        "items": [],
-        "loot": [],
-        "materialCaches": [],
-        "codex": [
-          {
-            "kind": "room",
-            "key": "room:Start",
-            "snapshot": {
-              "name": "Start",
-              "description": "the entrance"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Start"
-            }
-          }
-        ]
-      },
-      "view": {
-        "room": {
-          "id": "room:Start",
-          "name": "Start",
-          "description": "the entrance",
-          "isLit": true
-        },
-        "exits": [],
-        "lockedDoors": [],
-        "occupants": [
-          {
-            "id": "player:Ben",
-            "name": "Ben",
-            "aliases": [
-              "ben"
-            ],
-            "kind": "occupant",
-            "health": 10,
-            "defeated": false
-          }
-        ],
-        "loot": [],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
-        },
-        "scope": [
-          {
-            "id": "player:Ben",
-            "name": "Ben",
-            "aliases": [
-              "ben"
-            ],
-            "kind": "occupant",
-            "health": 10,
-            "defeated": false
-          }
-        ],
-        "status": {
-          "locationName": "Start",
-          "turn": 1,
-          "maxTurns": 10,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
-      }
-    },
-    {
-      "command": {
-        "kind": "nextPlayer"
-      },
-      "cues": [],
-      "snapshot": {
-        "schemaVersion": 6,
-        "campaign": {
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Victory Lost (conformance)",
-          "title": "Victory Lost (conformance)",
-          "maxRounds": 10,
-          "round": 1,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [
-            {
-              "key": "conformance:round-reached",
-              "narration": {
-                "text": "win"
-              }
-            }
-          ],
+          "knownRecipes": [],
           "loseConditions": [
             {
               "key": "conformance:round-reached",
@@ -521,213 +310,439 @@
               }
             }
           ],
-          "activeCharacterIndex": 1,
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
           "partyIds": [
             "player:Ada",
             "player:Ben"
           ],
-          "actedThisRound": [
-            "player:Ada"
-          ],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
+          "round": 1,
+          "started": true,
+          "title": "Victory Lost (conformance)",
+          "winConditions": [
             {
-              "id": "delver",
-              "name": "Delver",
-              "baseStats": {}
+              "key": "conformance:round-reached",
+              "narration": {
+                "text": "win"
+              }
             }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 20,
-            "visited": [
-              "room:Start"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          ]
         },
+        "characters": [
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Start",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Start",
+                  "name": "Start"
+                },
+                "round": 0
+              }
+            ],
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Start",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Start",
+                  "name": "Start"
+                },
+                "round": 0
+              }
+            ],
+            "id": "player:Ben",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ben",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Start",
+              "round": 0
+            },
+            "key": "room:Start",
+            "kind": "room",
+            "snapshot": {
+              "description": "the entrance",
+              "name": "Start"
+            }
+          }
+        ],
+        "exits": [],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
         "rooms": [
           {
-            "id": "room:Start",
-            "name": "Start",
+            "dark": false,
             "description": "the entrance",
             "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
+            "id": "room:Start",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Start",
             "occupantIds": [
               "player:Ada",
               "player:Ben"
             ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
+            "scenes": [],
+            "spawnModifier": 1
           }
         ],
-        "exits": [],
-        "characters": [
-          {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
-            },
-            "actionsPerRound": 3,
-            "actionsThisRound": 1,
-            "currentRoomId": "room:Start",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Start",
-                  "name": "Start"
-                },
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
-          },
-          {
-            "kind": "player",
-            "id": "player:Ben",
-            "name": "Ben",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
-            },
-            "actionsPerRound": 3,
-            "actionsThisRound": 1,
-            "currentRoomId": "room:Start",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Start",
-                  "name": "Start"
-                },
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
-          }
-        ],
-        "items": [],
-        "loot": [],
-        "materialCaches": [],
-        "codex": [
-          {
-            "kind": "room",
-            "key": "room:Start",
-            "snapshot": {
-              "name": "Start",
-              "description": "the entrance"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Start"
-            }
-          }
-        ]
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Start",
-          "name": "Start",
-          "description": "the entrance",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
-        "lockedDoors": [],
-        "occupants": [
-          {
-            "id": "player:Ada",
-            "name": "Ada",
-            "aliases": [
-              "ada"
-            ],
-            "kind": "occupant",
-            "health": 10,
-            "defeated": false
-          }
-        ],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [
+          {
+            "aliases": [
+              "ben"
+            ],
+            "defeated": false,
+            "health": 10.0,
+            "id": "player:Ben",
+            "kind": "occupant",
+            "name": "Ben",
+            "player": true
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "the entrance",
+          "id": "room:Start",
+          "isLit": true,
+          "name": "Start"
         },
         "scope": [
           {
-            "id": "player:Ada",
-            "name": "Ada",
             "aliases": [
-              "ada"
+              "ben"
             ],
+            "defeated": false,
+            "health": 10.0,
+            "id": "player:Ben",
             "kind": "occupant",
-            "health": 10,
-            "defeated": false
+            "name": "Ben",
+            "player": true
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Start",
-          "turn": 1,
           "maxTurns": 10,
-          "sanity": 10,
-          "health": 10
+          "sanity": 10.0,
+          "turn": 1
+        }
+      }
+    },
+    {
+      "command": {
+        "kind": "nextPlayer"
+      },
+      "cues": [],
+      "snapshot": {
+        "campaign": {
+          "actedThisRound": [
+            "player:Ada"
+          ],
+          "actionSounds": {},
+          "activeCharacterIndex": 1,
+          "archetypes": [
+            {
+              "baseStats": {},
+              "id": "delver",
+              "name": "Delver"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 20,
+            "formations": [],
+            "visited": [
+              "room:Start"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Victory Lost (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [
+            {
+              "key": "conformance:round-reached",
+              "narration": {
+                "text": "lose"
+              }
+            }
+          ],
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada",
+            "player:Ben"
+          ],
+          "round": 1,
+          "started": true,
+          "title": "Victory Lost (conformance)",
+          "winConditions": [
+            {
+              "key": "conformance:round-reached",
+              "narration": {
+                "text": "win"
+              }
+            }
+          ]
         },
+        "characters": [
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Start",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Start",
+                  "name": "Start"
+                },
+                "round": 0
+              }
+            ],
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Start",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Start",
+                  "name": "Start"
+                },
+                "round": 0
+              }
+            ],
+            "id": "player:Ben",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ben",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Start",
+              "round": 0
+            },
+            "key": "room:Start",
+            "kind": "room",
+            "snapshot": {
+              "description": "the entrance",
+              "name": "Start"
+            }
+          }
+        ],
+        "exits": [],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "the entrance",
+            "exits": {},
+            "id": "room:Start",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Start",
+            "occupantIds": [
+              "player:Ada",
+              "player:Ben"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [
+          {
+            "aliases": [
+              "ada"
+            ],
+            "defeated": false,
+            "health": 10.0,
+            "id": "player:Ada",
+            "kind": "occupant",
+            "name": "Ada",
+            "player": true
+          }
+        ],
         "outcome": "ongoing",
-        "finished": false
+        "recipes": [],
+        "room": {
+          "description": "the entrance",
+          "id": "room:Start",
+          "isLit": true,
+          "name": "Start"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "ada"
+            ],
+            "defeated": false,
+            "health": 10.0,
+            "id": "player:Ada",
+            "kind": "occupant",
+            "name": "Ada",
+            "player": true
+          }
+        ],
+        "status": {
+          "health": 10.0,
+          "locationName": "Start",
+          "maxTurns": 10,
+          "sanity": 10.0,
+          "turn": 1
+        }
       }
     },
     {
@@ -737,31 +752,51 @@
       "cues": [
         {
           "kind": "resolution",
-          "outcome": "lost",
-          "reason": "conformance:round-reached",
           "narration": {
             "text": "lose"
-          }
+          },
+          "outcome": "lost",
+          "reason": "conformance:round-reached"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Victory Lost (conformance)",
-          "title": "Victory Lost (conformance)",
-          "maxRounds": 10,
-          "round": 2,
-          "started": true,
-          "outcome": "lost",
-          "outcomeReason": "conformance:round-reached",
-          "winConditions": [
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
             {
-              "key": "conformance:round-reached",
-              "narration": {
-                "text": "win"
-              }
+              "baseStats": {},
+              "id": "delver",
+              "name": "Delver"
             }
           ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 20,
+            "formations": [],
+            "visited": [
+              "room:Start"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Victory Lost (conformance)",
+          "knownRecipes": [],
           "loseConditions": [
             {
               "key": "conformance:round-reached",
@@ -770,211 +805,196 @@
               }
             }
           ],
-          "activeCharacterIndex": 0,
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "lost",
+          "outcomeReason": "conformance:round-reached",
           "partyIds": [
             "player:Ada",
             "player:Ben"
           ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
+          "round": 2,
+          "started": true,
+          "title": "Victory Lost (conformance)",
+          "winConditions": [
             {
-              "id": "delver",
-              "name": "Delver",
-              "baseStats": {}
+              "key": "conformance:round-reached",
+              "narration": {
+                "text": "win"
+              }
             }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 20,
-            "visited": [
-              "room:Start"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          ]
         },
+        "characters": [
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Start",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Start",
+                  "name": "Start"
+                },
+                "round": 0
+              }
+            ],
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Start",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Start",
+                  "name": "Start"
+                },
+                "round": 0
+              }
+            ],
+            "id": "player:Ben",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ben",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Start",
+              "round": 0
+            },
+            "key": "room:Start",
+            "kind": "room",
+            "snapshot": {
+              "description": "the entrance",
+              "name": "Start"
+            }
+          }
+        ],
+        "exits": [],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
         "rooms": [
           {
-            "id": "room:Start",
-            "name": "Start",
+            "dark": false,
             "description": "the entrance",
             "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
+            "id": "room:Start",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Start",
             "occupantIds": [
               "player:Ada",
               "player:Ben"
             ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
+            "scenes": [],
+            "spawnModifier": 1
           }
         ],
-        "exits": [],
-        "characters": [
-          {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
-            },
-            "actionsPerRound": 3,
-            "actionsThisRound": 1,
-            "currentRoomId": "room:Start",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Start",
-                  "name": "Start"
-                },
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
-          },
-          {
-            "kind": "player",
-            "id": "player:Ben",
-            "name": "Ben",
-            "stats": {
-              "health": 10,
-              "sanity": 10,
-              "energy": 10
-            },
-            "actionsPerRound": 3,
-            "actionsThisRound": 1,
-            "currentRoomId": "room:Start",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Start",
-                  "name": "Start"
-                },
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
-          }
-        ],
-        "items": [],
-        "loot": [],
-        "materialCaches": [],
-        "codex": [
-          {
-            "kind": "room",
-            "key": "room:Start",
-            "snapshot": {
-              "name": "Start",
-              "description": "the entrance"
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Start"
-            }
-          }
-        ]
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Start",
-          "name": "Start",
-          "description": "the entrance",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
+        "finished": true,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
         "lockedDoors": [],
+        "loot": [],
+        "materials": [],
         "occupants": [
           {
-            "id": "player:Ben",
-            "name": "Ben",
             "aliases": [
               "ben"
             ],
+            "defeated": false,
+            "health": 10.0,
+            "id": "player:Ben",
             "kind": "occupant",
-            "health": 10,
-            "defeated": false
+            "name": "Ben",
+            "player": true
           }
         ],
-        "loot": [],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
+        "outcome": "lost",
+        "recipes": [],
+        "room": {
+          "description": "the entrance",
+          "id": "room:Start",
+          "isLit": true,
+          "name": "Start"
         },
         "scope": [
           {
-            "id": "player:Ben",
-            "name": "Ben",
             "aliases": [
               "ben"
             ],
+            "defeated": false,
+            "health": 10.0,
+            "id": "player:Ben",
             "kind": "occupant",
-            "health": 10,
-            "defeated": false
+            "name": "Ben",
+            "player": true
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Start",
-          "turn": 2,
           "maxTurns": 10,
-          "sanity": 10,
-          "health": 10
-        },
-        "outcome": "lost",
-        "finished": true
+          "sanity": 10.0,
+          "turn": 2
+        }
       }
     }
   ]

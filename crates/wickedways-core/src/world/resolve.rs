@@ -1,8 +1,8 @@
 //! Item resolution: snapshot + catalog → effective item identity.
 //!
-//! Mirrors `hydrateItem` (inventory.ts:723-734), `[HYDRATE]` (inventory.ts:443-448),
-//! and `isBroken` (inventory.ts:403-405).
-//! Also provides `World::effective_stat`, mirroring `character.ts:903-913`.
+//! Mirrors `hydrateItem`, `[HYDRATE]`,
+//! and `isBroken`.
+//! Also provides `World::effective_stat`, mirroring.
 use alloc::{collections::BTreeSet, format, string::String};
 
 use crate::{
@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// Internal projection of a fully-resolved item: descriptor fields merged with
-/// per-instance snapshot state.  Not serialized — used only inside the engine core.
+/// per-instance snapshot state. Not serialized — used only inside the engine core.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ResolvedItem {
     pub id: String,
@@ -41,14 +41,22 @@ pub struct ResolvedItem {
 /// Returns `ProceduralViolation` if an `ItemSnapshot::Item`'s `behavior_key` is not
 /// present in the catalog — mirroring the TS registry's "No item registered for key '…'"
 /// fail-fast guard.
-pub fn resolve_item(snap: &ItemSnapshot, cat: &Catalog) -> Result<ResolvedItem, ProceduralViolation> {
+pub fn resolve_item(
+    snap: &ItemSnapshot,
+    cat: &Catalog,
+) -> Result<ResolvedItem, ProceduralViolation> {
     match snap {
-        ItemSnapshot::Item { id, behavior_key, durability, modifier } => {
+        ItemSnapshot::Item {
+            id,
+            behavior_key,
+            durability,
+            modifier,
+        } => {
             let desc = cat.items.get(behavior_key).ok_or_else(|| {
                 ProceduralViolation(format!("No item registered for key '{behavior_key}'"))
             })?;
 
-            // is_broken mirrors TS `get isBroken()`: maxDurability present AND durability === 0
+            // is_broken mirrors `get isBroken()`: maxDurability present AND durability === 0
             let is_broken = desc.max_durability.is_some() && *durability == Some(0);
 
             Ok(ResolvedItem {
@@ -69,11 +77,13 @@ pub fn resolve_item(snap: &ItemSnapshot, cat: &Catalog) -> Result<ResolvedItem, 
             })
         }
 
-        ItemSnapshot::Key { id, name, key_code, .. } => {
+        ItemSnapshot::Key {
+            id, name, key_code, ..
+        } => {
             // Keys don't live in the catalog; all identity is in the snapshot.
-            // `stat` defaults to Health — mirrors TS `createKey` which uses StatType.Health.
-            // NOTE: TS `createKey` sets `properties` with no `droppable` field (undefined),
-            // so `droppable` must be `None` here — NOT `Some(false)`.  `None != Some(false)`
+            // `stat` defaults to Health — mirrors `createKey` which uses StatType.Health.
+            // NOTE: `createKey` sets `properties` with no `droppable` field (undefined),
+            // so `droppable` must be `None` here — NOT `Some(false)`. `None != Some(false)`
             // evaluates to `true` in the view projection, matching the TS oracle result of
             // `undefined !== false` = true (keys ARE droppable unless explicitly marked).
             Ok(ResolvedItem {
@@ -108,10 +118,7 @@ pub fn resolve_item(snap: &ItemSnapshot, cat: &Catalog) -> Result<ResolvedItem, 
 /// mirroring the native-first-then-catalog `resolve_*` family (here the native
 /// arm is simply empty). Borrows only `cat`, so callers can hold the returned
 /// `&NpcScript` while separately taking a `&mut` on the NPC's snapshot state.
-pub fn resolve_npc<'a>(
-    key: &str,
-    cat: &'a Catalog,
-) -> Option<&'a crate::script::ast::NpcScript> {
+pub fn resolve_npc<'a>(key: &str, cat: &'a Catalog) -> Option<&'a crate::script::ast::NpcScript> {
     match cat.behaviors.get(key) {
         Some(crate::script::ast::BehaviorScript::Npc { script }) => Some(script),
         _ => None,
@@ -119,7 +126,7 @@ pub fn resolve_npc<'a>(
 }
 
 impl World {
-    /// Mirrors `character.ts:903-913` (`effectiveStat`):
+    /// Mirrors (`effectiveStat`):
     /// returns `base_stat + Σ modifier` for each **equipped** accessory whose
     /// `stat` matches the requested `stat`.
     ///
@@ -138,15 +145,10 @@ impl World {
             return 0.0;
         };
 
-        let base = match stat {
-            StatType::Energy => ch.stats.energy,
-            StatType::Sanity => ch.stats.sanity,
-            StatType::Health => ch.stats.health,
-        };
+        let base = ch.stats.get(stat);
 
         // De-duplicate: a two-handed item occupies two slot-map entries.
-        let equipped_ids: BTreeSet<&crate::world::ids::ItemId> =
-            ch.equipment.values().collect();
+        let equipped_ids: BTreeSet<&crate::world::ids::ItemId> = ch.equipment.values().collect();
 
         let bonus: i64 = equipped_ids
             .into_iter()
@@ -163,49 +165,37 @@ impl World {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::world::test_support::{item_desc, props};
     use crate::{
+        stats::StatType,
         world::{
-            descriptor::{Catalog, ItemDescriptor, ItemProperties, ItemType, SlotKind},
+            descriptor::{Catalog, ItemDescriptor, ItemType, SlotKind},
             ids::ItemId,
             snapshot::ItemSnapshot,
         },
-        stats::StatType,
     };
     use alloc::{collections::BTreeMap, string::ToString};
     use serde_json::json;
 
     fn poker_descriptor() -> ItemDescriptor {
         ItemDescriptor {
-            name: "Iron Poker".to_string(),
-            r#type: ItemType::Weapon,
-            stat: StatType::Health,
-            modifier: 3,
-            properties: ItemProperties {
-                equippable: true,
-                equipped: false,
-                destroyable: true,
-                usable: false,
-                droppable: None,
-            },
+            properties: props(true, true, false),
             slot: Some(SlotKind::Hand),
-            two_handed: None,
-            emits_light: None,
             max_durability: Some(8),
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc("Iron Poker", ItemType::Weapon, StatType::Health, 3)
         }
     }
 
     fn catalog_with_poker() -> Catalog {
         let mut items = BTreeMap::new();
         items.insert("items/poker".to_string(), poker_descriptor());
-        Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() }
+        Catalog {
+            items,
+            aliases: BTreeMap::new(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
+        }
     }
 
     fn item_id(s: &str) -> ItemId {
@@ -259,7 +249,10 @@ mod tests {
         let resolved = resolve_item(&snap, &catalog_with_poker()).unwrap();
         assert_eq!(resolved.durability, Some(0));
         assert_eq!(resolved.max_durability, Some(8));
-        assert!(resolved.is_broken, "should be broken when durability=0 and max_durability is set");
+        assert!(
+            resolved.is_broken,
+            "should be broken when durability=0 and max_durability is set"
+        );
     }
 
     #[test]
@@ -278,26 +271,20 @@ mod tests {
     fn is_broken_false_when_no_max_durability() {
         // An item with no max_durability is indestructible — never broken.
         let mut items = BTreeMap::new();
-        items.insert("items/coin".to_string(), ItemDescriptor {
-            name: "Gold Coin".to_string(),
-            r#type: ItemType::Consumable,
-            stat: StatType::Health,
-            modifier: 0,
-            properties: ItemProperties { equippable: false, equipped: false, destroyable: false, usable: true, droppable: None },
-            slot: None,
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
-        });
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() };
+        items.insert(
+            "items/coin".to_string(),
+            ItemDescriptor {
+                properties: props(false, false, true),
+                ..item_desc("Gold Coin", ItemType::Consumable, StatType::Health, 0)
+            },
+        );
+        let cat = Catalog {
+            items,
+            aliases: BTreeMap::new(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
+        };
 
         let snap = ItemSnapshot::Item {
             id: item_id("itm-5"),
@@ -321,7 +308,8 @@ mod tests {
         let err = resolve_item(&snap, &cat).unwrap_err();
         assert!(
             err.0.contains("items/does-not-exist"),
-            "error message should mention the missing key, got: {}", err.0
+            "error message should mention the missing key, got: {}",
+            err.0
         );
     }
 
@@ -394,57 +382,18 @@ mod tests {
     /// Build a minimal descriptor for an accessory or weapon.
     fn accessory_descriptor(stat: StatType, modifier: i64) -> ItemDescriptor {
         ItemDescriptor {
-            name: "Test Ring".to_string(),
-            r#type: ItemType::Accessory,
-            stat,
-            modifier,
-            properties: ItemProperties {
-                equippable: true,
-                equipped: false,
-                destroyable: false,
-                usable: false,
-                droppable: None,
-            },
+            properties: props(true, false, false),
             slot: Some(SlotKind::Finger),
-            two_handed: None,
-            emits_light: None,
-            max_durability: None,
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc("Test Ring", ItemType::Accessory, stat, modifier)
         }
     }
 
     fn weapon_descriptor(stat: StatType, modifier: i64) -> ItemDescriptor {
         ItemDescriptor {
-            name: "Test Sword".to_string(),
-            r#type: ItemType::Weapon,
-            stat,
-            modifier,
-            properties: ItemProperties {
-                equippable: true,
-                equipped: false,
-                destroyable: true,
-                usable: false,
-                droppable: None,
-            },
+            properties: props(true, true, false),
             slot: Some(SlotKind::Hand),
-            two_handed: None,
-            emits_light: None,
             max_durability: Some(5),
-            lore: None,
-            presentation: None,
-            key_code: None,
-            consume_on_use: None,
-            recipe: json!({}),
-            teaches: json!(null),
-            immunities: json!([]),
-            grants_immunity: json!(null),
+            ..item_desc("Test Sword", ItemType::Weapon, stat, modifier)
         }
     }
 
@@ -459,7 +408,11 @@ mod tests {
             actions_per_round: 2,
             actions_this_round: 0,
             current_room_id: None,
-            inventory: InventorySnapshot { slots: 6, item_ids: alloc::vec![], key_ids: alloc::vec![] },
+            inventory: InventorySnapshot {
+                slots: 6,
+                item_ids: alloc::vec![],
+                key_ids: alloc::vec![],
+            },
             equipment: BTreeMap::new(),
             history: alloc::vec![],
             archetype_immunities: alloc::vec![],
@@ -517,7 +470,14 @@ mod tests {
 
     #[test]
     fn effective_stat_base_only_no_equipment() {
-        let world = minimal_world("c1", Stats { energy: 5.0, sanity: 7.0, health: 10.0 });
+        let world = minimal_world(
+            "c1",
+            Stats {
+                energy: 5.0,
+                sanity: 7.0,
+                health: 10.0,
+            },
+        );
         let cid = CharacterId("c1".to_string());
         let cat = Catalog::default();
         // No equipment → returns base stat
@@ -528,14 +488,30 @@ mod tests {
 
     #[test]
     fn effective_stat_equipped_accessory_matching_stat_adds_modifier() {
-        let mut world = minimal_world("c1", Stats { energy: 5.0, sanity: 7.0, health: 10.0 });
+        let mut world = minimal_world(
+            "c1",
+            Stats {
+                energy: 5.0,
+                sanity: 7.0,
+                health: 10.0,
+            },
+        );
         let cid = CharacterId("c1".to_string());
         let ring_id = item_id("ring-1");
 
         // Catalog: ring that boosts energy by 3
         let mut items = BTreeMap::new();
-        items.insert("items/ring".to_string(), accessory_descriptor(StatType::Energy, 3));
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() };
+        items.insert(
+            "items/ring".to_string(),
+            accessory_descriptor(StatType::Energy, 3),
+        );
+        let cat = Catalog {
+            items,
+            aliases: BTreeMap::new(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
+        };
 
         // Item in World.items
         world.items.insert(
@@ -558,14 +534,30 @@ mod tests {
 
     #[test]
     fn effective_stat_equipped_weapon_does_not_contribute() {
-        let mut world = minimal_world("c1", Stats { energy: 5.0, sanity: 7.0, health: 10.0 });
+        let mut world = minimal_world(
+            "c1",
+            Stats {
+                energy: 5.0,
+                sanity: 7.0,
+                health: 10.0,
+            },
+        );
         let cid = CharacterId("c1".to_string());
         let sword_id = item_id("sword-1");
 
         // Catalog: weapon targeting energy
         let mut items = BTreeMap::new();
-        items.insert("items/sword".to_string(), weapon_descriptor(StatType::Energy, 4));
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() };
+        items.insert(
+            "items/sword".to_string(),
+            weapon_descriptor(StatType::Energy, 4),
+        );
+        let cat = Catalog {
+            items,
+            aliases: BTreeMap::new(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
+        };
 
         world.items.insert(
             sword_id.clone(),
@@ -585,13 +577,29 @@ mod tests {
 
     #[test]
     fn effective_stat_accessory_in_inventory_but_not_equipped_does_not_contribute() {
-        let mut world = minimal_world("c1", Stats { energy: 5.0, sanity: 7.0, health: 10.0 });
+        let mut world = minimal_world(
+            "c1",
+            Stats {
+                energy: 5.0,
+                sanity: 7.0,
+                health: 10.0,
+            },
+        );
         let cid = CharacterId("c1".to_string());
         let ring_id = item_id("ring-2");
 
         let mut items = BTreeMap::new();
-        items.insert("items/ring".to_string(), accessory_descriptor(StatType::Energy, 3));
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() };
+        items.insert(
+            "items/ring".to_string(),
+            accessory_descriptor(StatType::Energy, 3),
+        );
+        let cat = Catalog {
+            items,
+            aliases: BTreeMap::new(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
+        };
 
         // Item exists in World.items (in inventory) but NOT in equipment map
         world.items.insert(
@@ -612,14 +620,30 @@ mod tests {
 
     #[test]
     fn effective_stat_accessory_with_different_stat_does_not_contribute() {
-        let mut world = minimal_world("c1", Stats { energy: 5.0, sanity: 7.0, health: 10.0 });
+        let mut world = minimal_world(
+            "c1",
+            Stats {
+                energy: 5.0,
+                sanity: 7.0,
+                health: 10.0,
+            },
+        );
         let cid = CharacterId("c1".to_string());
         let ring_id = item_id("ring-3");
 
         // Accessory boosts SANITY, not ENERGY
         let mut items = BTreeMap::new();
-        items.insert("items/ring-san".to_string(), accessory_descriptor(StatType::Sanity, 2));
-        let cat = Catalog { items, aliases: BTreeMap::new(), behaviors: Default::default(), formations: Default::default(), recipes: Default::default() };
+        items.insert(
+            "items/ring-san".to_string(),
+            accessory_descriptor(StatType::Sanity, 2),
+        );
+        let cat = Catalog {
+            items,
+            aliases: BTreeMap::new(),
+            behaviors: BTreeMap::default(),
+            formations: BTreeMap::default(),
+            recipes: BTreeMap::default(),
+        };
 
         world.items.insert(
             ring_id.clone(),

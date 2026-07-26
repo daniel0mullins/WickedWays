@@ -1,11 +1,59 @@
-//! Test helpers for constructing minimal valid `World` instances.
-//! Extended by later tasks (Task 4+) as needed.
-use alloc::{collections::BTreeMap, string::String, vec, vec::Vec};
-use serde_json::Value;
+//! Test helpers shared across the crate's test modules: minimal valid `World`
+//! builders, id shorthands, and a fully-defaulted item descriptor.
 use crate::world::afflictions::Afflictions;
+use alloc::{collections::BTreeMap, string::String, vec, vec::Vec};
+use serde_json::{json, Value};
 
 use crate::presentation::CampaignOutcome;
+use crate::stats::StatType;
+use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType};
 use crate::world::ids::{CharacterId, ExitId, RoomId};
+
+/// Shorthand `CharacterId`.
+pub fn cid(s: &str) -> CharacterId {
+    CharacterId(s.into())
+}
+
+/// Shorthand `RoomId`.
+pub fn rid(s: &str) -> RoomId {
+    RoomId(s.into())
+}
+
+/// `ItemProperties` shorthand (`equipped: false`, `droppable: None`).
+pub fn props(equippable: bool, destroyable: bool, usable: bool) -> ItemProperties {
+    ItemProperties {
+        equippable,
+        equipped: false,
+        destroyable,
+        usable,
+        droppable: None,
+    }
+}
+
+/// A fully-defaulted `ItemDescriptor` — every optional field `None`, inert
+/// value fields empty, properties all-false. Customize per test with
+/// struct-update syntax: `ItemDescriptor { slot: Some(..), ..item_desc(..) }`.
+pub fn item_desc(name: &str, r#type: ItemType, stat: StatType, modifier: i64) -> ItemDescriptor {
+    ItemDescriptor {
+        name: name.into(),
+        r#type,
+        stat,
+        modifier,
+        properties: props(false, false, false),
+        slot: None,
+        two_handed: None,
+        emits_light: None,
+        max_durability: None,
+        lore: None,
+        presentation: None,
+        key_code: None,
+        consume_on_use: None,
+        recipe: json!({}),
+        teaches: json!(null),
+        immunities: json!([]),
+        grants_immunity: json!(null),
+    }
+}
 use crate::world::snapshot::{
     CampaignCoreSnapshot, CharacterKind, CharacterSnapshot, ExitSnapshot, InventorySnapshot,
     RoomSnapshot, SceneSnapshot, Stats,
@@ -26,7 +74,11 @@ pub fn world_with_party(ids: &[&str], max_rounds: i64) -> World {
                 kind: CharacterKind::Player,
                 id: id.clone(),
                 name: id.0.clone(),
-                stats: Stats { energy: 5.0, sanity: 5.0, health: 5.0 },
+                stats: Stats {
+                    energy: 5.0,
+                    sanity: 5.0,
+                    health: 5.0,
+                },
                 actions_per_round: 2,
                 actions_this_round: 0,
                 current_room_id: None,
@@ -115,11 +167,19 @@ pub fn world_two_rooms(next_dark: bool) -> World {
         kind: CharacterKind::Player,
         id: pc_id.clone(),
         name: "Heir".into(),
-        stats: Stats { energy: 5.0, sanity: 5.0, health: 5.0 },
+        stats: Stats {
+            energy: 5.0,
+            sanity: 5.0,
+            health: 5.0,
+        },
         actions_per_round: 3,
         actions_this_round: 0,
         current_room_id: Some(start_id.clone()),
-        inventory: InventorySnapshot { slots: 6, item_ids: vec![], key_ids: vec![] },
+        inventory: InventorySnapshot {
+            slots: 6,
+            item_ids: vec![],
+            key_ids: vec![],
+        },
         equipment: BTreeMap::new(),
         history: vec![],
         archetype_immunities: Vec::new(),

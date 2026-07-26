@@ -1,27 +1,27 @@
 {
-  "title": "Timeout",
-  "opts": {},
   "archetypes": [],
+  "caches": [],
+  "exits": [],
+  "formations": [],
+  "loot": [],
+  "loseConditions": [],
+  "materials": [],
+  "mechanics": [],
+  "mobs": [],
+  "npcs": [],
+  "opts": {},
+  "recipes": [],
   "rooms": [
     {
-      "name": "Hall",
-      "description": "A long central hall."
+      "description": "A long central hall.",
+      "name": "Hall"
     }
   ],
-  "startRoom": "Hall",
-  "exits": [],
-  "mobs": [],
-  "loot": [],
-  "caches": [],
-  "npcs": [],
-  "formations": [],
   "scenes": [],
-  "recipes": [],
-  "materials": [],
-  "winConditions": [],
-  "loseConditions": [],
-  "mechanics": [],
+  "startRoom": "Hall",
   "timeoutNarration": {
     "text": "Dawn never comes. You realize, slowly, that it never will — and that you stopped looking for the door some hours ago."
-  }
+  },
+  "title": "Timeout",
+  "winConditions": []
 }

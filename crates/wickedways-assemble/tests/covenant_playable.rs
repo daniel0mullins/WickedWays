@@ -35,11 +35,23 @@ fn read_json<T: serde::de::DeserializeOwned>(name: &str) -> T {
 fn covenant_authority() -> SyncAuthority {
     let desc: CampaignDescription = read_json("covenant.description.json");
     let catalog: Catalog = read_json("covenant.catalog.json");
-    let party = vec![Seat { name: "Keeper".into(), archetype: Some("warden".into()) }];
+    let party = vec![Seat {
+        name: "Keeper".into(),
+        archetype: Some("warden".into()),
+    }];
     let snap: CampaignSnapshot = assemble(&desc, &catalog, &party).expect("assemble covenant");
     let world = World::from_snapshot(snap);
     // snapshot_every: 1 so `snapshot()` always reflects the latest committed state.
-    SyncAuthority::new(world, catalog, AuthorityOpts { snapshot_every: 1, start_seq: 0, solo: false, manage_turns: false })
+    SyncAuthority::new(
+        world,
+        catalog,
+        AuthorityOpts {
+            snapshot_every: 1,
+            start_seq: 0,
+            solo: false,
+            manage_turns: false,
+        },
+    )
 }
 
 /// A bare joining Warden derived from the GM host's snapshot as a field template: a player-kind
@@ -52,7 +64,11 @@ fn joining_warden(template: &CharacterSnapshot, id: &str, name: &str) -> Charact
     c.name = name.into();
     c.archetype_id = None;
     c.archetype_immunities = vec![];
-    c.stats = Stats { health: 1.0, sanity: 1.0, energy: 1.0 };
+    c.stats = Stats {
+        health: 1.0,
+        sanity: 1.0,
+        energy: 1.0,
+    };
     c.current_room_id = Some(RoomId("room:Antechamber".into()));
     c
 }
@@ -72,7 +88,14 @@ fn commit(auth: &mut SyncAuthority, label: &str, cmd: Command) {
 }
 
 fn mv(auth: &mut SyncAuthority, actor: &str, to: &str) {
-    commit(auth, &format!("move {actor} -> {to}"), Command::Move { actor_id: cid(actor), room_id: rid(to) });
+    commit(
+        auth,
+        &format!("move {actor} -> {to}"),
+        Command::Move {
+            actor_id: cid(actor),
+            room_id: rid(to),
+        },
+    );
 }
 
 #[test]
@@ -81,14 +104,43 @@ fn a_joiner_names_a_warden_picks_the_archetype_and_wins_with_the_gm() {
 
     // 1. A player joins with their own named Warden, then picks the `warden` archetype (both are
     //    pre-begin setup). The archetype applies the Warden statline on top of the bare snapshot.
-    let template = auth.snapshot().characters.iter().find(|c| c.id == cid("player:Keeper")).expect("gm host").clone();
-    commit(&mut auth, "join", Command::JoinCampaign { character: Box::new(joining_warden(&template, "player:Rowan", "Rowan")) });
-    commit(&mut auth, "select archetype", Command::SelectArchetype { actor_id: cid("player:Rowan"), archetype_id: "warden".into() });
+    let template = auth
+        .snapshot()
+        .characters
+        .iter()
+        .find(|c| c.id == cid("player:Keeper"))
+        .expect("gm host")
+        .clone();
+    commit(
+        &mut auth,
+        "join",
+        Command::JoinCampaign {
+            character: Box::new(joining_warden(&template, "player:Rowan", "Rowan")),
+        },
+    );
+    commit(
+        &mut auth,
+        "select archetype",
+        Command::SelectArchetype {
+            actor_id: cid("player:Rowan"),
+            archetype_id: "warden".into(),
+        },
+    );
     let after_pick = auth.snapshot();
-    let rowan = after_pick.characters.iter().find(|c| c.id == cid("player:Rowan")).expect("rowan joined");
-    assert_eq!(rowan.stats.energy, 12.0, "the warden archetype set Rowan's stats");
+    let rowan = after_pick
+        .characters
+        .iter()
+        .find(|c| c.id == cid("player:Rowan"))
+        .expect("rowan joined");
+    assert_eq!(
+        rowan.stats.energy, 12.0,
+        "the warden archetype set Rowan's stats"
+    );
     assert_eq!(rowan.archetype_id.as_deref(), Some("warden"));
-    assert!(after_pick.campaign.party_ids.contains(&cid("player:Rowan")), "joiner is in the party");
+    assert!(
+        after_pick.campaign.party_ids.contains(&cid("player:Rowan")),
+        "joiner is in the party"
+    );
 
     // 2. The GM (Keeper) begins. Party order is [Keeper, Rowan]; active starts at Keeper.
     commit(&mut auth, "begin", Command::BeginCampaign);
@@ -99,12 +151,23 @@ fn a_joiner_names_a_warden_picks_the_archetype_and_wins_with_the_gm() {
     commit(&mut auth, "next -> Rowan", Command::NextPlayer);
     mv(&mut auth, "player:Rowan", "room:Crossing");
     mv(&mut auth, "player:Rowan", "room:South Ward");
-    assert_eq!(auth.snapshot().campaign.outcome, CampaignOutcome::Ongoing, "not won mid-round");
+    assert_eq!(
+        auth.snapshot().campaign.outcome,
+        CampaignOutcome::Ongoing,
+        "not won mid-round"
+    );
     commit(&mut auth, "next -> wrap/end round", Command::NextPlayer);
 
     let snap = auth.snapshot();
-    assert_eq!(snap.campaign.outcome, CampaignOutcome::Won, "twin wards held should win");
-    assert_eq!(snap.campaign.outcome_reason.as_deref(), Some("twin-wards-held"));
+    assert_eq!(
+        snap.campaign.outcome,
+        CampaignOutcome::Won,
+        "twin wards held should win"
+    );
+    assert_eq!(
+        snap.campaign.outcome_reason.as_deref(),
+        Some("twin-wards-held")
+    );
 }
 
 #[test]
@@ -117,7 +180,11 @@ fn one_warden_alone_cannot_hold_both_wards() {
     mv(&mut auth, "player:Keeper", "room:Crossing");
     mv(&mut auth, "player:Keeper", "room:North Ward");
     commit(&mut auth, "next/end round 1", Command::NextPlayer);
-    assert_eq!(auth.snapshot().campaign.outcome, CampaignOutcome::Ongoing, "one ward held is not a win");
+    assert_eq!(
+        auth.snapshot().campaign.outcome,
+        CampaignOutcome::Ongoing,
+        "one ward held is not a win"
+    );
 
     mv(&mut auth, "player:Keeper", "room:Crossing");
     mv(&mut auth, "player:Keeper", "room:South Ward");

@@ -1,28 +1,28 @@
 {
-  "title": "Mechanic Actions",
-  "opts": {},
   "archetypes": [],
-  "rooms": [
-    {
-      "name": "Hall",
-      "description": "A lightless hall where dread gathers."
-    }
-  ],
-  "startRoom": "Hall",
-  "exits": [],
-  "mobs": [],
-  "loot": [],
   "caches": [],
-  "npcs": [],
+  "exits": [],
   "formations": [],
-  "scenes": [],
-  "recipes": [],
-  "materials": [],
-  "winConditions": [],
+  "loot": [],
   "loseConditions": [],
+  "materials": [],
   "mechanics": [
     {
       "key": "dread"
     }
-  ]
+  ],
+  "mobs": [],
+  "npcs": [],
+  "opts": {},
+  "recipes": [],
+  "rooms": [
+    {
+      "description": "A lightless hall where dread gathers.",
+      "name": "Hall"
+    }
+  ],
+  "scenes": [],
+  "startRoom": "Hall",
+  "title": "Mechanic Actions",
+  "winConditions": []
 }

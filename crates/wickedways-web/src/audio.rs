@@ -1,11 +1,10 @@
-//! Cue → sound mapping (Phase 2c, sub-project D — slice 4, audio).
+//! Cue → sound mapping.
 //!
-//! Ports `packages/play-runtime/src/audio/cue-sound.ts`: a **pure, backend-agnostic** description of
-//! the one-shot procedural sound each event makes ([`SynthVoice`]), derived from the engine's
-//! [`PresentationCue`]/[`MobAttack`]. It never touches Web Audio, so it is unit-tested exhaustively on
-//! the host; a later slice's Web Audio runtime renders these voices (oscillator/noise + gain
-//! envelope). This is the foundation of the audio subtree, the audio analog of the affordances/scene
-//! logic that landed before their DOM.
+//! A **pure, backend-agnostic** description of the one-shot procedural sound each event makes
+//! ([`SynthVoice`]), derived from the engine's [`PresentationCue`]/[`MobAttack`]. It never touches
+//! Web Audio, so it is unit-tested exhaustively on the host; the Web Audio engine
+//! ([`audio_engine`](crate::audio_engine)) renders these voices (oscillator/noise + gain envelope).
+//! This is the foundation of the audio subtree.
 
 use wickedways_core::presentation::{ActionKind, CampaignOutcome, EntityRef, PresentationCue};
 use wickedways_core::world::intent::Intent;
@@ -21,7 +20,7 @@ pub enum Source {
     Noise,
 }
 
-/// A declarative, backend-agnostic one-shot procedural sound. Mirrors the TS `SynthVoice`.
+/// A declarative, backend-agnostic one-shot procedural sound.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SynthVoice {
     /// Oscillator waveform, or `Noise` for a white-noise burst.
@@ -39,68 +38,129 @@ pub struct SynthVoice {
 }
 
 /// Deterministic pitch multiplier in ~`[0.97, 1.03]` derived from an id string, so repeated events
-/// feel alive without `Math.random` (repo convention). Byte-faithful to the TS `detuneFactor`: a
-/// 32-bit-wrapping `h*31 + charCodeAt` hash (UTF-16 code units) folded into a `[0,1)` fraction.
+/// feel alive without `Math.random` (repo convention): a 32-bit-wrapping `h*31 + unit` hash over the
+/// id's UTF-16 code units, folded into a `[0,1)` fraction.
 pub fn detune_factor(id: &str) -> f64 {
     let mut h: i32 = 0;
     for unit in id.encode_utf16() {
         h = h.wrapping_mul(31).wrapping_add(i32::from(unit));
     }
-    // `Math.abs(h) % 1000` — `unsigned_abs` matches JS for i32::MIN (which `abs` would overflow on).
-    let frac = (h.unsigned_abs() % 1000) as f64 / 1000.0;
+    // Fold |h| into [0, 1000) — `unsigned_abs`, not `abs`, which would overflow on i32::MIN.
+    let frac = f64::from(h.unsigned_abs() % 1000) / 1000.0;
     0.97 + frac * 0.06
 }
 
-/// Maps a presentation cue to a sound, or `None` when the event is silent. Mirrors `soundForCue`.
+/// Maps a presentation cue to a sound, or `None` when the event is silent.
 pub fn sound_for_cue(cue: &PresentationCue) -> Option<SynthVoice> {
     match cue {
         PresentationCue::Action { action, actor, .. } => match action {
             ActionKind::Attack => {
                 let f = 190.0 * detune_factor(&actor.id);
-                Some(SynthVoice { source: Source::Square, freq: f, end_freq: Some(f * 0.5), duration: 0.12, gain: 0.18, attack: 0.001 })
+                Some(SynthVoice {
+                    source: Source::Square,
+                    freq: f,
+                    end_freq: Some(f * 0.5),
+                    duration: 0.12,
+                    gain: 0.18,
+                    attack: 0.001,
+                })
             }
-            ActionKind::TakeDamage => {
-                Some(SynthVoice { source: Source::Noise, freq: 0.0, end_freq: None, duration: 0.14, gain: 0.16, attack: 0.001 })
-            }
-            ActionKind::PickUp => {
-                Some(SynthVoice { source: Source::Triangle, freq: 660.0, end_freq: Some(990.0), duration: 0.09, gain: 0.12, attack: 0.005 })
-            }
-            ActionKind::Drop => {
-                Some(SynthVoice { source: Source::Triangle, freq: 520.0, end_freq: Some(330.0), duration: 0.09, gain: 0.12, attack: 0.005 })
-            }
-            ActionKind::Move => {
-                Some(SynthVoice { source: Source::Noise, freq: 0.0, end_freq: None, duration: 0.22, gain: 0.06, attack: 0.04 })
-            }
+            ActionKind::TakeDamage => Some(SynthVoice {
+                source: Source::Noise,
+                freq: 0.0,
+                end_freq: None,
+                duration: 0.14,
+                gain: 0.16,
+                attack: 0.001,
+            }),
+            ActionKind::PickUp => Some(SynthVoice {
+                source: Source::Triangle,
+                freq: 660.0,
+                end_freq: Some(990.0),
+                duration: 0.09,
+                gain: 0.12,
+                attack: 0.005,
+            }),
+            ActionKind::Drop => Some(SynthVoice {
+                source: Source::Triangle,
+                freq: 520.0,
+                end_freq: Some(330.0),
+                duration: 0.09,
+                gain: 0.12,
+                attack: 0.005,
+            }),
+            ActionKind::Move => Some(SynthVoice {
+                source: Source::Noise,
+                freq: 0.0,
+                end_freq: None,
+                duration: 0.22,
+                gain: 0.06,
+                attack: 0.04,
+            }),
             ActionKind::Escape | ActionKind::Fumble | ActionKind::MechanicAction => None,
         },
-        PresentationCue::Encounter { .. } => {
-            Some(SynthVoice { source: Source::Sawtooth, freq: 110.0, end_freq: Some(330.0), duration: 0.5, gain: 0.14, attack: 0.08 })
-        }
-        PresentationCue::Visibility { .. } => {
-            Some(SynthVoice { source: Source::Square, freq: 1200.0, end_freq: None, duration: 0.04, gain: 0.08, attack: 0.001 })
-        }
+        PresentationCue::Encounter { .. } => Some(SynthVoice {
+            source: Source::Sawtooth,
+            freq: 110.0,
+            end_freq: Some(330.0),
+            duration: 0.5,
+            gain: 0.14,
+            attack: 0.08,
+        }),
+        PresentationCue::Visibility { .. } => Some(SynthVoice {
+            source: Source::Square,
+            freq: 1200.0,
+            end_freq: None,
+            duration: 0.04,
+            gain: 0.08,
+            attack: 0.001,
+        }),
         // "won" rises triumphantly; "lost" falls; any other outcome makes no sound.
         PresentationCue::Resolution { outcome, .. } => match outcome {
-            CampaignOutcome::Won => {
-                Some(SynthVoice { source: Source::Triangle, freq: 523.0, end_freq: Some(784.0), duration: 0.6, gain: 0.16, attack: 0.02 })
-            }
-            CampaignOutcome::Lost => {
-                Some(SynthVoice { source: Source::Sine, freq: 220.0, end_freq: Some(55.0), duration: 0.8, gain: 0.16, attack: 0.02 })
-            }
+            CampaignOutcome::Won => Some(SynthVoice {
+                source: Source::Triangle,
+                freq: 523.0,
+                end_freq: Some(784.0),
+                duration: 0.6,
+                gain: 0.16,
+                attack: 0.02,
+            }),
+            CampaignOutcome::Lost => Some(SynthVoice {
+                source: Source::Sine,
+                freq: 220.0,
+                end_freq: Some(55.0),
+                duration: 0.8,
+                gain: 0.16,
+                attack: 0.02,
+            }),
             _ => None,
         },
         PresentationCue::Mechanic { .. } | PresentationCue::Status { .. } => None,
     }
 }
 
-/// A mob's strike landing on the player. Mirrors `soundForMobAttack`.
+/// A mob's strike landing on the player.
 pub fn sound_for_mob_attack(_attack: &MobAttack) -> SynthVoice {
-    SynthVoice { source: Source::Square, freq: 150.0, end_freq: Some(80.0), duration: 0.13, gain: 0.16, attack: 0.001 }
+    SynthVoice {
+        source: Source::Square,
+        freq: 150.0,
+        end_freq: Some(80.0),
+        duration: 0.13,
+        gain: 0.16,
+        attack: 0.001,
+    }
 }
 
-/// A short low buzz for a rejected command or illegal action. Mirrors `errorSound`.
+/// A short low buzz for a rejected command or illegal action.
 pub fn error_sound() -> SynthVoice {
-    SynthVoice { source: Source::Square, freq: 90.0, end_freq: None, duration: 0.12, gain: 0.1, attack: 0.001 }
+    SynthVoice {
+        source: Source::Square,
+        freq: 90.0,
+        end_freq: None,
+        duration: 0.12,
+        gain: 0.1,
+        attack: 0.001,
+    }
 }
 
 /// Reconstruct the `PresentationCue` a committed action intent stands for, if any
@@ -109,12 +169,31 @@ pub fn error_sound() -> SynthVoice {
 /// noun id rides along as the actor id so the per-actor pitch jitter (attack) still distinguishes
 /// foes. Shared by both surfaces (the CRT terminal and the point-and-click scene).
 pub fn cue_for_intent(intent: &Intent) -> Option<PresentationCue> {
-    let entity = |id: &str| EntityRef { id: id.into(), name: String::new() };
+    let entity = |id: &str| EntityRef {
+        id: id.into(),
+        name: String::new(),
+    };
     Some(match intent {
-        Intent::Attack { target_id } => PresentationCue::Action { action: ActionKind::Attack, actor: entity(target_id), sound: None },
-        Intent::Move { .. } => PresentationCue::Action { action: ActionKind::Move, actor: entity("move"), sound: None },
-        Intent::Take { target_id } => PresentationCue::Action { action: ActionKind::PickUp, actor: entity(target_id), sound: None },
-        Intent::Drop { target_id } => PresentationCue::Action { action: ActionKind::Drop, actor: entity(target_id), sound: None },
+        Intent::Attack { target_id } => PresentationCue::Action {
+            action: ActionKind::Attack,
+            actor: entity(target_id),
+            sound: None,
+        },
+        Intent::Move { .. } => PresentationCue::Action {
+            action: ActionKind::Move,
+            actor: entity("move"),
+            sound: None,
+        },
+        Intent::Take { target_id } => PresentationCue::Action {
+            action: ActionKind::PickUp,
+            actor: entity(target_id),
+            sound: None,
+        },
+        Intent::Drop { target_id } => PresentationCue::Action {
+            action: ActionKind::Drop,
+            actor: entity(target_id),
+            sound: None,
+        },
         _ => return None,
     })
 }
@@ -127,11 +206,18 @@ mod tests {
     use wickedways_core::StatType;
 
     fn actor(id: &str) -> EntityRef {
-        EntityRef { id: id.into(), name: id.to_uppercase() }
+        EntityRef {
+            id: id.into(),
+            name: id.to_uppercase(),
+        }
     }
 
     fn action(kind: ActionKind, actor_id: &str) -> PresentationCue {
-        PresentationCue::Action { action: kind, actor: actor(actor_id), sound: None }
+        PresentationCue::Action {
+            action: kind,
+            actor: actor(actor_id),
+            sound: None,
+        }
     }
 
     #[test]
@@ -144,7 +230,12 @@ mod tests {
 
     #[test]
     fn take_damage_is_a_noise_thud() {
-        assert_eq!(sound_for_cue(&action(ActionKind::TakeDamage, "p1")).unwrap().source, Source::Noise);
+        assert_eq!(
+            sound_for_cue(&action(ActionKind::TakeDamage, "p1"))
+                .unwrap()
+                .source,
+            Source::Noise
+        );
     }
 
     #[test]
@@ -159,15 +250,29 @@ mod tests {
 
     #[test]
     fn move_is_a_noise_whoosh() {
-        assert_eq!(sound_for_cue(&action(ActionKind::Move, "p1")).unwrap().source, Source::Noise);
+        assert_eq!(
+            sound_for_cue(&action(ActionKind::Move, "p1"))
+                .unwrap()
+                .source,
+            Source::Noise
+        );
     }
 
     #[test]
     fn escape_fumble_mechanic_action_and_mechanic_are_silent() {
-        for kind in [ActionKind::Escape, ActionKind::Fumble, ActionKind::MechanicAction] {
+        for kind in [
+            ActionKind::Escape,
+            ActionKind::Fumble,
+            ActionKind::MechanicAction,
+        ] {
             assert_eq!(sound_for_cue(&action(kind, "p1")), None);
         }
-        let mechanic = PresentationCue::Mechanic { cue: MechanicCue { text: Some("x".into()), sound: None } };
+        let mechanic = PresentationCue::Mechanic {
+            cue: MechanicCue {
+                text: Some("x".into()),
+                sound: None,
+            },
+        };
         assert_eq!(sound_for_cue(&mechanic), None);
     }
 
@@ -175,7 +280,10 @@ mod tests {
     fn encounter_is_a_rising_sawtooth() {
         let v = sound_for_cue(&PresentationCue::Encounter {
             mob: actor("m"),
-            room: EntityRef { id: "r".into(), name: "R".into() },
+            room: EntityRef {
+                id: "r".into(),
+                name: "R".into(),
+            },
             sound: None,
         })
         .unwrap();
@@ -186,7 +294,10 @@ mod tests {
     #[test]
     fn visibility_is_a_short_click() {
         let v = sound_for_cue(&PresentationCue::Visibility {
-            room: EntityRef { id: "r".into(), name: "R".into() },
+            room: EntityRef {
+                id: "r".into(),
+                name: "R".into(),
+            },
             lit: true,
         })
         .unwrap();
@@ -195,13 +306,34 @@ mod tests {
 
     #[test]
     fn resolution_win_rises_and_loss_falls() {
-        let win = sound_for_cue(&PresentationCue::Resolution { outcome: CampaignOutcome::Won, reason: None, narration: None }).unwrap();
-        let lose = sound_for_cue(&PresentationCue::Resolution { outcome: CampaignOutcome::Lost, reason: None, narration: None }).unwrap();
+        let win = sound_for_cue(&PresentationCue::Resolution {
+            outcome: CampaignOutcome::Won,
+            reason: None,
+            narration: None,
+        })
+        .unwrap();
+        let lose = sound_for_cue(&PresentationCue::Resolution {
+            outcome: CampaignOutcome::Lost,
+            reason: None,
+            narration: None,
+        })
+        .unwrap();
         assert!(win.end_freq.unwrap() > win.freq);
         assert!(lose.end_freq.unwrap() < lose.freq);
         // Any other outcome is silent.
-        for outcome in [CampaignOutcome::Ongoing, CampaignOutcome::TimedOut, CampaignOutcome::Ended] {
-            assert_eq!(sound_for_cue(&PresentationCue::Resolution { outcome, reason: None, narration: None }), None);
+        for outcome in [
+            CampaignOutcome::Ongoing,
+            CampaignOutcome::TimedOut,
+            CampaignOutcome::Ended,
+        ] {
+            assert_eq!(
+                sound_for_cue(&PresentationCue::Resolution {
+                    outcome,
+                    reason: None,
+                    narration: None
+                }),
+                None
+            );
         }
     }
 
@@ -219,7 +351,7 @@ mod tests {
         assert_eq!(detune_factor("p1"), detune_factor("p1"));
         assert!(detune_factor("p1") > 0.9);
         assert!(detune_factor("p1") < 1.1);
-        // Byte-parity spot check against the TS hash for "p1":
+        // Spot check the hash fold for "p1":
         // h = ('p'=112)*31 + ('1'=49) = 3521 → 3521 % 1000 = 521 → 0.97 + 0.521*0.06 = 1.00126.
         assert!((detune_factor("p1") - 1.00126).abs() < 1e-9);
     }
@@ -231,13 +363,47 @@ mod tests {
         fn voice(intent: &Intent) -> Option<SynthVoice> {
             cue_for_intent(intent).as_ref().and_then(sound_for_cue)
         }
-        assert_eq!(voice(&Intent::Attack { target_id: "m".into() }).unwrap().source, Source::Square);
-        assert_eq!(voice(&Intent::Move { dir: Direction::North }).unwrap().source, Source::Noise);
-        assert_eq!(voice(&Intent::Take { target_id: "i".into() }).unwrap().source, Source::Triangle);
-        assert_eq!(voice(&Intent::Drop { target_id: "i".into() }).unwrap().source, Source::Triangle);
+        assert_eq!(
+            voice(&Intent::Attack {
+                target_id: "m".into()
+            })
+            .unwrap()
+            .source,
+            Source::Square
+        );
+        assert_eq!(
+            voice(&Intent::Move {
+                dir: Direction::North
+            })
+            .unwrap()
+            .source,
+            Source::Noise
+        );
+        assert_eq!(
+            voice(&Intent::Take {
+                target_id: "i".into()
+            })
+            .unwrap()
+            .source,
+            Source::Triangle
+        );
+        assert_eq!(
+            voice(&Intent::Drop {
+                target_id: "i".into()
+            })
+            .unwrap()
+            .source,
+            Source::Triangle
+        );
         // The attack's actor id rides through, so the pitch still jitters by target.
-        let a = voice(&Intent::Attack { target_id: "a".into() }).unwrap();
-        let b = voice(&Intent::Attack { target_id: "b".into() }).unwrap();
+        let a = voice(&Intent::Attack {
+            target_id: "a".into(),
+        })
+        .unwrap();
+        let b = voice(&Intent::Attack {
+            target_id: "b".into(),
+        })
+        .unwrap();
         assert_ne!(a.freq, b.freq);
         // A non-action intent has no cue.
         assert!(cue_for_intent(&Intent::Wait).is_none());
@@ -245,7 +411,11 @@ mod tests {
 
     #[test]
     fn mob_attack_and_error_are_voiced() {
-        let atk = sound_for_mob_attack(&MobAttack { name: "Wraith".into(), stat: StatType::Health, amount: 3.0 });
+        let atk = sound_for_mob_attack(&MobAttack {
+            name: "Wraith".into(),
+            stat: StatType::Health,
+            amount: 3.0,
+        });
         assert!(atk.gain > 0.0);
         assert!(atk.duration > 0.0);
         assert!(error_sound().freq < 200.0);

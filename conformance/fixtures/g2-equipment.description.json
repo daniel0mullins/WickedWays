@@ -1,34 +1,34 @@
 {
-  "title": "Equipment",
-  "opts": {},
   "archetypes": [],
-  "rooms": [
-    {
-      "name": "Hall",
-      "description": "A long central hall."
-    }
-  ],
-  "startRoom": "Hall",
+  "caches": [],
   "exits": [],
-  "mobs": [],
+  "formations": [],
   "loot": [
     {
-      "name": "shelf",
-      "room": "Hall",
       "items": [
         "lantern",
         "poker",
         "journal"
-      ]
+      ],
+      "name": "shelf",
+      "room": "Hall"
     }
   ],
-  "caches": [],
-  "npcs": [],
-  "formations": [],
-  "scenes": [],
-  "recipes": [],
-  "materials": [],
-  "winConditions": [],
   "loseConditions": [],
-  "mechanics": []
+  "materials": [],
+  "mechanics": [],
+  "mobs": [],
+  "npcs": [],
+  "opts": {},
+  "recipes": [],
+  "rooms": [
+    {
+      "description": "A long central hall.",
+      "name": "Hall"
+    }
+  ],
+  "scenes": [],
+  "startRoom": "Hall",
+  "title": "Equipment",
+  "winConditions": []
 }

@@ -1,90 +1,65 @@
 {
-  "schemaVersion": 6,
   "campaign": {
-    "id": "campaign:Effects",
-    "title": "Effects",
-    "maxRounds": 100,
-    "round": 0,
-    "started": false,
-    "outcome": "ongoing",
-    "winConditions": [],
-    "loseConditions": [],
-    "activeCharacterIndex": 0,
-    "partyIds": [
-      "player:Ada"
-    ],
     "actedThisRound": [],
-    "gmId": "player:Ada",
-    "materials": {},
-    "claims": [],
-    "encountered": [],
-    "knownRecipes": [],
-    "archetypes": [],
     "actionSounds": {},
-    "encounterTable": {
-      "baseChance": 20,
-      "visited": [
-        "room:Hall"
-      ],
-      "formations": []
+    "activeCharacterIndex": 0,
+    "archetypes": [],
+    "avPolicy": {
+      "enabled": true,
+      "maxParticipants": 6,
+      "video": true
     },
     "chatPolicy": {
-      "enabled": true,
-      "whisper": true,
+      "backfillWindow": 200,
       "edit": true,
+      "enabled": true,
       "reactions": true,
       "readReceipts": true,
       "typing": true,
-      "backfillWindow": 200
+      "whisper": true
     },
-    "avPolicy": {
-      "enabled": true,
-      "video": true,
-      "maxParticipants": 6
+    "claims": [],
+    "encounterTable": {
+      "baseChance": 20,
+      "formations": [],
+      "visited": [
+        "room:Hall"
+      ]
     },
+    "encountered": [],
+    "gmId": "player:Ada",
+    "id": "campaign:Effects",
+    "knownRecipes": [],
+    "loseConditions": [],
+    "materials": {},
+    "maxRounds": 100,
     "mechanics": [
       {
         "key": "hex",
         "state": {}
       }
-    ]
+    ],
+    "outcome": "ongoing",
+    "partyIds": [
+      "player:Ada"
+    ],
+    "round": 0,
+    "started": false,
+    "title": "Effects",
+    "winConditions": []
   },
-  "rooms": [
-    {
-      "id": "room:Hall",
-      "name": "Hall",
-      "description": "A cold stone hall.",
-      "exits": {},
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [
-        "player:Ada"
-      ],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    }
-  ],
-  "exits": [],
   "characters": [
     {
-      "kind": "player",
-      "id": "player:Ada",
-      "name": "Ada",
-      "stats": {
-        "health": 10,
-        "sanity": 10,
-        "energy": 10
-      },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "room:Hall",
-      "inventory": {
-        "slots": 5,
-        "itemIds": [],
-        "keyIds": []
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
       },
+      "archetypeImmunities": [],
+      "currentRoomId": "room:Hall",
       "equipment": {},
       "history": [
         {
@@ -96,31 +71,56 @@
           "round": 0
         }
       ],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
+      "id": "player:Ada",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 5
+      },
+      "kind": "player",
+      "name": "Ada",
+      "stats": {
+        "energy": 10.0,
+        "health": 10.0,
+        "sanity": 10.0
       }
     }
   ],
+  "codex": [
+    {
+      "firstSeen": {
+        "characterId": "player:Ada",
+        "roomId": "room:Hall",
+        "round": 0
+      },
+      "key": "room:Hall",
+      "kind": "room",
+      "snapshot": {
+        "description": "A cold stone hall.",
+        "name": "Hall"
+      }
+    }
+  ],
+  "exits": [],
   "items": [],
   "loot": [],
   "materialCaches": [],
-  "codex": [
+  "rooms": [
     {
-      "kind": "room",
-      "key": "room:Hall",
-      "snapshot": {
-        "name": "Hall",
-        "description": "A cold stone hall."
-      },
-      "firstSeen": {
-        "round": 0,
-        "characterId": "player:Ada",
-        "roomId": "room:Hall"
-      }
+      "dark": false,
+      "description": "A cold stone hall.",
+      "exits": {},
+      "id": "room:Hall",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Hall",
+      "occupantIds": [
+        "player:Ada"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
     }
-  ]
+  ],
+  "schemaVersion": 6
 }

@@ -1,4 +1,4 @@
-//! Owned read-only projections handed to mechanic hooks (TS `CampaignView` etc.).
+//! Owned read-only projections handed to mechanic hooks (`CampaignView` etc.).
 //! Built once before a dispatch loop so hooks borrow only `state`+`rng` of `World`.
 use alloc::collections::BTreeSet;
 use alloc::string::String;
@@ -17,7 +17,7 @@ pub struct CampaignView {
     pub round: i64,
     pub max_rounds: i64,
     pub party: Vec<CharacterView>,
-    /// Always empty in v1 (TS `#campaignView` returns `rooms: []`).
+    /// Always empty in v1 (`#campaignView` returns `rooms: []`).
     pub rooms: Vec<RoomView>,
 }
 
@@ -36,13 +36,19 @@ pub struct CharacterView {
 }
 
 impl CharacterView {
-    /// TS `CharacterView.hasEquipped(itemKey)` — matches on item `behaviorKey`.
-    pub fn has_equipped(&self, key: &str) -> bool { self.equipped_keys.contains(key) }
-    /// TS `CharacterView.hasItem(itemKey)` — matches held (inventory) item `behaviorKey`.
-    pub fn has_item(&self, key: &str) -> bool { self.held_keys.contains(key) }
+    /// `CharacterView.hasEquipped(itemKey)` — matches on item `behaviorKey`.
+    pub fn has_equipped(&self, key: &str) -> bool {
+        self.equipped_keys.contains(key)
+    }
+    /// `CharacterView.hasItem(itemKey)` — matches held (inventory) item `behaviorKey`.
+    pub fn has_item(&self, key: &str) -> bool {
+        self.held_keys.contains(key)
+    }
     /// True if the character's keyring holds a key with this `keyCode`
-    /// (TS `c.inventory.keys.some((k) => k.keyCode === code)`).
-    pub fn has_key(&self, code: &str) -> bool { self.key_codes.contains(code) }
+    /// (`c.inventory.keys.some((k) => k.keyCode === code)`).
+    pub fn has_key(&self, code: &str) -> bool {
+        self.key_codes.contains(code)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -51,11 +57,11 @@ pub struct RoomView {
     pub name: String,
     pub lit: bool,
     pub occupant_ids: Vec<String>,
-    /// Occupants as views (TS `room.occupants`), projected in `occupant_ids` order.
+    /// Occupants as views (`room.occupants`), projected in `occupant_ids` order.
     pub occupants: Vec<CharacterView>,
 }
 
-/// TS `DamageView` — `source` is always `None` at the one call site.
+/// `DamageView` — `source` is always `None` at the one call site.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DamageView {
     pub amount: f64,
@@ -65,7 +71,7 @@ pub struct DamageView {
 }
 
 impl World {
-    /// Build the owned party projection (TS `#campaignView` + `#characterView`).
+    /// Build the owned party projection (`#campaignView` + `#characterView`).
     /// `party_ids` order is preserved. `rooms` is intentionally empty (v1).
     pub fn build_campaign_view(&self, cat: &Catalog) -> CampaignView {
         let party = self
@@ -82,7 +88,7 @@ impl World {
         }
     }
 
-    /// Owned projection of a single room for scene hooks (TS `room` handed to
+    /// Owned projection of a single room for scene hooks (`room` handed to
     /// scene preconditions/scripts). `occupants` are projected in `occupant_ids`
     /// order via `character_view`. `None` if the room is absent.
     pub fn room_view(&self, room_id: &RoomId, cat: &Catalog) -> Option<RoomView> {
@@ -144,7 +150,7 @@ impl World {
         })
     }
 
-    /// The `behaviorKey` an item matches on (TS `item.behaviorKey`). Only catalog-backed
+    /// The `behaviorKey` an item matches on (`item.behaviorKey`). Only catalog-backed
     /// `Item`s carry one; keys resolve `None`.
     fn behavior_key_of(&self, iid: &crate::world::ids::ItemId) -> Option<String> {
         match self.items.get(iid) {
@@ -155,16 +161,14 @@ impl World {
 }
 
 // Local copy to avoid a cross-module const import cycle in this file.
-const ALL_STATUSES_LOCAL: [Status; 4] =
-    [Status::Confused, Status::Fear, Status::Ko, Status::Panic];
+const ALL_STATUSES_LOCAL: [Status; 4] = [Status::Confused, Status::Fear, Status::Ko, Status::Panic];
 
 #[cfg(test)]
 mod tests {
     use crate::world::descriptor::Catalog;
-    use crate::world::ids::CharacterId;
-    use crate::world::test_support::world_with_party;
+    use crate::world::test_support::cid;
 
-    fn cid(s: &str) -> CharacterId { CharacterId(s.into()) }
+    use crate::world::test_support::world_with_party;
 
     #[test]
     fn campaign_view_projects_party_effective_stats() {
@@ -191,16 +195,20 @@ mod tests {
     fn room_view_projects_lit_and_occupants() {
         use crate::world::ids::RoomId;
         // world_two_rooms seats "pc" (Heir) in "start" (lit); "next" may be dark.
-        let w = crate::world::test_support::world_two_rooms(/*next_dark=*/true);
+        let w = crate::world::test_support::world_two_rooms(/*next_dark=*/ true);
         let cat = Catalog::default();
-        let start = w.room_view(&RoomId("start".into()), &cat).expect("start room");
+        let start = w
+            .room_view(&RoomId("start".into()), &cat)
+            .expect("start room");
         assert_eq!(start.id, "start");
         assert!(start.lit);
         assert_eq!(start.occupant_ids, alloc::vec!["pc".to_string()]);
         assert_eq!(start.occupants.len(), 1);
         assert_eq!(start.occupants[0].id, cid("pc"));
 
-        let next = w.room_view(&RoomId("next".into()), &cat).expect("next room");
+        let next = w
+            .room_view(&RoomId("next".into()), &cat)
+            .expect("next room");
         assert!(!next.lit); // dark, no light sources
         assert!(next.occupants.is_empty());
 
@@ -212,11 +220,21 @@ mod tests {
         use crate::world::ids::ItemId;
         use crate::world::snapshot::ItemSnapshot;
         let mut w = world_with_party(&["pc"], 10);
-        w.items.insert(ItemId("k1".into()), ItemSnapshot::Key {
-            id: ItemId("k1".into()), name: "Brass Key".into(),
-            key_code: "brass".into(), consume_on_use: false,
-        });
-        w.characters.get_mut(&cid("pc")).unwrap().inventory.key_ids.push(ItemId("k1".into()));
+        w.items.insert(
+            ItemId("k1".into()),
+            ItemSnapshot::Key {
+                id: ItemId("k1".into()),
+                name: "Brass Key".into(),
+                key_code: "brass".into(),
+                consume_on_use: false,
+            },
+        );
+        w.characters
+            .get_mut(&cid("pc"))
+            .unwrap()
+            .inventory
+            .key_ids
+            .push(ItemId("k1".into()));
         let v = w.character_view(&cid("pc"), &Catalog::default()).unwrap();
         assert!(v.has_key("brass"));
         assert!(!v.has_key("iron"));

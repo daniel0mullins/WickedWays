@@ -1,18 +1,17 @@
-//! The warm local mirror (Phase 2c, sub-project D — slice 1).
+//! The warm local mirror.
 //!
-//! Ports the mirror half of `packages/client/src/websocket-transport.ts`: the `#log` + `#head` +
-//! `#snapshot` + `#buffer` that the server subscription feeds, so every *synchronous* read the
+//! The local log + head + snapshot + gap buffer that the server subscription feeds, so every
+//! *synchronous* read the
 //! [`SyncTransport`](wickedways_core::sync::SyncTransport) makes (`head`/`entries_since`/
 //! `load_snapshot`) is served locally and only `submit` awaits the server. This is the pure,
 //! browser-free heart of the transport — the `web-sys` socket binding (open/message/close,
-//! handshake, reconnect, the async `submit` await) wraps it in a later step.
+//! handshake, reconnect, the async `submit` await) wraps it in [`crate::transport`].
 //!
 //! Entries arrive on the wire as [`WireLogEntry`](wickedways_transport::WireLogEntry) (opaque
 //! `command`/`delta` `Value`s); the mirror deserializes them into native
 //! [`LogEntry`](wickedways_core::sync::LogEntry)s so the [`SyncCoordinator`] can apply the typed
-//! deltas. Out-of-order entries are gap-buffered and the run heals once it is contiguous — the exact
-//! `#applyEntry` semantics, so a replica driven off `entries_since` converges regardless of arrival
-//! order.
+//! deltas. Out-of-order entries are gap-buffered and the run heals once it is contiguous, so a
+//! replica driven off `entries_since` converges regardless of arrival order.
 //!
 //! [`SyncCoordinator`]: wickedways_core::sync::SyncCoordinator
 
@@ -40,8 +39,7 @@ impl Mirror {
 
     /// Handshake seed: the mirror is "caught up to" `seq` even though it holds no entries yet
     /// (entries stream from `seq + 1` onward). A `None` snapshot (unknown campaign) leaves the
-    /// checkpoint unset while still advancing the head. Mirrors the `getSnapshot` step of
-    /// `#handshake`.
+    /// checkpoint unset while still advancing the head.
     pub fn seed(&mut self, seq: u64, snapshot: Option<CampaignSnapshot>) {
         self.head = seq;
         self.snapshot = snapshot.map(|s| (seq, s));
@@ -54,7 +52,11 @@ impl Mirror {
 
     /// Committed entries with `seq >= from_seq`, in order (the `entries_since` read).
     pub fn entries_since(&self, from_seq: u64) -> Vec<LogEntry> {
-        self.log.iter().filter(|e| e.seq >= from_seq).cloned().collect()
+        self.log
+            .iter()
+            .filter(|e| e.seq >= from_seq)
+            .cloned()
+            .collect()
     }
 
     /// The latest checkpoint `(seq, snapshot)`, if the handshake seeded one.
@@ -64,7 +66,7 @@ impl Mirror {
 
     /// Applies a native entry: a duplicate (`seq <= head`, including our own committed delta) is
     /// skipped; a gap (`seq > head + 1`) is buffered; otherwise it commits and drains any now-
-    /// contiguous buffered entries. Faithful to `#applyEntry` + `#commit`.
+    /// contiguous buffered entries.
     pub fn apply_entry(&mut self, entry: LogEntry) {
         if entry.seq <= self.head {
             return; // duplicate
@@ -112,7 +114,13 @@ mod tests {
             seq,
             base_seq: seq - 1,
             command: Command::NextPlayer,
-            delta: Delta { created: vec![], changed: vec![], removed: vec![], campaign_core: None, cues: vec![] },
+            delta: Delta {
+                created: vec![],
+                changed: vec![],
+                removed: vec![],
+                campaign_core: None,
+                cues: vec![],
+            },
         }
     }
 
@@ -168,7 +176,10 @@ mod tests {
         .expect("parse");
         m.seed(5, Some(snap.clone()));
         assert_eq!(m.head(), 5, "seeded head is the snapshot seq");
-        assert!(seqs(&m).is_empty(), "no entries yet — they stream from seq+1");
+        assert!(
+            seqs(&m).is_empty(),
+            "no entries yet — they stream from seq+1"
+        );
         let (seq, got) = m.load_snapshot().expect("snapshot seeded");
         assert_eq!(seq, 5);
         assert_eq!(got, snap);
@@ -188,7 +199,8 @@ mod tests {
             command: json!({ "kind": "nextPlayer" }),
             delta: json!({ "changed": [], "created": [], "removed": [] }),
         };
-        m.apply_wire_entry(&wire).expect("well-formed wire entry applies");
+        m.apply_wire_entry(&wire)
+            .expect("well-formed wire entry applies");
         assert_eq!(m.head(), 1);
         assert_eq!(seqs(&m), vec![1]);
     }

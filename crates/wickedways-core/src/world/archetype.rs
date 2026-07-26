@@ -1,6 +1,6 @@
-//! The `selectArchetype` setup action (Phase 2c, sub-project A1).
+//! The `selectArchetype` setup action.
 //!
-//! Ports `PlayerCharacter.selectArchetype` (`src/lib/character/player-character.ts`): a setup-only,
+//! Ports `PlayerCharacter.selectArchetype`: a setup-only,
 //! once-only operation that applies a campaign archetype's effects to a character — the named base
 //! stats override the character's stats, the inventory-slot delta adjusts capacity (floored at 0),
 //! and the immunities become a standing passive trait. The archetype catalogue lives inert on
@@ -113,7 +113,8 @@ mod tests {
             "inventorySlots": -1,
             "immunities": ["fear"]
         }]));
-        w.select_archetype(&CharacterId("pc".into()), "delver").unwrap();
+        w.select_archetype(&CharacterId("pc".into()), "delver")
+            .unwrap();
         let ch = &w.characters[&CharacterId("pc".into())];
         assert_eq!(ch.stats.health, 2.0, "base stat overridden");
         assert_eq!(ch.stats.sanity, 5.0, "unspecified stat unchanged");
@@ -127,7 +128,8 @@ mod tests {
         let mut w = pre_start_world_with_archetypes(json!([{
             "id": "burdened", "baseStats": {}, "inventorySlots": -100
         }]));
-        w.select_archetype(&CharacterId("pc".into()), "burdened").unwrap();
+        w.select_archetype(&CharacterId("pc".into()), "burdened")
+            .unwrap();
         assert_eq!(w.characters[&CharacterId("pc".into())].inventory.slots, 0);
     }
 
@@ -155,6 +157,8 @@ mod tests {
             Err(ProceduralViolation(_))
         ));
         // …and nothing was mutated (no archetype set).
-        assert!(w.characters[&CharacterId("pc".into())].archetype_id.is_none());
+        assert!(w.characters[&CharacterId("pc".into())]
+            .archetype_id
+            .is_none());
     }
 }

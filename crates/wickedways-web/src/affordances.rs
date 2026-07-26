@@ -1,15 +1,14 @@
-//! Point-and-click affordances — ViewModel → clickable hotspots + inventory verbs (Phase 2c,
-//! sub-project D — slice 3).
+//! Point-and-click affordances — ViewModel → clickable hotspots + inventory verbs.
 //!
-//! Ports `packages/play-surface/src/pnc/affordances.ts` 1:1: the pure, framework-free logic that
+//! The pure, framework-free logic that
 //! derives what the player can click in a scene ([`scene_hotspots`]) and which verbs an inventory
 //! item offers ([`inventory_actions`]), gated by the entity's capabilities so the menu never offers a
 //! verb the engine would reject. It is the point-and-click analog of the CRT [`parser`](crate::parser)
-//! — browser-free, so it is unit-tested exhaustively on the host; a later slice's PnC components turn
+//! — browser-free, so it is unit-tested exhaustively on the host; the PnC components turn
 //! these descriptors into DOM (scene hotspots, the radial action menu, the inventory grid).
 //!
-//! Takes `&ViewModel`/`&ScopeEntity` (the only inputs the TS functions read), which keeps the port
-//! and its tests trivial and independent of the multiplayer/transport machinery.
+//! Takes `&ViewModel`/`&ScopeEntity` (the only inputs this logic needs), which keeps it and its
+//! tests trivial and independent of the multiplayer/transport machinery.
 
 use wickedways_core::world::direction::Direction;
 use wickedways_core::world::intent::Intent;
@@ -17,7 +16,7 @@ use wickedways_core::world::view::{ScopeEntity, ViewModel};
 
 use std::collections::BTreeSet;
 
-/// One selectable verb on a hotspot or inventory item. Mirrors the TS `ActionDescriptor` union: an
+/// One selectable verb on a hotspot or inventory item: an
 /// engine [`Intent`] to submit, or a free `examine`/`read` routed locally by the surface.
 #[derive(Clone, Debug, PartialEq)]
 pub enum ActionDescriptor {
@@ -51,7 +50,7 @@ pub enum HotspotKind {
     Cache,
 }
 
-/// A clickable element in the current scene. Mirrors the TS `Hotspot`.
+/// A clickable element in the current scene.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Hotspot {
     /// Stable key: the direction key for exits/doors, the entity id otherwise.
@@ -62,14 +61,14 @@ pub struct Hotspot {
     /// Present for exits and locked doors.
     pub dir: Option<Direction>,
     /// The entity/room image, if the campaign supplied one (opaque passthrough — the surface owns
-    /// rendering it). Mirrors the TS `image?: string`, carried through as the core's `AssetRef`.
+    /// rendering it), carried through as the core's `AssetRef`.
     pub image: Option<serde_json::Value>,
     /// The verbs this hotspot offers; `[]` for locked doors (informational only).
     pub actions: Vec<ActionDescriptor>,
 }
 
 /// Capitalise a lowercase [`Direction`] key for display ("north" → "North"). Only the first byte is
-/// uppercased (so "northeast" → "Northeast", NOT "NorthEast") — matches the TS `cap`.
+/// uppercased (so "northeast" → "Northeast", NOT "NorthEast").
 fn cap(dir: Direction) -> String {
     let key = dir.as_key();
     let mut chars = key.chars();
@@ -127,20 +126,29 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
         if occupant.talkable == Some(true) {
             actions.push(ActionDescriptor::Intent {
                 label: "Talk".into(),
-                intent: Intent::Talk { npc_id: occupant.id.clone(), prompt: None },
+                intent: Intent::Talk {
+                    npc_id: occupant.id.clone(),
+                    prompt: None,
+                },
             });
         }
         // Fellow players aren't foes — no attack verb on a party member.
         if !is_player && occupant.defeated != Some(true) {
             actions.push(ActionDescriptor::Intent {
                 label: "Attack".into(),
-                intent: Intent::Attack { target_id: occupant.id.clone() },
+                intent: Intent::Attack {
+                    target_id: occupant.id.clone(),
+                },
             });
         }
         hotspots.push(Hotspot {
             key: occupant.id.clone(),
             label: occupant.name.clone(),
-            kind: if is_player { HotspotKind::Player } else { HotspotKind::Occupant },
+            kind: if is_player {
+                HotspotKind::Player
+            } else {
+                HotspotKind::Occupant
+            },
             dir: None,
             image: occupant.image.clone(),
             actions,
@@ -156,10 +164,15 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
             dir: None,
             image: None,
             actions: vec![
-                ActionDescriptor::Examine { label: "Examine".into(), target_id: loot.id.clone() },
+                ActionDescriptor::Examine {
+                    label: "Examine".into(),
+                    target_id: loot.id.clone(),
+                },
                 ActionDescriptor::Intent {
                     label: "Open".into(),
-                    intent: Intent::Open { target_id: loot.id.clone() },
+                    intent: Intent::Open {
+                        target_id: loot.id.clone(),
+                    },
                 },
             ],
         });
@@ -174,10 +187,15 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
             dir: None,
             image: cache.image.clone(),
             actions: vec![
-                ActionDescriptor::Examine { label: "Examine".into(), target_id: cache.id.clone() },
+                ActionDescriptor::Examine {
+                    label: "Examine".into(),
+                    target_id: cache.id.clone(),
+                },
                 ActionDescriptor::Intent {
                     label: "Harvest".into(),
-                    intent: Intent::Harvest { target_id: cache.id.clone() },
+                    intent: Intent::Harvest {
+                        target_id: cache.id.clone(),
+                    },
                 },
             ],
         });
@@ -211,10 +229,15 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
                 dir: None,
                 image: item.image.clone(),
                 actions: vec![
-                    ActionDescriptor::Examine { label: "Examine".into(), target_id: item.id.clone() },
+                    ActionDescriptor::Examine {
+                        label: "Examine".into(),
+                        target_id: item.id.clone(),
+                    },
                     ActionDescriptor::Intent {
                         label: "Take".into(),
-                        intent: Intent::Take { target_id: item.id.clone() },
+                        intent: Intent::Take {
+                            target_id: item.id.clone(),
+                        },
                     },
                 ],
             });
@@ -240,46 +263,61 @@ pub fn inventory_actions(item: &ScopeEntity, equipped: bool) -> Vec<ActionDescri
         target_id: item.id.clone(),
     }];
     if item.has_lore == Some(true) {
-        actions.push(ActionDescriptor::Read { label: "Read".into(), target_id: item.id.clone() });
+        actions.push(ActionDescriptor::Read {
+            label: "Read".into(),
+            target_id: item.id.clone(),
+        });
     }
     if item.equippable == Some(true) {
         actions.push(if equipped {
             ActionDescriptor::Intent {
                 label: "Unequip".into(),
-                intent: Intent::Unequip { target_id: item.id.clone() },
+                intent: Intent::Unequip {
+                    target_id: item.id.clone(),
+                },
             }
         } else {
             ActionDescriptor::Intent {
                 label: "Equip".into(),
-                intent: Intent::Equip { target_id: item.id.clone() },
+                intent: Intent::Equip {
+                    target_id: item.id.clone(),
+                },
             }
         });
     }
     if item.usable == Some(true) {
         actions.push(ActionDescriptor::Intent {
             label: "Use".into(),
-            intent: Intent::Use { target_id: item.id.clone() },
+            intent: Intent::Use {
+                target_id: item.id.clone(),
+            },
         });
     }
     // Repair — only a durable item worn below full (free, restores to full for a material cost).
     if item.damaged == Some(true) {
         actions.push(ActionDescriptor::Intent {
             label: "Repair".into(),
-            intent: Intent::Repair { target_id: item.id.clone() },
+            intent: Intent::Repair {
+                target_id: item.id.clone(),
+            },
         });
     }
     // Required quest items (droppable === false) can't be set down.
     if item.droppable != Some(false) {
         actions.push(ActionDescriptor::Intent {
             label: "Drop".into(),
-            intent: Intent::Drop { target_id: item.id.clone() },
+            intent: Intent::Drop {
+                target_id: item.id.clone(),
+            },
         });
     }
     // Break down — only a destroyable item (scraps it back into the shared material pool).
     if item.destroyable == Some(true) {
         actions.push(ActionDescriptor::Intent {
             label: "Break down".into(),
-            intent: Intent::Destroy { target_id: item.id.clone() },
+            intent: Intent::Destroy {
+                target_id: item.id.clone(),
+            },
         });
     }
     actions
@@ -295,17 +333,33 @@ mod tests {
 
     fn mk_vm() -> ViewModel {
         ViewModel {
-            room: ThinRoom { id: "r".into(), name: "Hall".into(), description: "a hall".into(), is_lit: true },
+            room: ThinRoom {
+                id: "r".into(),
+                name: "Hall".into(),
+                description: "a hall".into(),
+                is_lit: true,
+            },
             exits: Vec::new(),
             locked_doors: Vec::new(),
             occupants: Vec::new(),
             loot: Vec::new(),
             caches: Vec::new(),
-            inventory: Inventory { items: Vec::new(), keys: Vec::new(), equipped_names: Vec::new(), slots: 6 },
+            inventory: Inventory {
+                items: Vec::new(),
+                keys: Vec::new(),
+                equipped_names: Vec::new(),
+                slots: 6,
+            },
             scope: Vec::new(),
             materials: Vec::new(),
             recipes: Vec::new(),
-            status: StatusView { location_name: "Hall".into(), turn: 1, max_turns: 150, health: 10.0, sanity: 10.0 },
+            status: StatusView {
+                location_name: "Hall".into(),
+                turn: 1,
+                max_turns: 150,
+                health: 10.0,
+                sanity: 10.0,
+            },
             outcome: CampaignOutcome::Ongoing,
             finished: false,
         }
@@ -326,7 +380,8 @@ mod tests {
             destroyable: None,
             damaged: None,
             defeated: None,
-            talkable: None, player: None,
+            talkable: None,
+            player: None,
         }
     }
 
@@ -335,7 +390,10 @@ mod tests {
     #[test]
     fn passable_exit_produces_a_go_dir_move_intent() {
         let mut vm = mk_vm();
-        vm.exits = vec![ExitView { dir: Direction::North, to_name: "Landing".into() }];
+        vm.exits = vec![ExitView {
+            dir: Direction::North,
+            to_name: "Landing".into(),
+        }];
         let hotspots = scene_hotspots(&vm);
         assert_eq!(hotspots.len(), 1);
         let h = &hotspots[0];
@@ -347,7 +405,9 @@ mod tests {
             h.actions,
             vec![ActionDescriptor::Intent {
                 label: "Go North".into(),
-                intent: Intent::Move { dir: Direction::North },
+                intent: Intent::Move {
+                    dir: Direction::North
+                },
             }]
         );
     }
@@ -355,15 +415,36 @@ mod tests {
     #[test]
     fn capitalises_all_eight_directions() {
         let dirs = [
-            Direction::North, Direction::South, Direction::East, Direction::West,
-            Direction::Northeast, Direction::Northwest, Direction::Southeast, Direction::Southwest,
+            Direction::North,
+            Direction::South,
+            Direction::East,
+            Direction::West,
+            Direction::Northeast,
+            Direction::Northwest,
+            Direction::Southeast,
+            Direction::Southwest,
         ];
         let mut vm = mk_vm();
-        vm.exits = dirs.iter().map(|&dir| ExitView { dir, to_name: "Room".into() }).collect();
+        vm.exits = dirs
+            .iter()
+            .map(|&dir| ExitView {
+                dir,
+                to_name: "Room".into(),
+            })
+            .collect();
         let labels: Vec<String> = scene_hotspots(&vm).into_iter().map(|h| h.label).collect();
         assert_eq!(
             labels,
-            ["North", "South", "East", "West", "Northeast", "Northwest", "Southeast", "Southwest"]
+            [
+                "North",
+                "South",
+                "East",
+                "West",
+                "Northeast",
+                "Northwest",
+                "Southeast",
+                "Southwest"
+            ]
         );
     }
 
@@ -372,7 +453,10 @@ mod tests {
     #[test]
     fn locked_door_has_empty_actions_key_is_dir_and_label_is_the_name() {
         let mut vm = mk_vm();
-        vm.locked_doors = vec![LockedDoorView { name: "Iron Gate".into(), dir: Direction::East }];
+        vm.locked_doors = vec![LockedDoorView {
+            name: "Iron Gate".into(),
+            dir: Direction::East,
+        }];
         let hotspots = scene_hotspots(&vm);
         assert_eq!(hotspots.len(), 1);
         let h = &hotspots[0];
@@ -396,8 +480,16 @@ mod tests {
         assert_eq!(
             h.actions,
             vec![
-                ActionDescriptor::Examine { label: "Examine".into(), target_id: "mob-1".into() },
-                ActionDescriptor::Intent { label: "Attack".into(), intent: Intent::Attack { target_id: "mob-1".into() } },
+                ActionDescriptor::Examine {
+                    label: "Examine".into(),
+                    target_id: "mob-1".into()
+                },
+                ActionDescriptor::Intent {
+                    label: "Attack".into(),
+                    intent: Intent::Attack {
+                        target_id: "mob-1".into()
+                    }
+                },
             ]
         );
     }
@@ -406,14 +498,25 @@ mod tests {
     fn material_cache_offers_examine_then_harvest() {
         let mut vm = mk_vm();
         vm.caches = vec![ent("cache:vein", "Iron Vein", "cache")];
-        let h = scene_hotspots(&vm).into_iter().find(|h| h.kind == HotspotKind::Cache).expect("cache hotspot");
+        let h = scene_hotspots(&vm)
+            .into_iter()
+            .find(|h| h.kind == HotspotKind::Cache)
+            .expect("cache hotspot");
         assert_eq!(h.key, "cache:vein");
         assert_eq!(h.label, "Iron Vein");
         assert_eq!(
             h.actions,
             vec![
-                ActionDescriptor::Examine { label: "Examine".into(), target_id: "cache:vein".into() },
-                ActionDescriptor::Intent { label: "Harvest".into(), intent: Intent::Harvest { target_id: "cache:vein".into() } },
+                ActionDescriptor::Examine {
+                    label: "Examine".into(),
+                    target_id: "cache:vein".into()
+                },
+                ActionDescriptor::Intent {
+                    label: "Harvest".into(),
+                    intent: Intent::Harvest {
+                        target_id: "cache:vein".into()
+                    }
+                },
             ]
         );
     }
@@ -427,7 +530,10 @@ mod tests {
         let h = &scene_hotspots(&vm)[0];
         assert_eq!(
             h.actions,
-            vec![ActionDescriptor::Examine { label: "Examine".into(), target_id: "mob-2".into() }]
+            vec![ActionDescriptor::Examine {
+                label: "Examine".into(),
+                target_id: "mob-2".into()
+            }]
         );
     }
 
@@ -441,9 +547,23 @@ mod tests {
         assert_eq!(
             h.actions,
             vec![
-                ActionDescriptor::Examine { label: "Examine".into(), target_id: "npc-1".into() },
-                ActionDescriptor::Intent { label: "Talk".into(), intent: Intent::Talk { npc_id: "npc-1".into(), prompt: None } },
-                ActionDescriptor::Intent { label: "Attack".into(), intent: Intent::Attack { target_id: "npc-1".into() } },
+                ActionDescriptor::Examine {
+                    label: "Examine".into(),
+                    target_id: "npc-1".into()
+                },
+                ActionDescriptor::Intent {
+                    label: "Talk".into(),
+                    intent: Intent::Talk {
+                        npc_id: "npc-1".into(),
+                        prompt: None
+                    }
+                },
+                ActionDescriptor::Intent {
+                    label: "Attack".into(),
+                    intent: Intent::Attack {
+                        target_id: "npc-1".into()
+                    }
+                },
             ]
         );
     }
@@ -465,7 +585,12 @@ mod tests {
     #[test]
     fn loot_offers_examine_then_open() {
         let mut vm = mk_vm();
-        vm.loot = vec![LootView { id: "chest-1".into(), description: "an old chest".into(), opened: false, contents: Vec::new() }];
+        vm.loot = vec![LootView {
+            id: "chest-1".into(),
+            description: "an old chest".into(),
+            opened: false,
+            contents: Vec::new(),
+        }];
         let h = &scene_hotspots(&vm)[0];
         assert_eq!(h.kind, HotspotKind::Loot);
         assert_eq!(h.key, "chest-1");
@@ -473,8 +598,16 @@ mod tests {
         assert_eq!(
             h.actions,
             vec![
-                ActionDescriptor::Examine { label: "Examine".into(), target_id: "chest-1".into() },
-                ActionDescriptor::Intent { label: "Open".into(), intent: Intent::Open { target_id: "chest-1".into() } },
+                ActionDescriptor::Examine {
+                    label: "Examine".into(),
+                    target_id: "chest-1".into()
+                },
+                ActionDescriptor::Intent {
+                    label: "Open".into(),
+                    intent: Intent::Open {
+                        target_id: "chest-1".into()
+                    }
+                },
             ]
         );
     }
@@ -495,8 +628,16 @@ mod tests {
         assert_eq!(
             h.actions,
             vec![
-                ActionDescriptor::Examine { label: "Examine".into(), target_id: "lantern-1".into() },
-                ActionDescriptor::Intent { label: "Take".into(), intent: Intent::Take { target_id: "lantern-1".into() } },
+                ActionDescriptor::Examine {
+                    label: "Examine".into(),
+                    target_id: "lantern-1".into()
+                },
+                ActionDescriptor::Intent {
+                    label: "Take".into(),
+                    intent: Intent::Take {
+                        target_id: "lantern-1".into()
+                    }
+                },
             ]
         );
     }
@@ -507,7 +648,12 @@ mod tests {
         let inv_item = ent("key-1", "Brass Key", "item");
         let key_item = ent("skel-key", "Skeleton Key", "item");
         vm.scope = vec![inv_item.clone(), key_item.clone()];
-        vm.inventory = Inventory { items: vec![inv_item], keys: vec![key_item], equipped_names: Vec::new(), slots: 6 };
+        vm.inventory = Inventory {
+            items: vec![inv_item],
+            keys: vec![key_item],
+            equipped_names: Vec::new(),
+            slots: 6,
+        };
         let hotspots = scene_hotspots(&vm);
         assert!(hotspots.iter().all(|h| h.key != "key-1"));
         assert!(hotspots.iter().all(|h| h.key != "skel-key"));
@@ -519,14 +665,30 @@ mod tests {
         // Closed container → the content is not a floor hotspot.
         let mut closed = mk_vm();
         closed.scope = vec![content.clone()];
-        closed.loot = vec![LootView { id: "box-1".into(), description: "a box".into(), opened: false, contents: vec![content.clone()] }];
-        assert!(scene_hotspots(&closed).iter().filter(|h| h.kind == HotspotKind::Item).all(|h| h.key != "candle-1"));
+        closed.loot = vec![LootView {
+            id: "box-1".into(),
+            description: "a box".into(),
+            opened: false,
+            contents: vec![content.clone()],
+        }];
+        assert!(scene_hotspots(&closed)
+            .iter()
+            .filter(|h| h.kind == HotspotKind::Item)
+            .all(|h| h.key != "candle-1"));
 
         // Opened container → the content IS a floor hotspot.
         let mut opened = mk_vm();
         opened.scope = vec![content.clone()];
-        opened.loot = vec![LootView { id: "box-1".into(), description: "a box".into(), opened: true, contents: vec![content] }];
-        assert!(scene_hotspots(&opened).iter().filter(|h| h.kind == HotspotKind::Item).any(|h| h.key == "candle-1"));
+        opened.loot = vec![LootView {
+            id: "box-1".into(),
+            description: "a box".into(),
+            opened: true,
+            contents: vec![content],
+        }];
+        assert!(scene_hotspots(&opened)
+            .iter()
+            .filter(|h| h.kind == HotspotKind::Item)
+            .any(|h| h.key == "candle-1"));
     }
 
     // ── inventory_actions ────────────────────────────────────────────────────────
@@ -543,9 +705,14 @@ mod tests {
         let mut s = ent("blade-1", "Iron Blade", "item");
         s.destroyable = Some(true);
         s.damaged = Some(true);
-        let labels = inventory_actions(&s, false).into_iter().map(|a| match a {
-            ActionDescriptor::Examine { label, .. } | ActionDescriptor::Read { label, .. } | ActionDescriptor::Intent { label, .. } => label,
-        }).collect::<Vec<_>>();
+        let labels = inventory_actions(&s, false)
+            .into_iter()
+            .map(|a| match a {
+                ActionDescriptor::Examine { label, .. }
+                | ActionDescriptor::Read { label, .. }
+                | ActionDescriptor::Intent { label, .. } => label,
+            })
+            .collect::<Vec<_>>();
         assert_eq!(labels, vec!["Examine", "Repair", "Drop", "Break down"]);
     }
 
@@ -555,10 +722,18 @@ mod tests {
         let mut s = ent("tablet", "Rite Tablet", "item");
         s.destroyable = Some(false);
         s.damaged = Some(false);
-        let labels = inventory_actions(&s, false).into_iter().map(|a| match a {
-            ActionDescriptor::Examine { label, .. } | ActionDescriptor::Read { label, .. } | ActionDescriptor::Intent { label, .. } => label,
-        }).collect::<Vec<_>>();
-        assert!(!labels.contains(&"Repair".to_string()) && !labels.contains(&"Break down".to_string()), "got {labels:?}");
+        let labels = inventory_actions(&s, false)
+            .into_iter()
+            .map(|a| match a {
+                ActionDescriptor::Examine { label, .. }
+                | ActionDescriptor::Read { label, .. }
+                | ActionDescriptor::Intent { label, .. } => label,
+            })
+            .collect::<Vec<_>>();
+        assert!(
+            !labels.contains(&"Repair".to_string()) && !labels.contains(&"Break down".to_string()),
+            "got {labels:?}"
+        );
     }
 
     #[test]
@@ -566,22 +741,46 @@ mod tests {
         assert_eq!(
             inventory_actions(&sword(), false),
             vec![
-                ActionDescriptor::Examine { label: "Examine".into(), target_id: "sword-1".into() },
-                ActionDescriptor::Intent { label: "Equip".into(), intent: Intent::Equip { target_id: "sword-1".into() } },
-                ActionDescriptor::Intent { label: "Use".into(), intent: Intent::Use { target_id: "sword-1".into() } },
-                ActionDescriptor::Intent { label: "Drop".into(), intent: Intent::Drop { target_id: "sword-1".into() } },
+                ActionDescriptor::Examine {
+                    label: "Examine".into(),
+                    target_id: "sword-1".into()
+                },
+                ActionDescriptor::Intent {
+                    label: "Equip".into(),
+                    intent: Intent::Equip {
+                        target_id: "sword-1".into()
+                    }
+                },
+                ActionDescriptor::Intent {
+                    label: "Use".into(),
+                    intent: Intent::Use {
+                        target_id: "sword-1".into()
+                    }
+                },
+                ActionDescriptor::Intent {
+                    label: "Drop".into(),
+                    intent: Intent::Drop {
+                        target_id: "sword-1".into()
+                    }
+                },
             ]
         );
     }
 
     /// Collect an item's action labels in order, for the ordering assertions below.
     fn labels(item: &ScopeEntity, equipped: bool) -> Vec<String> {
-        inventory_actions(item, equipped).iter().map(|a| a.label().to_string()).collect()
+        inventory_actions(item, equipped)
+            .iter()
+            .map(|a| a.label().to_string())
+            .collect()
     }
 
     #[test]
     fn equipped_item_swaps_equip_for_unequip() {
-        assert_eq!(labels(&sword(), true), ["Examine", "Unequip", "Use", "Drop"]);
+        assert_eq!(
+            labels(&sword(), true),
+            ["Examine", "Unequip", "Use", "Drop"]
+        );
     }
 
     #[test]
@@ -615,15 +814,32 @@ mod tests {
         let mut vm = mk_vm();
         let occupant = ent("mob-1", "Zombie", "occupant");
         let floor_item = ent("bone-1", "Bone", "item");
-        vm.exits = vec![ExitView { dir: Direction::North, to_name: "Hall".into() }];
-        vm.locked_doors = vec![LockedDoorView { name: "Rusted Door".into(), dir: Direction::South }];
+        vm.exits = vec![ExitView {
+            dir: Direction::North,
+            to_name: "Hall".into(),
+        }];
+        vm.locked_doors = vec![LockedDoorView {
+            name: "Rusted Door".into(),
+            dir: Direction::South,
+        }];
         vm.occupants = vec![occupant.clone()];
-        vm.loot = vec![LootView { id: "crate-1".into(), description: "a crate".into(), opened: false, contents: Vec::new() }];
+        vm.loot = vec![LootView {
+            id: "crate-1".into(),
+            description: "a crate".into(),
+            opened: false,
+            contents: Vec::new(),
+        }];
         vm.scope = vec![occupant, floor_item];
         let kinds: Vec<HotspotKind> = scene_hotspots(&vm).into_iter().map(|h| h.kind).collect();
         assert_eq!(
             kinds,
-            [HotspotKind::Exit, HotspotKind::Locked, HotspotKind::Occupant, HotspotKind::Loot, HotspotKind::Item]
+            [
+                HotspotKind::Exit,
+                HotspotKind::Locked,
+                HotspotKind::Occupant,
+                HotspotKind::Loot,
+                HotspotKind::Item
+            ]
         );
     }
 }

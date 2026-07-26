@@ -1,7 +1,6 @@
-//! The launcher (Phase 2c, sub-project D).
+//! The launcher.
 //!
-//! The root Dioxus app and campaign-selection shell, ported from `play-runtime/launcher.ts` +
-//! `components/campaign-menu.ts` + `components/surface-picker.ts`. It reads `?campaign=` / `?surface=`
+//! The root Dioxus app and campaign-selection shell. It reads `?campaign=` / `?surface=`
 //! and routes ([`resolve_route`](crate::driver::resolve_route)):
 //!
 //! - no (valid) campaign → the **campaign menu** (pick from [`campaign_registry`]);
@@ -43,7 +42,7 @@ pub fn launcher_app() -> Element {
         // has no hooks, so it stays a plain builder.
         match route() {
             LauncherRoute::Menu => rsx! { MenuView { route, debug } },
-            LauncherRoute::Picker { slug } => picker_view(slug, route),
+            LauncherRoute::Picker { slug } => picker_view(&slug, route),
             LauncherRoute::Surface { slug, surface } => rsx! { SurfaceView { slug, surface, route } },
         }
     }
@@ -53,7 +52,9 @@ pub fn launcher_app() -> Element {
 /// params and the state stays deep-linkable.
 fn navigate(mut route: Signal<LauncherRoute>, next: LauncherRoute) {
     match &next {
-        LauncherRoute::Surface { slug, surface } => set_params(&[("campaign", slug), ("surface", surface)]),
+        LauncherRoute::Surface { slug, surface } => {
+            set_params(&[("campaign", slug), ("surface", surface)]);
+        }
         LauncherRoute::Picker { slug } => {
             set_params(&[("campaign", slug)]);
             clear_params(&["surface"]);
@@ -154,10 +155,10 @@ fn MenuView(route: Signal<LauncherRoute>, debug: bool) -> Element {
 }
 
 /// The surface picker for a campaign that offers ≥ 2 surfaces; "← Campaigns" returns to the menu.
-fn picker_view(slug: String, route: Signal<LauncherRoute>) -> Element {
-    let info = resolve_campaign_info(Some(&slug));
-    let title = info.map(|i| i.title).unwrap_or("");
-    let surfaces = info.map(|i| i.surfaces).unwrap_or(&[]);
+fn picker_view(slug: &str, route: Signal<LauncherRoute>) -> Element {
+    let info = resolve_campaign_info(Some(slug));
+    let title = info.map_or("", |i| i.title);
+    let surfaces: &[_] = info.map_or(&[], |i| i.surfaces);
     rsx! {
         div { class: "launcher",
             div { class: "launcher-menu",
@@ -171,9 +172,9 @@ fn picker_view(slug: String, route: Signal<LauncherRoute>) -> Element {
                 for sid in surfaces {
                     {
                         let sid = *sid;
-                        let label = surface_info(sid).map(|s| s.label).unwrap_or(sid);
-                        let desc = surface_info(sid).map(|s| s.description).unwrap_or("");
-                        let slug = slug.clone();
+                        let label = surface_info(sid).map_or(sid, |s| s.label);
+                        let desc = surface_info(sid).map_or("", |s| s.description);
+                        let slug = slug.to_string();
                         rsx! {
                             button {
                                 key: "{sid}",
@@ -210,7 +211,7 @@ fn SurfaceView(slug: String, surface: String, route: Signal<LauncherRoute>) -> E
             "☰"
         }
         if in_lobby {
-            MultiplayerLobby { key: "lobby-{slug}", slug: slug.clone(), on_enter: move |_| entered.set(true) }
+            MultiplayerLobby { key: "lobby-{slug}", slug: slug.clone(), on_enter: move |()| entered.set(true) }
         } else {
             match surface.as_str() {
                 "point-and-click" => rsx! { PncSurface { key: "{key}" } },

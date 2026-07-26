@@ -1,5 +1,5 @@
-//! Scripted-ops DSL (spec: 2026-07-06-rust-engine-scripted-ops-dsl-design.md).
-//! A closed, serde-serializable AST + a pure, total, deterministic interpreter.
+//! Scripted-ops DSL: a closed, serde-serializable AST + a pure, total,
+//! deterministic interpreter.
 //! `alloc`-only — this module must build under `--no-default-features`.
 pub mod ast;
 pub mod eval;
@@ -15,17 +15,22 @@ use ast::{BehaviorScript, Expr, Stmt};
 /// a `Pass` in an effect body, an `Emit` in an exit script, a non-`MapLit`
 /// `Lookup`/`Has` operand.
 pub fn validate_behavior(key: &str, b: &BehaviorScript) -> Result<(), ProceduralViolation> {
-    let bad = |why: &str| Err(ProceduralViolation(format!("Behavior '{key}' is invalid: {why}")));
+    let bad = |why: &str| {
+        Err(ProceduralViolation(format!(
+            "Behavior '{key}' is invalid: {why}"
+        )))
+    };
     match b {
         BehaviorScript::Mechanic { script } => {
             let hooks = [
-                &script.hooks.on_round_start, &script.hooks.on_round_end,
-                &script.hooks.on_turn_start, &script.hooks.on_turn_end,
+                &script.hooks.on_round_start,
+                &script.hooks.on_round_end,
+                &script.hooks.on_turn_start,
+                &script.hooks.on_turn_end,
                 &script.hooks.on_action,
             ];
             for body in hooks.into_iter().flatten() {
-                check_stmts(body, /*allow_pass=*/false, /*allow_emit=*/true)
-                    .or_else(bad)?;
+                check_stmts(body, /*allow_pass=*/ false, /*allow_emit=*/ true).or_else(bad)?;
             }
             for body in script.actions.values() {
                 check_stmts(body, false, true).or_else(bad)?;
@@ -34,16 +39,20 @@ pub fn validate_behavior(key: &str, b: &BehaviorScript) -> Result<(), Procedural
         }
         BehaviorScript::Exit { script } => {
             check_expr(&script.can_pass).or_else(bad)?;
-            check_stmts(&script.run_script, /*allow_pass=*/true, /*allow_emit=*/false)
-                .or_else(bad)
+            check_stmts(
+                &script.run_script,
+                /*allow_pass=*/ true,
+                /*allow_emit=*/ false,
+            )
+            .or_else(bad)
         }
         BehaviorScript::Victory { script } => check_expr(&script.test).or_else(bad),
         BehaviorScript::Item { script } => {
             if let Some(body) = &script.on_use {
-                check_stmts(body, /*allow_pass=*/false, /*allow_emit=*/true).or_else(bad)?;
+                check_stmts(body, /*allow_pass=*/ false, /*allow_emit=*/ true).or_else(bad)?;
             }
             if let Some(body) = &script.on_read {
-                check_stmts(body, /*allow_pass=*/false, /*allow_emit=*/true).or_else(bad)?;
+                check_stmts(body, /*allow_pass=*/ false, /*allow_emit=*/ true).or_else(bad)?;
             }
             Ok(())
         }
@@ -64,10 +73,10 @@ pub fn validate_behavior(key: &str, b: &BehaviorScript) -> Result<(), Procedural
                 check_expr(pred).or_else(bad)?;
             }
             if let Some(body) = &script.on_enter {
-                check_stmts(body, /*allow_pass=*/false, /*allow_emit=*/true).or_else(bad)?;
+                check_stmts(body, /*allow_pass=*/ false, /*allow_emit=*/ true).or_else(bad)?;
             }
             if let Some(body) = &script.on_exit {
-                check_stmts(body, /*allow_pass=*/false, /*allow_emit=*/true).or_else(bad)?;
+                check_stmts(body, /*allow_pass=*/ false, /*allow_emit=*/ true).or_else(bad)?;
             }
             Ok(())
         }
@@ -86,16 +95,18 @@ fn check_stmts(stmts: &[Stmt], allow_pass: bool, allow_emit: bool) -> Result<(),
     for s in stmts {
         match s {
             Stmt::Pass { .. } if !allow_pass => return Err("Pass is not legal in an effect body"),
-            Stmt::Pass { value } => check_expr(value)?,
             Stmt::Emit { .. } if !allow_emit => return Err("Emit is not legal in an exit script"),
             Stmt::Emit { effect } => check_effect(effect)?,
-            Stmt::Guard { cond } => check_expr(cond)?,
+            Stmt::Pass { value: e } | Stmt::Guard { cond: e } => check_expr(e)?,
             Stmt::When { cond, then } => {
                 check_expr(cond)?;
                 check_stmts(then, allow_pass, allow_emit)?;
             }
             Stmt::SetState { value, .. } => check_expr(value)?,
-            Stmt::SetStateIn { key, value, .. } => { check_expr(key)?; check_expr(value)?; }
+            Stmt::SetStateIn { key, value, .. } => {
+                check_expr(key)?;
+                check_expr(value)?;
+            }
         }
     }
     Ok(())
@@ -105,20 +116,36 @@ fn check_effect(t: &ast::EffectTemplate) -> Result<(), &'static str> {
     use ast::EffectTemplate as T;
     match t {
         T::Damage { target, amount } | T::Heal { target, amount } => {
-            check_expr(target)?; check_expr(amount)
+            check_expr(target)?;
+            check_expr(amount)
         }
-        T::AdjustStat { target, delta, .. } => { check_expr(target)?; check_expr(delta) }
-        T::GrantImmunity { target, turns } => { check_expr(target)?; check_expr(turns) }
+        T::AdjustStat { target, delta, .. } => {
+            check_expr(target)?;
+            check_expr(delta)
+        }
+        T::GrantImmunity { target, turns } => {
+            check_expr(target)?;
+            check_expr(turns)
+        }
         T::Cue { text } => check_expr(text),
         T::Status { fields } => {
             for f in fields {
                 check_expr(&f.value)?;
-                if let Some(e) = &f.emphasis { check_expr(e)?; }
+                if let Some(e) = &f.emphasis {
+                    check_expr(e)?;
+                }
             }
             Ok(())
         }
-        T::GiveItem { from, to, item } => { check_expr(from)?; check_expr(to)?; check_expr(item) }
-        T::SetVisible { target, visible } => { check_expr(target)?; check_expr(visible) }
+        T::GiveItem { from, to, item } => {
+            check_expr(from)?;
+            check_expr(to)?;
+            check_expr(item)
+        }
+        T::SetVisible { target, visible } => {
+            check_expr(target)?;
+            check_expr(visible)
+        }
     }
 }
 
@@ -131,23 +158,52 @@ fn check_expr(e: &Expr) -> Result<(), &'static str> {
             }
             check_expr(key)
         }
-        Expr::Bin { left, right, .. } => { check_expr(left)?; check_expr(right) }
-        Expr::Not { expr } | Expr::Defined { expr } | Expr::Str { num: expr }
-        | Expr::Length { list: expr } | Expr::First { list: expr } => check_expr(expr),
-        Expr::IfElse { cond, then, r#else } => {
-            check_expr(cond)?; check_expr(then)?; check_expr(r#else)
+        Expr::Bin { left, right, .. } => {
+            check_expr(left)?;
+            check_expr(right)
         }
-        Expr::Index { list, index } => { check_expr(list)?; check_expr(index) }
-        Expr::Includes { list, value } => { check_expr(list)?; check_expr(value) }
-        Expr::Get { of, .. } | Expr::HasEquipped { of, .. }
-        | Expr::HasItem { of, .. } | Expr::HasKey { of, .. } => check_expr(of),
+        Expr::Not { expr }
+        | Expr::Defined { expr }
+        | Expr::Str { num: expr }
+        | Expr::Length { list: expr }
+        | Expr::First { list: expr } => check_expr(expr),
+        Expr::IfElse { cond, then, r#else } => {
+            check_expr(cond)?;
+            check_expr(then)?;
+            check_expr(r#else)
+        }
+        Expr::Index { list, index } => {
+            check_expr(list)?;
+            check_expr(index)
+        }
+        Expr::Includes { list, value } => {
+            check_expr(list)?;
+            check_expr(value)
+        }
+        Expr::Get { of, .. }
+        | Expr::HasEquipped { of, .. }
+        | Expr::HasItem { of, .. }
+        | Expr::HasKey { of, .. } => check_expr(of),
         Expr::StateGetIn { key, .. } => check_expr(key),
         Expr::Some { list, pred } | Expr::Every { list, pred } => {
-            check_expr(list)?; check_expr(pred)
+            check_expr(list)?;
+            check_expr(pred)
         }
-        Expr::Concat { parts } => { for p in parts { check_expr(p)?; } Ok(()) }
-        Expr::Lit { .. } | Expr::MapLit { .. } | Expr::Round | Expr::MaxRounds
-        | Expr::Party | Expr::Actor | Expr::Action | Expr::Damage | Expr::Element
+        Expr::Concat { parts } => {
+            for p in parts {
+                check_expr(p)?;
+            }
+            Ok(())
+        }
+        Expr::Lit { .. }
+        | Expr::MapLit { .. }
+        | Expr::Round
+        | Expr::MaxRounds
+        | Expr::Party
+        | Expr::Actor
+        | Expr::Action
+        | Expr::Damage
+        | Expr::Element
         | Expr::StateGet { .. } => Ok(()),
     }
 }
@@ -165,7 +221,9 @@ mod tests {
     fn exact(text: &str, response: &str) -> DialogueEntry {
         DialogueEntry {
             match_: DialogueMatch::Exact { text: text.into() },
-            response: Expr::Lit { value: Value::Str(response.into()) },
+            response: Expr::Lit {
+                value: Value::Str(response.into()),
+            },
             effects: alloc::vec![],
             once: false,
         }
@@ -183,16 +241,22 @@ mod tests {
                     match_: DialogueMatch::Fuzzy {
                         tokens: alloc::vec!["how".into(), "out".into()],
                     },
-                    response: Expr::Lit { value: Value::Str("The gate is west.".into()) },
+                    response: Expr::Lit {
+                        value: Value::Str("The gate is west.".into())
+                    },
                     effects: alloc::vec![],
                     once: false,
                 },
                 DialogueEntry {
                     match_: DialogueMatch::Exact { text: "key".into() },
-                    response: Expr::Lit { value: Value::Str("Take it.".into()) },
+                    response: Expr::Lit {
+                        value: Value::Str("Take it.".into())
+                    },
                     effects: alloc::vec![EffectTemplate::SetVisible {
                         target: Expr::Actor,
-                        visible: Expr::Lit { value: Value::Bool(true) },
+                        visible: Expr::Lit {
+                            value: Value::Bool(true)
+                        },
                     }],
                     once: true,
                 },
@@ -208,7 +272,9 @@ mod tests {
                     effect: EffectTemplate::AdjustStat {
                         target: Expr::Actor,
                         stat: StatType::Sanity,
-                        delta: Expr::Lit { value: Value::Number(6.0) },
+                        delta: Expr::Lit {
+                            value: Value::Number(6.0)
+                        },
                     },
                 }]),
                 on_read: None,
@@ -224,7 +290,9 @@ mod tests {
         let b = BehaviorScript::Item {
             script: ItemScript {
                 on_use: Some(alloc::vec![Stmt::Pass {
-                    value: Expr::Lit { value: Value::Str("x".into()) },
+                    value: Expr::Lit {
+                        value: Value::Str("x".into())
+                    },
                 }]),
                 on_read: None,
             },
@@ -234,7 +302,9 @@ mod tests {
 
     #[test]
     fn validate_accepts_npc_script() {
-        let b = BehaviorScript::Npc { script: sample_npc_script() };
+        let b = BehaviorScript::Npc {
+            script: sample_npc_script(),
+        };
         assert!(validate_behavior("npc/caretaker", &b).is_ok());
     }
 
@@ -244,12 +314,18 @@ mod tests {
         // `MapLit` map operand, so a `Lookup` over `Actor` must be rejected at load.
         let mut script = sample_npc_script();
         script.dialogue.push(DialogueEntry {
-            match_: DialogueMatch::Exact { text: "curse".into() },
-            response: Expr::Lit { value: Value::Str("Beware.".into()) },
+            match_: DialogueMatch::Exact {
+                text: "curse".into(),
+            },
+            response: Expr::Lit {
+                value: Value::Str("Beware.".into()),
+            },
             effects: alloc::vec![EffectTemplate::Cue {
                 text: Expr::Lookup {
                     map: alloc::boxed::Box::new(Expr::Actor),
-                    key: alloc::boxed::Box::new(Expr::Lit { value: Value::Str("x".into()) }),
+                    key: alloc::boxed::Box::new(Expr::Lit {
+                        value: Value::Str("x".into())
+                    }),
                 },
             }],
             once: false,
@@ -274,12 +350,16 @@ mod tests {
                 }),
                 on_enter: Some(alloc::vec![Stmt::Emit {
                     effect: EffectTemplate::Cue {
-                        text: Expr::Lit { value: Value::Str("The candles gutter.".into()) },
+                        text: Expr::Lit {
+                            value: Value::Str("The candles gutter.".into())
+                        },
                     },
                 }]),
                 on_exit: Some(alloc::vec![Stmt::SetState {
                     field: "played".into(),
-                    value: Expr::Lit { value: Value::Bool(true) },
+                    value: Expr::Lit {
+                        value: Value::Bool(true)
+                    },
                 }]),
             },
         };
@@ -294,7 +374,9 @@ mod tests {
             script: SceneScript {
                 can_play: None,
                 on_enter: Some(alloc::vec![Stmt::Pass {
-                    value: Expr::Lit { value: Value::Str("x".into()) },
+                    value: Expr::Lit {
+                        value: Value::Str("x".into())
+                    },
                 }]),
                 on_exit: None,
             },
@@ -304,10 +386,15 @@ mod tests {
 
     #[test]
     fn npc_script_serde_round_trip() {
-        let b = BehaviorScript::Npc { script: sample_npc_script() };
+        let b = BehaviorScript::Npc {
+            script: sample_npc_script(),
+        };
         let json = serde_json::to_string(&b).expect("serialize");
         // `family = "npc"` family tag + the `match` rename both surface in JSON.
-        assert!(json.contains("\"family\":\"npc\""), "family tag missing: {json}");
+        assert!(
+            json.contains("\"family\":\"npc\""),
+            "family tag missing: {json}"
+        );
         assert!(json.contains("\"match\""), "match rename missing: {json}");
         let back: BehaviorScript = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(b, back);
@@ -329,21 +416,34 @@ mod tests {
                 }),
                 on_enter: Some(alloc::vec![Stmt::Emit {
                     effect: EffectTemplate::Cue {
-                        text: Expr::Lit { value: Value::Str("The candles gutter.".into()) },
+                        text: Expr::Lit {
+                            value: Value::Str("The candles gutter.".into())
+                        },
                     },
                 }]),
                 on_exit: Some(alloc::vec![Stmt::SetState {
                     field: "played".into(),
-                    value: Expr::Lit { value: Value::Bool(true) },
+                    value: Expr::Lit {
+                        value: Value::Bool(true)
+                    },
                 }]),
             },
         };
         let json = serde_json::to_string(&b).expect("serialize");
         // `family = "scene"` family tag + the camelCase `canPlay`/`onEnter`/`onExit`
         // renames all surface in JSON.
-        assert!(json.contains("\"family\":\"scene\""), "family tag missing: {json}");
-        assert!(json.contains("\"canPlay\""), "canPlay rename missing: {json}");
-        assert!(json.contains("\"onEnter\""), "onEnter rename missing: {json}");
+        assert!(
+            json.contains("\"family\":\"scene\""),
+            "family tag missing: {json}"
+        );
+        assert!(
+            json.contains("\"canPlay\""),
+            "canPlay rename missing: {json}"
+        );
+        assert!(
+            json.contains("\"onEnter\""),
+            "onEnter rename missing: {json}"
+        );
         assert!(json.contains("\"onExit\""), "onExit rename missing: {json}");
         let back: BehaviorScript = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(b, back);
@@ -352,12 +452,25 @@ mod tests {
         // `canPlay` (`#[serde(default)]`) is ALWAYS emitted (as `null`), while
         // `onEnter`/`onExit` (`skip_serializing_if = "Option::is_none"`) are omitted.
         let empty = BehaviorScript::Scene {
-            script: SceneScript { can_play: None, on_enter: None, on_exit: None },
+            script: SceneScript {
+                can_play: None,
+                on_enter: None,
+                on_exit: None,
+            },
         };
         let json = serde_json::to_string(&empty).expect("serialize");
-        assert!(json.contains("\"canPlay\":null"), "canPlay should serialize as null: {json}");
-        assert!(!json.contains("\"onEnter\""), "onEnter should be skipped: {json}");
-        assert!(!json.contains("\"onExit\""), "onExit should be skipped: {json}");
+        assert!(
+            json.contains("\"canPlay\":null"),
+            "canPlay should serialize as null: {json}"
+        );
+        assert!(
+            !json.contains("\"onEnter\""),
+            "onEnter should be skipped: {json}"
+        );
+        assert!(
+            !json.contains("\"onExit\""),
+            "onExit should be skipped: {json}"
+        );
         let back: BehaviorScript = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(empty, back);
     }

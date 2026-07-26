@@ -1,4 +1,4 @@
-//! Campaign-lifecycle actions issued by the GM (Phase 2c, sub-project A2).
+//! Campaign-lifecycle actions issued by the GM.
 //!
 //! Ports the GM/lifecycle commands beyond begin/end/nextPlayer. First up: `transferGM`
 //! (`Campaign.transfer`) — hand the GM role to another character. Additional lifecycle actions
@@ -21,7 +21,10 @@ impl World {
     pub fn transfer_gm(&mut self, target: &CharacterId) -> Result<(), ProceduralViolation> {
         self.assert_running()?;
         if !self.characters.contains_key(target) {
-            return Err(ProceduralViolation(format!("Unknown character id '{}'.", target.0)));
+            return Err(ProceduralViolation(format!(
+                "Unknown character id '{}'.",
+                target.0
+            )));
         }
         self.campaign.gm_id = Some(target.clone());
         Ok(())
@@ -40,7 +43,10 @@ impl World {
     pub fn leave_campaign(&mut self, target: &CharacterId) -> Result<(), ProceduralViolation> {
         self.assert_running()?;
         if !self.characters.contains_key(target) {
-            return Err(ProceduralViolation(format!("Unknown character id '{}'.", target.0)));
+            return Err(ProceduralViolation(format!(
+                "Unknown character id '{}'.",
+                target.0
+            )));
         }
         if self.campaign.gm_id.as_ref() == Some(target) {
             return Err(ProceduralViolation(
@@ -62,7 +68,7 @@ impl World {
         Ok(())
     }
 
-    /// Adds a self-service joining player to the campaign. Mirrors the TS `resolver.ts` `joinCampaign`
+    /// Adds a self-service joining player to the campaign. Mirrors the `joinCampaign`
     /// case + `PlayerCharacter.joinCampaign`: only players may join, a duplicate id is rejected (it
     /// would let a joiner shadow or hijack an existing seat), and the character is inserted and
     /// appended to the party. The created character propagates to every replica through the sync
@@ -73,7 +79,10 @@ impl World {
     ///
     /// # Errors
     /// [`ProceduralViolation`] if `character` is not a player, or its id already exists in the campaign.
-    pub fn join_campaign(&mut self, character: CharacterSnapshot) -> Result<(), ProceduralViolation> {
+    pub fn join_campaign(
+        &mut self,
+        character: CharacterSnapshot,
+    ) -> Result<(), ProceduralViolation> {
         if character.kind != CharacterKind::Player {
             return Err(ProceduralViolation(
                 "Only player characters can join a campaign.".into(),
@@ -119,7 +128,11 @@ mod tests {
     fn rejects_an_unknown_target() {
         let mut w = started_with_gm();
         assert!(w.transfer_gm(&CharacterId("ghost".into())).is_err());
-        assert_eq!(w.campaign.gm_id, Some(CharacterId("a".into())), "gm unchanged on failure");
+        assert_eq!(
+            w.campaign.gm_id,
+            Some(CharacterId("a".into())),
+            "gm unchanged on failure"
+        );
     }
 
     #[test]
@@ -140,8 +153,14 @@ mod tests {
         newbie.id = CharacterId("b".into());
         newbie.name = "Ben".into();
         w.join_campaign(newbie).unwrap();
-        assert!(w.characters.contains_key(&CharacterId("b".into())), "joined character is in the world");
-        assert!(w.campaign.party_ids.contains(&CharacterId("b".into())), "joined character is in the party");
+        assert!(
+            w.characters.contains_key(&CharacterId("b".into())),
+            "joined character is in the world"
+        );
+        assert!(
+            w.campaign.party_ids.contains(&CharacterId("b".into())),
+            "joined character is in the party"
+        );
     }
 
     #[test]
@@ -151,7 +170,11 @@ mod tests {
         let mut w = world_with_party(&["a"], 10);
         let dup = w.characters.get(&CharacterId("a".into())).unwrap().clone();
         assert!(w.join_campaign(dup).is_err());
-        assert_eq!(w.campaign.party_ids, alloc::vec![CharacterId("a".into())], "party unchanged on a rejected join");
+        assert_eq!(
+            w.campaign.party_ids,
+            alloc::vec![CharacterId("a".into())],
+            "party unchanged on a rejected join"
+        );
     }
 
     #[test]
@@ -161,7 +184,10 @@ mod tests {
         mob.id = CharacterId("m".into());
         mob.kind = CharacterKind::Mob;
         assert!(w.join_campaign(mob).is_err(), "only players may join");
-        assert!(!w.characters.contains_key(&CharacterId("m".into())), "a rejected join inserts nothing");
+        assert!(
+            !w.characters.contains_key(&CharacterId("m".into())),
+            "a rejected join inserts nothing"
+        );
     }
 
     #[test]
@@ -173,8 +199,14 @@ mod tests {
         w.campaign.gm_id = Some(CharacterId("a".into()));
         w.campaign.active_character_index = 2;
         w.leave_campaign(&CharacterId("b".into())).unwrap();
-        assert_eq!(w.campaign.party_ids, alloc::vec![CharacterId("a".into()), CharacterId("c".into())]);
-        assert_eq!(w.campaign.active_character_index, 1, "active still points at c");
+        assert_eq!(
+            w.campaign.party_ids,
+            alloc::vec![CharacterId("a".into()), CharacterId("c".into())]
+        );
+        assert_eq!(
+            w.campaign.active_character_index, 1,
+            "active still points at c"
+        );
     }
 
     #[test]
@@ -194,7 +226,10 @@ mod tests {
     fn the_gm_cannot_leave() {
         let mut w = started_with_gm(); // gm = a
         assert!(w.leave_campaign(&CharacterId("a".into())).is_err());
-        assert!(w.campaign.party_ids.contains(&CharacterId("a".into())), "gm stays in the party");
+        assert!(
+            w.campaign.party_ids.contains(&CharacterId("a".into())),
+            "gm stays in the party"
+        );
     }
 
     #[test]

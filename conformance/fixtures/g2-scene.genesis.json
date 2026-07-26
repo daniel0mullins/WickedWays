@@ -1,92 +1,60 @@
 {
-  "schemaVersion": 6,
   "campaign": {
-    "id": "campaign:Scene",
-    "title": "Scene",
-    "maxRounds": 100,
-    "round": 0,
-    "started": false,
-    "outcome": "ongoing",
-    "winConditions": [],
-    "loseConditions": [],
-    "activeCharacterIndex": 0,
-    "partyIds": [
-      "player:Ada"
-    ],
     "actedThisRound": [],
-    "gmId": "player:Ada",
-    "materials": {},
-    "claims": [],
-    "encountered": [],
-    "knownRecipes": [],
-    "archetypes": [],
     "actionSounds": {},
-    "encounterTable": {
-      "baseChance": 20,
-      "visited": [
-        "room:Threshold"
-      ],
-      "formations": []
+    "activeCharacterIndex": 0,
+    "archetypes": [],
+    "avPolicy": {
+      "enabled": true,
+      "maxParticipants": 6,
+      "video": true
     },
     "chatPolicy": {
-      "enabled": true,
-      "whisper": true,
+      "backfillWindow": 200,
       "edit": true,
+      "enabled": true,
       "reactions": true,
       "readReceipts": true,
       "typing": true,
-      "backfillWindow": 200
+      "whisper": true
     },
-    "avPolicy": {
-      "enabled": true,
-      "video": true,
-      "maxParticipants": 6
-    },
-    "mechanics": []
-  },
-  "rooms": [
-    {
-      "id": "room:Threshold",
-      "name": "Threshold",
-      "description": "A cold stone threshold.",
-      "exits": {},
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [
-        "player:Ada"
-      ],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": [
-        {
-          "id": "scene:Threshold:scene/threshold-draft:enter",
-          "behaviorKey": "scene/threshold-draft",
-          "phase": "enter",
-          "state": {}
-        }
+    "claims": [],
+    "encounterTable": {
+      "baseChance": 20,
+      "formations": [],
+      "visited": [
+        "room:Threshold"
       ]
-    }
-  ],
-  "exits": [],
+    },
+    "encountered": [],
+    "gmId": "player:Ada",
+    "id": "campaign:Scene",
+    "knownRecipes": [],
+    "loseConditions": [],
+    "materials": {},
+    "maxRounds": 100,
+    "mechanics": [],
+    "outcome": "ongoing",
+    "partyIds": [
+      "player:Ada"
+    ],
+    "round": 0,
+    "started": false,
+    "title": "Scene",
+    "winConditions": []
+  },
   "characters": [
     {
-      "kind": "player",
-      "id": "player:Ada",
-      "name": "Ada",
-      "stats": {
-        "health": 10,
-        "sanity": 10,
-        "energy": 10
-      },
       "actionsPerRound": 3,
       "actionsThisRound": 1,
-      "currentRoomId": "room:Threshold",
-      "inventory": {
-        "slots": 5,
-        "itemIds": [],
-        "keyIds": []
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
       },
+      "archetypeImmunities": [],
+      "currentRoomId": "room:Threshold",
       "equipment": {},
       "history": [
         {
@@ -98,31 +66,63 @@
           "round": 0
         }
       ],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
+      "id": "player:Ada",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 5
+      },
+      "kind": "player",
+      "name": "Ada",
+      "stats": {
+        "energy": 10.0,
+        "health": 10.0,
+        "sanity": 10.0
       }
     }
   ],
+  "codex": [
+    {
+      "firstSeen": {
+        "characterId": "player:Ada",
+        "roomId": "room:Threshold",
+        "round": 0
+      },
+      "key": "room:Threshold",
+      "kind": "room",
+      "snapshot": {
+        "description": "A cold stone threshold.",
+        "name": "Threshold"
+      }
+    }
+  ],
+  "exits": [],
   "items": [],
   "loot": [],
   "materialCaches": [],
-  "codex": [
+  "rooms": [
     {
-      "kind": "room",
-      "key": "room:Threshold",
-      "snapshot": {
-        "name": "Threshold",
-        "description": "A cold stone threshold."
-      },
-      "firstSeen": {
-        "round": 0,
-        "characterId": "player:Ada",
-        "roomId": "room:Threshold"
-      }
+      "dark": false,
+      "description": "A cold stone threshold.",
+      "exits": {},
+      "id": "room:Threshold",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Threshold",
+      "occupantIds": [
+        "player:Ada"
+      ],
+      "scenes": [
+        {
+          "behaviorKey": "scene/threshold-draft",
+          "id": "scene:Threshold:scene/threshold-draft:enter",
+          "phase": "enter",
+          "state": {}
+        }
+      ],
+      "spawnModifier": 1
     }
-  ]
+  ],
+  "schemaVersion": 6
 }

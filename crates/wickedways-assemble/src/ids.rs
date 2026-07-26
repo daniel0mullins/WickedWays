@@ -1,40 +1,62 @@
 //! Content-derived id minting. The single source of truth for every id shape.
 //!
-//! Ported verbatim from `src/lib/authoring/assembler.ts`. These rules are the
-//! load-bearing assumption of the conformance gate: get one wrong and the byte
-//! diff fires. No randomness, no uuids — an id is a pure function of content.
+//! These rules are the load-bearing assumption of the conformance gate: get one
+//! wrong and the byte diff fires. No randomness, no uuids — an id is a pure
+//! function of content.
 
-pub fn campaign_id(title: &str) -> String { format!("campaign:{title}") }
-pub fn room_id(name: &str) -> String { format!("room:{name}") }
-pub fn mob_id(name: &str) -> String { format!("mob:{name}") }
-pub fn npc_id(name: &str) -> String { format!("npc:{name}") }
-pub fn cache_id(name: &str) -> String { format!("cache:{name}") }
-pub fn loot_id(name: &str) -> String { format!("loot:{name}") }
+pub fn campaign_id(title: &str) -> String {
+    format!("campaign:{title}")
+}
+pub fn room_id(name: &str) -> String {
+    format!("room:{name}")
+}
+pub fn mob_id(name: &str) -> String {
+    format!("mob:{name}")
+}
+pub fn npc_id(name: &str) -> String {
+    format!("npc:{name}")
+}
+pub fn cache_id(name: &str) -> String {
+    format!("cache:{name}")
+}
+pub fn loot_id(name: &str) -> String {
+    format!("loot:{name}")
+}
 
-/// `player:{name}` — minted OUTSIDE the TS assembler (`oracle-session.ts:80`),
-/// folded in here because this crate's `assemble` also seats the party.
-pub fn player_id(name: &str) -> String { format!("player:{name}") }
+/// `player:{name}` — minted at seating time, not by the construct pass; folded in
+/// here because this crate's `assemble` also seats the party.
+pub fn player_id(name: &str) -> String {
+    format!("player:{name}")
+}
 
-/// `exit:${[from, to].sort().join("|")}` (assembler.ts:332) over the two
-/// AUTHOR-SUPPLIED ROOM NAMES — not room ids, and not `from|to` order.
+/// `exit:{a}|{b}` where `[a, b]` is the sorted pair of the two AUTHOR-SUPPLIED
+/// ROOM NAMES — not room ids, and not `from|to` order.
 ///
-/// JS `Array.prototype.sort()` compares UTF-16 code units; `str: Ord` compares UTF-8
-/// bytes. They agree on ASCII and diverge above the BMP, which is why room names are
-/// constrained to ASCII (see the plan's Global Constraints).
+/// The golden-emitting oracle sorts with JS `Array.prototype.sort()`, which compares
+/// UTF-16 code units; `str: Ord` compares UTF-8 bytes. They agree on ASCII and
+/// diverge above the BMP, which is why room names are constrained to ASCII.
 pub fn exit_id(from: &str, to: &str) -> String {
     let (a, b) = if from <= to { (from, to) } else { (to, from) };
     format!("exit:{a}|{b}")
 }
 
-/// `scene:{room}:{key}:{phase ?? "enter"}` (assembler.ts:345).
+/// `scene:{room}:{key}:{phase}`, with `phase` defaulting to `"enter"`.
 pub fn scene_id(room: &str, key: &str, phase: Option<&str>) -> String {
     format!("scene:{room}:{key}:{}", phase.unwrap_or("enter"))
 }
 
-pub fn loot_item_id(loot_name: &str, i: usize) -> String { format!("loot:{loot_name}:item#{i}") }
-pub fn mob_drop_id(mob_name: &str, i: usize) -> String { format!("mob:{mob_name}:drop#{i}") }
-pub fn room_light_id(room_name: &str, i: usize) -> String { format!("room:{room_name}:light#{i}") }
-pub fn npc_item_id(npc_name: &str, i: usize) -> String { format!("npc:{npc_name}:item#{i}") }
+pub fn loot_item_id(loot_name: &str, i: usize) -> String {
+    format!("loot:{loot_name}:item#{i}")
+}
+pub fn mob_drop_id(mob_name: &str, i: usize) -> String {
+    format!("mob:{mob_name}:drop#{i}")
+}
+pub fn room_light_id(room_name: &str, i: usize) -> String {
+    format!("room:{room_name}:light#{i}")
+}
+pub fn npc_item_id(npc_name: &str, i: usize) -> String {
+    format!("npc:{npc_name}:item#{i}")
+}
 
 #[cfg(test)]
 mod tests {
@@ -51,8 +73,8 @@ mod tests {
         assert_eq!(player_id("Ada"), "player:Ada");
     }
 
-    /// `exit:${[from, to].sort().join("|")}` over AUTHOR ROOM NAMES, not room ids.
-    /// assembler.test.ts:100 asserts exactly "exit:next|start" for start->next.
+    /// Sorted-pair id over AUTHOR ROOM NAMES, not room ids: start->next must mint
+    /// exactly "exit:next|start".
     #[test]
     fn exit_id_sorts_author_room_names() {
         assert_eq!(exit_id("start", "next"), "exit:next|start");
@@ -66,7 +88,10 @@ mod tests {
     #[test]
     fn scene_id_defaults_phase_to_enter() {
         assert_eq!(scene_id("start", "intro", None), "scene:start:intro:enter");
-        assert_eq!(scene_id("start", "intro", Some("exit")), "scene:start:intro:exit");
+        assert_eq!(
+            scene_id("start", "intro", Some("exit")),
+            "scene:start:intro:exit"
+        );
     }
 
     /// The infix differs by holder: item# / drop# / light#. Four rules, not one.

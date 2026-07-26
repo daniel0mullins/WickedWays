@@ -1,196 +1,98 @@
 {
-  "items": {},
   "aliases": {},
   "behaviors": {
     "status-bar": {
       "family": "mechanic",
       "script": {
-        "init": {},
+        "actions": {},
         "hooks": {
           "onRoundStart": [
             {
-              "kind": "guard",
               "cond": {
                 "kind": "bin",
-                "op": "gt",
                 "left": {
                   "kind": "length",
                   "list": {
                     "kind": "party"
                   }
                 },
+                "op": "gt",
                 "right": {
                   "kind": "lit",
-                  "value": 0
+                  "value": 0.0
                 }
-              }
+              },
+              "kind": "guard"
             },
             {
-              "kind": "emit",
               "effect": {
-                "kind": "status",
                 "fields": [
                   {
-                    "label": "Sanity",
-                    "value": {
-                      "kind": "str",
-                      "num": {
-                        "kind": "get",
-                        "of": {
-                          "kind": "first",
-                          "list": {
-                            "kind": "party"
-                          }
-                        },
-                        "field": "sanity"
-                      }
-                    },
                     "emphasis": {
-                      "kind": "ifElse",
                       "cond": {
                         "kind": "bin",
-                        "op": "lte",
                         "left": {
+                          "field": "sanity",
                           "kind": "get",
                           "of": {
                             "kind": "first",
                             "list": {
                               "kind": "party"
                             }
-                          },
-                          "field": "sanity"
+                          }
                         },
+                        "op": "lte",
                         "right": {
                           "kind": "lit",
-                          "value": 3
+                          "value": 3.0
                         }
                       },
-                      "then": {
-                        "kind": "lit",
-                        "value": "critical"
-                      },
                       "else": {
-                        "kind": "ifElse",
                         "cond": {
                           "kind": "bin",
-                          "op": "lte",
                           "left": {
+                            "field": "sanity",
                             "kind": "get",
                             "of": {
                               "kind": "first",
                               "list": {
                                 "kind": "party"
                               }
-                            },
-                            "field": "sanity"
+                            }
                           },
+                          "op": "lte",
                           "right": {
                             "kind": "lit",
-                            "value": 6
+                            "value": 6.0
                           }
-                        },
-                        "then": {
-                          "kind": "lit",
-                          "value": "warn"
                         },
                         "else": {
                           "kind": "lit",
                           "value": "normal"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "label": "Round",
-                    "value": {
-                      "kind": "concat",
-                      "parts": [
-                        {
-                          "kind": "str",
-                          "num": {
-                            "kind": "round"
-                          }
                         },
-                        {
+                        "kind": "ifElse",
+                        "then": {
                           "kind": "lit",
-                          "value": "/"
-                        },
-                        {
-                          "kind": "str",
-                          "num": {
-                            "kind": "maxRounds"
-                          }
+                          "value": "warn"
                         }
-                      ]
-                    }
-                  }
-                ]
-              }
-            }
-          ],
-          "onTurnEnd": [
-            {
-              "kind": "emit",
-              "effect": {
-                "kind": "status",
-                "fields": [
-                  {
+                      },
+                      "kind": "ifElse",
+                      "then": {
+                        "kind": "lit",
+                        "value": "critical"
+                      }
+                    },
                     "label": "Sanity",
                     "value": {
                       "kind": "str",
                       "num": {
+                        "field": "sanity",
                         "kind": "get",
                         "of": {
-                          "kind": "actor"
-                        },
-                        "field": "sanity"
-                      }
-                    },
-                    "emphasis": {
-                      "kind": "ifElse",
-                      "cond": {
-                        "kind": "bin",
-                        "op": "lte",
-                        "left": {
-                          "kind": "get",
-                          "of": {
-                            "kind": "actor"
-                          },
-                          "field": "sanity"
-                        },
-                        "right": {
-                          "kind": "lit",
-                          "value": 3
-                        }
-                      },
-                      "then": {
-                        "kind": "lit",
-                        "value": "critical"
-                      },
-                      "else": {
-                        "kind": "ifElse",
-                        "cond": {
-                          "kind": "bin",
-                          "op": "lte",
-                          "left": {
-                            "kind": "get",
-                            "of": {
-                              "kind": "actor"
-                            },
-                            "field": "sanity"
-                          },
-                          "right": {
-                            "kind": "lit",
-                            "value": 6
+                          "kind": "first",
+                          "list": {
+                            "kind": "party"
                           }
-                        },
-                        "then": {
-                          "kind": "lit",
-                          "value": "warn"
-                        },
-                        "else": {
-                          "kind": "lit",
-                          "value": "normal"
                         }
                       }
                     }
@@ -219,15 +121,113 @@
                       ]
                     }
                   }
-                ]
-              }
+                ],
+                "kind": "status"
+              },
+              "kind": "emit"
+            }
+          ],
+          "onTurnEnd": [
+            {
+              "effect": {
+                "fields": [
+                  {
+                    "emphasis": {
+                      "cond": {
+                        "kind": "bin",
+                        "left": {
+                          "field": "sanity",
+                          "kind": "get",
+                          "of": {
+                            "kind": "actor"
+                          }
+                        },
+                        "op": "lte",
+                        "right": {
+                          "kind": "lit",
+                          "value": 3.0
+                        }
+                      },
+                      "else": {
+                        "cond": {
+                          "kind": "bin",
+                          "left": {
+                            "field": "sanity",
+                            "kind": "get",
+                            "of": {
+                              "kind": "actor"
+                            }
+                          },
+                          "op": "lte",
+                          "right": {
+                            "kind": "lit",
+                            "value": 6.0
+                          }
+                        },
+                        "else": {
+                          "kind": "lit",
+                          "value": "normal"
+                        },
+                        "kind": "ifElse",
+                        "then": {
+                          "kind": "lit",
+                          "value": "warn"
+                        }
+                      },
+                      "kind": "ifElse",
+                      "then": {
+                        "kind": "lit",
+                        "value": "critical"
+                      }
+                    },
+                    "label": "Sanity",
+                    "value": {
+                      "kind": "str",
+                      "num": {
+                        "field": "sanity",
+                        "kind": "get",
+                        "of": {
+                          "kind": "actor"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "label": "Round",
+                    "value": {
+                      "kind": "concat",
+                      "parts": [
+                        {
+                          "kind": "str",
+                          "num": {
+                            "kind": "round"
+                          }
+                        },
+                        {
+                          "kind": "lit",
+                          "value": "/"
+                        },
+                        {
+                          "kind": "str",
+                          "num": {
+                            "kind": "maxRounds"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "kind": "status"
+              },
+              "kind": "emit"
             }
           ]
         },
-        "actions": {}
+        "init": {}
       }
     }
   },
   "formations": {},
+  "items": {},
   "recipes": {}
 }

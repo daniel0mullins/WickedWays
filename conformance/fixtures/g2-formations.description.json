@@ -1,19 +1,7 @@
 {
-  "title": "Formations",
-  "opts": {},
   "archetypes": [],
-  "rooms": [
-    {
-      "name": "Hall",
-      "description": "A long central hall."
-    }
-  ],
-  "startRoom": "Hall",
-  "exits": [],
-  "mobs": [],
-  "loot": [],
   "caches": [],
-  "npcs": [],
+  "exits": [],
   "formations": [
     {
       "key": "rat-single",
@@ -24,10 +12,22 @@
       "weight": 1
     }
   ],
-  "scenes": [],
-  "recipes": [],
-  "materials": [],
-  "winConditions": [],
+  "loot": [],
   "loseConditions": [],
-  "mechanics": []
+  "materials": [],
+  "mechanics": [],
+  "mobs": [],
+  "npcs": [],
+  "opts": {},
+  "recipes": [],
+  "rooms": [
+    {
+      "description": "A long central hall.",
+      "name": "Hall"
+    }
+  ],
+  "scenes": [],
+  "startRoom": "Hall",
+  "title": "Formations",
+  "winConditions": []
 }

@@ -4,7 +4,10 @@ use std::fmt;
 
 /// 1-based line/column into the TOML source.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Span { pub line: usize, pub col: usize }
+pub struct Span {
+    pub line: usize,
+    pub col: usize,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CompileError {
@@ -18,12 +21,19 @@ impl fmt::Display for CompileError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             CompileError::TomlParse { message } => write!(f, "TOML parse error: {message}"),
-            CompileError::ExprParse { span, message } =>
-                write!(f, "expression syntax error at {}:{}: {message}", span.line, span.col),
-            CompileError::UnknownReference { span, name } =>
-                write!(f, "unknown reference '{name}' at {}:{}", span.line, span.col),
-            CompileError::UnresolvedKey { kind, key } =>
-                write!(f, "{kind} references undefined behavior key '{key}'"),
+            CompileError::ExprParse { span, message } => write!(
+                f,
+                "expression syntax error at {}:{}: {message}",
+                span.line, span.col
+            ),
+            CompileError::UnknownReference { span, name } => write!(
+                f,
+                "unknown reference '{name}' at {}:{}",
+                span.line, span.col
+            ),
+            CompileError::UnresolvedKey { kind, key } => {
+                write!(f, "{kind} references undefined behavior key '{key}'")
+            }
         }
     }
 }

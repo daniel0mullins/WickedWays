@@ -1,9 +1,9 @@
-//! `SqliteStore` behavioural tests (Phase 2c, sub-project C — slice 1).
+//! `SqliteStore` behavioural tests.
 //!
 //! Round-trip and upsert against a **real** `CampaignSnapshot`. The snapshot is loaded from a
 //! committed genesis fixture (`conformance/fixtures/sync-move.genesis.json`) because core's snapshot
 //! builders are `#[cfg(test)]`-private to that crate and a full snapshot is impractical to
-//! hand-write — the same fixture the sync differential gate replays.
+//! hand-write.
 
 use std::path::{Path, PathBuf};
 
@@ -21,7 +21,10 @@ fn sample_record(seq: u64, seats: Vec<(String, String)>) -> CampaignRecord {
     CampaignRecord {
         seq,
         snapshot: genesis_snapshot(),
-        membership: MembershipState { gm_identity: "gm".into(), seats },
+        membership: MembershipState {
+            gm_identity: "gm".into(),
+            seats,
+        },
     }
 }
 
@@ -43,7 +46,9 @@ fn save_then_load_round_trips_the_record() {
 #[test]
 fn save_is_an_upsert_keeping_one_row_per_campaign() {
     let store = SqliteStore::open(":memory:").expect("open");
-    store.save("camp", &sample_record(1, vec![])).expect("save 1");
+    store
+        .save("camp", &sample_record(1, vec![]))
+        .expect("save 1");
     let second = sample_record(2, vec![("player:Ada".into(), "ada".into())]);
     store.save("camp", &second).expect("save 2");
     // The later save wins (same row upserted), not appended — load returns exactly `second`.

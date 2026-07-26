@@ -1,42 +1,44 @@
 {
-  "title": "Vault",
-  "opts": {},
   "archetypes": [],
-  "rooms": [
-    {
-      "name": "Hall",
-      "description": "A cold stone hall."
-    },
-    {
-      "name": "Vault",
-      "description": "The vault beyond."
-    }
-  ],
-  "startRoom": "Hall",
+  "caches": [],
   "exits": [
     {
-      "from": "Hall",
+      "behaviorKey": "vault-door",
       "direction": "north",
-      "to": "Vault",
-      "behaviorKey": "vault-door"
+      "from": "Hall",
+      "to": "Vault"
     }
   ],
-  "mobs": [],
+  "formations": [],
   "loot": [
     {
-      "name": "shelf",
-      "room": "Hall",
       "items": [
         "vault-key"
-      ]
+      ],
+      "name": "shelf",
+      "room": "Hall"
     }
   ],
-  "caches": [],
-  "npcs": [],
-  "formations": [],
-  "scenes": [],
-  "recipes": [],
+  "loseConditions": [],
   "materials": [],
+  "mechanics": [],
+  "mobs": [],
+  "npcs": [],
+  "opts": {},
+  "recipes": [],
+  "rooms": [
+    {
+      "description": "A cold stone hall.",
+      "name": "Hall"
+    },
+    {
+      "description": "The vault beyond.",
+      "name": "Vault"
+    }
+  ],
+  "scenes": [],
+  "startRoom": "Hall",
+  "title": "Vault",
   "winConditions": [
     {
       "key": "reached-vault",
@@ -44,7 +46,5 @@
         "text": "You reached the vault."
       }
     }
-  ],
-  "loseConditions": [],
-  "mechanics": []
+  ]
 }

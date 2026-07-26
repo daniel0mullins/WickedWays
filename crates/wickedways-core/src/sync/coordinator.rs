@@ -1,16 +1,15 @@
 //! The [`SyncTransport`] seam + [`InProcessTransport`] + [`SyncCoordinator`] — the client-side
-//! replica driver (Phase 2c, sub-project B, slice 4).
+//! replica driver.
 //!
-//! Mirrors `src/lib/sync/transport.ts` + `coordinator.ts`. A [`SyncCoordinator`] owns a local
+//! A [`SyncCoordinator`] owns a local
 //! replica [`World`], submits commands to an authority through a [`SyncTransport`], and applies the
 //! authoritative deltas the transport exposes — it never resolves commands itself and never
 //! optimistically mutates, so there is no rollback and no CAS conflict.
 //!
-//! The TS coordinator uses a *push* subscription (the transport calls a handler per committed
-//! entry). This in-process port is *pull*-based instead: after a submit — and on demand via
-//! [`SyncCoordinator::sync`] — the coordinator drains `entries_since` in order and applies each
-//! delta. Pull is sufficient (and far simpler in Rust) for the single-process and test paths; the
-//! genuinely-async push transport is a WebSocket concern for sub-projects C/D.
+//! The coordinator is *pull*-based: after a submit — and on demand via
+//! [`SyncCoordinator::sync`] — it drains `entries_since` in order and applies each
+//! delta. Pull is sufficient (and far simpler) for the single-process and test paths; a
+//! genuinely-async push subscription is a WebSocket-transport concern.
 
 use alloc::vec::Vec;
 
@@ -23,7 +22,7 @@ use super::authority::{LogEntry, SubmitResult, SyncAuthority};
 use super::command::Command;
 
 /// The ordered, broadcast surface a [`SyncCoordinator`] submits commands to and reads entries
-/// from. The in-process impl wraps a [`SyncAuthority`]; a WebSocket impl (C/D) forwards to the
+/// from. The in-process impl wraps a [`SyncAuthority`]; a WebSocket impl forwards to the
 /// room server. Only this trait and the coordinator need know the difference.
 pub trait SyncTransport {
     /// Highest committed seq.
@@ -108,7 +107,11 @@ impl SyncCoordinator {
 
     /// Submits a command to the authority; on success the authoritative delta has been applied to
     /// the local replica by the time this returns. A denial leaves the replica untouched.
-    pub fn submit<T: SyncTransport>(&mut self, transport: &mut T, command: Command) -> SubmitResult {
+    pub fn submit<T: SyncTransport>(
+        &mut self,
+        transport: &mut T,
+        command: Command,
+    ) -> SubmitResult {
         let res = transport.submit(command);
         self.sync(transport);
         res
@@ -128,7 +131,7 @@ impl SyncCoordinator {
                 // surfaces can render the status bar (state alone can't reconstruct it).
                 for cue in &entry.delta.cues {
                     if let PresentationCue::Status { fields } = cue {
-                        self.latest_status = fields.clone();
+                        self.latest_status.clone_from(fields);
                     }
                 }
                 self.last_applied = entry.seq;
@@ -146,7 +149,11 @@ mod tests {
     use crate::world::test_support::world_two_rooms;
 
     fn transport(world: World) -> InProcessTransport {
-        InProcessTransport::new(SyncAuthority::new(world, Catalog::default(), AuthorityOpts::default()))
+        InProcessTransport::new(SyncAuthority::new(
+            world,
+            Catalog::default(),
+            AuthorityOpts::default(),
+        ))
     }
 
     #[test]
@@ -155,7 +162,11 @@ mod tests {
         // replica via from_snapshot, so a join-time match proves snapshot idempotency here.
         let t = transport(world_two_rooms(false));
         let coord = SyncCoordinator::join(&t);
-        assert_eq!(coord.snapshot(), t.current_snapshot(), "replica must equal the authority at join");
+        assert_eq!(
+            coord.snapshot(),
+            t.current_snapshot(),
+            "replica must equal the authority at join"
+        );
     }
 
     #[test]
@@ -164,10 +175,17 @@ mod tests {
         let mut coord = SyncCoordinator::join(&t);
         let res = coord.submit(
             &mut t,
-            Command::Move { actor_id: CharacterId("pc".into()), room_id: RoomId("next".into()) },
+            Command::Move {
+                actor_id: CharacterId("pc".into()),
+                room_id: RoomId("next".into()),
+            },
         );
         assert!(matches!(res, SubmitResult::Committed { .. }));
-        assert_eq!(coord.snapshot(), t.current_snapshot(), "submitter's replica reflects its own commit");
+        assert_eq!(
+            coord.snapshot(),
+            t.current_snapshot(),
+            "submitter's replica reflects its own commit"
+        );
     }
 
     #[test]
@@ -176,7 +194,13 @@ mod tests {
         let mut a = SyncCoordinator::join(&t);
         let mut b = SyncCoordinator::join(&t);
         // `a` acts; `b` is unaware until it syncs.
-        a.submit(&mut t, Command::Move { actor_id: CharacterId("pc".into()), room_id: RoomId("next".into()) });
+        a.submit(
+            &mut t,
+            Command::Move {
+                actor_id: CharacterId("pc".into()),
+                room_id: RoomId("next".into()),
+            },
+        );
         assert_ne!(b.snapshot(), a.snapshot(), "b has not synced yet");
         b.sync(&t);
         assert_eq!(b.snapshot(), a.snapshot(), "b converges to a");
@@ -191,9 +215,16 @@ mod tests {
         // Not the active character → authority denies; nothing to apply.
         let res = coord.submit(
             &mut t,
-            Command::Move { actor_id: CharacterId("ghost".into()), room_id: RoomId("next".into()) },
+            Command::Move {
+                actor_id: CharacterId("ghost".into()),
+                room_id: RoomId("next".into()),
+            },
         );
         assert!(matches!(res, SubmitResult::Denied { .. }));
-        assert_eq!(coord.snapshot(), before, "a denial does not mutate the replica");
+        assert_eq!(
+            coord.snapshot(),
+            before,
+            "a denial does not mutate the replica"
+        );
     }
 }

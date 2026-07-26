@@ -1,7 +1,9 @@
-//! The id-keyed runtime world model (Phase 1).
+//! The id-keyed runtime world model.
 pub mod afflictions;
 pub mod archetype;
+mod combat;
 pub mod command;
+mod crafting;
 pub mod descriptor;
 pub mod direction;
 pub mod equipment;
@@ -12,28 +14,29 @@ pub mod gate;
 pub mod history;
 pub mod ids;
 pub mod intent;
+pub mod item_behavior;
+mod items_actions;
 pub mod lifecycle;
-pub mod mob_actions;
 pub mod mechanics;
+pub mod mob_actions;
+mod movement;
 pub mod resolve;
 pub mod rng;
 pub mod scenes;
 pub mod snapshot;
 pub mod submit;
-mod combat;
-mod crafting;
-mod items_actions;
-mod movement;
 mod turn;
-pub mod view;
 pub mod victory;
+pub mod view;
 
 #[cfg(test)]
 pub mod test_support;
 
 pub use direction::Direction;
 pub use ids::{CharacterId, ExitId, ItemId, LootId, MaterialCacheId, RoomId};
-pub use snapshot::{ExitSnapshot, ItemSnapshot, LootSnapshot, MaterialCacheSnapshot, SceneSnapshot};
+pub use snapshot::{
+    ExitSnapshot, ItemSnapshot, LootSnapshot, MaterialCacheSnapshot, SceneSnapshot,
+};
 
 use alloc::collections::BTreeMap;
 use rng::Rng;
@@ -55,20 +58,18 @@ pub struct World {
     pub rng: Rng,
 }
 
-fn item_id(i: &ItemSnapshot) -> ItemId {
-    match i {
-        ItemSnapshot::Item { id, .. } | ItemSnapshot::Key { id, .. } => id.clone(),
-    }
-}
-
 impl World {
     /// Single pass: fold each entity array into its id-keyed store. No two-pass
     /// hydration — references are ids, so there is nothing to re-wire.
     pub fn from_snapshot(s: CampaignSnapshot) -> World {
         World {
-            characters: s.characters.into_iter().map(|c| (c.id.clone(), c)).collect(),
+            characters: s
+                .characters
+                .into_iter()
+                .map(|c| (c.id.clone(), c))
+                .collect(),
             rooms: s.rooms.into_iter().map(|r| (r.id.clone(), r)).collect(),
-            items: s.items.into_iter().map(|i| (item_id(&i), i)).collect(),
+            items: s.items.into_iter().map(|i| (i.id().clone(), i)).collect(),
             loot: s.loot.into_iter().map(|l| (l.id.clone(), l)).collect(),
             material_caches: s
                 .material_caches
@@ -91,7 +92,7 @@ impl World {
     /// The conformance gate canonicalizes the TS side to the same ordering.
     ///
     /// `items` is **reachability-derived**, mirroring the TS serializer
-    /// (`serialization/serializer.ts:54-112` `addItem`): only items referenced
+    /// ( `addItem`): only items referenced
     /// by a loot container's `content_ids`, a room's `light_source_ids`, or a
     /// character's inventory `item_ids`/`key_ids`/`equipment` are emitted.
     /// An item that has been dropped or consumed (removed from every inventory
@@ -147,7 +148,7 @@ mod tests {
     use super::*;
 
     fn sample_json() -> &'static str {
-        // reuse the Task 4 minimal full snapshot
+        // reuse the minimal full snapshot
         r#"{ "schemaVersion":6, "campaign":{ "id":"camp1","title":"HH","maxRounds":20,"round":0,
         "started":false,"outcome":"ongoing","winConditions":[],"loseConditions":[],
         "activeCharacterIndex":0,"partyIds":["c1"],"actedThisRound":[],"gmId":null,"materials":{},

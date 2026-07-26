@@ -1,139 +1,139 @@
 {
-  "items": {},
   "aliases": {},
   "behaviors": {
     "storyteller": {
       "family": "mechanic",
       "script": {
-        "init": {
-          "seen": {}
-        },
+        "actions": {},
         "hooks": {
           "onAction": [
             {
-              "kind": "guard",
               "cond": {
                 "kind": "bin",
-                "op": "eq",
                 "left": {
+                  "field": "kind",
                   "kind": "get",
                   "of": {
                     "kind": "action"
-                  },
-                  "field": "kind"
+                  }
                 },
+                "op": "eq",
                 "right": {
                   "kind": "lit",
                   "value": "move"
                 }
-              }
+              },
+              "kind": "guard"
             },
             {
-              "kind": "guard",
               "cond": {
-                "kind": "has",
-                "map": {
-                  "kind": "mapLit",
-                  "entries": {
-                    "Parlor": "A mildewed parlor."
-                  }
-                },
                 "key": {
+                  "field": "name",
                   "kind": "get",
                   "of": {
+                    "field": "room",
                     "kind": "get",
                     "of": {
                       "kind": "action"
-                    },
-                    "field": "room"
+                    }
+                  }
+                },
+                "kind": "has",
+                "map": {
+                  "entries": {
+                    "Parlor": "A mildewed parlor."
                   },
-                  "field": "name"
+                  "kind": "mapLit"
                 }
-              }
+              },
+              "kind": "guard"
             },
             {
-              "kind": "guard",
               "cond": {
+                "itemKey": "journal",
                 "kind": "hasItem",
                 "of": {
                   "kind": "actor"
-                },
-                "itemKey": "journal"
-              }
+                }
+              },
+              "kind": "guard"
             },
             {
-              "kind": "guard",
               "cond": {
-                "kind": "not",
                 "expr": {
-                  "kind": "stateGetIn",
-                  "mapField": "seen",
+                  "default": false,
                   "key": {
+                    "field": "name",
                     "kind": "get",
                     "of": {
+                      "field": "room",
                       "kind": "get",
                       "of": {
                         "kind": "action"
-                      },
-                      "field": "room"
-                    },
-                    "field": "name"
+                      }
+                    }
                   },
-                  "default": false
-                }
-              }
+                  "kind": "stateGetIn",
+                  "mapField": "seen"
+                },
+                "kind": "not"
+              },
+              "kind": "guard"
             },
             {
-              "kind": "setStateIn",
-              "mapField": "seen",
               "key": {
+                "field": "name",
                 "kind": "get",
                 "of": {
+                  "field": "room",
                   "kind": "get",
                   "of": {
                     "kind": "action"
-                  },
-                  "field": "room"
-                },
-                "field": "name"
+                  }
+                }
               },
+              "kind": "setStateIn",
+              "mapField": "seen",
               "value": {
                 "kind": "lit",
                 "value": true
               }
             },
             {
-              "kind": "emit",
               "effect": {
                 "kind": "cue",
                 "text": {
-                  "kind": "lookup",
-                  "map": {
-                    "kind": "mapLit",
-                    "entries": {
-                      "Parlor": "A mildewed parlor."
-                    }
-                  },
                   "key": {
+                    "field": "name",
                     "kind": "get",
                     "of": {
+                      "field": "room",
                       "kind": "get",
                       "of": {
                         "kind": "action"
-                      },
-                      "field": "room"
+                      }
+                    }
+                  },
+                  "kind": "lookup",
+                  "map": {
+                    "entries": {
+                      "Parlor": "A mildewed parlor."
                     },
-                    "field": "name"
+                    "kind": "mapLit"
                   }
                 }
-              }
+              },
+              "kind": "emit"
             }
           ]
         },
-        "actions": {}
+        "init": {
+          "seen": {}
+        }
       }
     }
   },
   "formations": {},
+  "items": {},
   "recipes": {}
 }

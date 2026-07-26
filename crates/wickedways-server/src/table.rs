@@ -1,18 +1,17 @@
-//! The per-campaign coordinator + actor (Phase 2c, sub-project C — slice 2).
+//! The per-campaign coordinator + actor.
 //!
-//! Ports `packages/server/src/table.ts`. A [`Table`] wraps the engine [`SyncAuthority`] (the single
-//! source of truth) and the participant set, emitting ordered [`ServerMsg`]s through subscriber
-//! callbacks: the submitter gets `committed{seq,delta}`, every other participant gets
-//! `entry{seq,delta}`. With a store installed, a commit is persisted **before** it is acked/broadcast
-//! (flush-before-ack); a persist failure rolls the campaign back via [`reload`](Table::reload) and
-//! denies the submitter. Named `Table` (not `Room`) to avoid colliding with the engine's `Room`.
+//! A [`Table`] wraps the engine [`SyncAuthority`] (the single source of truth) and the participant
+//! set, emitting ordered [`ServerMsg`]s through subscriber callbacks: the submitter gets
+//! `committed{seq,delta}`, every other participant gets `entry{seq,delta}`. With a store installed,
+//! a commit is persisted **before** it is acked/broadcast (flush-before-ack); a persist failure
+//! rolls the campaign back via [`reload`](Table::reload) and denies the submitter. Named `Table`
+//! (not `Room`) to avoid colliding with the engine's `Room`.
 //!
 //! On top of the core, [`spawn_table`] runs a `Table` as a **per-campaign tokio actor**: a single
 //! task drains an mpsc queue, so every submit → persist → ack is processed strictly in order with no
-//! shared mutable state across `.await`. That is the concurrency decision the TS code flags but
-//! cannot make (its `persist` thunk "would need per-campaign submit serialization" under a genuinely
-//! async store, `table.ts`/`server.ts`); different campaigns still run concurrently, each on its own
-//! task. Store I/O runs on the blocking pool via `spawn_blocking` (rusqlite is synchronous).
+//! shared mutable state across `.await` — the per-campaign submit serialization a genuinely async
+//! store requires. Different campaigns still run concurrently, each on its own task. Store I/O runs
+//! on the blocking pool via `spawn_blocking` (rusqlite is synchronous).
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -32,30 +31,37 @@ use crate::transport::{ServerMsg, WireLogEntry};
 pub type ConnId = u64;
 
 /// A connected participant: receives ordered server messages for one [`Table`]. The real transport
-/// (slice 3) feeds a WebSocket sink; tests feed a closure over a shared buffer.
+/// feeds a WebSocket sink; tests feed a closure over a shared buffer.
 pub type Subscriber = Arc<dyn Fn(ServerMsg) + Send + Sync>;
 
 /// Runs after the in-memory commit and before persistence, so a seat-claim it performs on the
 /// membership is written in the SAME atomic `save` as the commit (closes the orphaned-character
-/// window on join). Ported from `table.ts`'s `onCommit`.
+/// window on join).
 pub type OnCommit = Box<dyn FnOnce(&mut Membership) + Send>;
 
 /// The outcome of [`Table::submit`]: committed with its seq, or not committed (denied or
 /// persist-failed). The wire messages are emitted to subscribers as a side effect; this is the
-/// caller-facing summary (mirrors `table.ts`'s return object).
+/// caller-facing summary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SubmitOutcome {
     Committed { seq: u64 },
     NotCommitted,
 }
 
-/// A GM seat-control mutation, applied to the membership and persisted atomically by
-/// [`Table::gm_mutate`]. Mirrors the `assignSeat`/`unassignSeat`/`transferGM` arms of `server.ts`.
+/// A GM seat-control mutation (the `assignSeat`/`unassignSeat`/`transferGM` client messages),
+/// applied to the membership and persisted atomically by [`Table::gm_mutate`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GmOp {
-    Assign { character_id: String, identity: String },
-    Unassign { character_id: String },
-    TransferGm { identity: String },
+    Assign {
+        character_id: String,
+        identity: String,
+    },
+    Unassign {
+        character_id: String,
+    },
+    TransferGm {
+        identity: String,
+    },
 }
 
 /// A read-only view of a table's seat ownership, for building presence/roster without holding the
@@ -71,15 +77,14 @@ pub struct Table {
     authority: SyncAuthority,
     membership: Membership,
     participants: HashMap<ConnId, Subscriber>,
-    /// Durable store; `None` = ephemeral (persist/reload are no-ops), matching the TS default hooks.
+    /// Durable store; `None` = ephemeral (persist/reload are no-ops).
     store: Option<Arc<dyn CampaignStore>>,
     campaign_id: String,
     /// Kept so [`reload`](Table::reload) can rebuild the authority identically to how it was built.
     catalog: Catalog,
     snapshot_every: u64,
     /// The state to fall back to on `reload` when the store holds no record yet (a never-persisted
-    /// campaign): the snapshot/seq/GM the table was constructed with. Mirrors the TS
-    /// `genesisFor(id)` + `new Membership(gmIdentityFor(id))` fallback.
+    /// campaign): the snapshot/seq/GM the table was constructed with.
     base_snapshot: CampaignSnapshot,
     base_seq: u64,
     base_gm_identity: String,
@@ -128,12 +133,12 @@ impl Table {
         self.authority.snapshot()
     }
 
-    /// Read access to the seat map (presence/roster in slice 3).
+    /// Read access to the seat map (presence/roster).
     pub fn membership(&self) -> &Membership {
         &self.membership
     }
 
-    /// Mutable access to the seat map (GM control messages in slice 3).
+    /// Mutable access to the seat map (GM control messages).
     pub fn membership_mut(&mut self) -> &mut Membership {
         &mut self.membership
     }
@@ -142,7 +147,9 @@ impl Table {
     pub fn join(&mut self, conn: ConnId, sub: Subscriber, from_seq: u64) {
         sub(ServerMsg::Joined { head: self.head() });
         for e in self.authority.entries_since(from_seq + 1) {
-            sub(ServerMsg::Entry { entry: wire_entry(&e.command, &e.delta, e.seq, e.base_seq) });
+            sub(ServerMsg::Entry {
+                entry: wire_entry(&e.command, &e.delta, e.seq, e.base_seq),
+            });
         }
         self.participants.insert(conn, sub);
     }
@@ -152,7 +159,7 @@ impl Table {
         self.participants.remove(&conn);
     }
 
-    /// Sends the authority's latest checkpoint to `requester` (read-only; pre-auth in slice 3).
+    /// Sends the authority's latest checkpoint to `requester` (read-only; the server allows it pre-auth).
     pub fn send_snapshot(&self, requester: &Subscriber) {
         let (seq, snapshot) = self.authority.load_snapshot();
         requester(ServerMsg::Snapshot {
@@ -162,7 +169,7 @@ impl Table {
     }
 
     /// Sends a server message to every current participant (used for presence).
-    pub fn broadcast(&self, msg: ServerMsg) {
+    pub fn broadcast(&self, msg: &ServerMsg) {
         for p in self.participants.values() {
             p(msg.clone());
         }
@@ -195,19 +202,31 @@ impl Table {
         if self.persist().await.is_err() {
             // Revert campaign + membership to the last durable record, then deny the submitter only.
             self.reload().await;
-            sender(ServerMsg::Denied { reason: "could not persist; retry".into() });
+            sender(ServerMsg::Denied {
+                reason: "could not persist; retry".into(),
+            });
             return SubmitOutcome::NotCommitted;
         }
 
         let delta = serde_json::to_value(&delta).unwrap_or(Value::Null);
         let command = serde_json::to_value(&command).unwrap_or(Value::Null);
-        sender(ServerMsg::Committed { seq, delta: delta.clone() });
-        let entry = WireLogEntry { seq, base_seq: seq - 1, command, delta };
+        sender(ServerMsg::Committed {
+            seq,
+            delta: delta.clone(),
+        });
+        let entry = WireLogEntry {
+            seq,
+            base_seq: seq - 1,
+            command,
+            delta,
+        };
         for p in self.participants.values() {
             // Exclude the submitter (who already got `committed`); a not-yet-joined submitter is
             // simply absent from the map, so nothing special is needed.
             if !Arc::ptr_eq(p, sender) {
-                p(ServerMsg::Entry { entry: entry.clone() });
+                p(ServerMsg::Entry {
+                    entry: entry.clone(),
+                });
             }
         }
         SubmitOutcome::Committed { seq }
@@ -215,11 +234,14 @@ impl Table {
 
     /// Applies a GM seat-control mutation and persists it atomically (the mutation + the current
     /// snapshot land in one `save`). On a persist failure, reloads the last durable record
-    /// (discarding the mutation) and returns `Err`. Mirrors the TS `assignSeat`/… → persist →
-    /// reload-on-failure sequence, done under the actor so it cannot interleave with a submit.
+    /// (discarding the mutation) and returns `Err`. Done under the actor so it cannot interleave
+    /// with a submit.
     pub async fn gm_mutate(&mut self, op: GmOp) -> Result<(), ()> {
         match op {
-            GmOp::Assign { character_id, identity } => self.membership.assign(&character_id, identity),
+            GmOp::Assign {
+                character_id,
+                identity,
+            } => self.membership.assign(&character_id, identity),
             GmOp::Unassign { character_id } => self.membership.unassign(&character_id),
             GmOp::TransferGm { identity } => self.membership.transfer_gm(identity),
         }
@@ -241,7 +263,9 @@ impl Table {
     /// Writes the current durable record (no-op without a store). Snapshot + membership are written
     /// in one `save`, so they land atomically. Runs on the blocking pool (rusqlite is synchronous).
     pub async fn persist(&self) -> Result<(), StoreError> {
-        let Some(store) = self.store.clone() else { return Ok(()) };
+        let Some(store) = self.store.clone() else {
+            return Ok(());
+        };
         let record = CampaignRecord {
             seq: self.authority.head(),
             snapshot: self.authority.snapshot(),
@@ -253,13 +277,19 @@ impl Table {
 
     /// Rebuilds the authority + membership from the last durable record (no-op without a store),
     /// discarding any un-persisted commit. Falls back to the construction state when the store holds
-    /// no record yet. Mirrors the TS `reload` hook.
+    /// no record yet.
     pub async fn reload(&mut self) {
-        let Some(store) = self.store.clone() else { return };
+        let Some(store) = self.store.clone() else {
+            return;
+        };
         let id = self.campaign_id.clone();
         let loaded = run_blocking(move || store.load(&id)).await;
         let (snapshot, seq, membership) = match loaded {
-            Ok(Some(rec)) => (rec.snapshot, rec.seq, Membership::from_state(rec.membership)),
+            Ok(Some(rec)) => (
+                rec.snapshot,
+                rec.seq,
+                Membership::from_state(rec.membership),
+            ),
             // Load failed or empty: fall back to the construction state (never-persisted campaign).
             _ => (
                 self.base_snapshot.clone(),
@@ -270,14 +300,24 @@ impl Table {
         self.authority = SyncAuthority::new(
             World::from_snapshot(snapshot),
             self.catalog.clone(),
-            AuthorityOpts { snapshot_every: self.snapshot_every, start_seq: seq, solo: false, manage_turns: true },
+            AuthorityOpts {
+                snapshot_every: self.snapshot_every,
+                start_seq: seq,
+                solo: false,
+                manage_turns: true,
+            },
         );
         self.membership = membership;
     }
 }
 
 /// Builds a `WireLogEntry` (opaque `command`/`delta`) from a typed authority log entry.
-fn wire_entry(command: &Command, delta: &wickedways_core::sync::Delta, seq: u64, base_seq: u64) -> WireLogEntry {
+fn wire_entry(
+    command: &Command,
+    delta: &wickedways_core::sync::Delta,
+    seq: u64,
+    base_seq: u64,
+) -> WireLogEntry {
     WireLogEntry {
         seq,
         base_seq,
@@ -307,20 +347,51 @@ pub enum TableMsg {
     // Join/Leave/GetSnapshot/Broadcast carry an ack `reply` so their handle methods resolve only
     // once the actor has actually processed them — deterministic ordering for callers and tests,
     // rather than relying on a later round-trip to drain the queue.
-    Join { conn: ConnId, sub: Subscriber, from_seq: u64, reply: oneshot::Sender<()> },
-    Leave { conn: ConnId, reply: oneshot::Sender<()> },
-    Submit { command: Command, sender: Subscriber, on_commit: Option<OnCommit>, reply: oneshot::Sender<SubmitOutcome> },
-    GetSnapshot { requester: Subscriber, reply: oneshot::Sender<()> },
-    Broadcast { msg: ServerMsg, reply: oneshot::Sender<()> },
-    Head { reply: oneshot::Sender<u64> },
-    CurrentSnapshot { reply: oneshot::Sender<CampaignSnapshot> },
+    Join {
+        conn: ConnId,
+        sub: Subscriber,
+        from_seq: u64,
+        reply: oneshot::Sender<()>,
+    },
+    Leave {
+        conn: ConnId,
+        reply: oneshot::Sender<()>,
+    },
+    Submit {
+        command: Command,
+        sender: Subscriber,
+        on_commit: Option<OnCommit>,
+        reply: oneshot::Sender<SubmitOutcome>,
+    },
+    GetSnapshot {
+        requester: Subscriber,
+        reply: oneshot::Sender<()>,
+    },
+    Broadcast {
+        msg: ServerMsg,
+        reply: oneshot::Sender<()>,
+    },
+    Head {
+        reply: oneshot::Sender<u64>,
+    },
+    CurrentSnapshot {
+        reply: oneshot::Sender<CampaignSnapshot>,
+    },
     /// Run a closure against the seat map (join seat-claims etc.) under the actor's serialization,
     /// with a follow-up reply.
-    WithMembership { f: Box<dyn FnOnce(&mut Membership) + Send>, reply: oneshot::Sender<()> },
+    WithMembership {
+        f: Box<dyn FnOnce(&mut Membership) + Send>,
+        reply: oneshot::Sender<()>,
+    },
     /// Apply a GM seat-control mutation and persist it atomically.
-    GmMutate { op: GmOp, reply: oneshot::Sender<Result<(), ()>> },
+    GmMutate {
+        op: GmOp,
+        reply: oneshot::Sender<Result<(), ()>>,
+    },
     /// Snapshot the seat map for presence/roster.
-    MembershipView { reply: oneshot::Sender<MembershipView> },
+    MembershipView {
+        reply: oneshot::Sender<MembershipView>,
+    },
 }
 
 /// A handle to a running [`Table`] actor: cloneable, cheap, and the only way to reach the campaign's
@@ -334,7 +405,17 @@ impl TableHandle {
     /// Registers a participant and backfills entries after `from_seq`; resolves once done.
     pub async fn join(&self, conn: ConnId, sub: Subscriber, from_seq: u64) {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::Join { conn, sub, from_seq, reply }).await.is_ok() {
+        if self
+            .tx
+            .send(TableMsg::Join {
+                conn,
+                sub,
+                from_seq,
+                reply,
+            })
+            .await
+            .is_ok()
+        {
             let _ = rx.await;
         }
     }
@@ -355,7 +436,17 @@ impl TableHandle {
         on_commit: Option<OnCommit>,
     ) -> SubmitOutcome {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::Submit { command, sender, on_commit, reply }).await.is_err() {
+        if self
+            .tx
+            .send(TableMsg::Submit {
+                command,
+                sender,
+                on_commit,
+                reply,
+            })
+            .await
+            .is_err()
+        {
             return SubmitOutcome::NotCommitted;
         }
         rx.await.unwrap_or(SubmitOutcome::NotCommitted)
@@ -364,7 +455,12 @@ impl TableHandle {
     /// Sends the latest checkpoint to `requester`; resolves once sent.
     pub async fn get_snapshot(&self, requester: Subscriber) {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::GetSnapshot { requester, reply }).await.is_ok() {
+        if self
+            .tx
+            .send(TableMsg::GetSnapshot { requester, reply })
+            .await
+            .is_ok()
+        {
             let _ = rx.await;
         }
     }
@@ -372,7 +468,12 @@ impl TableHandle {
     /// Broadcasts a message to every participant; resolves once sent.
     pub async fn broadcast(&self, msg: ServerMsg) {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::Broadcast { msg, reply }).await.is_ok() {
+        if self
+            .tx
+            .send(TableMsg::Broadcast { msg, reply })
+            .await
+            .is_ok()
+        {
             let _ = rx.await;
         }
     }
@@ -389,7 +490,12 @@ impl TableHandle {
     /// The current live snapshot.
     pub async fn current_snapshot(&self) -> Option<CampaignSnapshot> {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::CurrentSnapshot { reply }).await.is_err() {
+        if self
+            .tx
+            .send(TableMsg::CurrentSnapshot { reply })
+            .await
+            .is_err()
+        {
             return None;
         }
         rx.await.ok()
@@ -398,7 +504,15 @@ impl TableHandle {
     /// Runs `f` against the seat map under the actor's serialization; resolves when done.
     pub async fn with_membership(&self, f: impl FnOnce(&mut Membership) + Send + 'static) {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::WithMembership { f: Box::new(f), reply }).await.is_err() {
+        if self
+            .tx
+            .send(TableMsg::WithMembership {
+                f: Box::new(f),
+                reply,
+            })
+            .await
+            .is_err()
+        {
             return;
         }
         let _ = rx.await;
@@ -408,7 +522,12 @@ impl TableHandle {
     /// rejected (persist failure → reloaded) or the actor is gone.
     pub async fn gm_mutate(&self, op: GmOp) -> Result<(), ()> {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::GmMutate { op, reply }).await.is_err() {
+        if self
+            .tx
+            .send(TableMsg::GmMutate { op, reply })
+            .await
+            .is_err()
+        {
             return Err(());
         }
         rx.await.unwrap_or(Err(()))
@@ -417,7 +536,12 @@ impl TableHandle {
     /// Snapshots the seat map for presence/roster.
     pub async fn membership_view(&self) -> Option<MembershipView> {
         let (reply, rx) = oneshot::channel();
-        if self.tx.send(TableMsg::MembershipView { reply }).await.is_err() {
+        if self
+            .tx
+            .send(TableMsg::MembershipView { reply })
+            .await
+            .is_err()
+        {
             return None;
         }
         rx.await.ok()
@@ -432,7 +556,12 @@ pub fn spawn_table(table: Table) -> TableHandle {
         let mut table = table;
         while let Some(msg) = rx.recv().await {
             match msg {
-                TableMsg::Join { conn, sub, from_seq, reply } => {
+                TableMsg::Join {
+                    conn,
+                    sub,
+                    from_seq,
+                    reply,
+                } => {
                     table.join(conn, sub, from_seq);
                     let _ = reply.send(());
                 }
@@ -440,7 +569,12 @@ pub fn spawn_table(table: Table) -> TableHandle {
                     table.leave(conn);
                     let _ = reply.send(());
                 }
-                TableMsg::Submit { command, sender, on_commit, reply } => {
+                TableMsg::Submit {
+                    command,
+                    sender,
+                    on_commit,
+                    reply,
+                } => {
                     let out = table.submit(command, &sender, on_commit).await;
                     let _ = reply.send(out);
                 }
@@ -449,7 +583,7 @@ pub fn spawn_table(table: Table) -> TableHandle {
                     let _ = reply.send(());
                 }
                 TableMsg::Broadcast { msg, reply } => {
-                    table.broadcast(msg);
+                    table.broadcast(&msg);
                     let _ = reply.send(());
                 }
                 TableMsg::Head { reply } => {

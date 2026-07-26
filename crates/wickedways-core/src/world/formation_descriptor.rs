@@ -78,7 +78,7 @@ impl FormationDescriptor {
     /// drops requires an `ItemSnapshot` in `World.items` (resolved from the item
     /// catalog) plus an id in `inventory.item_ids`; `build`'s `Vec<CharacterSnapshot>`
     /// return type (and its lack of `Catalog` access) cannot supply that world state.
-    /// The drops are seeded by `World::maybe_spawn`'s descriptor arm (Task 2b), which
+    /// The drops are seeded by `World::maybe_spawn`'s descriptor arm, which
     /// owns `&mut World` + `&Catalog`, right after this `build` runs.
     pub fn build(&self) -> Vec<CharacterSnapshot> {
         self.mobs
@@ -86,7 +86,11 @@ impl FormationDescriptor {
             .enumerate()
             .map(|(i, m)| {
                 let base = alloc::format!("campaign-mob:{}", m.name.to_lowercase());
-                let id = if i == 0 { base } else { alloc::format!("{base}#{}", i + 1) };
+                let id = if i == 0 {
+                    base
+                } else {
+                    alloc::format!("{base}#{}", i + 1)
+                };
                 CharacterSnapshot {
                     kind: CharacterKind::Mob,
                     id: CharacterId(id),
@@ -95,7 +99,11 @@ impl FormationDescriptor {
                     actions_per_round: m.actions_per_round,
                     actions_this_round: 0,
                     current_room_id: None,
-                    inventory: InventorySnapshot { slots: 0, item_ids: Vec::new(), key_ids: Vec::new() },
+                    inventory: InventorySnapshot {
+                        slots: 0,
+                        item_ids: Vec::new(),
+                        key_ids: Vec::new(),
+                    },
                     equipment: BTreeMap::new(),
                     history: Vec::new(),
                     archetype_immunities: Vec::new(),

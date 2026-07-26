@@ -1,13 +1,13 @@
-//! Serde wire structs mirroring `src/lib/serialization/types.ts` —
+//! Serde wire structs mirroring —
 //! the leaf snapshots that compose a full `CampaignSnapshot`.
+use super::ids::*;
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 #[cfg(feature = "ts")]
 use ts_rs::TS;
-use super::ids::*;
 
-/// TS `ItemSnapshot` — a discriminated union on `kind`.
+/// `ItemSnapshot` — a discriminated union on `kind`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ItemSnapshot {
@@ -26,6 +26,15 @@ pub enum ItemSnapshot {
         key_code: String,
         consume_on_use: bool,
     },
+}
+
+impl ItemSnapshot {
+    /// The item's id, regardless of variant.
+    pub const fn id(&self) -> &ItemId {
+        match self {
+            ItemSnapshot::Item { id, .. } | ItemSnapshot::Key { id, .. } => id,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -51,7 +60,7 @@ pub struct MaterialCacheSnapshot {
 pub struct SceneSnapshot {
     pub id: String,
     pub behavior_key: String,
-    pub phase: String, // "enter" | "exit" — string this sub-plan
+    pub phase: String, // "enter" | "exit"
     pub state: Value,
 }
 
@@ -76,13 +85,33 @@ pub struct Stats {
     pub health: f64,
 }
 
+impl Stats {
+    /// The value of one stat, selected by `StatType`.
+    pub const fn get(&self, stat: crate::stats::StatType) -> f64 {
+        match stat {
+            crate::stats::StatType::Energy => self.energy,
+            crate::stats::StatType::Sanity => self.sanity,
+            crate::stats::StatType::Health => self.health,
+        }
+    }
+
+    /// Mutable access to one stat, selected by `StatType`.
+    pub const fn get_mut(&mut self, stat: crate::stats::StatType) -> &mut f64 {
+        match stat {
+            crate::stats::StatType::Energy => &mut self.energy,
+            crate::stats::StatType::Sanity => &mut self.sanity,
+            crate::stats::StatType::Health => &mut self.health,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoomSnapshot {
     pub id: RoomId,
     pub name: String,
     pub description: String,
-    /// Direction -> exitId. Direction enum deferred to sub-plan 2; key is the string.
+    /// Direction -> exitId, keyed by the direction's wire name.
     pub exits: BTreeMap<String, ExitId>,
     pub dark: bool,
     pub spawn_modifier: i64,
@@ -130,7 +159,7 @@ pub struct CharacterSnapshot {
     pub archetype_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub origin: Option<Value>,
-    /// TS `baseEscapeChance?: number` — integer-valued in practice (e.g. 50); typed i64 for
+    /// `baseEscapeChance?: number` — integer-valued in practice (e.g. 50); typed i64 for
     /// byte-faithful round-trip. Serde will error loudly on a fractional value rather than
     /// silently normalising it (unlike f64, which re-serialises 50 as 50.0).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -246,7 +275,9 @@ pub struct CampaignSnapshot {
 mod tests {
     use super::*;
 
-    fn roundtrip<T: Serialize + for<'de> Deserialize<'de> + PartialEq + std::fmt::Debug>(json: &str) {
+    fn roundtrip<T: Serialize + for<'de> Deserialize<'de> + PartialEq + std::fmt::Debug>(
+        json: &str,
+    ) {
         let v: T = serde_json::from_str(json).unwrap();
         let out = serde_json::to_value(&v).unwrap();
         let expected: Value = serde_json::from_str(json).unwrap();
@@ -255,24 +286,33 @@ mod tests {
 
     #[test]
     fn item_variant_roundtrips() {
-        roundtrip::<ItemSnapshot>(r#"{"kind":"item","id":"i1","behaviorKey":"lantern","modifier":0}"#);
-        roundtrip::<ItemSnapshot>(r#"{"kind":"item","id":"i2","behaviorKey":"sword","durability":3,"modifier":2}"#);
+        roundtrip::<ItemSnapshot>(
+            r#"{"kind":"item","id":"i1","behaviorKey":"lantern","modifier":0}"#,
+        );
+        roundtrip::<ItemSnapshot>(
+            r#"{"kind":"item","id":"i2","behaviorKey":"sword","durability":3,"modifier":2}"#,
+        );
     }
 
     #[test]
     fn key_variant_roundtrips() {
-        roundtrip::<ItemSnapshot>(r#"{"kind":"key","id":"k1","name":"Brass Key","keyCode":"crypt","consumeOnUse":true}"#);
+        roundtrip::<ItemSnapshot>(
+            r#"{"kind":"key","id":"k1","name":"Brass Key","keyCode":"crypt","consumeOnUse":true}"#,
+        );
     }
 
     #[test]
     fn exit_roundtrips_with_and_without_optionals() {
         roundtrip::<ExitSnapshot>(r#"{"id":"e1","endpointIds":["r1","r2"],"state":{}}"#);
-        roundtrip::<ExitSnapshot>(r#"{"id":"e2","endpointIds":["r1","r3"],"behaviorKey":"locked","name":"oak door","state":{"locked":true}}"#);
+        roundtrip::<ExitSnapshot>(
+            r#"{"id":"e2","endpointIds":["r1","r3"],"behaviorKey":"locked","name":"oak door","state":{"locked":true}}"#,
+        );
     }
 
     #[test]
     fn player_character_roundtrips() {
-        roundtrip::<CharacterSnapshot>(r#"{
+        roundtrip::<CharacterSnapshot>(
+            r#"{
             "kind":"player","id":"c1","name":"Heir",
             "stats":{"energy":5.0,"sanity":7.0,"health":10.0},
             "actionsPerRound":2,"actionsThisRound":0,"currentRoomId":"r1",
@@ -281,12 +321,14 @@ mod tests {
             "history":[],"archetypeImmunities":[],
             "afflictions":{"active":{},"turnsActive":{},"shakenOff":[],"immunity":{}},
             "archetypeId":"survivor"
-        }"#);
+        }"#,
+        );
     }
 
     #[test]
     fn mob_character_roundtrips_with_null_room_and_omitted_player_fields() {
-        roundtrip::<CharacterSnapshot>(r#"{
+        roundtrip::<CharacterSnapshot>(
+            r#"{
             "kind":"mob","id":"m1","name":"Wraith",
             "stats":{"energy":3.0,"sanity":0.0,"health":4.0},
             "actionsPerRound":1,"actionsThisRound":0,"currentRoomId":null,
@@ -295,21 +337,33 @@ mod tests {
             "history":[],"archetypeImmunities":[],
             "afflictions":{"active":{},"turnsActive":{},"shakenOff":[],"immunity":{}},
             "origin":{"some":"data"},"lightAverse":true,"naturalAttack":{"stat":"sanity","power":2}
-        }"#);
+        }"#,
+        );
     }
 
     #[test]
     fn stats_roundtrip_fractional_value() {
         // Post-mitigation damage lands fractional bases (e.g. 7.5, 2.4). f64 must
         // preserve them across serialize/deserialize.
-        let s = Stats { energy: 2.4, sanity: 0.5, health: 7.5 };
+        let s = Stats {
+            energy: 2.4,
+            sanity: 0.5,
+            health: 7.5,
+        };
         let json = serde_json::to_string(&s).unwrap();
         let back: Stats = serde_json::from_str(&json).unwrap();
         assert_eq!(back, s);
         // Integer-valued stats still (de)serialize; serde emits `10.0`, which the
         // conformance comparator parses back to the JS number 10 (transparent).
         let whole: Stats = serde_json::from_str(r#"{"energy":5,"sanity":7,"health":10}"#).unwrap();
-        assert_eq!(whole, Stats { energy: 5.0, sanity: 7.0, health: 10.0 });
+        assert_eq!(
+            whole,
+            Stats {
+                energy: 5.0,
+                sanity: 7.0,
+                health: 10.0
+            }
+        );
     }
 
     #[test]
@@ -331,7 +385,10 @@ mod tests {
         assert_eq!(snap.base_escape_chance, Some(50i64));
         let out = serde_json::to_value(&snap).unwrap();
         let expected: Value = serde_json::from_str(json).unwrap();
-        assert_eq!(out, expected, "baseEscapeChance 50 must round-trip as integer 50, not 50.0");
+        assert_eq!(
+            out, expected,
+            "baseEscapeChance 50 must round-trip as integer 50, not 50.0"
+        );
     }
 
     #[test]
@@ -392,11 +449,13 @@ mod tests {
 
     #[test]
     fn room_roundtrips() {
-        roundtrip::<RoomSnapshot>(r#"{
+        roundtrip::<RoomSnapshot>(
+            r#"{
             "id":"r1","name":"Foyer","description":"Dusty.",
             "exits":{"north":"e1"},"dark":false,"spawnModifier":0,
             "occupantIds":["c1"],"lootIds":[],"materialCacheIds":[],"lightSourceIds":[],"scenes":[]
-        }"#);
+        }"#,
+        );
     }
 
     #[test]

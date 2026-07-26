@@ -1,47 +1,47 @@
 {
-  "title": "Exit State",
-  "opts": {},
   "archetypes": [],
-  "rooms": [
-    {
-      "name": "Hall",
-      "description": "A long central hall."
-    },
-    {
-      "name": "Cellar",
-      "description": "The cellar below."
-    }
-  ],
-  "startRoom": "Hall",
+  "caches": [],
   "exits": [
     {
-      "from": "Hall",
-      "direction": "south",
-      "to": "Cellar",
       "behaviorKey": "cellar-door",
-      "name": "Cellar Door",
+      "direction": "south",
+      "from": "Hall",
       "initialState": {
         "unlocked": false
-      }
+      },
+      "name": "Cellar Door",
+      "to": "Cellar"
     }
   ],
-  "mobs": [],
+  "formations": [],
   "loot": [
     {
-      "name": "shelf",
-      "room": "Hall",
       "items": [
         "cellar-key"
-      ]
+      ],
+      "name": "shelf",
+      "room": "Hall"
     }
   ],
-  "caches": [],
-  "npcs": [],
-  "formations": [],
-  "scenes": [],
-  "recipes": [],
-  "materials": [],
-  "winConditions": [],
   "loseConditions": [],
-  "mechanics": []
+  "materials": [],
+  "mechanics": [],
+  "mobs": [],
+  "npcs": [],
+  "opts": {},
+  "recipes": [],
+  "rooms": [
+    {
+      "description": "A long central hall.",
+      "name": "Hall"
+    },
+    {
+      "description": "The cellar below.",
+      "name": "Cellar"
+    }
+  ],
+  "scenes": [],
+  "startRoom": "Hall",
+  "title": "Exit State",
+  "winConditions": []
 }

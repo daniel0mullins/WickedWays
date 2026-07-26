@@ -1,19 +1,19 @@
 //! Pratt / precedence-climbing parser: token stream → closed [`Expr`] AST.
 //!
-//! Precedence (loosest→tightest), per the plan's Global Constraints:
+//! Precedence (loosest→tightest):
 //!   ternary `?:`  <  `||`  <  `&&`  <  equality (`== !=`)
 //!     <  comparison (`< <= > >=`)  <  additive (`+ -`)
 //!     <  multiplicative (`* /`)  <  unary `!`  <  postfix (`[]` `.` call)
 //! `&&`/`||` and the comparison/arithmetic operators are left-associative;
 //! the ternary is right-associative.
 //!
-//! MVP mapping decisions (stated where they apply):
+//! Deliberate mapping decisions (stated where they apply):
 //!   - Subscript `x[i]` ALWAYS lowers to `Index` (never `First`), even for a
 //!     literal `0` — the oracle is authored to match.
-//!   - `.field` → `Get`; `name(args)` → the three typed calls only.
+//!   - `.field` → `Get`; `name(args)` → the known typed call nodes only.
 //!   - Bare identifiers resolve to the read-model subjects (`actor`/`party`/
-//!     `round`/`maxRounds`/`damage`); any other bare identifier or unknown call
-//!     name → `UnknownReference`.
+//!     `round`/`maxRounds`/`damage`/`action`/`element`); any other bare
+//!     identifier or unknown call name → `UnknownReference`.
 //!
 //! Panic-free on author input: every failure is a `CompileError`. No
 //! `unwrap`/`expect`/`panic!` on the token stream.
@@ -31,8 +31,17 @@ use crate::error::{CompileError, Span};
 pub fn parse_expr(src: &str, base: Span) -> Result<Expr, CompileError> {
     let tokens = tokenize(src, base)?;
     // Span used for "unexpected end of input": one past the last char.
-    let eof_span = Span { line: base.line, col: base.col + src.chars().count() };
-    let mut p = Parser { tokens, pos: 0, eof_span, depth: 0, nodes: 0 };
+    let eof_span = Span {
+        line: base.line,
+        col: base.col + src.chars().count(),
+    };
+    let mut p = Parser {
+        tokens,
+        pos: 0,
+        eof_span,
+        depth: 0,
+        nodes: 0,
+    };
     let expr = p.parse_ternary()?;
     // Nothing may trail a complete expression.
     if let Some((_tok, span)) = p.peek() {
@@ -185,10 +194,14 @@ impl Parser {
                 break;
             }
             self.advance(); // consume the operator
-            // Left-assoc: the right operand only takes strictly-tighter ops.
+                            // Left-assoc: the right operand only takes strictly-tighter ops.
             let right = self.parse_binary(bp + 1)?;
             self.add_node()?; // bound the left-nested `Bin` chain length
-            left = Expr::Bin { op, left: Box::new(left), right: Box::new(right) };
+            left = Expr::Bin {
+                op,
+                left: Box::new(left),
+                right: Box::new(right),
+            };
         }
         Ok(left)
     }
@@ -207,7 +220,9 @@ impl Parser {
         if matches!(self.peek(), Some((Token::Bang, _))) {
             self.advance(); // consume '!'
             let inner = self.parse_unary()?;
-            return Ok(Expr::Not { expr: Box::new(inner) });
+            return Ok(Expr::Not {
+                expr: Box::new(inner),
+            });
         }
         self.parse_postfix()
     }
@@ -217,7 +232,7 @@ impl Parser {
         let mut expr = self.parse_primary()?;
         loop {
             // Bound the `Get`/`Index` chain length (`.field`/`[i]` grow the tree here).
-            if matches!(self.peek(), Some((Token::Dot, _)) | Some((Token::LBracket, _))) {
+            if matches!(self.peek(), Some((Token::Dot | Token::LBracket, _))) {
                 self.add_node()?;
             }
             match self.peek() {
@@ -238,14 +253,20 @@ impl Parser {
                             });
                         }
                     };
-                    expr = Expr::Get { of: Box::new(expr), field };
+                    expr = Expr::Get {
+                        of: Box::new(expr),
+                        field,
+                    };
                 }
                 Some((Token::LBracket, _)) => {
                     self.advance(); // consume '['
                     let index = self.parse_ternary()?;
                     self.expect(&Token::RBracket, "']' to close an index")?;
-                    // MVP: subscript ALWAYS lowers to `Index`, never `First`.
-                    expr = Expr::Index { list: Box::new(expr), index: Box::new(index) };
+                    // Deliberate: subscript ALWAYS lowers to `Index`, never `First`.
+                    expr = Expr::Index {
+                        list: Box::new(expr),
+                        index: Box::new(index),
+                    };
                 }
                 _ => break,
             }
@@ -255,19 +276,22 @@ impl Parser {
 
     // ── primary: literals, subjects, grouping, calls ────────────────────────
     fn parse_primary(&mut self) -> Result<Expr, CompileError> {
-        let (tok, span) = match self.advance() {
-            Some(item) => item,
-            None => {
-                return Err(CompileError::ExprParse {
-                    span: self.eof_span(),
-                    message: "expected an expression but reached end of input".into(),
-                });
-            }
+        let Some((tok, span)) = self.advance() else {
+            return Err(CompileError::ExprParse {
+                span: self.eof_span(),
+                message: "expected an expression but reached end of input".into(),
+            });
         };
         match tok {
-            Token::Num(n) => Ok(Expr::Lit { value: Value::Number(n) }),
-            Token::Str(s) => Ok(Expr::Lit { value: Value::Str(s) }),
-            Token::Bool(b) => Ok(Expr::Lit { value: Value::Bool(b) }),
+            Token::Num(n) => Ok(Expr::Lit {
+                value: Value::Number(n),
+            }),
+            Token::Str(s) => Ok(Expr::Lit {
+                value: Value::Str(s),
+            }),
+            Token::Bool(b) => Ok(Expr::Lit {
+                value: Value::Bool(b),
+            }),
             // Prefix `-`: valid ONLY immediately before a numeric literal, where
             // it produces a negative numeric `Lit` (there is no unary-negation
             // AST node — `-actor` is an error). A `-` *between* two operands is
@@ -283,7 +307,9 @@ impl Parser {
                 match num {
                     Some(n) => {
                         self.advance(); // consume the numeric literal
-                        Ok(Expr::Lit { value: Value::Number(-n) })
+                        Ok(Expr::Lit {
+                            value: Value::Number(-n),
+                        })
                     }
                     None => Err(CompileError::ExprParse {
                         span,
@@ -310,9 +336,9 @@ impl Parser {
         }
     }
 
-    /// `name( arg0, arg1, … )` — only the three known 2-arg calls are legal; the
-    /// second argument MUST be a string literal. Anything else named like a call
-    /// is an `UnknownReference`.
+    /// `name( arg0, arg1, … )` — only the known call names are legal, each with
+    /// its own arity/argument rules (validated per call below). Anything else
+    /// named like a call is an `UnknownReference`.
     fn parse_call(&mut self, name: String, name_span: Span) -> Result<Expr, CompileError> {
         self.expect(&Token::LParen, "'(' to open call arguments")?;
         let mut args: Vec<Expr> = Vec::new();
@@ -330,7 +356,7 @@ impl Parser {
         }
         self.expect(&Token::RParen, "')' to close call arguments")?;
 
-        // `stateGet(field, default)` has its own shape (Task 5 read): 2 args, the
+        // `stateGet(field, default)` has its own shape: 2 args, the
         // 1st a string literal (→ `field: String`), the 2nd ANY literal (→
         // `default: Value`, the inner `Value` of a `Lit`). A non-literal 2nd arg
         // is an `ExprParse` — the default must be a compile-time constant.
@@ -342,23 +368,20 @@ impl Parser {
                 });
             }
             let mut it = args.into_iter();
-            let field = match it.next() {
-                Some(Expr::Lit { value: Value::Str(s) }) => s,
-                _ => {
-                    return Err(CompileError::ExprParse {
-                        span: name_span,
-                        message: "stateGet's first argument must be a string literal".into(),
-                    });
-                }
+            let Some(Expr::Lit {
+                value: Value::Str(field),
+            }) = it.next()
+            else {
+                return Err(CompileError::ExprParse {
+                    span: name_span,
+                    message: "stateGet's first argument must be a string literal".into(),
+                });
             };
-            let default = match it.next() {
-                Some(Expr::Lit { value }) => value,
-                _ => {
-                    return Err(CompileError::ExprParse {
-                        span: name_span,
-                        message: "stateGet's second argument must be a literal".into(),
-                    });
-                }
+            let Some(Expr::Lit { value: default }) = it.next() else {
+                return Err(CompileError::ExprParse {
+                    span: name_span,
+                    message: "stateGet's second argument must be a literal".into(),
+                });
             };
             return Ok(Expr::StateGet { field, default });
         }
@@ -369,16 +392,17 @@ impl Parser {
         if name == "stateGetIn" {
             let [arg0, key, arg2] = take_n::<3>(args, "stateGetIn", name_span)?;
             let map_field = str_lit_arg(Some(arg0), name_span, "stateGetIn's first argument")?;
-            let default = match arg2 {
-                Expr::Lit { value } => value,
-                _ => {
-                    return Err(CompileError::ExprParse {
-                        span: name_span,
-                        message: "stateGetIn's third argument must be a literal".into(),
-                    });
-                }
+            let Expr::Lit { value: default } = arg2 else {
+                return Err(CompileError::ExprParse {
+                    span: name_span,
+                    message: "stateGetIn's third argument must be a literal".into(),
+                });
             };
-            return Ok(Expr::StateGetIn { map_field, key: Box::new(key), default });
+            return Ok(Expr::StateGetIn {
+                map_field,
+                key: Box::new(key),
+                default,
+            });
         }
 
         // `mapLit(k1, v1, k2, v2, …)` — a static string→value table (the storyteller's
@@ -386,33 +410,31 @@ impl Parser {
         // and literal values. Only legal as the `map` operand of `has`/`lookup`
         // (enforced at load, engine-side); here it just builds the `MapLit` node.
         if name == "mapLit" {
-            if args.len() % 2 != 0 {
+            if !args.len().is_multiple_of(2) {
                 return Err(CompileError::ExprParse {
                     span: name_span,
-                    message: "mapLit expects alternating key/value arguments (an even count)".into(),
+                    message: "mapLit expects alternating key/value arguments (an even count)"
+                        .into(),
                 });
             }
             let mut entries: std::collections::BTreeMap<String, Value> =
                 std::collections::BTreeMap::new();
             let mut it = args.into_iter();
             while let Some(k) = it.next() {
-                let key = match k {
-                    Expr::Lit { value: Value::Str(s) } => s,
-                    _ => {
-                        return Err(CompileError::ExprParse {
-                            span: name_span,
-                            message: "mapLit keys must be string literals".into(),
-                        });
-                    }
+                let Expr::Lit {
+                    value: Value::Str(key),
+                } = k
+                else {
+                    return Err(CompileError::ExprParse {
+                        span: name_span,
+                        message: "mapLit keys must be string literals".into(),
+                    });
                 };
-                let value = match it.next() {
-                    Some(Expr::Lit { value }) => value,
-                    _ => {
-                        return Err(CompileError::ExprParse {
-                            span: name_span,
-                            message: "mapLit values must be literals".into(),
-                        });
-                    }
+                let Some(Expr::Lit { value }) = it.next() else {
+                    return Err(CompileError::ExprParse {
+                        span: name_span,
+                        message: "mapLit values must be literals".into(),
+                    });
                 };
                 entries.insert(key, value);
             }
@@ -442,7 +464,10 @@ impl Parser {
                 "some" => Expr::Some { list, pred: second },
                 "every" => Expr::Every { list, pred: second },
                 // The `matches!` guard restricts this arm to "includes".
-                _ => Expr::Includes { list, value: second },
+                _ => Expr::Includes {
+                    list,
+                    value: second,
+                },
             });
         }
 
@@ -473,7 +498,10 @@ impl Parser {
         // Only these three call names are known; everything else is unknown.
         let known = matches!(name.as_str(), "hasKey" | "hasItem" | "hasEquipped");
         if !known {
-            return Err(CompileError::UnknownReference { span: name_span, name });
+            return Err(CompileError::UnknownReference {
+                span: name_span,
+                name,
+            });
         }
 
         // All three take exactly 2 args; the 2nd must be a string literal.
@@ -484,38 +512,41 @@ impl Parser {
             });
         }
         let mut it = args.into_iter();
-        let of = match it.next() {
-            Some(e) => e,
-            None => {
-                return Err(CompileError::ExprParse {
-                    span: name_span,
-                    message: format!("{name} is missing its first argument"),
-                });
-            }
+        let Some(of) = it.next() else {
+            return Err(CompileError::ExprParse {
+                span: name_span,
+                message: format!("{name} is missing its first argument"),
+            });
         };
-        let second = match it.next() {
-            Some(e) => e,
-            None => {
-                return Err(CompileError::ExprParse {
-                    span: name_span,
-                    message: format!("{name} is missing its second argument"),
-                });
-            }
+        let Some(second) = it.next() else {
+            return Err(CompileError::ExprParse {
+                span: name_span,
+                message: format!("{name} is missing its second argument"),
+            });
         };
-        let key = match second {
-            Expr::Lit { value: Value::Str(s) } => s,
-            _ => {
-                return Err(CompileError::ExprParse {
-                    span: name_span,
-                    message: format!("{name}'s second argument must be a string literal"),
-                });
-            }
+        let Expr::Lit {
+            value: Value::Str(key),
+        } = second
+        else {
+            return Err(CompileError::ExprParse {
+                span: name_span,
+                message: format!("{name}'s second argument must be a string literal"),
+            });
         };
         Ok(match name.as_str() {
-            "hasKey" => Expr::HasKey { of: Box::new(of), key_code: key },
-            "hasItem" => Expr::HasItem { of: Box::new(of), item_key: key },
+            "hasKey" => Expr::HasKey {
+                of: Box::new(of),
+                key_code: key,
+            },
+            "hasItem" => Expr::HasItem {
+                of: Box::new(of),
+                item_key: key,
+            },
             // The `known` guard restricts this arm to "hasEquipped".
-            _ => Expr::HasEquipped { of: Box::new(of), item_key: key },
+            _ => Expr::HasEquipped {
+                of: Box::new(of),
+                item_key: key,
+            },
         })
     }
 }
@@ -538,7 +569,9 @@ fn take_n<const N: usize>(
 /// (used for the `field`/`map_field` arguments that must be compile-time keys).
 fn str_lit_arg(arg: Option<Expr>, span: Span, what: &str) -> Result<String, CompileError> {
     match arg {
-        Some(Expr::Lit { value: Value::Str(s) }) => Ok(s),
+        Some(Expr::Lit {
+            value: Value::Str(s),
+        }) => Ok(s),
         _ => Err(CompileError::ExprParse {
             span,
             message: format!("{what} must be a string literal"),

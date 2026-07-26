@@ -1,16 +1,12 @@
-//! The [`apply`] delta applier — the replica half of the sync core (Phase 2c, sub-project B).
+//! The [`apply`] delta applier — the replica half of the sync core.
 //!
-//! Mirrors `src/lib/sync/delta-applier.ts`, but the Rust port is dramatically simpler. The TS
-//! applier needs a two-pass hydrate (construct created entities in id-resolvable order, then wire
-//! cross-references) because the TS campaign is a graph of **live objects holding object
-//! references**. The Rust [`World`] is a flat, id-keyed store of snapshots — entities reference
+//! Deliberately trivial: the [`World`] is a flat, id-keyed store of snapshots — entities reference
 //! each other by id, never by pointer — so applying a [`Delta`] is just: insert every
 //! created/changed entity into its map, remove every `removed` id, and replace the campaign core +
 //! codex. No ordering constraint, no hydration, no rng. A replica converges structurally because
 //! the same one crate produces and applies the delta.
 
 use crate::world::ids::{CharacterId, ItemId, LootId, MaterialCacheId, RoomId};
-use crate::world::snapshot::ItemSnapshot;
 use crate::world::World;
 
 use super::delta::{Delta, EntitySnapshot};
@@ -28,7 +24,7 @@ pub fn apply(replica: &mut World, delta: &Delta) {
                 replica.characters.insert(c.id.clone(), (**c).clone());
             }
             EntitySnapshot::Item(i) => {
-                replica.items.insert(item_id(i), (**i).clone());
+                replica.items.insert(i.id().clone(), (**i).clone());
             }
             EntitySnapshot::Loot(l) => {
                 replica.loot.insert(l.id.clone(), (**l).clone());
@@ -40,7 +36,7 @@ pub fn apply(replica: &mut World, delta: &Delta) {
     }
 
     // removed — a bare id whose entity type is not tagged, so try each collection (only the owner
-    // removes). Mirrors the TS applier, where removal is a near-no-op on the replica's maps.
+    // removes).
     for id in &delta.removed {
         replica.rooms.remove(&RoomId(id.clone()));
         replica.characters.remove(&CharacterId(id.clone()));
@@ -53,12 +49,6 @@ pub fn apply(replica: &mut World, delta: &Delta) {
     if let Some(cc) = &delta.campaign_core {
         replica.campaign = cc.core.clone();
         replica.codex = cc.codex.clone();
-    }
-}
-
-fn item_id(i: &ItemSnapshot) -> ItemId {
-    match i {
-        ItemSnapshot::Item { id, .. } | ItemSnapshot::Key { id, .. } => id.clone(),
     }
 }
 
@@ -103,7 +93,11 @@ mod tests {
             cues: vec![],
         };
         apply(&mut replica, &delta);
-        assert_eq!(replica.items[&ItemId("new".into())], new_item, "created item inserted");
+        assert_eq!(
+            replica.items[&ItemId("new".into())],
+            new_item,
+            "created item inserted"
+        );
         assert_eq!(
             replica.characters[&CharacterId("a".into())].stats.health,
             1.0,
@@ -116,11 +110,25 @@ mod tests {
         let mut replica = world_with_party(&["a"], 10);
         replica.items.insert(
             ItemId("gone".into()),
-            ItemSnapshot::Item { id: ItemId("gone".into()), behavior_key: "k".into(), durability: None, modifier: 0 },
+            ItemSnapshot::Item {
+                id: ItemId("gone".into()),
+                behavior_key: "k".into(),
+                durability: None,
+                modifier: 0,
+            },
         );
-        let delta = Delta { created: vec![], changed: vec![], removed: vec!["gone".into()], campaign_core: None, cues: vec![] };
+        let delta = Delta {
+            created: vec![],
+            changed: vec![],
+            removed: vec!["gone".into()],
+            campaign_core: None,
+            cues: vec![],
+        };
         apply(&mut replica, &delta);
-        assert!(!replica.items.contains_key(&ItemId("gone".into())), "removed id is gone");
+        assert!(
+            !replica.items.contains_key(&ItemId("gone".into())),
+            "removed id is gone"
+        );
     }
 
     #[test]
@@ -128,19 +136,36 @@ mod tests {
         // The structural-convergence guarantee: replaying the authority's own deltas into a fresh
         // replica reproduces the authoritative snapshot exactly, after every step.
         let genesis = world_two_rooms(false);
-        let mut auth = SyncAuthority::new(genesis.clone(), Catalog::default(), AuthorityOpts::default());
+        let mut auth = SyncAuthority::new(
+            genesis.clone(),
+            Catalog::default(),
+            AuthorityOpts::default(),
+        );
         let mut replica = genesis.clone();
 
         let pc = crate::world::ids::CharacterId("pc".into());
         let sequence = [
-            Command::Move { actor_id: pc.clone(), room_id: RoomId("next".into()) },
-            Command::Move { actor_id: pc.clone(), room_id: RoomId("start".into()) },
-            Command::Move { actor_id: pc.clone(), room_id: RoomId("next".into()) },
+            Command::Move {
+                actor_id: pc.clone(),
+                room_id: RoomId("next".into()),
+            },
+            Command::Move {
+                actor_id: pc.clone(),
+                room_id: RoomId("start".into()),
+            },
+            Command::Move {
+                actor_id: pc.clone(),
+                room_id: RoomId("next".into()),
+            },
         ];
         for cmd in sequence {
             let delta = commit_delta(&mut auth, cmd);
             apply(&mut replica, &delta);
-            assert_eq!(replica.to_snapshot(), auth.snapshot(), "replica diverged from authority");
+            assert_eq!(
+                replica.to_snapshot(),
+                auth.snapshot(),
+                "replica diverged from authority"
+            );
         }
     }
 
@@ -150,7 +175,8 @@ mod tests {
         // pick that up through campaignCore.
         let mut world = world_with_party(&["a", "b"], 10);
         world.campaign.gm_id = Some(crate::world::ids::CharacterId("a".into()));
-        let mut auth = SyncAuthority::new(world.clone(), Catalog::default(), AuthorityOpts::default());
+        let mut auth =
+            SyncAuthority::new(world.clone(), Catalog::default(), AuthorityOpts::default());
         let mut replica = world.clone();
         let delta = commit_delta(&mut auth, Command::NextPlayer);
         assert!(delta.campaign_core.is_some());

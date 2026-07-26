@@ -1,20 +1,56 @@
 {
-  "schemaVersion": 6,
   "campaign": {
-    "id": "campaign:The Hollow House",
-    "title": "The Hollow House",
-    "maxRounds": 150,
-    "round": 0,
-    "started": false,
-    "outcome": "ongoing",
-    "winConditions": [
+    "actedThisRound": [],
+    "actionSounds": {},
+    "activeCharacterIndex": 0,
+    "archetypes": [
       {
-        "key": "reached-attic-with-journal",
-        "narration": {
-          "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
-        }
+        "baseStats": {
+          "energy": 5.0,
+          "health": 12.0,
+          "sanity": 16.0
+        },
+        "id": "heir",
+        "immunities": [
+          "fear"
+        ],
+        "inventorySlots": 1,
+        "name": "Heir"
       }
     ],
+    "avPolicy": {
+      "enabled": true,
+      "maxParticipants": 6,
+      "video": true
+    },
+    "chatPolicy": {
+      "backfillWindow": 200,
+      "edit": true,
+      "enabled": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "whisper": true
+    },
+    "claims": [],
+    "encounterTable": {
+      "baseChance": 20,
+      "formations": [
+        {
+          "behaviorKey": "rat-single",
+          "weight": 3
+        },
+        {
+          "behaviorKey": "rat-pair",
+          "weight": 1
+        }
+      ],
+      "visited": []
+    },
+    "encountered": [],
+    "gmId": null,
+    "id": "campaign:The Hollow House",
+    "knownRecipes": [],
     "loseConditions": [
       {
         "key": "sanity-zero",
@@ -29,61 +65,8 @@
         }
       }
     ],
-    "timeoutNarration": {
-      "text": "Dawn never comes. You realize, slowly, that it never will — and that you stopped looking for the door some hours ago."
-    },
-    "activeCharacterIndex": 0,
-    "partyIds": [],
-    "actedThisRound": [],
-    "gmId": null,
     "materials": {},
-    "claims": [],
-    "encountered": [],
-    "knownRecipes": [],
-    "archetypes": [
-      {
-        "id": "heir",
-        "name": "Heir",
-        "baseStats": {
-          "health": 12,
-          "sanity": 16,
-          "energy": 5
-        },
-        "inventorySlots": 1,
-        "immunities": [
-          "fear"
-        ]
-      }
-    ],
-    "actionSounds": {},
-    "encounterTable": {
-      "baseChance": 20,
-      "visited": [],
-      "formations": [
-        {
-          "behaviorKey": "rat-single",
-          "weight": 3
-        },
-        {
-          "behaviorKey": "rat-pair",
-          "weight": 1
-        }
-      ]
-    },
-    "chatPolicy": {
-      "enabled": true,
-      "whisper": true,
-      "edit": true,
-      "reactions": true,
-      "readReceipts": true,
-      "typing": true,
-      "backfillWindow": 200
-    },
-    "avPolicy": {
-      "enabled": true,
-      "video": true,
-      "maxParticipants": 6
-    },
+    "maxRounds": 150,
     "mechanics": [
       {
         "key": "dread",
@@ -99,439 +82,456 @@
         "key": "status-bar",
         "state": {}
       }
+    ],
+    "outcome": "ongoing",
+    "partyIds": [],
+    "round": 0,
+    "started": false,
+    "timeoutNarration": {
+      "text": "Dawn never comes. You realize, slowly, that it never will — and that you stopped looking for the door some hours ago."
+    },
+    "title": "The Hollow House",
+    "winConditions": [
+      {
+        "key": "reached-attic-with-journal",
+        "narration": {
+          "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
+        }
+      }
     ]
   },
-  "rooms": [
+  "characters": [
     {
-      "id": "room:Foyer",
-      "name": "Foyer",
-      "description": "The entrance hall of the Hollow House. Dust sheets shroud the furniture; the front door has locked itself behind you.",
-      "exits": {
-        "north": "exit:Foyer|Hall",
-        "south": "exit:Cellar|Foyer"
+      "actionsPerRound": 3,
+      "actionsThisRound": 0,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
       },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [
-        "npc:Caretaker"
-      ],
-      "lootIds": [
-        "loot:foyer-table"
-      ],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": [
-        {
-          "id": "scene:Foyer:caretaker-intro:enter",
-          "behaviorKey": "caretaker-intro",
-          "phase": "enter",
-          "state": {}
-        }
-      ]
+      "archetypeImmunities": [],
+      "currentRoomId": "room:Foyer",
+      "equipment": {},
+      "history": [],
+      "id": "npc:Caretaker",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [
+          "npc:Caretaker:item#0"
+        ],
+        "slots": 5
+      },
+      "kind": "npc",
+      "name": "Caretaker",
+      "npcBehaviorKey": "caretaker",
+      "stats": {
+        "energy": 1.0,
+        "health": 1.0,
+        "sanity": 1.0
+      }
     },
     {
-      "id": "room:Cellar",
-      "name": "Cellar",
-      "description": "A low brick cellar, black as a throat. Water seeps somewhere unseen.",
-      "exits": {
-        "north": "exit:Cellar|Foyer"
+      "actionsPerRound": 2,
+      "actionsThisRound": 0,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
       },
-      "dark": true,
-      "spawnModifier": 1,
-      "occupantIds": [
-        "mob:Revenant"
-      ],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
+      "archetypeImmunities": [],
+      "baseEscapeChance": 50,
+      "currentRoomId": "room:Cellar",
+      "equipment": {},
+      "history": [],
+      "id": "mob:Revenant",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [
+          "mob:Revenant:drop#0"
+        ],
+        "slots": 2
+      },
+      "kind": "mob",
+      "lightAverse": false,
+      "materialDrops": {},
+      "name": "Revenant",
+      "naturalAttack": {
+        "power": 2,
+        "stat": "sanity"
+      },
+      "origin": "room",
+      "stats": {
+        "energy": 6.0,
+        "health": 10.0,
+        "sanity": 8.0
+      }
     },
     {
-      "id": "room:Hall",
-      "name": "Hall",
-      "description": "A long central hall. Portraits watch from the walls, their eyes scratched out.",
-      "exits": {
-        "south": "exit:Foyer|Hall",
-        "west": "exit:Hall|Kitchen",
-        "east": "exit:Hall|Parlor",
-        "north": "exit:Hall|Landing"
+      "actionsPerRound": 2,
+      "actionsThisRound": 0,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
       },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [
-        "loot:hall-stand"
-      ],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:Kitchen",
-      "name": "Kitchen",
-      "description": "A cold scullery. Copper pots hang in rows; one still sways.",
-      "exits": {
-        "east": "exit:Hall|Kitchen"
+      "archetypeImmunities": [],
+      "baseEscapeChance": 50,
+      "currentRoomId": "room:Nursery",
+      "equipment": {},
+      "history": [],
+      "id": "mob:Wraith",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [
+          "mob:Wraith:drop#0"
+        ],
+        "slots": 2
       },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [
-        "loot:kitchen-hook"
-      ],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:Parlor",
-      "name": "Parlor",
-      "description": "A receiving parlor gone to mildew. A piano sits with its lid nailed shut.",
-      "exits": {
-        "west": "exit:Hall|Parlor"
+      "kind": "mob",
+      "lightAverse": false,
+      "materialDrops": {},
+      "name": "Wraith",
+      "naturalAttack": {
+        "power": 3,
+        "stat": "sanity"
       },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:Landing",
-      "name": "Landing",
-      "description": "The upstairs landing. Two doors face you — one to the west, one leading further up — and a nursery stands open to the east.",
-      "exits": {
-        "south": "exit:Hall|Landing",
-        "east": "exit:Landing|Nursery",
-        "west": "exit:Landing|Study",
-        "north": "exit:Attic|Landing"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:Study",
-      "name": "Study",
-      "description": "A cramped study, papers everywhere, as if someone left mid-sentence.",
-      "exits": {
-        "east": "exit:Landing|Study"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [
-        "loot:study-desk"
-      ],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:Nursery",
-      "name": "Nursery",
-      "description": "A child's nursery. A rocking horse moves, very slightly, on its own.",
-      "exits": {
-        "west": "exit:Landing|Nursery"
-      },
-      "dark": true,
-      "spawnModifier": 1,
-      "occupantIds": [
-        "mob:Wraith"
-      ],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
-    },
-    {
-      "id": "room:Attic",
-      "name": "Attic",
-      "description": "The attic, under the bare ribs of the roof. This is where the journal ends.",
-      "exits": {
-        "south": "exit:Attic|Landing"
-      },
-      "dark": false,
-      "spawnModifier": 1,
-      "occupantIds": [],
-      "lootIds": [],
-      "materialCacheIds": [],
-      "lightSourceIds": [],
-      "scenes": []
+      "origin": "room",
+      "stats": {
+        "energy": 5.0,
+        "health": 6.0,
+        "sanity": 5.0
+      }
     }
   ],
+  "codex": [],
   "exits": [
     {
-      "id": "exit:Foyer|Hall",
       "endpointIds": [
         "room:Foyer",
         "room:Hall"
       ],
+      "id": "exit:Foyer|Hall",
       "state": {}
     },
     {
-      "id": "exit:Cellar|Foyer",
+      "behaviorKey": "cellar-door",
       "endpointIds": [
         "room:Foyer",
         "room:Cellar"
       ],
-      "behaviorKey": "cellar-door",
+      "id": "exit:Cellar|Foyer",
       "name": "cellar door",
       "state": {
         "unlocked": false
       }
     },
     {
-      "id": "exit:Hall|Kitchen",
       "endpointIds": [
         "room:Hall",
         "room:Kitchen"
       ],
+      "id": "exit:Hall|Kitchen",
       "state": {}
     },
     {
-      "id": "exit:Hall|Parlor",
       "endpointIds": [
         "room:Hall",
         "room:Parlor"
       ],
+      "id": "exit:Hall|Parlor",
       "state": {}
     },
     {
-      "id": "exit:Hall|Landing",
       "endpointIds": [
         "room:Hall",
         "room:Landing"
       ],
+      "id": "exit:Hall|Landing",
       "state": {}
     },
     {
-      "id": "exit:Landing|Nursery",
       "endpointIds": [
         "room:Landing",
         "room:Nursery"
       ],
+      "id": "exit:Landing|Nursery",
       "state": {}
     },
     {
-      "id": "exit:Landing|Study",
+      "behaviorKey": "study-door",
       "endpointIds": [
         "room:Landing",
         "room:Study"
       ],
-      "behaviorKey": "study-door",
+      "id": "exit:Landing|Study",
       "name": "study door",
       "state": {
         "unlocked": false
       }
     },
     {
-      "id": "exit:Attic|Landing",
+      "behaviorKey": "attic-door",
       "endpointIds": [
         "room:Landing",
         "room:Attic"
       ],
-      "behaviorKey": "attic-door",
+      "id": "exit:Attic|Landing",
       "name": "attic door",
       "state": {
         "unlocked": false
       }
     }
   ],
-  "characters": [
-    {
-      "kind": "npc",
-      "id": "npc:Caretaker",
-      "name": "Caretaker",
-      "stats": {
-        "health": 1,
-        "sanity": 1,
-        "energy": 1
-      },
-      "actionsPerRound": 3,
-      "actionsThisRound": 0,
-      "currentRoomId": "room:Foyer",
-      "inventory": {
-        "slots": 5,
-        "itemIds": [],
-        "keyIds": [
-          "npc:Caretaker:item#0"
-        ]
-      },
-      "equipment": {},
-      "history": [],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
-      },
-      "npcBehaviorKey": "caretaker"
-    },
-    {
-      "kind": "mob",
-      "id": "mob:Revenant",
-      "name": "Revenant",
-      "stats": {
-        "health": 10,
-        "sanity": 8,
-        "energy": 6
-      },
-      "actionsPerRound": 2,
-      "actionsThisRound": 0,
-      "currentRoomId": "room:Cellar",
-      "inventory": {
-        "slots": 2,
-        "itemIds": [],
-        "keyIds": [
-          "mob:Revenant:drop#0"
-        ]
-      },
-      "equipment": {},
-      "history": [],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
-      },
-      "origin": "room",
-      "baseEscapeChance": 50,
-      "materialDrops": {},
-      "lightAverse": false,
-      "naturalAttack": {
-        "stat": "sanity",
-        "power": 2
-      }
-    },
-    {
-      "kind": "mob",
-      "id": "mob:Wraith",
-      "name": "Wraith",
-      "stats": {
-        "health": 6,
-        "sanity": 5,
-        "energy": 5
-      },
-      "actionsPerRound": 2,
-      "actionsThisRound": 0,
-      "currentRoomId": "room:Nursery",
-      "inventory": {
-        "slots": 2,
-        "itemIds": [],
-        "keyIds": [
-          "mob:Wraith:drop#0"
-        ]
-      },
-      "equipment": {},
-      "history": [],
-      "archetypeImmunities": [],
-      "afflictions": {
-        "active": {},
-        "turnsActive": {},
-        "shakenOff": [],
-        "immunity": {}
-      },
-      "origin": "room",
-      "baseEscapeChance": 50,
-      "materialDrops": {},
-      "lightAverse": false,
-      "naturalAttack": {
-        "stat": "sanity",
-        "power": 3
-      }
-    }
-  ],
   "items": [
     {
-      "kind": "item",
-      "id": "loot:foyer-table:item#0",
       "behaviorKey": "journal",
+      "id": "loot:foyer-table:item#0",
+      "kind": "item",
       "modifier": 0
     },
     {
-      "kind": "item",
-      "id": "loot:hall-stand:item#0",
       "behaviorKey": "poker",
       "durability": 8,
+      "id": "loot:hall-stand:item#0",
+      "kind": "item",
       "modifier": 5
     },
     {
-      "kind": "item",
-      "id": "loot:kitchen-hook:item#0",
       "behaviorKey": "lantern",
+      "id": "loot:kitchen-hook:item#0",
+      "kind": "item",
       "modifier": 0
     },
     {
-      "kind": "item",
-      "id": "loot:study-desk:item#0",
       "behaviorKey": "laudanum",
+      "id": "loot:study-desk:item#0",
+      "kind": "item",
       "modifier": 6
     },
     {
-      "kind": "key",
+      "consumeOnUse": false,
       "id": "npc:Caretaker:item#0",
-      "name": "Cellar Key",
       "keyCode": "cellar",
-      "consumeOnUse": false
+      "kind": "key",
+      "name": "Cellar Key"
     },
     {
-      "kind": "key",
+      "consumeOnUse": false,
       "id": "mob:Revenant:drop#0",
-      "name": "Iron Key",
       "keyCode": "iron",
-      "consumeOnUse": false
+      "kind": "key",
+      "name": "Iron Key"
     },
     {
-      "kind": "key",
+      "consumeOnUse": false,
       "id": "mob:Wraith:drop#0",
-      "name": "Brass Key",
       "keyCode": "brass",
-      "consumeOnUse": false
+      "kind": "key",
+      "name": "Brass Key"
     }
   ],
   "loot": [
     {
-      "id": "loot:foyer-table",
-      "description": "A hall table with a single drawer.",
       "capacity": 3,
       "contentIds": [
         "loot:foyer-table:item#0"
-      ]
+      ],
+      "description": "A hall table with a single drawer.",
+      "id": "loot:foyer-table"
     },
     {
-      "id": "loot:hall-stand",
-      "description": "A fireplace stand.",
       "capacity": 3,
       "contentIds": [
         "loot:hall-stand:item#0"
-      ]
+      ],
+      "description": "A fireplace stand.",
+      "id": "loot:hall-stand"
     },
     {
-      "id": "loot:kitchen-hook",
-      "description": "A lantern hangs from a hook.",
       "capacity": 3,
       "contentIds": [
         "loot:kitchen-hook:item#0"
-      ]
+      ],
+      "description": "A lantern hangs from a hook.",
+      "id": "loot:kitchen-hook"
     },
     {
-      "id": "loot:study-desk",
-      "description": "A writing desk with a locked-open drawer.",
       "capacity": 3,
       "contentIds": [
         "loot:study-desk:item#0"
-      ]
+      ],
+      "description": "A writing desk with a locked-open drawer.",
+      "id": "loot:study-desk"
     }
   ],
   "materialCaches": [],
-  "codex": []
+  "rooms": [
+    {
+      "dark": false,
+      "description": "The entrance hall of the Hollow House. Dust sheets shroud the furniture; the front door has locked itself behind you.",
+      "exits": {
+        "north": "exit:Foyer|Hall",
+        "south": "exit:Cellar|Foyer"
+      },
+      "id": "room:Foyer",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:foyer-table"
+      ],
+      "materialCacheIds": [],
+      "name": "Foyer",
+      "occupantIds": [
+        "npc:Caretaker"
+      ],
+      "scenes": [
+        {
+          "behaviorKey": "caretaker-intro",
+          "id": "scene:Foyer:caretaker-intro:enter",
+          "phase": "enter",
+          "state": {}
+        }
+      ],
+      "spawnModifier": 1
+    },
+    {
+      "dark": true,
+      "description": "A low brick cellar, black as a throat. Water seeps somewhere unseen.",
+      "exits": {
+        "north": "exit:Cellar|Foyer"
+      },
+      "id": "room:Cellar",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Cellar",
+      "occupantIds": [
+        "mob:Revenant"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A long central hall. Portraits watch from the walls, their eyes scratched out.",
+      "exits": {
+        "east": "exit:Hall|Parlor",
+        "north": "exit:Hall|Landing",
+        "south": "exit:Foyer|Hall",
+        "west": "exit:Hall|Kitchen"
+      },
+      "id": "room:Hall",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:hall-stand"
+      ],
+      "materialCacheIds": [],
+      "name": "Hall",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A cold scullery. Copper pots hang in rows; one still sways.",
+      "exits": {
+        "east": "exit:Hall|Kitchen"
+      },
+      "id": "room:Kitchen",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:kitchen-hook"
+      ],
+      "materialCacheIds": [],
+      "name": "Kitchen",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A receiving parlor gone to mildew. A piano sits with its lid nailed shut.",
+      "exits": {
+        "west": "exit:Hall|Parlor"
+      },
+      "id": "room:Parlor",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Parlor",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "The upstairs landing. Two doors face you — one to the west, one leading further up — and a nursery stands open to the east.",
+      "exits": {
+        "east": "exit:Landing|Nursery",
+        "north": "exit:Attic|Landing",
+        "south": "exit:Hall|Landing",
+        "west": "exit:Landing|Study"
+      },
+      "id": "room:Landing",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Landing",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A cramped study, papers everywhere, as if someone left mid-sentence.",
+      "exits": {
+        "east": "exit:Landing|Study"
+      },
+      "id": "room:Study",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:study-desk"
+      ],
+      "materialCacheIds": [],
+      "name": "Study",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": true,
+      "description": "A child's nursery. A rocking horse moves, very slightly, on its own.",
+      "exits": {
+        "west": "exit:Landing|Nursery"
+      },
+      "id": "room:Nursery",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Nursery",
+      "occupantIds": [
+        "mob:Wraith"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "The attic, under the bare ribs of the roof. This is where the journal ends.",
+      "exits": {
+        "south": "exit:Attic|Landing"
+      },
+      "id": "room:Attic",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Attic",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    }
+  ],
+  "schemaVersion": 6
 }

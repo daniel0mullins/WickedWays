@@ -11,7 +11,13 @@ conformance = []
 
 [dependencies]
 serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
-serde_json = { version = "1", default-features = false, features = ["alloc"] }
+# float_roundtrip: the default float parser is lossy (a serialized f64 can
+# parse back as a *different* f64), which perturbs stats on snapshot load and
+# breaks replay-golden byte-parity. The roundtrip parser restores exactness.
+serde_json = { version = "1", default-features = false, features = [
+    "alloc",
+    "float_roundtrip",
+] }
 # no-serde-warnings: ts-rs 10.1.0 can't parse some of our serde attributes and
 # prints a "failed to parse serde attribute" warning per item (it harmlessly
 # ignores them — bindings stay correct). The flag mutes that build noise only.
@@ -19,3 +25,6 @@ ts-rs = { version = "10", optional = true, features = ["no-serde-warnings"] }
 
 [dev-dependencies]
 proptest = "1"
+
+[lints]
+workspace = true

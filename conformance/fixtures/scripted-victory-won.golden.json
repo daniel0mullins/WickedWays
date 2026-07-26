@@ -1,5 +1,4 @@
 {
-  "seed": 20929,
   "commands": [
     {
       "kind": "startTurn"
@@ -9,8 +8,8 @@
       "targetId": "loot:foyer-table:item#0"
     },
     {
-      "kind": "go",
-      "dir": "north"
+      "dir": "north",
+      "kind": "go"
     },
     {
       "kind": "endTurn"
@@ -22,8 +21,8 @@
       "kind": "startTurn"
     },
     {
-      "kind": "go",
-      "dir": "north"
+      "dir": "north",
+      "kind": "go"
     },
     {
       "kind": "endTurn"
@@ -32,6 +31,7 @@
       "kind": "nextPlayer"
     }
   ],
+  "seed": 20929,
   "steps": [
     {
       "command": {
@@ -39,14 +39,58 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 5,
+                "health": 12,
+                "sanity": 16
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Foyer"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Scripted Victory Won (conformance)",
-          "title": "Scripted Victory Won (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
           "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
           "round": 0,
           "started": true,
-          "outcome": "ongoing",
+          "title": "Scripted Victory Won (conformance)",
           "winConditions": [
             {
               "key": "reached-attic-with-journal",
@@ -54,141 +98,25 @@
                 "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
               }
             }
-          ],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "heir",
-              "name": "Heir",
-              "baseStats": {
-                "health": 12,
-                "sanity": 16,
-                "energy": 5
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Foyer"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          ]
         },
-        "rooms": [
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "The entrance hall.",
-            "exits": {
-              "north": "exit:Foyer|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [
-              "loot:foyer-table"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A long central hall.",
-            "exits": {
-              "south": "exit:Foyer|Hall",
-              "north": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Attic",
-            "name": "Attic",
-            "description": "The attic, under the bare ribs of the roof.",
-            "exits": {
-              "south": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Foyer|Hall",
-            "endpointIds": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "state": {}
-          },
-          {
-            "id": "exit:Attic|Hall",
-            "endpointIds": [
-              "room:Hall",
-              "room:Attic"
-            ],
-            "state": {}
-          }
-        ],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 12,
-              "sanity": 16,
-              "energy": 5
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Foyer",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Foyer",
             "equipment": {},
             "history": [
               {
@@ -200,131 +128,210 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "heir"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 5.0,
+              "health": 12.0,
+              "sanity": 16.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "The entrance hall.",
+              "name": "Foyer"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Attic"
+            ],
+            "id": "exit:Attic|Hall",
+            "state": {}
+          },
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Hall"
+            ],
+            "id": "exit:Foyer|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:foyer-table:item#0",
             "behaviorKey": "journal",
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:foyer-table",
-            "description": "A hall table.",
             "capacity": 3,
             "contentIds": [
               "loot:foyer-table:item#0"
-            ]
+            ],
+            "description": "A hall table.",
+            "id": "loot:foyer-table"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "The entrance hall."
+            "dark": false,
+            "description": "The attic, under the bare ribs of the roof.",
+            "exits": {
+              "south": "exit:Attic|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Attic",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Attic",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
+          },
+          {
+            "dark": false,
+            "description": "The entrance hall.",
+            "exits": {
+              "north": "exit:Foyer|Hall"
+            },
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:foyer-table"
+            ],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          },
+          {
+            "dark": false,
+            "description": "A long central hall.",
+            "exits": {
+              "north": "exit:Attic|Hall",
+              "south": "exit:Foyer|Hall"
+            },
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Foyer",
-          "name": "Foyer",
-          "description": "The entrance hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "north",
             "toName": "Hall"
           }
         ],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
         "lockedDoors": [],
-        "occupants": [],
         "loot": [
           {
-            "id": "loot:foyer-table",
-            "description": "A hall table.",
-            "opened": false,
             "contents": [
               {
-                "id": "loot:foyer-table:item#0",
-                "name": "Water-Stained Journal",
                 "aliases": [
                   "water-stained journal"
                 ],
-                "kind": "item",
+                "damaged": false,
+                "destroyable": true,
+                "droppable": false,
                 "equippable": false,
-                "usable": false,
                 "hasLore": true,
-                "droppable": false
+                "id": "loot:foyer-table:item#0",
+                "kind": "item",
+                "name": "Water-Stained Journal",
+                "usable": false
               }
-            ]
+            ],
+            "description": "A hall table.",
+            "id": "loot:foyer-table",
+            "opened": false
           }
         ],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "The entrance hall.",
+          "id": "room:Foyer",
+          "isLit": true,
+          "name": "Foyer"
         },
         "scope": [
           {
-            "id": "loot:foyer-table:item#0",
-            "name": "Water-Stained Journal",
             "aliases": [
               "water-stained journal"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": false,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": false
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
+            "name": "Water-Stained Journal",
+            "usable": false
           },
           {
-            "id": "loot:foyer-table",
-            "name": "A hall table.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:foyer-table",
+            "kind": "loot",
+            "name": "A hall table."
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Foyer",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 16,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 16.0,
+          "turn": 0
+        }
       }
     },
     {
@@ -334,23 +341,67 @@
       },
       "cues": [
         {
-          "kind": "action",
           "action": "pickUp",
           "actor": {
             "id": "player:Ada",
             "name": "Ada"
-          }
+          },
+          "kind": "action"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 5,
+                "health": 12,
+                "sanity": 16
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Foyer"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Scripted Victory Won (conformance)",
-          "title": "Scripted Victory Won (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
           "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
           "round": 0,
           "started": true,
-          "outcome": "ongoing",
+          "title": "Scripted Victory Won (conformance)",
           "winConditions": [
             {
               "key": "reached-attic-with-journal",
@@ -358,143 +409,25 @@
                 "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
               }
             }
-          ],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "heir",
-              "name": "Heir",
-              "baseStats": {
-                "health": 12,
-                "sanity": 16,
-                "energy": 5
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Foyer"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          ]
         },
-        "rooms": [
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "The entrance hall.",
-            "exits": {
-              "north": "exit:Foyer|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [
-              "loot:foyer-table"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A long central hall.",
-            "exits": {
-              "south": "exit:Foyer|Hall",
-              "north": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Attic",
-            "name": "Attic",
-            "description": "The attic, under the bare ribs of the roof.",
-            "exits": {
-              "south": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Foyer|Hall",
-            "endpointIds": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "state": {}
-          },
-          {
-            "id": "exit:Attic|Hall",
-            "endpointIds": [
-              "room:Hall",
-              "room:Attic"
-            ],
-            "state": {}
-          }
-        ],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 12,
-              "sanity": 16,
-              "energy": 5
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Foyer",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "loot:foyer-table:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Foyer",
             "equipment": {},
             "history": [
               {
@@ -506,178 +439,304 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:foyer-table:item#0",
                     "name": "Water-Stained Journal"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "loot:foyer-table:item#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "heir"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 5.0,
+              "health": 12.0,
+              "sanity": 16.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "The entrance hall.",
+              "name": "Foyer"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "consumable:Water-Stained Journal",
+            "kind": "item",
+            "snapshot": {
+              "name": "Water-Stained Journal",
+              "type": "consumable"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Attic"
+            ],
+            "id": "exit:Attic|Hall",
+            "state": {}
+          },
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Hall"
+            ],
+            "id": "exit:Foyer|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:foyer-table:item#0",
             "behaviorKey": "journal",
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:foyer-table",
-            "description": "A hall table.",
             "capacity": 3,
-            "contentIds": []
+            "contentIds": [],
+            "description": "A hall table.",
+            "id": "loot:foyer-table"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "The entrance hall."
+            "dark": false,
+            "description": "The attic, under the bare ribs of the roof.",
+            "exits": {
+              "south": "exit:Attic|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Attic",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Attic",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "consumable:Water-Stained Journal",
-            "snapshot": {
-              "name": "Water-Stained Journal",
-              "type": "consumable"
+            "dark": false,
+            "description": "The entrance hall.",
+            "exits": {
+              "north": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:foyer-table"
+            ],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          },
+          {
+            "dark": false,
+            "description": "A long central hall.",
+            "exits": {
+              "north": "exit:Attic|Hall",
+              "south": "exit:Foyer|Hall"
+            },
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Foyer",
-          "name": "Foyer",
-          "description": "The entrance hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "north",
             "toName": "Hall"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [
-          {
-            "id": "loot:foyer-table",
-            "description": "A hall table.",
-            "opened": true,
-            "contents": []
-          }
-        ],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:foyer-table:item#0",
-              "name": "Water-Stained Journal",
               "aliases": [
                 "water-stained journal"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": false,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": false
+              "id": "loot:foyer-table:item#0",
+              "kind": "item",
+              "name": "Water-Stained Journal",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [
+          {
+            "contents": [],
+            "description": "A hall table.",
+            "id": "loot:foyer-table",
+            "opened": true
+          }
+        ],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "The entrance hall.",
+          "id": "room:Foyer",
+          "isLit": true,
+          "name": "Foyer"
         },
         "scope": [
           {
-            "id": "loot:foyer-table:item#0",
-            "name": "Water-Stained Journal",
             "aliases": [
               "water-stained journal"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": false,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": false
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
+            "name": "Water-Stained Journal",
+            "usable": false
           },
           {
-            "id": "loot:foyer-table",
-            "name": "A hall table.",
             "aliases": [
               "chest",
               "box",
               "drawer",
               "container"
             ],
-            "kind": "loot"
+            "id": "loot:foyer-table",
+            "kind": "loot",
+            "name": "A hall table."
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Foyer",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 16,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 16.0,
+          "turn": 0
+        }
       }
     },
     {
       "command": {
-        "kind": "go",
-        "dir": "north"
+        "dir": "north",
+        "kind": "go"
       },
       "cues": [
         {
-          "kind": "action",
           "action": "move",
           "actor": {
             "id": "player:Ada",
             "name": "Ada"
-          }
+          },
+          "kind": "action"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 5,
+                "health": 12,
+                "sanity": 16
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Foyer",
+              "room:Hall"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Scripted Victory Won (conformance)",
-          "title": "Scripted Victory Won (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
           "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
           "round": 0,
           "started": true,
-          "outcome": "ongoing",
+          "title": "Scripted Victory Won (conformance)",
           "winConditions": [
             {
               "key": "reached-attic-with-journal",
@@ -685,144 +744,25 @@
                 "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
               }
             }
-          ],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "heir",
-              "name": "Heir",
-              "baseStats": {
-                "health": 12,
-                "sanity": 16,
-                "energy": 5
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          ]
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A long central hall.",
-            "exits": {
-              "south": "exit:Foyer|Hall",
-              "north": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "The entrance hall.",
-            "exits": {
-              "north": "exit:Foyer|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [
-              "loot:foyer-table"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Attic",
-            "name": "Attic",
-            "description": "The attic, under the bare ribs of the roof.",
-            "exits": {
-              "south": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Foyer|Hall",
-            "endpointIds": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "state": {}
-          },
-          {
-            "id": "exit:Attic|Hall",
-            "endpointIds": [
-              "room:Hall",
-              "room:Attic"
-            ],
-            "state": {}
-          }
-        ],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 12,
-              "sanity": 16,
-              "energy": 5
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 2,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "loot:foyer-table:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -834,13 +774,13 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:foyer-table:item#0",
                     "name": "Water-Stained Journal"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
@@ -852,86 +792,155 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "loot:foyer-table:item#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "heir"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 5.0,
+              "health": 12.0,
+              "sanity": 16.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "The entrance hall.",
+              "name": "Foyer"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "consumable:Water-Stained Journal",
+            "kind": "item",
+            "snapshot": {
+              "name": "Water-Stained Journal",
+              "type": "consumable"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A long central hall.",
+              "name": "Hall"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Attic"
+            ],
+            "id": "exit:Attic|Hall",
+            "state": {}
+          },
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Hall"
+            ],
+            "id": "exit:Foyer|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:foyer-table:item#0",
             "behaviorKey": "journal",
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:foyer-table",
-            "description": "A hall table.",
             "capacity": 3,
-            "contentIds": []
+            "contentIds": [],
+            "description": "A hall table.",
+            "id": "loot:foyer-table"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "The entrance hall."
+            "dark": false,
+            "description": "The attic, under the bare ribs of the roof.",
+            "exits": {
+              "south": "exit:Attic|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Attic",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Attic",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "consumable:Water-Stained Journal",
-            "snapshot": {
-              "name": "Water-Stained Journal",
-              "type": "consumable"
+            "dark": false,
+            "description": "The entrance hall.",
+            "exits": {
+              "north": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:foyer-table"
+            ],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A long central hall."
+            "dark": false,
+            "description": "A long central hall.",
+            "exits": {
+              "north": "exit:Attic|Hall",
+              "south": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A long central hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "north",
@@ -942,51 +951,63 @@
             "toName": "Foyer"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:foyer-table:item#0",
-              "name": "Water-Stained Journal",
               "aliases": [
                 "water-stained journal"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": false,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": false
+              "id": "loot:foyer-table:item#0",
+              "kind": "item",
+              "name": "Water-Stained Journal",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A long central hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "loot:foyer-table:item#0",
-            "name": "Water-Stained Journal",
             "aliases": [
               "water-stained journal"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": false,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": false
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
+            "name": "Water-Stained Journal",
+            "usable": false
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Hall",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 16,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 16.0,
+          "turn": 0
+        }
       }
     },
     {
@@ -995,14 +1016,59 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 5,
+                "health": 12,
+                "sanity": 16
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Foyer",
+              "room:Hall"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Scripted Victory Won (conformance)",
-          "title": "Scripted Victory Won (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
           "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
           "round": 0,
           "started": true,
-          "outcome": "ongoing",
+          "title": "Scripted Victory Won (conformance)",
           "winConditions": [
             {
               "key": "reached-attic-with-journal",
@@ -1010,144 +1076,25 @@
                 "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
               }
             }
-          ],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "heir",
-              "name": "Heir",
-              "baseStats": {
-                "health": 12,
-                "sanity": 16,
-                "energy": 5
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          ]
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A long central hall.",
-            "exits": {
-              "south": "exit:Foyer|Hall",
-              "north": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "The entrance hall.",
-            "exits": {
-              "north": "exit:Foyer|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [
-              "loot:foyer-table"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Attic",
-            "name": "Attic",
-            "description": "The attic, under the bare ribs of the roof.",
-            "exits": {
-              "south": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Foyer|Hall",
-            "endpointIds": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "state": {}
-          },
-          {
-            "id": "exit:Attic|Hall",
-            "endpointIds": [
-              "room:Hall",
-              "room:Attic"
-            ],
-            "state": {}
-          }
-        ],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 12,
-              "sanity": 16,
-              "energy": 5
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 2,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "loot:foyer-table:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -1159,13 +1106,13 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:foyer-table:item#0",
                     "name": "Water-Stained Journal"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
@@ -1177,86 +1124,155 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "loot:foyer-table:item#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "heir"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 5.0,
+              "health": 12.0,
+              "sanity": 16.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "The entrance hall.",
+              "name": "Foyer"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "consumable:Water-Stained Journal",
+            "kind": "item",
+            "snapshot": {
+              "name": "Water-Stained Journal",
+              "type": "consumable"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A long central hall.",
+              "name": "Hall"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Attic"
+            ],
+            "id": "exit:Attic|Hall",
+            "state": {}
+          },
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Hall"
+            ],
+            "id": "exit:Foyer|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:foyer-table:item#0",
             "behaviorKey": "journal",
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:foyer-table",
-            "description": "A hall table.",
             "capacity": 3,
-            "contentIds": []
+            "contentIds": [],
+            "description": "A hall table.",
+            "id": "loot:foyer-table"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "The entrance hall."
+            "dark": false,
+            "description": "The attic, under the bare ribs of the roof.",
+            "exits": {
+              "south": "exit:Attic|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Attic",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Attic",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "consumable:Water-Stained Journal",
-            "snapshot": {
-              "name": "Water-Stained Journal",
-              "type": "consumable"
+            "dark": false,
+            "description": "The entrance hall.",
+            "exits": {
+              "north": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:foyer-table"
+            ],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A long central hall."
+            "dark": false,
+            "description": "A long central hall.",
+            "exits": {
+              "north": "exit:Attic|Hall",
+              "south": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A long central hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "north",
@@ -1267,51 +1283,63 @@
             "toName": "Foyer"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:foyer-table:item#0",
-              "name": "Water-Stained Journal",
               "aliases": [
                 "water-stained journal"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": false,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": false
+              "id": "loot:foyer-table:item#0",
+              "kind": "item",
+              "name": "Water-Stained Journal",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A long central hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "loot:foyer-table:item#0",
-            "name": "Water-Stained Journal",
             "aliases": [
               "water-stained journal"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": false,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": false
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
+            "name": "Water-Stained Journal",
+            "usable": false
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Hall",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 16,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 16.0,
+          "turn": 0
+        }
       }
     },
     {
@@ -1320,14 +1348,59 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 5,
+                "health": 12,
+                "sanity": 16
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Foyer",
+              "room:Hall"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Scripted Victory Won (conformance)",
-          "title": "Scripted Victory Won (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
           "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
           "round": 1,
           "started": true,
-          "outcome": "ongoing",
+          "title": "Scripted Victory Won (conformance)",
           "winConditions": [
             {
               "key": "reached-attic-with-journal",
@@ -1335,144 +1408,25 @@
                 "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
               }
             }
-          ],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "heir",
-              "name": "Heir",
-              "baseStats": {
-                "health": 12,
-                "sanity": 16,
-                "energy": 5
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          ]
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A long central hall.",
-            "exits": {
-              "south": "exit:Foyer|Hall",
-              "north": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "The entrance hall.",
-            "exits": {
-              "north": "exit:Foyer|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [
-              "loot:foyer-table"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Attic",
-            "name": "Attic",
-            "description": "The attic, under the bare ribs of the roof.",
-            "exits": {
-              "south": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Foyer|Hall",
-            "endpointIds": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "state": {}
-          },
-          {
-            "id": "exit:Attic|Hall",
-            "endpointIds": [
-              "room:Hall",
-              "room:Attic"
-            ],
-            "state": {}
-          }
-        ],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 12,
-              "sanity": 16,
-              "energy": 5
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 2,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "loot:foyer-table:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -1484,13 +1438,13 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:foyer-table:item#0",
                     "name": "Water-Stained Journal"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
@@ -1502,86 +1456,155 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "loot:foyer-table:item#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "heir"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 5.0,
+              "health": 12.0,
+              "sanity": 16.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "The entrance hall.",
+              "name": "Foyer"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "consumable:Water-Stained Journal",
+            "kind": "item",
+            "snapshot": {
+              "name": "Water-Stained Journal",
+              "type": "consumable"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A long central hall.",
+              "name": "Hall"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Attic"
+            ],
+            "id": "exit:Attic|Hall",
+            "state": {}
+          },
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Hall"
+            ],
+            "id": "exit:Foyer|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:foyer-table:item#0",
             "behaviorKey": "journal",
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:foyer-table",
-            "description": "A hall table.",
             "capacity": 3,
-            "contentIds": []
+            "contentIds": [],
+            "description": "A hall table.",
+            "id": "loot:foyer-table"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "The entrance hall."
+            "dark": false,
+            "description": "The attic, under the bare ribs of the roof.",
+            "exits": {
+              "south": "exit:Attic|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Attic",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Attic",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "consumable:Water-Stained Journal",
-            "snapshot": {
-              "name": "Water-Stained Journal",
-              "type": "consumable"
+            "dark": false,
+            "description": "The entrance hall.",
+            "exits": {
+              "north": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:foyer-table"
+            ],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A long central hall."
+            "dark": false,
+            "description": "A long central hall.",
+            "exits": {
+              "north": "exit:Attic|Hall",
+              "south": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A long central hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "north",
@@ -1592,51 +1615,63 @@
             "toName": "Foyer"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:foyer-table:item#0",
-              "name": "Water-Stained Journal",
               "aliases": [
                 "water-stained journal"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": false,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": false
+              "id": "loot:foyer-table:item#0",
+              "kind": "item",
+              "name": "Water-Stained Journal",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A long central hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "loot:foyer-table:item#0",
-            "name": "Water-Stained Journal",
             "aliases": [
               "water-stained journal"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": false,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": false
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
+            "name": "Water-Stained Journal",
+            "usable": false
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Hall",
-          "turn": 1,
           "maxTurns": 10,
-          "sanity": 16,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 16.0,
+          "turn": 1
+        }
       }
     },
     {
@@ -1645,14 +1680,59 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 5,
+                "health": 12,
+                "sanity": 16
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Foyer",
+              "room:Hall"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Scripted Victory Won (conformance)",
-          "title": "Scripted Victory Won (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
           "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
           "round": 1,
           "started": true,
-          "outcome": "ongoing",
+          "title": "Scripted Victory Won (conformance)",
           "winConditions": [
             {
               "key": "reached-attic-with-journal",
@@ -1660,144 +1740,25 @@
                 "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
               }
             }
-          ],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "heir",
-              "name": "Heir",
-              "baseStats": {
-                "health": 12,
-                "sanity": 16,
-                "energy": 5
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          ]
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A long central hall.",
-            "exits": {
-              "south": "exit:Foyer|Hall",
-              "north": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "The entrance hall.",
-            "exits": {
-              "north": "exit:Foyer|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [
-              "loot:foyer-table"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Attic",
-            "name": "Attic",
-            "description": "The attic, under the bare ribs of the roof.",
-            "exits": {
-              "south": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Foyer|Hall",
-            "endpointIds": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "state": {}
-          },
-          {
-            "id": "exit:Attic|Hall",
-            "endpointIds": [
-              "room:Hall",
-              "room:Attic"
-            ],
-            "state": {}
-          }
-        ],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 12,
-              "sanity": 16,
-              "energy": 5
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "loot:foyer-table:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -1809,13 +1770,13 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:foyer-table:item#0",
                     "name": "Water-Stained Journal"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
@@ -1827,86 +1788,155 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "loot:foyer-table:item#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "heir"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 5.0,
+              "health": 12.0,
+              "sanity": 16.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "The entrance hall.",
+              "name": "Foyer"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "consumable:Water-Stained Journal",
+            "kind": "item",
+            "snapshot": {
+              "name": "Water-Stained Journal",
+              "type": "consumable"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A long central hall.",
+              "name": "Hall"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Attic"
+            ],
+            "id": "exit:Attic|Hall",
+            "state": {}
+          },
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Hall"
+            ],
+            "id": "exit:Foyer|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:foyer-table:item#0",
             "behaviorKey": "journal",
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:foyer-table",
-            "description": "A hall table.",
             "capacity": 3,
-            "contentIds": []
+            "contentIds": [],
+            "description": "A hall table.",
+            "id": "loot:foyer-table"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "The entrance hall."
+            "dark": false,
+            "description": "The attic, under the bare ribs of the roof.",
+            "exits": {
+              "south": "exit:Attic|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Attic",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Attic",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "consumable:Water-Stained Journal",
-            "snapshot": {
-              "name": "Water-Stained Journal",
-              "type": "consumable"
+            "dark": false,
+            "description": "The entrance hall.",
+            "exits": {
+              "north": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:foyer-table"
+            ],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A long central hall."
+            "dark": false,
+            "description": "A long central hall.",
+            "exits": {
+              "north": "exit:Attic|Hall",
+              "south": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A long central hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "north",
@@ -1917,77 +1947,135 @@
             "toName": "Foyer"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:foyer-table:item#0",
-              "name": "Water-Stained Journal",
               "aliases": [
                 "water-stained journal"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": false,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": false
+              "id": "loot:foyer-table:item#0",
+              "kind": "item",
+              "name": "Water-Stained Journal",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A long central hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "loot:foyer-table:item#0",
-            "name": "Water-Stained Journal",
             "aliases": [
               "water-stained journal"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": false,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": false
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
+            "name": "Water-Stained Journal",
+            "usable": false
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Hall",
-          "turn": 1,
           "maxTurns": 10,
-          "sanity": 16,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 16.0,
+          "turn": 1
+        }
       }
     },
     {
       "command": {
-        "kind": "go",
-        "dir": "north"
+        "dir": "north",
+        "kind": "go"
       },
       "cues": [
         {
-          "kind": "action",
           "action": "move",
           "actor": {
             "id": "player:Ada",
             "name": "Ada"
-          }
+          },
+          "kind": "action"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 5,
+                "health": 12,
+                "sanity": 16
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Foyer",
+              "room:Hall",
+              "room:Attic"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Scripted Victory Won (conformance)",
-          "title": "Scripted Victory Won (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
           "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
           "round": 1,
           "started": true,
-          "outcome": "ongoing",
+          "title": "Scripted Victory Won (conformance)",
           "winConditions": [
             {
               "key": "reached-attic-with-journal",
@@ -1995,145 +2083,25 @@
                 "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
               }
             }
-          ],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "heir",
-              "name": "Heir",
-              "baseStats": {
-                "health": 12,
-                "sanity": 16,
-                "energy": 5
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Foyer",
-              "room:Hall",
-              "room:Attic"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          ]
         },
-        "rooms": [
-          {
-            "id": "room:Attic",
-            "name": "Attic",
-            "description": "The attic, under the bare ribs of the roof.",
-            "exits": {
-              "south": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A long central hall.",
-            "exits": {
-              "south": "exit:Foyer|Hall",
-              "north": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "The entrance hall.",
-            "exits": {
-              "north": "exit:Foyer|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [
-              "loot:foyer-table"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Attic|Hall",
-            "endpointIds": [
-              "room:Hall",
-              "room:Attic"
-            ],
-            "state": {}
-          },
-          {
-            "id": "exit:Foyer|Hall",
-            "endpointIds": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "state": {}
-          }
-        ],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 12,
-              "sanity": 16,
-              "energy": 5
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Attic",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "loot:foyer-table:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Attic",
             "equipment": {},
             "history": [
               {
@@ -2145,13 +2113,13 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:foyer-table:item#0",
                     "name": "Water-Stained Journal"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
@@ -2171,150 +2139,231 @@
                 "round": 1
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "loot:foyer-table:item#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "heir"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 5.0,
+              "health": 12.0,
+              "sanity": 16.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "The entrance hall.",
+              "name": "Foyer"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "consumable:Water-Stained Journal",
+            "kind": "item",
+            "snapshot": {
+              "name": "Water-Stained Journal",
+              "type": "consumable"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A long central hall.",
+              "name": "Hall"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Attic",
+              "round": 1
+            },
+            "key": "room:Attic",
+            "kind": "room",
+            "snapshot": {
+              "description": "The attic, under the bare ribs of the roof.",
+              "name": "Attic"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Attic"
+            ],
+            "id": "exit:Attic|Hall",
+            "state": {}
+          },
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Hall"
+            ],
+            "id": "exit:Foyer|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:foyer-table:item#0",
             "behaviorKey": "journal",
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:foyer-table",
-            "description": "A hall table.",
             "capacity": 3,
-            "contentIds": []
+            "contentIds": [],
+            "description": "A hall table.",
+            "id": "loot:foyer-table"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "The entrance hall."
+            "dark": false,
+            "description": "The attic, under the bare ribs of the roof.",
+            "exits": {
+              "south": "exit:Attic|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Attic",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Attic",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "consumable:Water-Stained Journal",
-            "snapshot": {
-              "name": "Water-Stained Journal",
-              "type": "consumable"
+            "dark": false,
+            "description": "The entrance hall.",
+            "exits": {
+              "north": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:foyer-table"
+            ],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A long central hall."
+            "dark": false,
+            "description": "A long central hall.",
+            "exits": {
+              "north": "exit:Attic|Hall",
+              "south": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "room",
-            "key": "room:Attic",
-            "snapshot": {
-              "name": "Attic",
-              "description": "The attic, under the bare ribs of the roof."
-            },
-            "firstSeen": {
-              "round": 1,
-              "characterId": "player:Ada",
-              "roomId": "room:Attic"
-            }
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Attic",
-          "name": "Attic",
-          "description": "The attic, under the bare ribs of the roof.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "south",
             "toName": "Hall"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:foyer-table:item#0",
-              "name": "Water-Stained Journal",
               "aliases": [
                 "water-stained journal"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": false,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": false
+              "id": "loot:foyer-table:item#0",
+              "kind": "item",
+              "name": "Water-Stained Journal",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "The attic, under the bare ribs of the roof.",
+          "id": "room:Attic",
+          "isLit": true,
+          "name": "Attic"
         },
         "scope": [
           {
-            "id": "loot:foyer-table:item#0",
-            "name": "Water-Stained Journal",
             "aliases": [
               "water-stained journal"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": false,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": false
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
+            "name": "Water-Stained Journal",
+            "usable": false
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Attic",
-          "turn": 1,
           "maxTurns": 10,
-          "sanity": 16,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 16.0,
+          "turn": 1
+        }
       }
     },
     {
@@ -2323,14 +2372,60 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 5,
+                "health": 12,
+                "sanity": 16
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Foyer",
+              "room:Hall",
+              "room:Attic"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Scripted Victory Won (conformance)",
-          "title": "Scripted Victory Won (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
           "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
           "round": 1,
           "started": true,
-          "outcome": "ongoing",
+          "title": "Scripted Victory Won (conformance)",
           "winConditions": [
             {
               "key": "reached-attic-with-journal",
@@ -2338,145 +2433,25 @@
                 "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
               }
             }
-          ],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "heir",
-              "name": "Heir",
-              "baseStats": {
-                "health": 12,
-                "sanity": 16,
-                "energy": 5
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Foyer",
-              "room:Hall",
-              "room:Attic"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          ]
         },
-        "rooms": [
-          {
-            "id": "room:Attic",
-            "name": "Attic",
-            "description": "The attic, under the bare ribs of the roof.",
-            "exits": {
-              "south": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A long central hall.",
-            "exits": {
-              "south": "exit:Foyer|Hall",
-              "north": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "The entrance hall.",
-            "exits": {
-              "north": "exit:Foyer|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [
-              "loot:foyer-table"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Attic|Hall",
-            "endpointIds": [
-              "room:Hall",
-              "room:Attic"
-            ],
-            "state": {}
-          },
-          {
-            "id": "exit:Foyer|Hall",
-            "endpointIds": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "state": {}
-          }
-        ],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 12,
-              "sanity": 16,
-              "energy": 5
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Attic",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "loot:foyer-table:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Attic",
             "equipment": {},
             "history": [
               {
@@ -2488,13 +2463,13 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:foyer-table:item#0",
                     "name": "Water-Stained Journal"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
@@ -2514,150 +2489,231 @@
                 "round": 1
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "loot:foyer-table:item#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "heir"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 5.0,
+              "health": 12.0,
+              "sanity": 16.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "The entrance hall.",
+              "name": "Foyer"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "consumable:Water-Stained Journal",
+            "kind": "item",
+            "snapshot": {
+              "name": "Water-Stained Journal",
+              "type": "consumable"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A long central hall.",
+              "name": "Hall"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Attic",
+              "round": 1
+            },
+            "key": "room:Attic",
+            "kind": "room",
+            "snapshot": {
+              "description": "The attic, under the bare ribs of the roof.",
+              "name": "Attic"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Attic"
+            ],
+            "id": "exit:Attic|Hall",
+            "state": {}
+          },
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Hall"
+            ],
+            "id": "exit:Foyer|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:foyer-table:item#0",
             "behaviorKey": "journal",
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:foyer-table",
-            "description": "A hall table.",
             "capacity": 3,
-            "contentIds": []
+            "contentIds": [],
+            "description": "A hall table.",
+            "id": "loot:foyer-table"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "The entrance hall."
+            "dark": false,
+            "description": "The attic, under the bare ribs of the roof.",
+            "exits": {
+              "south": "exit:Attic|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Attic",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Attic",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "consumable:Water-Stained Journal",
-            "snapshot": {
-              "name": "Water-Stained Journal",
-              "type": "consumable"
+            "dark": false,
+            "description": "The entrance hall.",
+            "exits": {
+              "north": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:foyer-table"
+            ],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A long central hall."
+            "dark": false,
+            "description": "A long central hall.",
+            "exits": {
+              "north": "exit:Attic|Hall",
+              "south": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "room",
-            "key": "room:Attic",
-            "snapshot": {
-              "name": "Attic",
-              "description": "The attic, under the bare ribs of the roof."
-            },
-            "firstSeen": {
-              "round": 1,
-              "characterId": "player:Ada",
-              "roomId": "room:Attic"
-            }
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Attic",
-          "name": "Attic",
-          "description": "The attic, under the bare ribs of the roof.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "south",
             "toName": "Hall"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:foyer-table:item#0",
-              "name": "Water-Stained Journal",
               "aliases": [
                 "water-stained journal"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": false,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": false
+              "id": "loot:foyer-table:item#0",
+              "kind": "item",
+              "name": "Water-Stained Journal",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "The attic, under the bare ribs of the roof.",
+          "id": "room:Attic",
+          "isLit": true,
+          "name": "Attic"
         },
         "scope": [
           {
-            "id": "loot:foyer-table:item#0",
-            "name": "Water-Stained Journal",
             "aliases": [
               "water-stained journal"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": false,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": false
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
+            "name": "Water-Stained Journal",
+            "usable": false
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Attic",
-          "turn": 1,
           "maxTurns": 10,
-          "sanity": 16,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 16.0,
+          "turn": 1
+        }
       }
     },
     {
@@ -2667,23 +2723,69 @@
       "cues": [
         {
           "kind": "resolution",
-          "outcome": "won",
-          "reason": "reached-attic-with-journal",
           "narration": {
             "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
-          }
+          },
+          "outcome": "won",
+          "reason": "reached-attic-with-journal"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 5,
+                "health": 12,
+                "sanity": 16
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Foyer",
+              "room:Hall",
+              "room:Attic"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Scripted Victory Won (conformance)",
-          "title": "Scripted Victory Won (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
           "maxRounds": 10,
-          "round": 2,
-          "started": true,
+          "mechanics": [],
           "outcome": "won",
           "outcomeReason": "reached-attic-with-journal",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 2,
+          "started": true,
+          "title": "Scripted Victory Won (conformance)",
           "winConditions": [
             {
               "key": "reached-attic-with-journal",
@@ -2691,145 +2793,25 @@
                 "text": "You climb into the attic with the journal in hand, and at last the house is only a house. You understand. You may leave."
               }
             }
-          ],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "heir",
-              "name": "Heir",
-              "baseStats": {
-                "health": 12,
-                "sanity": 16,
-                "energy": 5
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Foyer",
-              "room:Hall",
-              "room:Attic"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          ]
         },
-        "rooms": [
-          {
-            "id": "room:Attic",
-            "name": "Attic",
-            "description": "The attic, under the bare ribs of the roof.",
-            "exits": {
-              "south": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A long central hall.",
-            "exits": {
-              "south": "exit:Foyer|Hall",
-              "north": "exit:Attic|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          },
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "The entrance hall.",
-            "exits": {
-              "north": "exit:Foyer|Hall"
-            },
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [],
-            "lootIds": [
-              "loot:foyer-table"
-            ],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [
-          {
-            "id": "exit:Attic|Hall",
-            "endpointIds": [
-              "room:Hall",
-              "room:Attic"
-            ],
-            "state": {}
-          },
-          {
-            "id": "exit:Foyer|Hall",
-            "endpointIds": [
-              "room:Foyer",
-              "room:Hall"
-            ],
-            "state": {}
-          }
-        ],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 12,
-              "sanity": 16,
-              "energy": 5
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Attic",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [
-                "loot:foyer-table:item#0"
-              ],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Attic",
             "equipment": {},
             "history": [
               {
@@ -2841,13 +2823,13 @@
                 "round": 0
               },
               {
-                "kind": "pickUp",
                 "items": [
                   {
                     "id": "loot:foyer-table:item#0",
                     "name": "Water-Stained Journal"
                   }
                 ],
+                "kind": "pickUp",
                 "round": 0
               },
               {
@@ -2867,150 +2849,231 @@
                 "round": 1
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "loot:foyer-table:item#0"
+              ],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "heir"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 5.0,
+              "health": 12.0,
+              "sanity": 16.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "The entrance hall.",
+              "name": "Foyer"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "consumable:Water-Stained Journal",
+            "kind": "item",
+            "snapshot": {
+              "name": "Water-Stained Journal",
+              "type": "consumable"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A long central hall.",
+              "name": "Hall"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Attic",
+              "round": 1
+            },
+            "key": "room:Attic",
+            "kind": "room",
+            "snapshot": {
+              "description": "The attic, under the bare ribs of the roof.",
+              "name": "Attic"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Attic"
+            ],
+            "id": "exit:Attic|Hall",
+            "state": {}
+          },
+          {
+            "endpointIds": [
+              "room:Foyer",
+              "room:Hall"
+            ],
+            "id": "exit:Foyer|Hall",
+            "state": {}
           }
         ],
         "items": [
           {
-            "kind": "item",
-            "id": "loot:foyer-table:item#0",
             "behaviorKey": "journal",
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
             "modifier": 0
           }
         ],
         "loot": [
           {
-            "id": "loot:foyer-table",
-            "description": "A hall table.",
             "capacity": 3,
-            "contentIds": []
+            "contentIds": [],
+            "description": "A hall table.",
+            "id": "loot:foyer-table"
           }
         ],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "The entrance hall."
+            "dark": false,
+            "description": "The attic, under the bare ribs of the roof.",
+            "exits": {
+              "south": "exit:Attic|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Attic",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Attic",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "item",
-            "key": "consumable:Water-Stained Journal",
-            "snapshot": {
-              "name": "Water-Stained Journal",
-              "type": "consumable"
+            "dark": false,
+            "description": "The entrance hall.",
+            "exits": {
+              "north": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [
+              "loot:foyer-table"
+            ],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           },
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A long central hall."
+            "dark": false,
+            "description": "A long central hall.",
+            "exits": {
+              "north": "exit:Attic|Hall",
+              "south": "exit:Foyer|Hall"
             },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "room",
-            "key": "room:Attic",
-            "snapshot": {
-              "name": "Attic",
-              "description": "The attic, under the bare ribs of the roof."
-            },
-            "firstSeen": {
-              "round": 1,
-              "characterId": "player:Ada",
-              "roomId": "room:Attic"
-            }
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Attic",
-          "name": "Attic",
-          "description": "The attic, under the bare ribs of the roof.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [
           {
             "dir": "south",
             "toName": "Hall"
           }
         ],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": true,
         "inventory": {
+          "equippedNames": [],
           "items": [
             {
-              "id": "loot:foyer-table:item#0",
-              "name": "Water-Stained Journal",
               "aliases": [
                 "water-stained journal"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": true,
+              "droppable": false,
               "equippable": false,
-              "usable": false,
               "hasLore": true,
-              "droppable": false
+              "id": "loot:foyer-table:item#0",
+              "kind": "item",
+              "name": "Water-Stained Journal",
+              "usable": false
             }
           ],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "won",
+        "recipes": [],
+        "room": {
+          "description": "The attic, under the bare ribs of the roof.",
+          "id": "room:Attic",
+          "isLit": true,
+          "name": "Attic"
         },
         "scope": [
           {
-            "id": "loot:foyer-table:item#0",
-            "name": "Water-Stained Journal",
             "aliases": [
               "water-stained journal"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": true,
+            "droppable": false,
             "equippable": false,
-            "usable": false,
             "hasLore": true,
-            "droppable": false
+            "id": "loot:foyer-table:item#0",
+            "kind": "item",
+            "name": "Water-Stained Journal",
+            "usable": false
           }
         ],
         "status": {
+          "health": 12.0,
           "locationName": "Attic",
-          "turn": 2,
           "maxTurns": 10,
-          "sanity": 16,
-          "health": 12
-        },
-        "outcome": "won",
-        "finished": true
+          "sanity": 16.0,
+          "turn": 2
+        }
       }
     }
   ]

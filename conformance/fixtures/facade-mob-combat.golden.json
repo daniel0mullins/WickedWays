@@ -1,588 +1,253 @@
 {
-  "seed": 262974945,
-  "startupCues": [],
   "ops": [
     {
-      "kind": "submit",
       "intent": {
         "kind": "wait"
-      }
+      },
+      "kind": "submit"
     },
     {
-      "kind": "submit",
       "intent": {
         "kind": "wait"
-      }
+      },
+      "kind": "submit"
     },
     {
-      "kind": "submit",
       "intent": {
         "kind": "attack",
         "targetId": "mob:Brute"
-      }
+      },
+      "kind": "submit"
     },
     {
-      "kind": "submit",
       "intent": {
         "kind": "wait"
-      }
+      },
+      "kind": "submit"
     }
   ],
+  "seed": 262974945,
+  "startupCues": [],
   "steps": [
     {
       "op": {
-        "kind": "submit",
         "intent": {
           "kind": "wait"
-        }
+        },
+        "kind": "submit"
       },
       "result": {
         "cues": [
           {
-            "kind": "action",
             "action": "takeDamage",
             "actor": {
               "id": "player:Ada",
               "name": "Ada"
-            }
+            },
+            "kind": "action"
           },
           {
-            "kind": "action",
             "action": "attack",
             "actor": {
               "id": "mob:Brute",
               "name": "Brute"
-            }
+            },
+            "kind": "action"
           },
           {
-            "kind": "action",
             "action": "takeDamage",
             "actor": {
               "id": "player:Ada",
               "name": "Ada"
-            }
+            },
+            "kind": "action"
           },
           {
-            "kind": "action",
             "action": "attack",
             "actor": {
               "id": "mob:Shade",
               "name": "Shade"
-            }
+            },
+            "kind": "action"
           }
         ],
         "mobAttacks": [
           {
+            "amount": 1.4000000000000004,
             "name": "Brute",
-            "stat": "health",
-            "amount": 1.4000000000000004
+            "stat": "health"
           },
           {
+            "amount": 1.4000000000000004,
             "name": "Shade",
-            "stat": "health",
-            "amount": 1.4000000000000004
+            "stat": "health"
           }
         ]
       },
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Facade Mob Combat (conformance)",
-          "title": "Facade Mob Combat (conformance)",
-          "maxRounds": 20,
-          "round": 1,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 8,
+                "health": 10,
+                "sanity": 3
+              },
+              "id": "delver",
+              "name": "Delver"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
           "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
+          },
           "encountered": [
             "player:Ada:mob:Brute",
             "player:Ada:mob:Shade"
           ],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Mob Combat (conformance)",
           "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "delver",
-              "name": "Delver",
-              "baseStats": {
-                "health": 10,
-                "sanity": 3,
-                "energy": 8
-              }
-            }
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          "round": 1,
+          "started": true,
+          "title": "Facade Mob Combat (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "mob:Brute",
-              "mob:Shade",
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 7.199999999999999,
-              "sanity": 3,
-              "energy": 8
+            "actionsPerRound": 2,
+            "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
             },
-            "actionsPerRound": 3,
-            "actionsThisRound": 0,
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
             "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
-            },
             "equipment": {},
             "history": [
               {
-                "kind": "move",
-                "room": {
-                  "id": "room:Hall",
-                  "name": "Hall"
-                },
-                "round": 0
-              },
-              {
-                "kind": "takeDamage",
-                "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 0
-              },
-              {
-                "kind": "takeDamage",
-                "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 0
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
               }
             ],
+            "id": "mob:Brute",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Brute",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 6.0,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
             "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              }
+            ],
+            "id": "mob:Shade",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Shade",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 5.0,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
             "afflictions": {
               "active": {
                 "fear": true
               },
+              "immunity": {},
+              "shakenOff": [],
               "turnsActive": {
-                "panic": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
-          },
-          {
-            "kind": "mob",
-            "id": "mob:Brute",
-            "name": "Brute",
-            "stats": {
-              "health": 6,
-              "sanity": 4,
-              "energy": 4
-            },
-            "actionsPerRound": 2,
-            "actionsThisRound": 1,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 2,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 0
+                "confused": 0,
+                "panic": 0
               }
-            ],
+            },
+            "archetypeId": "delver",
             "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {},
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
-            }
-          },
-          {
-            "kind": "mob",
-            "id": "mob:Shade",
-            "name": "Shade",
-            "stats": {
-              "health": 5,
-              "sanity": 4,
-              "energy": 4
-            },
-            "actionsPerRound": 2,
-            "actionsThisRound": 1,
             "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 2,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 0
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {},
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
-            }
-          }
-        ],
-        "items": [],
-        "loot": [],
-        "materialCaches": [],
-        "codex": [
-          {
-            "kind": "mob",
-            "key": "Brute",
-            "snapshot": {
-              "name": "Brute",
-              "stats": {
-                "health": 6,
-                "sanity": 4,
-                "energy": 4
-              }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "mob",
-            "key": "Shade",
-            "snapshot": {
-              "name": "Shade",
-              "stats": {
-                "health": 5,
-                "sanity": 4,
-                "energy": 4
-              }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          }
-        ]
-      },
-      "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
-        "exits": [],
-        "lockedDoors": [],
-        "occupants": [
-          {
-            "id": "mob:Brute",
-            "name": "Brute",
-            "aliases": [
-              "brute"
-            ],
-            "kind": "occupant",
-            "health": 6,
-            "defeated": false
-          },
-          {
-            "id": "mob:Shade",
-            "name": "Shade",
-            "aliases": [
-              "shade"
-            ],
-            "kind": "occupant",
-            "health": 5,
-            "defeated": false
-          }
-        ],
-        "loot": [],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
-        },
-        "scope": [
-          {
-            "id": "mob:Brute",
-            "name": "Brute",
-            "aliases": [
-              "brute"
-            ],
-            "kind": "occupant",
-            "health": 6,
-            "defeated": false
-          },
-          {
-            "id": "mob:Shade",
-            "name": "Shade",
-            "aliases": [
-              "shade"
-            ],
-            "kind": "occupant",
-            "health": 5,
-            "defeated": false
-          }
-        ],
-        "status": {
-          "locationName": "Hall",
-          "turn": 1,
-          "maxTurns": 20,
-          "sanity": 3,
-          "health": 7.199999999999999
-        },
-        "outcome": "ongoing",
-        "finished": false
-      }
-    },
-    {
-      "op": {
-        "kind": "submit",
-        "intent": {
-          "kind": "wait"
-        }
-      },
-      "result": {
-        "cues": [
-          {
-            "kind": "action",
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
-            }
-          },
-          {
-            "kind": "action",
-            "action": "attack",
-            "actor": {
-              "id": "mob:Brute",
-              "name": "Brute"
-            }
-          },
-          {
-            "kind": "action",
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
-            }
-          },
-          {
-            "kind": "action",
-            "action": "attack",
-            "actor": {
-              "id": "mob:Shade",
-              "name": "Shade"
-            }
-          }
-        ],
-        "mobAttacks": [
-          {
-            "name": "Brute",
-            "stat": "health",
-            "amount": 1.4000000000000004
-          },
-          {
-            "name": "Shade",
-            "stat": "health",
-            "amount": 1.4000000000000004
-          }
-        ]
-      },
-      "snapshot": {
-        "schemaVersion": 6,
-        "campaign": {
-          "id": "campaign:Facade Mob Combat (conformance)",
-          "title": "Facade Mob Combat (conformance)",
-          "maxRounds": 20,
-          "round": 2,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [
-            "player:Ada:mob:Brute",
-            "player:Ada:mob:Shade"
-          ],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "delver",
-              "name": "Delver",
-              "baseStats": {
-                "health": 10,
-                "sanity": 3,
-                "energy": 8
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
-        },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "mob:Brute",
-              "mob:Shade",
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
-        "characters": [
-          {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 4.399999999999999,
-              "sanity": 3,
-              "energy": 8
-            },
-            "actionsPerRound": 3,
-            "actionsThisRound": 0,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
-            },
             "equipment": {},
             "history": [
               {
@@ -594,453 +259,910 @@
                 "round": 0
               },
               {
-                "kind": "takeDamage",
                 "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 0
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
               },
               {
-                "kind": "takeDamage",
                 "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 0
-              },
-              {
                 "kind": "takeDamage",
-                "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 1
-              },
-              {
-                "kind": "takeDamage",
-                "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 1
+                "round": 0,
+                "stat": "health"
               }
             ],
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 7.199999999999999,
+              "sanity": 3.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "Brute",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Brute",
+              "stats": {
+                "energy": 4,
+                "health": 6,
+                "sanity": 4
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "Shade",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Shade",
+              "stats": {
+                "energy": 4,
+                "health": 5,
+                "sanity": 4
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          }
+        ],
+        "exits": [],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "mob:Brute",
+              "mob:Shade",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [
+          {
+            "aliases": [
+              "brute"
+            ],
+            "defeated": false,
+            "health": 6.0,
+            "id": "mob:Brute",
+            "kind": "occupant",
+            "name": "Brute"
+          },
+          {
+            "aliases": [
+              "shade"
+            ],
+            "defeated": false,
+            "health": 5.0,
+            "id": "mob:Shade",
+            "kind": "occupant",
+            "name": "Shade"
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "brute"
+            ],
+            "defeated": false,
+            "health": 6.0,
+            "id": "mob:Brute",
+            "kind": "occupant",
+            "name": "Brute"
+          },
+          {
+            "aliases": [
+              "shade"
+            ],
+            "defeated": false,
+            "health": 5.0,
+            "id": "mob:Shade",
+            "kind": "occupant",
+            "name": "Shade"
+          }
+        ],
+        "status": {
+          "health": 7.199999999999999,
+          "locationName": "Hall",
+          "maxTurns": 20,
+          "sanity": 3.0,
+          "turn": 1
+        }
+      }
+    },
+    {
+      "op": {
+        "intent": {
+          "kind": "wait"
+        },
+        "kind": "submit"
+      },
+      "result": {
+        "cues": [
+          {
+            "action": "takeDamage",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            },
+            "kind": "action"
+          },
+          {
+            "action": "attack",
+            "actor": {
+              "id": "mob:Brute",
+              "name": "Brute"
+            },
+            "kind": "action"
+          },
+          {
+            "action": "takeDamage",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            },
+            "kind": "action"
+          },
+          {
+            "action": "attack",
+            "actor": {
+              "id": "mob:Shade",
+              "name": "Shade"
+            },
+            "kind": "action"
+          }
+        ],
+        "mobAttacks": [
+          {
+            "amount": 1.4000000000000004,
+            "name": "Brute",
+            "stat": "health"
+          },
+          {
+            "amount": 1.4000000000000004,
+            "name": "Shade",
+            "stat": "health"
+          }
+        ]
+      },
+      "snapshot": {
+        "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 8,
+                "health": 10,
+                "sanity": 3
+              },
+              "id": "delver",
+              "name": "Delver"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
+          },
+          "encountered": [
+            "player:Ada:mob:Brute",
+            "player:Ada:mob:Shade"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Mob Combat (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 2,
+          "started": true,
+          "title": "Facade Mob Combat (conformance)",
+          "winConditions": []
+        },
+        "characters": [
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 2,
+            "afflictions": {
+              "active": {
+                "fear": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
+            },
             "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 1,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              }
+            ],
+            "id": "mob:Brute",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Brute",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 6.0,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 2,
+            "afflictions": {
+              "active": {
+                "fear": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
+            },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 1,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              }
+            ],
+            "id": "mob:Shade",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Shade",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 5.0,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
             "afflictions": {
               "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0,
-                "fear": 1
-              },
+              "immunity": {},
               "shakenOff": [
                 "fear"
               ],
-              "immunity": {}
+              "turnsActive": {
+                "confused": 0,
+                "fear": 1,
+                "panic": 0
+              }
             },
-            "archetypeId": "delver"
-          },
-          {
-            "kind": "mob",
-            "id": "mob:Brute",
-            "name": "Brute",
-            "stats": {
-              "health": 6,
-              "sanity": 4,
-              "energy": 4
-            },
-            "actionsPerRound": 2,
-            "actionsThisRound": 2,
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
             "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 2,
-              "itemIds": [],
-              "keyIds": []
-            },
             "equipment": {},
             "history": [
               {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
                 },
                 "round": 0
               },
               {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 1
+                "amount": 1.4000000000000001,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              },
+              {
+                "amount": 1.4000000000000001,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              },
+              {
+                "amount": 1.4000000000000001,
+                "kind": "takeDamage",
+                "round": 1,
+                "stat": "health"
+              },
+              {
+                "amount": 1.4000000000000001,
+                "kind": "takeDamage",
+                "round": 1,
+                "stat": "health"
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "fear": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {},
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
-            }
-          },
-          {
-            "kind": "mob",
-            "id": "mob:Shade",
-            "name": "Shade",
-            "stats": {
-              "health": 5,
-              "sanity": 4,
-              "energy": 4
-            },
-            "actionsPerRound": 2,
-            "actionsThisRound": 2,
-            "currentRoomId": "room:Hall",
+            "id": "player:Ada",
             "inventory": {
-              "slots": 2,
               "itemIds": [],
-              "keyIds": []
+              "keyIds": [],
+              "slots": 5
             },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 0
-              },
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 1
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "fear": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {},
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 4.399999999999999,
+              "sanity": 3.0
             }
           }
         ],
-        "items": [],
-        "loot": [],
-        "materialCaches": [],
         "codex": [
           {
-            "kind": "mob",
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
             "key": "Brute",
+            "kind": "mob",
             "snapshot": {
               "name": "Brute",
               "stats": {
+                "energy": 4,
                 "health": 6,
-                "sanity": 4,
-                "energy": 4
+                "sanity": 4
               }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
             }
           },
           {
-            "kind": "mob",
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
             "key": "Shade",
+            "kind": "mob",
             "snapshot": {
               "name": "Shade",
               "stats": {
+                "energy": 4,
                 "health": 5,
-                "sanity": 4,
-                "energy": 4
+                "sanity": 4
               }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
             }
           },
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
             "firstSeen": {
-              "round": 0,
               "characterId": "player:Ada",
-              "roomId": "room:Hall"
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
             }
           }
-        ]
+        ],
+        "exits": [],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "mob:Brute",
+              "mob:Shade",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
         "lockedDoors": [],
+        "loot": [],
+        "materials": [],
         "occupants": [
           {
-            "id": "mob:Brute",
-            "name": "Brute",
             "aliases": [
               "brute"
             ],
+            "defeated": false,
+            "health": 6.0,
+            "id": "mob:Brute",
             "kind": "occupant",
-            "health": 6,
-            "defeated": false
+            "name": "Brute"
           },
           {
-            "id": "mob:Shade",
-            "name": "Shade",
             "aliases": [
               "shade"
             ],
+            "defeated": false,
+            "health": 5.0,
+            "id": "mob:Shade",
             "kind": "occupant",
-            "health": 5,
-            "defeated": false
+            "name": "Shade"
           }
         ],
-        "loot": [],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "mob:Brute",
-            "name": "Brute",
             "aliases": [
               "brute"
             ],
+            "defeated": false,
+            "health": 6.0,
+            "id": "mob:Brute",
             "kind": "occupant",
-            "health": 6,
-            "defeated": false
+            "name": "Brute"
           },
           {
-            "id": "mob:Shade",
-            "name": "Shade",
             "aliases": [
               "shade"
             ],
+            "defeated": false,
+            "health": 5.0,
+            "id": "mob:Shade",
             "kind": "occupant",
-            "health": 5,
-            "defeated": false
+            "name": "Shade"
           }
         ],
         "status": {
+          "health": 4.399999999999999,
           "locationName": "Hall",
-          "turn": 2,
           "maxTurns": 20,
-          "sanity": 3,
-          "health": 4.399999999999999
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 3.0,
+          "turn": 2
+        }
       }
     },
     {
       "op": {
-        "kind": "submit",
         "intent": {
           "kind": "attack",
           "targetId": "mob:Brute"
-        }
+        },
+        "kind": "submit"
       },
       "result": {
         "cues": [
           {
-            "kind": "action",
             "action": "takeDamage",
             "actor": {
               "id": "mob:Brute",
               "name": "Brute"
-            }
+            },
+            "kind": "action"
           },
           {
-            "kind": "action",
             "action": "attack",
             "actor": {
               "id": "player:Ada",
               "name": "Ada"
-            }
+            },
+            "kind": "action"
           },
           {
-            "kind": "action",
             "action": "takeDamage",
             "actor": {
               "id": "player:Ada",
               "name": "Ada"
-            }
+            },
+            "kind": "action"
           },
           {
-            "kind": "action",
             "action": "attack",
             "actor": {
               "id": "mob:Brute",
               "name": "Brute"
-            }
+            },
+            "kind": "action"
           },
           {
-            "kind": "action",
             "action": "takeDamage",
             "actor": {
               "id": "player:Ada",
               "name": "Ada"
-            }
+            },
+            "kind": "action"
           },
           {
-            "kind": "action",
             "action": "attack",
             "actor": {
               "id": "mob:Shade",
               "name": "Shade"
-            }
+            },
+            "kind": "action"
           }
         ],
         "mobAttacks": [
           {
+            "amount": 1.4000000000000004,
             "name": "Brute",
-            "stat": "health",
-            "amount": 1.4000000000000004
+            "stat": "health"
           },
           {
+            "amount": 1.4000000000000001,
             "name": "Shade",
-            "stat": "health",
-            "amount": 1.4000000000000001
+            "stat": "health"
           }
         ]
       },
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Facade Mob Combat (conformance)",
-          "title": "Facade Mob Combat (conformance)",
-          "maxRounds": 20,
-          "round": 3,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 8,
+                "health": 10,
+                "sanity": 3
+              },
+              "id": "delver",
+              "name": "Delver"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
           "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
+          },
           "encountered": [
             "player:Ada:mob:Brute",
             "player:Ada:mob:Shade"
           ],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Mob Combat (conformance)",
           "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "delver",
-              "name": "Delver",
-              "baseStats": {
-                "health": 10,
-                "sanity": 3,
-                "energy": 8
-              }
-            }
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          "round": 3,
+          "started": true,
+          "title": "Facade Mob Combat (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "mob:Brute",
-              "mob:Shade",
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 1.599999999999998,
-              "sanity": 3,
-              "energy": 8
+            "actionsPerRound": 2,
+            "actionsThisRound": 3,
+            "afflictions": {
+              "active": {
+                "fear": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
             },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 1,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "amount": 1.2000000000000002,
+                "kind": "takeDamage",
+                "round": 2,
+                "stat": "health"
+              },
+              {
+                "kind": "attack",
+                "round": 2,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              }
+            ],
+            "id": "mob:Brute",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Brute",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 4.8,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 3,
+            "afflictions": {
+              "active": {
+                "fear": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
+            },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 1,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 2,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              }
+            ],
+            "id": "mob:Shade",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Shade",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 5.0,
+              "sanity": 4.0
+            }
+          },
+          {
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [
+                "fear"
+              ],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 1,
+                "panic": 0
+              }
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -1052,835 +1174,725 @@
                 "round": 0
               },
               {
-                "kind": "takeDamage",
                 "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 0
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
               },
               {
-                "kind": "takeDamage",
                 "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 0
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
               },
               {
-                "kind": "takeDamage",
                 "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 1
+                "kind": "takeDamage",
+                "round": 1,
+                "stat": "health"
               },
               {
-                "kind": "takeDamage",
                 "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 1
+                "kind": "takeDamage",
+                "round": 1,
+                "stat": "health"
               },
               {
                 "kind": "attack",
+                "round": 2,
                 "target": {
                   "id": "mob:Brute",
                   "name": "Brute"
-                },
-                "round": 2
+                }
               },
               {
-                "kind": "takeDamage",
                 "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 2
+                "kind": "takeDamage",
+                "round": 2,
+                "stat": "health"
               },
               {
-                "kind": "takeDamage",
                 "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 2
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0,
-                "fear": 1
-              },
-              "shakenOff": [
-                "fear"
-              ],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
-          },
-          {
-            "kind": "mob",
-            "id": "mob:Brute",
-            "name": "Brute",
-            "stats": {
-              "health": 4.8,
-              "sanity": 4,
-              "energy": 4
-            },
-            "actionsPerRound": 2,
-            "actionsThisRound": 3,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 2,
-              "itemIds": [],
-              "keyIds": []
-            },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 0
-              },
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 1
-              },
-              {
                 "kind": "takeDamage",
-                "amount": 1.2000000000000002,
-                "stat": "health",
-                "round": 2
-              },
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 2
+                "round": 2,
+                "stat": "health"
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "fear": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {},
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
-            }
-          },
-          {
-            "kind": "mob",
-            "id": "mob:Shade",
-            "name": "Shade",
-            "stats": {
-              "health": 5,
-              "sanity": 4,
-              "energy": 4
-            },
-            "actionsPerRound": 2,
-            "actionsThisRound": 3,
-            "currentRoomId": "room:Hall",
+            "id": "player:Ada",
             "inventory": {
-              "slots": 2,
               "itemIds": [],
-              "keyIds": []
+              "keyIds": [],
+              "slots": 5
             },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 0
-              },
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 1
-              },
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 2
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "fear": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {},
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 1.599999999999998,
+              "sanity": 3.0
             }
           }
         ],
-        "items": [],
-        "loot": [],
-        "materialCaches": [],
         "codex": [
           {
-            "kind": "mob",
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
             "key": "Brute",
+            "kind": "mob",
             "snapshot": {
               "name": "Brute",
               "stats": {
+                "energy": 4,
                 "health": 6,
-                "sanity": 4,
-                "energy": 4
+                "sanity": 4
               }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
             }
           },
           {
-            "kind": "mob",
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
             "key": "Shade",
+            "kind": "mob",
             "snapshot": {
               "name": "Shade",
               "stats": {
+                "energy": 4,
                 "health": 5,
-                "sanity": 4,
-                "energy": 4
+                "sanity": 4
               }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
             }
           },
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
             "firstSeen": {
-              "round": 0,
               "characterId": "player:Ada",
-              "roomId": "room:Hall"
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
             }
           }
-        ]
+        ],
+        "exits": [],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "mob:Brute",
+              "mob:Shade",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
         "lockedDoors": [],
+        "loot": [],
+        "materials": [],
         "occupants": [
           {
-            "id": "mob:Brute",
-            "name": "Brute",
             "aliases": [
               "brute"
             ],
-            "kind": "occupant",
+            "defeated": false,
             "health": 4.8,
-            "defeated": false
+            "id": "mob:Brute",
+            "kind": "occupant",
+            "name": "Brute"
           },
           {
-            "id": "mob:Shade",
-            "name": "Shade",
             "aliases": [
               "shade"
             ],
+            "defeated": false,
+            "health": 5.0,
+            "id": "mob:Shade",
             "kind": "occupant",
-            "health": 5,
-            "defeated": false
+            "name": "Shade"
           }
         ],
-        "loot": [],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "mob:Brute",
-            "name": "Brute",
             "aliases": [
               "brute"
             ],
-            "kind": "occupant",
+            "defeated": false,
             "health": 4.8,
-            "defeated": false
+            "id": "mob:Brute",
+            "kind": "occupant",
+            "name": "Brute"
           },
           {
-            "id": "mob:Shade",
-            "name": "Shade",
             "aliases": [
               "shade"
             ],
+            "defeated": false,
+            "health": 5.0,
+            "id": "mob:Shade",
             "kind": "occupant",
-            "health": 5,
-            "defeated": false
+            "name": "Shade"
           }
         ],
         "status": {
+          "health": 1.599999999999998,
           "locationName": "Hall",
-          "turn": 3,
           "maxTurns": 20,
-          "sanity": 3,
-          "health": 1.599999999999998
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 3.0,
+          "turn": 3
+        }
       }
     },
     {
       "op": {
-        "kind": "submit",
         "intent": {
           "kind": "wait"
-        }
+        },
+        "kind": "submit"
       },
       "result": {
         "cues": [
           {
-            "kind": "action",
             "action": "takeDamage",
             "actor": {
               "id": "player:Ada",
               "name": "Ada"
-            }
+            },
+            "kind": "action"
           },
           {
-            "kind": "action",
             "action": "attack",
             "actor": {
               "id": "mob:Brute",
               "name": "Brute"
-            }
+            },
+            "kind": "action"
           },
           {
-            "kind": "action",
             "action": "takeDamage",
             "actor": {
               "id": "player:Ada",
               "name": "Ada"
-            }
+            },
+            "kind": "action"
           },
           {
-            "kind": "action",
             "action": "attack",
             "actor": {
               "id": "mob:Shade",
               "name": "Shade"
-            }
+            },
+            "kind": "action"
           }
         ],
         "mobAttacks": [
           {
+            "amount": 1.4000000000000001,
             "name": "Brute",
-            "stat": "health",
-            "amount": 1.4000000000000001
+            "stat": "health"
           },
           {
+            "amount": 0.19999999999999796,
             "name": "Shade",
-            "stat": "health",
-            "amount": 0.19999999999999796
+            "stat": "health"
           }
         ]
       },
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:Facade Mob Combat (conformance)",
-          "title": "Facade Mob Combat (conformance)",
-          "maxRounds": 20,
-          "round": 4,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 8,
+                "health": 10,
+                "sanity": 3
+              },
+              "id": "delver",
+              "name": "Delver"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
           "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
+          },
           "encountered": [
             "player:Ada:mob:Brute",
             "player:Ada:mob:Shade"
           ],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Mob Combat (conformance)",
           "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "delver",
-              "name": "Delver",
-              "baseStats": {
-                "health": 10,
-                "sanity": 3,
-                "energy": 8
-              }
-            }
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
-          "mechanics": []
+          "round": 4,
+          "started": true,
+          "title": "Facade Mob Combat (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "mob:Brute",
-              "mob:Shade",
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 0,
-              "sanity": 3,
-              "energy": 8
+            "actionsPerRound": 2,
+            "actionsThisRound": 4,
+            "afflictions": {
+              "active": {
+                "fear": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
             },
-            "actionsPerRound": 3,
-            "actionsThisRound": 0,
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
             "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
-            },
             "equipment": {},
             "history": [
               {
-                "kind": "move",
-                "room": {
-                  "id": "room:Hall",
-                  "name": "Hall"
-                },
-                "round": 0
-              },
-              {
-                "kind": "takeDamage",
-                "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 0
-              },
-              {
-                "kind": "takeDamage",
-                "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 0
-              },
-              {
-                "kind": "takeDamage",
-                "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 1
-              },
-              {
-                "kind": "takeDamage",
-                "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 1
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
               },
               {
                 "kind": "attack",
+                "round": 1,
                 "target": {
-                  "id": "mob:Brute",
-                  "name": "Brute"
-                },
-                "round": 2
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
               },
               {
+                "amount": 1.2000000000000002,
                 "kind": "takeDamage",
-                "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 2
+                "round": 2,
+                "stat": "health"
               },
               {
-                "kind": "takeDamage",
-                "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 2
+                "kind": "attack",
+                "round": 2,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
               },
               {
-                "kind": "takeDamage",
-                "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 3
-              },
-              {
-                "kind": "takeDamage",
-                "amount": 1.4000000000000001,
-                "stat": "health",
-                "round": 3
+                "kind": "attack",
+                "round": 3,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
               }
             ],
+            "id": "mob:Brute",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Brute",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 4.8,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 4,
+            "afflictions": {
+              "active": {
+                "fear": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
+            },
             "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 1,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 2,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 3,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              }
+            ],
+            "id": "mob:Shade",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Shade",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 5.0,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
             "afflictions": {
               "active": {
                 "ko": true
               },
+              "immunity": {},
+              "shakenOff": [],
               "turnsActive": {
-                "panic": 0,
                 "confused": 0,
-                "fear": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+                "fear": 0,
+                "panic": 0
+              }
             },
-            "archetypeId": "delver"
-          },
-          {
-            "kind": "mob",
-            "id": "mob:Brute",
-            "name": "Brute",
-            "stats": {
-              "health": 4.8,
-              "sanity": 4,
-              "energy": 4
-            },
-            "actionsPerRound": 2,
-            "actionsThisRound": 4,
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
             "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 2,
-              "itemIds": [],
-              "keyIds": []
-            },
             "equipment": {},
             "history": [
               {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
                 },
                 "round": 0
               },
               {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 1
-              },
-              {
+                "amount": 1.4000000000000001,
                 "kind": "takeDamage",
-                "amount": 1.2000000000000002,
-                "stat": "health",
-                "round": 2
+                "round": 0,
+                "stat": "health"
+              },
+              {
+                "amount": 1.4000000000000001,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              },
+              {
+                "amount": 1.4000000000000001,
+                "kind": "takeDamage",
+                "round": 1,
+                "stat": "health"
+              },
+              {
+                "amount": 1.4000000000000001,
+                "kind": "takeDamage",
+                "round": 1,
+                "stat": "health"
               },
               {
                 "kind": "attack",
+                "round": 2,
                 "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 2
+                  "id": "mob:Brute",
+                  "name": "Brute"
+                }
               },
               {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 3
+                "amount": 1.4000000000000001,
+                "kind": "takeDamage",
+                "round": 2,
+                "stat": "health"
+              },
+              {
+                "amount": 1.4000000000000001,
+                "kind": "takeDamage",
+                "round": 2,
+                "stat": "health"
+              },
+              {
+                "amount": 1.4000000000000001,
+                "kind": "takeDamage",
+                "round": 3,
+                "stat": "health"
+              },
+              {
+                "amount": 1.4000000000000001,
+                "kind": "takeDamage",
+                "round": 3,
+                "stat": "health"
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "fear": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {},
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
-            }
-          },
-          {
-            "kind": "mob",
-            "id": "mob:Shade",
-            "name": "Shade",
-            "stats": {
-              "health": 5,
-              "sanity": 4,
-              "energy": 4
-            },
-            "actionsPerRound": 2,
-            "actionsThisRound": 4,
-            "currentRoomId": "room:Hall",
+            "id": "player:Ada",
             "inventory": {
-              "slots": 2,
               "itemIds": [],
-              "keyIds": []
+              "keyIds": [],
+              "slots": 5
             },
-            "equipment": {},
-            "history": [
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 0
-              },
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 1
-              },
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 2
-              },
-              {
-                "kind": "attack",
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                },
-                "round": 3
-              }
-            ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "fear": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "origin": "room",
-            "baseEscapeChance": 50,
-            "materialDrops": {},
-            "lightAverse": false,
-            "naturalAttack": {
-              "stat": "health",
-              "power": 1
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 0.0,
+              "sanity": 3.0
             }
           }
         ],
-        "items": [],
-        "loot": [],
-        "materialCaches": [],
         "codex": [
           {
-            "kind": "mob",
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
             "key": "Brute",
+            "kind": "mob",
             "snapshot": {
               "name": "Brute",
               "stats": {
+                "energy": 4,
                 "health": 6,
-                "sanity": 4,
-                "energy": 4
+                "sanity": 4
               }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
             }
           },
           {
-            "kind": "mob",
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
             "key": "Shade",
+            "kind": "mob",
             "snapshot": {
               "name": "Shade",
               "stats": {
+                "energy": 4,
                 "health": 5,
-                "sanity": 4,
-                "energy": 4
+                "sanity": 4
               }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
             }
           },
           {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
             "firstSeen": {
-              "round": 0,
               "characterId": "player:Ada",
-              "roomId": "room:Hall"
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
             }
           }
-        ]
+        ],
+        "exits": [],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "mob:Brute",
+              "mob:Shade",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
         "lockedDoors": [],
+        "loot": [],
+        "materials": [],
         "occupants": [
           {
-            "id": "mob:Brute",
-            "name": "Brute",
             "aliases": [
               "brute"
             ],
-            "kind": "occupant",
+            "defeated": false,
             "health": 4.8,
-            "defeated": false
+            "id": "mob:Brute",
+            "kind": "occupant",
+            "name": "Brute"
           },
           {
-            "id": "mob:Shade",
-            "name": "Shade",
             "aliases": [
               "shade"
             ],
+            "defeated": false,
+            "health": 5.0,
+            "id": "mob:Shade",
             "kind": "occupant",
-            "health": 5,
-            "defeated": false
+            "name": "Shade"
           }
         ],
-        "loot": [],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "mob:Brute",
-            "name": "Brute",
             "aliases": [
               "brute"
             ],
-            "kind": "occupant",
+            "defeated": false,
             "health": 4.8,
-            "defeated": false
+            "id": "mob:Brute",
+            "kind": "occupant",
+            "name": "Brute"
           },
           {
-            "id": "mob:Shade",
-            "name": "Shade",
             "aliases": [
               "shade"
             ],
+            "defeated": false,
+            "health": 5.0,
+            "id": "mob:Shade",
             "kind": "occupant",
-            "health": 5,
-            "defeated": false
+            "name": "Shade"
           }
         ],
         "status": {
+          "health": 0.0,
           "locationName": "Hall",
-          "turn": 4,
           "maxTurns": 20,
-          "sanity": 3,
-          "health": 0
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 3.0,
+          "turn": 4
+        }
       }
     }
   ]

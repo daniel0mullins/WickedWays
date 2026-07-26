@@ -1,108 +1,108 @@
 {
-  "items": {},
   "aliases": {},
   "behaviors": {
     "dread": {
       "family": "mechanic",
       "script": {
-        "init": {},
-        "hooks": {
-          "onTurnStart": [
-            {
-              "kind": "guard",
-              "cond": {
-                "kind": "not",
-                "expr": {
-                  "kind": "hasEquipped",
-                  "of": {
-                    "kind": "actor"
-                  },
-                  "itemKey": "lantern"
-                }
-              }
-            },
-            {
-              "kind": "emit",
-              "effect": {
-                "kind": "adjustStat",
-                "target": {
-                  "kind": "actor"
-                },
-                "stat": "sanity",
-                "delta": {
-                  "kind": "lit",
-                  "value": -1
-                }
-              }
-            }
-          ],
-          "modifyDamage": {
-            "kind": "ifElse",
-            "cond": {
-              "kind": "bin",
-              "op": "gt",
-              "left": {
-                "kind": "get",
-                "of": {
-                  "kind": "damage"
-                },
-                "field": "amount"
-              },
-              "right": {
-                "kind": "lit",
-                "value": 3
-              }
-            },
-            "then": {
-              "kind": "final",
-              "expr": {
-                "kind": "lit",
-                "value": 3
-              }
-            },
-            "else": {
-              "kind": "value",
-              "expr": {
-                "kind": "get",
-                "of": {
-                  "kind": "damage"
-                },
-                "field": "amount"
-              }
-            }
-          }
-        },
         "actions": {
           "brace": [
             {
-              "kind": "emit",
               "effect": {
                 "kind": "cue",
                 "text": {
                   "kind": "lit",
                   "value": "You brace against the dread."
                 }
-              }
+              },
+              "kind": "emit"
             },
             {
-              "kind": "emit",
               "effect": {
-                "kind": "adjustStat",
-                "target": {
-                  "kind": "actor"
-                },
-                "stat": "sanity",
                 "delta": {
                   "kind": "lit",
-                  "value": 1
+                  "value": 1.0
+                },
+                "kind": "adjustStat",
+                "stat": "sanity",
+                "target": {
+                  "kind": "actor"
                 }
-              }
+              },
+              "kind": "emit"
             }
           ]
-        }
+        },
+        "hooks": {
+          "modifyDamage": {
+            "cond": {
+              "kind": "bin",
+              "left": {
+                "field": "amount",
+                "kind": "get",
+                "of": {
+                  "kind": "damage"
+                }
+              },
+              "op": "gt",
+              "right": {
+                "kind": "lit",
+                "value": 3.0
+              }
+            },
+            "else": {
+              "expr": {
+                "field": "amount",
+                "kind": "get",
+                "of": {
+                  "kind": "damage"
+                }
+              },
+              "kind": "value"
+            },
+            "kind": "ifElse",
+            "then": {
+              "expr": {
+                "kind": "lit",
+                "value": 3.0
+              },
+              "kind": "final"
+            }
+          },
+          "onTurnStart": [
+            {
+              "cond": {
+                "expr": {
+                  "itemKey": "lantern",
+                  "kind": "hasEquipped",
+                  "of": {
+                    "kind": "actor"
+                  }
+                },
+                "kind": "not"
+              },
+              "kind": "guard"
+            },
+            {
+              "effect": {
+                "delta": {
+                  "kind": "lit",
+                  "value": -1.0
+                },
+                "kind": "adjustStat",
+                "stat": "sanity",
+                "target": {
+                  "kind": "actor"
+                }
+              },
+              "kind": "emit"
+            }
+          ]
+        },
+        "init": {}
       }
     }
   },
   "formations": {},
+  "items": {},
   "recipes": {}
 }

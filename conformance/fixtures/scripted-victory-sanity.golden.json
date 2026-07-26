@@ -1,5 +1,4 @@
 {
-  "seed": 20930,
   "commands": [
     {
       "kind": "startTurn"
@@ -11,6 +10,7 @@
       "kind": "nextPlayer"
     }
   ],
+  "seed": 20930,
   "steps": [
     {
       "command": {
@@ -18,15 +18,47 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 5,
+                "health": 12,
+                "sanity": 1
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Foyer"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Scripted Victory Sanity (conformance)",
-          "title": "Scripted Victory Sanity (conformance)",
-          "maxRounds": 10,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
+          "knownRecipes": [],
           "loseConditions": [
             {
               "key": "sanity-zero",
@@ -35,92 +67,42 @@
               }
             }
           ],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
           "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "heir",
-              "name": "Heir",
-              "baseStats": {
-                "health": 12,
-                "sanity": 1,
-                "energy": 5
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Foyer"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
+          "maxRounds": 10,
           "mechanics": [
             {
               "key": "dread",
               "state": {}
             }
-          ]
+          ],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Scripted Victory Sanity (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "The entrance hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 12,
-              "sanity": 0,
-              "energy": 5
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Foyer",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {
+                "panic": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Foyer",
             "equipment": {},
             "history": [
               {
@@ -132,68 +114,89 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "panic": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0,
-                "fear": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "heir"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 5.0,
+              "health": 12.0,
+              "sanity": 0.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "The entrance hall.",
+              "name": "Foyer"
+            }
+          }
+        ],
+        "exits": [],
         "items": [],
         "loot": [],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "The entrance hall."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "dark": false,
+            "description": "The entrance hall.",
+            "exits": {},
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Foyer",
-          "name": "Foyer",
-          "description": "The entrance hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "The entrance hall.",
+          "id": "room:Foyer",
+          "isLit": true,
+          "name": "Foyer"
         },
         "scope": [],
         "status": {
+          "health": 12.0,
           "locationName": "Foyer",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 0,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 0.0,
+          "turn": 0
+        }
       }
     },
     {
@@ -202,15 +205,47 @@
       },
       "cues": [],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 5,
+                "health": 12,
+                "sanity": 1
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Foyer"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Scripted Victory Sanity (conformance)",
-          "title": "Scripted Victory Sanity (conformance)",
-          "maxRounds": 10,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
+          "knownRecipes": [],
           "loseConditions": [
             {
               "key": "sanity-zero",
@@ -219,92 +254,42 @@
               }
             }
           ],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
           "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "heir",
-              "name": "Heir",
-              "baseStats": {
-                "health": 12,
-                "sanity": 1,
-                "energy": 5
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Foyer"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
+          "maxRounds": 10,
           "mechanics": [
             {
               "key": "dread",
               "state": {}
             }
-          ]
+          ],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Scripted Victory Sanity (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "The entrance hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 12,
-              "sanity": 0,
-              "energy": 5
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Foyer",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {
+                "panic": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Foyer",
             "equipment": {},
             "history": [
               {
@@ -316,68 +301,89 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "panic": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0,
-                "fear": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "heir"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 5.0,
+              "health": 12.0,
+              "sanity": 0.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "The entrance hall.",
+              "name": "Foyer"
+            }
+          }
+        ],
+        "exits": [],
         "items": [],
         "loot": [],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "The entrance hall."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "dark": false,
+            "description": "The entrance hall.",
+            "exits": {},
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Foyer",
-          "name": "Foyer",
-          "description": "The entrance hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "The entrance hall.",
+          "id": "room:Foyer",
+          "isLit": true,
+          "name": "Foyer"
         },
         "scope": [],
         "status": {
+          "health": 12.0,
           "locationName": "Foyer",
-          "turn": 0,
           "maxTurns": 10,
-          "sanity": 0,
-          "health": 12
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 0.0,
+          "turn": 0
+        }
       }
     },
     {
@@ -387,24 +393,55 @@
       "cues": [
         {
           "kind": "resolution",
-          "outcome": "lost",
-          "reason": "sanity-zero",
           "narration": {
             "text": "The dark gets in. Your thoughts come apart like wet paper, and the Hollow House keeps what is left of you."
-          }
+          },
+          "outcome": "lost",
+          "reason": "sanity-zero"
         }
       ],
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 5,
+                "health": 12,
+                "sanity": 1
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Foyer"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
           "id": "campaign:Scripted Victory Sanity (conformance)",
-          "title": "Scripted Victory Sanity (conformance)",
-          "maxRounds": 10,
-          "round": 1,
-          "started": true,
-          "outcome": "lost",
-          "outcomeReason": "sanity-zero",
-          "winConditions": [],
+          "knownRecipes": [],
           "loseConditions": [
             {
               "key": "sanity-zero",
@@ -413,92 +450,43 @@
               }
             }
           ],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
-          "actedThisRound": [],
-          "gmId": "player:Ada",
           "materials": {},
-          "claims": [],
-          "encountered": [],
-          "knownRecipes": [],
-          "archetypes": [
-            {
-              "id": "heir",
-              "name": "Heir",
-              "baseStats": {
-                "health": 12,
-                "sanity": 1,
-                "energy": 5
-              }
-            }
-          ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Foyer"
-            ],
-            "formations": []
-          },
-          "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
-            "edit": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "backfillWindow": 200
-          },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
-          },
+          "maxRounds": 10,
           "mechanics": [
             {
               "key": "dread",
               "state": {}
             }
-          ]
+          ],
+          "outcome": "lost",
+          "outcomeReason": "sanity-zero",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 1,
+          "started": true,
+          "title": "Scripted Victory Sanity (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Foyer",
-            "name": "Foyer",
-            "description": "The entrance hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 12,
-              "sanity": 0,
-              "energy": 5
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Foyer",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {
+                "panic": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
             },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Foyer",
             "equipment": {},
             "history": [
               {
@@ -510,68 +498,89 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {
-                "panic": true
-              },
-              "turnsActive": {
-                "panic": 0,
-                "confused": 0,
-                "fear": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
             },
-            "archetypeId": "heir"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 5.0,
+              "health": 12.0,
+              "sanity": 0.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Foyer",
+              "round": 0
+            },
+            "key": "room:Foyer",
+            "kind": "room",
+            "snapshot": {
+              "description": "The entrance hall.",
+              "name": "Foyer"
+            }
+          }
+        ],
+        "exits": [],
         "items": [],
         "loot": [],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "room",
-            "key": "room:Foyer",
-            "snapshot": {
-              "name": "Foyer",
-              "description": "The entrance hall."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Foyer"
-            }
+            "dark": false,
+            "description": "The entrance hall.",
+            "exits": {},
+            "id": "room:Foyer",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Foyer",
+            "occupantIds": [
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Foyer",
-          "name": "Foyer",
-          "description": "The entrance hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": true,
         "inventory": {
+          "equippedNames": [],
           "items": [],
           "keys": [],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "lost",
+        "recipes": [],
+        "room": {
+          "description": "The entrance hall.",
+          "id": "room:Foyer",
+          "isLit": true,
+          "name": "Foyer"
         },
         "scope": [],
         "status": {
+          "health": 12.0,
           "locationName": "Foyer",
-          "turn": 1,
           "maxTurns": 10,
-          "sanity": 0,
-          "health": 12
-        },
-        "outcome": "lost",
-        "finished": true
+          "sanity": 0.0,
+          "turn": 1
+        }
       }
     }
   ]

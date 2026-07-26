@@ -1,5 +1,5 @@
 //! Equipment slot constants and lookup helpers.
-//! Mirrors `src/lib/equipment.ts:16-73`.
+//! Mirrors.
 //!
 //! `EquipmentSlot` string constants: the named positions a character can equip items into.
 //! `SLOT_KIND`: maps each named slot to its `SlotKind` category.
@@ -7,7 +7,7 @@
 
 use crate::world::descriptor::SlotKind;
 
-// Named slot string constants — byte-identical to TS `EquipmentSlot` values.
+// Named slot string constants — byte-identical to `EquipmentSlot` values.
 pub const HEAD: &str = "head";
 pub const TORSO: &str = "torso";
 pub const LEGS: &str = "legs";
@@ -22,7 +22,7 @@ pub const RIGHT_INDEX_FINGER: &str = "rightIndexFinger";
 pub const RIGHT_RING_FINGER: &str = "rightRingFinger";
 
 /// The default humanoid slot set in canonical fill order.
-/// Mirrors `equipment.ts:60-73` `DEFAULT_EQUIPMENT_SLOTS` exactly.
+/// Mirrors `DEFAULT_EQUIPMENT_SLOTS` exactly.
 /// Used by `equip` to assign a free slot in order (first free wins, else displace [0]).
 pub const DEFAULT_EQUIPMENT_SLOTS: [&str; 12] = [
     HEAD,
@@ -40,7 +40,7 @@ pub const DEFAULT_EQUIPMENT_SLOTS: [&str; 12] = [
 ];
 
 /// Map a named slot to its `SlotKind` category.
-/// Mirrors `SLOT_KIND` record in `equipment.ts:40-53`.
+/// Mirrors `SLOT_KIND` record in.
 pub fn slot_kind_of(slot: &str) -> Option<SlotKind> {
     match slot {
         HEAD => Some(SlotKind::Head),
@@ -68,14 +68,24 @@ mod tests {
 
     #[test]
     fn default_equipment_slots_canonical_order() {
-        // Mirrors TS DEFAULT_EQUIPMENT_SLOTS exactly
-        assert_eq!(DEFAULT_EQUIPMENT_SLOTS, [
-            "head", "torso", "legs", "feet",
-            "leftWrist", "rightWrist",
-            "leftHand", "rightHand",
-            "leftIndexFinger", "leftRingFinger",
-            "rightIndexFinger", "rightRingFinger",
-        ]);
+        // Mirrors DEFAULT_EQUIPMENT_SLOTS exactly
+        assert_eq!(
+            DEFAULT_EQUIPMENT_SLOTS,
+            [
+                "head",
+                "torso",
+                "legs",
+                "feet",
+                "leftWrist",
+                "rightWrist",
+                "leftHand",
+                "rightHand",
+                "leftIndexFinger",
+                "leftRingFinger",
+                "rightIndexFinger",
+                "rightRingFinger",
+            ]
+        );
     }
 
     #[test]

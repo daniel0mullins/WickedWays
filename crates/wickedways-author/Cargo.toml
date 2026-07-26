@@ -11,3 +11,6 @@ serde_json = "1"
 toml = "0.8"
 
 # NOTE: rand/uuid are deliberately absent — ids are derived by assemble().
+
+[lints]
+workspace = true

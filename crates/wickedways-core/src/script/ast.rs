@@ -1,5 +1,4 @@
-//! The closed expression/statement AST (serde + ts-rs). Grown across Tasks 1-9;
-//! this task lands the pure-expression subset.
+//! The closed expression/statement AST (serde + ts-rs).
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -16,28 +15,65 @@ use crate::stats::StatType;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "lowercase")]
-pub enum BinOp { Add, Sub, Mul, Div, Eq, Ne, Lt, Lte, Gt, Gte, And, Or }
+pub enum BinOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Eq,
+    Ne,
+    Lt,
+    Lte,
+    Gt,
+    Gte,
+    And,
+    Or,
+}
 
 /// The closed expression set. Tagged on `kind` (codebase discriminant convention).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum Expr {
-    Lit { value: Value },
+    Lit {
+        value: Value,
+    },
     /// A literal static table (e.g. lore). Values are literals, not sub-exprs.
     /// Only legal as the `map` operand of `Lookup`/`Has` (enforced at load by
-    /// `validate_behavior`, Task 9).
-    MapLit { entries: BTreeMap<String, Value> },
-    Bin { op: BinOp, left: Box<Expr>, right: Box<Expr> },
-    Not { expr: Box<Expr> },
-    IfElse { cond: Box<Expr>, then: Box<Expr>, r#else: Box<Expr> },
-    /// Non-null check (mirrors TS `!== undefined`).
-    Defined { expr: Box<Expr> },
-    /// JS-`Number.prototype.toString`-faithful number-to-string (spec: strings).
-    Str { num: Box<Expr> },
-    Concat { parts: alloc::vec::Vec<Expr> },
+    /// `validate_behavior`).
+    MapLit {
+        entries: BTreeMap<String, Value>,
+    },
+    Bin {
+        op: BinOp,
+        left: Box<Expr>,
+        right: Box<Expr>,
+    },
+    Not {
+        expr: Box<Expr>,
+    },
+    IfElse {
+        cond: Box<Expr>,
+        then: Box<Expr>,
+        r#else: Box<Expr>,
+    },
+    /// Non-null check (JS `!== undefined` semantics).
+    Defined {
+        expr: Box<Expr>,
+    },
+    /// JS-`Number.prototype.toString`-faithful number-to-string.
+    Str {
+        num: Box<Expr>,
+    },
+    Concat {
+        parts: alloc::vec::Vec<Expr>,
+    },
 
-    // ── Read-model subjects (Task 3) ────────────────────────────────────────
+    // ── Read-model subjects ─────────────────────────────────────────────────
     /// Current campaign round (`Null` in exit contexts).
     Round,
     /// Campaign round limit (`Null` in exit contexts).
@@ -50,88 +86,165 @@ pub enum Expr {
     Action,
     /// The damage subject (`modify_damage` context).
     Damage,
-    /// The bound quantifier element (Task 6).
+    /// The bound quantifier element.
     Element,
     /// List length (`Party`/`List`), else `Null`.
-    Length { list: Box<Expr> },
+    Length {
+        list: Box<Expr>,
+    },
     /// Element at `index` (trunc); OOB/ill-typed → `Null`.
-    Index { list: Box<Expr>, index: Box<Expr> },
+    Index {
+        list: Box<Expr>,
+        index: Box<Expr>,
+    },
     /// Element at index 0.
-    First { list: Box<Expr> },
+    First {
+        list: Box<Expr>,
+    },
     /// Membership over a `List` by strict equality; `false` otherwise.
-    Includes { list: Box<Expr>, value: Box<Expr> },
+    Includes {
+        list: Box<Expr>,
+        value: Box<Expr>,
+    },
     /// Bounded existential quantifier over a subject/value list: `true` iff
     /// `pred` holds for at least one element. `some([])` is `false` (JS
     /// `Array.prototype.some`). `pred` reads the current item via `Element`.
-    Some { list: Box<Expr>, pred: Box<Expr> },
+    Some {
+        list: Box<Expr>,
+        pred: Box<Expr>,
+    },
     /// Bounded universal quantifier over a subject/value list: `true` iff
     /// `pred` holds for every element. `every([])` is vacuously `true` (JS
     /// `Array.prototype.every`). `pred` reads the current item via `Element`.
-    Every { list: Box<Expr>, pred: Box<Expr> },
+    Every {
+        list: Box<Expr>,
+        pred: Box<Expr>,
+    },
     /// Field access on a subject; unknown field / non-subject → `Null`.
-    Get { of: Box<Expr>, field: String },
+    Get {
+        of: Box<Expr>,
+        field: String,
+    },
     /// `of` (a character) has an item with this behavior key equipped.
-    HasEquipped { of: Box<Expr>, item_key: String },
+    HasEquipped {
+        of: Box<Expr>,
+        item_key: String,
+    },
     /// `of` (a character) holds an item with this behavior key.
-    HasItem { of: Box<Expr>, item_key: String },
+    HasItem {
+        of: Box<Expr>,
+        item_key: String,
+    },
     /// `of` (a character) holds a key with this key code.
-    HasKey { of: Box<Expr>, key_code: String },
+    HasKey {
+        of: Box<Expr>,
+        key_code: String,
+    },
 
-    // ── Script state reads + static tables (Task 5) ─────────────────────────
+    // ── Script state reads + static tables ──────────────────────────────────
     /// Read `state[field]`, or `default` when the field is missing / `null`
-    /// / the ctx has no state (mirrors TS `state.x ?? default`).
-    StateGet { field: String, default: Value },
+    /// / the ctx has no state (JS `state.x ?? default` semantics).
+    StateGet {
+        field: String,
+        default: Value,
+    },
     /// Read `state[map_field][String(key)]`, with the same defaulting
     /// (dynamic string-keyed maps — e.g. the storyteller's `seen[roomName]`).
-    StateGetIn { map_field: String, key: Box<Expr>, default: Value },
+    StateGetIn {
+        map_field: String,
+        key: Box<Expr>,
+        default: Value,
+    },
     /// Value at `String(key)` in a static `MapLit`, else `Null`. Requires a
-    /// `MapLit` operand (enforced at load, Task 9); a non-`MapLit` yields `Null`.
-    Lookup { map: Box<Expr>, key: Box<Expr> },
+    /// `MapLit` operand (enforced at load); a non-`MapLit` yields `Null`.
+    Lookup {
+        map: Box<Expr>,
+        key: Box<Expr>,
+    },
     /// Whether a static `MapLit` contains `String(key)`. Non-`MapLit` → `false`.
-    Has { map: Box<Expr>, key: Box<Expr> },
+    Has {
+        map: Box<Expr>,
+        key: Box<Expr>,
+    },
 }
 
-/// A statement in an effect/script body (Task 7). Tagged on `kind`.
+/// A statement in an effect/script body. Tagged on `kind`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum Stmt {
-    /// Falsy `cond` halts the body, keeping the accumulated output (TS
-    /// `if (!cond) return [];` / `sequence` short-circuit).
+    /// Falsy `cond` halts the body, keeping the accumulated output
+    /// (short-circuit, not rollback).
     Guard { cond: Expr },
     /// Conditional block; a nested `Guard` still halts the whole body.
     When { cond: Expr, then: Vec<Stmt> },
     /// `state[field] = value` (own state only).
     SetState { field: String, value: Expr },
     /// `state[map_field][String(key)] = value` (own state only).
-    SetStateIn { map_field: String, key: Expr, value: Expr },
+    SetStateIn {
+        map_field: String,
+        key: Expr,
+        value: Expr,
+    },
     /// Emit an effect (effect bodies only).
     Emit { effect: EffectTemplate },
     /// Exit narration (script bodies only); the last `Pass` wins.
     Pass { value: Expr },
 }
 
-/// A template producing one closed `Effect` (Task 7). Tagged on `kind`; mirrors
-/// the `Effect` set.
+/// A template producing one closed `Effect`. Tagged on `kind`; mirrors the
+/// `Effect` set.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum EffectTemplate {
-    Damage { target: Expr, amount: Expr },
-    Heal { target: Expr, amount: Expr },
-    AdjustStat { target: Expr, stat: StatType, delta: Expr },
-    GrantImmunity { target: Expr, turns: Expr },
-    Cue { text: Expr },
-    Status { fields: Vec<FieldTemplate> },
+    Damage {
+        target: Expr,
+        amount: Expr,
+    },
+    Heal {
+        target: Expr,
+        amount: Expr,
+    },
+    AdjustStat {
+        target: Expr,
+        stat: StatType,
+        delta: Expr,
+    },
+    GrantImmunity {
+        target: Expr,
+        turns: Expr,
+    },
+    Cue {
+        text: Expr,
+    },
+    Status {
+        fields: Vec<FieldTemplate>,
+    },
     /// Hand `item` from `from` to `to` (`Effect::GiveItem`). `from`/`to` resolve as
     /// character ids, `item` as an item id.
-    GiveItem { from: Expr, to: Expr, item: Expr },
+    GiveItem {
+        from: Expr,
+        to: Expr,
+        item: Expr,
+    },
     /// Flip `target`'s `visible` flag (`Effect::SetVisible`). `visible` is evaluated
     /// for JS truthiness.
-    SetVisible { target: Expr, visible: Expr },
+    SetVisible {
+        target: Expr,
+        visible: Expr,
+    },
 }
 
-/// One `StatusField` template (Task 7).
+/// One `StatusField` template.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -143,19 +256,31 @@ pub struct FieldTemplate {
     pub emphasis: Option<Expr>,
 }
 
-/// The body of a `modify_damage` transform (Task 7). Tagged on `kind`.
+/// The body of a `modify_damage` transform. Tagged on `kind`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
 pub enum DamageBody {
-    Value { expr: Expr },
-    /// Halts the fold (TS `{ value, final: true }`).
-    Final { expr: Expr },
-    IfElse { cond: Expr, then: Box<DamageBody>, r#else: Box<DamageBody> },
+    Value {
+        expr: Expr,
+    },
+    /// Halts the fold — no later transform applies.
+    Final {
+        expr: Expr,
+    },
+    IfElse {
+        cond: Expr,
+        then: Box<DamageBody>,
+        r#else: Box<DamageBody>,
+    },
 }
 
-/// The six mechanic hook bodies (Task 9). Each is optional; a missing hook is a
-/// no-op at dispatch. Mirrors the TS `Mechanic` optional hook methods.
+/// The six mechanic hook bodies. Each is optional; a missing hook is a no-op
+/// at dispatch.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -180,29 +305,27 @@ pub struct MechanicHooks {
     pub modify_damage: Option<DamageBody>,
 }
 
-/// A campaign-authored mechanic behavior (Task 9): a literal state seed, the six
-/// hooks, and custom actions keyed by action key. Mirrors the TS `Mechanic` shape.
+/// A campaign-authored mechanic behavior: a literal state seed, the six hooks,
+/// and custom actions keyed by action key.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct MechanicScript {
-    /// Literal JSON state seed (TS `initialState()` return value). Plain data,
-    /// NOT an Expr — see plan deviation note 1.
+    /// Literal JSON state seed. Deliberately plain data, NOT an Expr.
     #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub init: serde_json::Value,
     #[serde(default)]
     pub hooks: MechanicHooks,
-    /// Custom actions (TS `Mechanic.actions`), keyed by action key. Always
-    /// emitted (even when empty) to match the TS `s.mechanic`/`catalogFromRegistry`
-    /// oracle, which always writes `actions: {}`, and the ts-rs binding, which marks
-    /// it required (not `ts(optional)`); `default` keeps older catalogs that lack
-    /// `actions` deserializable.
+    /// Custom actions, keyed by action key. Always emitted (even when empty):
+    /// the checked-in goldens always write `actions: {}`, and the ts-rs binding
+    /// marks it required (not `ts(optional)`); `default` keeps older catalogs
+    /// that lack `actions` deserializable.
     #[serde(default)]
     pub actions: BTreeMap<String, Vec<Stmt>>,
 }
 
-/// A campaign-authored exit behavior (Task 9): a `can_pass` predicate plus an
-/// optional narration script and pass/fail messages.
+/// A campaign-authored exit behavior: a `can_pass` predicate plus an optional
+/// narration script and pass/fail messages.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -218,7 +341,7 @@ pub struct ExitScript {
     pub fail_message: Option<String>,
 }
 
-/// A campaign-authored victory condition (Task 9): a boolean `test` expression.
+/// A campaign-authored victory condition: a boolean `test` expression.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -241,8 +364,8 @@ pub struct ItemScript {
     pub on_read: Option<Vec<Stmt>>,
 }
 
-/// How a dialogue entry matches a player prompt (NPC sub-plan 2). Tagged on
-/// `kind`; `Exact` is full lowercased-string equality, `Fuzzy` is a token subset.
+/// How a dialogue entry matches a player prompt. Tagged on `kind`; `Exact` is
+/// full lowercased-string equality, `Fuzzy` is a token subset.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(tag = "kind", rename_all = "camelCase")]
@@ -251,9 +374,9 @@ pub enum DialogueMatch {
     Fuzzy { tokens: Vec<String> },
 }
 
-/// One prompt→response dialogue entry in an NPC behavior (NPC sub-plan 2): a
-/// match rule, a text `response` (a DSL `Expr`), optional emitted effects, and a
-/// `once` latch. `match_` serializes as `"match"` (`match` is a Rust keyword).
+/// One prompt→response dialogue entry in an NPC behavior: a match rule, a text
+/// `response` (a DSL `Expr`), optional emitted effects, and a `once` latch.
+/// `match_` serializes as `"match"` (`match` is a Rust keyword).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -267,9 +390,9 @@ pub struct DialogueEntry {
     pub once: bool,
 }
 
-/// A campaign-authored NPC dialogue behavior (NPC sub-plan 2): a `description`
-/// (returned by `examine`), a `default` entry (bare `talk`), and ordered
-/// prompt→response `dialogue` entries.
+/// A campaign-authored NPC dialogue behavior: a `description` (returned by
+/// `examine`), a `default` entry (bare `talk`), and ordered prompt→response
+/// `dialogue` entries.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
@@ -280,8 +403,8 @@ pub struct NpcScript {
     pub dialogue: Vec<DialogueEntry>,
 }
 
-/// A campaign-authored scene behavior (NPC sub-plan 3): an optional `can_play`
-/// predicate gating whether the scene may play, plus optional `on_enter`/`on_exit`
+/// A campaign-authored scene behavior: an optional `can_play` predicate gating
+/// whether the scene may play, plus optional `on_enter`/`on_exit`
 /// effect bodies. Mirrors the `MechanicScript`/`ItemScript` hook-body shape: the
 /// bodies are effect bodies (`Vec<Stmt>`, `allow_pass=false`, `allow_emit=true`),
 /// and `can_play` is a predicate `Expr`. Absent hook = no-op.

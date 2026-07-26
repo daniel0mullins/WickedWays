@@ -1,10 +1,10 @@
-//! Launcher themes (Phase 2c, sub-project D — slice 4, launcher).
+//! Launcher themes.
 //!
 //! `?theme=<id>` picks a built-in palette per surface, applied as CSS custom properties on the
 //! surface root (the CRT's `.backdrop` `--color-*`, the PnC's `.pnc-app` `--pnc-*`). Pure string
-//! lookups — the campaign-supplied theme lists from the TS surfaces are a launcher/manifest concern
-//! for later; these are the client's built-ins so `?theme=` does something today. Unknown ids fall
-//! back to each surface's default.
+//! lookups — campaign-supplied theme lists are a launcher/manifest concern for later; these are the
+//! client's built-ins so `?theme=` does something today. Unknown ids fall back to each surface's
+//! default.
 
 /// The CRT terminal palette vars for `id`, defaulting to the green-phosphor look.
 pub fn crt_theme_vars(id: &str) -> &'static str {
@@ -64,7 +64,13 @@ mod tests {
         // Every CRT theme keeps the full var set the surface consumes.
         for id in ["green", "amber", "ice", "bogus"] {
             let vars = crt_theme_vars(id);
-            for key in ["--color-bg", "--color-text", "--color-accent", "--plastic", "--crt-scanline"] {
+            for key in [
+                "--color-bg",
+                "--color-text",
+                "--color-accent",
+                "--plastic",
+                "--crt-scanline",
+            ] {
                 assert!(vars.contains(key), "{id} missing {key}");
             }
         }

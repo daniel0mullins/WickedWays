@@ -1,141 +1,146 @@
 {
-  "seed": 262974951,
-  "startupCues": [],
   "ops": [
     {
-      "kind": "submit",
       "intent": {
         "kind": "talk",
         "npcId": "npc:Keeper"
-      }
+      },
+      "kind": "submit"
     },
     {
-      "kind": "submit",
       "intent": {
         "kind": "wait"
-      }
+      },
+      "kind": "submit"
     }
   ],
+  "seed": 262974951,
+  "startupCues": [],
   "steps": [
     {
       "op": {
-        "kind": "submit",
         "intent": {
           "kind": "talk",
           "npcId": "npc:Keeper"
-        }
+        },
+        "kind": "submit"
       },
       "result": {
         "cues": [
           {
-            "kind": "mechanic",
             "cue": {
               "text": "The gate is yours to open."
-            }
+            },
+            "kind": "mechanic"
           }
         ],
         "mobAttacks": []
       },
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:NPC Foundation (conformance)",
-          "title": "NPC Foundation (conformance)",
-          "maxRounds": 20,
-          "round": 0,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [
-            "player:Ada:npc:Keeper"
-          ],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
+                "energy": 8,
                 "health": 10,
-                "sanity": 8,
-                "energy": 8
-              }
+                "sanity": 8
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
           },
+          "encountered": [
+            "player:Ada:npc:Keeper"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:NPC Foundation (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
           "mechanics": [
             {
               "key": "conformance:npc-handoff",
               "state": {}
             }
-          ]
+          ],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "NPC Foundation (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "npc:Keeper",
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 8,
-              "energy": 8
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
             },
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [],
+            "id": "npc:Keeper",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [
+                "npc:Keeper:item#0"
+              ],
+              "slots": 5
+            },
+            "kind": "npc",
+            "name": "Keeper",
+            "npcBehaviorKey": "npc/keeper",
+            "stats": {
+              "energy": 3.0,
+              "health": 3.0,
+              "sanity": 3.0
+            }
+          },
+          {
             "actionsPerRound": 3,
             "actionsThisRound": 1,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": []
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
             },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -147,256 +152,260 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
-          },
-          {
-            "kind": "npc",
-            "id": "npc:Keeper",
-            "name": "Keeper",
-            "stats": {
-              "health": 3,
-              "sanity": 3,
-              "energy": 3
-            },
-            "actionsPerRound": 3,
-            "actionsThisRound": 0,
-            "currentRoomId": "room:Hall",
+            "id": "player:Ada",
             "inventory": {
-              "slots": 5,
               "itemIds": [],
-              "keyIds": [
-                "npc:Keeper:item#0"
-              ]
+              "keyIds": [],
+              "slots": 5
             },
-            "equipment": {},
-            "history": [],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "npcBehaviorKey": "npc/keeper"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 10.0,
+              "sanity": 8.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "Keeper",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Keeper",
+              "stats": {
+                "energy": 3,
+                "health": 3,
+                "sanity": 3
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          }
+        ],
+        "exits": [],
         "items": [
           {
-            "kind": "key",
+            "consumeOnUse": false,
             "id": "npc:Keeper:item#0",
-            "name": "Gate Key",
             "keyCode": "gate",
-            "consumeOnUse": false
+            "kind": "key",
+            "name": "Gate Key"
           }
         ],
         "loot": [],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "mob",
-            "key": "Keeper",
-            "snapshot": {
-              "name": "Keeper",
-              "stats": {
-                "health": 3,
-                "sanity": 3,
-                "energy": 3
-              }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "npc:Keeper",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
         "lockedDoors": [],
+        "loot": [],
+        "materials": [],
         "occupants": [
           {
-            "id": "npc:Keeper",
-            "name": "Keeper",
             "aliases": [
               "keeper"
             ],
-            "kind": "occupant",
-            "health": 3,
             "defeated": false,
+            "health": 3.0,
+            "id": "npc:Keeper",
+            "kind": "occupant",
+            "name": "Keeper",
             "talkable": true
           }
         ],
-        "loot": [],
-        "inventory": {
-          "items": [],
-          "keys": [],
-          "equippedNames": [],
-          "slots": 5
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "npc:Keeper",
-            "name": "Keeper",
             "aliases": [
               "keeper"
             ],
-            "kind": "occupant",
-            "health": 3,
             "defeated": false,
+            "health": 3.0,
+            "id": "npc:Keeper",
+            "kind": "occupant",
+            "name": "Keeper",
             "talkable": true
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Hall",
-          "turn": 0,
           "maxTurns": 20,
-          "sanity": 8,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 8.0,
+          "turn": 0
+        }
       }
     },
     {
       "op": {
-        "kind": "submit",
         "intent": {
           "kind": "wait"
-        }
+        },
+        "kind": "submit"
       },
       "result": {
         "cues": [],
         "mobAttacks": []
       },
       "snapshot": {
-        "schemaVersion": 6,
         "campaign": {
-          "id": "campaign:NPC Foundation (conformance)",
-          "title": "NPC Foundation (conformance)",
-          "maxRounds": 20,
-          "round": 1,
-          "started": true,
-          "outcome": "ongoing",
-          "winConditions": [],
-          "loseConditions": [],
-          "activeCharacterIndex": 0,
-          "partyIds": [
-            "player:Ada"
-          ],
           "actedThisRound": [],
-          "gmId": "player:Ada",
-          "materials": {},
-          "claims": [],
-          "encountered": [
-            "player:Ada:npc:Keeper"
-          ],
-          "knownRecipes": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
           "archetypes": [
             {
-              "id": "delver",
-              "name": "Delver",
               "baseStats": {
+                "energy": 8,
                 "health": 10,
-                "sanity": 8,
-                "energy": 8
-              }
+                "sanity": 8
+              },
+              "id": "delver",
+              "name": "Delver"
             }
           ],
-          "actionSounds": {},
-          "encounterTable": {
-            "baseChance": 0,
-            "visited": [
-              "room:Hall"
-            ],
-            "formations": []
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
           },
           "chatPolicy": {
-            "enabled": true,
-            "whisper": true,
+            "backfillWindow": 200,
             "edit": true,
+            "enabled": true,
             "reactions": true,
             "readReceipts": true,
             "typing": true,
-            "backfillWindow": 200
+            "whisper": true
           },
-          "avPolicy": {
-            "enabled": true,
-            "video": true,
-            "maxParticipants": 6
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
           },
+          "encountered": [
+            "player:Ada:npc:Keeper"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:NPC Foundation (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
           "mechanics": [
             {
               "key": "conformance:npc-handoff",
               "state": {}
             }
-          ]
+          ],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 1,
+          "started": true,
+          "title": "NPC Foundation (conformance)",
+          "winConditions": []
         },
-        "rooms": [
-          {
-            "id": "room:Hall",
-            "name": "Hall",
-            "description": "A stone hall.",
-            "exits": {},
-            "dark": false,
-            "spawnModifier": 1,
-            "occupantIds": [
-              "npc:Keeper",
-              "player:Ada"
-            ],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "lightSourceIds": [],
-            "scenes": []
-          }
-        ],
-        "exits": [],
         "characters": [
           {
-            "kind": "player",
-            "id": "player:Ada",
-            "name": "Ada",
-            "stats": {
-              "health": 10,
-              "sanity": 8,
-              "energy": 8
-            },
             "actionsPerRound": 3,
             "actionsThisRound": 0,
-            "currentRoomId": "room:Hall",
-            "inventory": {
-              "slots": 5,
-              "itemIds": [],
-              "keyIds": [
-                "npc:Keeper:item#0"
-              ]
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
             },
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [],
+            "id": "npc:Keeper",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "npc",
+            "name": "Keeper",
+            "npcBehaviorKey": "npc/keeper",
+            "stats": {
+              "energy": 3.0,
+              "health": 3.0,
+              "sanity": 3.0
+            },
+            "visible": false
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
+            },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
             "equipment": {},
             "history": [
               {
@@ -408,146 +417,147 @@
                 "round": 0
               }
             ],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {
-                "panic": 0,
-                "fear": 0,
-                "confused": 0
-              },
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "archetypeId": "delver"
-          },
-          {
-            "kind": "npc",
-            "id": "npc:Keeper",
-            "name": "Keeper",
-            "stats": {
-              "health": 3,
-              "sanity": 3,
-              "energy": 3
-            },
-            "actionsPerRound": 3,
-            "actionsThisRound": 0,
-            "currentRoomId": "room:Hall",
+            "id": "player:Ada",
             "inventory": {
-              "slots": 5,
               "itemIds": [],
-              "keyIds": []
+              "keyIds": [
+                "npc:Keeper:item#0"
+              ],
+              "slots": 5
             },
-            "equipment": {},
-            "history": [],
-            "archetypeImmunities": [],
-            "afflictions": {
-              "active": {},
-              "turnsActive": {},
-              "shakenOff": [],
-              "immunity": {}
-            },
-            "visible": false,
-            "npcBehaviorKey": "npc/keeper"
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 10.0,
+              "sanity": 8.0
+            }
           }
         ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "Keeper",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Keeper",
+              "stats": {
+                "energy": 3,
+                "health": 3,
+                "sanity": 3
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          }
+        ],
+        "exits": [],
         "items": [
           {
-            "kind": "key",
+            "consumeOnUse": false,
             "id": "npc:Keeper:item#0",
-            "name": "Gate Key",
             "keyCode": "gate",
-            "consumeOnUse": false
+            "kind": "key",
+            "name": "Gate Key"
           }
         ],
         "loot": [],
         "materialCaches": [],
-        "codex": [
+        "rooms": [
           {
-            "kind": "mob",
-            "key": "Keeper",
-            "snapshot": {
-              "name": "Keeper",
-              "stats": {
-                "health": 3,
-                "sanity": 3,
-                "energy": 3
-              }
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
-          },
-          {
-            "kind": "room",
-            "key": "room:Hall",
-            "snapshot": {
-              "name": "Hall",
-              "description": "A stone hall."
-            },
-            "firstSeen": {
-              "round": 0,
-              "characterId": "player:Ada",
-              "roomId": "room:Hall"
-            }
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "npc:Keeper",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
           }
-        ]
+        ],
+        "schemaVersion": 6
       },
       "view": {
-        "room": {
-          "id": "room:Hall",
-          "name": "Hall",
-          "description": "A stone hall.",
-          "isLit": true
-        },
+        "caches": [],
         "exits": [],
-        "lockedDoors": [],
-        "occupants": [],
-        "loot": [],
+        "finished": false,
         "inventory": {
+          "equippedNames": [],
           "items": [],
           "keys": [
             {
-              "id": "npc:Keeper:item#0",
-              "name": "Gate Key",
               "aliases": [
                 "gate key"
               ],
-              "kind": "item",
+              "damaged": false,
+              "destroyable": false,
+              "droppable": true,
               "equippable": false,
-              "usable": false,
               "hasLore": false,
-              "droppable": true
+              "id": "npc:Keeper:item#0",
+              "kind": "item",
+              "name": "Gate Key",
+              "usable": false
             }
           ],
-          "equippedNames": [],
           "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
         },
         "scope": [
           {
-            "id": "npc:Keeper:item#0",
-            "name": "Gate Key",
             "aliases": [
               "gate key"
             ],
-            "kind": "item",
+            "damaged": false,
+            "destroyable": false,
+            "droppable": true,
             "equippable": false,
-            "usable": false,
             "hasLore": false,
-            "droppable": true
+            "id": "npc:Keeper:item#0",
+            "kind": "item",
+            "name": "Gate Key",
+            "usable": false
           }
         ],
         "status": {
+          "health": 10.0,
           "locationName": "Hall",
-          "turn": 1,
           "maxTurns": 20,
-          "sanity": 8,
-          "health": 10
-        },
-        "outcome": "ongoing",
-        "finished": false
+          "sanity": 8.0,
+          "turn": 1
+        }
       }
     }
   ]

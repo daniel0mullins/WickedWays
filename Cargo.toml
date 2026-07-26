@@ -1,3 +1,34 @@
 [workspace]
 resolver = "2"
 members = ["crates/wickedways-core", "crates/wickedways-wasm", "crates/wickedways-assemble", "crates/wickedways-author", "crates/wickedways-transport", "crates/wickedways-server", "crates/wickedways-web"]
+
+# The workspace lint policy. Crates opt in with `lints.workspace = true`;
+# a crate without the key keeps the default lint set, which lets strictness
+# roll out crate-by-crate without ever turning CI red.
+#
+# Style: individual pedantic lints are enabled by name (subset-enable).
+# Deliberately NOT set:
+#   - `clippy::all = "warn"` — it's on by default, and naming it here would
+#     downgrade the `correctness` group from deny to warn.
+#   - `clippy::pedantic = "warn"` — the group drags in high-noise lints
+#     (must_use_candidate, missing_errors_doc, doc_markdown, cast_*) that
+#     this codebase has measured in the hundreds and does not want.
+#   - `rust.unused_qualifications` — wickedways-core is no_std-capable and
+#     deliberately writes inline-qualified `alloc::format!`/`alloc::vec!`;
+#     the mechanical fix would break `--no-default-features`.
+[workspace.lints.rust]
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+assigning_clones = "warn"
+cast_lossless = "warn"
+default_trait_access = "warn"
+explicit_iter_loop = "warn"
+ignored_unit_patterns = "warn"
+manual_let_else = "warn"
+map_unwrap_or = "warn"
+match_same_arms = "warn"
+needless_pass_by_value = "warn"
+redundant_closure_for_method_calls = "warn"
+semicolon_if_nothing_returned = "warn"
+unnested_or_patterns = "warn"
