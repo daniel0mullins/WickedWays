@@ -30,6 +30,7 @@ use wickedways_core::sync::{Command, SubmitResult};
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
 
+use crate::affordances::floor_items;
 use crate::audio::cue_for_intent;
 use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
@@ -39,7 +40,7 @@ use crate::driver::{
 };
 use crate::link_nouns::{link_nouns, Segment};
 use crate::map::{layout_map, map_svg, MapModel};
-use crate::narrator::Narrator;
+use crate::narrator::{strip_trailing_period, Narrator};
 use crate::parser::{parse, Meta, ParseResult, Query};
 use crate::savestore::{self, SaveBlob};
 use crate::theme::crt_theme_vars;
@@ -774,25 +775,42 @@ fn game_view(v: &ViewModel, narration: Signal<Vec<String>>, draft: Signal<String
             }
         }
 
-        if !v.occupants.is_empty() {
-            div { class: "section",
-                div { class: "section-label", "Here" }
-                div { class: "chips",
-                    for o in v.occupants.iter() {
-                        {
-                            let is_player = o.player == Some(true);
-                            // A co-located party member is marked so you can see who you're with.
-                            let chip_class = if is_player { "chip player" }
-                                else if o.defeated == Some(true) { "chip defeated" }
-                                else { "chip" };
-                            let marker = if is_player { "◆ " } else { "" };
-                            let health = o.health;
-                            rsx! {
-                                span { key: "{o.id}", class: "{chip_class}",
-                                    "{marker}{o.name}"
-                                    if let Some(h) = health {
-                                        span { class: "meta", " ({h} hp)" }
+        // The room's visible contents: occupants, loot containers (by their authored description),
+        // and floor items (opened-container contents not yet taken) — so what the parser can
+        // target ("open the drawer", "take poker") is also on screen.
+        {
+            let floor = floor_items(v);
+            rsx! {
+                if !v.occupants.is_empty() || !v.loot.is_empty() || !floor.is_empty() {
+                    div { class: "section",
+                        div { class: "section-label", "Here" }
+                        div { class: "chips",
+                            for o in v.occupants.iter() {
+                                {
+                                    let is_player = o.player == Some(true);
+                                    // A co-located party member is marked so you can see who you're with.
+                                    let chip_class = if is_player { "chip player" }
+                                        else if o.defeated == Some(true) { "chip defeated" }
+                                        else { "chip" };
+                                    let marker = if is_player { "◆ " } else { "" };
+                                    let health = o.health;
+                                    rsx! {
+                                        span { key: "{o.id}", class: "{chip_class}",
+                                            "{marker}{o.name}"
+                                            if let Some(h) = health {
+                                                span { class: "meta", " ({h} hp)" }
+                                            }
+                                        }
                                     }
+                                }
+                            }
+                            for l in v.loot.iter() {
+                                span { key: "{l.id}", class: "chip", {strip_trailing_period(&l.description)} }
+                            }
+                            for it in floor.iter() {
+                                span { key: "{it.id}", class: "chip",
+                                    "{it.name} "
+                                    span { class: "meta", "(take)" }
                                 }
                             }
                         }
