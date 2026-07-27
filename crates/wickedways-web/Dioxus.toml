@@ -1,0 +1,8 @@
+# `dx serve` config (the dev server only — the shipped bundle is built by
+# build-web.sh, which does not read this file). CSS is include_str!-embedded,
+# so no asset config is needed.
+[application]
+name = "wickedways-web"
+
+[web.app]
+title = "WickedWays"
