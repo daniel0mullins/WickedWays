@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>WickedWays</title>
+    <title></title>
     <style>
       /* Reset the default body margin: without it the white page background shows as a border around
          the full-viewport dark app, and `min-height: 100vh` + the margin overflows into a scrollbar. */
@@ -13,13 +13,11 @@
   <body>
     <div id="main"></div>
     <!--
-      Loads the wasm-bindgen `--target web` output that `build-web.sh` emits next to this file.
-      Dioxus mounts the app into <body>. Served static (same-origin with /ws) by the C axum binary
-      or any static server — see README.md.
+      Doubles as the `dx serve` template and the static-bundle template. The title is empty and
+      there is no loader script on purpose: dx injects its title + loader here, and build-web.sh
+      injects the wasm-bindgen loader + title when it copies this file into dist/. (Nothing in
+      this file may contain the literal closing-body-tag text — both injectors match on it.)
+      Dioxus mounts the app into <div id="main">.
     -->
-    <script type="module">
-      import init from "./wickedways-web.js";
-      init();
-    </script>
   </body>
 </html>

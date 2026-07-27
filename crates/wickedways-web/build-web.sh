@@ -28,5 +28,9 @@ wasm="$repo_root/target/wasm32-unknown-unknown/$profile/wickedways-web.wasm"
 mkdir -p "$dist"
 echo "wasm-bindgen → $dist"
 wasm-bindgen "$wasm" --out-dir "$dist" --target web --no-typescript
-cp "$crate_dir/index.html" "$dist/index.html"
+# index.html doubles as the dx-serve template, so it ships an empty <title> and no loader
+# script; inject both for the static bundle here.
+sed -e 's|<title></title>|<title>WickedWays</title>|' \
+    -e 's|</body>|  <script type="module">import init from "./wickedways-web.js"; init();</script>\n  </body>|' \
+  "$crate_dir/index.html" > "$dist/index.html"
 echo "done: serve $dist (index.html loads ./wickedways-web.js)"
