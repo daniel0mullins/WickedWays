@@ -13,6 +13,13 @@ edition = "2021"
 #   cargo build -p wickedways-web --target wasm32-unknown-unknown
 # (see the D plan for the bundling step).
 
+[features]
+# The native desktop build (the `desktop/` shell crate turns this on): swaps the platform
+# seam from browser APIs to CLI-params/file-storage/window-hooks and silences the Web Audio
+# backend. Deliberately pulls NO windowing stack — `dioxus/desktop` lives in the shell crate
+# only, so workspace-wide `--all-features` builds need no system GTK/WebKit packages.
+native-app = ["dep:dirs"]
+
 [lib]
 name = "wickedways_web"
 path = "src/lib.rs"
@@ -30,6 +37,8 @@ wickedways-core = { path = "../wickedways-core" }
 wickedways-transport = { path = "../wickedways-transport" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# native-app only: the platform save-file directory (pure Rust, no system deps).
+dirs = { version = "6", optional = true }
 
 # Browser bindings for the WebSocket transport (compile on host too — they are just
 # extern declarations — so the mirror's host tests are unaffected).

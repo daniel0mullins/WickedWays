@@ -11,22 +11,57 @@
 //! Driven by [`crate::audio_runtime::AudioRuntime`], which starts it on the engine's `AudioContext`
 //! when the player enables sound and feeds it a 0–1 tension on every view update.
 
+#[cfg(not(feature = "native-app"))]
 use web_sys::{
     AudioContext, BiquadFilterNode, BiquadFilterType, GainNode, OscillatorNode, OscillatorType,
 };
 
-// Tunable voice — dialed by ear on the running dev server.
+#[cfg(feature = "native-app")]
+use crate::audio_engine::AudioContext;
+
+// Tunable voice — dialed by ear on the running dev server. (Web path only.)
+#[cfg(not(feature = "native-app"))]
 const BASE_HZ: f32 = 55.0; // A1 fundamental
+#[cfg(not(feature = "native-app"))]
 const DETUNE_HZ: f32 = 0.5; // calm beat rate: osc2 sits BASE + DETUNE (~0.5 Hz pulse)
+#[cfg(not(feature = "native-app"))]
 const DETUNE_SPREAD_HZ: f32 = 5.5; // beat rate at full dread: BASE + DETUNE + SPREAD (~6 Hz throb)
+#[cfg(not(feature = "native-app"))]
 const CUTOFF: f32 = 120.0; // fixed dark sub-bass cutoff
+#[cfg(not(feature = "native-app"))]
 const LEVEL: f32 = 0.3; // bed gain
+#[cfg(not(feature = "native-app"))]
 const FADE_S: f64 = 0.12; // gain fade-in to avoid a click on enable
+#[cfg(not(feature = "native-app"))]
 const GLIDE_S: f64 = 0.05; // per-update beat glide
+#[cfg(not(feature = "native-app"))]
 const SILENCE: f32 = 0.0001; // fade floor (a linear ramp from true 0 would click)
+
+/// The desktop stand-in for the drone: same API, never runs (the engine never yields a
+/// context, so [`start`](AmbientBed::start) is unreachable in practice — but it must accept
+/// the inert context type so the runtime wiring compiles).
+// Not a unit struct: the shared runtime constructs it with `default()`, which clippy's
+// `default_constructed_unit_structs` would flag on a fieldless type.
+#[cfg(feature = "native-app")]
+#[derive(Default)]
+pub struct AmbientBed(());
+
+#[cfg(feature = "native-app")]
+impl AmbientBed {
+    pub fn running(&self) -> bool {
+        false
+    }
+
+    pub fn start(&mut self, _ctx: &AudioContext) {}
+
+    pub fn set_tension(&self, _t: f64) {}
+
+    pub fn stop(&mut self) {}
+}
 
 /// A continuous sanity-reactive drone. Idle until [`start`](AmbientBed::start); a [`stop`](AmbientBed::stop)
 /// tears the graph down fully so toggling doesn't accumulate detached nodes.
+#[cfg(not(feature = "native-app"))]
 #[derive(Default)]
 pub struct AmbientBed {
     ctx: Option<AudioContext>,
@@ -35,6 +70,7 @@ pub struct AmbientBed {
     nodes: Vec<OscillatorNode>,
 }
 
+#[cfg(not(feature = "native-app"))]
 impl AmbientBed {
     /// Whether the bed is currently playing.
     pub fn running(&self) -> bool {

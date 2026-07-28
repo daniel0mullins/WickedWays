@@ -1,8 +1,9 @@
-//! Single-player save/restore via `localStorage`.
+//! Single-player save/restore via the platform store.
 //!
 //! A save is the authoritative campaign [`CampaignSnapshot`] plus the surface's fog-of-war
 //! [`MapSnapshot`], serialized to JSON and
-//! stored under a slot key in the browser's `localStorage`. Restore rebuilds a fresh
+//! stored under a slot key in the [`platform`](crate::platform) store (browser `localStorage`,
+//! or a data-dir file in the desktop build). Restore rebuilds a fresh
 //! [`SinglePlayerTransport`](crate::single_player::SinglePlayerTransport) from the snapshot and
 //! hydrates the map — the same "reset the authority to a snapshot" the room server does, but local.
 //!
@@ -10,7 +11,8 @@
 //! save/restore on the offline mode. The persistence format is internal to this client, so it uses
 //! plain Rust field names.
 //!
-//! The `localStorage` I/O is `web-sys` (browser-only); the [`SaveBlob`] JSON format is host-tested.
+//! The storage I/O lives in [`platform`](crate::platform); the [`SaveBlob`] JSON format is
+//! host-tested.
 
 use serde::{Deserialize, Serialize};
 
@@ -25,29 +27,21 @@ pub struct SaveBlob {
     pub map: MapSnapshot,
 }
 
-/// The `localStorage` key for a save slot.
+/// The platform-store key for a save slot.
 fn slot_key(slot: &str) -> String {
     format!("wickedways:save:{slot}")
 }
 
-fn local_storage() -> Option<web_sys::Storage> {
-    web_sys::window()?.local_storage().ok()?
-}
-
 /// Serialize `blob` to JSON and store it under `slot`. Returns an error string on a serialize failure
-/// or if `localStorage` is unavailable (private-mode / disabled storage).
+/// or if the platform store is unavailable (private-mode / disabled browser storage).
 pub fn save(slot: &str, blob: &SaveBlob) -> Result<(), String> {
     let json = serde_json::to_string(blob).map_err(|e| format!("serialize save: {e}"))?;
-    let storage = local_storage().ok_or("localStorage is unavailable")?;
-    storage
-        .set_item(&slot_key(slot), &json)
-        .map_err(|e| format!("write save: {e:?}"))
+    crate::platform::storage_write(&slot_key(slot), &json)
 }
 
 /// Load and parse the save in `slot`, or `None` if absent, unreadable, or malformed.
 pub fn load(slot: &str) -> Option<SaveBlob> {
-    let storage = local_storage()?;
-    let json = storage.get_item(&slot_key(slot)).ok()??;
+    let json = crate::platform::storage_read(&slot_key(slot))?;
     serde_json::from_str(&json).ok()
 }
 

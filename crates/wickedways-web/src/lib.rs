@@ -19,6 +19,7 @@ pub mod map;
 pub mod mirror;
 pub mod narrator;
 pub mod parser;
+pub mod platform;
 pub mod pnc;
 pub mod savestore;
 pub mod scene_layout;

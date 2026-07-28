@@ -18,8 +18,8 @@ own behavior.
 
 Full docs are published to GitHub Pages at
 **<https://daniel0mullins.github.io/WickedWays/>** — a prose guide (this README,
-rendered) plus an API reference generated from the source TSDoc. The site is
-built with VitePress + TypeDoc and lives in `docs-site/`. Work on it locally with:
+rendered) plus getting-started pages. The site is built with VitePress and lives
+in `docs-site/`. Work on it locally with:
 
 ```bash
 pnpm docs:dev       # serve the site with hot reload
@@ -41,6 +41,13 @@ Everything that ships lives in `crates/`:
 | `wickedways-transport` | The multiplayer wire protocol (serde only, engine-free). |
 | `wickedways-server` | The axum room server: per-campaign table actors, seat-ownership auth, SQLite persistence. |
 | `wickedways-web` | The Dioxus web client — the shipped product (see the root `Dockerfile`). |
+
+One crate lives outside the workspace: **`desktop/`**, a thin native shell that runs the same
+client (`wickedways-web` with its `native-app` feature) in a desktop window via `dioxus`'s
+webview. It is workspace-`exclude`d so the workspace-wide gates need no system GTK/WebKit
+packages; build it with `cargo run --manifest-path desktop/Cargo.toml` (on Linux install
+`libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev` first). Single-player only for now — it has
+no multiplayer transport yet, and audio is silent pending a native backend.
 
 The content pipeline: a campaign is authored in TOML, compiled by
 `wickedways-author` into a **description** (world layout) plus a **catalog** (item

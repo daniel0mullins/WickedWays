@@ -23,3 +23,4 @@ playwright-report/
 /crates/wickedways-wasm/pkg
 crates/wickedways-wasm/pkg-node/
 crates/wickedways-wasm/pkg-web/
+/desktop/target

@@ -113,16 +113,14 @@ pub fn crt_app() -> Element {
     let mut audio_on = use_signal(|| false);
 
     // Auto-scroll the transcript to the newest line whenever the narration or view changes, so the
-    // latest output stays in view between the pinned status bar and dock.
+    // latest output stays in view between the pinned status bar and dock. `document::eval` reaches
+    // the DOM on both hosts (the browser page, or the desktop webview).
     use_effect(move || {
         let _ = narration.read();
         let _ = vm.read();
-        if let Some(el) = web_sys::window()
-            .and_then(|w| w.document())
-            .and_then(|d| d.get_element_by_id("transcript"))
-        {
-            el.set_scroll_top(el.scroll_height());
-        }
+        document::eval(
+            "const el = document.getElementById('transcript'); if (el) el.scrollTop = el.scrollHeight;",
+        );
     });
 
     let driver = use_coroutine(move |rx: UnboundedReceiver<Action>| async move {

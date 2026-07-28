@@ -118,63 +118,19 @@ pub struct Config {
     pub theme: String,
 }
 
-fn query_param(key: &str) -> Option<String> {
-    web_sys::window()
-        .and_then(|w| w.location().search().ok())
-        .and_then(|s| web_sys::UrlSearchParams::new_with_str(&s).ok())
-        .and_then(|p| p.get(key))
-        .filter(|v| !v.is_empty())
-}
+use crate::platform::{self, query_param};
 
-/// Whether a bare flag param is present (regardless of value) — `?debug`, `?debug=1`, etc.
-fn has_flag(key: &str) -> bool {
-    web_sys::window()
-        .and_then(|w| w.location().search().ok())
-        .and_then(|s| web_sys::UrlSearchParams::new_with_str(&s).ok())
-        .is_some_and(|p| p.has(key))
-}
-
-/// Toggle browser fullscreen for the whole page (the `fullscreen`/`fs` verb and the surfaces'
-/// fullscreen control). Enters fullscreen on the document element when none is active, else exits.
-/// Returns `true` if the page is entering fullscreen, `false` if exiting (or on no-op), so the caller
-/// can narrate the new state. A rejected request (e.g. no user gesture) is swallowed.
+/// Toggle fullscreen (the `fullscreen`/`fs` verb and the surfaces' fullscreen control) — the
+/// browser Fullscreen API, or the desktop window. Returns `true` if entering fullscreen,
+/// `false` if exiting (or on no-op), so the caller can narrate the new state.
 pub fn toggle_fullscreen() -> bool {
-    let Some(doc) = web_sys::window().and_then(|w| w.document()) else {
-        return false;
-    };
-    if doc.fullscreen_element().is_some() {
-        doc.exit_fullscreen();
-        false
-    } else if let Some(el) = doc.document_element() {
-        let _ = el.request_fullscreen();
-        true
-    } else {
-        false
-    }
+    platform::toggle_fullscreen()
 }
 
-/// Whether the page carries `?debug` — unlocks the demo/conformance campaigns in the launcher.
+/// Whether the launch carries the `debug` flag — unlocks the demo/conformance campaigns in the
+/// launcher.
 pub fn debug_enabled() -> bool {
-    has_flag("debug")
-}
-
-/// The default multiplayer socket URL: **same-origin and scheme-aware**, derived from the page
-/// (`wss://<host>/ws` on HTTPS, `ws://<host>/ws` otherwise) so a deployed client connects back to the
-/// one binary that served it — no hardcoded host/port, no mixed-content block over HTTPS. Falls back
-/// to the local-dev server when there's no page origin (non-browser / `file:`).
-fn default_ws() -> String {
-    web_sys::window()
-        .map(|w| w.location())
-        .and_then(|loc| {
-            let host = loc.host().ok().filter(|h| !h.is_empty())?;
-            let scheme = if loc.protocol().ok().as_deref() == Some("https:") {
-                "wss"
-            } else {
-                "ws"
-            };
-            Some(format!("{scheme}://{host}/ws"))
-        })
-        .unwrap_or_else(|| "ws://127.0.0.1:9000/ws".into())
+    platform::has_flag("debug")
 }
 
 /// A distinct per-tab player identity for multiplayer. An explicit `?token=` wins (so a GM joins as
@@ -191,10 +147,9 @@ pub fn ensure_player_identity() -> String {
     id
 }
 
-/// Six base-36 chars from `Math.random()` — enough to tell tabs apart, not a secret.
+/// Six base-36 chars of platform randomness — enough to tell tabs apart, not a secret.
 fn random_suffix() -> String {
-    let n = (js_sys::Math::random() * 2_176_782_336.0) as u64; // 36^6
-    let mut x = n;
+    let mut x = platform::random_u64() % 2_176_782_336; // 36^6
     let mut s = String::new();
     for _ in 0..6 {
         let d = (x % 36) as u32;
@@ -206,15 +161,16 @@ fn random_suffix() -> String {
 
 /// Read `?mode=&ws=…&campaign=…&token=…`, falling back to the same-origin socket + local-dev defaults.
 /// `?mode=single` (or `?mode=offline`) selects the offline single-player authority; anything else is
-/// multiplayer.
+/// multiplayer. A build without a multiplayer transport (the desktop app) is always single-player.
 pub fn read_config() -> Config {
     let mode = match query_param("mode").as_deref() {
+        _ if !platform::MULTIPLAYER => Mode::Single,
         Some("single" | "offline" | "solo") => Mode::Single,
         _ => Mode::Multi,
     };
     Config {
         mode,
-        ws: query_param("ws").unwrap_or_else(default_ws),
+        ws: query_param("ws").unwrap_or_else(platform::default_ws),
         campaign: query_param("campaign").unwrap_or_else(|| "demo".into()),
         token: query_param("token").unwrap_or_else(|| GM_IDENTITY.into()),
         theme: query_param("theme").unwrap_or_default(),
@@ -628,40 +584,15 @@ pub fn read_route() -> LauncherRoute {
     )
 }
 
-/// Mutate the current URL's query in place via `history.replaceState` (no reload), applying `f` to a
-/// live [`UrlSearchParams`]. Best-effort — silently skips in non-http environments. Shared by
-/// [`set_params`] / [`clear_params`].
-fn replace_query(f: impl FnOnce(&web_sys::UrlSearchParams)) {
-    let Some(win) = web_sys::window() else { return };
-    let Ok(href) = win.location().href() else {
-        return;
-    };
-    let Ok(url) = web_sys::Url::new(&href) else {
-        return;
-    };
-    // `url.searchParams` is spec-linked to `url.search`, so mutating it updates `url.href`.
-    f(&url.search_params());
-    if let Ok(history) = win.history() {
-        let _ = history.replace_state_with_url(&wasm_bindgen::JsValue::NULL, "", Some(&url.href()));
-    }
-}
-
-/// Merge `pairs` into the page URL's query (no reload), so the launcher's route is deep-linkable.
+/// Merge `pairs` into the launch params (the page URL's query on the web — no reload, so the
+/// launcher's route stays deep-linkable — or the desktop param store).
 pub fn set_params(pairs: &[(&str, &str)]) {
-    replace_query(|p| {
-        for (k, v) in pairs {
-            p.set(k, v);
-        }
-    });
+    platform::set_params(pairs);
 }
 
-/// Remove `keys` from the page URL's query (no reload) — used when returning to the menu.
+/// Remove `keys` from the launch params — used when returning to the menu.
 pub fn clear_params(keys: &[&str]) {
-    replace_query(|p| {
-        for k in keys {
-            p.delete(k);
-        }
-    });
+    platform::clear_params(keys);
 }
 
 /// Project the coordinator's replica into a [`ViewModel`] against the campaign catalog (no opened-loot
