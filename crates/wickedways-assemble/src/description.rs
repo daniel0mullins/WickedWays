@@ -6,8 +6,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::BTreeMap;
-#[cfg(feature = "ts")]
-use ts_rs::TS;
 
 use wickedways_core::world::snapshot::Stats;
 
@@ -17,115 +15,90 @@ pub type PartialStats = BTreeMap<String, f64>;
 pub type MaterialMap = BTreeMap<String, i64>;
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct CampaignOpts {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub max_rounds: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub base_encounter_chance: Option<i64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ArchetypeDef {
     pub id: String,
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub base_stats: Option<PartialStats>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub inventory_slots: Option<i64>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub immunities: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct RoomDef {
     pub name: String,
     pub description: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub dark: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub spawn_modifier: Option<i64>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub lights: Vec<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ExitDef {
     pub from: String,
     pub direction: String,
     pub to: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub behavior_key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub initial_state: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub one_way: Option<bool>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct MobDef {
     pub name: String,
     pub stats: Stats,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub room: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub inventory_slots: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub actions_per_round: Option<i64>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub drops: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub base_escape_chance: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub material_drops: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub light_averse: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub natural_attack: Option<Value>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct LootDef {
     pub name: String,
     pub room: String,
     pub items: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub description: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct CacheDef {
     pub name: String,
@@ -134,13 +107,11 @@ pub struct CacheDef {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct NpcDef {
     pub name: String,
     pub stats: Stats,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub room: Option<String>,
     pub behavior: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -148,31 +119,25 @@ pub struct NpcDef {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct FormationDef {
     pub key: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub weight: Option<i64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct SceneDef {
     pub room: String,
     pub key: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub phase: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub initial_state: Option<Value>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct MaterialsEntry {
     pub source: String,
@@ -180,27 +145,22 @@ pub struct MaterialsEntry {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ConditionEntry {
     pub key: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub narration: Option<Value>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct MechanicEntry {
     pub key: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub config: Option<Value>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct CampaignDescription {
     pub title: String,
@@ -211,7 +171,6 @@ pub struct CampaignDescription {
     #[serde(default)]
     pub rooms: Vec<RoomDef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub start_room: Option<String>,
     #[serde(default)]
     pub exits: Vec<ExitDef>,
@@ -238,16 +197,12 @@ pub struct CampaignDescription {
     #[serde(default)]
     pub mechanics: Vec<MechanicEntry>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub timeout_narration: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub ended_narration: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub chat: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub av: Option<Value>,
 }
 

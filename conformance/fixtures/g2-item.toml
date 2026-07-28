@@ -1,4 +1,4 @@
-# g2-item — the TOML twin of the g2-item oracle (g2-item.gen.test.ts).
+# g2-item — authors the g2-item golden pair.
 #
 # Authored in the G2 item surface: a usable consumable `[[items]]` descriptor plus
 # a `[behaviors.item.<key>]` `onUse` body that (Task 3) compile to the committed

@@ -62,10 +62,10 @@ impl Narrator {
             };
         }
 
-        // Loot ("Here: …") and exits ("Exits: …") live in the persistent bottom HUD, not the
-        // scrolling transcript. Only occupants stay in the transcript body. Defeated mobs linger
-        // in the room (KO is a downed status, not removal) but are no longer "present" — list
-        // only the living.
+        // Loot and floor items (the room-header "Here" chips) and exits (the dock) live in the
+        // persistent CRT panels, not the scrolling transcript. Only occupants stay in the
+        // transcript body. Defeated mobs linger in the room (KO is a downed status, not removal)
+        // but are no longer "present" — list only the living.
         let living: Vec<String> = vm
             .occupants
             .iter()
@@ -294,7 +294,7 @@ fn strip_leading_article(name: &str) -> &str {
     name
 }
 
-fn strip_trailing_period(s: &str) -> String {
+pub(crate) fn strip_trailing_period(s: &str) -> String {
     let trimmed = s.trim_end();
     trimmed
         .strip_suffix('.')

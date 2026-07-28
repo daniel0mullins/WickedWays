@@ -6,8 +6,6 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "ts")]
-use ts_rs::TS;
 
 use crate::error::ProceduralViolation;
 use crate::presentation::{MechanicCue, PresentationCue};
@@ -22,7 +20,6 @@ use crate::world::World;
 /// A single mob-on-player strike, surfaced for typed combat feedback.
 /// `amount` is an effective-stat delta (f64, per the stat model).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct MobAttack {
     pub name: String,
@@ -142,15 +139,12 @@ impl World {
 /// ABSENT on the error path; `error` carries the `ProceduralViolation` message
 /// verbatim. This shape is pinned by the conformance goldens.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ExecuteResult {
     pub cues: Vec<PresentationCue>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub mob_attacks: Option<Vec<MobAttack>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub error: Option<String>,
 }
 

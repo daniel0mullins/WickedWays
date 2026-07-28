@@ -1,4 +1,4 @@
-# g2-scene — the TOML twin of the g2-scene oracle (g2-scene.gen.test.ts).
+# g2-scene — authors the g2-scene golden pair.
 #
 # Authored in the G2 scene surface: a room with an attached enter-scene whose
 # `canPlay` predicate + `onEnter` statement body compile (Task 3) to the committed

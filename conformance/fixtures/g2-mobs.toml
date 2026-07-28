@@ -1,4 +1,4 @@
-# g2-mobs — the TOML twin of the g2-mobs oracle (g2-mobs.gen.test.ts). Authors the
+# g2-mobs — authors the g2-mobs golden pair. Authors the
 # two real hollow-house mobs (Wraith, Revenant), proving the [[mobs]] surface:
 # name/stats/room/drops/naturalAttack -> description.mobs. The mob rooms are
 # connected to the start room so neither is pruned. ASCII only.

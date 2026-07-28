@@ -5,8 +5,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::dice::roll;
 use crate::world::rng::Rng;
-#[cfg(feature = "ts")]
-use ts_rs::TS;
 
 // ---------------------------------------------------------------------------
 // Status enum
@@ -15,7 +13,6 @@ use ts_rs::TS;
 /// Adverse conditions a character can be afflicted with.
 /// Serde: `"ko"`, `"panic"`, `"confused"`, `"fear"` — matches `Status`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "lowercase")]
 pub enum Status {
     Confused,
@@ -272,52 +269,6 @@ impl<'de> Deserialize<'de> for Afflictions {
             shaken_off: w.shaken_off,
             immunity: w.immunity,
         })
-    }
-}
-
-// ---------------------------------------------------------------------------
-// ts-rs: manual TS impl for Afflictions (hand serialize prevents derive).
-// The emitted shape mirrors `AfflictionsSnapshot`:
-// { active: Partial<Record<Status,boolean>>, turnsActive: Partial<Record<Status,number>>,
-// shakenOff: Status[], immunity: Partial<Record<Status,number>> }
-// ---------------------------------------------------------------------------
-
-#[cfg(feature = "ts")]
-impl TS for Afflictions {
-    type WithoutGenerics = Self;
-
-    fn decl() -> String {
-        alloc::format!(
-            "type Afflictions = {{ active: Partial<Record<{status}, boolean>>; turnsActive: Partial<Record<{status}, number>>; shakenOff: {status}[]; immunity: Partial<Record<{status}, number>>; }};",
-            status = <Status as TS>::name(),
-        )
-    }
-
-    fn decl_concrete() -> String {
-        Self::decl()
-    }
-
-    fn name() -> String {
-        alloc::string::String::from("Afflictions")
-    }
-
-    fn inline() -> String {
-        alloc::format!(
-            "{{ active: Partial<Record<{status}, boolean>>; turnsActive: Partial<Record<{status}, number>>; shakenOff: {status}[]; immunity: Partial<Record<{status}, number>>; }}",
-            status = <Status as TS>::name(),
-        )
-    }
-
-    fn inline_flattened() -> String {
-        Self::inline()
-    }
-
-    fn output_path() -> Option<&'static std::path::Path> {
-        Some(std::path::Path::new("Afflictions.ts"))
-    }
-
-    fn dependencies() -> Vec<ts_rs::Dependency> {
-        vec![ts_rs::Dependency::from_ty::<Status>().unwrap()]
     }
 }
 

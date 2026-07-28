@@ -1,6 +1,4 @@
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "ts")]
-use ts_rs::TS;
 
 pub const MAX_STAT: f64 = 10.0;
 pub const MITIGATION_PER_POINT: f64 = 0.2;
@@ -9,7 +7,6 @@ pub const LIGHT_VULNERABILITY: f64 = 1.5;
 /// Pure inputs to the mitigation formula. Field names cross the boundary in
 /// camelCase — the wire shape is pinned by the conformance goldens.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export, rename_all = "camelCase"))]
 #[serde(rename_all = "camelCase")]
 pub struct DamageInput {
     pub attack_strength: f64,

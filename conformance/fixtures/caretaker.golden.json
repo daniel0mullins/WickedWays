@@ -61,9 +61,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -191,9 +191,9 @@
             "snapshot": {
               "name": "Caretaker",
               "stats": {
-                "energy": 1,
-                "health": 1,
-                "sanity": 1
+                "energy": 1.0,
+                "health": 1.0,
+                "sanity": 1.0
               }
             }
           },
@@ -368,9 +368,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -502,9 +502,9 @@
             "snapshot": {
               "name": "Caretaker",
               "stats": {
-                "energy": 1,
-                "health": 1,
-                "sanity": 1
+                "energy": 1.0,
+                "health": 1.0,
+                "sanity": 1.0
               }
             }
           },
@@ -679,9 +679,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -819,9 +819,9 @@
             "snapshot": {
               "name": "Caretaker",
               "stats": {
-                "energy": 1,
-                "health": 1,
-                "sanity": 1
+                "energy": 1.0,
+                "health": 1.0,
+                "sanity": 1.0
               }
             }
           },
@@ -989,9 +989,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -1129,9 +1129,9 @@
             "snapshot": {
               "name": "Caretaker",
               "stats": {
-                "energy": 1,
-                "health": 1,
-                "sanity": 1
+                "energy": 1.0,
+                "health": 1.0,
+                "sanity": 1.0
               }
             }
           },
@@ -1320,9 +1320,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -1469,9 +1469,9 @@
             "snapshot": {
               "name": "Caretaker",
               "stats": {
-                "energy": 1,
-                "health": 1,
-                "sanity": 1
+                "energy": 1.0,
+                "health": 1.0,
+                "sanity": 1.0
               }
             }
           },

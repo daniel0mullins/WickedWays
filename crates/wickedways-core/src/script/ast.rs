@@ -4,8 +4,6 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "ts")]
-use ts_rs::TS;
 
 use super::value::Value;
 use crate::stats::StatType;
@@ -13,7 +11,6 @@ use crate::stats::StatType;
 /// Binary operators — restricted to the IEEE-754 operations that are
 /// bit-identical between Rust and JS, plus comparisons and boolean logic.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "lowercase")]
 pub enum BinOp {
     Add,
@@ -32,7 +29,6 @@ pub enum BinOp {
 
 /// The closed expression set. Tagged on `kind` (codebase discriminant convention).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(
     tag = "kind",
     rename_all = "camelCase",
@@ -170,7 +166,6 @@ pub enum Expr {
 
 /// A statement in an effect/script body. Tagged on `kind`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(
     tag = "kind",
     rename_all = "camelCase",
@@ -199,7 +194,6 @@ pub enum Stmt {
 /// A template producing one closed `Effect`. Tagged on `kind`; mirrors the
 /// `Effect` set.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(
     tag = "kind",
     rename_all = "camelCase",
@@ -246,19 +240,16 @@ pub enum EffectTemplate {
 
 /// One `StatusField` template.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct FieldTemplate {
     pub label: String,
     pub value: Expr,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub emphasis: Option<Expr>,
 }
 
 /// The body of a `modify_damage` transform. Tagged on `kind`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(
     tag = "kind",
     rename_all = "camelCase",
@@ -282,37 +273,28 @@ pub enum DamageBody {
 /// The six mechanic hook bodies. Each is optional; a missing hook is a no-op
 /// at dispatch.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct MechanicHooks {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub on_round_start: Option<Vec<Stmt>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub on_round_end: Option<Vec<Stmt>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub on_turn_start: Option<Vec<Stmt>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub on_turn_end: Option<Vec<Stmt>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub on_action: Option<Vec<Stmt>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub modify_damage: Option<DamageBody>,
 }
 
 /// A campaign-authored mechanic behavior: a literal state seed, the six hooks,
 /// and custom actions keyed by action key.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct MechanicScript {
     /// Literal JSON state seed. Deliberately plain data, NOT an Expr.
-    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub init: serde_json::Value,
     #[serde(default)]
     pub hooks: MechanicHooks,
@@ -327,23 +309,19 @@ pub struct MechanicScript {
 /// A campaign-authored exit behavior: a `can_pass` predicate plus an optional
 /// narration script and pass/fail messages.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ExitScript {
     pub can_pass: Expr,
     #[serde(default)]
     pub run_script: Vec<Stmt>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub pass_message: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub fail_message: Option<String>,
 }
 
 /// A campaign-authored victory condition: a boolean `test` expression.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct VictoryScript {
     pub test: Expr,
@@ -353,21 +331,17 @@ pub struct VictoryScript {
 /// used or read. Both are effect bodies (`Vec<Stmt>`, `allow_pass=false`),
 /// identical in shape to mechanic hook bodies. Absent hook = no-op.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ItemScript {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub on_use: Option<Vec<Stmt>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub on_read: Option<Vec<Stmt>>,
 }
 
 /// How a dialogue entry matches a player prompt. Tagged on `kind`; `Exact` is
 /// full lowercased-string equality, `Fuzzy` is a token subset.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum DialogueMatch {
     Exact { text: String },
@@ -378,7 +352,6 @@ pub enum DialogueMatch {
 /// `response` (a DSL `Expr`), optional emitted effects, and a `once` latch.
 /// `match_` serializes as `"match"` (`match` is a Rust keyword).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct DialogueEntry {
     #[serde(rename = "match")]
@@ -394,7 +367,6 @@ pub struct DialogueEntry {
 /// `examine`), a `default` entry (bare `talk`), and ordered prompt→response
 /// `dialogue` entries.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct NpcScript {
     pub description: String,
@@ -409,23 +381,19 @@ pub struct NpcScript {
 /// bodies are effect bodies (`Vec<Stmt>`, `allow_pass=false`, `allow_emit=true`),
 /// and `can_play` is a predicate `Expr`. Absent hook = no-op.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct SceneScript {
     /// Predicate gating whether the scene may play; absent = always playable.
     #[serde(default)]
     pub can_play: Option<Expr>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub on_enter: Option<Vec<Stmt>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub on_exit: Option<Vec<Stmt>>,
 }
 
 /// A scripted behavior, tagged on `family` (mechanic / exit / victory / item / npc / scene).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(tag = "family", rename_all = "camelCase")]
 pub enum BehaviorScript {
     Mechanic { script: MechanicScript },

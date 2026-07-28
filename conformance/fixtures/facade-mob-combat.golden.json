@@ -92,9 +92,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 3
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 3.0
               },
               "id": "delver",
               "name": "Delver"
@@ -298,9 +298,9 @@
             "snapshot": {
               "name": "Brute",
               "stats": {
-                "energy": 4,
-                "health": 6,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 6.0,
+                "sanity": 4.0
               }
             }
           },
@@ -315,9 +315,9 @@
             "snapshot": {
               "name": "Shade",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },
@@ -497,9 +497,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 3
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 3.0
               },
               "id": "delver",
               "name": "Delver"
@@ -742,9 +742,9 @@
             "snapshot": {
               "name": "Brute",
               "stats": {
-                "energy": 4,
-                "health": 6,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 6.0,
+                "sanity": 4.0
               }
             }
           },
@@ -759,9 +759,9 @@
             "snapshot": {
               "name": "Shade",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },
@@ -958,9 +958,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 3
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 3.0
               },
               "id": "delver",
               "name": "Delver"
@@ -1245,9 +1245,9 @@
             "snapshot": {
               "name": "Brute",
               "stats": {
-                "energy": 4,
-                "health": 6,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 6.0,
+                "sanity": 4.0
               }
             }
           },
@@ -1262,9 +1262,9 @@
             "snapshot": {
               "name": "Shade",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },
@@ -1444,9 +1444,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 3
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 3.0
               },
               "id": "delver",
               "name": "Delver"
@@ -1759,9 +1759,9 @@
             "snapshot": {
               "name": "Brute",
               "stats": {
-                "energy": 4,
-                "health": 6,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 6.0,
+                "sanity": 4.0
               }
             }
           },
@@ -1776,9 +1776,9 @@
             "snapshot": {
               "name": "Shade",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },

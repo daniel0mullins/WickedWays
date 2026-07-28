@@ -3,22 +3,18 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "ts")]
-use ts_rs::TS;
 
 /// Opaque campaign-supplied asset reference (sound/image). Passthrough — the
 /// engine never inspects it. The seed campaign defines no sounds.
 pub type AssetRef = serde_json::Value;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 pub struct EntityRef {
     pub id: String,
     pub name: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct StatusField {
     pub label: String,
@@ -28,27 +24,22 @@ pub struct StatusField {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 pub struct MechanicCue {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub sound: Option<AssetRef>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 pub struct OutcomeNarration {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub sound: Option<AssetRef>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "kebab-case")]
 pub enum CampaignOutcome {
     Ongoing,
@@ -62,7 +53,6 @@ pub enum CampaignOutcome {
 /// `ActionHistoryEntry` variant — derive it via `From<&ActionHistoryEntry>`
 /// rather than naming both in parallel.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub enum ActionKind {
     Attack,
@@ -92,21 +82,18 @@ impl From<&crate::world::history::ActionHistoryEntry> for ActionKind {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum PresentationCue {
     Action {
         action: ActionKind,
         actor: EntityRef,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        #[cfg_attr(feature = "ts", ts(type = "unknown"))]
         sound: Option<AssetRef>,
     },
     Encounter {
         mob: EntityRef,
         room: EntityRef,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        #[cfg_attr(feature = "ts", ts(type = "unknown"))]
         sound: Option<AssetRef>,
     },
     Visibility {

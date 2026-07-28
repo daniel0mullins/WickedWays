@@ -46,5 +46,6 @@ running any of the above a second time must produce a **zero git diff**.
 Recorded inputs (seeds, command/op streams) are preserved verbatim; only
 outputs are rewritten.
 
-The `*.gen.test.ts` files alongside the fixtures are the retired TS
-generators, kept only until the TS tree is deleted; they no longer run.
+(The retired TypeScript generators that originally emitted this corpus have
+been deleted along with the TS engine; the Rust gates above are the only
+producers and consumers now.)

@@ -4,32 +4,26 @@ use crate::world::ids::{CharacterId, ItemId, RoomId};
 use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "ts")]
-use ts_rs::TS;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 pub struct RoomRef {
     pub id: RoomId,
     pub name: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 pub struct TargetRef {
     pub id: CharacterId,
     pub name: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 pub struct ItemRef {
     pub id: ItemId,
     pub name: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ActionHistoryEntry {
     Attack {

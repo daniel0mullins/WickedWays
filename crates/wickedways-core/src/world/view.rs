@@ -7,8 +7,6 @@ use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "ts")]
-use ts_rs::TS;
 
 use crate::error::ProceduralViolation;
 use crate::presentation::{AssetRef, CampaignOutcome};
@@ -20,7 +18,6 @@ use crate::world::World;
 
 /// The room fields shared by the widened ViewModel.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ThinRoom {
     pub id: String,
@@ -31,7 +28,6 @@ pub struct ThinRoom {
 
 /// A passable exit as the surface lists it.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ExitView {
     pub dir: crate::world::direction::Direction,
@@ -40,7 +36,6 @@ pub struct ExitView {
 
 /// An impassable (locked) exit.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct LockedDoorView {
     pub name: String,
@@ -51,7 +46,6 @@ pub struct LockedDoorView {
 
 /// A named entity that can appear in the scope (occupant, item, loot container).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ScopeEntity {
     pub id: String,
@@ -59,49 +53,37 @@ pub struct ScopeEntity {
     pub aliases: Vec<String>,
     pub kind: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub health: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub image: Option<AssetRef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub equippable: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub usable: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub has_lore: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub droppable: Option<bool>,
     /// `Some(true)` for a held item that can be scrapped (`destroyable`), so surfaces can offer the
     /// Break-down action. `None` for non-items (occupants, loot, caches, recipes).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub destroyable: Option<bool>,
     /// `Some(true)` for a durable item worn below full durability, so surfaces can offer Repair.
     /// `Some(false)` for a full or non-durable item; `None` for non-items.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub damaged: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub defeated: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub talkable: Option<bool>,
     /// `Some(true)` when this occupant is another player character (a party member sharing the room),
     /// so surfaces can show who you're playing alongside. `None` for mobs, NPCs, items, and loot.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub player: Option<bool>,
 }
 
 /// A loot container with its resolved contents.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct LootView {
     pub id: String,
@@ -112,7 +94,6 @@ pub struct LootView {
 
 /// The player's inventory in the widened ViewModel.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct Inventory {
     pub items: Vec<ScopeEntity>,
@@ -123,7 +104,6 @@ pub struct Inventory {
 
 /// Full turn/health/sanity status for the widened ViewModel.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct StatusView {
     pub location_name: String,
@@ -135,7 +115,6 @@ pub struct StatusView {
 
 /// One component of the shared material pool, for the HUD readout.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct MaterialView {
     pub component: String,
@@ -145,7 +124,6 @@ pub struct MaterialView {
 /// A recipe the party knows, with whether the pool can currently afford it. Drives
 /// the craft menu / `craft <name>` resolution.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct RecipeView {
     pub id: String,
@@ -155,7 +133,6 @@ pub struct RecipeView {
 
 /// The widened ViewModel.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ViewModel {
     pub room: ThinRoom,

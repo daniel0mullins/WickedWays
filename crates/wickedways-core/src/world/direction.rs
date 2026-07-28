@@ -1,10 +1,7 @@
 //! Compass directions — mirrors `Directions` (`:19-31`).
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "ts")]
-use ts_rs::TS;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "lowercase")]
 pub enum Direction {
     North,

@@ -4,11 +4,8 @@
 use crate::stats::StatType;
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "ts")]
-use ts_rs::TS;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "lowercase")]
 pub enum ItemType {
     Consumable,
@@ -20,7 +17,6 @@ pub enum ItemType {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "lowercase")]
 pub enum SlotKind {
     Hand,
@@ -33,7 +29,6 @@ pub enum SlotKind {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ItemProperties {
     pub equippable: bool,
@@ -41,24 +36,19 @@ pub struct ItemProperties {
     pub destroyable: bool,
     pub usable: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub droppable: Option<bool>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct Presentation {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub image: Option<crate::presentation::AssetRef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional, type = "unknown"))]
     pub sound: Option<crate::presentation::AssetRef>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct ItemDescriptor {
     pub name: String,
@@ -67,37 +57,25 @@ pub struct ItemDescriptor {
     pub modifier: i64,
     pub properties: ItemProperties,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub slot: Option<SlotKind>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub two_handed: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub emits_light: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub max_durability: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub lore: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub presentation: Option<Presentation>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub key_code: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub consume_on_use: Option<bool>,
     // inert until 3b/4/5 — typed when their subsystem lands:
-    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub recipe: serde_json::Value,
-    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub teaches: serde_json::Value,
-    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub immunities: serde_json::Value,
-    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub grants_immunity: serde_json::Value,
 }
 
@@ -106,7 +84,6 @@ pub struct ItemDescriptor {
 /// otherwise live only in the registry's `create` closure). Keyed by recipe key
 /// in the catalog's `recipes` map.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct RecipeMeta {
     pub id: String,
@@ -118,12 +95,10 @@ pub struct RecipeMeta {
     /// catalog. Optional + `skip_serializing_if` so recipe-free catalogs stay
     /// byte-stable; a materials recipe without it can be priced but not crafted.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[cfg_attr(feature = "ts", ts(optional))]
     pub output_item_key: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 pub struct Catalog {
     pub items: BTreeMap<String, ItemDescriptor>,
     pub aliases: BTreeMap<String, Vec<String>>,

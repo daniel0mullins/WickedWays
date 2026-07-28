@@ -1,4 +1,4 @@
-# g2-door — the TOML twin of the g2-door oracle (g2-door.gen.test.ts).
+# g2-door — authors the g2-door golden pair.
 #
 # A keyed door with a narration `runScript` (the real hollow-house `doorScript`
 # shape), proving this slice's two additions: the `runScript` field on an exit

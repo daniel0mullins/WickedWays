@@ -44,9 +44,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -179,9 +179,9 @@
             "snapshot": {
               "name": "Keeper",
               "stats": {
-                "energy": 3,
-                "health": 3,
-                "sanity": 3
+                "energy": 3.0,
+                "health": 3.0,
+                "sanity": 3.0
               }
             }
           },
@@ -306,9 +306,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -446,9 +446,9 @@
             "snapshot": {
               "name": "Keeper",
               "stats": {
-                "energy": 3,
-                "health": 3,
-                "sanity": 3
+                "energy": 3.0,
+                "health": 3.0,
+                "sanity": 3.0
               }
             }
           },

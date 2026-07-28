@@ -1,5 +1,4 @@
-# g2-status-bar — the TOML twin of the g2-status-bar oracle
-# (g2-status-bar.gen.test.ts). Authors the REAL hollow-house `status-bar` mechanic,
+# g2-status-bar — authors the g2-status-bar golden pair: the REAL hollow-house `status-bar` mechanic,
 # proving this slice's forms: `str`, `concat`, `length`, `first`, and the `Status`
 # effect + `field(label, value[, emphasis])` sub-grammar. The Sanity emphasis is the
 # ternary ladder <=3 critical / <=6 warn / else normal; the Round field is a bare

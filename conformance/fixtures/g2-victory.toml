@@ -1,4 +1,4 @@
-# g2-victory — the TOML twin of the g2-victory oracle (g2-victory.gen.test.ts).
+# g2-victory — authors the g2-victory golden pair.
 # Authors the THREE real hollow-house victory conditions, proving this slice's
 # forms: `some`, `every`, `includes`, the `element` subject (plus `first`/`length`
 # from the status-bar slice). ASCII only.

@@ -78,13 +78,39 @@ fn cap(dir: Direction) -> String {
     }
 }
 
+/// The items lying visibly in the room: scope entities of kind `"item"` that belong neither to
+/// the player inventory (items + keys) nor to any *closed* loot container's contents. Once a
+/// container is opened its contents are revealed and become floor items the player can take.
+/// Shared by the PnC scene (clickable hotspots) and the CRT room header ("Here" chips).
+pub fn floor_items(vm: &ViewModel) -> Vec<&ScopeEntity> {
+    let mut inventory_ids: BTreeSet<&str> = BTreeSet::new();
+    for i in &vm.inventory.items {
+        inventory_ids.insert(i.id.as_str());
+    }
+    for k in &vm.inventory.keys {
+        inventory_ids.insert(k.id.as_str());
+    }
+    let mut loot_content_ids: BTreeSet<&str> = BTreeSet::new();
+    for l in &vm.loot {
+        if !l.opened {
+            for c in &l.contents {
+                loot_content_ids.insert(c.id.as_str());
+            }
+        }
+    }
+    vm.scope
+        .iter()
+        .filter(|item| {
+            item.kind == "item"
+                && !inventory_ids.contains(item.id.as_str())
+                && !loot_content_ids.contains(item.id.as_str())
+        })
+        .collect()
+}
+
 /// Derive all clickable hotspots for the current scene from a [`ViewModel`].
 ///
-/// Order: exits, locked doors, occupants, loot containers, floor items.
-///
-/// "Floor items" are scope entities of kind `"item"` that belong neither to the player inventory
-/// (items + keys) nor to any *closed* loot container's contents. Once a container is opened its
-/// contents are revealed and become individually clickable floor items so the player can take them.
+/// Order: exits, locked doors, occupants, loot containers, floor items (see [`floor_items`]).
 pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
     let mut hotspots: Vec<Hotspot> = Vec::new();
 
@@ -202,46 +228,26 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
     }
 
     // ── Floor items ──────────────────────────────────────────────────────────────
-    let mut inventory_ids: BTreeSet<&str> = BTreeSet::new();
-    for i in &vm.inventory.items {
-        inventory_ids.insert(i.id.as_str());
-    }
-    for k in &vm.inventory.keys {
-        inventory_ids.insert(k.id.as_str());
-    }
-    let mut loot_content_ids: BTreeSet<&str> = BTreeSet::new();
-    for l in &vm.loot {
-        if !l.opened {
-            for c in &l.contents {
-                loot_content_ids.insert(c.id.as_str());
-            }
-        }
-    }
-    for item in &vm.scope {
-        if item.kind == "item"
-            && !inventory_ids.contains(item.id.as_str())
-            && !loot_content_ids.contains(item.id.as_str())
-        {
-            hotspots.push(Hotspot {
-                key: item.id.clone(),
-                label: item.name.clone(),
-                kind: HotspotKind::Item,
-                dir: None,
-                image: item.image.clone(),
-                actions: vec![
-                    ActionDescriptor::Examine {
-                        label: "Examine".into(),
+    for item in floor_items(vm) {
+        hotspots.push(Hotspot {
+            key: item.id.clone(),
+            label: item.name.clone(),
+            kind: HotspotKind::Item,
+            dir: None,
+            image: item.image.clone(),
+            actions: vec![
+                ActionDescriptor::Examine {
+                    label: "Examine".into(),
+                    target_id: item.id.clone(),
+                },
+                ActionDescriptor::Intent {
+                    label: "Take".into(),
+                    intent: Intent::Take {
                         target_id: item.id.clone(),
                     },
-                    ActionDescriptor::Intent {
-                        label: "Take".into(),
-                        intent: Intent::Take {
-                            target_id: item.id.clone(),
-                        },
-                    },
-                ],
-            });
-        }
+                },
+            ],
+        });
     }
 
     hotspots
@@ -689,6 +695,30 @@ mod tests {
             .iter()
             .filter(|h| h.kind == HotspotKind::Item)
             .any(|h| h.key == "candle-1"));
+    }
+
+    #[test]
+    fn floor_items_lists_only_visible_takeable_items() {
+        // In scope: a loose floor item, an inventory item, and a closed container's content.
+        let loose = ent("poker-1", "Iron Fire-Poker", "item");
+        let held = ent("journal-1", "Journal", "item");
+        let hidden = ent("candle-1", "Candle", "item");
+        let mut vm = mk_vm();
+        vm.scope = vec![loose.clone(), held.clone(), hidden.clone()];
+        vm.inventory = Inventory {
+            items: vec![held],
+            keys: Vec::new(),
+            equipped_names: Vec::new(),
+            slots: 6,
+        };
+        vm.loot = vec![LootView {
+            id: "box-1".into(),
+            description: "a box".into(),
+            opened: false,
+            contents: vec![hidden],
+        }];
+        let ids: Vec<&str> = floor_items(&vm).iter().map(|e| e.id.as_str()).collect();
+        assert_eq!(ids, vec!["poker-1"]);
     }
 
     // ── inventory_actions ────────────────────────────────────────────────────────
