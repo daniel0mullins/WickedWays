@@ -1,4 +1,4 @@
-# g2-exit-state — the TOML twin of the g2-exit-state oracle (g2-exit-state.gen.test.ts).
+# g2-exit-state — authors the g2-exit-state golden pair.
 # Proves the exit sub-fields the author previously dropped: a keyed door's `name` and
 # its `initialState` ({ unlocked = false }), atop the real doorScript behavior
 # (whose failMessage carries an em-dash, matched verbatim below).

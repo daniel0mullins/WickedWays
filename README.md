@@ -1,6 +1,6 @@
 # Wicked Ways
 
-![Wicked Ways](src/assets/images/wicked+ways.png)
+!Wicked Ways
 
 A turn-based tabletop RPG engine written in Rust, shipped as a wasm web client.
 Wicked Ways models a party-based horror campaign: a Game Master and player characters
@@ -10,10 +10,9 @@ type system (branded ids, closed effect enums) and at runtime (lifecycle guards 
 throw `ProceduralViolation` on illegal moves), and pinned by a golden-replay test
 corpus.
 
-The engine began life in TypeScript and has fully cut over to Rust; the remaining TS
-tree (`src/`, `packages/`) is legacy pending deletion. Sections below describing the
-game's *rules* apply to the engine as shipped; sections marked **Historical** describe
-the retired TS implementation.
+The engine began life in TypeScript and has fully cut over to Rust; the TS tree has
+been removed. The golden corpus under `conformance/fixtures/` pins the Rust engine's
+own behavior.
 
 ## Documentation site
 
@@ -62,7 +61,7 @@ gated in CI (`.github/workflows/checks.yml`, toolchain pinned by
 
 ### Campaign
 
-[`Campaign`](src/lib/campaign.ts) drives the turn loop and owns the campaign lifecycle:
+`Campaign` drives the turn loop and owns the campaign lifecycle:
 
 - It tracks a `party` of player characters, a `gm` (always one of the party members), the
   current `round`, and `maxRounds` (default `100`).
@@ -89,20 +88,20 @@ Character
 └── NonPlayerCharacter          dialogue trees
 ```
 
-- [`Character`](src/lib/character/character.ts) is the base: it holds `stats`, an `inventory`,
+- `Character` is the base: it holds `stats`, an `inventory`,
   a `campaign` reference, the current room, status effects, and the action-budget machinery.
   It implements the item-holder contract (`addToInventory` / `removeFromInventory`),
   `move(room)`, `takeDamage(...)`, crafting and gear (`craft`, `repair`, `equip`, `unequip`),
   the keyring (`transferKey`, `consumeKey`), and the turn lifecycle (`startTurn` / `endTurn`).
-- [`Combatant`](src/lib/character/combatant.ts) adds `attack(target)` (see Combat below) and
+- `Combatant` adds `attack(target)` (see Combat below) and
   is shared by player characters and mobs.
-- [`PlayerCharacter`](src/lib/character/player-character.ts) adds `joinCampaign()` and
+- `PlayerCharacter` adds `joinCampaign()` and
   co-located loot interaction: `openLootBox`, `takeFromLootBox`, `putInLootBox`.
-- [`Mob`](src/lib/character/mob.ts) is an enemy with a smaller default budget (2 actions,
+- `Mob` is an enemy with a smaller default budget (2 actions,
   2 inventory slots), a `drops` list, and `escape()` — a Health-gated roll (see Mob encounters
   below). It also tracks an `origin` (`"room"` / `"campaign"` / `"unbound"`) that controls
   whether it drops key items on defeat.
-- [`NonPlayerCharacter`](src/lib/character/non-player-character.ts) stays on `Character`
+- `NonPlayerCharacter` stays on `Character`
   directly and exposes `dialogue(prompt?)` over a list of dialogue blocks. Authored NPCs may
   start holding registry items via `.npc(name, { holds: [...] })`; each held item is seeded
   into both the NPC's inventory and the campaign items map under a deterministic id
@@ -114,7 +113,7 @@ way a hidden NPC "disappears" — and serializes only when `false` (omitted when
 
 ### Character archetypes
 
-Player characters may choose an [`Archetype`](src/lib/archetype.ts) during setup. Archetypes are
+Player characters may choose an `Archetype` during setup. Archetypes are
 authored, declarative descriptors registered on the campaign via `Campaign.registerArchetype`
 (idempotent by id, like recipes), and a character adopts one with
 `PlayerCharacter.selectArchetype(id)`. Selecting an archetype modifies the character's baseline
@@ -132,15 +131,15 @@ throws.
 
 ### Rooms, the map, and scenes
 
-- A [`Room`](src/lib/room.ts) has a description, a `loot` map, an `exits` map keyed by compass
+- A `Room` has a description, a `loot` map, an `exits` map keyed by compass
   `Direction`, occupants, and a `spawnModifier` (default 1; 0 = never spawns) that scales the
   campaign's base encounter chance. `Room.placeMob` seats a mob as a room-attached resident
   (origin `"room"`), enabling key-item drops on defeat. Entering or exiting a room fires any
-  [`Scene`](src/lib/scene.ts) registered for that phase.
+  `Scene` registered for that phase.
 - A room's `loot` and `exits` are **optional at construction** (both default to none). Loot
   containers can be added or removed afterwards with `Room.addLoot` / `Room.removeLoot`, and a
   room authored without exits is wired up later by `buildMap`.
-- [`buildMap(rooms, options)`](src/utils/build-map.ts) wires a list of rooms into a connected
+- `buildMap(rooms, options)` wires a list of rooms into a connected
   dungeon via a randomized **spanning tree** (every room reachable, `n - 1` edges). Exits are
   bidirectional (north↔south, etc.), a room is never connected to itself, and no room exceeds
   8 exits. `extraConnections` adds loops/shortcuts (an absolute count, or a fraction of `n - 1`
@@ -155,7 +154,7 @@ throws.
   default) that persists across room visits for the life of the scene: the `script` may mutate
   it and `preconditions` read it (read-only), enabling fire-once events, world-state flags, and
   visit counters. The state is internal to the scene — nothing outside reads it.
-- An [`Exit`](src/lib/exit.ts) is a **first-class shared object** registered in _both_ rooms'
+- An `Exit` is a **first-class shared object** registered in _both_ rooms'
   `exits` maps under the appropriate compass directions. A single `Exit` instance represents both
   the north door in room A and the south door in room B — mutation (e.g. flipping `state.unlocked`)
   is visible from either side immediately.
@@ -168,12 +167,12 @@ throws.
     `script`, and `passMessage`/`failMessage` strings. Doors that check for a matching key are a common
     pattern — the precondition checks the character's inventory (or the exit's own `state.unlocked` flag),
     and the script flips the flag permanently so subsequent characters pass without the key.
-  - **Registry.** For serializable exits, register an [`ExitBehavior`](src/lib/exit.ts) under a stable
+  - **Registry.** For serializable exits, register an `ExitBehavior` under a stable
     key in the `CampaignRegistry` via `registry.registerExit(key, behavior)`, or via `defineRegistry`'s
     `exits` map. The `behaviorKey` is stored in the snapshot; on deserialization the preconditions and
     script re-bind from the registry (just as scenes do).
-  - **Authoring.** When using [`authorTemplate`](src/lib/authoring/template-builder.ts) /
-    [`TemplateBuilder`](src/lib/authoring/template-builder.ts), call
+  - **Authoring.** When using `authorTemplate` /
+    `TemplateBuilder`, call
     `.exit(from, dir, to, { behaviorKey, name, initialState })` to wire a keyed door. The `name`
     field (e.g. `"Iron Door"`) is a display label readable by UIs; it survives serialize → deserialize.
     Plain exits (no `behaviorKey`) are just `.exit(from, dir, to)`.
@@ -183,11 +182,11 @@ throws.
 
 ### Darkness & light
 
-- A [`Room`](src/lib/room.ts) can be authored **dark** (the trailing `dark` constructor flag,
+- A `Room` can be authored **dark** (the trailing `dark` constructor flag,
   fixed at authoring; non-dark rooms are always lit). A dark room conceals its contents until lit,
   but its **exits stay visible** — navigation always works, so a party is never trapped by the
   dark.
-- A **light source** is any [`Item`](src/lib/inventory.ts) with `emitsLight`. A light is active
+- A **light source** is any `Item` with `emitsLight`. A light is active
   either **carried** (equipped in a hand by an occupant) or **placed** in the room
   (`Room.lightSources`, managed through the `ADD_LIGHT_SOURCE` / `REMOVE_LIGHT_SOURCE` seams).
   Lights are **persistent** — there is no fuel or burn-down; a placed light keeps a room lit
@@ -197,7 +196,7 @@ throws.
   derived, not stored: a non-dark room is always lit; a dark room is lit iff it holds a non-broken
   placed light **or** an occupant carries an equipped, non-broken light.
 - **The targeting gate.** In an unlit room, `attack`, `takeFromLootBox` (looting), and `harvest`
-  throw [`ProceduralViolation`](src/lib/util.ts) (via `requireVisibleTarget`) — you can't hit, loot,
+  throw `ProceduralViolation` (via `requireVisibleTarget`) — you can't hit, loot,
   or mine what you can't see — *unless* the actor `seesInDark`. Movement and the light actions
   themselves are **never** gated, and `openLootBox` (merely viewing contents) is **not** gated:
   concealment of the description / occupant / loot lists is a **renderer** concern driven by the
@@ -222,9 +221,9 @@ throws.
 ### Presentation assets & cues
 
 The engine is pure logic, but it carries optional hooks for a host renderer/audio layer
-(a "Play Surface"). Every presentable entity — characters, [`Room`](src/lib/room.ts),
-[`Item`](src/lib/inventory.ts), [`Loot`](src/lib/loot.ts), and material caches — accepts an
-optional [`Presentation`](src/lib/presentation.ts) descriptor (`{ image?, sound? }`, where each
+(a "Play Surface"). Every presentable entity — characters, `Room`,
+`Item`, `Loot`, and material caches — accepts an
+optional `Presentation` descriptor (`{ image?, sound? }`, where each
 value is an opaque host-interpreted `AssetRef`). The host reads `presentation.image` when it
 draws an entity.
 
@@ -242,14 +241,14 @@ back to the campaign's `actionSounds` default for that action kind (e.g. `move �
 none. The `visibility` cue carries no `sound` (it drives reveal/conceal, not audio). Subscriber
 errors are isolated so a faulty handler can't disrupt the turn loop.
 
-The `@wickedways/play` browser surface builds a full procedural audio layer on this cue stream
-(four SFX categories + a sanity-reactive ambient drone); see [`packages/play/README.md`](packages/play/README.md#audio).
+The web client builds a full procedural audio layer on this cue stream (four SFX
+categories + a sanity-reactive ambient drone); see `crates/wickedways-web/src/audio.rs`.
 
 ### Loot and inventory
 
-- [`Loot`](src/lib/loot.ts) is a fixed-capacity container (default: initial contents + 2 slots).
+- `Loot` is a fixed-capacity container (default: initial contents + 2 slots).
   `stowItem` throws `ContainerFullException` once full; `removeItems` extracts items by id.
-- [`Item`](src/lib/inventory.ts) carries a type (weapon, armor, accessory, consumable,
+- `Item` carries a type (weapon, armor, accessory, consumable,
   throwable, key), recipe, modifier, target stat, and properties
   (equippable/equipped/destroyable/usable, plus optional `droppable`), plus actions: `pickUp`,
   `equip`, `unequip`, `transfer`, `use`, `read`, `destroy`. Optional authored fields layer on
@@ -274,7 +273,7 @@ The `@wickedways/play` browser surface builds a full procedural audio layer on t
 
 The **Codex** is a party-wide record of every distinct kind of thing the party has
 encountered: mobs, items, keyring keys, rooms, recipes, and material types. It is owned by
-the campaign and consultable at any time by any player via [`campaign.codex`](src/lib/codex.ts)
+the campaign and consultable at any time by any player via `campaign.codex`
 (read-only); recording costs no action — it is a passive side-effect of play.
 
 Each entry stores a **frozen snapshot** of the thing's stable, descriptive fields (including
@@ -362,7 +361,7 @@ A character with no active afflictions reports `isNormal === true`.
 
 #### Consequences
 
-Once triggered, statuses impose hard rules enforced by [`Afflictions.gate`](src/lib/character/afflictions.ts)
+Once triggered, statuses impose hard rules enforced by `Afflictions.gate`
 inside `Character.attemptAction`:
 
 | Status | Allowed | Blocked |
@@ -386,8 +385,8 @@ partially. Each status has two clearing paths:
 1. **Stat recovery:** when the effective stat rises back above its threshold (e.g. Health above 0),
    `applyFromStats` clears the status immediately.
 2. **Early shake-off (per-turn roll):** at the start of each of the character's turns,
-   [`Afflictions.onTurnStart`](src/lib/character/afflictions.ts) rolls a
-   [`roll(100, rng)`](src/lib/dice.ts) d100 against an escalating threshold:
+   `Afflictions.onTurnStart` rolls a
+   `roll(100, rng)` d100 against an escalating threshold:
 
    | Status | 1st turn | 2nd turn | 3rd turn | Guaranteed by |
    |--------|----------|----------|----------|---------------|
@@ -399,7 +398,7 @@ partially. Each status has two clearing paths:
    re-trigger until the stat recovers past the threshold and drops again. Confused separately rolls its
    50 % per-action fizzle chance independently of the turn-start shake-off.
 
-Status lifecycle is managed by the [`Afflictions`](src/lib/character/afflictions.ts) unit, which
+Status lifecycle is managed by the `Afflictions` unit, which
 `Character` delegates to. All randomness goes through the injected `rng` (a `() => number` constructor
 option); passing a seeded RNG makes every roll deterministic for tests.
 
@@ -407,12 +406,12 @@ option); passing a seeded RNG makes every roll deterministic for tests.
 
 Passive and timed immunity both cover Panic, Fear, and Confused only — KO can never be immunized:
 
-- **Passive (equipped item):** an [`IItem`](src/lib/inventory.ts) with an `immunities?: Status[]` field
+- **Passive (equipped item):** an `IItem` with an `immunities?: Status[]` field
   confers immunity to those statuses while the item is equipped and intact. Consulted on every
   `applyFromStats` reconciliation, exactly like the accessory effectiveStat bonuses.
 - **Timed (consumable):** an `IItem` with a `grantsImmunity?: { statuses: Status[]; turns: number }` field
   grants immunity for `turns` of the holder's turns when the item is used. The grant goes through the
-  [`GRANT_IMMUNITY`](src/lib/inventory.ts) symbol seam (unforgeable by stray code); the timer ticks down
+  `GRANT_IMMUNITY` symbol seam (unforgeable by stray code); the timer ticks down
   in `Afflictions.onTurnStart` and the active status is cleared on grant.
 
 Both fields are plain declarative `Item` descriptor fields — no factory or subclass required.
@@ -579,80 +578,38 @@ saves round-trip cleanly.
 
 #### Authoring example
 
-The following condensed example is distilled from the `describe("Custom mechanics", …)`
-integration test (`src/integration.test.ts`), which is the ground-truth reference.
+Custom mechanics are authored in the TOML campaign format as scripted behaviors
+(compiled by `wickedways-author` into `catalog.behaviors`, resolved by the engine's
+mechanic registry at load). A doom-clock that ticks every round and fires a cue at a
+threshold:
 
-```ts
-// Imports are repo-relative: the engine has no barrel export — import directly from src/lib/…
-import type { JsonObject, Mechanic } from "./lib/mechanics/mechanic";
-import { defineRegistry } from "./lib/authoring/registry";
-import { authorTemplate } from "./lib/authoring/template-builder";
-import { startSession } from "./lib/authoring/orchestration";
+```toml
+[[mechanics]]
+key = "doom-clock"
 
-// 1. Typed state for the doom-clock mechanic
-interface DoomState extends JsonObject {
-  doom: number;
-  doomAt: number;
-}
-
-// 2. Doom-clock: increments `doom` each round; emits a cue at the threshold
-const doomMechanic: Mechanic<DoomState, { doomAt: number }> = {
-  initialState: (cfg) => ({ doom: 0, doomAt: cfg.doomAt }),
-  onRoundEnd(h) {
-    h.state.doom += 1;
-    const roll = h.roll(6);          // uses injected rng → deterministic
-    if (h.state.doom >= h.state.doomAt) {
-      return [{ kind: "cue", cue: { text: `Doom strikes! (roll: ${roll})` } }];
-    }
-  },
-};
-
-// 3. Fire-ward: if the damage target has the "ward" item equipped, zero the hit
-//    and halt the transformer chain (no later mechanic sees the damage)
-const fireWardMechanic: Mechanic<JsonObject, void> = {
-  initialState: () => ({}),
-  modifyDamage(d, h) {
-    const target = h.view.party.find((p) => p.id === d.target);
-    if (target?.hasEquipped("ward")) {       // "ward" is the item's behaviorKey
-      return { value: 0, final: true };      // lock + halt
-    }
-    return d.amount;                         // pass through unchanged
-  },
-};
-
-// 4. Register and opt in (order = precedence; fire-ward runs before doom)
-const reg = defineRegistry({
-  items:     { ward: () => makeWard() },
-  mechanics: { "fire-ward": fireWardMechanic, doom: doomMechanic },
-});
-
-const campaign = startSession(
-  authorTemplate("Crypt", reg, { maxRounds: 10 })
-    .room("start", { description: "A cold crypt." })
-    .startRoom("start")
-    .useMechanic("fire-ward")              // opt in; runs first
-    .useMechanic("doom", { doomAt: 3 }),   // opt in; runs second
-  { players: [{ name: "Hero", archetype: "scout" }], gm: 0 },
-);
+[behaviors.mechanic.doom-clock]
+init = { doom = 0 }
+onRoundEnd = '''
+  set state.doom = state.doom + 1
+  guard state.doom == 3
+  emit cue('The house exhales. Something below begins to climb.')
+'''
 ```
 
-After round 3 (`doomAt: 3`) the doom-clock emits its cue. When the Hero has the ward
-equipped and takes damage, `modifyDamage` returns `{ value: 0, final: true }` — the
-hit is zeroed and no further transformer runs. After a serialize/hydrate cycle the
-doom counter is preserved (`snap.campaign.mechanics` contains `{ key: "doom", state:
-{ doom: 2, doomAt: 3 } }`) and the mechanic continues firing from the restored state.
+Hollow House's `dread`, `storyteller`, and `status-bar` mechanics
+(`conformance/fixtures/hollow-house.toml`) are the shipped reference examples.
 
 ### Scripted behaviors (the ops DSL)
 
-Alongside hand-written TS `Mechanic`/`ExitBehavior`/victory closures, first-party
+Alongside compiled-in native `MechanicOp`/`ExitBehavior`/victory behaviors, first-party
 ops can be authored as **scripts**: a closed, loop-free, deterministic data-AST
 (values, expressions, statements) interpreted by the Rust core. Scripts are pure —
 they read a projection (`CampaignView`, the actor, the action, their own JSON
 state) and return effects / a boolean / an optional narration line; the engine
 applies the results through the same collect-then-apply pipeline as native ops.
 
-- **Authoring:** typed builders in `@wickedways/campaigns` (`packages/campaigns/src/scripted/builders.ts`)
-  emit the AST; the AST types are generated from Rust via ts-rs (`generated/bindings/`).
+- **Authoring:** the TOML `[behaviors.*]` tables (compiled by `wickedways-author`)
+  emit the AST via the ops-DSL expression parser.
 - **Storage/resolution:** scripts ride in the campaign catalog under
   `Catalog.behaviors[key]`; the engine resolves a behavior key against the native
   registry first, then the catalog (`family: "mechanic" | "exit" | "victory" | "item"`).
@@ -677,11 +634,10 @@ applies the results through the same collect-then-apply pipeline as native ops.
   iteration is ordered, string-from-number matches JS `Number.prototype.toString`
   byte-for-byte, and randomness only comes from the injected rng.
 - **Hollow House** is the reference user: its dread/storyteller/status-bar
-  mechanics, all three keyed doors (cellar/study/attic), all three victory conditions, and laudanum's `onUse`
-  effect are re-authored in `packages/campaigns/src/hollow-house/scripted.ts` and
-  gated byte-for-byte against the hand-written closures by the `conformance/scripted-*`
-  differential fixtures. The closures remain the conformance oracle: each script must
-  reproduce its TS counterpart exactly.
+  mechanics, all three keyed doors (cellar/study/attic), all three victory conditions,
+  and laudanum's `onUse` effect are authored as scripts in
+  `conformance/fixtures/hollow-house.toml` and pinned by the `scripted-*` replay
+  goldens.
 
 ### Mob encounters & loot
 
@@ -723,7 +679,7 @@ escape succeeds or fails, the action is recorded and the budget ticks.
 
 #### Roving formations and the encounter table
 
-`Campaign.addFormation` registers a weighted [`Formation`](src/lib/encounter-table.ts) — a
+`Campaign.addFormation` registers a weighted `Formation` — a
 named factory (`build`) and a positive `weight`. The table rejects any formation whose mobs
 carry key-item drops (roving mobs may not drop keys). `Campaign` is constructed with an
 optional `baseEncounterChance` (default 20, on a 0–100 scale) and an injectable `rng`.
@@ -755,11 +711,7 @@ then descriptor**: a compiled-in `FormationBehavior` wins if one is registered f
 otherwise the catalog descriptor is interpreted (`None` from neither is a `ProceduralViolation` at
 the spawn site). Descriptor mobs get deterministic ids (`campaign-mob:{name.toLowerCase()}`, then
 `…#{i+1}` for the second and later mobs), and their `drops` are seeded into the world by
-`maybe_spawn` right after `build` (a descriptor's `build` has no catalog access). The TS engine
-mirrors this via `descriptorToFormation` (`packages/campaigns/src/formations.ts`), so a data-built
-mob is byte-faithful across both engines. Because the `i64` fields (`baseEscapeChance`,
-`actionsPerRound`) are `bigint` in the TS bindings, any code that `JSON.stringify`s a catalog with
-descriptors must coerce BigInt → Number first (the play-runtime catalog stringify does this).
+`maybe_spawn` right after `build` (a descriptor's `build` has no catalog access).
 
 Hollow House exercises this path: its roving **Rats** are authored purely as descriptors (a single
 Rat and a Rat pair) rather than as a code factory. A Rat is a low farm mob (Health 2 / Sanity 2 /
@@ -770,7 +722,7 @@ is a legal roving-formation drop.
 ### Materials and crafting
 
 Crafting components are pooled at the **campaign** level and shared party-wide, not held per
-character. The pool ([`MaterialMap`](src/lib/inventory.ts)) is fed only through sanctioned paths
+character. The pool (`MaterialMap`) is fed only through sanctioned paths
 — destroying (scrapping) an item deposits its `recipe`, harvesting a material cache, and one-time
 `Campaign.claimMaterials(claimId, …)` grants (idempotent by `claimId`, so a cache can't be
 farmed). `Campaign.materials` exposes a read-only copy; `canAfford` / `withdrawMaterials` gate
@@ -779,7 +731,7 @@ the `DEPOSIT_MATERIALS` symbol.
 
 `Character.craft(recipeId)` turns a known recipe into an item and is a **free** action (no budget
 tick, no history); it returns `null` if the attempt fizzles while the character is Confused. A
-[`CraftingRecipe`](src/lib/inventory.ts) is discriminated into two tracks: a
+`CraftingRecipe` is discriminated into two tracks: a
 **materials** recipe withdraws from the pool, while a **keys** recipe consumes keys by code
 (validated atomically — every code must be fully available before any key is spent). Recipe
 knowledge is party-wide: picking up an item whose `teaches` field names a recipe calls
@@ -798,8 +750,8 @@ afford it.
 ### Equipment slots and handedness
 
 Equipping is bounded by named anatomy rather than an unlimited flag. An item declares a slot
-**kind** ([`SlotKind`](src/lib/equipment.ts): hand, finger, wrist, head, torso, legs, feet); a
-character has discrete, single-occupancy **named slots** ([`EquipmentSlot`](src/lib/equipment.ts))
+**kind** (`SlotKind`: hand, finger, wrist, head, torso, legs, feet); a
+character has discrete, single-occupancy **named slots** (`EquipmentSlot`)
 — head/torso/legs/feet, two wrists, two hands, and two ring fingers per hand.
 `Character.equip(item, targetSlot?)` validates that the item is held, equippable, and has a slot
 kind, then fills the first free named slot of that kind (or an explicit `targetSlot`),
@@ -814,7 +766,7 @@ can't be bypassed even through the item's own API.
 
 ### Keys
 
-Keys ([`createKey`](src/lib/inventory.ts)) are a distinct item type that lives on a character's
+Keys (`createKey`) are a distinct item type that lives on a character's
 keyring rather than in inventory slots. A key carries a `keyCode` matched by scene/lock gates and a
 `consumeOnUse` flag. Keys are **transfer-only**: the generic drop path rejects them, so the only way
 a key changes hands is `Character.transferKey(key, recipient)` (recorded as a pickup on the
@@ -824,14 +776,13 @@ recipient). `Character.consumeKey(key)` spends a key — removing it from the ke
 ### Dialogue
 
 An NPC's conversation is a **data-driven catalog behavior**: a
-[`BehaviorScript::Npc`](crates/wickedways-core/bindings/BehaviorScript.ts) resolved through the
-NPC's `npcBehaviorKey` against the campaign's `behaviors` map, byte-faithful across the Rust core
-and its TS oracle under the differential gate. The behavior is an
-[`NpcScript`](crates/wickedways-core/bindings/NpcScript.ts) `{ description, default, dialogue }` — a
+`BehaviorScript::Npc` resolved through the
+NPC's `npcBehaviorKey` against the campaign's `behaviors` map, pinned by the replay goldens. The behavior is an
+`NpcScript` `{ description, default, dialogue }` — a
 `description` (returned by `examine`), a `default`
-[`DialogueEntry`](crates/wickedways-core/bindings/DialogueEntry.ts) for a bare `talk`, and an
+`DialogueEntry` for a bare `talk`, and an
 ordered list of prompt→response `dialogue` entries. Each entry is `{ match, response, effects, once }`,
-where `match` is a [`DialogueMatch`](crates/wickedways-core/bindings/DialogueMatch.ts) —
+where `match` is a `DialogueMatch` —
 `{ kind: "exact", text }` or `{ kind: "fuzzy", tokens }`.
 
 **Matching selects exactly one entry.** The talk prompt is lowercased and tokenized — split on
@@ -859,7 +810,7 @@ accepts `talk`/`speak`/`ask` in a bare form (`talk to the keeper`) or with a quo
 action that returns the resolved NPC's `description`.
 
 **Authoring.** Assemble the behavior with the
-[`npc({ description, default, dialogue })`](packages/campaigns/src/scripted/builders.ts) builder,
+`npc({ description, default, dialogue })` builder,
 whose entries come from `entry({ match, response, effects?, once? })` paired with `exact("…")` or
 `fuzzy("tok", …)` match rules; it emits the `BehaviorScript::Npc` AST, registered in the campaign's
 `behaviors` map under the NPC's `npcBehaviorKey`.
@@ -877,572 +828,30 @@ otherwise unchanged.
 
 ### Serialization (save/load)
 
-A whole in-play campaign round-trips through a plain-data `CampaignSnapshot`
-([`src/lib/serialization/`](src/lib/serialization/)). `serializeCampaign(campaign)` walks the live
-object graph — the party plus every room reachable from a party member's `currentRoom` via `exits`
-(BFS), and those rooms' occupants, loot, material caches, and all characters' inventory/keyring/
-equipment items — and emits a self-contained, JSON-friendly snapshot (`schemaVersion`, campaign
-core state, rooms, characters, items, loot, material caches, codex). Each entity exposes a gated
-`[SERIALIZE]` seam; a non-key item lacking a registered behavior key throws there, so an
-unrestorable snapshot fails fast at save time. (Rooms that no party member occupies and that
-nothing links to are not captured — reachable-from-party is the playable world for save/load.)
-Affliction state (active statuses, per-status turn counters, shaken-off set, and immunity stacks)
-is captured in full; a restored campaign is indistinguishable mid-turn from the original.
-
-**Behavior keys.** Closures can't be serialized; instead, every `Scene`, non-key `Item`,
-`CraftingRecipe`, and `EncounterTable` formation carries a `behaviorKey` — a stable string that
-maps back to its author-supplied constructor at restore time. Key items (`keyCode` set) are exempt:
-they are rebuilt from their stored `name`/`keyCode`/`consumeOnUse` fields via `createKey` without
-a registry lookup.
-
-**`CampaignRegistry`** is the author-side lookup table that `deserializeCampaign` requires. It
-holds four namespaces registered before the first `deserializeCampaign` call:
-
-| Method | What it registers |
-|---|---|
-| `registerScene(key, behavior)` | `SceneBehavior` (preconditions + script) |
-| `registerRecipe(key, recipe)` | `CraftingRecipe` |
-| `registerFormation(key, behavior)` | `FormationBehavior` (mob-spawning factory) |
-| `registerItem(key, factory)` | `() => Item` factory |
-
-`deserializeCampaign(data, { registry, rng })` rebuilds the campaign in **two passes**. The
-`rng` is re-injected fresh (never serialized); defaults to `Math.random` if omitted. Pass 1
-constructs and indexes every entity with placeholder references (campaign shell → archetype/recipe
-catalog → items → loot → caches → rooms → characters); pass 2 wires all cross-references through a
-`HydrateContext` id→instance index. The catalog is restored before characters hydrate so a player
-can resolve its archetype. Fail-fast throughout: an unknown `schemaVersion` is rejected by
-`migrate`, and any dangling id reference throws from the `HydrateContext` resolvers. A restored
-campaign keeps playing identically — the same turn position, acted-this-round set, materials,
-claims, codex, and encounter table.
-
-```ts
-// 1. Register every behavior key before deserializing.
-const registry = new CampaignRegistry();
-registry.registerItem("sword", () => createSword());
-registry.registerScene("ambush", ambushBehavior);
-registry.registerFormation("wolf-pack", wolfPackFormation);
-registry.registerRecipe("sword-recipe", swordRecipe);
-
-// 2. Serialize an in-play campaign to a plain-data snapshot.
-const snap = serializeCampaign(campaign); // throws if any behaviorKey is missing
-const json = JSON.stringify(snap);
-
-// 3. Deserialize — supply the same registry and a fresh rng.
-const snap2 = JSON.parse(json) as CampaignSnapshot;
-const restored = deserializeCampaign(snap2, { registry });
-// restored is a live Campaign, identical to campaign at the moment of save.
-```
-
-## Campaign authoring
-
-> **Historical (TypeScript engine).** This section documents the retired TS authoring API (typed registry, fluent template builder). Campaigns are now authored in TOML and compiled by `wickedways-author` — see *Architecture* above and the `conformance/fixtures/*.toml` examples.
-
-The authoring layer lets you define a reusable campaign **template** — a complete
-world with rooms, exits, mobs, loot, material caches, archetypes, and starting
-recipes — and then turn it into a live, playable **instance** once players join. The
-two-stage split means the same template can seed any number of parallel runs, and the
-builder validates the whole description before constructing a single engine object.
-
-### Templates vs. instances
-
-A **template** is a player-less, not-yet-begun description of the game world. It is
-author-controlled and reusable: no players are joined, `beginCampaign` has not been
-called, and the state that exists (rooms, mobs, loot, caches, pre-seeded recipes and
-materials) is stable and can be snapshotted to a `CampaignSnapshot` via `.toSnapshot()`.
-
-An **instance** is a copy of that template world with a fresh campaign id (produced by
-`instantiate`), ready to receive players. A **session** is an instance that has been
-populated with players, had a GM assigned, and had `beginCampaign` called — i.e. it is
-live and ticking. `startSession` collapses the instance + join + begin steps into one
-call for the common case.
-
-### The typed registry
-
-[`defineRegistry`](src/lib/authoring/registry.ts) wraps the serialization
-`CampaignRegistry` and lifts its key literals into the type:
-
-```ts
-const reg = defineRegistry({
-  items: {
-    "rusty-sword": makeRustySword,   // () => Item
-    "torch":       makeTorch,
-  },
-  recipes: {
-    "sword-recipe": swordRecipe,     // CraftingRecipe
-  },
-  // scenes and formations use the same CampaignRegistry under the hood
-  scenes:     { "ambush": ambushBehavior },
-  formations: { "wolf-pack": wolfPackFormation },
-});
-```
-
-The return type is a `TypedRegistry<"rusty-sword" | "torch", "sword-recipe">`. Any
-builder constructed from `reg` will reject an unknown key — like `"nope"` for an item
-or `"unknown-recipe"` for a recipe — at compile time, not just at runtime. The
-underlying `CampaignRegistry` is unchanged and is consumed verbatim by the server /
-`Authority` / serialization path.
-
-**Behaviors stay code, archetypes are data.** Scene scripts, formation factories, and
-item factories are hand-written TypeScript registered under a stable `behaviorKey`. The
-`behaviorKey` is what the serialization layer uses at restore time, so renaming a key
-without migrating snapshots is a breaking change. Archetypes, by contrast, are plain
-data (`ArchetypeDef` — id, name, stat modifiers, inventory slots, immunities) and have
-no closure to register; they travel as data in the `CampaignTemplateDescription` and
-are re-registered from that data each time the template is assembled.
-
-### The fluent template builder
-
-[`authorTemplate(title, registry, opts?)`](src/lib/authoring/template-builder.ts)
-returns a chainable `TemplateBuilder` typed over the registry's key unions. Every
-method returns `this`, so calls can be chained in any order — **forward references are
-legal**: you can declare an exit before the rooms it references; `assemble` resolves
-everything at build time.
-
-```ts
-import { authorTemplate, defineRegistry } from "./src/lib/authoring";
-
-const reg = defineRegistry({
-  items: { "torch": makeTorch, "rusty-sword": makeRustySword },
-  recipes: { "sword-recipe": swordRecipe },
-});
-
-const builder = authorTemplate("The Crypt", reg, { maxRounds: 50, baseEncounterChance: 25 })
-  .archetype({ id: "delver", name: "Delver", baseStats: { Health: 12 } })
-  .room("entrance", { description: "A damp stone corridor.", dark: true, lights: ["torch"] })
-  .room("vault",    { description: "A collapsed vault." })
-  .startRoom("entrance")
-  .exit("entrance", Directions.North, "vault")
-  .mob("Goblin", {
-    stats: { Health: 6, Sanity: 8, Energy: 8 },
-    room: "vault",
-    drops: ["rusty-sword"],
-  })
-  .loot("supply crate", { room: "entrance", items: ["torch"] })
-  .cache("iron vein",   { room: "vault",    materials: { iron: 4 } })
-  .recipe("sword-recipe")
-  .materials("starting-grant", { wood: 2 });
-```
-
-**`.build()`** validates the entire description (collecting *all* problems into one
-`AuthoringError`) and then constructs a live, player-less, not-yet-begun `Campaign`
-via the engine's normal constructors in the required order: campaign shell → archetypes
-→ caches → loot → mobs → rooms → room-mob placement → exits → recipes → materials.
-Any dangling room reference, unknown item key, or duplicate name surfaces here rather
-than silently misbehaving at runtime.
-
-**`.toSnapshot()`** does the same assembly and then serializes the player-less world
-into a `CampaignSnapshot` whose BFS is rooted from the template's rooms (not from
-party members, since there are none). The snapshot is JSON-serializable and suitable
-for storage or transmission.
-
-### Orchestration: `instantiate` and `startSession`
-
-[`instantiate(template)`](src/lib/authoring/orchestration.ts) clones a template
-snapshot and assigns a fresh `CampaignId`, leaving all entity ids (rooms, items, loot,
-caches, mobs) unchanged. Each call produces an isolated **instance genesis** — suitable
-as the `genesisFor` argument to `Authority` or the initial record for `CampaignStore`:
-
-```ts
-const template = builder.toSnapshot();             // one-time build
-const genesis  = instantiate(template);            // fresh campaign id each call
-const authority = new Authority(genesis, { registry: reg });
-```
-
-[`startSession(builder, { players, gm, startRoom? })`](src/lib/authoring/orchestration.ts)
-is the high-level entry point for the common case: it assembles the template, joins
-each player via the existing `joinCampaign` → `selectArchetype` → `move` sequence,
-assigns the GM, and calls `beginCampaign` — returning a fully started `Campaign`:
-
-```ts
-const campaign = startSession(builder, {
-  players: [
-    { name: "Ada", archetype: "delver" },
-    { name: "Ben", archetype: "delver" },
-  ],
-  gm: 0,           // index into players array
-});
-// campaign.started === true; campaign.party.length === 2
-```
-
-`startSession` takes the builder (not a pre-built `Campaign`) so it can resolve the
-`startRoom` name to the live `Room` instance produced by `assemble`, without exposing
-that mapping through the engine itself.
-
-### Victory conditions
-
-A campaign tracks its resolution through the `outcome` property, which starts `"ongoing"` and
-transitions exactly once to one of four terminal states:
-
-| Outcome | When it fires |
-|---------|---------------|
-| `"won"` | A win condition's predicate returned `true` at round end |
-| `"lost"` | A loss condition's predicate returned `true` at round end |
-| `"timed-out"` | `round` reached `maxRounds` and no condition fired |
-| `"ended"` | The GM called `campaign.endCampaign()` manually |
-
-`campaign.finished` is a derived boolean (`outcome !== "ongoing"`) — no separate field to keep
-in sync on load.
-
-**Round-end evaluation.** At the close of every round — after the last party member calls
-`nextPlayer()` — the engine calls `resolveOutcome`. Loss conditions are tested before win
-conditions; if one fires, the campaign finishes immediately and wins are not checked. The
-`maxRounds` ceiling resolves to `"timed-out"` only if no win or loss condition fired in that
-same round.
-
-**Conditions are predicates re-attached by key.** A win or loss condition is a function
-`(campaign: ICampaign) => boolean` registered in the `CampaignRegistry` under a stable string
-key via `defineRegistry({ conditions: { "key": predicate } })`. The predicate is *not*
-serialized — only its key and authored narration are stored. On reload, `deserializeCampaign`
-looks the predicate up in the registry by key (the same mechanism as item factories and recipes),
-so a restored campaign evaluates conditions identically to the original. The key is exposed as
-`campaign.outcomeReason` after the campaign finishes.
-
-**Outcome prose.** Each condition can carry an `OutcomeNarration` (`{ text?, sound? }`) — plain,
-surface-agnostic authored content. The engine does not render text or play sounds; it stores the
-prose alongside the condition and surfaces it in two ways so every play surface can reach it:
-
-- **`resolution` cue** — emitted once at the moment of resolution, carrying `{ outcome, reason, narration }`.
-  Subscribe with `campaign.onCue(handler)`.
-- **`campaign.outcomeNarration`** — a derived getter that re-derives the same prose from the
-  stored conditions on every access, so a polled or reloaded campaign reports the same ending
-  without replaying any cue.
-
-The timeout and manual-end paths have their own prose slots: `.onTimeout(narration)` and
-`.onEnd(narration)` on the builder.
-
-The Rust engine core (`crates/wickedways-core`) mirrors this: round-end evaluation resolves
-`won` / `lost` / `timed-out` (loss conditions before win, then the `maxRounds` ceiling) and the
-manual `endCampaign()` resolves `ended`, each emitting the same `resolution` cue with the
-authored outcome narration.
-
-**Authoring.** On the `TemplateBuilder` returned by `authorTemplate`:
-
-```ts
-const reg = defineRegistry({
-  items: { "coin": makeCoin },
-  conditions: {
-    "reached-exit":  (c) => c.party[0]?.currentRoom?.name === "exit",
-    "party-wiped":   (c) => c.party.every((p) => p.stats[StatType.Health] <= 0),
-  },
-});
-
-const builder = authorTemplate("Escape", reg)
-  .room("start", { description: "A locked cell." })
-  .room("exit",  { description: "Freedom." })
-  .startRoom("start")
-  .exit("start", Directions.North, "exit")
-  .winWhen("reached-exit", { text: "You escape into the night." })
-  .loseWhen("party-wiped", { text: "The darkness claims you all.", sound: "defeat.ogg" })
-  .onTimeout({ text: "Time runs out. The dungeon wins." });
-```
-
-`.winWhen(key, prose?)` and `.loseWhen(key, prose?)` each accept a condition key that must be
-registered in the registry (compile-time-checked by `TypedRegistry`). `.onTimeout(prose)` and
-`.onEnd(prose)` set the fallback prose for those two resolution paths.
-
-### Entity id scheme
-
-All authored entities carry **content-derived ids** — deterministic, human-readable strings that
-are stable across separate `assemble` calls and safe when multiple campaigns are live in the same
-process:
-
-| Entity | Id form | Example |
-|--------|---------|---------|
-| Campaign | `campaign:<title>` | `campaign:The Crypt` |
-| Room | `room:<name>` | `room:vault` |
-| Mob | `mob:<name>` | `mob:Goblin` |
-| NPC | `npc:<name>` | `npc:Innkeeper` |
-| Exit | `exit:<a>\|<b>` (endpoints sorted) | `exit:start\|vault` |
-| Loot cache | `loot:<name>` | `loot:supply crate` |
-| Material cache | `cache:<name>` | `cache:iron vein` |
-| Scene | `scene:<room>:<key>:<phase>` | `scene:vault:ambush:enter` |
-| Player character | `player:<name>` | `player:Ada` |
-| Item in loot | `loot:<cache>:item#<n>` | `loot:supply crate:item#0` |
-| Item as mob drop | `mob:<mob>:drop#<n>` | `mob:Goblin:drop#0` |
-| Room light source | `room:<room>:light#<n>` | `room:vault:light#0` |
-
-Multi-instance items (drops, loot contents, light sources) use `${parentId}:role#index` so
-repeated uses of the same item key remain unique within a parent but collide if the index
-shifts — authors should treat item order as stable within a template.
-
-The campaign id (`campaign:<title>`) is mutable: a multi-campaign host may call `instantiate`
-and override the id for global uniqueness without affecting any other entity id.
-
-Runtime-minted entities (status effects, transient spawn, etc.) derive
-their ids from mint context rather than authored names, keeping the scheme consistent while
-accommodating entities that have no authored description.
-
-## Swappable campaigns & play surfaces
-
-> **Historical (TypeScript engine).** This section documents the retired TS `packages/` runtime (manifests, play surfaces). The shipped client is the Dioxus app in `crates/wickedways-web`, which carries the CRT and point-and-click surfaces natively.
-
-The [`@wickedways/play`](packages/play/README.md) browser experience is built on three
-workspace packages that keep the runtime, the surface implementations, and the campaign
-content fully decoupled. See [`packages/play/README.md`](packages/play/README.md) for
-the full topology and per-surface documentation.
-
-### Package overview
-
-| Package | Role |
-|---------|------|
-| `@wickedways/play-runtime` | Surface-independent runtime, audio engine, launcher, and **all contracts**: `CampaignManifest`, `PlaySurface`, `Theme`, `AudioDirector`, `SoundPack`, `CampaignAudio`. Zero Hollow-House / surface references. Its `GameSession` now delegates every turn to the Rust WASM `Authority` (see *The stateful WASM `Authority`* below); the old `session.campaign` live-object getter is gone — surfaces and audio read the JSON `ViewModel`. |
-| `@wickedways/play-surface` | Both play surfaces under one package, subpath-exported as `@wickedways/play-surface/crt` (CRT terminal) and `@wickedways/play-surface/pnc` (point-and-click). A `src/shared/` module (Narrator, map-view) is reused by both surfaces. |
-| `@wickedways/campaigns` | All player-facing campaigns under `src/<slug>/`; subpath-exported as `@wickedways/campaigns/hollow-house` and `@wickedways/campaigns/seed`. |
-| `@wickedways/play` | Thin deploy shell — registers campaigns + surfaces, calls `bootLauncher`. `Dockerfile` and `nginx.conf` ship from here. |
-
-Dependency direction is acyclic: `play` → `play-runtime`, `play-surface`, `campaigns` →
-(engine). `play-runtime` defines the `PlaySurface` contract but never imports a concrete
-surface — the shell injects the available surfaces at startup. Campaign packages depend on the
-engine for content and are type-only on surface-specific types (e.g. `import type { CrtTheme }`),
-so campaign code stays node-testable and DOM-free.
-
-### `CampaignManifest`
-
-The contract between a campaign and the launcher. All fields are in
-`packages/play-runtime/src/manifest.ts`:
-
-```ts
-interface SurfaceChoice {
-  id: string;              // PlaySurface id, e.g. "crt-terminal" or "point-and-click"
-  themes?: readonly Theme[]; // themes for THIS surface; themes[0] is the default
-}
-
-interface CampaignManifest {
-  slug: string;           // "hollow-house" — registry key + ?campaign= deep-link value
-  title: string;          // "The Hollow House" — shown in the campaign menu
-  blurb: string;          // one/two-line description for the menu
-  intro: string;          // welcome-screen body text
-  buttonText?: string;    // start button label; defaults to "Enter <title>"
-
-  // Engine wiring — factories so restart re-boots from a clean template
-  builder: () => TemplateBuilder<string, string>;
-  registry: () => CampaignRegistry;
-  aliases: AliasMap;      // verb/noun aliases for the parser
-  playerName: string;     // player character display name
-  archetype: string;      // archetype id applied at session start
-
-  // Optional: omit for defaults
-  surfaces?: SurfaceChoice[]; // surfaces[0] is default; omit → one default "crt-terminal"
-  audio?: CampaignAudio;  // director + soundpacks; omit for flat bed + generic SFX
-}
-```
-
-`builder`/`registry` are **factories** because `GameSession.restart` re-boots from them.
-
-Each `SurfaceChoice` carries its own `themes` list so the CRT and point-and-click surfaces
-can ship independent palettes (e.g. Hollow House ships `CrtTheme[]` for `"crt-terminal"` and
-`PncTheme[]` for `"point-and-click"`). A campaign that lists ≥2 surfaces triggers the
-surface picker in the launcher (see below).
-
-### `PlaySurface` contract
-
-A surface takes a live `GameSession` and renders/drives it. The runtime owns the session,
-view models, cues, audio, and save store; the **surface** owns input→intent, the turn loop,
-DOM rendering, and its own control UI (mute toggle, soundpack switcher, theme switcher, map):
-
-```ts
-interface PlaySurface {
-  id: string;            // e.g. "crt-terminal" or "point-and-click"
-  label: string;         // e.g. "CRT Terminal"
-  description?: string;  // one-line description for the surface picker
-  defaultTheme: Theme;   // fallback when a campaign supplies no themes for this surface
-  mount(args: MountArgs): SurfaceHandle;
-}
-interface MountArgs {
-  app: HTMLElement;  session: GameSession;  manifest: CampaignManifest;
-  themes: Theme[];   // choice.themes ?? [surface.defaultTheme] — always non-empty
-  audio: AudioRuntime;
-  onExit(): void;          // "back to menu"
-  initialThemeId?: string; // from ?theme= URL param; surface falls back to themes[0]
-  onThemeChange?(id: string): void; // surface fires this to persist ?theme= in the URL
-}
-interface SurfaceHandle { unmount(): void }
-```
-
-### Surface picker and URL params
-
-When a campaign's `surfaces` array has ≥2 entries the launcher shows a `<surface-picker>`
-(from `play-runtime`) that lets the player choose before the game starts. Deep-linking is also
-supported: `?campaign=<slug>&surface=<id>` bypasses the picker and mounts directly.
-
-`?theme=<id>` persists the active theme across page reloads. The surface fires `onThemeChange`
-whenever the player switches themes; the launcher writes `?theme=`; on next mount `initialThemeId`
-is passed back so the surface can restore the choice. Both params are cleared when the player
-returns to the menu.
-
-### CRT terminal (`@wickedways/play-surface/crt`)
-
-The CRT surface renders through a **Lit component tree** driven by the `mountTerminal`
-controller function (`packages/play-surface/src/crt/controller.ts`). `lit` (~5 KB, no
-build step) is a declared dependency of both `play-runtime` (the `<campaign-menu>` and
-`<surface-picker>` launcher components) and `play-surface` (both surfaces); the engine
-packages remain dependency-free.
-
-**Why Lit?** Lit's template-based rendering with retained DOM cooperates naturally with
-the surface's imperatively-animated, append-only DOM — the typewriter, the growing
-transcript, the focused input. A virtual-DOM library would fight those patterns; Lit
-leaves them alone. The transcript is intentionally appended imperatively (outside Lit's
-reactive render) for exactly this reason.
-
-**Component tree.** `mountTerminal` builds this tree into the host element:
-
-```
-<crt-housing>                   frame + CRT artifacts (scanlines, sweep); screen + bezel slots
-  <crt-welcome slot="screen">   title card + start button
-  <crt-game    slot="screen">   game area; composes:
-    <crt-transcript>            append-only typewriter scroll
-    <crt-hud>                   persistent loot / inventory / exits bar
-    <crt-status>                location + campaign-defined stat readouts
-    <crt-prompt>                focused command input
-  <crt-bezel   slot="bezel">    audio toggle, soundpack/theme switchers, back button
-```
-
-The launcher (before a campaign is selected) renders `<campaign-menu>` (from `play-runtime`).
-
-**Logic / view boundary.** `mountTerminal` owns all behavior — session, parser, narrator,
-audio, map model, status cues, and the turn loop. The components are purely presentational.
-Data flows **down** via reactive properties and method calls; intent flows **up** via
-`composed` `CustomEvent`s: `enter`, `command`, `fill-input`, `toggle-audio`,
-`soundpack-change`, `theme-change`, `exit` (from the CRT components), and `select` (from
-`<campaign-menu>`).
-
-**Theming.** `CrtTheme` (palette/fonts/effects), `applyTheme`, and the CSS custom-property
-mechanism (`--crt-*`) are unchanged. Properties are applied on the app root and pierce shadow
-boundaries, so switching a theme re-applies them with no component re-render. The Hollow House
-ships two CRT themes: `default` (green phosphor) and `haunted` (warm pinkish-red, heavier
-glow and flicker).
-
-### Point-and-click surface (`@wickedways/play-surface/pnc`)
-
-`pncSurface` (`id: "point-and-click"`) renders the campaign as a procedural room scene.
-The controller is `mountPointAndClick` (`packages/play-surface/src/pnc/controller.ts`),
-which reuses the CRT controller's turn-loop and cue-handling order (status cues absorbed,
-step cues before resolution, mob attacks between action and outcome) with click-based
-input instead of a text parser.
-
-**Component tree** (`mountPointAndClick` builds this into the host element):
-
-```
-<pnc-welcome>           title card + start button (overlay, dismissed on enter)
-<pnc-topbar>            room name, audio toggle, soundpack/theme switchers, map + menu buttons
-<pnc-scene>             procedural CSS room; renders room image when present, procedural otherwise;
-                        hotspots from the ViewModel as clickable areas
-  → <pnc-action-menu>  contextual verb menu (Examine / Attack / Take / …); attached dynamically
-<aside.pnc-sidebar>
-  <pnc-status>          campaign-defined stat readouts (StatusCue fields)
-  <pnc-inventory>       two tabs — "Inventory" (one numbered slot per inventory slot,
-                        "--empty--" when unfilled) and "Key Items" (bulleted keyring);
-                        clicking an entry opens an action menu
-  <pnc-log>             scrolling narration log (room headings, descriptions + action feedback)
-<pnc-map-overlay>       fog-of-war map (same MapModel as CRT); opened from topbar
-<pnc-menu>              save / restore / undo / restart / fullscreen / back to menu
-```
-
-**Affordance model.** `affordances.ts` (`sceneHotspots`, `inventoryActions`) derives all
-clickable hotspots and their verb lists from the `ViewModel` and builds engine `Intent`s
-directly — no text parser. Hotspot kinds: `exit` (Go direction), `locked` (informational,
-no actions), `occupant` (Examine + Attack), `loot` (Examine + Open), `item` (Examine + Take).
-Inventory verbs are gated by item capability (surfaced on the `ViewModel` as
-`equippable` / `usable` / `hasLore` / `droppable`): Examine always, then Read (lore items),
-Equip/Unequip (equippable), Use (usable), and Drop (unless a required `droppable: false` item)
-— so the menu never offers a verb the engine would reject. A lone move-intent fires immediately
-without a menu; any other action set opens `<pnc-action-menu>`.
-
-**`presentation.image` support.** `ViewModel` surfaces `image?` from `presentation.image`
-on rooms and entities. `<pnc-scene>` renders `room.image` as a CSS background when present
-and falls back to a procedural CSS scene otherwise; occupant and item hotspots carry `image?`
-for optional artwork overlays. The Hollow House renders entirely procedurally — campaign-authored
-art and an asset pipeline are out of scope for this release.
-
-**`PncTheme`.** `PncTheme` (palette/fonts/scene) and `applyPncTheme` apply `--pnc-*` CSS
-custom properties. Hollow House ships `default` (dark amber/stone) and `haunted` (near-black
-with heavier vignette, grain, and fog).
-
-### The 4-layer audio architecture
-
-```
-Engine PresentationCue + live campaign state
-        │
-        ▼  AudioDirector              ◀── campaign-owned (CampaignManifest.audio)
-AudioCue { type, entityId?, intensity? }  +  continuous tension(0..1)
-        │
-        ▼  SoundPack (one per audio theme)  ◀── campaign-owned
-SoundSpec  ({ kind:'synth', voice } | { kind:'sample', … })
-        │
-        ▼  AudioBackend               ◀── runtime-owned (SynthRenderer; SampleRenderer deferred)
-Web Audio output
-```
-
-Omit `manifest.audio` for the flat ambient bed + default chiptune SFX (`defaultChiptunePack`).
-
-### Campaign-defined status bar
-
-The status bar is **campaign-driven via `StatusCue`** — no stat name is hard-coded in the
-runtime or surface. A campaign's `statusBar` mechanic emits
-`{ kind: "status", fields: StatusField[] }` presentation cues; the surface renders the most
-recent payload in its HUD. Before the first emission the area is empty. Campaigns that emit
-no `StatusCue` (e.g. the seed demo) show an empty bar. The `StatusField` carries `{ label,
-value, emphasis? }` where `emphasis` (`"warn"` / `"critical"`) maps to the active theme's
-palette for color-coding.
-
-The engine side: `PresentationCue` gains a `{ kind: "status"; fields }` variant;
-`EffectKind.Status` + `Effect` arm in `src/lib/mechanics/mechanic.ts`; the applier in
-`src/lib/mechanics/apply.ts` routes it through `EMIT_CUE`. See the spec:
-[`docs/superpowers/specs/2026-06-27-swappable-campaigns-design.md`](docs/superpowers/specs/2026-06-27-swappable-campaigns-design.md).
-
-### Per-surface themes
-
-Each surface defines its own theme type (`CrtTheme`, `PncTheme`) that extends the base
-`Theme`. Themes are supplied per-surface in `manifest.surfaces[i].themes`; `themes[0]` is
-the default. Both surfaces render a **theme switcher** that **auto-hides with fewer than two
-themes** (the soundpack switcher behaves the same way). Switching re-applies CSS custom
-properties live; theme preference persists in `?theme=` across page reloads.
-
-The Hollow House ships two themes per surface: CRT `default` (green phosphor) + `haunted`
-(warm pinkish-red); PnC `default` (dark amber/stone) + `haunted` (near-black with heavier
-vignette and fog). Theming is unchanged in mechanism — CSS custom properties applied on the
-app root pierce shadow boundaries with no component re-render.
-
-### How to add a campaign
-
-1. Create `packages/campaigns/src/<slug>/` with an `index.ts` that exports a `CampaignManifest`.
-2. Register it in `packages/play/src/main.ts`:
-   ```ts
-   import { myCampaign } from "@wickedways/campaigns/my-campaign";
-   bootLauncher(app, { campaigns: [hollowHouse, seed, myCampaign], surfaces: [crtSurface, pncSurface] }, …);
-   ```
-
-### How to add a theme
-
-Add the surface-specific theme object to the `themes` array of the relevant
-`SurfaceChoice` in `manifest.surfaces` (`themes[0]` is the default; the switcher appears
-automatically once there are two or more). No edits to the runtime or surface are needed.
-
-### How to add a surface
-
-1. Implement `PlaySurface` in a new package.
-2. Add it to `surfaces: [crtSurface, pncSurface, fooSurface]` in `packages/play/src/main.ts`.
-3. Add a `{ id: "foo" }` entry to `manifest.surfaces` in any campaign that should offer it.
-
-### Deferred / not yet shipped
-
-The following are planned but not part of this release:
-
-- **YAML / JSON declarative format** (phase 2) — a text schema for `CampaignTemplateDescription`
-  that does not require TypeScript.
-- **Authoring UI** (phase 3) — a visual map/content editor.
-- **Live authoring commands** — GM commands to mutate the world during a running session.
-- **Procedural generation** — template composition and random map generation hooks.
-- **Template library / store** — versioned templates shareable across campaigns.
-- **Codex authoring** — the `Codex` is gameplay-generated (entries are recorded as players
-  encounter things); there is no public authoring API for pre-populating codex entries.
-- **`buildStartedCampaign` migration** — replacing the existing seed helpers with
-  `startSession`; deferred because it spans the full integration suite.
+A whole in-play world round-trips through a plain-data snapshot
+(`crates/wickedways-core/src/world/snapshot.rs`). Serialization walks the live world —
+the party plus every room reachable from a party member's current room via exits (BFS),
+and those rooms' occupants, loot, material caches, and all characters'
+inventory/keyring/equipment items — and emits a self-contained, JSON-friendly snapshot
+(`schemaVersion`, campaign core state, rooms, characters, items, loot, material caches,
+codex). Rooms no party member occupies and nothing links to are not captured —
+reachable-from-party is the playable world for save/load. Affliction state (active
+statuses, per-status turn counters, shaken-off set, and immunity stacks) is captured in
+full; a restored world is indistinguishable mid-turn from the original.
+
+**Behavior keys.** Code can't be serialized; instead every scene, non-key item, recipe,
+and formation carries a `behavior_key` — a stable string resolved against the campaign's
+`Catalog` at hydrate time (native registry first, then `catalog.behaviors` scripts; see
+the Behavior-trait pattern under *The Rust engine core* below). Key items (`keyCode`
+set) are exempt: they are rebuilt from their stored fields without a catalog lookup.
+Hydrate is fail-fast: an unknown `schemaVersion` or a dangling id reference throws
+`ProceduralViolation`; the RNG state rides in the snapshot so replay determinism
+survives save/load.
 
 ## Multi-client sync
 
 The snapshot format powers multiplayer over a command-log driven by an authoritative
-[`Authority`](src/lib/sync/authority.ts) ([`src/lib/sync/`](src/lib/sync/)). Each client runs a
+`Authority` (`crates/wickedways-core/src/sync/`). Each client runs a
 `SyncCoordinator` that owns a local replica and delegates all resolution to the authority.
 
 `coordinator.submit(command)` is a thin pass-through: it calls `transport.submit(command)`, waits
@@ -1488,13 +897,13 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
 
 - **The sync core** in [`crates/wickedways-core/src/sync/`](crates/wickedways-core/src/sync/): the
   actor-tagged [`Command`](crates/wickedways-core/src/sync/command.rs) union (mirroring
-  `src/lib/sync/types.ts` byte-for-byte, plus two Rust-side extensions — `talk` and `wait` — that the
-  TS union expressed only as intents), the [`authorize`](crates/wickedways-core/src/sync/authorize.rs)
+  the original TS wire shapes byte-for-byte, plus two Rust-side extensions — `talk` and
+  `wait`), the [`authorize`](crates/wickedways-core/src/sync/authorize.rs)
   gate, and the native [`SyncAuthority`](crates/wickedways-core/src/sync/authority.rs) (submit →
-  authorize → apply → `Delta` diff → ordered log) + `Delta` apply + `SyncCoordinator`. A **differential
+  authorize → apply → `Delta` diff → ordered log) + `Delta` apply + `SyncCoordinator`. The **sync
   gate** ([`crates/wickedways-assemble/tests/sync_gate.rs`](crates/wickedways-assemble/tests/sync_gate.rs))
   replays committed command sequences through the Rust authority and asserts each `{ seq, delta }`
-  matches the TS oracle byte-for-byte.
+  matches the committed golden byte-for-byte.
   - **Solo mode** (`AuthorityOpts.solo`) is how the offline single-player host (the browser client's
     `SinglePlayerTransport`) recovers the full per-turn machinery the explicit multiplayer path leaves
     to the GM. A time-advancing command (`move`/`take`/`drop`/`use`/`attack`/`wait`) drives a turn that
@@ -1512,11 +921,11 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
     and firing `onTurnStart` (dread). A player ends **their own** turn with the `endTurn` command (the
     surfaces' _End Turn_ button, which the server routes to that seat via `actorOf`); the GM's
     `nextPlayer` still advances the turn for an unavailable player. The budget lives in `submit`, not
-    the sync `authorize` gate, and the differential gate constructs the authority with
-    `AuthorityOpts::default()` (both `solo` and `manage_turns` off), so authorize stays budget-free and
-    byte-for-byte with the TS oracle.
+    the sync `authorize` gate, and the sync gate constructs the authority with
+    `AuthorityOpts::default()` (both `solo` and `manage_turns` off), so authorize stays budget-free
+    and byte-stable against the goldens.
   - **Keyed doors** are gated client-side. The sync `move` command carries a room id and lands via
-    `move_to`, which — faithful to TS `Character.move(room)` — performs no door check (the guard lives
+    `move_to`, which performs no door check (the guard lives
     only in the direction-based `go`). So the surfaces gate a `move` with `World::exit_block_reason`
     (a pure `can_pass` query that runs no `run_script`), narrating the door's fail message and issuing
     no command when it's locked — e.g. the Hollow House cellar door stays shut until the caretaker's
@@ -1532,364 +941,35 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
     parity holds. Campaigns declare caches/recipes in the TOML authoring surface (`[[caches]]` /
     `[[recipes]]`); the multiplayer client projects against the campaign's bundled catalog so recipes
     and aliases resolve there too.
-- **The room server** in [`crates/wickedways-server/`](crates/wickedways-server/): a Rust/axum port of
-  `packages/server`. A `RoomServer` hosts a native `SyncAuthority` per campaign behind a per-campaign
+- **The room server** in [`crates/wickedways-server/`](crates/wickedways-server/): a Rust/axum
+  server. A `RoomServer` hosts a native `SyncAuthority` per campaign behind a per-campaign
   tokio actor (`Table`) that serializes submit → persist → ack (flush-before-ack), gates appends by
   seat ownership (`Membership`), persists to SQLite (`SqliteStore`), and speaks the `transport-shared`
   wire protocol over a `/ws` WebSocket endpoint. A two-client convergence e2e proves two replicas
   converge over a real socket.
 
-Until the goldens replay against Rust everywhere, `src/lib/sync/` remains the authoritative oracle for
-the sync core.
+The sync gate (`cargo test -p wickedways-assemble --test sync_gate`) replays the committed
+command-log goldens against the Rust authority and pins the deltas byte-for-byte. Chat and
+A/V comms are not implemented in the Rust server yet; the wire protocol reserves their
+message arms (`crates/wickedways-transport`).
 
 ## Notable patterns
 
-- **Branded ID types** ([`brand.d.ts`](src/lib/brand.d.ts)) give `CampaignId`, `CharacterId`,
-  `RoomId`, `ItemId`, `LootId`, `SceneId`, etc. distinct compile-time identities at zero runtime
-  cost, so one kind of id can't be passed where another is expected.
+- **Branded ID types** (the `branded_id!` macro in `crates/wickedways-core/src/world/ids.rs`)
+  give `CharacterId`, `RoomId`, `ItemId`, `LootId`, etc. distinct compile-time identities at zero
+  runtime cost, so one kind of id can't be passed where another is expected.
 - **Lifecycle guards** throw `ProceduralViolation` to keep the game in a legal state.
 - **Hidden state** — item holders, status maps, and campaign progress are exposed through
   getters and symbol-keyed accessors rather than mutable public fields.
-- **Turn events** — [`CharacterEvents`](src/lib/character/events.ts) lets handlers hook
-  `onTurnStart` / `onTurnEnd` for future passive effects.
 
-## Tech stack & workflow
-
-> **Historical (TypeScript engine).** TS-era tooling for the legacy tree. The shipped engine builds with cargo — see *Architecture* above and `CLAUDE.md` for the current commands.
-
-- **Language:** TypeScript in `strict` mode with `NodeNext` module resolution and the extra
-  `noUncheckedIndexedAccess` / `noImplicitOverride` guards.
-- **Tests:** [Vitest](https://vitest.dev) — 711 tests across 58 files, including an end-to-end
-  [`src/integration.test.ts`](src/integration.test.ts) that wires up a full campaign and runs
-  the turn loop. Shared helpers live in [`src/test-utils.ts`](src/test-utils.ts).
-- **Linting:** ESLint flat config with type-aware `typescript-eslint`.
-- **Dependencies:** `uuid` for id generation; `type-fest` for utility types.
-
-### pnpm scripts
-
-| Script | Description |
-|--------|-------------|
-| `pnpm test` | Run the test suite once (`vitest run`) |
-| `pnpm test:watch` | Run tests in watch mode |
-| `pnpm test:coverage` | Run tests with coverage over `src/**` |
-| `pnpm typecheck` | `tsc --noEmit` |
-| `pnpm lint` / `pnpm lint:fix` | Lint (and autofix) |
-| `pnpm checks` | Lint + typecheck + test, in sequence |
-| `pnpm build` | Compile to `dist/` via `tsconfig.build.json` |
-
-## Multiplayer (comms)
-
-The repo is a pnpm workspace. The pure engine lives at the root (`src/`); three
-packages under `packages/` add real-time multiplayer:
-
-- **`@wickedways/transport-shared`** — the engine-free WebSocket wire protocol
-  (message types + validators).
-- **`@wickedways/server`** — a self-hosted WebSocket room server. The server **runs
-  the engine**: each campaign is backed by an `Authority` (built from the host's
-  `genesisFor`) that re-derives every delta from the submitted command. Clients
-  submit commands only; the server computes and broadcasts the authoritative delta.
-- **`@wickedways/client`** — a `WebSocketTransport` implementing the engine's
-  `SyncTransport` over the server, plus a minimal dev harness.
-
-The architecture is:
-
-```
-single-player:   App ─ SyncCoordinator ─ InProcessTransport ─ Authority(local)
-multiplayer:     App ─ SyncCoordinator ─ WebSocketTransport ─[ws]─ Server ─ Authority(per campaign)
-```
-
-Both topologies are the same shape: submit a command to an authority, apply the
-delta it returns. The coordinator is the same on both paths; only the transport
-differs.
-
-### Running it
-
-```bash
-pnpm install
-pnpm --filter @wickedways/server start      # ws://127.0.0.1:8787
-pnpm --filter @wickedways/client dev        # http://localhost:5173
-```
-
-Open `http://localhost:5173/?c=demo` in two tabs. Act in one (e.g. **nextPlayer**);
-both converge on identical state over the wire.
-
-### Authentication, seat ownership & presence
-
-Connections authenticate and the server enforces who may act for whom:
-
-- **`createServer({ verifyToken, gmIdentityFor, registry, genesisFor })`** —
-  `verifyToken(token) -> Identity | null` is host-supplied (the engine bakes in no
-  crypto); `gmIdentityFor(campaignId)` seeds each campaign's GM; `genesisFor(campaignId)`
-  supplies the initial campaign state from the host's trusted store (an unknown
-  campaign is denied). A client presents its `token` on `join` (and on every reconnect).
-- **Seat ownership** — the server holds a per-campaign `Membership` (`characterId ->
-  identity` + `gmIdentity`). On `submit` the server derives the actor directly from
-  the command (`commandActorId` / `isJoinCommand`) and checks `Membership.mayAct` —
-  there is no client-supplied actor envelope. A command whose derived actor does not
-  belong to the authenticated connection is `denied`.
-- **Self-service join + GM override** — `joinCampaign` self-claims (binds the new
-  character to the joiner's identity, if unowned). The GM-only
-  `assignSeat`/`unassignSeat`/`transferGM` control messages handle reassignment,
-  removal, and GM hand-off.
-- **Presence** — the server broadcasts a `presence` snapshot (seat owners + who is
-  online + GM online) on connect / disconnect / claim / control change. An identity
-  is online while any of its connections is live.
-
-**Security outcome.** Impersonation is structurally impossible: the client never
-supplies a delta to forge, and the actor is read from the command by the server —
-there is no envelope to desync from the command body. All replicas (including the
-submitter) apply the identical server-derived delta, so there is no divergence window.
-Genesis comes from the host's `genesisFor`, not from any client.
-
-**Explicitly deferred (follow-up spec).** Client-side prediction and the deterministic /
-serialized rng change that would enable it; per-identity seat caps, map pruning, and
-`transferGM` lockout recovery.
-
-### Durable persistence
-
-The server persists each campaign's full snapshot + seat ownership on every commit,
-**flush-before-ack** (the client is acked only after the record is durable), via a
-host-injected `CampaignStore` interface:
-
-```ts
-interface CampaignStore {
-  load(campaignId: string): Promise<CampaignRecord | null>;
-  save(campaignId: string, record: CampaignRecord): Promise<void>;
-}
-```
-
-`CampaignRecord` bundles the committed `seq`, the engine `CampaignSnapshot` (carries
-`schemaVersion`), and `MembershipState` (seat assignments). Because `save` is atomic
-(one SQLite transaction), snapshot and membership can never disagree across a crash.
-
-**Reference adapter — `SqliteStore`.** A `SqliteStore(path)` stores records in a
-single SQLite file via Node's built-in `node:sqlite`, WAL mode, one upsert per save.
-Requires **Node ≥ 22.5**. (`node:sqlite` is experimental and emits a warning;
-persistence tests suppress it via `NODE_OPTIONS=--no-warnings`.)
-
-**Resume on restart.** On startup, `store.load(id)` returns the last durable record;
-the server rebuilds the `Authority` at the persisted `seq` and restores the
-`Membership` from the saved seat assignments — the campaign continues exactly where it
-left off, seq is continuous, and reconnecting clients converge normally.
-
-**Persistence is opt-in.** Pass no `store` to `createServer` and the server behaves
-exactly as before — in-memory, ephemeral. The single-player in-process path is
-entirely unaffected.
-
-**Client identity.** `@wickedways/client` persists the browser's identity token in
-`localStorage` (key `wickedways:identity`) so a page reload reuses the same identity
-and retains its durable seat. Real deployments obtain the token from an auth flow;
-this is the dev-harness behavior.
-
-**Deferred.** Client state caching (warm-start / offline read); a WAL persistence
-adapter; multi-instance locking (a single server instance owns a campaign's record);
-schema migrations — v1 fails closed on a `schemaVersion` mismatch rather than
-attempting to migrate.
-
-### Text chat
-
-Chat is a **player-to-player side-channel** — it runs over the same WebSocket room
-but is entirely separate from the game log and the engine's `Command`/delta types.
-There is no in-character vs out-of-character dimension; attribution always answers
-"which *player* (identity) said this." The GM is the player holding the GM identity —
-"message the GM" is a whisper to that identity.
-
-**Two scopes.** Every message is either **room-wide** (no `to` field, delivered to all
-subscribers) or a **whisper** (`to: Identity`, delivered and backfilled only to the
-two participants). The server enforces whisper visibility on both live delivery and
-every backfill/pagination response.
-
-**Attribution is unforgeable.** The server stamps each message's `from` from the
-authenticated connection — exactly as it derives the game actor from the command body
-rather than a client-supplied envelope. Clients never supply their own `from`.
-
-**Authored `ChatPolicy`.** Whether chat exists, and which features are enabled, is
-configured on the campaign template as a `ChatPolicy` value. The server enforces the
-policy authoritatively; the client reads `snapshot.campaign.chatPolicy` to gate UI
-affordances.
-
-| Field | Type | Meaning |
-|---|---|---|
-| `enabled` | `boolean` | Master switch — `false` disables chat entirely (no roster, no history) |
-| `whisper` | `boolean` | Private identity-to-identity whispers |
-| `edit` | `boolean` | Edit or delete own messages |
-| `reactions` | `boolean` | Emoji reactions |
-| `readReceipts` | `boolean` | Per-identity read high-water marks |
-| `typing` | `boolean` | Transient typing indicators |
-| `backfillWindow` | `number` | Join backfill / pagination page size (not a retention cap) |
-
-`DEFAULT_CHAT_POLICY` (all features on, `backfillWindow: 200`) is used when a
-template omits the `chat` field. A single-player campaign should set `enabled: false`.
-The snapshot carries `chatPolicy`; `migrate()` injects `DEFAULT_CHAT_POLICY` when
-deserializing a v2 snapshot in-process, while a server with a durable store fails
-closed on a previously-persisted v2 campaign (no auto-migration — consistent with the
-durable-persistence fail-closed stance).
-
-**Player roster + `displayNameFor`.** Pass `displayNameFor(identity): string` to
-`createServer` and the server resolves human display names (defaults to the identity
-string). On every join / leave and on initial connect, the server broadcasts a
-`players` message (`{ identity, displayName, online }[]`) — the player-centric
-sibling of the seat-centric `presence` roster. Messages carry only the unforgeable
-identity; the UI resolves names from this roster, which also powers the whisper-target
-picker.
-
-**Durable history with bounded backfill + pagination.** Every message is retained
-durably forever (text is cheap; unlike snapshots, chat cannot be compacted). On join
-the server replays the most recent `backfillWindow` messages the identity may see.
-Older history is fetched on demand via `chatHistory { before: chatSeq }`, which
-returns the next page with a `more` flag. Retention and working-set are decoupled —
-nothing is ever deleted.
-
-**Full feature set.**
-
-- **Edit / delete** — the owner may update a message body (`chatEdit`) or tombstone it
-  (`chatDelete`). A tombstone keeps the message id and ordering in place so reactions
-  and read marks referencing it stay coherent; only the body is cleared.
-- **Reactions** — per-message `emoji → Set<Identity>` toggles (`chatReact`).
-  Reactions on a whisper are visible only to its two participants.
-- **Read receipts** — each identity maintains a single per-room high-water `upTo`
-  chatSeq (`chatRead`), broadcast as `chatReads`. Note: because room and whisper
-  messages share one sequence space, a recipient can infer that hidden whispers exist
-  from gaps in visible ids — a negligible metadata leak, not content exposure.
-- **Typing indicators** — transient `typing` messages routed to the scope audience
-  (room → all; whisper → target only); never stored, auto-expiring client-side.
-
-**`ChatStore` seam.** The default is `InMemoryChatStore` (ephemeral). Pass a
-`SqliteChatStore(path)` to `createServer` (`chatStore` option) for durable chat
-history that survives restarts — reactions and read marks included. Typing is never
-stored.
-
-**Rate-limiting / anti-abuse are explicitly out of scope** (deferred per the Spec 3b
-out-of-scope; implement as a thin wrapper in front of `Chat.send`).
-
-**Wire protocol summary.** Client → server: `chatSend`, `chatEdit`, `chatDelete`,
-`chatReact`, `chatRead`, `chatHistory`, `typing`. Server → client: `chat` (live +
-backfill), `chatEdited`, `chatDeleted`, `chatReact`, `chatReads`, `chatHistory`
-(paginated response), `players`, `typing`. All validators live in
-`@wickedways/transport-shared` (`parseClientMsg` / `parseServerMsg`).
-
-#### Manual smoke — text chat
-
-Boot the server and client as described in [Running it](#running-it), then open
-`http://localhost:5173/?c=demo` in **two separate browser tabs** (they get distinct
-identity tokens from `localStorage`).
-
-Verify the following — each interaction is attributed by display name (defaulting to
-the truncated identity UUID until `displayNameFor` is wired):
-
-1. **Room message** — type a message in Tab A and press **Send** with the whisper
-   select on "Room". The message appears in both Tab A and Tab B with Tab A's identity
-   prefix. Reload Tab B; the message is replayed from backfill.
-2. **Whisper** — in Tab A, select Tab B's identity in the whisper picker and send a
-   private message. It appears in both Tab A and Tab B but does **not** appear in a
-   third tab opened simultaneously.
-3. **Edit / delete** — not yet surfaced in the minimal harness UI (send + receive
-   only); exercise via the WebSocket frame inspector or a `websocat` session:
-   `{"t":"chatEdit","campaignId":"demo","id":1,"body":"edited text"}` — both tabs
-   receive `chatEdited`; a `chatDelete` produces `chatDeleted` with the original id
-   retained.
-4. **Reaction** — send `{"t":"chatReact","campaignId":"demo","id":1,"emoji":"👍","on":true}`;
-   both tabs receive `chatReact` with the updated `by` array.
-5. **Read receipt** — send `{"t":"chatRead","campaignId":"demo","upTo":1}`; both tabs
-   receive `chatReads` with the updated high-water mark.
-6. **Typing indicator** — send `{"t":"typing","campaignId":"demo"}`; the other tab
-   receives `typing` with the sender's identity (auto-expires client-side; no storage).
-
-### A/V chat
-
-Voice (and optional video) runs as a **campaign-wide "table call"** over the same
-WebSocket backend, using WebRTC for media transport.
-
-**Full-mesh P2P; server relays signaling only.** Every participant opens a direct,
-encrypted `RTCPeerConnection` to every other participant. The server is a **pure
-signaling relay + call-membership tracker** — it assigns each connection an opaque
-`peerId`, owns the per-campaign call-set, enforces `AvPolicy`, and routes SDP/ICE
-blobs between `peerId`s. It **never sees media**. This keeps media infrastructure
-out of the backend and matches the engine's self-hosted, dumb-relay ethos. The
-practical ceiling for full-mesh is **~4–6 participants** (each peer uploads its
-stream N−1 times), which fits a tabletop party.
-
-**Per-connection peer identity.** WebRTC endpoints are per-connection, not
-per-identity: two browser tabs authenticated as the same identity become two
-distinct peers. Signaling is addressed by the server-assigned opaque `peerId`
-(one per socket); the call roster maps `peerId → identity` for display names.
-
-**Audio baseline + opt-in video.** Voice is on when a participant joins (mutable
-via mute toggle). Video is opt-in per participant and off by default. Mute and
-camera on/off controls flip the local track's `enabled` flag and broadcast an
-`avState` update, which the server fans out via `callPeers` so every tile reflects
-the current state.
-
-**Authored `AvPolicy`.** A/V availability is configured on the campaign template —
-exactly like `ChatPolicy` for text chat — and carried in the snapshot (schema v4;
-`migrate()` injects `DEFAULT_AV_POLICY` for v3 snapshots). The engine never acts on
-it; the server reads it to gate the call, the client reads it to gate the UI.
-
-| Field | Type | Meaning |
-|---|---|---|
-| `enabled` | `boolean` | Master switch — `false` disables A/V entirely for this campaign |
-| `video` | `boolean` | Whether cameras are allowed (vs an audio-only table) |
-| `maxParticipants` | `number` | Hard cap on simultaneous call members (protects the mesh) |
-
-`DEFAULT_AV_POLICY` is `{ enabled: true, video: true, maxParticipants: 6 }`.
-A single-player campaign should set `enabled: false`.
-
-**Enforcement honesty.** `enabled` and `maxParticipants` are **hard server gates**:
-the server owns call membership and denies `callJoin` if A/V is off or the call is
-full. `video` is **client-enforced and state-validated**: the client won't add a
-video track when `!policy.video`, and the server rejects an `avState` claiming
-`cameraOn` under `!policy.video`. Because media flows P2P and is opaque to the
-server, it cannot inspect actual tracks — a malicious trusted peer could still send
-video. This is the same trusted-peers boundary as the rest of the stack.
-
-**Host `iceServers` config.** Pass `iceServers: RTCIceServer[]` to `createServer`;
-it defaults to Google's public STUN (`stun:stun.l.google.com:19302`). The server
-delivers the list to each client on `callJoined` so a single host config point
-drives every client's `RTCPeerConnection`. TURN (the relay fallback) is
-config-pluggable: add a `{ urls: "turn:...", username, credential }` entry to
-`iceServers` and `CallClient` will use it. **Operating a TURN server is out of
-scope** — but note that a small minority behind symmetric NAT cannot establish a
-direct P2P path without one and will show a failed peer tile.
-
-**Wire protocol summary.** Client → server: `callJoin`, `callLeave`, `signal {to,
-data}`, `avState {muted, cameraOn}`. Server → client: `callJoined {selfPeerId,
-peers, iceServers}` (join ack + existing roster + ICE config), `callPeers {peers}`
-(membership / state updates), `signal {from, data}` (relayed inbound signaling),
-`denied {reason}` (A/V off, call full, or video disabled). Signaling `data` is
-opaque (`unknown`) — relayed verbatim by the server. All validators live in
-`@wickedways/transport-shared` (`parseClientMsg` / `parseServerMsg`).
-
-#### Manual smoke — A/V chat
-
-Boot the server and client as described in [Running it](#running-it), then open
-`http://localhost:5173/?c=demo` in **two separate browser tabs**. The campaign must
-have `avPolicy.enabled: true` (the demo genesis uses `DEFAULT_AV_POLICY`).
-
-1. **Join the call** — click **Join call** in Tab A; verify the call panel appears
-   with Tab A's display name listed. Do the same in Tab B; verify both tiles show in
-   each tab's call panel with the correct display names.
-2. **Audio** — speak in Tab A; verify Tab B hears audio. Speak in Tab B; verify Tab A
-   hears audio.
-3. **Mute** — click **Mute** in Tab A; verify Tab B's tile for Tab A shows the muted
-   badge, and Tab A's tile shows the unmuted badge for Tab B. Un-mute; badge clears.
-4. **Camera** — click **Camera on** in Tab A (if `policy.video: true`); verify Tab B
-   shows a `<video>` tile for Tab A. Toggle camera off; video tile disappears.
-5. **Camera badge** — in Tab B, observe that Tab A's tile reflects the `cameraOn`
-   state (badge present / absent) matching what Tab A toggled.
-6. **Leave** — click **Leave call** in Tab A; verify Tab B's call panel drops Tab A's
-   tile and the roster updates to one participant.
-
-**Symmetric-NAT note.** If two tabs on the same machine don't connect (rare but
-possible in some corp VPN setups), adding a TURN entry to `iceServers` resolves it.
-
-### The Rust engine core, module by module
+## The Rust engine core, module by module
 
 The sections below document `crates/wickedways-core`'s subsystems in detail — the
 mechanics op-registry, keyed exits, scenes, victory conditions, formations, the ops
 DSL, and the sync layer. They are the authoritative deep-dive on the engine as
 shipped.
 
-#### Mechanics: the op-registry (`crates/wickedways-core/src/world/mechanics/`)
+### Mechanics: the op-registry (`crates/wickedways-core/src/world/mechanics/`)
 
 The campaign mechanics system's extension points. On the Rust side,
 mechanics are still **data** — a campaign's `{ key, state }` list (`campaign.mechanics`)
@@ -1903,7 +983,7 @@ registry throw at hydrate.
 damage transformer `modify_damage` — each defaulted to a no-op so an op only implements
 the hooks it needs. Hooks return the same closed, six-variant `Effect` enum as the TS
 union — `Damage`, `Heal`, `AdjustStat`, `GrantImmunity`, `Cue`, `Status` — routed through
-`apply_effect`/`adjust_stat` exactly as `apply.ts` does (Damage/Heal/AdjustStat reconcile
+`apply_effect`/`adjust_stat` (Damage/Heal/AdjustStat reconcile
 the target; GrantImmunity/Cue/Status do not). Damage/Heal/AdjustStat/GrantImmunity may only
 target a **party member** — mirroring TS's `campaign[FIND_CHARACTER]` lookup — so a mechanic
 that resolves an effect against a non-party character (e.g. a mob) throws a
@@ -1934,7 +1014,7 @@ ticks the budget and dispatches `on_action` via the shared `record_action` path 
 signature as every other budgeted action). Data-driven mechanics are the ops DSL's
 `BehaviorScript::Mechanic` family — see *Scripted behaviors (the ops DSL)*.
 
-#### Keyed exits: the `ExitBehavior` registry (`crates/wickedways-core/src/world/exits.rs`)
+### Keyed exits: the `ExitBehavior` registry (`crates/wickedways-core/src/world/exits.rs`)
 
 Keyed-door traversal follows the same registry idiom as mechanics: an
 exit's `behavior_key` resolves to a compiled-in, stateless `impl ExitBehavior` via the
@@ -1957,7 +1037,7 @@ first time a keyed actor passes.
 The `ViewModel` projects exit/lock state to renderers via its `exits` /
 `lockedDoors` fields.
 
-#### Scenes: native `SceneBehavior` + data-driven `BehaviorScript::Scene` (`crates/wickedways-core/src/world/scenes.rs`)
+### Scenes: native `SceneBehavior` + data-driven `BehaviorScript::Scene` (`crates/wickedways-core/src/world/scenes.rs`)
 
 Room-attached scene hooks follow the same idiom as keyed exits: a
 scene's `behavior_key` resolves to a compiled-in, stateless `impl SceneBehavior` via the
@@ -1972,11 +1052,11 @@ was previously `void`-returning).
 **Scenes are also authorable as data.** `resolve_scene(key, cat)` resolves
 a scene's `behavior_key` **native-first**: a compiled-in `SceneBehavior` wins
 (`ResolvedScene::Native`), and only if no native behavior is registered does it fall back to
-a catalog [`BehaviorScript::Scene`](crates/wickedways-core/bindings/BehaviorScript.ts)
+a catalog `BehaviorScript::Scene`
 (`ResolvedScene::Scripted`); an unregistered key — or a catalog key of a non-scene family —
 resolves to `None` and is the same `ProceduralViolation` at the fire site (and
 `validate_mechanics` fails fast on it). A scripted scene is a
-[`SceneScript`](crates/wickedways-core/bindings/SceneScript.ts) `{ canPlay, onEnter?, onExit? }`
+`SceneScript` `{ canPlay, onEnter?, onExit? }`
 — a `can_play` predicate `Expr` (absent/`null` = always playable) plus optional
 `on_enter`/`on_exit` **effect bodies** (`Vec<Stmt>`), mirroring the `MechanicScript`/`ItemScript`
 hook-body shape. In `fire_scenes` a scripted scene reads the **live world** (a read-only
@@ -1990,7 +1070,7 @@ the body (readable by `can_play`, mutated by `SetState`) and written back before
 apply. Native scenes are untouched — they keep the cue-only `run_script` path.
 
 **Authoring.** Assemble a scripted scene with the
-[`scene({ canPlay, onEnter, onExit })`](packages/campaigns/src/scripted/builders.ts) builder —
+`scene({ canPlay, onEnter, onExit })` builder —
 the hook bodies are DSL `Stmt` lists and `canPlay` a DSL `Expr` — which emits the
 `BehaviorScript::Scene` AST, registered in the campaign's `behaviors` map under the room scene's
 `behaviorKey`. `canPlay` is always serialized (`null` = always playable), mirroring the Rust
@@ -2014,19 +1094,16 @@ action cue. The reference behavior, `conformance:visit-counter`, fires while
 `state.count < 3` and the room is occupied, incrementing `state.count` and emitting a
 cue naming the room and the new visit count.
 
-**Start-room enter-scenes fire at `begin_campaign`, not at boot.** The TS boot placement
-seats the PC in the start room WITHOUT firing scenes (`move(room, /*fireScenes*/ false)` in
-`session.ts` boot, `orchestration.ts` `startSession`, and the conformance oracle), so genesis
-carries an **un-fired** start-room scene (pristine state). `begin_campaign` (Rust) then fires
-the active player's start-room enter-scenes into the same buffer `take_startup_cues` returns —
-so a start-room scene's cue surfaces as a startup cue and its state advances exactly once. The
-fire-point is pinned **after** the round-0 `onRoundStart` dispatch, identically in Rust
-`begin_campaign`, TS `Campaign.beginCampaign`, and the oracle's begin/startup, for
-differential-gate parity. Regular later `move`/`go` keep firing scenes as before (default
+**Start-room enter-scenes fire at `begin_campaign`, not at assembly.** Seating places the
+PC in the start room WITHOUT firing scenes, so genesis carries an **un-fired** start-room
+scene (pristine state). `begin_campaign` then fires the active player's start-room
+enter-scenes into the same buffer `take_startup_cues` returns — so a start-room scene's cue
+surfaces as a startup cue and its state advances exactly once. The fire-point is pinned
+**after** the round-0 `onRoundStart` dispatch (the replay goldens depend on this ordering). Regular later `move`/`go` keep firing scenes as before (default
 `fireScenes = true`). `validate_mechanics` fails fast on any room scene whose `behaviorKey`
 resolves via neither the native registry nor a catalog descriptor.
 
-#### Encounter spawning: the `FormationBehavior` registry (`crates/wickedways-core/src/world/formations.rs`)
+### Encounter spawning: the `FormationBehavior` registry (`crates/wickedways-core/src/world/formations.rs`)
 
 The roving-encounter table follows the same idiom as keyed exits and scenes: it is
 ported: a registered formation's `behaviorKey` resolves to a compiled-in, stateless
@@ -2071,62 +1148,34 @@ any turn-end cues.
 same fixed mob), and `spawnModifier` is modeled as an integer rather than a fractional
 multiplier.
 
-#### The stateful WASM `Authority` (single-player runtime)
+### The stateful WASM `Authority` (single-player runtime)
 
-The **single-player runtime** rides the Rust core. `GameSession`
-(`packages/play-runtime/src/session.ts`) no longer runs the TypeScript engine directly — it
-delegates every turn to a stateful WASM handle, the Rust `Authority`
-(`crates/wickedways-wasm/src/authority.rs`; distinct from the multiplayer sync `Authority`
-in `src/lib/sync/`). TS authoring still assembles the campaign (builder + registry) and
-serializes a **pre-begin genesis snapshot**; the core owns `begin_campaign`, the round/turn
-wrap, and solo-GM mob reactions (`World::submit`, `crates/wickedways-core/src/world/submit.rs`).
-Undo is host-side: `GameSession` keeps the pre-intent snapshot and calls the core's `restore`.
+`crates/wickedways-wasm` exposes the engine to JavaScript hosts as a stateful WASM
+handle, the `Authority` (`crates/wickedways-wasm/src/authority.rs`; distinct from the
+multiplayer sync `Authority` in `crates/wickedways-core/src/sync/`). The handle owns a
+genesis-loaded `World`; the host drives `begin_campaign`, per-intent `submit`
+(`World::submit` runs the round/turn wrap and solo-GM mob reactions), `view`, `snapshot`,
+and `restore` (undo is host-side: keep the pre-intent snapshot, call `restore`).
 
-**JSON-only boundary.** Nothing but JSON crosses the WASM edge: an `Intent` goes in;
-`ExecuteResult { cues, mobAttacks?, error? }`, a `ViewModel`, and a `CampaignSnapshot` come
-out. The boundary TS types are ts-rs-generated into `generated/bindings/` and are never
-hand-edited — `pnpm run bindings:check` fails on drift. No surface holds a live engine
-object any longer: the `session.campaign` live-object getter is **retired**, and audio reads
-the view DTO (`AudioDirector.tension(view)`).
+**JSON-only boundary.** Nothing but JSON strings cross the WASM edge: an `Intent` goes
+in; `ExecuteResult { cues, mobAttacks?, error? }`, a `ViewModel`, and a
+`CampaignSnapshot` come out. No host ever holds a live engine object.
 
-**Build split.**
-- `pnpm run wasm:build` — the default, shipped nodejs build. It carries **no** `conformance:*`
-  ops; `scripts/assert-no-conformance.mjs` asserts the JS glue and the wasm binary are clean
-  and that the `Authority` class is present.
-- `pnpm run wasm:build:web` — the browser bundler target. The engine is initialized **once**,
-  asynchronously, during `bootLauncher` (via `initEngine`, a no-op await on node); so
-  `GameSession.start` stays synchronous.
-- `pnpm run wasm:build:conformance` — a gate-only build that exposes the conformance ops.
+Note the shipped Dioxus client does **not** use this crate — `wickedways-web` links
+`wickedways-core` directly as a Rust rlib and drives the same `World`/`submit` API
+natively. The wasm cdylib is the embedding boundary for any external JS host, and CI
+keeps it clippy-clean on `wasm32-unknown-unknown` with its `conformance` feature on
+(the feature compiles the first-party `conformance:*` ops used by several replay
+fixtures).
 
-**Differential gate over the facade.** Beyond the raw-engine fixtures, the gate now also
-drives the *facade*: seeded, frozen-oracle `GameSession` fixtures
-(`conformance/fixtures/facade-*.gen.test.ts`) replay a scripted intent stream and diff
-`{ result, snapshot, view }` per intent against the Rust `Authority.submit` — the first
-coverage of `runMobReactions` and the turn wrap. Regenerate with `pnpm run fixtures:gen`;
-the diff gate is `pnpm run test:conformance`; the full Phase-2 acceptance run is
-`pnpm run checks:phase2` (no_std core build → workspace Rust tests → `bindings:check` →
-default + web wasm builds → no-conformance assert → conformance suite → typechecks → the
-full vitest suite, which includes `session.test.ts` against the real wasm).
+The facade replay corpus (`conformance/fixtures/facade-*.golden.json`) pins this
+single-player loop: the replay gate (`cargo test -p wickedways-assemble --test
+replay_gate`) replays each fixture's intent stream through the engine and diffs
+`{ result, snapshot, view }` per intent against the committed golden.
 
-The occupant-carried-light rule is ported: a party member carrying a lit source lights an
-otherwise-dark room in the Rust `is_lit` check (dark-room combat), matching the TS oracle.
+### The Rust campaign assembler (G1)
 
-**Scope / known gaps.** Hollow House is winnable end-to-end on the Rust core (proven by the
-`capstone` full-winning-path test in `packages/play/src/core/capstone.test.ts`, which plays a
-complete run — including a save/undo round-trip — through the WASM `Authority`). One carry remains open: the browser bundler path is now **runtime-verified** — the Playwright
-e2e (`packages/play/e2e/`, run via `pnpm --filter @wickedways/play run test:e2e` and the
-dedicated `.github/workflows/e2e.yml` CI job) boots hollow-house through the WASM `Authority`
-in real chromium, and a `wasm-boot.spec.ts` smoke test asserts no `engine not initialized` /
-wasm-load errors during boot. The remaining gap is item `onUse`
-consumable effects (e.g. laudanum restoring sanity) are **not yet ported** to the Rust
-catalog. That consumable path is a survival aid *off* the Hollow House win path, so this is
-deliberately not 100% item-action parity yet.
-
-#### The Rust campaign assembler (G1)
-
-`crates/wickedways-assemble` is the Rust port of the TypeScript authoring assembler
-(`src/lib/authoring/assembler.ts`). It closes the last authoring seam that still ran in
-TypeScript at runtime: turning an author's campaign definition into a playable **pre-begin
+`crates/wickedways-assemble` is the campaign assembler: it turns an author's campaign definition into a playable **pre-begin
 genesis snapshot** the Rust core can `begin_campaign` on.
 
 **The artifact triple.** Authoring is now a two-input, one-output pipeline:
@@ -2141,53 +1190,48 @@ description.json  +  catalog.json   ->   genesis.json
 `description.json` is the campaign the author declared (rooms, mobs, npcs, loot, caches,
 exits, scenes, win/lose conditions, policies); `catalog.json` is the resolved registry of
 behavior scripts, items, aliases, formations, and crafting-recipe metadata; `genesis.json`
-is the deterministic `CampaignSnapshot` `assemble()` produces from the pair. The boundary DTO
-`CampaignDescription` is ts-rs-generated into `generated/bindings/` and is gated by
-`pnpm run bindings:check`, exactly like the WASM boundary types — TypeScript's role in
-authoring is now reduced to a build-time `description.json` emitter.
+is the deterministic `CampaignSnapshot` `assemble()` produces from the pair. Both
+inputs are emitted by `wickedways-author` from the TOML campaign format.
 
 **Id derivation, never generation.** Every id is derived from author-supplied names, so the
 crate depends on neither `rand` nor `uuid` and re-running `assemble()` on the same inputs
-yields byte-identical output. The rules (verbatim from the TS oracle):
+yields byte-identical output. The rules:
 
-| entity | id | TS site |
-| --- | --- | --- |
-| campaign | `campaign:{title}` | `assembler.ts:199` |
-| room | `room:{name}` | `:248` |
-| mob | `mob:{name}` | `:233` |
-| npc | `npc:{name}` | `:287` |
-| cache | `cache:{name}` | `:214` |
-| loot box | `loot:{name}` | `:220` |
-| exit | `exit:{a}\|{b}` — the two **author-supplied room names** (`e.from`, `e.to`), sorted | `:332` |
-| scene | `scene:{room}:{key}:{phase ?? "enter"}` | `:345` |
-| loot content item | `loot:{name}:item#{i}` | `:223` |
-| mob drop item | `mob:{name}:drop#{i}` | `:236` |
-| room light item | `room:{name}:light#{i}` | `:251` |
-| npc held item | `npc:{name}:item#{i}` | `:295` |
-| player | `player:{name}` — minted by seating (see below), not by the TS `assemble()` | — |
+| entity | id |
+| --- | --- |
+| campaign | `campaign:{title}` |
+| room | `room:{name}` |
+| mob | `mob:{name}` |
+| npc | `npc:{name}` |
+| cache | `cache:{name}` |
+| loot box | `loot:{name}` |
+| exit | `exit:{a}\|{b}` — the two **author-supplied room names** (`e.from`, `e.to`), sorted |
+| scene | `scene:{room}:{key}:{phase ?? "enter"}` |
+| loot content item | `loot:{name}:item#{i}` |
+| mob drop item | `mob:{name}:drop#{i}` |
+| room light item | `room:{name}:light#{i}` |
+| npc held item | `npc:{name}:item#{i}` |
+| player | `player:{name}` — minted by seating (see below) |
 
 Note the item infix differs by holder — `item#`, `drop#`, `light#` — and `i` is the index in
 the source key array, so repeated keys still get distinct ids.
 
 **ASCII room names + the sort rationale.** `exit:` ids are minted by sorting the two author
-room names. JavaScript's `Array.prototype.sort()` compares UTF-16 code units; Rust's
-`str: Ord` compares UTF-8 bytes. The two orderings agree on ASCII and diverge above the BMP,
-so a non-ASCII room name would mint a *different* `exit:` id in each language and silently
-break byte-parity. Room names (and all conformance-fixture prompts, triggers, and
+room names with `str: Ord` (UTF-8 byte order). The historical TS engine sorted UTF-16 code
+units, which agrees with byte order on ASCII and diverges above the BMP — the committed
+goldens were minted under that constraint. Room names (and all conformance-fixture prompts, triggers, and
 descriptions) are therefore constrained to ASCII.
 
 **Party seating: `assemble()` takes 0..N seats; the first becomes GM.** The signature is
-`assemble(desc, catalog, party: &[Seat]) -> Result<CampaignSnapshot, AssembleError>`. This is
-a deliberate divergence from TS: `assembler.ts` returns a **player-less** campaign — seating
-lived downstream in `oracle-session.ts:79-98`. The Rust crate folds seating in so `assemble()`
+`assemble(desc, catalog, party: &[Seat]) -> Result<CampaignSnapshot, AssembleError>`. Seating is folded into `assemble()` so it
 produces a genesis directly. The party may be empty (a pristine, unseated snapshot) or hold
 any number of seats; the **first seat becomes the GM** (`gmId`), all seats — GM included — fill
-`partyIds` in order, and each PC is placed in `startRoom`. Player ids are `player:{name}`, minted here rather than by
-the TS `assemble()`.
+`partyIds` in order, and each PC is placed in `startRoom`. Player ids are `player:{name}`, minted here.
 
-**The gate, and why only pre-begin goldens are oracles.** `cargo test -p wickedways-assemble`
-diffs Rust's assembled genesis against the committed goldens **byte-for-byte** — the gate is
-the authority; when Rust and a golden disagree, Rust is wrong until proven otherwise. It is
+**The gate, and why only pre-begin goldens are assembler pins.** `cargo test -p wickedways-assemble`
+diffs Rust's assembled genesis against the committed goldens **byte-for-byte**. The goldens
+are regression pins of the assembler's own output — regenerate deliberately with
+`UPDATE_GOLDENS=1` and review the diff like code. It is
 gated against the **17 pre-begin goldens only** (2 pristine snapshots + 14 single-PC facade
 genesis fixtures + the two-PC fixture + a determinism check). The 31 `started: true`
 snapshots in the corpus are **not** valid oracles for the assembler: they capture state
@@ -2207,18 +1251,17 @@ correctly" — so only the pre-begin artifacts are used as assembler oracles.
    `UnregisteredRecipe` check** (the catalog has no recipe *registry* for existence checks);
    `knownRecipes` is populated straight from `desc.recipes`. Closing that validation gap is a
    G2 prerequisite once `assemble()` consumes untrusted (modded) input.
-2. **Validation message strings are not byte-gated.** The `Display` impls reproduce the TS
-   error strings, but the gate compares genesis bytes, not error text.
-3. **`assemble()` seats the party; the TS assembler does not** (see the seating note above) —
-   this is what lets the Rust crate emit a genesis directly, and why `party: &[Seat]` exists.
+2. **Validation message strings are not byte-gated.** The gate compares genesis bytes, not
+   error text.
+3. **`assemble()` seats the party** (see the seating note above) — this is what lets the
+   crate emit a genesis directly, and why `party: &[Seat]` exists.
 
 **Forward pointer (G2).** G2 adds the TOML authoring surface and a CLI on top of this crate
 **without changing `assemble()`'s signature** — the TOML/parser/CLI layer produces the same
-`(description, catalog, party)` inputs `assemble()` already takes. The gate is pure `cargo test`
-(no wasm-pack, no browser, no vitest), so it runs in the fast CI job; the convenience alias is
-`pnpm run checks:assemble`.
+`(description, catalog, party)` inputs `assemble()` already takes. The gate is pure `cargo test`,
+so it runs in the fast CI job.
 
-#### The Rust campaign author (G2 MVP)
+### The Rust campaign author (G2 MVP)
 
 `crates/wickedways-author` sits one layer above the G1 assembler: it turns a friendly,
 hand-written **TOML** campaign into the `description.json` + `catalog.json` pair the assembler
@@ -2383,12 +1426,11 @@ mechanic's hooks via `catalog.behaviors[mechanic_key]`. That table compiles to a
 `init` state seed plus up to five lifecycle hooks: `onRoundStart`, `onRoundEnd`, `onTurnStart`,
 `onTurnEnd`, and `onAction`. Each hook is an optional statement block reusing the exact grammar
 above (so `onTurnStart` can `guard !hasEquipped(actor, 'lantern')` then `emit adjustStat(actor,
-sanity, -1)` — the `-1` delta being the negative literal). The serialized `script` shape mirrors
-the canonical TS `s.mechanic`: `init` is **always** present (no serde default — an omitted `init`
-lowers to `{}`), `actions` is **always** serialized (an empty actions map emits as `{}`, matching
-the ts-rs binding), and each `hooks` entry (the five lifecycle hooks plus `modifyDamage`) is
-emitted **only when authored** (absent ones are omitted). Gated byte-for-byte against the
-`g2-mechanic` oracle:
+sanity, -1)` — the `-1` delta being the negative literal). The serialized `script` shape is pinned
+by the goldens: `init` is **always** present (no serde default — an omitted `init`
+lowers to `{}`), `actions` is **always** serialized (an empty actions map emits as `{}`), and
+each `hooks` entry (the five lifecycle hooks plus `modifyDamage`) is emitted **only when
+authored** (absent ones are omitted). Pinned by the `g2-mechanic` golden:
 
 ```toml
 [[mechanics]]
@@ -2453,15 +1495,14 @@ All six behavior families (**exit**, **victory**, **scene**, **item**, **npc**, 
 wired, every one reusing this same parser. The one remaining permissive divergence stands: subscript
 always lowers to `Index` (only `first(...)` produces `First`).
 
-**The gate.** Like the assembler, the author is gated **byte-for-byte** against a committed
-oracle — the `g2-vault`/`g2-scene`/`g2-item`/`g2-npc`/`g2-mechanic`/`g2-mechanic-actions`/`g2-door`/`g2-storyteller`/`g2-status-bar`/`g2-victory`/`g2-effects`/`g2-archetype`/`g2-equipment`/`g2-mobs`/`g2-dark-rooms`/`g2-exit-state`/`g2-formations`/`g2-opts`/`g2-timeout` fixtures, whose `description.json`/`catalog.json`
-are emitted by a TypeScript twin (`canonical-json.ts` canonicalization), each also checked for
-compile determinism — via `cargo test -p wickedways-author`
-(pure Rust, fast CI job; convenience alias `pnpm run checks:author`). The gate compares
+**The gate.** Like the assembler, the author is gated **byte-for-byte** against the committed
+`g2-*` golden fixtures (each also checked for compile determinism) via
+`cargo test -p wickedways-author` (pure Rust, fast CI job). The gate compares
 canonicalized JSON values (whole-float numbers collapsed to ints, object keys sorted), so the
 bin's raw pretty output — where `Value::Number` emits `0.0` and catalog keys serialize in
-`BTreeMap` order — matches the oracle under that comparison. **The gate is the authority:** when
-`compile()` and the fixture disagree, the compiler is wrong until proven otherwise — fix
+`BTreeMap` order — matches the golden under that comparison. **The goldens are regression
+pins of the compiler's own output:** regenerate deliberately with `UPDATE_GOLDENS=1` and
+review the diff like code — never hand-edit a golden; when a diff is unintended, fix
 `lower.rs`/the parser, never the fixture.
 
 **The description-structure surface is now complete too.** Beyond behaviors/expressions, the author
@@ -2486,8 +1527,8 @@ in the catalog) with expression-only bodies — since extended with the **statem
 number literals**, and the **mechanic** family (`[[mechanics]]` opt-in + a `[behaviors.mechanic.<key>]`
 `init`-plus-five-hooks behavior) above. Two
 deliberate divergences from the design spec carry through: the compiler
-is permissive (no compile-time `TypeError` — the `Expr` AST is total and the TS builders type-check
-nothing, so mapping must stay permissive to byte-match), and subscript always lowers to `Index`
+is permissive (no compile-time `TypeError` — the `Expr` AST is total, and the historical TS
+builders type-checked nothing, so mapping stays permissive to preserve the pinned output), and subscript always lowers to `Index`
 (never `First` — only `first(...)` does). Both the expression/effect/statement surface and the
 description-structure surface are complete, and the **capstone is done**: the ENTIRE real campaign is
 re-authored in one `hollow-house.toml` whose `compile()` reproduces the committed

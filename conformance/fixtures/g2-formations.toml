@@ -1,4 +1,4 @@
-# g2-formations — the TOML twin of the g2-formations oracle (g2-formations.gen.test.ts).
+# g2-formations — authors the g2-formations golden pair.
 # Authors the real hollow-house roving rats. Each [[formations]] entry carries BOTH
 # halves: the description opt-in ({ key, weight }) and the catalog roster ({ mobs }),
 # keyed the same. `mobs` deserializes straight into the core MobSpec (materialDrops

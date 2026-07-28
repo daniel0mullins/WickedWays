@@ -21,9 +21,10 @@ The workspace:
 | `wickedways-server` | The axum room server: per-campaign table actors, seat auth, SQLite persistence. |
 | `wickedways-web` | The Dioxus web client (the shipped product; see the root `Dockerfile`). |
 
-**Legacy, pending deletion:** the TypeScript engine (`src/`), its packages (`packages/`), the TS
-conformance harness (`conformance/*.test.ts`, `conformance/fixtures/*.gen.test.ts`), and
-`landing/` (a separate PHP marketing page). None are built or gated; don't extend them.
+The TypeScript engine and its packages have been deleted; the golden corpus under
+`conformance/fixtures/` (goldens + TOML campaign sources) is all that remains of `conformance/`.
+`landing/` is a separate PHP marketing page, not part of the engine build. The root
+`package.json` exists only for the VitePress docs site.
 
 ## Commands
 

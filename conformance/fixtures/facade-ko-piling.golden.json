@@ -79,9 +79,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 3,
-                "sanity": 0
+                "energy": 8.0,
+                "health": 3.0,
+                "sanity": 0.0
               },
               "id": "delver",
               "name": "Delver"
@@ -286,9 +286,9 @@
             "snapshot": {
               "name": "First",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },
@@ -303,9 +303,9 @@
             "snapshot": {
               "name": "Second",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },
@@ -441,9 +441,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 3,
-                "sanity": 0
+                "energy": 8.0,
+                "health": 3.0,
+                "sanity": 0.0
               },
               "id": "delver",
               "name": "Delver"
@@ -648,9 +648,9 @@
             "snapshot": {
               "name": "First",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },
@@ -665,9 +665,9 @@
             "snapshot": {
               "name": "Second",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },

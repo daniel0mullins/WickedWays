@@ -7,13 +7,10 @@
 //! internal/multiplayer representation.
 use alloc::string::String;
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "ts")]
-use ts_rs::TS;
 
 use crate::world::direction::Direction;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Intent {
     Move {
@@ -67,7 +64,6 @@ pub enum Intent {
     Talk {
         npc_id: String,
         #[serde(default, skip_serializing_if = "Option::is_none")]
-        #[cfg_attr(feature = "ts", ts(optional))]
         prompt: Option<String>,
     },
     Wait,

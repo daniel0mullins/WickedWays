@@ -101,9 +101,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 20,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -236,9 +236,9 @@
             "snapshot": {
               "name": "Wraith",
               "stats": {
-                "energy": 4,
-                "health": 1,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 1.0,
+                "sanity": 4.0
               }
             }
           },
@@ -457,9 +457,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 20,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -596,9 +596,9 @@
             "snapshot": {
               "name": "Wraith",
               "stats": {
-                "energy": 4,
-                "health": 1,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 1.0,
+                "sanity": 4.0
               }
             }
           },
@@ -817,9 +817,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 20,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -956,9 +956,9 @@
             "snapshot": {
               "name": "Wraith",
               "stats": {
-                "energy": 4,
-                "health": 1,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 1.0,
+                "sanity": 4.0
               }
             }
           },
@@ -1177,9 +1177,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 20,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -1316,9 +1316,9 @@
             "snapshot": {
               "name": "Wraith",
               "stats": {
-                "energy": 4,
-                "health": 1,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 1.0,
+                "sanity": 4.0
               }
             }
           },
@@ -1537,9 +1537,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 20,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -1676,9 +1676,9 @@
             "snapshot": {
               "name": "Wraith",
               "stats": {
-                "energy": 4,
-                "health": 1,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 1.0,
+                "sanity": 4.0
               }
             }
           },
@@ -1897,9 +1897,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 20,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -2036,9 +2036,9 @@
             "snapshot": {
               "name": "Wraith",
               "stats": {
-                "energy": 4,
-                "health": 1,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 1.0,
+                "sanity": 4.0
               }
             }
           },
@@ -2257,9 +2257,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 20,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -2396,9 +2396,9 @@
             "snapshot": {
               "name": "Wraith",
               "stats": {
-                "energy": 4,
-                "health": 1,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 1.0,
+                "sanity": 4.0
               }
             }
           },
@@ -2648,9 +2648,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 20,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -2814,9 +2814,9 @@
             "snapshot": {
               "name": "Wraith",
               "stats": {
-                "energy": 4,
-                "health": 1,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 1.0,
+                "sanity": 4.0
               }
             }
           },
@@ -3048,9 +3048,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 20,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -3214,9 +3214,9 @@
             "snapshot": {
               "name": "Wraith",
               "stats": {
-                "energy": 4,
-                "health": 1,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 1.0,
+                "sanity": 4.0
               }
             }
           },
@@ -3465,9 +3465,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 20,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -3651,9 +3651,9 @@
             "snapshot": {
               "name": "Wraith",
               "stats": {
-                "energy": 4,
-                "health": 1,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 1.0,
+                "sanity": 4.0
               }
             }
           },
@@ -3885,9 +3885,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 20,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -4071,9 +4071,9 @@
             "snapshot": {
               "name": "Wraith",
               "stats": {
-                "energy": 4,
-                "health": 1,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 1.0,
+                "sanity": 4.0
               }
             }
           },

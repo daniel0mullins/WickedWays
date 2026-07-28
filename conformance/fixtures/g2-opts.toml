@@ -1,4 +1,4 @@
-# g2-opts — the TOML twin of the g2-opts oracle (g2-opts.gen.test.ts). Proves the
+# g2-opts — authors the g2-opts golden pair. Proves the
 # campaign `[opts]` table (previously hardcoded to the default): the real
 # hollow-house bounds maxRounds 150 + baseEncounterChance 20. ASCII only.
 

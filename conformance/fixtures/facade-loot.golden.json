@@ -60,9 +60,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -351,9 +351,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -663,9 +663,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -983,9 +983,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -1325,9 +1325,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"
@@ -1624,9 +1624,9 @@
           "archetypes": [
             {
               "baseStats": {
-                "energy": 8,
-                "health": 10,
-                "sanity": 8
+                "energy": 8.0,
+                "health": 10.0,
+                "sanity": 8.0
               },
               "id": "delver",
               "name": "Delver"

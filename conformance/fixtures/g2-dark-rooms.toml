@@ -1,4 +1,4 @@
-# g2-dark-rooms — the TOML twin of the g2-dark-rooms oracle (g2-dark-rooms.gen.test.ts).
+# g2-dark-rooms — authors the g2-dark-rooms golden pair.
 # Proves the room sub-fields the author previously dropped: `dark` (a lightless
 # Cellar) and `spawnModifier` (a biased-encounter Hall). Rooms connected so neither
 # is pruned. ASCII only.

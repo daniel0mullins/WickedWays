@@ -1,4 +1,4 @@
-# g2-equipment — the TOML twin of the g2-equipment oracle (g2-equipment.gen.test.ts).
+# g2-equipment — authors the g2-equipment golden pair.
 # Authors three real hollow-house items proving every full-descriptor field: a
 # weapon with a slot + light source (lantern), a durable weapon (poker), and the
 # lore-bearing, non-droppable win item (journal). The journal `lore` is the exact

@@ -6,8 +6,6 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-#[cfg(feature = "ts")]
-use ts_rs::TS;
 
 use crate::stats::StatType;
 use crate::world::afflictions::Afflictions;
@@ -23,7 +21,6 @@ fn empty_object() -> Value {
 /// A mob's innate attack (the `naturalAttack` field on a mob snapshot). Always
 /// present on a spawned mob; the native default is `{stat:"health",power:1}`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct NaturalAttack {
     pub stat: StatType,
@@ -36,7 +33,6 @@ pub struct NaturalAttack {
 /// including the always-emit mob fields (`baseEscapeChance`, `materialDrops`,
 /// `lightAverse`, `naturalAttack`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct MobSpec {
     pub name: String,
@@ -50,7 +46,6 @@ pub struct MobSpec {
     /// Material drops for this mob. Defaults to (and serializes as) JSON `{}`.
     /// `unknown` in TS.
     #[serde(default = "empty_object")]
-    #[cfg_attr(feature = "ts", ts(type = "unknown"))]
     pub material_drops: Value,
     pub actions_per_round: i64,
 }
@@ -58,7 +53,6 @@ pub struct MobSpec {
 /// A named formation: the mobs it spawns. Keyed by encounter `behaviorKey` in
 /// `Catalog.formations`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "ts", derive(TS), ts(export))]
 #[serde(rename_all = "camelCase")]
 pub struct FormationDescriptor {
     pub mobs: Vec<MobSpec>,

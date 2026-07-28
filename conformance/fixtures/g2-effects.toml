@@ -1,4 +1,4 @@
-# g2-effects — the TOML twin of the g2-effects oracle (g2-effects.gen.test.ts).
+# g2-effects — authors the g2-effects golden pair.
 # A bespoke `hex` mechanic proving the three effects no committed hollow-house
 # behavior uses — `damage`, `heal`, `grantImmunity` — plus the `defined(...)` guard.
 # `init = {}` seeds the genesis state. ASCII only.

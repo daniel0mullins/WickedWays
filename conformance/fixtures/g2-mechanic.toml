@@ -1,4 +1,4 @@
-# g2-mechanic — the TOML twin of the g2-mechanic oracle (g2-mechanic.gen.test.ts).
+# g2-mechanic — authors the g2-mechanic golden pair.
 #
 # Authored in the G2 mechanic surface: a `[[mechanics]]` opt-in plus a
 # `[behaviors.mechanic.<key>]` behavior (`init` + hook bodies) that (Task 4) compile

@@ -1,24 +1,39 @@
 # Introduction
 
-Wicked Ways is a type-safe, turn-based tabletop RPG engine written in TypeScript.
-It models a party-based horror campaign: a Game Master and player characters take
-turns across a procedurally generated dungeon — fighting mobs, looting containers,
-talking to NPCs, and accumulating damage across three interlocking stats. Game
-rules are enforced both by the type system (branded IDs, hidden state) and at
-runtime (lifecycle guards that throw on illegal moves).
+Wicked Ways is a turn-based tabletop horror-RPG engine written in Rust and
+shipped as a wasm-compiled web client. It models a party-based horror campaign:
+a Game Master and player characters take turns across an authored house of
+rooms — fighting mobs, looting containers, talking to NPCs, and accumulating
+damage across three interlocking stats. Game rules are enforced both by the
+type system (branded IDs, private state) and at runtime (lifecycle guards that
+throw `ProceduralViolation` on illegal moves).
+
+The engine lives in a Rust workspace under `crates/`:
+
+| Crate | Role |
+|---|---|
+| `wickedways-core` | The engine: world state, turn loop, combat, mechanics, the ops DSL, sync. |
+| `wickedways-author` | Compiles the TOML campaign-author format into a description + catalog. |
+| `wickedways-assemble` | Assembles a description + catalog (+ seated party) into a genesis snapshot. |
+| `wickedways-wasm` | The wasm-bindgen boundary: the stateful `Authority` handle. |
+| `wickedways-transport` | The multiplayer wire protocol. |
+| `wickedways-server` | The axum room server: per-campaign table actors, seat auth, persistence. |
+| `wickedways-web` | The Dioxus web client — the shipped product. |
 
 ## How these docs are organized
 
+- **[Getting started](./getting-started)** — build and run the engine, the web
+  client, and the test suites from a fresh checkout.
 - **[Architecture](./architecture)** — the authoritative deep dive: the campaign
   turn loop, character hierarchy, combat and mitigation math, status effects,
   mobs and encounters, loot, crafting, durability, equipment slots, keys, and
   dialogue. This page mirrors the project's root `README.md`.
-- **[API Reference](/api/)** — generated directly from the TSDoc comments in
-  `src/lib`, so it always matches the current source.
 
-## Using the engine
+## Authoring campaigns
 
-There is no published npm package yet. Import directly from the engine source
-under `src/lib/...` — there is intentionally no barrel export. Start from
-`src/lib/campaign.ts` (the campaign turn loop) and follow the types from there;
-the [Architecture](./architecture) page walks through how the pieces fit.
+Campaigns are authored in a declarative TOML format compiled by
+`wickedways-author`: rooms, exits, loot, mobs, NPCs, scenes, victory
+conditions, items, and scripted behaviors in one file. The complete shipped
+campaign (`conformance/fixtures/hollow-house.toml`) doubles as the reference
+example, and the [Architecture](./architecture) page documents the format
+alongside the mechanics it drives.

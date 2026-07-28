@@ -1,5 +1,4 @@
-# g2-storyteller — the TOML twin of the g2-storyteller oracle
-# (g2-storyteller.gen.test.ts). Authors the REAL hollow-house `storyteller`
+# g2-storyteller — authors the g2-storyteller golden pair: the REAL hollow-house `storyteller`
 # mechanic over a 1-entry lore map, proving this slice's forms: the `action`
 # subject, `mapLit`, `has`, `lookup`, `stateGetIn`, and the `set state.<map>[<key>]`
 # (`setStateIn`) statement. `init = { seen = {} }` seeds the genesis state.

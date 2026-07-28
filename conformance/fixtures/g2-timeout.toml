@@ -1,4 +1,4 @@
-# g2-timeout — the TOML twin of the g2-timeout oracle (g2-timeout.gen.test.ts).
+# g2-timeout — authors the g2-timeout golden pair.
 # Proves description.timeout_narration (previously hardcoded None): the real
 # hollow-house onTimeout cue, authored as a plain `timeoutNarration` string that
 # lowers to the { text } shape. The narration carries an em-dash, matched verbatim.

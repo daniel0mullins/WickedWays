@@ -195,9 +195,9 @@
             "snapshot": {
               "name": "Lurker",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },
@@ -599,9 +599,9 @@
             "snapshot": {
               "name": "Lurker",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },
@@ -992,9 +992,9 @@
             "snapshot": {
               "name": "Lurker",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },
@@ -1422,9 +1422,9 @@
             "snapshot": {
               "name": "Lurker",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },
@@ -1854,9 +1854,9 @@
             "snapshot": {
               "name": "Lurker",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },
@@ -2251,9 +2251,9 @@
             "snapshot": {
               "name": "Lurker",
               "stats": {
-                "energy": 4,
-                "health": 5,
-                "sanity": 4
+                "energy": 4.0,
+                "health": 5.0,
+                "sanity": 4.0
               }
             }
           },

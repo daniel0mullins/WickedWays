@@ -1,5 +1,4 @@
-# g2-mechanic-actions — the TOML twin of the g2-mechanic-actions oracle
-# (g2-mechanic-actions.gen.test.ts).
+# g2-mechanic-actions — authors the g2-mechanic-actions golden pair.
 #
 # Authored in the G2 mechanic surface: a `[[mechanics]]` opt-in plus a
 # `[behaviors.mechanic.<key>]` behavior that (byte-for-byte) compiles to the
