@@ -12,12 +12,17 @@
 FROM rust:1-slim-bookworm AS builder
 WORKDIR /app
 
-# Cap cargo's build parallelism. The cold wasm compile of the full Dioxus tree is
-# the most memory-hungry step of the build; unbounded parallel codegen has OOM-killed
-# it on memory-constrained build hosts (the process dies mid-compile with no rustc
-# error). Two jobs keeps peak RSS bounded at the cost of a slightly slower build, and
-# applies to both build steps below (wasm bundle + server binary).
-ENV CARGO_BUILD_JOBS=2
+# Fully serialize cargo. The cold wasm compile of the full Dioxus tree is the most
+# memory-hungry step of the build; parallel codegen has OOM-killed it on
+# memory-constrained build hosts (the process dies mid-compile with no rustc error —
+# most recently at jobs=2, ~10 min into a cold-cache preview build). Measured on the
+# cold tree: jobs=2 peaks at ~1.0 GB of rustc RSS (two ~550 MB compiles overlap:
+# web-sys, js-sys, wickedways-core, wickedways-web are all in that class); jobs=1
+# bounds the peak to the single largest compile, ~0.67 GB, for ~2x the cold-build
+# wall time. Warm rebuilds (BuildKit cache mounts below) recompile only the changed
+# workspace crates, which build serially anyway, so this costs them almost nothing.
+# Applies to both build steps below (wasm bundle + server binary).
+ENV CARGO_BUILD_JOBS=1
 
 # Prebuilt wasm-bindgen CLI (release tarball beats `cargo install` by minutes); the
 # version MUST match the `wasm-bindgen` crate in Cargo.lock (build-web.sh asserts it).
