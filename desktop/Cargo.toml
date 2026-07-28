@@ -18,3 +18,15 @@ edition = "2021"
 # Pinned to the same dioxus the web client resolves to (root Cargo.lock).
 dioxus = { version = "=0.6.3", features = ["desktop"] }
 wickedways-web = { path = "../crates/wickedways-web", features = ["native-app"] }
+
+# dx auto-appends these profiles on first run; kept committed so `dx bundle`/`dx serve`
+# don't dirty the tree.
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"

@@ -49,6 +49,21 @@ packages; build it with `cargo run --manifest-path desktop/Cargo.toml` (on Linux
 `libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev` first). Single-player only for now — it has
 no multiplayer transport yet, and audio is silent pending a native backend.
 
+Distributable packages are built with the Dioxus CLI (pinned `dioxus-cli --version 0.6.3`,
+matching `Cargo.lock`) from `desktop/`:
+
+```bash
+cd desktop && dx bundle --release --platform desktop
+```
+
+`--platform desktop` is required (the dep graph also carries dioxus's `web` feature, so
+auto-detection sees two platforms). Each OS builds its own formats — `.deb`/`.rpm`/AppImage
+on Linux (AppImage additionally needs `librsvg2-dev` at build time), `.app`/`.dmg` on macOS,
+`.msi`/NSIS on Windows — into `desktop/target/dx/wickedways-desktop/bundle/`. Bundle
+identity/icons live in `desktop/Dioxus.toml` (icons generated from
+`docs-site/public/logo.png`). A tag-triggered three-OS release workflow is parked at
+`docs/ci/release.yml.proposed`.
+
 The content pipeline: a campaign is authored in TOML, compiled by
 `wickedways-author` into a **description** (world layout) plus a **catalog** (item
 descriptors + scripted behaviors), assembled by `wickedways-assemble` into a
