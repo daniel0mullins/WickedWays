@@ -18,8 +18,8 @@ own behavior.
 
 Full docs are published to GitHub Pages at
 **<https://daniel0mullins.github.io/WickedWays/>** — a prose guide (this README,
-rendered) plus an API reference generated from the source TSDoc. The site is
-built with VitePress + TypeDoc and lives in `docs-site/`. Work on it locally with:
+rendered) plus getting-started pages. The site is built with VitePress and lives
+in `docs-site/`. Work on it locally with:
 
 ```bash
 pnpm docs:dev       # serve the site with hot reload
@@ -41,6 +41,28 @@ Everything that ships lives in `crates/`:
 | `wickedways-transport` | The multiplayer wire protocol (serde only, engine-free). |
 | `wickedways-server` | The axum room server: per-campaign table actors, seat-ownership auth, SQLite persistence. |
 | `wickedways-web` | The Dioxus web client — the shipped product (see the root `Dockerfile`). |
+
+One crate lives outside the workspace: **`desktop/`**, a thin native shell that runs the same
+client (`wickedways-web` with its `native-app` feature) in a desktop window via `dioxus`'s
+webview. It is workspace-`exclude`d so the workspace-wide gates need no system GTK/WebKit
+packages; build it with `cargo run --manifest-path desktop/Cargo.toml` (on Linux install
+`libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev` first). Single-player only for now — it has
+no multiplayer transport yet, and audio is silent pending a native backend.
+
+Distributable packages are built with the Dioxus CLI (pinned `dioxus-cli --version 0.6.3`,
+matching `Cargo.lock`) from `desktop/`:
+
+```bash
+cd desktop && dx bundle --release --platform desktop
+```
+
+`--platform desktop` is required (the dep graph also carries dioxus's `web` feature, so
+auto-detection sees two platforms). Each OS builds its own formats — `.deb`/`.rpm`/AppImage
+on Linux (AppImage additionally needs `librsvg2-dev` at build time), `.app`/`.dmg` on macOS,
+`.msi`/NSIS on Windows — into `desktop/target/dx/wickedways-desktop/bundle/`. Bundle
+identity/icons live in `desktop/Dioxus.toml` (icons generated from
+`docs-site/public/logo.png`). A tag-triggered three-OS release workflow is parked at
+`docs/ci/release.yml.proposed`.
 
 The content pipeline: a campaign is authored in TOML, compiled by
 `wickedways-author` into a **description** (world layout) plus a **catalog** (item

@@ -119,7 +119,9 @@ fn MenuView(route: Signal<LauncherRoute>, debug: bool) -> Element {
             div { class: "launcher-menu",
                 h1 { class: "launcher-heading", "WICKEDWAYS" }
                 p { class: "launcher-sub", "Choose a campaign" }
-                for c in menu_campaigns(debug) {
+                // A build with no multiplayer transport (the desktop app) lists only the
+                // single-player campaigns and offers no join-by-id.
+                for c in menu_campaigns(debug).into_iter().filter(|c| crate::platform::MULTIPLAYER || !c.multiplayer) {
                     button {
                         key: "{c.slug}",
                         class: "launcher-entry",
@@ -128,6 +130,7 @@ fn MenuView(route: Signal<LauncherRoute>, debug: bool) -> Element {
                         span { class: "launcher-blurb", "{c.blurb}" }
                     }
                 }
+                if crate::platform::MULTIPLAYER {
                 div { class: "launcher-joinbyid",
                     p { class: "launcher-joinlabel", "Have a game ID from a host? Join their game:" }
                     div { class: "launcher-joinrow",
@@ -148,6 +151,7 @@ fn MenuView(route: Signal<LauncherRoute>, debug: bool) -> Element {
                     if !join_err().is_empty() {
                         p { class: "launcher-joinerr", "{join_err}" }
                     }
+                }
                 }
             }
         }

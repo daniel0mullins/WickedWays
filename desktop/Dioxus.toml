@@ -1,0 +1,31 @@
+# `dx bundle` config for the desktop shell — produces the distributable packages
+# (.app/.dmg on macOS, .msi/NSIS .exe on Windows, .deb/.rpm/AppImage on Linux).
+# Bundles are built on the OS they target: `cd desktop && dx bundle --release`.
+# The dev server / plain builds don't read this file; `cargo run` works without it.
+#
+# Icons are generated from docs-site/public/logo.png (see icons/) — regenerate with
+# ImageMagick + png2icns if the logo changes.
+[application]
+name = "wickedways"
+default_platform = "desktop"
+
+[bundle]
+identifier = "com.danielericmullins.wickedways"
+publisher = "Daniel Eric Mullins"
+icon = [
+  "icons/32x32.png",
+  "icons/128x128.png",
+  "icons/128x128@2x.png",
+  "icons/icon.ico",
+  "icons/icon.icns",
+]
+copyright = "© Daniel Eric Mullins"
+category = "Game"
+short_description = "A turn-based tabletop horror RPG."
+long_description = "WickedWays — a turn-based tabletop horror-RPG. Explore the Hollow House in the CRT terminal or point-and-click surface, offline on your desktop."
+
+# Debian package metadata: the webview is linked dynamically, so the .deb must declare the
+# WebKitGTK runtime (this is why the binary itself stays small and system-native).
+[bundle.deb]
+depends = ["libwebkit2gtk-4.1-0", "libgtk-3-0"]
+files = {}

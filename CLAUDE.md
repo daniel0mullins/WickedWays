@@ -26,6 +26,13 @@ The TypeScript engine and its packages have been deleted; the golden corpus unde
 `landing/` is a separate PHP marketing page, not part of the engine build. The root
 `package.json` exists only for the VitePress docs site.
 
+`desktop/` is a deliberately workspace-**excluded** shell crate: it runs `wickedways-web`
+(with its `native-app` feature) in a native dioxus-desktop window. Keep it excluded — it is
+the only crate linking system GTK/WebKit, and pulling it (or `dioxus/desktop`) into the
+workspace or into a `wickedways-web` feature would make every workspace-wide gate need those
+system packages. The `native-app` feature itself must stay dependency-light for the same
+reason; desktop-only window services are injected via `platform::install_desktop_hooks`.
+
 ## Commands
 
 ```bash
@@ -35,6 +42,8 @@ cargo fmt --all --check
 cargo build -p wickedways-core --no-default-features            # the no_std gate
 cargo clippy -p wickedways-web --all-targets --target wasm32-unknown-unknown -- -D warnings
 cargo build -p wickedways-web --target wasm32-unknown-unknown   # the shipped client
+cargo run --manifest-path desktop/Cargo.toml                    # the native desktop shell (workspace-excluded; needs GTK/WebKit dev libs on Linux)
+cd desktop && dx bundle --release --platform desktop            # desktop installers (.deb/.rpm/AppImage | .app/.dmg | .msi) — dioxus-cli 0.6.3; --platform is required
 cargo clippy -p wickedways-wasm --target wasm32-unknown-unknown --features conformance -- -D warnings
 pnpm docs:build                                                 # VitePress docs site (docs-site/)
 ```

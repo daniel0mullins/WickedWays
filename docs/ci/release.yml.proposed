@@ -1,0 +1,83 @@
+# PROPOSED: .github/workflows/release.yml
+#
+# Desktop release bundles for all three OSes, built on a version tag push
+# (e.g. `git tag v0.1.0 && git push origin v0.1.0`) and attached to a draft
+# GitHub release. Parked here because this session cannot write workflow
+# files (the credential lacks the `workflow` scope) — move it to
+# .github/workflows/release.yml verbatim.
+#
+# Notes:
+# - `dx bundle` must be told `--platform desktop`: the desktop shell's dep graph
+#   also enables dioxus's `web` feature (via wickedways-web), so auto-detection
+#   sees two platforms and refuses.
+# - Linux needs the WebKitGTK/GTK dev packages to BUILD, plus librsvg2-dev for
+#   the AppImage gtk plugin. The produced .deb/.rpm declare the runtime deps.
+# - macOS bundles are unsigned here; add signing/notarization secrets when you
+#   have an Apple Developer ID (APPLE_CERTIFICATE etc. in tauri-bundler's env)
+#   or ship unsigned and let users right-click-open.
+# - dioxus-cli is pinned to the workspace's dioxus version (0.6.3).
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            bundles: deb rpm appimage
+          - os: macos-latest
+            bundles: macos dmg
+          - os: windows-latest
+            bundles: msi nsis
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.94.1
+      - name: Linux system deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev librsvg2-dev
+      - name: Install dioxus-cli
+        run: cargo install dioxus-cli --version 0.6.3 --locked
+      - name: Bundle
+        working-directory: desktop
+        run: dx bundle --release --platform desktop
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          mkdir -p dist-bundles
+          find desktop/target/dx -path '*/bundle/*' \
+            \( -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' \
+               -o -name '*.dmg' -o -name '*.app.tar.gz' -o -name '*.msi' -o -name '*-setup.exe' \) \
+            -exec cp {} dist-bundles/ \;
+          ls -la dist-bundles
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundles-${{ matrix.os }}
+          path: dist-bundles/*
+
+  release:
+    needs: bundle
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist-bundles
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: dist-bundles/*

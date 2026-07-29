@@ -12,11 +12,23 @@
 //! director, soundpacks, and ambient bed — lives in [`audio_runtime`](crate::audio_runtime); this is
 //! just the backend that makes the sound.
 
+#[cfg(not(feature = "native-app"))]
 use web_sys::{AudioContext, AudioScheduledSourceNode, OscillatorType};
 
+#[cfg(feature = "native-app")]
+use crate::audio::SynthVoice;
+#[cfg(not(feature = "native-app"))]
 use crate::audio::{Source, SynthVoice};
 
+/// The audio-context handle the engine hands the ambient bed. In the desktop build there is no
+/// Web Audio, so this is an inert placeholder the (equally inert) bed accepts — the runtime's
+/// engine→bed wiring compiles identically on both hosts.
+#[cfg(feature = "native-app")]
+#[derive(Clone)]
+pub struct AudioContext;
+
 /// A tiny gain floor for the exponential decay ramp — `exponentialRampToValueAtTime` can't target 0.
+#[cfg(not(feature = "native-app"))]
 const SILENCE: f32 = 0.0001;
 
 /// Deterministic pseudo-noise samples in `[-1, 1)` for a white-noise burst — a cheap LCG over the
@@ -32,12 +44,44 @@ pub fn noise_samples(frames: usize) -> Vec<f32> {
     data
 }
 
+/// The desktop stand-in for the Web Audio backend: same API, no sound. `resume` reports audio
+/// unavailable, so the [`AudioRuntime`](crate::audio_runtime::AudioRuntime) simply stays
+/// disabled — the surfaces' audio toggle is a visible no-op until a native backend (cpal)
+/// lands.
+#[cfg(feature = "native-app")]
+#[derive(Default)]
+pub struct AudioEngine;
+
+#[cfg(feature = "native-app")]
+impl AudioEngine {
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// Native audio is not implemented yet — report unavailable so the runtime stays disabled.
+    pub fn resume(&mut self) -> bool {
+        false
+    }
+
+    pub fn context(&self) -> Option<AudioContext> {
+        None
+    }
+
+    pub fn suspend(&self) {}
+
+    pub fn close(&mut self) {}
+
+    pub fn play(&self, _voice: &SynthVoice) {}
+}
+
 /// The Web Audio backend that renders [`SynthVoice`]s. Holds a lazily-created [`AudioContext`].
+#[cfg(not(feature = "native-app"))]
 #[derive(Default)]
 pub struct AudioEngine {
     ctx: Option<AudioContext>,
 }
 
+#[cfg(not(feature = "native-app"))]
 impl AudioEngine {
     pub fn new() -> Self {
         Self::default()
@@ -129,12 +173,14 @@ impl AudioEngine {
 
 /// Start a scheduled source at `t0` and stop it at `end`, via the base [`AudioScheduledSourceNode`]
 /// (the non-deprecated timed start/stop, shared by oscillator + buffer-source nodes).
+#[cfg(not(feature = "native-app"))]
 fn schedule(node: &AudioScheduledSourceNode, t0: f64, end: f64) {
     let _ = node.start_with_when(t0);
     let _ = node.stop_with_when(end);
 }
 
 /// Map a (non-noise) [`Source`] to its Web Audio [`OscillatorType`].
+#[cfg(not(feature = "native-app"))]
 fn oscillator_type(source: Source) -> OscillatorType {
     match source {
         // Noise never reaches here (handled by the buffer path); default to sine defensively.

@@ -1,0 +1,32 @@
+# The native desktop shell — a thin windowed host for the same client the web ships.
+#
+# Deliberately OUTSIDE the cargo workspace (see the root manifest's `exclude`): this is the
+# only crate that links the native windowing stack (dioxus desktop → wry/tao → GTK/WebKit on
+# Linux), and keeping it out of the workspace means `cargo test/clippy --workspace
+# --all-features` need no system packages. Build it explicitly:
+#
+#   cargo run --manifest-path desktop/Cargo.toml
+#
+# On Linux the build needs the WebKitGTK dev packages (Debian/Ubuntu:
+# libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev); macOS and Windows need nothing extra.
+[package]
+name = "wickedways-desktop"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+# Pinned to the same dioxus the web client resolves to (root Cargo.lock).
+dioxus = { version = "=0.6.3", features = ["desktop"] }
+wickedways-web = { path = "../crates/wickedways-web", features = ["native-app"] }
+
+# dx auto-appends these profiles on first run; kept committed so `dx bundle`/`dx serve`
+# don't dirty the tree.
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"
