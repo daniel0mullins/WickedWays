@@ -69,11 +69,19 @@
   mix-blend-mode: multiply;
 }
 
+/* The pinned room panel: name, description, and contents chips. Never scrolls — the
+   transcript below is the left column's only scrolling region. */
+.room-panel {
+  flex: 0 0 auto;
+  padding-bottom: 0.3696em;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 20%, transparent);
+}
 .transcript {
-  flex: 1 1 auto;
+  flex: 1 1 0; min-height: 0;
   overflow-y: auto;
   display: flex; flex-direction: column;
   gap: 0.1584em;
+  opacity: 0.92;
 }
 .line { white-space: pre-wrap; }
 .line.system { color: var(--color-accent); }
@@ -161,12 +169,6 @@
 .chip.defeated { opacity: 0.45; text-decoration: line-through; }
 /* A co-located party member — highlighted so you can see who's in the room with you. */
 .chip.player { color: var(--color-accent); font-weight: bold; }
-
-.narration {
-  margin-top: 0.528em; padding-top: 0.3696em;
-  border-top: 1px solid color-mix(in srgb, var(--color-text) 20%, transparent);
-  opacity: 0.92;
-}
 
 /* In-screen controls row: the multiplayer turn indicator + GM control (empty in single-player). */
 .controls {

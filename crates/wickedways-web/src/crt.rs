@@ -472,20 +472,24 @@ pub fn crt_app() -> Element {
         }
     });
 
-    // The status bar (pinned top) and the exits/inventory dock (pinned bottom) render OUTSIDE the
-    // scrolling transcript, so they stay in view as narration grows. Only the room/occupants/narration
-    // scroll. Both empty until the first projection.
+    // The status bar (pinned top), the room panel (name/description/contents, pinned above the
+    // log), and the exits/inventory dock (pinned bottom) all render OUTSIDE the scrolling
+    // transcript, so they stay in view as narration grows — the narration log is the only
+    // scrolling region of the left column. All empty until the first projection.
     let vmodel = vm();
     let (hud, dock, side) = match &vmodel {
         Some(v) => (hud_bar(v, &status_fields()), dock_bar(v), side_bar(v)),
         None => (rsx! {}, rsx! {}, rsx! {}),
     };
-    let screen = match vmodel {
-        Some(v) => game_view(&v, narration, draft),
-        None => rsx! {
-            div { class: "line system", "WICKEDWAYS" }
-            div { class: "line", "status: {status}" }
-        },
+    let (room_panel, log) = match vmodel {
+        Some(v) => (game_view(&v, draft), narration_view(&v, narration, draft)),
+        None => (
+            rsx! {
+                div { class: "line system", "WICKEDWAYS" }
+                div { class: "line", "status: {status}" }
+            },
+            rsx! {},
+        ),
     };
 
     // Prompt state: locked off-turn or once the action budget is spent (multiplayer).
@@ -509,7 +513,8 @@ pub fn crt_app() -> Element {
                         // the right. The prompt and controls sit BELOW the columns, full width.
                         div { class: "screen-cols",
                             div { class: "screen-main",
-                                div { class: "transcript", id: "transcript", {screen} }
+                                div { class: "room-panel", {room_panel} }
+                                div { class: "transcript", id: "transcript", {log} }
                                 {dock}
                             }
                             aside { class: "screen-side", {side} }
@@ -760,7 +765,9 @@ fn side_bar(v: &ViewModel) -> Element {
     }
 }
 
-fn game_view(v: &ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>) -> Element {
+/// The pinned room panel: name, description, and contents (Here/Caches/Recipes chips). Renders
+/// above the scrolling narration log and stays in view as it grows.
+fn game_view(v: &ViewModel, draft: Signal<String>) -> Element {
     let nouns = clickable_nouns(v);
     rsx! {
         div { class: "room-name", "{v.room.name}" }
@@ -845,12 +852,16 @@ fn game_view(v: &ViewModel, narration: Signal<Vec<String>>, draft: Signal<String
             }
         }
 
-        if !narration().is_empty() {
-            div { class: "section narration",
-                for (i, line) in narration().iter().enumerate() {
-                    div { key: "n{i}", class: "line", {linked_line(line, &nouns, draft)} }
-                }
-            }
+    }
+}
+
+/// The narration log — the only scrolling region of the left column (the room panel above it
+/// is pinned). Nouns in each line are clickable, same as the room description.
+fn narration_view(v: &ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>) -> Element {
+    let nouns = clickable_nouns(v);
+    rsx! {
+        for (i, line) in narration().iter().enumerate() {
+            div { key: "n{i}", class: "line", {linked_line(line, &nouns, draft)} }
         }
     }
 }
