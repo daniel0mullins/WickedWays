@@ -25,6 +25,7 @@ use crate::driver::{
 };
 use crate::lobby::MultiplayerLobby;
 use crate::pnc::pnc_app;
+use crate::tabletop::tabletop_app;
 
 const LAUNCHER_CSS: &str = include_str!("../assets/launcher.css");
 
@@ -219,6 +220,7 @@ fn SurfaceView(slug: String, surface: String, route: Signal<LauncherRoute>) -> E
         } else {
             match surface.as_str() {
                 "point-and-click" => rsx! { PncSurface { key: "{key}" } },
+                "physical-tabletop" => rsx! { TabletopSurface { key: "{key}" } },
                 _ => rsx! { CrtSurface { key: "{key}" } },
             }
         }
@@ -235,4 +237,9 @@ fn CrtSurface() -> Element {
 #[component]
 fn PncSurface() -> Element {
     pnc_app()
+}
+
+#[component]
+fn TabletopSurface() -> Element {
+    tabletop_app()
 }

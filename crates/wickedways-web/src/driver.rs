@@ -360,6 +360,11 @@ const SURFACE_INFOS: &[SurfaceInfo] = &[
         label: "Point & Click",
         description: "Visual scene with clickable hotspots.",
     },
+    SurfaceInfo {
+        id: "physical-tabletop",
+        label: "Tabletop",
+        description: "Board of room tiles with a movable piece — the physical-tabletop simulator.",
+    },
 ];
 
 /// Look up a surface's launcher metadata by id.
@@ -391,8 +396,8 @@ pub struct CampaignInfo {
     pub multiplayer: bool,
 }
 
-/// Both surfaces, offered by every bundled campaign (so the surface picker is always reachable).
-const BOTH_SURFACES: &[&str] = &["crt-terminal", "point-and-click"];
+/// All surfaces, offered by every bundled campaign (so the surface picker is always reachable).
+const BOTH_SURFACES: &[&str] = &["crt-terminal", "point-and-click", "physical-tabletop"];
 
 /// The bundled campaigns the launcher presents, in menu order.
 pub fn campaign_registry() -> &'static [CampaignInfo] {
