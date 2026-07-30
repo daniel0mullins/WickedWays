@@ -117,11 +117,15 @@
   justify-content: center;
   flex-wrap: wrap;
 }
-.tt-piece { font-size: 0.9rem; line-height: 1; filter: drop-shadow(0 1px 1px #000); }
-.tt-piece-you { color: var(--tt-you); }
-.tt-piece-ally { color: var(--tt-ally); }
-.tt-piece-mob { color: var(--tt-mob); }
-.tt-piece-remains { color: var(--tt-dim); opacity: 0.6; }
+.tt-piece { font-size: 0.95rem; line-height: 1; filter: drop-shadow(0 1px 1px #000); }
+/* Piece color = the seat's worst affliction (the "glowing piece"). */
+.tt-piece-normal { color: var(--tt-you); }
+.tt-piece-fear { color: #d8a24a; animation: tt-flicker 1.4s ease-in-out infinite; }
+.tt-piece-panic { color: var(--tt-mob); animation: tt-flicker 0.5s steps(2) infinite; }
+.tt-piece-ko { color: var(--tt-dim); opacity: 0.5; }
+/* The active seat's piece gets a ring so the table sees whose turn it is. */
+.tt-piece.active { text-shadow: 0 0 6px currentColor; outline: 1px solid var(--tt-accent); border-radius: 50%; }
+@keyframes tt-flicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
 /* ── Rail ───────────────────────────────────────────────────────────── */
 .tt-rail {
@@ -139,8 +143,26 @@
   padding: 0.6rem 0.8rem;
   border-bottom: 1px solid var(--tt-edge);
 }
-.tt-dash-row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-.tt-dash-row.campaign { margin-top: 0.4rem; }
+/* One card per seat. */
+.tt-seats { display: flex; flex-direction: column; gap: 0.4rem; }
+.tt-seat {
+  border: 1px solid var(--tt-edge);
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+}
+.tt-seat.active { border-color: var(--tt-accent); box-shadow: 0 0 8px rgba(184, 134, 59, 0.35); }
+.tt-seat-top { display: flex; align-items: center; gap: 0.35rem; margin-bottom: 0.25rem; }
+.tt-seat-active { color: var(--tt-accent); font-size: 0.7rem; }
+.tt-seat-name { font-weight: 700; font-size: 0.9rem; }
+.tt-seat-stats { display: flex; gap: 0.4rem; }
+.tt-seat-chips { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.3rem; }
+.tt-chip { font-size: 0.68rem; border-radius: 3px; padding: 0.05rem 0.35rem; letter-spacing: 0.04em; }
+.tt-chip.chip-ko { background: #3a1414; color: #f0c0c0; }
+.tt-chip.chip-panic { background: #3a1414; color: var(--tt-mob); }
+.tt-chip.chip-fear { background: #33280e; color: #d8a24a; }
+.tt-chip.chip-confused { background: #2a2140; color: #b7a6e0; }
+.tt-banner { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; padding-top: 0.4rem; border-top: 1px solid var(--tt-edge); }
 .tt-stat {
   background: var(--tt-edge);
   border-radius: 4px;
@@ -267,3 +289,41 @@
   cursor: pointer;
 }
 .tt-enter-btn:hover { filter: brightness(1.1); }
+
+/* ── Topbar active-seat label ───────────────────────────────────────── */
+.tt-acting { color: var(--tt-you); font-size: 0.85rem; }
+
+/* ── Party builder (setup) ──────────────────────────────────────────── */
+.tt-party {
+  margin-top: 1.25rem;
+  width: min(420px, 90vw);
+  text-align: left;
+  background: var(--tt-panel);
+  border: 1px solid var(--tt-edge);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+}
+.tt-party-head { color: var(--tt-dim); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.5rem; }
+.tt-party-row { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.4rem; }
+.tt-party-row.fixed { color: var(--tt-ink); opacity: 0.85; }
+.tt-party-num {
+  flex: 0 0 1.4rem; height: 1.4rem; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--tt-edge); font-size: 0.75rem; font-weight: 700;
+}
+.tt-party-name { font-style: italic; }
+.tt-party-name-input, .tt-party-arche {
+  background: var(--tt-bg); color: var(--tt-ink); border: 1px solid var(--tt-edge);
+  border-radius: 4px; padding: 0.3rem 0.45rem; font: inherit; font-size: 0.85rem;
+}
+.tt-party-name-input { flex: 1 1 auto; min-width: 0; }
+.tt-party-arche { flex: 0 0 auto; }
+.tt-party-remove {
+  flex: 0 0 auto; background: transparent; color: var(--tt-dim); border: none; cursor: pointer;
+  font: inherit; padding: 0.2rem 0.4rem;
+}
+.tt-party-remove:hover { color: var(--tt-mob); }
+.tt-party-add {
+  margin-top: 0.2rem; background: transparent; color: var(--tt-accent); border: 1px dashed var(--tt-edge);
+  border-radius: 4px; padding: 0.35rem 0.6rem; cursor: pointer; font: inherit; font-size: 0.85rem; width: 100%;
+}
+.tt-party-add:hover { border-color: var(--tt-accent); }
