@@ -2,19 +2,21 @@
 //!
 //! A third surface alongside the CRT terminal ([`crt`](crate::crt)) and point-and-click
 //! ([`pnc`](crate::pnc)) that renders the session as a **tile board**: the fog-of-war map, enlarged
-//! into chunky room tiles, with the player's piece on the current tile, a movement + action rail, and
-//! a seat dashboard. It simulates the physical e-ink tabletop (see `docs/tabletop-simulator-spec.md`)
-//! on screen before any firmware exists.
+//! into chunky room tiles, with a piece per party seat, a movement + action rail, and per-seat
+//! dashboards. It simulates the physical e-ink tabletop (see `docs/tabletop-simulator-spec.md`) on
+//! screen before any firmware exists.
 //!
-//! It drives the same shared [`driver`](crate::driver) loop as the other surfaces
-//! (boot → [`project`] → [`intent_to_command`] → submit → narrate → map) and reuses the pure
+//! **Multi-seat (hotseat).** In single-player (offline) mode the surface opens a party-builder: the
+//! genesis's pre-seated seat is Player 1, and the host adds more explorers who are joined as extra
+//! seats before `BeginCampaign` ([`driver::boot_hotseat`]). One shared board hosts every seat; the
+//! offline `solo` authority rotates them automatically (start-turn → action → mob reactions → next
+//! player) — each piece is an actor. Multiplayer (networked) mode is unchanged: one seat per device.
+//!
+//! It drives the same shared [`driver`](crate::driver) loop as the other surfaces and reuses the pure
 //! [`affordances`](crate::affordances), [`map`](crate::map) geometry, [`Narrator`], and
-//! [`AudioRuntime`] — only the presentation differs. v1 is single-piece: it rides the existing
-//! single-player driver exactly like the other surfaces, and the multiplayer turn controls carry over
-//! unchanged for campaigns that offer networked play.
+//! [`AudioRuntime`] — only the presentation differs.
 //!
-//! [`project`]: crate::driver::project
-//! [`intent_to_command`]: crate::driver::intent_to_command
+//! [`driver::boot_hotseat`]: crate::driver::boot_hotseat
 //! [`Narrator`]: crate::narrator::Narrator
 //! [`AudioRuntime`]: crate::audio_runtime::AudioRuntime
 
@@ -23,17 +25,21 @@ use futures_util::StreamExt;
 
 use wickedways_core::presentation::{PresentationCue, StatusField};
 use wickedways_core::sync::{Command, SubmitResult, SyncCoordinator};
+use wickedways_core::world::afflictions::Status;
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
+use wickedways_core::World;
 
 use crate::affordances::{inventory_actions, scene_hotspots, ActionDescriptor, HotspotKind};
 use crate::audio::cue_for_intent;
 use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
-    boot, boot_single, has_actions_left, intent_to_command, is_gm, is_my_turn, project,
-    read_config, rebuild_single, toggle_fullscreen, welcome_for, AppTransport, Mode, GM_IDENTITY,
+    boot, boot_hotseat, bundled_campaign, has_actions_left, intent_to_command, is_gm, is_my_turn,
+    project, read_config, rebuild_single, toggle_fullscreen, welcome_for, AppTransport, Mode,
+    SeatSpec, GM_IDENTITY,
 };
+use crate::lobby::{archetype_options, ArchetypeOption};
 use crate::map::{layout_map, LaidBox, MapModel};
 use crate::narrator::Narrator;
 use crate::savestore::{self, SaveBlob};
@@ -42,6 +48,9 @@ const TABLETOP_CSS: &str = include_str!("../assets/tabletop.css");
 
 /// Pixel scale applied to the fog-of-war layout so the minimap grid reads as a chunky game board.
 const SCALE: f64 = 2.6;
+
+/// The most extra explorers a hotseat party can add beyond the pre-seated seat 0.
+const MAX_EXTRA_SEATS: usize = 3;
 
 /// One line in the running log, with a CSS class for its role.
 #[derive(Clone, PartialEq)]
@@ -71,11 +80,39 @@ impl LogLine {
     }
 }
 
-/// A request from the UI to the (non-Send, Rc-backed) transport coroutine. Mirrors the pnc surface's
-/// action set so the board supports the same lifecycle + multiplayer verbs.
+/// A row in the party-builder setup form: a display name and a chosen archetype id ("" = none).
+#[derive(Clone, Default, PartialEq)]
+struct SeatDraft {
+    name: String,
+    archetype: String,
+}
+
+/// A projected view of one party seat, read from the replica each turn — for placing its piece and
+/// rendering its dashboard. Bypasses the actorless `status` cue (per-seat stats come from the replica).
+#[derive(Clone, PartialEq)]
+struct SeatView {
+    id: String,
+    name: String,
+    room_id: Option<String>,
+    health: f64,
+    sanity: f64,
+    ko: bool,
+    panic: bool,
+    fear: bool,
+    confused: bool,
+    active: bool,
+}
+
+/// A request from the UI to the (non-Send, Rc-backed) transport coroutine.
 enum TtAction {
+    /// Begin a hotseat session with `seats` extra players joined (single-player only).
+    StartHotseat {
+        seats: Vec<SeatSpec>,
+    },
     /// Apply a chosen descriptor (an intent to submit, or a free examine/read).
     Run(ActionDescriptor),
+    /// The active seat passes (a `Wait`); under `solo` this ends its turn and advances the piece.
+    Pass,
     /// GM: advance to the next seat.
     NextPlayer,
     /// A player ends their own turn (multiplayer managed turns).
@@ -106,18 +143,74 @@ fn print_room(mut log: Signal<Vec<LogLine>>, mut narrator: Signal<Narrator>, vm:
     }
 }
 
+/// Read every party seat's location + stats from the live replica for piece placement + dashboards.
+fn party_roster(world: &World) -> Vec<SeatView> {
+    let active = world.active_character_id().ok();
+    world
+        .campaign
+        .party_ids
+        .iter()
+        .filter_map(|id| {
+            let c = world.characters.get(id)?;
+            let afl = &c.afflictions;
+            Some(SeatView {
+                id: id.0.clone(),
+                name: c.name.clone(),
+                room_id: c.current_room_id.as_ref().map(|r| r.0.clone()),
+                health: c.stats.health,
+                sanity: c.stats.sanity,
+                ko: afl.is_active(Status::Ko),
+                panic: afl.is_active(Status::Panic),
+                fear: afl.is_active(Status::Fear),
+                confused: afl.is_active(Status::Confused),
+                active: active.as_ref() == Some(id),
+            })
+        })
+        .collect()
+}
+
+/// The CSS piece class for a seat token, worst affliction first (the "glowing piece").
+fn seat_piece_class(s: &SeatView) -> &'static str {
+    if s.ko {
+        "tt-piece-ko"
+    } else if s.panic {
+        "tt-piece-panic"
+    } else if s.fear {
+        "tt-piece-fear"
+    } else {
+        "tt-piece-normal"
+    }
+}
+
+/// Whether a scene hotspot is a movement affordance (an exit or a locked door) rather than an
+/// on-tile action target. Drives the split between the movement rail and the action rail.
+fn is_movement_kind(kind: HotspotKind) -> bool {
+    matches!(kind, HotspotKind::Exit | HotspotKind::Locked)
+}
+
 pub fn tabletop_app() -> Element {
     let mut status = use_signal(|| "connecting…".to_string());
     let mut vm = use_signal(|| None::<ViewModel>);
     let mut status_fields = use_signal(Vec::<StatusField>::new);
+    let mut roster = use_signal(Vec::<SeatView>::new);
     let mut log = use_signal(Vec::<LogLine>::new);
     let mut narrator = use_signal(Narrator::new);
     let mut map_model = use_signal(MapModel::new);
-    let mut started = use_signal(|| matches!(read_config().mode, Mode::Multi));
+    // Multiplayer skips the local setup screen (the lobby already seated this client).
+    let started = use_signal(|| matches!(read_config().mode, Mode::Multi));
     let mut settings_open = use_signal(|| false);
     let mut audio_on = use_signal(|| false);
     let mode = use_hook(|| read_config().mode);
     let welcome = use_hook(|| welcome_for(&read_config().campaign));
+    // Archetypes the party-builder offers, read once from the campaign's genesis.
+    let arche_opts = use_hook(|| {
+        bundled_campaign(&read_config().campaign)
+            .ok()
+            .map(|(snap, _)| archetype_options(&snap))
+            .unwrap_or_default()
+    });
+    // The extra explorers the host adds in the setup screen (single-player only).
+    let drafts = use_signal(Vec::<SeatDraft>::new);
     let is_gm = use_hook(is_gm);
     let mut my_turn = use_signal(|| false);
     let mut my_actions_left = use_signal(|| true);
@@ -126,7 +219,24 @@ pub fn tabletop_app() -> Element {
         let cfg = read_config();
         let single = matches!(cfg.mode, Mode::Single);
         let gm = single || cfg.token == GM_IDENTITY;
-        match boot(&cfg).await {
+        let mut rx = rx;
+
+        // Single-player defers boot until the setup screen submits the party; multiplayer boots now.
+        let booted = if single {
+            status.set("seat your party…".into());
+            let seats = loop {
+                match rx.next().await {
+                    Some(TtAction::StartHotseat { seats }) => break seats,
+                    Some(_) => {} // ignore stray actions before the party is set
+                    None => return,
+                }
+            };
+            boot_hotseat(&cfg.campaign, &seats).await
+        } else {
+            boot(&cfg).await
+        };
+
+        match booted {
             Err(e) => {
                 status.set("error".into());
                 log.write()
@@ -146,6 +256,7 @@ pub fn tabletop_app() -> Element {
                 }
                 vm.set(initial);
                 status_fields.set(coord.status_fields().to_vec());
+                roster.set(party_roster(coord.replica()));
                 my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                 my_actions_left.set(has_actions_left(coord.replica(), single));
 
@@ -164,12 +275,15 @@ pub fn tabletop_app() -> Element {
                             }
                             vm.set(after);
                             status_fields.set(coord.status_fields().to_vec());
+                            roster.set(party_roster(coord.replica()));
                             my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                             my_actions_left.set(has_actions_left(coord.replica(), single));
                             continue;
                         }
                     };
                     let intent = match action {
+                        // Already booted — a stray StartHotseat is a no-op.
+                        TtAction::StartHotseat { .. } => continue,
                         TtAction::NextPlayer => {
                             submit(&transport, &mut coord, Command::NextPlayer, log).await;
                             let after = project(&coord, &catalog);
@@ -179,6 +293,7 @@ pub fn tabletop_app() -> Element {
                             }
                             vm.set(after);
                             status_fields.set(coord.status_fields().to_vec());
+                            roster.set(party_roster(coord.replica()));
                             my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                             my_actions_left.set(has_actions_left(coord.replica(), single));
                             continue;
@@ -195,6 +310,7 @@ pub fn tabletop_app() -> Element {
                             }
                             vm.set(after);
                             status_fields.set(coord.status_fields().to_vec());
+                            roster.set(party_roster(coord.replica()));
                             my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                             my_actions_left.set(has_actions_left(coord.replica(), single));
                             continue;
@@ -233,6 +349,7 @@ pub fn tabletop_app() -> Element {
                                         }
                                         vm.set(restored);
                                         status_fields.set(coord.status_fields().to_vec());
+                                        roster.set(party_roster(coord.replica()));
                                     }
                                     None => {
                                         log.write().push(LogLine::plain("No save found.".into()));
@@ -246,7 +363,18 @@ pub fn tabletop_app() -> Element {
                         }
                         TtAction::Restart => {
                             if cfg.mode == Mode::Single {
-                                match boot_single(&cfg.campaign).await {
+                                // Restart re-seats the same party from the setup drafts via a fresh
+                                // hotseat boot; fall back to a plain begin if none were added.
+                                let seats: Vec<SeatSpec> = drafts
+                                    .peek()
+                                    .iter()
+                                    .map(|d| SeatSpec {
+                                        name: d.name.clone(),
+                                        archetype: (!d.archetype.is_empty())
+                                            .then(|| d.archetype.clone()),
+                                    })
+                                    .collect();
+                                match boot_hotseat(&cfg.campaign, &seats).await {
                                     Ok((t, c, _cat)) => {
                                         transport = t;
                                         coord = c;
@@ -262,6 +390,7 @@ pub fn tabletop_app() -> Element {
                                         }
                                         vm.set(fresh);
                                         status_fields.set(coord.status_fields().to_vec());
+                                        roster.set(party_roster(coord.replica()));
                                     }
                                     Err(e) => log
                                         .write()
@@ -289,6 +418,7 @@ pub fn tabletop_app() -> Element {
                                         }
                                         vm.set(reverted);
                                         status_fields.set(coord.status_fields().to_vec());
+                                        roster.set(party_roster(coord.replica()));
                                     }
                                     None => {
                                         log.write().push(LogLine::plain("Nothing to undo.".into()));
@@ -344,6 +474,7 @@ pub fn tabletop_app() -> Element {
                             }
                             continue;
                         }
+                        TtAction::Pass => Intent::Wait,
                         TtAction::Run(ActionDescriptor::Intent { intent, .. }) => intent,
                     };
 
@@ -417,6 +548,7 @@ pub fn tabletop_app() -> Element {
                     }
                     vm.set(after);
                     status_fields.set(coord.status_fields().to_vec());
+                    roster.set(party_roster(coord.replica()));
                     my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                     my_actions_left.set(has_actions_left(coord.replica(), single));
                 }
@@ -425,6 +557,12 @@ pub fn tabletop_app() -> Element {
     });
 
     let view = vm();
+    let seats = roster();
+    let active_name = seats
+        .iter()
+        .find(|s| s.active)
+        .map(|s| s.name.clone())
+        .unwrap_or_default();
     let room_name = view
         .as_ref()
         .map(|v| v.status.location_name.clone())
@@ -439,10 +577,15 @@ pub fn tabletop_app() -> Element {
             div { class: "tt-topbar",
                 span { class: "tt-title", "🎲 Tabletop" }
                 span { class: "tt-room", "{room_name}" }
+                if !active_name.is_empty() {
+                    span { class: "tt-acting", "Acting: {active_name}" }
+                }
                 div { class: "tt-controls",
                     if mode == Mode::Multi && my_turn() {
-                        span { class: "tt-turn", "● Your turn" }
                         button { class: "tt-btn", title: "End your turn", onclick: move |_| driver.send(TtAction::EndTurn), "End Turn" }
+                    }
+                    if mode == Mode::Single && !finished {
+                        button { class: "tt-btn", title: "Active seat passes its turn", onclick: move |_| driver.send(TtAction::Pass), "Pass" }
                     }
                     span { class: "tt-status", "{status}" }
                     button {
@@ -464,12 +607,12 @@ pub fn tabletop_app() -> Element {
             div { class: "tt-stage",
                 // ── The board ───────────────────────────────────────────────────
                 div { class: if waiting { "tt-board-wrap waiting" } else { "tt-board-wrap" },
-                    {board_view(view.as_ref(), map_model)}
+                    {board_view(view.as_ref(), map_model, &seats)}
                 }
 
-                // ── Rail: dashboard · movement · actions · log ──────────────────
+                // ── Rail: dashboards · movement · actions · log ─────────────────
                 aside { class: "tt-rail",
-                    {dashboard_view(view.as_ref(), &status_fields())}
+                    {dashboard_view(&seats, &status_fields())}
                     div { class: if waiting { "tt-controls-gate waiting" } else { "tt-controls-gate" },
                         {movement_view(view.as_ref(), finished, driver)}
                         {actions_view(view.as_ref(), finished, driver)}
@@ -495,13 +638,9 @@ pub fn tabletop_app() -> Element {
                 }
             }
 
-            // ── Welcome overlay ─────────────────────────────────────────────────
+            // ── Setup / welcome overlay ─────────────────────────────────────────
             if !started() {
-                div { class: "tt-welcome",
-                    h1 { class: "tt-welcome-title", "{welcome.title}" }
-                    p { class: "tt-welcome-intro", "{welcome.intro}" }
-                    button { class: "tt-enter-btn", onclick: move |_| started.set(true), "{welcome.button}" }
-                }
+                {setup_view(&welcome.title, &welcome.intro, &welcome.button, &arche_opts, drafts, started, driver)}
             }
         }
     }
@@ -526,39 +665,17 @@ async fn submit(
     }
 }
 
-/// The CSS piece class for an occupant standing on the current tile, by its state.
-fn piece_class(defeated: bool, ally: bool) -> &'static str {
-    if defeated {
-        "tt-piece-remains"
-    } else if ally {
-        "tt-piece-ally"
-    } else {
-        "tt-piece-mob"
-    }
-}
-
-/// Whether a scene hotspot is a movement affordance (an exit or a locked door) rather than an
-/// on-tile action target. Drives the split between the movement rail and the action rail.
-fn is_movement_kind(kind: HotspotKind) -> bool {
-    matches!(kind, HotspotKind::Exit | HotspotKind::Locked)
-}
-
-/// The board: the fog-of-war layout rendered as chunky room tiles, with the player + occupant pieces on
-/// the current tile. A dark, unlit current room renders concealed until a light is brought.
-fn board_view(view: Option<&ViewModel>, map_model: Signal<MapModel>) -> Element {
+/// The board: the fog-of-war layout as chunky room tiles, with every party seat's piece on its tile.
+/// A dark, unlit current room renders concealed until a light is brought.
+fn board_view(
+    view: Option<&ViewModel>,
+    map_model: Signal<MapModel>,
+    seats: &[SeatView],
+) -> Element {
     let layout = layout_map(&map_model.read());
     let w = layout.width * SCALE;
     let h = layout.height * SCALE;
     let current_lit = view.is_none_or(|v| v.room.is_lit);
-    // Pieces standing on the current tile: the player ("you") plus any co-located occupants.
-    let pieces: Vec<(String, &'static str)> = view.map_or_else(Vec::new, |v| {
-        let mut ps: Vec<(String, &'static str)> = vec![("You".to_string(), "tt-piece-you")];
-        for occ in &v.occupants {
-            let cls = piece_class(occ.defeated == Some(true), occ.player == Some(true));
-            ps.push((occ.name.clone(), cls));
-        }
-        ps
-    });
 
     rsx! {
         div { class: "tt-board", style: "width:{w}px;height:{h}px;",
@@ -574,19 +691,20 @@ fn board_view(view: Option<&ViewModel>, map_model: Signal<MapModel>) -> Element 
                 }
             }
             for (i, b) in layout.boxes.iter().enumerate() {
-                {tile_view(i, b, current_lit, &pieces)}
+                {
+                    let here: Vec<&SeatView> = seats
+                        .iter()
+                        .filter(|s| s.room_id.as_deref() == Some(b.id.as_str()))
+                        .collect();
+                    tile_view(i, b, current_lit, &here)
+                }
             }
         }
     }
 }
 
-/// One room tile. The current tile carries the pieces; a dark unlit current tile is concealed.
-fn tile_view(
-    i: usize,
-    b: &LaidBox,
-    current_lit: bool,
-    pieces: &[(String, &'static str)],
-) -> Element {
+/// One room tile carrying the pieces standing on it. A dark unlit current tile is concealed.
+fn tile_view(i: usize, b: &LaidBox, current_lit: bool, here: &[&SeatView]) -> Element {
     let concealed = b.current && !current_lit;
     let mut cls = String::from("tt-tile");
     if b.current {
@@ -608,10 +726,15 @@ fn tile_view(
             if b.remains {
                 span { class: "tt-tile-remains", "✕" }
             }
-            if b.current {
-                div { class: "tt-pieces",
-                    for (j, (name, piece_cls)) in pieces.iter().enumerate() {
-                        span { key: "pc-{j}", class: "tt-piece {piece_cls}", title: "{name}", "●" }
+            div { class: "tt-pieces",
+                for s in here.iter().copied() {
+                    {
+                        let cls = format!(
+                            "tt-piece {}{}",
+                            seat_piece_class(s),
+                            if s.active { " active" } else { "" },
+                        );
+                        rsx! { span { key: "pc-{s.id}", class: "{cls}", title: "{s.name}", "●" } }
                     }
                 }
             }
@@ -619,22 +742,28 @@ fn tile_view(
     }
 }
 
-/// The seat dashboard: HP / SAN / turn from the projection, plus the campaign's live `StatusField`
-/// readout (the physical board's per-seat panel).
-fn dashboard_view(view: Option<&ViewModel>, fields: &[StatusField]) -> Element {
-    let Some(v) = view else {
-        return rsx! { div { class: "tt-dash" } };
-    };
-    let s = &v.status;
+/// The seat dashboards: one card per party member (name · HP · SAN · affliction chips · active), read
+/// from the replica, plus the campaign's shared `StatusField` banner.
+fn dashboard_view(seats: &[SeatView], fields: &[StatusField]) -> Element {
     rsx! {
         div { class: "tt-dash",
-            div { class: "tt-dash-row",
-                span { class: "tt-stat", span { class: "tt-stat-label", "HP" } " " span { class: "tt-stat-value", "{s.health}" } }
-                span { class: "tt-stat", span { class: "tt-stat-label", "SAN" } " " span { class: "tt-stat-value", "{s.sanity}" } }
-                span { class: "tt-stat", span { class: "tt-stat-label", "Turn" } " " span { class: "tt-stat-value", "{s.turn}/{s.max_turns}" } }
+            div { class: "tt-seats",
+                for s in seats.iter() {
+                    div { key: "seat-{s.id}", class: if s.active { "tt-seat active" } else { "tt-seat" },
+                        div { class: "tt-seat-top",
+                            if s.active { span { class: "tt-seat-active", "●" } }
+                            span { class: "tt-seat-name", "{s.name}" }
+                        }
+                        div { class: "tt-seat-stats",
+                            span { class: "tt-stat", span { class: "tt-stat-label", "HP" } " " span { class: "tt-stat-value", "{s.health}" } }
+                            span { class: "tt-stat", span { class: "tt-stat-label", "SAN" } " " span { class: "tt-stat-value", "{s.sanity}" } }
+                        }
+                        {seat_chips(s)}
+                    }
+                }
             }
             if !fields.is_empty() {
-                div { class: "tt-dash-row campaign",
+                div { class: "tt-banner",
                     for f in fields.iter() {
                         span {
                             key: "sf-{f.label}",
@@ -649,6 +778,29 @@ fn dashboard_view(view: Option<&ViewModel>, fields: &[StatusField]) -> Element {
     }
 }
 
+/// Affliction chips for a seat card (KO / Panic / Fear / Confused).
+fn seat_chips(s: &SeatView) -> Element {
+    let chips: Vec<(&str, &str)> = [
+        (s.ko, "KO", "chip-ko"),
+        (s.panic, "Panic", "chip-panic"),
+        (s.fear, "Fear", "chip-fear"),
+        (s.confused, "Confused", "chip-confused"),
+    ]
+    .into_iter()
+    .filter_map(|(on, label, cls)| on.then_some((label, cls)))
+    .collect();
+    if chips.is_empty() {
+        return rsx! {};
+    }
+    rsx! {
+        div { class: "tt-seat-chips",
+            for (label, cls) in chips {
+                span { key: "chip-{label}", class: "tt-chip {cls}", "{label}" }
+            }
+        }
+    }
+}
+
 /// The CSS class for a campaign status field by its (optional) emphasis.
 fn status_field_class(field: &StatusField) -> &'static str {
     match field.emphasis.as_deref() {
@@ -658,7 +810,7 @@ fn status_field_class(field: &StatusField) -> &'static str {
     }
 }
 
-/// The movement rail: one button per exit (moving the piece that direction); locked doors are shown
+/// The movement rail: one button per exit (moving the active seat's piece); locked doors are shown
 /// disabled. Exits come from `scene_hotspots`, so movement stays in lockstep with the engine.
 fn movement_view(view: Option<&ViewModel>, finished: bool, driver: Coroutine<TtAction>) -> Element {
     let Some(v) = view else { return rsx! {} };
@@ -678,7 +830,7 @@ fn movement_view(view: Option<&ViewModel>, finished: bool, driver: Coroutine<TtA
     }
     rsx! {
         div { class: "tt-panel",
-            span { class: "tt-panel-label", "Move the piece" }
+            span { class: "tt-panel-label", "Move the active piece" }
             div { class: "tt-move-grid",
                 for hs in moves.iter() {
                     {
@@ -702,7 +854,7 @@ fn movement_view(view: Option<&ViewModel>, finished: bool, driver: Coroutine<TtA
     }
 }
 
-/// The action rail: everything on the current tile you can act on (occupants, loot, floor items,
+/// The action rail: everything on the active seat's tile you can act on (occupants, loot, floor items,
 /// caches) with its engine-gated verbs, straight from `scene_hotspots`.
 fn actions_view(view: Option<&ViewModel>, finished: bool, driver: Coroutine<TtAction>) -> Element {
     let Some(v) = view else { return rsx! {} };
@@ -743,8 +895,7 @@ fn actions_view(view: Option<&ViewModel>, finished: bool, driver: Coroutine<TtAc
     }
 }
 
-/// A compact inventory rail so the player can equip a light (revealing a dark tile), use, or drop —
-/// the on-board equivalent of the pnc inventory panel.
+/// A compact inventory rail so the active seat can equip a light, use, or drop.
 fn inventory_view(
     view: Option<&ViewModel>,
     finished: bool,
@@ -797,19 +948,121 @@ fn inventory_view(
     }
 }
 
+/// The party-builder / welcome overlay (single-player): the pre-seated seat is Player 1; the host adds
+/// up to [`MAX_EXTRA_SEATS`] more explorers, then Begin joins them and boots the hotseat.
+fn setup_view(
+    title: &str,
+    intro: &str,
+    button: &str,
+    arche_opts: &[ArchetypeOption],
+    mut drafts: Signal<Vec<SeatDraft>>,
+    mut started: Signal<bool>,
+    driver: Coroutine<TtAction>,
+) -> Element {
+    let rows = drafts();
+    let can_add = rows.len() < MAX_EXTRA_SEATS;
+    let button = if button.is_empty() {
+        "Enter".to_string()
+    } else {
+        button.to_string()
+    };
+    rsx! {
+        div { class: "tt-welcome",
+            h1 { class: "tt-welcome-title", "{title}" }
+            p { class: "tt-welcome-intro", "{intro}" }
+
+            div { class: "tt-party",
+                div { class: "tt-party-head", "Your party" }
+                div { class: "tt-party-row fixed",
+                    span { class: "tt-party-num", "1" }
+                    span { class: "tt-party-name", "The Heir (you)" }
+                }
+                for (i, row) in rows.iter().enumerate() {
+                    div { key: "draft-{i}", class: "tt-party-row",
+                        span { class: "tt-party-num", "{i + 2}" }
+                        input {
+                            class: "tt-party-name-input",
+                            r#type: "text",
+                            placeholder: "Explorer {i + 2}",
+                            value: "{row.name}",
+                            oninput: move |e| { drafts.write()[i].name = e.value(); },
+                        }
+                        if !arche_opts.is_empty() {
+                            select {
+                                class: "tt-party-arche",
+                                onchange: move |e| { drafts.write()[i].archetype = e.value(); },
+                                option { value: "", "— archetype —" }
+                                for opt in arche_opts.iter() {
+                                    option { key: "opt-{opt.id}", value: "{opt.id}", selected: row.archetype == opt.id, "{opt.name}" }
+                                }
+                            }
+                        }
+                        button {
+                            class: "tt-party-remove",
+                            title: "Remove",
+                            onclick: move |_| { drafts.write().remove(i); },
+                            "✕"
+                        }
+                    }
+                }
+                if can_add {
+                    button {
+                        class: "tt-party-add",
+                        onclick: move |_| drafts.write().push(SeatDraft::default()),
+                        "+ Add explorer"
+                    }
+                }
+            }
+
+            button {
+                class: "tt-enter-btn",
+                onclick: move |_| {
+                    let seats: Vec<SeatSpec> = drafts
+                        .peek()
+                        .iter()
+                        .map(|d| SeatSpec {
+                            name: d.name.clone(),
+                            archetype: (!d.archetype.is_empty()).then(|| d.archetype.clone()),
+                        })
+                        .collect();
+                    driver.send(TtAction::StartHotseat { seats });
+                    started.set(true);
+                },
+                "{button}"
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{is_movement_kind, piece_class};
+    use super::{is_movement_kind, seat_piece_class, SeatView};
     use crate::affordances::HotspotKind;
 
+    fn seat(ko: bool, panic: bool, fear: bool) -> SeatView {
+        SeatView {
+            id: "x".into(),
+            name: "X".into(),
+            room_id: None,
+            health: 10.0,
+            sanity: 10.0,
+            ko,
+            panic,
+            fear,
+            confused: false,
+            active: false,
+        }
+    }
+
     #[test]
-    fn piece_class_ranks_defeated_over_ally_over_mob() {
-        // Defeated wins regardless of the ally flag (remains are remains).
-        assert_eq!(piece_class(true, false), "tt-piece-remains");
-        assert_eq!(piece_class(true, true), "tt-piece-remains");
-        // A live co-located party member is an ally; anything else is a hostile.
-        assert_eq!(piece_class(false, true), "tt-piece-ally");
-        assert_eq!(piece_class(false, false), "tt-piece-mob");
+    fn seat_piece_class_ranks_ko_over_panic_over_fear_over_normal() {
+        assert_eq!(seat_piece_class(&seat(true, true, true)), "tt-piece-ko");
+        assert_eq!(seat_piece_class(&seat(false, true, true)), "tt-piece-panic");
+        assert_eq!(seat_piece_class(&seat(false, false, true)), "tt-piece-fear");
+        assert_eq!(
+            seat_piece_class(&seat(false, false, false)),
+            "tt-piece-normal"
+        );
     }
 
     #[test]

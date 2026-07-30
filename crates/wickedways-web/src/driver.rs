@@ -17,6 +17,7 @@ use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
 use wickedways_core::{CampaignSnapshot, World};
 
+use crate::lobby::{build_joining_character, join_commands};
 use crate::single_player::SinglePlayerTransport;
 use crate::transport::WsTransport;
 
@@ -268,6 +269,52 @@ pub async fn boot_single(
             SubmitResult::Committed { .. } => coord.sync(&transport),
             SubmitResult::Denied { reason } => return Err(format!("begin campaign: {reason}")),
         }
+    }
+    Ok((transport, coord, catalog))
+}
+
+/// A player seat to add beyond the genesis's pre-seated seat 0: a display name and an optional
+/// archetype id (applied via `SelectArchetype`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct SeatSpec {
+    pub name: String,
+    pub archetype: Option<String>,
+}
+
+/// Boot a LOCAL hotseat session: the offline `solo` authority (as [`boot_single`]) but with `extra`
+/// additional player seats joined before `BeginCampaign`. The genesis's pre-seated seat 0 is the GM
+/// and Player 1; each [`SeatSpec`] joins another player character into the entry room. `solo` mode then
+/// cycles every seat automatically (start-turn → action → mob reactions → next player) — the same
+/// machinery single-player already uses, now over N pieces. Empty `extra` is exactly [`boot_single`].
+pub async fn boot_hotseat(
+    campaign: &str,
+    extra: &[SeatSpec],
+) -> Result<(AppTransport, SyncCoordinator, Catalog), String> {
+    let (snapshot, catalog) = bundled_campaign(campaign)?;
+    // A pre-started genesis (e.g. the demo) can't take new seats — fall back to a plain boot.
+    if snapshot.campaign.started || extra.is_empty() {
+        return boot_single(campaign).await;
+    }
+    let (transport, mut coord) = rebuild_single(snapshot.clone(), catalog.clone());
+    for (i, seat) in extra.iter().enumerate() {
+        let name = if seat.name.trim().is_empty() {
+            format!("Player {}", i + 2)
+        } else {
+            seat.name.trim().to_string()
+        };
+        let cid = format!("player:hotseat-{}", i + 2);
+        let Some(character) = build_joining_character(&snapshot, &name, &cid) else {
+            return Err("cannot seat a player in this campaign".into());
+        };
+        for cmd in join_commands(character, seat.archetype.as_deref()) {
+            if let SubmitResult::Denied { reason } = transport.submit_async(cmd).await {
+                return Err(format!("join seat: {reason}"));
+            }
+        }
+    }
+    match transport.submit_async(Command::BeginCampaign).await {
+        SubmitResult::Committed { .. } => coord.sync(&transport),
+        SubmitResult::Denied { reason } => return Err(format!("begin campaign: {reason}")),
     }
     Ok((transport, coord, catalog))
 }
