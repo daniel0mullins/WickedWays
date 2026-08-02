@@ -4,7 +4,8 @@
 > (`crates/wickedways-tabletop`) reaches real hardware: the same `DeviceCommand`/`DeviceEvent`
 > protocol the on-screen simulator uses, spoken over a serial link to an ESP32 driving color e-ink
 > tiles and NFC readers. See [`tabletop-simulator-spec.md`](./tabletop-simulator-spec.md) (P2) for how
-> this fits the phasing.
+> this fits the phasing, and [`tabletop-prototype-bom.md`](./tabletop-prototype-bom.md) for the parts to
+> build it.
 
 ## The shape
 
