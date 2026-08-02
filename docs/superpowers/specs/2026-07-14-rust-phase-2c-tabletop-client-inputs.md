@@ -8,6 +8,18 @@
 **Origin:** [`docs/tabletop-display-design.md`](../../tabletop-display-design.md) +
 [`docs/tabletop-simulator-spec.md`](../../tabletop-simulator-spec.md)
 
+> **Status (post-migration).** The Rust migration and Phase 2c landed, and the tabletop client's
+> **single-controller shape is built** — a Dioxus surface (`crates/wickedways-web/src/tabletop.rs`)
+> with local hotseat multi-seat via `driver::boot_hotseat`. Resolved since this note was written:
+> `placeLight`/`takeLight`, directional `move`, and the actor-tagged multi-seat `Command` model all
+> shipped in `wickedways-core`; the `Delta` now carries `cues` (input #2's recommended option (a),
+> so the networked path is unblocked); and the built dashboards use **option (b)** below — per-seat
+> stats read straight from the replica (`coord.replica().characters`), sidestepping the still-open
+> `status`-cue actor gap. Input #4 (engine-as-GM) is **demonstrated**: the hotseat runs on the solo
+> authority as engine-GM (the pre-seated seat 0 is GM + Player 1, the engine drives mob reactions),
+> so a co-op box needs no GM device. Inputs #3 (Membership N-seats, networked-only) and #5
+> (dice-supply) remain open as noted.
+
 ## Why this note
 
 A physical e-ink tabletop (map tiles + player pieces) can be deployed in **two shapes**, and the
@@ -62,7 +74,7 @@ authorize()`. Two consequences for A:
   core work, just noting the board leans on it.
 
 **Output half — only the `action` cue carries an actor; `status` does not.** Of the six
-`PresentationCue` kinds (`src/lib/presentation.ts:49`), exactly one is actor-attributed:
+`PresentationCue` kinds (`crates/wickedways-core/src/presentation.rs:84`), exactly one is actor-attributed:
 `action` has `actor: EntityRef`. The rest are scoped to a **room** (`encounter`, `visibility`),
 the **campaign** (`resolution`), or nothing (`mechanic`, `status`). For a shared board that is
 mostly *good* — room/campaign cues route to a tile or the whole board with no per-player logic,
@@ -79,7 +91,10 @@ you cannot tell *whose* dashboard a `status` cue is for. Resolve one of:
 For the single-controller box, **(b)** is the natural baseline — the one Authority already holds
 every character's state and can project a per-seat readout to each dashboard peripheral (the same
 move that makes *secret* per-player info possible without any networking). **(a)** is the cleaner
-fix if the status mechanic / cue shape is being touched anyway.
+fix if the status mechanic / cue shape is being touched anyway. **(Built: the hotseat surface takes
+(b))** — `party_roster` in `tabletop.rs` reads each seat's `stats.health`/`sanity`/`afflictions`
+from `coord.replica().characters` for the per-seat cards, and the `status` cue drives only the shared
+campaign banner. **(a)** stays the recommended long-term fix.
 
 ### 2. Cue delivery to the board — **(networked shape only; B/D)**
 
