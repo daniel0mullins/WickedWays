@@ -1,10 +1,36 @@
-# `@wickedways/tabletop` — Physical Tabletop Client Spec
+# Physical Tabletop Client Spec (the `physical-tabletop` surface)
 
 > Companion to [`tabletop-display-design.md`](./tabletop-display-design.md) (the concept survey)
 > and [`docs/superpowers/specs/2026-07-14-rust-phase-2c-tabletop-client-inputs.md`](./superpowers/specs/2026-07-14-rust-phase-2c-tabletop-client-inputs.md)
 > (the inputs this design asks of the Phase 2c multiplayer sub-projects). Reconciled against the
 > Phase 2c program (Rust everywhere + a Dioxus web client; TS surfaces retired in sub-project D,
 > deleted in step F).
+
+## Implementation status (built)
+
+**Shape 1 (single-controller) is implemented** as an on-screen simulator: a Dioxus **surface** in
+the shipped web client, `crates/wickedways-web/src/tabletop.rs` (`tabletop_app`), registered
+alongside the CRT and point-and-click surfaces (`driver.rs` `SURFACE_INFOS` + `launcher.rs`). It
+renders the fog-of-war map as chunky room tiles with a piece per party seat, a movement + action
+rail, and per-seat dashboards.
+
+- **Single piece** and **local hotseat multi-seat** both ship. A single-player game seats the
+  genesis's Player 1; a party-builder adds up to 3 more explorers, joined via `driver::boot_hotseat`
+  (`rebuild_single` + the `lobby` join builders + `BeginCampaign`) before the offline **`solo`**
+  authority rotates every seat (start-turn → action → mob reactions → next player). Each piece is an
+  actor; `driver::intent_to_command` stamps the active seat's `actor_id`.
+- **Reuses** the surface-agnostic `driver` loop, `map::{layout_map, MapModel}` (extended with
+  `LaidBox.id` so pieces match tiles), `affordances::{scene_hotspots, inventory_actions}`,
+  `narrator`, and `audio_runtime` — so the abstract `TileMapper`/`IntentResolver`/`DeviceTransport`
+  below are **not** separate objects yet; they describe the *firmware* boundary (P2), which the
+  on-screen surface stands in for.
+- **Verified** via the workspace gates (`cargo build`/`clippy`/`fmt`/`test --workspace`) and live
+  headless-Chromium drives of Hollow House (single-piece: reveal-on-light, encounter, dark-room
+  conceal; multi-seat: 3 pieces across tiles with independent per-seat Sanity, and turn hand-off).
+
+What remains is the **firmware** track (P2/P3 below: the `DeviceTransport`, real e-ink tiles, NFC
+piece/lantern identity) and the optional **networked Replica** (Shape 2). The sections below are the
+original design; status callouts mark what's now built.
 
 ## Context
 
@@ -103,9 +129,9 @@ The bridge is pure and language-portable; its durable home is **Rust, co-located
   `Serial`/`WebSocketTransport` (firmware) for hardware. Distinct from the *sync* transport of
   Shape 2.
 
-`sceneHotspots(vm)` / `inventoryActions(...)` (`packages/play-surface/src/pnc/affordances.ts`)
-are the behavioral reference for deriving per-tile action affordances — reference them as the
-oracle, not a permanent import (they're TS, and F deletes TS).
+`scene_hotspots(vm)` / `inventory_actions(...)` (`crates/wickedways-web/src/affordances.rs`) derive
+the per-tile action affordances — and the built surface **imports them directly** (they are Rust,
+not the retired TS `affordances.ts`).
 
 ## Dashboards & the `status`-cue attribution gap
 
@@ -113,51 +139,55 @@ The seat dashboards surface each player's Health/Sanity/Energy + Panic/Fear/KO, 
 in the `ViewModel` (occupants/scope are *others*) — they arrive via the **`status` cue** from a
 campaign's status mechanic. Two constraints:
 
-- **Reference campaign is Hollow House** (`packages/campaigns/src/hollow-house`) — it has a
-  status-bar mechanic (plus dark rooms, a keyed door, a resident mob).
+- **Reference campaign is Hollow House** (`conformance/fixtures/hollow-house.toml`, compiled to the
+  bundled `hollow-house.genesis.json` + `.catalog.json`) — it has a status-bar mechanic (plus dark
+  rooms, a keyed door, a resident mob).
 - **Multi-seat routing gap:** only the `action` cue carries an actor; `status` does not, so it
-  can't be routed to a specific seat. Baseline fix for the single-box: **drive each dashboard from
-  a per-character view projection** (the one Authority holds every character's state) and treat the
-  `status` cue as an animation trigger. (This is also how *secret* per-player info works without
-  networking.) See the input note for the alternative — adding `subject`/`actorId` to the cue.
+  can't be routed to a specific seat. **(Built)** the surface drives each seat card from a
+  per-character read of the replica — `party_roster` in `tabletop.rs` pulls every seat's
+  `stats.health`/`sanity`/`afflictions` from `coord.replica().characters`, and the `status` cue
+  drives only the shared campaign banner. (This is also how *secret* per-player info would work
+  without networking.) The cleaner long-term fix — adding `subject`/`actorId` to the cue — is still
+  open (see the input note).
 
 ## Phasing
 
-- **P0 — throwaway dev simulator (optional, now).** A TS/DOM `SimulatorTransport` driving the
-  engine `GameSession` (single-player today) to de-risk the *device* concerns only: tile placement
-  + collision resolution, directional piece-drag → move, dark/lit reveal, dashboards. Explicitly
-  scaffolding — **do not** land a permanent TS `packages/tabletop` on the retiring stack.
-- **P1 — the single-controller box (the real near-term product).** Bridge logic in Rust over the
-  engine `Authority`, plus sub-project **A**'s actor-tagged multi-seat commands. `DeviceTransport`
-  drives a simulator first (Dioxus, to align with the surviving UI stack), then a `SerialTransport`.
-- **P2 — hardware.** ESP32 + e-ink tiles; NFC piece/lantern identity (the `actor_id` source).
-- **P3 — full board + engine-gap decisions.** N tiles; the design-doc engine gaps now settled via
-  the input note (`placeLight` is already in A1; dice-supply must enter through the seeded rng as
+- **P0 — throwaway TS dev simulator.** ✅ **Skipped (moot).** The TS stack was deleted in step F, so
+  there was nothing to de-risk on it; P1 was built directly in Rust/Dioxus instead.
+- **P1 — the single-controller surface.** ✅ **Done.** The Dioxus `physical-tabletop` surface
+  (`crates/wickedways-web/src/tabletop.rs`) over the offline `solo` authority, with single-piece and
+  local hotseat multi-seat (`driver::boot_hotseat`), a party-builder, per-seat dashboards, piece
+  coloring by affliction, and a Pass hand-off. Reuses `driver`/`map`/`affordances`/`narrator`/`audio`.
+- **P2 — firmware / hardware.** ⏳ Future. Introduce the real `DeviceTransport` (`Serial`/`WebSocket`)
+  + `protocol` and swap the on-screen renderer for ESP32 + e-ink tiles and NFC piece/lantern identity
+  (the `actor_id` source). The pure bridge logic (tile mapping, directional → command) lifts out of
+  the surface at this point.
+- **P3 — full board + engine-gap decisions.** ⏳ N tiles; the design-doc engine gaps are settled per
+  the input note (`placeLight` landed in the core; dice-supply must enter through the seeded rng as
   command data, per the determinism invariant).
-- **Optional later — networked Replica (Shape 2).** Only if remote/hybrid play is wanted; pulls in
-  B/C/D.
+- **Optional — networked Replica (Shape 2).** ⏳ Only if remote/hybrid play is wanted; pulls in
+  B/C/D. The client already has the `Multi` (WebSocket) path — the tabletop surface runs on it today
+  as one seat per device.
 
 ## Verification
 
-- **P0 simulator:** `FakeTransport` (records device commands, scripts device events) drives the
-  prototype against a real single-player `GameSession` on Hollow House. Assert: startup reveal;
-  directional drag → `move`; dark room stays `concealed` until a light action; encounter →
-  `led`+`sound`; illegal move → `led "reject"` + piece snap-back; dashboards from per-character
-  projection + `status` cue.
-- **P1 box:** the bridge is tested against the engine `Authority` on a fixture campaign — commands
-  resolve, cues route to the right tile/seat, `snapshot`/`restore` round-trips the board (tile→room
-  assignments in the surface state). Actor-tagging: an out-of-turn command is rejected.
-- **Shape 2 (if built):** the Phase-2c differential harness — same seed + command sequence yields
-  identical `Delta`s / projected `ViewModel` through the Replica as through the frozen
-  `src/lib/sync/` oracle.
-- `pnpm checks` green; update `README.md` when a real surface lands.
+- **Workspace gates (P1, done):** `cargo build -p wickedways-web --target wasm32-unknown-unknown`,
+  `cargo clippy … -D warnings`, `cargo fmt --all --check`, `cargo test --workspace` — including the
+  launcher bootability gate, the `map.rs` layout tests, and the surface's seat/movement unit tests.
+- **Live drive (P1, done):** `dx build`/`dx serve` + headless Chromium against Hollow House. Single
+  piece: tiles reveal and grow on movement, encounter fires, a dark room stays concealed until lit.
+  Multi-seat: the party-builder seats 3 explorers → 3 pieces + 3 dashboards → the active seat moves
+  to a new tile while others stay (independent per-seat Sanity) → Pass rotates the active seat.
+- **P2/Shape 2 (when built):** device-protocol tests against the engine `Authority`; and, for the
+  networked Replica, the Phase-2c differential harness (same seed + command sequence ⇒ identical
+  `Delta`s / projected `ViewModel`).
+- Update `README.md` if/when the firmware bridge lands as its own crate.
 
-## Open questions (for the user)
+## Resolved decisions
 
-1. **Build the P0 throwaway simulator now, or go straight to the Rust P1 bridge?** P0 de-risks the
-   physical interaction model independently of the migration, at the cost of throwaway TS.
-2. **Confirm the single-controller box as the target** (vs. planning for networked play up front) —
-   it's the cheaper, simpler default and needs only sub-project A, but forecloses remote players
-   until Shape 2 is added.
-3. **GM model** — engine-as-GM (no GM device) vs. a GM-privileged actor with a control device.
-   Raised as an input to A; changes whether the board needs any GM hardware.
+1. **P0 throwaway vs. Rust P1** → built P1 in Rust/Dioxus directly; no throwaway TS (the stack was
+   already deleted).
+2. **Single-controller box as the target** → confirmed and built (Shape 1). The networked Replica
+   (Shape 2) stays optional; remote play would be added later, not up front.
+3. **GM model** → **engine-as-GM.** The hotseat runs on the `solo` authority: the pre-seated seat 0
+   is GM + Player 1 and the engine drives mob reactions, so a co-op box needs no GM device.

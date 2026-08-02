@@ -230,6 +230,8 @@ const STUB: f64 = CELL * 0.42;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LaidBox {
+    /// The room id this tile represents, so a surface can match entities (pieces) to their tile.
+    pub id: String,
     pub x: f64,
     pub y: f64,
     pub w: f64,
@@ -293,6 +295,7 @@ pub fn layout_map(model: &MapModel) -> MapLayout {
     let boxes: Vec<LaidBox> = rooms
         .iter()
         .map(|r| LaidBox {
+            id: r.id.clone(),
             x: left(r),
             y: top(r),
             w: BOX_W,

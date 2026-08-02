@@ -24,5 +24,6 @@ pub mod pnc;
 pub mod savestore;
 pub mod scene_layout;
 pub mod single_player;
+pub mod tabletop;
 pub mod theme;
 pub mod transport;
