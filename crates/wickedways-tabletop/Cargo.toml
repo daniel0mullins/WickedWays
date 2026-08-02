@@ -1,0 +1,18 @@
+[package]
+name = "wickedways-tabletop"
+version = "0.0.1"
+edition = "2021"
+
+# The physical-tabletop bridge (P2): the transport-agnostic seam between engine state and a physical
+# board. It turns a `ViewModel` + party roster + fog-of-war map into `DeviceCommand`s (paint tiles,
+# place pieces, drive dashboards/LEDs) and resolves inbound `DeviceEvent`s (a piece moved, a tile
+# action) into actor-tagged engine `Command`s. Depends only on `wickedways-core` + serde, so it
+# compiles both native (the controller) and to wasm (the web client's on-screen simulator).
+
+[dependencies]
+wickedways-core = { path = "../wickedways-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lints]
+workspace = true

@@ -19,18 +19,22 @@ rail, and per-seat dashboards.
   (`rebuild_single` + the `lobby` join builders + `BeginCampaign`) before the offline **`solo`**
   authority rotates every seat (start-turn → action → mob reactions → next player). Each piece is an
   actor; `driver::intent_to_command` stamps the active seat's `actor_id`.
-- **Reuses** the surface-agnostic `driver` loop, `map::{layout_map, MapModel}` (extended with
-  `LaidBox.id` so pieces match tiles), `affordances::{scene_hotspots, inventory_actions}`,
-  `narrator`, and `audio_runtime` — so the abstract `TileMapper`/`IntentResolver`/`DeviceTransport`
-  below are **not** separate objects yet; they describe the *firmware* boundary (P2), which the
-  on-screen surface stands in for.
-- **Verified** via the workspace gates (`cargo build`/`clippy`/`fmt`/`test --workspace`) and live
+- **The device boundary is real (P2 software).** The `TileMapper`/`IntentResolver`/`DeviceTransport`
+  described below are now a crate — **`crates/wickedways-tabletop`**: the `protocol`
+  (`DeviceCommand`/`DeviceEvent`), the pure `bridge::render` (engine state → device commands) and
+  `bridge::resolve` (events → actor-tagged commands via `command_for`), a `DeviceTransport` trait +
+  `FakeTransport`, and the shared fog-of-war `map` + party `roster`. The web surface **renders through
+  it**: a `Signal<Vec<DeviceCommand>>` is the on-screen `SimulatorTransport`, and the board draws from
+  those commands. The same crate drives real firmware by swapping the transport.
+- **Verified** via the workspace gates (`cargo build`/`clippy -D warnings`/`fmt`/`test --workspace`,
+  incl. the bridge crate's `render`/`resolve` tests against a real in-process session) and live
   headless-Chromium drives of Hollow House (single-piece: reveal-on-light, encounter, dark-room
   conceal; multi-seat: 3 pieces across tiles with independent per-seat Sanity, and turn hand-off).
 
-What remains is the **firmware** track (P2/P3 below: the `DeviceTransport`, real e-ink tiles, NFC
-piece/lantern identity) and the optional **networked Replica** (Shape 2). The sections below are the
-original design; status callouts mark what's now built.
+What remains is the **firmware** track (P3 below: a `SerialTransport`, real e-ink tiles, NFC
+piece/lantern identity — sketched in [`tabletop-firmware-sketch.md`](./tabletop-firmware-sketch.md))
+and the optional **networked Replica** (Shape 2). The sections below are the original design; status
+callouts mark what's now built.
 
 ## Context
 

@@ -2571,6 +2571,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "wickedways-tabletop"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "wickedways-core",
+]
+
+[[package]]
 name = "wickedways-transport"
 version = "0.0.1"
 dependencies = [
@@ -2603,6 +2612,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "wickedways-core",
+ "wickedways-tabletop",
  "wickedways-transport",
 ]
 

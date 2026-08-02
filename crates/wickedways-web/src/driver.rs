@@ -12,7 +12,7 @@ use std::collections::BTreeSet;
 
 use wickedways_core::sync::{Command, LogEntry, SubmitResult, SyncCoordinator, SyncTransport};
 use wickedways_core::world::descriptor::Catalog;
-use wickedways_core::world::ids::{CharacterId, ItemId, MaterialCacheId};
+use wickedways_core::world::ids::CharacterId;
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
 use wickedways_core::{CampaignSnapshot, World};
@@ -658,95 +658,16 @@ pub fn project(coord: &SyncCoordinator, catalog: &Catalog) -> Option<ViewModel> 
 /// `move`, whose compass direction becomes the destination room id via the active character's room
 /// and the exit graph. Intents with no sync command in the multiplayer path (open/talk/wait) return
 /// a human-readable note the surface narrates back.
+/// Resolve a UI [`Intent`] into an actor-tagged [`Command`] for the **active** seat, delegating to the
+/// tabletop bridge's `command_for` (the shared builder the physical board also uses). The tabletop
+/// surface can additionally build a command for a *named* seat — the NFC path — via `command_for`.
 pub fn intent_to_command(
     world: &World,
     catalog: &Catalog,
     intent: &Intent,
 ) -> Result<Command, String> {
     let actor = world.active_character_id().map_err(|e| e.0)?;
-    match intent {
-        Intent::Move { dir } => {
-            let room_id = world
-                .characters
-                .get(&actor)
-                .and_then(|c| c.current_room_id.clone())
-                .ok_or("you are nowhere")?;
-            let room = world.rooms.get(&room_id).ok_or("room not found")?;
-            let exit_id = room
-                .exits
-                .get(dir.as_key())
-                .ok_or_else(|| format!("no exit {}", dir.as_key()))?;
-            let ex = world.exits.get(exit_id).ok_or("exit not found")?;
-            // Gate the move on the exit's keyed-door behavior, the way the single-seat `go` does — the
-            // sync `move` (by room id) lands via `move_to`, which performs no door check. A locked
-            // door returns its fail message and no command is issued.
-            if let Some(reason) = world.exit_block_reason(&actor, *dir, catalog) {
-                return Err(reason);
-            }
-            let dest = if ex.endpoint_ids[0] == room_id {
-                ex.endpoint_ids[1].clone()
-            } else {
-                ex.endpoint_ids[0].clone()
-            };
-            Ok(Command::Move {
-                actor_id: actor,
-                room_id: dest,
-            })
-        }
-        Intent::Take { target_id } => Ok(Command::PickUp {
-            actor_id: actor,
-            item_ids: vec![ItemId(target_id.clone())],
-        }),
-        Intent::Drop { target_id } => Ok(Command::Drop {
-            actor_id: actor,
-            item_ids: vec![ItemId(target_id.clone())],
-        }),
-        Intent::Attack { target_id } => Ok(Command::Attack {
-            actor_id: actor,
-            target_id: CharacterId(target_id.clone()),
-        }),
-        Intent::Equip { target_id } => Ok(Command::Equip {
-            actor_id: actor,
-            item_id: ItemId(target_id.clone()),
-            slot: None,
-        }),
-        Intent::Unequip { target_id } => Ok(Command::Unequip {
-            actor_id: actor,
-            item_id: ItemId(target_id.clone()),
-        }),
-        Intent::Use { target_id } => Ok(Command::Use {
-            actor_id: actor,
-            item_id: ItemId(target_id.clone()),
-        }),
-        // Materials & crafting — all free (turn-gated by authorize, no budget tick).
-        Intent::Harvest { target_id } => Ok(Command::Harvest {
-            actor_id: actor,
-            cache_id: MaterialCacheId(target_id.clone()),
-        }),
-        Intent::Craft { recipe_id } => Ok(Command::Craft {
-            actor_id: actor,
-            recipe_id: recipe_id.clone(),
-        }),
-        Intent::Repair { target_id } => Ok(Command::Repair {
-            actor_id: actor,
-            item_id: ItemId(target_id.clone()),
-        }),
-        Intent::Destroy { target_id } => Ok(Command::Destroy {
-            actor_id: actor,
-            item_id: ItemId(target_id.clone()),
-        }),
-        // `open` is a local view reveal (list a container's contents) — the surfaces handle it
-        // directly against the current view, so it never reaches the sync layer.
-        Intent::Open { .. } => Err("(opening is a local view action)".into()),
-        Intent::Talk { npc_id, prompt } => Ok(Command::Talk {
-            actor_id: actor,
-            npc_id: CharacterId(npc_id.clone()),
-            prompt: prompt.clone(),
-        }),
-        // `wait` passes the turn; in single-player the solo authority runs the full turn loop around
-        // it (dread + mob reactions + advance), in multiplayer it is a no-op the GM supersedes.
-        Intent::Wait => Ok(Command::Wait { actor_id: actor }),
-    }
+    wickedways_tabletop::command::command_for(world, catalog, actor, intent)
 }
 
 #[cfg(test)]
