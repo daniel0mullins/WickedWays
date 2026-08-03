@@ -19,18 +19,29 @@ rail, and per-seat dashboards.
   (`rebuild_single` + the `lobby` join builders + `BeginCampaign`) before the offline **`solo`**
   authority rotates every seat (start-turn → action → mob reactions → next player). Each piece is an
   actor; `driver::intent_to_command` stamps the active seat's `actor_id`.
-- **Reuses** the surface-agnostic `driver` loop, `map::{layout_map, MapModel}` (extended with
-  `LaidBox.id` so pieces match tiles), `affordances::{scene_hotspots, inventory_actions}`,
-  `narrator`, and `audio_runtime` — so the abstract `TileMapper`/`IntentResolver`/`DeviceTransport`
-  below are **not** separate objects yet; they describe the *firmware* boundary (P2), which the
-  on-screen surface stands in for.
-- **Verified** via the workspace gates (`cargo build`/`clippy`/`fmt`/`test --workspace`) and live
-  headless-Chromium drives of Hollow House (single-piece: reveal-on-light, encounter, dark-room
-  conceal; multi-seat: 3 pieces across tiles with independent per-seat Sanity, and turn hand-off).
+- **The device boundary is real (P2 software).** The `TileMapper`/`IntentResolver`/`DeviceTransport`
+  described below are now a crate — **`crates/wickedways-tabletop`**: the `protocol`
+  (`DeviceCommand`/`DeviceEvent`), the pure `bridge::render` (engine state → device commands) and
+  `bridge::resolve` (events → actor-tagged commands via `command_for`), a `DeviceTransport` trait +
+  `FakeTransport`, and the shared fog-of-war `map` + party `roster`. The web surface **renders through
+  it**: a `Signal<Vec<DeviceCommand>>` is the on-screen `SimulatorTransport`, and the board draws from
+  those commands. The same crate drives real firmware by swapping the transport.
+- **The serial link + host controller are built (P3 software).** `wickedways-tabletop::codec` is the
+  COBS-framed JSON wire format (`encode_command` + a chunk-tolerant `FrameDecoder`), pure and wasm-safe.
+  **`crates/wickedways-controller`** is the native host: a `SerialTransport: DeviceTransport`
+  (`serialport`, `default-features = false` so it needs no `libudev-dev`) plus a binary that runs the
+  engine solo and drives it through `bridge::render`/`resolve`. `cargo run -p wickedways-controller --
+  <port> [baud]` talks to hardware; `--dry-run` runs the whole engine→bridge→codec loop with no device.
+- **Verified** via the workspace gates (`cargo build`/`clippy -D warnings`/`fmt`/`test --workspace`,
+  incl. the bridge crate's `render`/`resolve`/`codec` tests, the controller's session tests, and the
+  live `--dry-run`) and live headless-Chromium drives of Hollow House (single-piece: reveal-on-light,
+  encounter, dark-room conceal; multi-seat: 3 pieces across tiles with independent per-seat Sanity, and
+  turn hand-off).
 
-What remains is the **firmware** track (P2/P3 below: the `DeviceTransport`, real e-ink tiles, NFC
-piece/lantern identity) and the optional **networked Replica** (Shape 2). The sections below are the
-original design; status callouts mark what's now built.
+What remains is the **ESP32 tile firmware** itself (real e-ink tiles + NFC piece/lantern identity —
+sketched in [`tabletop-firmware-sketch.md`](./tabletop-firmware-sketch.md)) and the optional
+**networked Replica** (Shape 2). The sections below are the original design; status callouts mark
+what's now built.
 
 ## Context
 
@@ -158,10 +169,14 @@ campaign's status mechanic. Two constraints:
   (`crates/wickedways-web/src/tabletop.rs`) over the offline `solo` authority, with single-piece and
   local hotseat multi-seat (`driver::boot_hotseat`), a party-builder, per-seat dashboards, piece
   coloring by affliction, and a Pass hand-off. Reuses `driver`/`map`/`affordances`/`narrator`/`audio`.
-- **P2 — firmware / hardware.** ⏳ Future. Introduce the real `DeviceTransport` (`Serial`/`WebSocket`)
-  + `protocol` and swap the on-screen renderer for ESP32 + e-ink tiles and NFC piece/lantern identity
-  (the `actor_id` source). The pure bridge logic (tile mapping, directional → command) lifts out of
-  the surface at this point.
+- **P2 — firmware / hardware.** 🔨 **Software done; hardware remaining.** The pure bridge logic lifted
+  out of the surface into `crates/wickedways-tabletop` (`protocol`, `bridge`, `map`, `roster`,
+  `command_for`), and the real `DeviceTransport` now exists: `codec` (COBS-framed JSON) +
+  `crates/wickedways-controller`'s native `SerialTransport` and host binary, verified end-to-end via
+  `--dry-run`. What's left is swapping the on-screen renderer for ESP32 + e-ink tiles and PN532 NFC
+  piece/lantern identity (the `actor_id` source) — the firmware in
+  [`tabletop-firmware-sketch.md`](./tabletop-firmware-sketch.md), with parts in
+  [`tabletop-prototype-bom.md`](./tabletop-prototype-bom.md).
 - **P3 — full board + engine-gap decisions.** ⏳ N tiles; the design-doc engine gaps are settled per
   the input note (`placeLight` landed in the core; dice-supply must enter through the seeded rng as
   command data, per the determinism invariant).
@@ -181,7 +196,8 @@ campaign's status mechanic. Two constraints:
 - **P2/Shape 2 (when built):** device-protocol tests against the engine `Authority`; and, for the
   networked Replica, the Phase-2c differential harness (same seed + command sequence ⇒ identical
   `Delta`s / projected `ViewModel`).
-- Update `README.md` if/when the firmware bridge lands as its own crate.
+- **(Done)** the firmware bridge landed as its own crates — `wickedways-tabletop` (bridge + codec) and
+  `wickedways-controller` (native `SerialTransport` + host binary), both listed in `README.md`.
 
 ## Resolved decisions
 

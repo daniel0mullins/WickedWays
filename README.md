@@ -40,6 +40,8 @@ Everything that ships lives in `crates/`:
 | `wickedways-wasm` | The wasm-bindgen boundary: a stateful `Authority` handle; only JSON strings cross the seam. |
 | `wickedways-transport` | The multiplayer wire protocol (serde only, engine-free). |
 | `wickedways-server` | The axum room server: per-campaign table actors, seat-ownership auth, SQLite persistence. |
+| `wickedways-tabletop` | The physical-tabletop bridge: engine state ↔ device commands/events, the COBS-framed serial codec, and the `DeviceTransport` seam. Serde-only + `wickedways-core`, so it compiles native (the controller) and to wasm (the web client's on-screen simulator renders through it). |
+| `wickedways-controller` | The host controller binary: runs the engine solo, projects the board through `wickedways-tabletop`, and speaks the device protocol over a serial line to real e-ink/NFC hardware. `--dry-run` exercises the whole engine→bridge→codec path with no device. |
 | `wickedways-web` | The Dioxus web client — the shipped product (see the root `Dockerfile`). |
 
 One crate lives outside the workspace: **`desktop/`**, a thin native shell that runs the same

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/wickedways-core", "crates/wickedways-wasm", "crates/wickedways-assemble", "crates/wickedways-author", "crates/wickedways-transport", "crates/wickedways-server", "crates/wickedways-web"]
+members = ["crates/wickedways-core", "crates/wickedways-wasm", "crates/wickedways-assemble", "crates/wickedways-author", "crates/wickedways-transport", "crates/wickedways-server", "crates/wickedways-tabletop", "crates/wickedways-controller", "crates/wickedways-web"]
 # The desktop shell stays OUT of the workspace on purpose: it is the only crate linking the
 # native windowing stack (GTK/WebKit on Linux), and excluding it keeps every workspace-wide
 # gate (test/clippy --all-features) free of system-package requirements. Build it with

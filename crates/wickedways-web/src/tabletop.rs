@@ -1,34 +1,32 @@
-//! The physical-tabletop Dioxus surface.
+//! The physical-tabletop Dioxus surface — the on-screen **simulator** for the physical board.
 //!
-//! A third surface alongside the CRT terminal ([`crt`](crate::crt)) and point-and-click
-//! ([`pnc`](crate::pnc)) that renders the session as a **tile board**: the fog-of-war map, enlarged
-//! into chunky room tiles, with a piece per party seat, a movement + action rail, and per-seat
-//! dashboards. It simulates the physical e-ink tabletop (see `docs/tabletop-simulator-spec.md`) on
-//! screen before any firmware exists.
+//! The board is driven through the transport-agnostic [`wickedways_tabletop`] bridge: each turn the
+//! surface projects the engine, computes the party [`roster`](wickedways_tabletop::roster), and calls
+//! [`bridge::render`] to get a list of [`DeviceCommand`]s (paint tiles, place pieces, fill dashboards).
+//! A `SimulatorTransport` (here, a `Signal<Vec<DeviceCommand>>`) holds them and the board renders
+//! **from that device state** — the same commands real e-ink firmware would apply. Input builds
+//! actor-tagged engine commands through the bridge's shared `command_for` (via
+//! [`driver::intent_to_command`]). The contextual action rail stays a simulator affordance (its
+//! hardware form — tile buttons / item taps — is a P3 question).
 //!
-//! **Multi-seat (hotseat).** In single-player (offline) mode the surface opens a party-builder: the
-//! genesis's pre-seated seat is Player 1, and the host adds more explorers who are joined as extra
-//! seats before `BeginCampaign` ([`driver::boot_hotseat`]). One shared board hosts every seat; the
-//! offline `solo` authority rotates them automatically (start-turn → action → mob reactions → next
-//! player) — each piece is an actor. Multiplayer (networked) mode is unchanged: one seat per device.
+//! **Multi-seat (hotseat).** In single-player the surface opens a party-builder; the offline `solo`
+//! authority then rotates every seat, each piece an actor. Multiplayer is one seat per device.
 //!
-//! It drives the same shared [`driver`](crate::driver) loop as the other surfaces and reuses the pure
-//! [`affordances`](crate::affordances), [`map`](crate::map) geometry, [`Narrator`], and
-//! [`AudioRuntime`] — only the presentation differs.
-//!
-//! [`driver::boot_hotseat`]: crate::driver::boot_hotseat
-//! [`Narrator`]: crate::narrator::Narrator
-//! [`AudioRuntime`]: crate::audio_runtime::AudioRuntime
+//! [`bridge::render`]: wickedways_tabletop::bridge::render
+//! [`driver::intent_to_command`]: crate::driver::intent_to_command
+//! [`DeviceCommand`]: wickedways_tabletop::protocol::DeviceCommand
 
 use dioxus::prelude::*;
 use futures_util::StreamExt;
 
 use wickedways_core::presentation::{PresentationCue, StatusField};
 use wickedways_core::sync::{Command, SubmitResult, SyncCoordinator};
-use wickedways_core::world::afflictions::Status;
 use wickedways_core::world::intent::Intent;
 use wickedways_core::world::view::ViewModel;
-use wickedways_core::World;
+
+use wickedways_tabletop::bridge;
+use wickedways_tabletop::protocol::{DeviceCommand, PieceGlow};
+use wickedways_tabletop::roster::party_roster;
 
 use crate::affordances::{inventory_actions, scene_hotspots, ActionDescriptor, HotspotKind};
 use crate::audio::cue_for_intent;
@@ -87,22 +85,6 @@ struct SeatDraft {
     archetype: String,
 }
 
-/// A projected view of one party seat, read from the replica each turn — for placing its piece and
-/// rendering its dashboard. Bypasses the actorless `status` cue (per-seat stats come from the replica).
-#[derive(Clone, PartialEq)]
-struct SeatView {
-    id: String,
-    name: String,
-    room_id: Option<String>,
-    health: f64,
-    sanity: f64,
-    ko: bool,
-    panic: bool,
-    fear: bool,
-    confused: bool,
-    active: bool,
-}
-
 /// A request from the UI to the (non-Send, Rc-backed) transport coroutine.
 enum TtAction {
     /// Begin a hotseat session with `seats` extra players joined (single-player only).
@@ -143,42 +125,23 @@ fn print_room(mut log: Signal<Vec<LogLine>>, mut narrator: Signal<Narrator>, vm:
     }
 }
 
-/// Read every party seat's location + stats from the live replica for piece placement + dashboards.
-fn party_roster(world: &World) -> Vec<SeatView> {
-    let active = world.active_character_id().ok();
-    world
-        .campaign
-        .party_ids
-        .iter()
-        .filter_map(|id| {
-            let c = world.characters.get(id)?;
-            let afl = &c.afflictions;
-            Some(SeatView {
-                id: id.0.clone(),
-                name: c.name.clone(),
-                room_id: c.current_room_id.as_ref().map(|r| r.0.clone()),
-                health: c.stats.health,
-                sanity: c.stats.sanity,
-                ko: afl.is_active(Status::Ko),
-                panic: afl.is_active(Status::Panic),
-                fear: afl.is_active(Status::Fear),
-                confused: afl.is_active(Status::Confused),
-                active: active.as_ref() == Some(id),
-            })
-        })
-        .collect()
+/// Project the current board state into device commands (the `SimulatorTransport`'s payload).
+fn device_for(coord: &SyncCoordinator, map: &MapModel, view: &ViewModel) -> Vec<DeviceCommand> {
+    bridge::render(
+        view,
+        &party_roster(coord.replica()),
+        map,
+        coord.status_fields(),
+    )
 }
 
-/// The CSS piece class for a seat token, worst affliction first (the "glowing piece").
-fn seat_piece_class(s: &SeatView) -> &'static str {
-    if s.ko {
-        "tt-piece-ko"
-    } else if s.panic {
-        "tt-piece-panic"
-    } else if s.fear {
-        "tt-piece-fear"
-    } else {
-        "tt-piece-normal"
+/// The CSS class for a piece token by its device glow (worst affliction).
+fn glow_class(glow: PieceGlow) -> &'static str {
+    match glow {
+        PieceGlow::Normal => "tt-piece-normal",
+        PieceGlow::Fear => "tt-piece-fear",
+        PieceGlow::Panic => "tt-piece-panic",
+        PieceGlow::Ko => "tt-piece-ko",
     }
 }
 
@@ -191,8 +154,8 @@ fn is_movement_kind(kind: HotspotKind) -> bool {
 pub fn tabletop_app() -> Element {
     let mut status = use_signal(|| "connecting…".to_string());
     let mut vm = use_signal(|| None::<ViewModel>);
-    let mut status_fields = use_signal(Vec::<StatusField>::new);
-    let mut roster = use_signal(Vec::<SeatView>::new);
+    // The `SimulatorTransport` payload: the device commands the board renders from.
+    let mut device = use_signal(Vec::<DeviceCommand>::new);
     let mut log = use_signal(Vec::<LogLine>::new);
     let mut narrator = use_signal(Narrator::new);
     let mut map_model = use_signal(MapModel::new);
@@ -253,10 +216,9 @@ pub fn tabletop_app() -> Element {
                     map_model.write().observe(v);
                     print_room(log, narrator, v);
                     audio.update(v);
+                    device.set(device_for(&coord, &map_model.read(), v));
                 }
                 vm.set(initial);
-                status_fields.set(coord.status_fields().to_vec());
-                roster.set(party_roster(coord.replica()));
                 my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                 my_actions_left.set(has_actions_left(coord.replica(), single));
 
@@ -272,10 +234,9 @@ pub fn tabletop_app() -> Element {
                             if let Some(a) = &after {
                                 map_model.write().observe(a);
                                 audio.update(a);
+                                device.set(device_for(&coord, &map_model.read(), a));
                             }
                             vm.set(after);
-                            status_fields.set(coord.status_fields().to_vec());
-                            roster.set(party_roster(coord.replica()));
                             my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                             my_actions_left.set(has_actions_left(coord.replica(), single));
                             continue;
@@ -290,10 +251,9 @@ pub fn tabletop_app() -> Element {
                             if let Some(a) = &after {
                                 map_model.write().observe(a);
                                 audio.update(a);
+                                device.set(device_for(&coord, &map_model.read(), a));
                             }
                             vm.set(after);
-                            status_fields.set(coord.status_fields().to_vec());
-                            roster.set(party_roster(coord.replica()));
                             my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                             my_actions_left.set(has_actions_left(coord.replica(), single));
                             continue;
@@ -307,10 +267,9 @@ pub fn tabletop_app() -> Element {
                             if let Some(a) = &after {
                                 map_model.write().observe(a);
                                 audio.update(a);
+                                device.set(device_for(&coord, &map_model.read(), a));
                             }
                             vm.set(after);
-                            status_fields.set(coord.status_fields().to_vec());
-                            roster.set(party_roster(coord.replica()));
                             my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                             my_actions_left.set(has_actions_left(coord.replica(), single));
                             continue;
@@ -346,10 +305,9 @@ pub fn tabletop_app() -> Element {
                                         if let Some(v) = &restored {
                                             print_room(log, narrator, v);
                                             audio.update(v);
+                                            device.set(device_for(&coord, &map_model.read(), v));
                                         }
                                         vm.set(restored);
-                                        status_fields.set(coord.status_fields().to_vec());
-                                        roster.set(party_roster(coord.replica()));
                                     }
                                     None => {
                                         log.write().push(LogLine::plain("No save found.".into()));
@@ -387,10 +345,9 @@ pub fn tabletop_app() -> Element {
                                             map_model.write().observe(v);
                                             print_room(log, narrator, v);
                                             audio.update(v);
+                                            device.set(device_for(&coord, &map_model.read(), v));
                                         }
                                         vm.set(fresh);
-                                        status_fields.set(coord.status_fields().to_vec());
-                                        roster.set(party_roster(coord.replica()));
                                     }
                                     Err(e) => log
                                         .write()
@@ -415,10 +372,9 @@ pub fn tabletop_app() -> Element {
                                         if let Some(v) = &reverted {
                                             print_room(log, narrator, v);
                                             audio.update(v);
+                                            device.set(device_for(&coord, &map_model.read(), v));
                                         }
                                         vm.set(reverted);
-                                        status_fields.set(coord.status_fields().to_vec());
-                                        roster.set(party_roster(coord.replica()));
                                     }
                                     None => {
                                         log.write().push(LogLine::plain("Nothing to undo.".into()));
@@ -496,6 +452,7 @@ pub fn tabletop_app() -> Element {
                     }
 
                     let before = project(&coord, &catalog);
+                    // Build the actor-tagged command through the shared bridge builder (active seat).
                     let command = match intent_to_command(coord.replica(), &catalog, &intent) {
                         Ok(cmd) => cmd,
                         Err(note) => {
@@ -545,10 +502,9 @@ pub fn tabletop_app() -> Element {
                             audio.play_cue(&cue, a);
                         }
                         audio.update(a);
+                        device.set(device_for(&coord, &map_model.read(), a));
                     }
                     vm.set(after);
-                    status_fields.set(coord.status_fields().to_vec());
-                    roster.set(party_roster(coord.replica()));
                     my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                     my_actions_left.set(has_actions_left(coord.replica(), single));
                 }
@@ -557,12 +513,8 @@ pub fn tabletop_app() -> Element {
     });
 
     let view = vm();
-    let seats = roster();
-    let active_name = seats
-        .iter()
-        .find(|s| s.active)
-        .map(|s| s.name.clone())
-        .unwrap_or_default();
+    let device_state = device();
+    let active_name = active_seat_name(&device_state);
     let room_name = view
         .as_ref()
         .map(|v| v.status.location_name.clone())
@@ -605,14 +557,14 @@ pub fn tabletop_app() -> Element {
             }
 
             div { class: "tt-stage",
-                // ── The board ───────────────────────────────────────────────────
+                // ── The board (rendered from the device commands) ───────────────
                 div { class: if waiting { "tt-board-wrap waiting" } else { "tt-board-wrap" },
-                    {board_view(view.as_ref(), map_model, &seats)}
+                    {board_view(&device_state, map_model)}
                 }
 
                 // ── Rail: dashboards · movement · actions · log ─────────────────
                 aside { class: "tt-rail",
-                    {dashboard_view(&seats, &status_fields())}
+                    {dashboard_view(&device_state)}
                     div { class: if waiting { "tt-controls-gate waiting" } else { "tt-controls-gate" },
                         {movement_view(view.as_ref(), finished, driver)}
                         {actions_view(view.as_ref(), finished, driver)}
@@ -646,6 +598,17 @@ pub fn tabletop_app() -> Element {
     }
 }
 
+/// The active seat's name, from the device dashboards.
+fn active_seat_name(device: &[DeviceCommand]) -> String {
+    device
+        .iter()
+        .find_map(|c| match c {
+            DeviceCommand::Dashboard { name, active, .. } if *active => Some(name.clone()),
+            _ => None,
+        })
+        .unwrap_or_default()
+}
+
 /// Submit a command; on a denial push the reason to the log. Returns the committed delta's cues.
 async fn submit(
     transport: &AppTransport,
@@ -665,17 +628,12 @@ async fn submit(
     }
 }
 
-/// The board: the fog-of-war layout as chunky room tiles, with every party seat's piece on its tile.
-/// A dark, unlit current room renders concealed until a light is brought.
-fn board_view(
-    view: Option<&ViewModel>,
-    map_model: Signal<MapModel>,
-    seats: &[SeatView],
-) -> Element {
+/// The board: the fog-of-war layout as chunky room tiles, rendered from the device `Tile`/`Piece`
+/// commands (the `SimulatorTransport`). A dark, unlit current room renders concealed.
+fn board_view(device: &[DeviceCommand], map_model: Signal<MapModel>) -> Element {
     let layout = layout_map(&map_model.read());
     let w = layout.width * SCALE;
     let h = layout.height * SCALE;
-    let current_lit = view.is_none_or(|v| v.room.is_lit);
 
     rsx! {
         div { class: "tt-board", style: "width:{w}px;height:{h}px;",
@@ -692,20 +650,35 @@ fn board_view(
             }
             for (i, b) in layout.boxes.iter().enumerate() {
                 {
-                    let here: Vec<&SeatView> = seats
+                    let concealed = device.iter().any(|c| matches!(
+                        c, DeviceCommand::Tile { tile_id, concealed, .. } if tile_id == &b.id && *concealed
+                    ));
+                    let pieces: Vec<PieceChip> = device
                         .iter()
-                        .filter(|s| s.room_id.as_deref() == Some(b.id.as_str()))
+                        .filter_map(|c| match c {
+                            DeviceCommand::Piece { piece_id, name, tile_id, glow, active } if tile_id == &b.id => {
+                                Some(PieceChip { id: piece_id.clone(), name: name.clone(), glow: *glow, active: *active })
+                            }
+                            _ => None,
+                        })
                         .collect();
-                    tile_view(i, b, current_lit, &here)
+                    tile_view(i, b, concealed, &pieces)
                 }
             }
         }
     }
 }
 
-/// One room tile carrying the pieces standing on it. A dark unlit current tile is concealed.
-fn tile_view(i: usize, b: &LaidBox, current_lit: bool, here: &[&SeatView]) -> Element {
-    let concealed = b.current && !current_lit;
+/// One piece standing on a tile — extracted from a device `Piece` command.
+struct PieceChip {
+    id: String,
+    name: String,
+    glow: PieceGlow,
+    active: bool,
+}
+
+/// One room tile carrying the pieces standing on it.
+fn tile_view(i: usize, b: &LaidBox, concealed: bool, pieces: &[PieceChip]) -> Element {
     let mut cls = String::from("tt-tile");
     if b.current {
         cls.push_str(" current");
@@ -727,14 +700,10 @@ fn tile_view(i: usize, b: &LaidBox, current_lit: bool, here: &[&SeatView]) -> El
                 span { class: "tt-tile-remains", "✕" }
             }
             div { class: "tt-pieces",
-                for s in here.iter().copied() {
+                for p in pieces.iter() {
                     {
-                        let cls = format!(
-                            "tt-piece {}{}",
-                            seat_piece_class(s),
-                            if s.active { " active" } else { "" },
-                        );
-                        rsx! { span { key: "pc-{s.id}", class: "{cls}", title: "{s.name}", "●" } }
+                        let cls = format!("tt-piece {}{}", glow_class(p.glow), if p.active { " active" } else { "" });
+                        rsx! { span { key: "pc-{p.id}", class: "{cls}", title: "{p.name}", "●" } }
                     }
                 }
             }
@@ -742,29 +711,43 @@ fn tile_view(i: usize, b: &LaidBox, current_lit: bool, here: &[&SeatView]) -> El
     }
 }
 
-/// The seat dashboards: one card per party member (name · HP · SAN · affliction chips · active), read
-/// from the replica, plus the campaign's shared `StatusField` banner.
-fn dashboard_view(seats: &[SeatView], fields: &[StatusField]) -> Element {
+/// The seat dashboards + shared banner, rendered from the device `Dashboard`/`Banner` commands.
+fn dashboard_view(device: &[DeviceCommand]) -> Element {
+    let banner: Vec<StatusField> = device
+        .iter()
+        .find_map(|c| match c {
+            DeviceCommand::Banner { fields } => Some(fields.clone()),
+            _ => None,
+        })
+        .unwrap_or_default();
     rsx! {
         div { class: "tt-dash",
             div { class: "tt-seats",
-                for s in seats.iter() {
-                    div { key: "seat-{s.id}", class: if s.active { "tt-seat active" } else { "tt-seat" },
-                        div { class: "tt-seat-top",
-                            if s.active { span { class: "tt-seat-active", "●" } }
-                            span { class: "tt-seat-name", "{s.name}" }
+                for c in device.iter() {
+                    if let DeviceCommand::Dashboard { seat_id, name, health, sanity, afflictions, active } = c {
+                        div { key: "seat-{seat_id}", class: if *active { "tt-seat active" } else { "tt-seat" },
+                            div { class: "tt-seat-top",
+                                if *active { span { class: "tt-seat-active", "●" } }
+                                span { class: "tt-seat-name", "{name}" }
+                            }
+                            div { class: "tt-seat-stats",
+                                span { class: "tt-stat", span { class: "tt-stat-label", "HP" } " " span { class: "tt-stat-value", "{health}" } }
+                                span { class: "tt-stat", span { class: "tt-stat-label", "SAN" } " " span { class: "tt-stat-value", "{sanity}" } }
+                            }
+                            if !afflictions.is_empty() {
+                                div { class: "tt-seat-chips",
+                                    for label in afflictions.iter() {
+                                        span { key: "chip-{seat_id}-{label}", class: "tt-chip chip-{label.to_lowercase()}", "{label}" }
+                                    }
+                                }
+                            }
                         }
-                        div { class: "tt-seat-stats",
-                            span { class: "tt-stat", span { class: "tt-stat-label", "HP" } " " span { class: "tt-stat-value", "{s.health}" } }
-                            span { class: "tt-stat", span { class: "tt-stat-label", "SAN" } " " span { class: "tt-stat-value", "{s.sanity}" } }
-                        }
-                        {seat_chips(s)}
                     }
                 }
             }
-            if !fields.is_empty() {
+            if !banner.is_empty() {
                 div { class: "tt-banner",
-                    for f in fields.iter() {
+                    for f in banner.iter() {
                         span {
                             key: "sf-{f.label}",
                             class: status_field_class(f),
@@ -773,29 +756,6 @@ fn dashboard_view(seats: &[SeatView], fields: &[StatusField]) -> Element {
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-/// Affliction chips for a seat card (KO / Panic / Fear / Confused).
-fn seat_chips(s: &SeatView) -> Element {
-    let chips: Vec<(&str, &str)> = [
-        (s.ko, "KO", "chip-ko"),
-        (s.panic, "Panic", "chip-panic"),
-        (s.fear, "Fear", "chip-fear"),
-        (s.confused, "Confused", "chip-confused"),
-    ]
-    .into_iter()
-    .filter_map(|(on, label, cls)| on.then_some((label, cls)))
-    .collect();
-    if chips.is_empty() {
-        return rsx! {};
-    }
-    rsx! {
-        div { class: "tt-seat-chips",
-            for (label, cls) in chips {
-                span { key: "chip-{label}", class: "tt-chip {cls}", "{label}" }
             }
         }
     }
@@ -810,8 +770,7 @@ fn status_field_class(field: &StatusField) -> &'static str {
     }
 }
 
-/// The movement rail: one button per exit (moving the active seat's piece); locked doors are shown
-/// disabled. Exits come from `scene_hotspots`, so movement stays in lockstep with the engine.
+/// The movement rail: one button per exit (moving the active seat's piece); locked doors are disabled.
 fn movement_view(view: Option<&ViewModel>, finished: bool, driver: Coroutine<TtAction>) -> Element {
     let Some(v) = view else { return rsx! {} };
     let hotspots = scene_hotspots(v);
@@ -854,8 +813,7 @@ fn movement_view(view: Option<&ViewModel>, finished: bool, driver: Coroutine<TtA
     }
 }
 
-/// The action rail: everything on the active seat's tile you can act on (occupants, loot, floor items,
-/// caches) with its engine-gated verbs, straight from `scene_hotspots`.
+/// The action rail: everything on the active seat's tile with its engine-gated verbs.
 fn actions_view(view: Option<&ViewModel>, finished: bool, driver: Coroutine<TtAction>) -> Element {
     let Some(v) = view else { return rsx! {} };
     let hotspots = scene_hotspots(v);
@@ -1036,33 +994,16 @@ fn setup_view(
 
 #[cfg(test)]
 mod tests {
-    use super::{is_movement_kind, seat_piece_class, SeatView};
+    use super::{glow_class, is_movement_kind};
     use crate::affordances::HotspotKind;
-
-    fn seat(ko: bool, panic: bool, fear: bool) -> SeatView {
-        SeatView {
-            id: "x".into(),
-            name: "X".into(),
-            room_id: None,
-            health: 10.0,
-            sanity: 10.0,
-            ko,
-            panic,
-            fear,
-            confused: false,
-            active: false,
-        }
-    }
+    use wickedways_tabletop::protocol::PieceGlow;
 
     #[test]
-    fn seat_piece_class_ranks_ko_over_panic_over_fear_over_normal() {
-        assert_eq!(seat_piece_class(&seat(true, true, true)), "tt-piece-ko");
-        assert_eq!(seat_piece_class(&seat(false, true, true)), "tt-piece-panic");
-        assert_eq!(seat_piece_class(&seat(false, false, true)), "tt-piece-fear");
-        assert_eq!(
-            seat_piece_class(&seat(false, false, false)),
-            "tt-piece-normal"
-        );
+    fn glow_class_maps_each_affliction() {
+        assert_eq!(glow_class(PieceGlow::Normal), "tt-piece-normal");
+        assert_eq!(glow_class(PieceGlow::Fear), "tt-piece-fear");
+        assert_eq!(glow_class(PieceGlow::Panic), "tt-piece-panic");
+        assert_eq!(glow_class(PieceGlow::Ko), "tt-piece-ko");
     }
 
     #[test]
