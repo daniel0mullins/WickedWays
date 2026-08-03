@@ -93,8 +93,10 @@ Run the engine + bridge on a **laptop** (no Pi); one ESP32 drives one tile over 
 | Jumper wires + breadboard | 1 | $6 | |
 
 This exercises the whole loop for one tile: place a tagged piece → `PieceMoved` → `bridge::resolve` →
-engine → `bridge::render` → paint the tile + LEDs. It's the cheapest way to validate the `SerialTransport`
-you'd write in P3 before committing to a full board.
+engine → `bridge::render` → paint the tile + LEDs. The host software is already built — run
+`cargo run -p wickedways-controller -- <port>` to drive the ESP32 (or `--dry-run` first to watch the
+engine→bridge→codec path with no hardware). It's the cheapest way to validate the built
+`SerialTransport` before committing to a full board.
 
 ## Tools you'll need
 

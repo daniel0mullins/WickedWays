@@ -1,11 +1,13 @@
 # Tabletop firmware sketch (P2/P3)
 
-> A **design sketch**, not compiled in this repo. It shows how the transport-agnostic bridge
-> (`crates/wickedways-tabletop`) reaches real hardware: the same `DeviceCommand`/`DeviceEvent`
-> protocol the on-screen simulator uses, spoken over a serial link to an ESP32 driving color e-ink
-> tiles and NFC readers. See [`tabletop-simulator-spec.md`](./tabletop-simulator-spec.md) (P2) for how
-> this fits the phasing, and [`tabletop-prototype-bom.md`](./tabletop-prototype-bom.md) for the parts to
-> build it.
+> A **firmware design sketch** — the *ESP32 tile firmware* is not compiled in this repo. The **host end
+> of the link is built**: `wickedways-controller` runs the engine + bridge and speaks this exact
+> protocol over serial (see [the software-side section](#the-software-side-p3--built) below). This
+> document shows how the transport-agnostic bridge (`crates/wickedways-tabletop`) reaches real hardware:
+> the same `DeviceCommand`/`DeviceEvent` protocol the on-screen simulator uses, spoken over a serial
+> link to an ESP32 driving color e-ink tiles and NFC readers. See
+> [`tabletop-simulator-spec.md`](./tabletop-simulator-spec.md) (P2) for how this fits the phasing, and
+> [`tabletop-prototype-bom.md`](./tabletop-prototype-bom.md) for the parts to build it.
 
 ## The shape
 
@@ -83,10 +85,22 @@ buttons or an item-NFC tap — their exact hardware form is the open P3 question
 - **Idempotent redraws:** the bridge re-emits the full board each turn, so a tile that missed a frame
   self-heals on the next `Tile` command.
 
-## What this needs from the software side (P3)
+## The software side (P3) — built
 
-- A native `SerialTransport: DeviceTransport` (feature-gated, `serialport` dep) + a small host
-  "controller" binary wiring `SyncAuthority` → `bridge` → transport.
-- The `TileAction` hardware affordance decided (tile buttons vs. item taps).
-- The **dice-supply** seam (physical dice → the seeded rng as command data) — still open; see the input
-  note.
+The host/controller software now exists (the ESP32 firmware above is still a sketch):
+
+- **`wickedways-tabletop::codec`** — the COBS-framed JSON wire format (`encode_command` +
+  `FrameDecoder`), kept pure and wasm-safe in the bridge crate and covered by the normal test gate.
+- **`wickedways-controller`** — a workspace crate: the native `SerialTransport: DeviceTransport`
+  (`serialport`, opened by explicit path with `default-features = false` so it needs no `libudev-dev`)
+  plus the host controller binary wiring an in-process solo `SyncAuthority` → `bridge::render`/`resolve`
+  → transport. `cargo run -p wickedways-controller -- <port> [baud]` drives real hardware;
+  `--dry-run` runs the whole engine→bridge→codec loop (paint the opening board, apply one piece move,
+  repaint) with no device attached.
+
+Still open:
+
+- The `TileAction` hardware affordance (tile buttons vs. item taps) — the protocol carries it, but no
+  hardware form is decided.
+- The **dice-supply** seam (physical dice → the seeded rng as command data) — see the input note.
+- The ESP32 tile firmware itself (this document).

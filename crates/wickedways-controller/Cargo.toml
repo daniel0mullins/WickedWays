@@ -1,0 +1,24 @@
+# The host controller (P3): the Tier-0 hardware software. It runs the engine solo, projects the board
+# through `wickedways-tabletop::bridge`, and speaks the COBS-framed `DeviceCommand`/`DeviceEvent`
+# protocol over a serial line to an ESP32-driven tile (see `docs/tabletop-firmware-sketch.md` and
+# `docs/tabletop-prototype-bom.md`).
+#
+# `serialport` is pulled with `default-features = false` on purpose: the default `libudev` feature is
+# only used for USB *enumeration*, which this controller doesn't need (it opens an explicit port path).
+# Dropping it keeps the build free of the `libudev-dev` system package, so this crate stays a normal
+# workspace member (no exclusion, unlike the GTK-linking desktop shell) and the workspace gates still
+# compile it. The serial link itself can only be exercised against real hardware; `--dry-run` runs the
+# whole engine → bridge → codec path with no device.
+[package]
+name = "wickedways-controller"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+wickedways-core = { path = "../wickedways-core" }
+wickedways-tabletop = { path = "../wickedways-tabletop" }
+serialport = { version = "4", default-features = false }
+serde_json = "1"
+
+[lints]
+workspace = true

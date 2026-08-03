@@ -5,10 +5,12 @@
 //! [`protocol::DeviceCommand`]s (paint tiles, place pieces, drive dashboards), and resolves inbound
 //! [`protocol::DeviceEvent`]s into actor-tagged engine [`Command`](wickedways_core::sync::Command)s via
 //! [`bridge`]. The [`transport`] trait is the only thing that changes between the on-screen simulator
-//! (the web client) and real e-ink firmware. Depends only on `wickedways-core` + serde, so it compiles
-//! native (the controller) and to wasm (the web simulator).
+//! (the web client) and real e-ink firmware; [`codec`] supplies the COBS-framed JSON wire format the
+//! hardware transport uses. Depends only on `wickedways-core` + serde, so it compiles native (the
+//! controller) and to wasm (the web simulator).
 
 pub mod bridge;
+pub mod codec;
 pub mod command;
 pub mod map;
 pub mod protocol;
