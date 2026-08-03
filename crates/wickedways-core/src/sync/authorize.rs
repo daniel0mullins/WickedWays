@@ -93,6 +93,18 @@ pub fn authorize(world: &World, command: &Command) -> AuthResult {
         return AuthResult::Ok;
     }
 
+    if command.is_dice_supply() {
+        // Table input, not turn-gated: any seat (or the GM) may load dice into the shared tray while
+        // the campaign is running.
+        if !started {
+            return denied("Campaign has not begun.");
+        }
+        if finished {
+            return denied("Campaign has finished.");
+        }
+        return AuthResult::Ok;
+    }
+
     if command.is_gm_command() {
         if world.campaign.gm_id.is_none() {
             return denied("No GM is set.");

@@ -99,6 +99,11 @@ enum TtAction {
     NextPlayer,
     /// A player ends their own turn (multiplayer managed turns).
     EndTurn,
+    /// Supply a physical d20 for the engine's next mob to-hit (`Some(value)`), or "Roll for me"
+    /// (`None`) — let the house roll from the seeded rng.
+    SupplyDice {
+        value: Option<u8>,
+    },
     Save,
     Restore,
     Restart,
@@ -163,6 +168,8 @@ pub fn tabletop_app() -> Element {
     let started = use_signal(|| matches!(read_config().mode, Mode::Multi));
     let mut settings_open = use_signal(|| false);
     let mut audio_on = use_signal(|| false);
+    // The dice-tray entry: the physical d20 face a player will supply for the next mob to-hit.
+    let mut dice_value = use_signal(|| "20".to_string());
     let mode = use_hook(|| read_config().mode);
     let welcome = use_hook(|| welcome_for(&read_config().campaign));
     // Archetypes the party-builder offers, read once from the campaign's genesis.
@@ -272,6 +279,29 @@ pub fn tabletop_app() -> Element {
                             vm.set(after);
                             my_turn.set(is_my_turn(&coord.snapshot(), &cfg.token, gm, single));
                             my_actions_left.set(has_actions_left(coord.replica(), single));
+                            continue;
+                        }
+                        TtAction::SupplyDice { value } => {
+                            match value {
+                                Some(v) => {
+                                    let command = Command::SupplyDice {
+                                        dice: vec![wickedways_core::dice::SuppliedDie {
+                                            sides: 20,
+                                            value: u32::from(v),
+                                        }],
+                                    };
+                                    submit(&transport, &mut coord, command, log).await;
+                                    log.write().push(LogLine::plain(format!(
+                                        "🎲 Supplied a d20 = {v} for the next mob to-hit."
+                                    )));
+                                }
+                                None => {
+                                    log.write().push(LogLine::plain(
+                                        "🎲 Roll for me — the house will roll the next mob to-hit."
+                                            .to_string(),
+                                    ));
+                                }
+                            }
                             continue;
                         }
                         TtAction::Save => {
@@ -569,6 +599,38 @@ pub fn tabletop_app() -> Element {
                         {movement_view(view.as_ref(), finished, driver)}
                         {actions_view(view.as_ref(), finished, driver)}
                         {inventory_view(view.as_ref(), finished, driver)}
+                        // ── Dice tray: supply a physical d20 for a mob to-hit, or let the house roll ──
+                        if !finished {
+                            div { class: "tt-dice",
+                                span { class: "tt-dice-label", "🎲 Mob d20" }
+                                input {
+                                    class: "tt-dice-input",
+                                    r#type: "number",
+                                    min: "1",
+                                    max: "20",
+                                    value: "{dice_value}",
+                                    oninput: move |e| dice_value.set(e.value()),
+                                }
+                                button {
+                                    class: "tt-btn",
+                                    title: "Supply the die you rolled for the monster",
+                                    onclick: move |_| {
+                                        if let Ok(v) = dice_value().trim().parse::<u8>() {
+                                            if (1..=20).contains(&v) {
+                                                driver.send(TtAction::SupplyDice { value: Some(v) });
+                                            }
+                                        }
+                                    },
+                                    "Supply"
+                                }
+                                button {
+                                    class: "tt-btn",
+                                    title: "No dice? Let the house roll the mob's to-hit",
+                                    onclick: move |_| driver.send(TtAction::SupplyDice { value: None }),
+                                    "Roll for me"
+                                }
+                            }
+                        }
                     }
                     div { class: "tt-log",
                         for (i, line) in log().iter().enumerate() {

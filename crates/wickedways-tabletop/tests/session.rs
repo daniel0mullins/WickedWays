@@ -93,6 +93,30 @@ fn a_piece_move_resolves_to_a_move_for_that_actor() {
 }
 
 #[test]
+fn a_dice_roll_resolves_to_a_supply_dice_command() {
+    let (_t, coord, catalog) = boot();
+    // A physical roll of two d20s becomes an actor-agnostic SupplyDice loading the shared tray.
+    let event = DeviceEvent::DiceRolled {
+        sides: 20,
+        values: vec![14, 3],
+    };
+    match resolve(&event, coord.replica(), &catalog) {
+        Ok(Some(Command::SupplyDice { dice })) => {
+            assert_eq!(dice.len(), 2);
+            assert_eq!(
+                dice[0],
+                wickedways_core::dice::SuppliedDie {
+                    sides: 20,
+                    value: 14
+                }
+            );
+            assert_eq!(dice[1].value, 3);
+        }
+        other => panic!("expected a SupplyDice, got {other:?}"),
+    }
+}
+
+#[test]
 fn an_illegal_move_is_rejected() {
     let (_t, coord, catalog) = boot();
     let heir = heir_id(&coord);

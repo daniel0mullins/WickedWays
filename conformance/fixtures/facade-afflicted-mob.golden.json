@@ -50,12 +50,10 @@
             "kind": "action"
           },
           {
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
+            "cue": {
+              "text": "Free rolls d20 -> 5: miss"
             },
-            "kind": "action"
+            "kind": "mechanic"
           },
           {
             "action": "attack",
@@ -66,13 +64,7 @@
             "kind": "action"
           }
         ],
-        "mobAttacks": [
-          {
-            "amount": 0.3999999999999986,
-            "name": "Free",
-            "stat": "health"
-          }
-        ]
+        "mobAttacks": []
       },
       "snapshot": {
         "campaign": {
@@ -257,12 +249,6 @@
                   "id": "mob:Blocked",
                   "name": "Blocked"
                 }
-              },
-              {
-                "amount": 0.4,
-                "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
               }
             ],
             "id": "player:Ada",
@@ -275,7 +261,7 @@
             "name": "Ada",
             "stats": {
               "energy": 8.0,
-              "health": 19.6,
+              "health": 20.0,
               "sanity": 8.0
             }
           }
@@ -420,7 +406,7 @@
           }
         ],
         "status": {
-          "health": 19.6,
+          "health": 20.0,
           "locationName": "Hall",
           "maxTurns": 20,
           "sanity": 8.0,
@@ -437,6 +423,12 @@
       },
       "result": {
         "cues": [
+          {
+            "cue": {
+              "text": "Free rolls d20 -> 17: hit"
+            },
+            "kind": "mechanic"
+          },
           {
             "action": "takeDamage",
             "actor": {
@@ -662,12 +654,6 @@
               {
                 "amount": 0.4,
                 "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
-              },
-              {
-                "amount": 0.4,
-                "kind": "takeDamage",
                 "round": 1,
                 "stat": "health"
               }
@@ -682,7 +668,7 @@
             "name": "Ada",
             "stats": {
               "energy": 8.0,
-              "health": 19.200000000000003,
+              "health": 19.6,
               "sanity": 8.0
             }
           }
@@ -827,7 +813,7 @@
           }
         ],
         "status": {
-          "health": 19.200000000000003,
+          "health": 19.6,
           "locationName": "Hall",
           "maxTurns": 20,
           "sanity": 8.0,
@@ -844,6 +830,12 @@
       },
       "result": {
         "cues": [
+          {
+            "cue": {
+              "text": "Free rolls d20 -> 16: hit"
+            },
+            "kind": "mechanic"
+          },
           {
             "action": "takeDamage",
             "actor": {
@@ -1077,12 +1069,6 @@
               {
                 "amount": 0.4,
                 "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
-              },
-              {
-                "amount": 0.4,
-                "kind": "takeDamage",
                 "round": 1,
                 "stat": "health"
               },
@@ -1103,7 +1089,7 @@
             "name": "Ada",
             "stats": {
               "energy": 8.0,
-              "health": 18.800000000000004,
+              "health": 19.200000000000003,
               "sanity": 8.0
             }
           }
@@ -1248,7 +1234,7 @@
           }
         ],
         "status": {
-          "health": 18.800000000000004,
+          "health": 19.200000000000003,
           "locationName": "Hall",
           "maxTurns": 20,
           "sanity": 8.0,

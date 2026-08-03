@@ -38,8 +38,10 @@ pub use snapshot::{
     ExitSnapshot, ItemSnapshot, LootSnapshot, MaterialCacheSnapshot, SceneSnapshot,
 };
 
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, VecDeque};
 use rng::Rng;
+
+use crate::dice::SuppliedDie;
 use serde_json::Value;
 use snapshot::{
     CampaignCoreSnapshot, CampaignSnapshot, CharacterSnapshot, RoomSnapshot, SCHEMA_VERSION,
@@ -56,6 +58,11 @@ pub struct World {
     pub campaign: CampaignCoreSnapshot,
     pub codex: Value,
     pub rng: Rng,
+    /// Physical dice supplied from the table (via `Command::SupplyDice`), awaiting the next roll that
+    /// matches their size. Transient like [`rng`](Self::rng) — never serialized (a replay re-feeds it
+    /// from the recorded `SupplyDice` commands), but faithfully cloned so the authority's
+    /// backup/restore preserves any queued die.
+    pub supplied_dice: VecDeque<SuppliedDie>,
 }
 
 impl World {
@@ -80,12 +87,49 @@ impl World {
             campaign: s.campaign,
             codex: s.codex,
             rng: Rng::seeded(0),
+            supplied_dice: VecDeque::new(),
         }
     }
 
     /// Re-seed the transient rng (conformance harness only; called after `from_snapshot`).
     pub fn seed_rng(&mut self, seed: u32) {
         self.rng = Rng::seeded(seed);
+    }
+
+    /// Draw a `sides`-faced die. If the table has supplied a die of exactly this size, consume it (a
+    /// literal physical outcome, recorded on the command log); otherwise draw the seeded rng ("the
+    /// house rolls" — the `SupplyDice`-less default). The single seam through which any table-supplied
+    /// die reaches the engine, so all randomness still flows through [`rng`](Self::rng) or recorded
+    /// command data — the determinism invariant holds either way.
+    pub fn draw_die(&mut self, sides: u32) -> u32 {
+        if self.supplied_dice.front().is_some_and(|d| d.sides == sides) {
+            let d = self
+                .supplied_dice
+                .pop_front()
+                .expect("front checked just above");
+            return d.value.clamp(1, sides.max(1));
+        }
+        crate::dice::roll(sides, self.rng.next_f64())
+    }
+
+    /// Queue table-supplied dice for upcoming [`draw_die`](Self::draw_die) calls. Each die must have
+    /// `sides >= 1` and a `value` in `[1, sides]`; an out-of-range die is a [`ProceduralViolation`]
+    /// (the sync authority turns it into a clean denial, leaving the tray unchanged).
+    pub fn supply_dice(
+        &mut self,
+        dice: &[SuppliedDie],
+    ) -> Result<(), crate::error::ProceduralViolation> {
+        for d in dice {
+            if d.sides < 1 || d.value < 1 || d.value > d.sides {
+                return Err(crate::error::ProceduralViolation(alloc::format!(
+                    "invalid supplied die: d{} value {}",
+                    d.sides,
+                    d.value
+                )));
+            }
+        }
+        self.supplied_dice.extend(dice.iter().cloned());
+        Ok(())
     }
 
     /// Emit each store as an array in id-sorted order (BTreeMap iterates sorted).

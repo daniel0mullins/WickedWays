@@ -375,6 +375,12 @@
             "kind": "action"
           },
           {
+            "cue": {
+              "text": "Brute rolls d20 -> 16: hit"
+            },
+            "kind": "mechanic"
+          },
+          {
             "action": "takeDamage",
             "actor": {
               "id": "player:Ada",

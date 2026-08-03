@@ -854,6 +854,7 @@ mod tests {
             campaign,
             codex: Value::Array(alloc::vec![]),
             rng: crate::world::rng::Rng::seeded(0),
+            supplied_dice: alloc::collections::VecDeque::new(),
         }
     }
 

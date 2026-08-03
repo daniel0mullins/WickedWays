@@ -111,5 +111,8 @@ and the Raspberry Pi imager / `rustup` toolchain. No specialist gear beyond that
 - **Scaling to a full board:** e-ink, PN532, and LEDs scale linearly per tile; the TCA9548A handles 8
   I²C devices (chain a second mux beyond that), and past ~4 tiles you'll want a per-tile MCU (ESP32) on
   a shared bus (the firmware-sketch topology) rather than everything on the Pi's GPIO.
-- **What's not on this list:** the dice tray / physical-dice input (the dice-supply rng seam is still an
-  open engine question) and any GM device (the prototype runs **engine-as-GM**, so none is needed).
+- **Dice input:** the dice-supply seam is built (`DiceRolled` → `SupplyDice`, feeding a mob d20
+  to-hit; a supplied die is the literal outcome, else the house rolls). A minimal prototype can enter
+  rolls on-screen / from a keypad; a fancier build adds a **dice-reading tray** (NFC dice or a camera)
+  emitting `DiceRolled` on the COBS link — not costed here.
+- **What's not on this list:** any GM device (the prototype runs **engine-as-GM**, so none is needed).
