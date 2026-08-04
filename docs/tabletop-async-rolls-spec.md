@@ -79,6 +79,11 @@ The only new engine state is the reaction queue + a latch, alongside the existin
 enum TurnPhase { Idle, AwaitingReactions { queue: VecDeque<PendingRoll> } }
 ```
 
+The queue freezes the *occupant order* at action time (matching the existing up-front `occupant_ids`
+snapshot), but each reaction re-checks liveness + active-player KO as the cursor advances, and the
+**remaining queue is dropped the moment the player is KO'd** — preserving today's "don't pile on a
+downed player" `break` (see Resolved decisions §2).
+
 `authorize` gates commands by phase: while `AwaitingReactions`, only the queued `MobAttack` (and its
 optional preceding `SupplyDice`) is legal; player turn-actions are denied until reactions clear —
 mirroring how the turn already can't advance mid-`run_mob_reactions`. Managed-turns multiplayer already
@@ -146,14 +151,37 @@ an "auto-resolve all pending" affordance drains the whole queue with rng in one 
 4. **Generalize:** the same queue mechanism extends to **player-attack to-hit** and any future scripted
    `Roll` node — every roll that wants a table prompt becomes a `RollRequest` on a command boundary.
 
-## Open questions
+## Resolved decisions
 
-- **Wire vocabulary for the response:** surface `MobAttack` on the device protocol, or add a
-  narrower `ResolveReaction { supplied? }` the bridge maps to `MobAttack`? (Leaning narrower — keeps the
-  device protocol free of engine command internals.)
-- **Timeouts / abandonment:** if the table never answers a `RollRequest`, does the controller auto-roll
-  after N seconds? (A controller policy, not engine — the engine just waits.)
-- **Batching:** prompt all co-located mobs at once (one multi-die request) vs. strictly one at a time
-  (clearer causality, matches the KO-stops-the-loop rule). Leaning one-at-a-time to preserve
-  "don't pile on a downed player".
-- **Player attacks:** in scope for phase 4, out for phase 1 (mobs first, per the shipped seam).
+1. **No engine commands on the device protocol.** The wire stays physical *observations*: `RollRequest`
+   out (a prompt — mob, target, sides), `DiceRolled` in (physical faces). The **controller** owns the
+   translation — pending queue + `DiceRolled` → `SupplyDice` + `MobAttack`; a local "Roll for me" (or an
+   optional timeout) → a bare `MobAttack` drawing the seeded rng — exactly as it already turns
+   `PieceMoved` into `Move`. No `MobAttack`/`ResolveReaction` leaks onto the wire (the earlier
+   `ResolveReaction` idea is dropped as redundant: the table names no `mob_id`/`target_id`; the engine
+   already knows the pending reaction).
+
+2. **One reaction at a time — a correctness requirement, not a preference.** `run_mob_reactions` today
+   snapshots the occupant order up front, skips KO'd mobs, and **breaks the moment the active player is
+   KO'd** ("don't pile on a downed player"). Batching all dice up front would resolve reactions after a
+   KO and pile on. So the authority freezes the occupant *order*, advances a cursor one mob at a time,
+   re-checks liveness + player-KO before each, and **drops the remaining queue on KO**; `pending_rolls()`
+   yields only the next live reaction.
+
+3. **Timeouts are a controller policy, never the engine.** The engine has no wall-clock (determinism)
+   and simply waits in `AwaitingReactions`. Default: **no auto-timeout** — the player supplies a die or
+   picks "Roll for me" (always available), so no one is rushed mid-turn. A controller may *optionally*
+   auto-resolve unattended sessions after N seconds; the resulting `MobAttack` is recorded, so replay is
+   unaffected and "N seconds" never enters the log.
+
+4. **Player-attack to-hit stays out (a game-feel call, not a blocker).** The `draw_die` seam and the
+   `RollRequest` handshake generalize to player attacks trivially, but that makes *players* roll to-hit
+   — a difficulty/feel change that churns every player-attack golden. Keep it mob-only until the game
+   design calls for it; the mechanism is ready when it does.
+
+## Still open
+
+- The exact `RollRequest` display payload — a prewritten `prompt` string from the engine vs. the surface
+  composing its own from `mob_id`/`target_id` (leaning: ids + a short server-authored prompt).
+- Whether the optional controller auto-timeout ships in phase 3 or waits for a real hardware session to
+  show it's wanted.
