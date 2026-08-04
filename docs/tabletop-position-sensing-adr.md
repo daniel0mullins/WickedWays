@@ -132,6 +132,78 @@ The laser fence is fundamentally in tension with the $65 ceiling *and* with clus
 
 ---
 
+## Where's the display? (a *separable* layer)
+
+Position sensing answers *where a piece is*; it says nothing about *what the board looks like*. Those
+are separate layers — both consume the same `DeviceCommand` stream — so either sensing option (A/B)
+pairs with either display option below. The engine/bridge don't change; only the rendering target does.
+
+`DeviceCommand` fan-out — which channel renders where:
+
+| Channel | Renders on |
+|---|---|
+| `PieceOn` / `PieceMoved` (in) | the sensing layer (coil grid / laser fence) |
+| `Tile`, `Dashboard`, `Banner`, `Resolution` (rich, slow) | the **display** (phone glass *or* on-board e-ink) |
+| `Led` / piece `glow` (fast) | on-board LEDs — always, either way (e-ink/phone are too slow) |
+
+### Display option 1 — bring-your-own-glass (the sub-$100 default)
+
+No rich display on the board. `Tile`/`Dashboard`/`Banner`/`Resolution` render on each player's
+**phone/tablet** (the shipped wasm web client); the board is a **printed** mat + minis + sensing. This
+is what makes the SKU cheap — the display is $0 BOM because the customer owns it.
+
+- **Real darkness is reclaimed with light, not screens.** A WS2812 layer under a translucent printed
+  mat carries the fast `Led` channel *and* the darkness mechanic: `concealed` ⇒ LED off ⇒ that region
+  of the table is physically dark. ~$3–5, folds onto the coil PCB.
+- **Per-seat phones are a horror *feature*:** each client shows only that player's fog-of-war, sanity,
+  and hidden afflictions — a single face-up board can't keep secrets. (A shared tablet "central map" is
+  also supported; per-phone is the on-brand default.)
+- **Trade-off:** the *art* isn't physically on the table — players look down at a printed mat + minis,
+  and at their phone for the living room art.
+
+### Display option 2 — large e-ink under a rigid mat (the premium "all on the table" build)
+
+Put the art back on the table: one large e-ink panel (or a few medium ones) under a **clear rigid
+cover** — acrylic / tempered glass, *that's* the "rigid mat" — with the coil grid as a separate thin
+layer. This is the **only** option that restores *both* art-on-the-table **and** real reflective
+darkness: an unlit e-ink region is genuinely unreadable until you bring light — the load-bearing horror
+mechanic, native, no LED trickery needed (though LEDs still carry the fast channel).
+
+- **Color vs mono is really a refresh-*granularity* decision.** Color ACeP / Spectra-6 needs a
+  **full-panel** refresh (~15–30 s, no partial update) — so revealing one room redraws the *whole
+  board*, slowly. **Mono** e-ink supports **partial/windowed** refresh (~0.3–1 s) — repaint just the
+  room that changed. For a *single large* panel, **mono wins decisively on UX.** If color is a must,
+  use a *few medium panels* so a reveal refreshes only the affected panel (the per-tile firmware
+  topology, coarsened).
+- **Stacking is the integration risk.** A coil grid couples through *non-metallic* layers, but an
+  e-ink **TFT backplane may attenuate/detune** the 13.56 MHz field. Safer stack: coils as a thin
+  flex / transparent-conductor layer **between the e-ink and the clear cover** (right under the piece),
+  *not* beneath the e-ink. Validate coupling through the actual cover before committing. The rigid cover
+  also protects the fragile e-ink and gives pieces a flat surface.
+- **Cost reality — this is a premium SKU, not the $99 product.** Large e-ink is the cost driver and
+  scales *nonlinearly* with area:
+
+  | Panel | ~Landed COGS | Verdict |
+  |---|---|---|
+  | Large **color** (13″ Spectra-6, ~$180–200 panel) | **$150–250** | blows $100 — a $199–299 "deluxe" edition only |
+  | Large **mono** (10–13″, ~$90–130 panel) | **$90–120** | at/over the ceiling — realistically a ~$129–149 SKU |
+  | Repurposed **ESL** / salvaged e-reader panels | cheaper | not a productizable supply chain |
+
+**Product framing: the coil grid is the constant; the display is the SKU tier.** Coil grid + phone =
+the ~$99 hero (cheap, robust, private per-player info, LED darkness). Coil grid + large **mono** e-ink
++ rigid cover = a ~$129–149 "everything's on the table" edition with native reflective darkness. Large
+**color** e-ink is an enthusiast/deluxe tier above that. All three share one sensing layer, one bridge,
+one engine.
+
+| Axis | Phone glass | Large e-ink + rigid cover |
+|---|---|---|
+| Art physically on the table | no | **yes** |
+| Real reflective darkness | via LEDs only | **native** (+ LEDs for the fast channel) |
+| Per-player hidden info | **yes** (per-seat) | no (face-up; phones can still supplement) |
+| Refresh | **instant** | slow (mono partial ~1 s / color full ~15–30 s) |
+| Fits $99 retail | **yes** | no — premium ($129 mono / $199+ color) |
+| BOM driver | $0 (customer's device) | the panel |
+
 ## Comparison
 
 | Axis | A — Coil grid | B — Laser fence (iterated) |
@@ -173,3 +245,6 @@ Either way the engine and bridge are untouched above the transport: a `CoilGridT
   discrete-tap tiers — the bridge can accept both.
 - **Powered-board packaging:** USB-tethered (cheapest, −$3, but a cable on the table) vs. internal LiPo
   (cordless, adds cell + charge safety/cert). Same trade-off flagged for "The Lantern" tier.
+- **Display tier at launch:** ship phone-glass only ($99) and hold large-e-ink as a later premium SKU,
+  or launch both? The mono-e-ink coil-over-display stack (the TFT-coupling risk above) is the one piece
+  that needs a hardware spike before it can be committed.
