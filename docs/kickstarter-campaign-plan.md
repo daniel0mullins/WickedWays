@@ -9,6 +9,9 @@
 > ⚠️ **The flagship launch campaign narrative is still WIP.** *Hollow House is a test fixture, not the
 > headline story* — it appears here only as the **playable proof/demo**. Everywhere the plan needs the
 > launch story, it's marked `TODO(launch-campaign)`.
+>
+> **Companion assets:** a page-design concept ([`kickstarter-campaign-mockup.html`](./kickstarter-campaign-mockup.html)
+> — open in a browser) and the image-generation brief ([`assets-brief.md`](./assets-brief.md)).
 
 ## The pitch (hook)
 

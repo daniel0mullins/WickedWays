@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Wicked Ways — Kickstarter (concept mockup)</title>
+<meta name="description" content="Wicked Ways — a turn-based horror RPG engine and a collector color e-ink board. Kickstarter campaign-page concept. A New Horror Awaits." />
+<meta name="robots" content="noindex" />
+<style>
+  :root {
+    color-scheme: dark;
+    --void:    #0a0908;
+    --pit:     #060504;
+    --ash:     #17130f;
+    --smoke:   #2a2320;
+    --bone:    #d8cfc0;
+    --parch:   #b8ad9c;
+    --dim:     #8a8073;
+    --faint:   #5c554b;
+    --lantern: #e8a94a;
+    --ember:   #c8702f;
+    --oxblood: #7a2420;
+    --oxdim:   #b0554a;
+
+    --serif-display: 'Didot','Bodoni 72','Hoefler Text',Georgia,'Times New Roman',serif;
+    --serif-body: 'Hoefler Text','Iowan Old Style','Palatino Linotype','Book Antiqua',Georgia,serif;
+    --mono: ui-monospace,'SF Mono','JetBrains Mono',Menlo,Consolas,monospace;
+
+    --measure: 40rem;
+    --edge: clamp(1.25rem, 5vw, 3rem);
+  }
+
+  /* Deliberately single-world: this house has no light switch. Keep it dark in both themes. */
+  :root[data-theme="light"] { color-scheme: dark; }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--void);
+    color: var(--bone);
+    font-family: var(--serif-body);
+    font-size: clamp(1.02rem, 0.95rem + 0.35vw, 1.15rem);
+    line-height: 1.75;
+    letter-spacing: 0.01em;
+    overflow-x: hidden;
+  }
+
+  /* film grain — self-contained SVG turbulence */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+    pointer-events: none;
+    opacity: 0.045;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
+  }
+
+  ::selection { background: rgba(232,169,74,0.28); color: #fff; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--lantern); outline-offset: 3px; border-radius: 2px; }
+
+  .wrap { width: 100%; max-width: 62rem; margin-inline: auto; padding-inline: var(--edge); }
+  .col  { max-width: var(--measure); }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--lantern);
+    margin: 0;
+  }
+  .eyebrow.muted { color: var(--dim); }
+
+  h1,h2,h3 { font-family: var(--serif-display); font-weight: 400; text-wrap: balance; margin: 0; }
+
+  /* ============ HERO ============ */
+  .hero {
+    position: relative;
+    min-height: 100svh;
+    display: grid;
+    align-content: center;
+    padding-block: clamp(4rem, 12vh, 9rem);
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .hero__glow {
+    position: absolute;
+    left: 50%; top: 42%;
+    width: min(150vw, 60rem); aspect-ratio: 1;
+    translate: -50% -50%;
+    z-index: -2;
+    background:
+      radial-gradient(circle at center,
+        rgba(232,169,74,0.30) 0%,
+        rgba(200,112,47,0.16) 22%,
+        rgba(122,36,32,0.10) 40%,
+        rgba(10,9,8,0) 66%);
+    filter: blur(6px);
+    animation: flicker 6s ease-in-out infinite;
+  }
+  .hero__vignette {
+    position: absolute; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(120% 90% at 50% 38%, transparent 40%, rgba(6,5,4,0.7) 78%, var(--pit) 100%);
+  }
+  @keyframes flicker {
+    0%,100% { opacity: 1;    transform: scale(1); }
+    18%     { opacity: 0.82; transform: scale(1.015); }
+    37%     { opacity: 0.95; transform: scale(0.995); }
+    54%     { opacity: 0.7;  transform: scale(1.02); }
+    71%     { opacity: 0.9;  transform: scale(1.0); }
+    86%     { opacity: 0.78; transform: scale(1.01); }
+  }
+
+  .hero__inner { display: grid; gap: 1.6rem; justify-items: start; }
+  .hero h1 {
+    font-size: clamp(3.1rem, 11vw, 6.6rem);
+    line-height: 0.94;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin-block: 0.2rem;
+    text-shadow: 0 0 44px rgba(232,169,74,0.18);
+  }
+  .hero h1 .amp { display: block; font-size: 0.92em; }
+  .tagline {
+    font-family: var(--serif-body);
+    font-style: italic;
+    font-size: clamp(1.15rem, 1rem + 1.1vw, 1.7rem);
+    color: var(--parch);
+    margin: 0;
+    max-width: 30ch;
+    text-wrap: balance;
+  }
+  .lede { color: var(--parch); max-width: 46ch; margin: 0; }
+  .lede strong { color: var(--bone); font-weight: 400; }
+
+  .cta-row { display: flex; flex-wrap: wrap; gap: 0.85rem; margin-top: 0.6rem; }
+  .btn {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    text-decoration: none;
+    padding: 0.95em 1.5em;
+    border: 1px solid var(--smoke);
+    color: var(--bone);
+    background: transparent;
+    transition: border-color .25s, color .25s, background .25s, box-shadow .25s;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 0.6em;
+  }
+  .btn--primary {
+    border-color: var(--ember);
+    color: #150d05;
+    background: linear-gradient(180deg, var(--lantern), var(--ember));
+    box-shadow: 0 0 0 rgba(232,169,74,0);
+  }
+  .btn--primary:hover { box-shadow: 0 6px 30px rgba(232,169,74,0.28); filter: brightness(1.06); }
+  .btn--ghost:hover { border-color: var(--lantern); color: var(--lantern); }
+  .btn .spark { font-size: 1em; }
+
+  .scrollcue {
+    margin-top: 3.2rem;
+    font-family: var(--mono);
+    font-size: 0.66rem; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--faint);
+    display: flex; align-items: center; gap: 0.7em;
+  }
+  .scrollcue::before { content: ""; width: 2.4rem; height: 1px; background: var(--smoke); }
+
+  /* ============ SECTIONS ============ */
+  section { position: relative; }
+  .band { padding-block: clamp(4.5rem, 12vh, 8rem); }
+  .band + .band { border-top: 1px solid rgba(42,35,32,0.6); }
+
+  .kicker { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 2.2rem; flex-wrap: wrap; }
+  .kicker h2 { font-size: clamp(1.75rem, 1.3rem + 2vw, 2.7rem); letter-spacing: 0.03em; text-transform: uppercase; }
+  .kicker .num { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.28em; color: var(--faint); }
+
+  p { margin: 0 0 1.1em; }
+  p:last-child { margin-bottom: 0; }
+  .big { font-size: clamp(1.3rem, 1.1rem + 1vw, 1.9rem); font-family: var(--serif-display); line-height: 1.35; color: var(--bone); text-wrap: balance; }
+
+  /* ---- proof strip: the technical / "it's real" register ---- */
+  .proof { background: linear-gradient(180deg, var(--pit), var(--void)); }
+  .proof .col { display: grid; gap: 1.4rem; }
+  .proof .big em { color: var(--lantern); font-style: normal; }
+  .proof-grid {
+    margin-top: 1.4rem;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem,1fr)); gap: 1px;
+    background: var(--smoke); border: 1px solid var(--smoke);
+  }
+  .proof-cell { background: var(--ash); padding: 1.1rem 1.15rem; }
+  .proof-cell .v { font-family: var(--mono); color: var(--lantern); font-size: 1.05rem; }
+  .proof-cell .k { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); margin-top: 0.35rem; }
+
+  /* ---- pillars ---- */
+  .pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 2.4rem 2rem; }
+  .pillar { display: grid; gap: 0.7rem; align-content: start; }
+  .pillar .sigil { font-size: 1.5rem; color: var(--lantern); line-height: 1; }
+  .pillar h3 { font-size: 1.3rem; letter-spacing: 0.02em; }
+  .pillar p { color: var(--parch); font-size: 0.98rem; }
+
+  /* ---- board cross-section ---- */
+  .board { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: clamp(2rem,5vw,4rem); align-items: center; }
+  @media (max-width: 720px){ .board { grid-template-columns: 1fr; } }
+  .strata { display: grid; gap: 0.5rem; }
+  .stratum {
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1rem;
+    padding: 0.85rem 1.1rem;
+    border: 1px solid var(--smoke);
+    background: linear-gradient(90deg, var(--ash), rgba(23,19,15,0.4));
+    transition: border-color .3s, transform .3s;
+  }
+  .stratum:hover { border-color: var(--ember); transform: translateX(4px); }
+  .stratum .layer { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em; color: var(--faint); }
+  .stratum .name { font-family: var(--serif-body); font-size: 1rem; color: var(--bone); }
+  .stratum .role { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); text-align: right; }
+  .stratum--glow { border-color: rgba(232,169,74,0.4); background: linear-gradient(90deg, rgba(200,112,47,0.16), rgba(23,19,15,0.3)); }
+  .stratum--glow .role { color: var(--lantern); }
+  .board .note { color: var(--parch); font-size: 0.98rem; }
+  .board .note .lg { color: var(--lantern); }
+
+  /* ---- reward tiers ---- */
+  .tiers { display: grid; grid-template-columns: repeat(auto-fill, minmax(16.5rem, 1fr)); gap: 1rem; }
+  .tier {
+    display: grid; gap: 0.75rem; align-content: start;
+    padding: 1.5rem 1.4rem 1.6rem;
+    border: 1px solid var(--smoke);
+    background: var(--ash);
+    position: relative;
+    transition: border-color .3s, transform .3s, box-shadow .3s;
+  }
+  .tier:hover { transform: translateY(-3px); border-color: var(--faint); }
+  .tier__top { display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; }
+  .tier__name { font-family: var(--serif-display); text-transform: uppercase; letter-spacing: 0.05em; font-size: 1.15rem; color: var(--bone); }
+  .tier__price { font-family: var(--mono); font-size: 1.25rem; color: var(--lantern); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tier__what { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); }
+  .tier ul { margin: 0.2rem 0 0; padding: 0; list-style: none; display: grid; gap: 0.4rem; }
+  .tier li { font-size: 0.9rem; color: var(--parch); padding-left: 1.1rem; position: relative; line-height: 1.5; }
+  .tier li::before { content: "†"; position: absolute; left: 0; color: var(--faint); }
+  .tier__edition { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); margin-top: 0.2rem; }
+
+  .tier--flagship { border-color: var(--oxblood); background: linear-gradient(180deg, #1d1210, var(--ash)); box-shadow: 0 0 40px rgba(122,36,32,0.12); }
+  .tier--flagship:hover { border-color: var(--oxdim); }
+  .tier--flagship .tier__price { color: var(--lantern); }
+  .tier--flagship .tier__name { color: #eadfce; }
+  .ribbon {
+    position: absolute; top: -1px; right: -1px;
+    font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.2em; text-transform: uppercase;
+    color: #150d05; background: linear-gradient(180deg, var(--lantern), var(--ember));
+    padding: 0.35em 0.8em;
+  }
+  .tier--whale { border-style: dashed; border-color: var(--faint); background: transparent; }
+  .tier--whale .tier__price { color: var(--oxdim); font-size: 1rem; }
+
+  /* ---- scarcity band ---- */
+  .scarcity { text-align: center; background: radial-gradient(80% 140% at 50% 0%, rgba(122,36,32,0.14), var(--void) 60%); }
+  .scarcity .col { max-width: 44rem; margin-inline: auto; }
+  .scarcity h2 { font-size: clamp(2rem, 1.4rem + 3vw, 3.4rem); text-transform: uppercase; letter-spacing: 0.04em; }
+  .scarcity .n { color: var(--oxdim); }
+  .scarcity p { color: var(--parch); }
+  .meter { height: 2px; background: var(--smoke); margin: 2rem auto 0.7rem; max-width: 30rem; position: relative; overflow: hidden; }
+  .meter i { position: absolute; inset: 0 82% 0 0; background: linear-gradient(90deg, var(--ember), var(--lantern)); }
+  .meter-cap { font-family: var(--mono); font-size: 0.64rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--faint); }
+
+  /* ---- timeline ---- */
+  .path { display: grid; gap: 0; }
+  .step { display: grid; grid-template-columns: auto 1fr; gap: 1.3rem; padding: 1.15rem 0; border-top: 1px solid rgba(42,35,32,0.7); }
+  .step:last-child { border-bottom: 1px solid rgba(42,35,32,0.7); }
+  .step .when { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--lantern); padding-top: 0.35rem; min-width: 6.5rem; }
+  .step .what h3 { font-size: 1.1rem; font-family: var(--serif-body); color: var(--bone); margin-bottom: 0.25rem; }
+  .step .what p { font-size: 0.92rem; color: var(--dim); }
+
+  /* ---- the WIP story teaser ---- */
+  .veil { text-align: center; background: linear-gradient(180deg, var(--void), var(--pit)); }
+  .veil .col { max-width: 40rem; margin-inline: auto; display: grid; gap: 1.2rem; }
+  .veil .big { color: var(--parch); }
+  .veil .big b { color: var(--bone); font-weight: 400; font-style: italic; }
+  .veil .aside { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.12em; color: var(--faint); text-transform: uppercase; }
+
+  /* ---- footer ---- */
+  footer { padding-block: clamp(3.5rem, 8vh, 6rem); border-top: 1px solid var(--smoke); background: var(--pit); }
+  .foot { display: grid; gap: 1.6rem; justify-items: center; text-align: center; }
+  .foot .mark { font-family: var(--serif-display); text-transform: uppercase; letter-spacing: 0.18em; font-size: 1.1rem; color: var(--parch); }
+  .social { display: flex; gap: 1.4rem; font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+  .social a { text-decoration: none; transition: color .25s; }
+  .social a:hover { color: var(--lantern); }
+  .whisper { font-style: italic; color: var(--faint); font-size: 0.92rem; }
+  .disclaimer {
+    font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; line-height: 1.7;
+    color: var(--faint); max-width: 42ch; text-transform: uppercase;
+    border: 1px solid var(--smoke); padding: 0.8rem 1.1rem;
+  }
+
+  /* ---- reveal (JS + motion only) ---- */
+  .js .reveal { opacity: 0; transform: translateY(18px); transition: opacity .8s ease, transform .8s ease; }
+  .js .reveal.in { opacity: 1; transform: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero__glow { animation: none; }
+    .js .reveal { opacity: 1 !important; transform: none !important; transition: none; }
+    * { scroll-behavior: auto; }
+  }
+  html { scroll-behavior: smooth; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero__glow" aria-hidden="true"></div>
+  <div class="hero__vignette" aria-hidden="true"></div>
+  <div class="wrap">
+    <div class="hero__inner">
+      <p class="eyebrow">Coming Fall 2026 · Kickstarter</p>
+      <h1>Wicked<span class="amp">Ways</span></h1>
+      <p class="tagline">A new horror awaits — now it has a body.</p>
+      <p class="lede">A turn-based horror RPG you can play <strong>tonight, in your browser</strong> — and a hand-built collector board of frontlit color e-ink that brings its darkness to your table. The rooms you haven't lit are <strong>genuinely unreadable.</strong> Every die you roll is the die the engine obeys.</p>
+      <div class="cta-row">
+        <a class="btn btn--primary" href="#proof"><span class="spark">✦</span> Play the demo</a>
+        <a class="btn btn--ghost" href="#tiers">See the offerings</a>
+      </div>
+      <p class="scrollcue">Descend</p>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- 1 · the anti-vaporware anchor -->
+  <section class="band proof" id="proof">
+    <div class="wrap">
+      <div class="col reveal">
+        <p class="eyebrow muted">No promises — a pulse</p>
+        <p class="big">Most campaigns ask you to fund a promise. <em>Ours already breathes.</em></p>
+        <p>The Wicked Ways engine is built, shipping, and playable right now. It runs in any browser and it is <em>deterministic</em> — a game is a pure function of its seed and its moves, pinned by a golden-replay test corpus so it can never quietly drift. The bridge that drives real e-ink and NFC hardware is written and tested. You back the <em>body</em> we're building around it, not the question of whether the software works. So play it first.</p>
+        <div class="proof-grid" role="list">
+          <div class="proof-cell" role="listitem"><div class="v">Playable</div><div class="k">in-browser now</div></div>
+          <div class="proof-cell" role="listitem"><div class="v">Deterministic</div><div class="k">seed + move-log</div></div>
+          <div class="proof-cell" role="listitem"><div class="v">Rust core</div><div class="k">golden-pinned</div></div>
+          <div class="proof-cell" role="listitem"><div class="v">Hardware-ready</div><div class="k">e-ink · nfc bridge</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · what it is -->
+  <section class="band">
+    <div class="wrap">
+      <div class="kicker reveal"><span class="num">I</span><h2>Three ways it gets under your skin</h2></div>
+      <div class="pillars">
+        <div class="pillar reveal">
+          <span class="sigil" aria-hidden="true">◈</span>
+          <h3>The art lives on the table</h3>
+          <p>A single large color e-ink panel is the board's floor — the map is a real object you gather around, not a glow you each stare into alone. Your phone becomes a private whisper: your own sanity, your own afflictions.</p>
+        </div>
+        <div class="pillar reveal">
+          <span class="sigil" aria-hidden="true">☾</span>
+          <h3>Darkness is real</h3>
+          <p>E-ink is reflective, so an unlit room is physically unreadable until light is brought. A dimmable frontlight lets the engine raise the lantern and let it gutter — the table actually goes dark when the story does.</p>
+        </div>
+        <div class="pillar reveal">
+          <span class="sigil" aria-hidden="true">⛧</span>
+          <h3>Every die is obeyed</h3>
+          <p>Roll your own physical dice into the tray and the engine takes the face you rolled as law — or let the house roll for you. To-hit, crits, the critical-miss stumble: yours to cast, the engine's to honor.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · the object -->
+  <section class="band">
+    <div class="wrap">
+      <div class="kicker reveal"><span class="num">II</span><h2>What sits beneath the glass</h2></div>
+      <div class="board">
+        <div class="strata reveal" aria-label="Cross-section of the collector board, top to bottom">
+          <div class="stratum"><span class="layer">01</span><span class="name">Sculpted pieces</span><span class="role">you move</span></div>
+          <div class="stratum"><span class="layer">02</span><span class="name">Cover glass</span><span class="role">the surface</span></div>
+          <div class="stratum stratum--glow"><span class="layer">03</span><span class="name">Coil sensing grid</span><span class="role">reads who · where</span></div>
+          <div class="stratum stratum--glow"><span class="layer">04</span><span class="name">Frontlight guide</span><span class="role">the lantern</span></div>
+          <div class="stratum"><span class="layer">05</span><span class="name">Color e-ink panel</span><span class="role">the world</span></div>
+        </div>
+        <div class="note reveal">
+          <p>The sensing grid sits <span class="lg">above</span> the panel, so it reads which piece stands on which room through nothing but glass and light — no cameras, no calibration, nothing to run out of.</p>
+          <p>Underneath: an onboard engine, a table speaker for the cues and the sanity-drone, and a numbered plate. It simply works, alone, when the lights go out.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · tiers -->
+  <section class="band" id="tiers">
+    <div class="wrap">
+      <div class="kicker reveal"><span class="num">III</span><h2>The offerings</h2></div>
+      <div class="tiers">
+        <div class="tier reveal">
+          <div class="tier__top"><span class="tier__name">The Curious</span><span class="tier__price">$1</span></div>
+          <span class="tier__what">a toe in the dark</span>
+          <ul><li>Your name in the credits</li><li>Wallpaper from the void</li></ul>
+        </div>
+
+        <div class="tier reveal">
+          <div class="tier__top"><span class="tier__name">Initiate</span><span class="tier__price">$25</span></div>
+          <span class="tier__what">digital</span>
+          <ul><li>The full game, forever</li><li>The launch campaign at release</li><li>Every future update</li></ul>
+        </div>
+
+        <div class="tier reveal">
+          <div class="tier__top"><span class="tier__name">The Haunted</span><span class="tier__price">$99</span></div>
+          <span class="tier__what">physical · phone-lit</span>
+          <ul><li>Printed mat &amp; NFC-tagged minis</li><li>LED darkness layer</li><li>The art plays on your phone</li></ul>
+        </div>
+
+        <div class="tier reveal">
+          <div class="tier__top"><span class="tier__name">The Possessed</span><span class="tier__price">$849</span></div>
+          <span class="tier__what">collector · compact</span>
+          <ul><li>7.3″ color e-ink board, frontlit</li><li>NFC piece sensing</li><li>Metal dice &amp; reading tray</li></ul>
+          <p class="tier__edition">numbered edition</p>
+        </div>
+
+        <div class="tier tier--flagship reveal">
+          <span class="ribbon">Flagship</span>
+          <div class="tier__top"><span class="tier__name">The Damned</span><span class="tier__price">$1,199</span></div>
+          <span class="tier__what">collector · self-contained</span>
+          <ul><li>13.3″ color e-ink, onboard engine</li><li>Frontlit; table audio &amp; drone</li><li>Sculpted set · numbered plate</li><li>Plays with no phone at all</li></ul>
+          <p class="tier__edition">1 of 500 · numbered</p>
+        </div>
+
+        <div class="tier tier--whale reveal">
+          <div class="tier__top"><span class="tier__name">Architect of Ruin</span><span class="tier__price">$2,500</span></div>
+          <span class="tier__what">by invitation · 13 only</span>
+          <ul><li>Design a room in the launch campaign with our writers</li><li>The flagship board</li><li>Named in the world itself</li></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · scarcity -->
+  <section class="band scarcity">
+    <div class="wrap">
+      <div class="col reveal">
+        <p class="eyebrow">A numbered, limited run</p>
+        <h2>Only <span class="n">500</span> will ever be lit</h2>
+        <p>Each collector board is hand-assembled and stamped with its number. The color panel is ordered against the campaign in a single run — when the last plate is engraved, the mold goes cold. There will not be a second printing.</p>
+        <div class="meter" aria-hidden="true"><i></i></div>
+        <p class="meter-cap">the vault opens Fall 2026</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · timeline -->
+  <section class="band">
+    <div class="wrap">
+      <div class="kicker reveal"><span class="num">IV</span><h2>The road out of the dark</h2></div>
+      <div class="path col reveal">
+        <div class="step"><div class="when">Now</div><div class="what"><h3>Play &amp; follow</h3><p>The demo is live; the list is open. We line up panel, mold, and certification quotes in the open.</p></div></div>
+        <div class="step"><div class="when">Fall 2026</div><div class="what"><h3>Kickstarter · 30 days</h3><p>Numbered tiers on day one. Back the body; the software is already yours to try.</p></div></div>
+        <div class="step"><div class="when">After</div><div class="what"><h3>Pledge manager</h3><p>Shipping, addresses, and late pledges — freight for fragile things charged honestly at cost.</p></div></div>
+        <div class="step"><div class="when">Production</div><div class="what"><h3>Panels &amp; hand-assembly</h3><p>Color e-ink is long-lead; we order against locked funds first, certify and build in parallel, and pad the estimate rather than break a promise.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · WIP story, told as a veil -->
+  <section class="band veil">
+    <div class="wrap">
+      <div class="col reveal">
+        <p class="eyebrow muted">The story is still being written</p>
+        <p class="big">The demo you can play — <b>Hollow House</b> — is only the threshold. The campaign that opens the door is still taking shape in the dark, and it will be shown before the vault ever opens.</p>
+        <p class="aside">full reveal before launch · join the darkness to be first</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <p class="mark">Wicked Ways</p>
+      <p class="whisper">No spam. Only whispers from the void.</p>
+      <nav class="social" aria-label="Follow the darkness">
+        <a href="https://x.com/wickedways_vtt">X / Twitter</a>
+        <a href="https://www.instagram.com/wickedways_vtt/">Instagram</a>
+        <a href="https://github.com/daniel0mullins/WickedWays">GitHub</a>
+      </nav>
+      <p class="disclaimer">Campaign concept — a visual mockup for planning. Not a live Kickstarter; no pledges are collected here. Prices, tiers, and the limited run are proposed, not final.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    root.classList.add('js');
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var items = document.querySelectorAll('.reveal');
+    if (reduce || !('IntersectionObserver' in window)) {
+      items.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.12 });
+    items.forEach(function (el) { io.observe(el); });
+  })();
+</script>
+</body>
+</html>
