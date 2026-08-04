@@ -175,6 +175,21 @@ mechanic, native, no LED trickery needed (though LEDs still carry the fast chann
   room that changed. For a *single large* panel, **mono wins decisively on UX.** If color is a must,
   use a *few medium panels* so a reveal refreshes only the affected panel (the per-tile firmware
   topology, coarsened).
+- **Panel granularity — one big vs. several small.** Panel count is *decoupled* from the room grid: a
+  board can be one seamless panel or a tiling of smaller ones (the prototype BOM's per-tile board is the
+  fine-grained extreme). Several small panels **buy** (1) **regional refresh** — only the panel holding
+  a revealed room repaints, which hands *color* e-ink the partial-refresh it otherwise can't do; (2)
+  **swap-one serviceability** — a cracked $45 panel, not a $180 board; (3) **bezels-as-walls** — the
+  game's discreteness turns inter-panel seams into room dividers, *if the map is laid out so no room
+  crosses a seam*. They **cost**: with boutique modules, **more** than one big panel of equal area
+  ($/area *rises* as panels shrink, and each drags its own driver IC + flex + bezel + assembly), plus
+  seam-aligned map-layout constraints and more connectors to fail. The one regime where tiling gets
+  *cheaper* is **commodity/salvaged ESLs** (dirt-cheap small e-ink) — but their proprietary RF
+  interfaces and fixed sizes make that a maker route, not a clean product supply chain. **Net:** tiling
+  doesn't rescue the $100 budget, but it's the *right* premium build for **color** (regional refresh) or
+  for serviceability; **mono** — which already partial-refreshes — is simpler, seamless, and cheaper as
+  **one** big panel. The software is agnostic either way (the firmware-sketch already addresses panels
+  by `tile_id`).
 - **Stacking is the integration risk.** A coil grid couples through *non-metallic* layers, but an
   e-ink **TFT backplane may attenuate/detune** the 13.56 MHz field. Safer stack: coils as a thin
   flex / transparent-conductor layer **between the e-ink and the clear cover** (right under the piece),
