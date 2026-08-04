@@ -7,12 +7,17 @@ embedding, physical tabletop — a thin projection of it.**
 
 All four talks share one thesis and escalate in depth. Pick by venue:
 
-| Talk | Length | Venue |
-|---|---|---|
-| [The elevator pitch](01-elevator-pitch.md) | 30–60 s | Hallway, intro slide, project one-liner |
-| [The lightning talk](02-lightning-talk.md) | 7–10 min | Meetup lightning slot, internal demo day |
-| [The systems tour](03-systems-tour.md) | 10–15 min | Conference short slot, team onboarding |
-| [The deep dive](04-deep-dive.md) | 30–40 min | Full conference slot, architecture review |
+| Talk | Length | Venue | Deck |
+|---|---|---|---|
+| [The elevator pitch](01-elevator-pitch.md) | 30–60 s | Hallway, intro slide, project one-liner | — (spoken) |
+| [The lightning talk](02-lightning-talk.md) | 7–10 min | Meetup lightning slot, internal demo day | [pptx](decks/02-lightning-talk.pptx) |
+| [The systems tour](03-systems-tour.md) | 10–15 min | Conference short slot, team onboarding | [pptx](decks/03-systems-tour.pptx) |
+| [The deep dive](04-deep-dive.md) | 30–40 min | Full conference slot, architecture review | [pptx](decks/04-deep-dive.pptx) |
+
+The decks in `decks/` are ready to present: 16:9, dark theme, with each talk's
+script embedded as per-slide speaker notes. The talk documents remain the
+canonical scripts — cut-order guidance, timing checkpoints, and Q&A prep live
+there, not in the decks.
 
 ## The shared thesis
 
