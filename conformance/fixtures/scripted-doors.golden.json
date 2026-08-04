@@ -16,6 +16,15 @@
       "kind": "go"
     },
     {
+      "dice": [
+        {
+          "sides": 20,
+          "value": 14
+        }
+      ],
+      "kind": "supplyDice"
+    },
+    {
       "kind": "attack",
       "targetId": "mob:Wraith"
     },
@@ -1685,10 +1694,457 @@
     },
     {
       "command": {
+        "dice": [
+          {
+            "sides": 20,
+            "value": 14
+          }
+        ],
+        "kind": "supplyDice"
+      },
+      "cues": [],
+      "snapshot": {
+        "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 10,
+                "health": 10,
+                "sanity": 10
+              },
+              "id": "heir",
+              "name": "Heir"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Landing",
+              "room:Nursery"
+            ]
+          },
+          "encountered": [
+            "player:Ada:mob:Wraith"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:Scripted Doors (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 10,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Scripted Doors (conformance)",
+          "winConditions": []
+        },
+        "characters": [
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Nursery",
+            "equipment": {},
+            "history": [],
+            "id": "mob:Wraith",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [
+                "mob:Wraith:drop#0"
+              ],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Wraith",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "sanity"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 2.0,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
+            },
+            "archetypeId": "heir",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Nursery",
+            "equipment": {
+              "leftHand": "player:Ada:item#dagger"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Landing",
+                  "name": "Landing"
+                },
+                "round": 0
+              },
+              {
+                "items": [
+                  {
+                    "id": "player:Ada:item#dagger",
+                    "name": "Iron Dagger"
+                  }
+                ],
+                "kind": "pickUp",
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Nursery",
+                  "name": "Nursery"
+                },
+                "round": 0
+              }
+            ],
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "player:Ada:item#dagger"
+              ],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Landing",
+              "round": 0
+            },
+            "key": "room:Landing",
+            "kind": "room",
+            "snapshot": {
+              "description": "The upstairs landing.",
+              "name": "Landing"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Landing",
+              "round": 0
+            },
+            "key": "weapon:Iron Dagger",
+            "kind": "item",
+            "snapshot": {
+              "name": "Iron Dagger",
+              "slot": "hand",
+              "type": "weapon"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Nursery",
+              "round": 0
+            },
+            "key": "Wraith",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "energy": 4.0,
+                "health": 2.0,
+                "sanity": 4.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Nursery",
+              "round": 0
+            },
+            "key": "room:Nursery",
+            "kind": "room",
+            "snapshot": {
+              "description": "A silent nursery.",
+              "name": "Nursery"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "behaviorKey": "attic-door",
+            "endpointIds": [
+              "room:Landing",
+              "room:Attic"
+            ],
+            "id": "exit:Attic|Landing",
+            "name": "attic door",
+            "state": {
+              "unlocked": false
+            }
+          },
+          {
+            "endpointIds": [
+              "room:Landing",
+              "room:Nursery"
+            ],
+            "id": "exit:Landing|Nursery",
+            "state": {}
+          },
+          {
+            "behaviorKey": "study-door",
+            "endpointIds": [
+              "room:Landing",
+              "room:Study"
+            ],
+            "id": "exit:Landing|Study",
+            "name": "study door",
+            "state": {
+              "unlocked": false
+            }
+          }
+        ],
+        "items": [
+          {
+            "consumeOnUse": false,
+            "id": "mob:Wraith:drop#0",
+            "keyCode": "brass",
+            "kind": "key",
+            "name": "Brass Key"
+          },
+          {
+            "behaviorKey": "items/dagger",
+            "durability": 5,
+            "id": "player:Ada:item#dagger",
+            "kind": "item",
+            "modifier": 3
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A cramped attic.",
+            "exits": {
+              "south": "exit:Attic|Landing"
+            },
+            "id": "room:Attic",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Attic",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
+          },
+          {
+            "dark": false,
+            "description": "The upstairs landing.",
+            "exits": {
+              "east": "exit:Landing|Nursery",
+              "north": "exit:Attic|Landing",
+              "west": "exit:Landing|Study"
+            },
+            "id": "room:Landing",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Landing",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
+          },
+          {
+            "dark": false,
+            "description": "A silent nursery.",
+            "exits": {
+              "west": "exit:Landing|Nursery"
+            },
+            "id": "room:Nursery",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Nursery",
+            "occupantIds": [
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          },
+          {
+            "dark": false,
+            "description": "A book-lined study.",
+            "exits": {
+              "east": "exit:Landing|Study"
+            },
+            "id": "room:Study",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Study",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [
+          {
+            "dir": "west",
+            "toName": "Landing"
+          }
+        ],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [
+            "Iron Dagger"
+          ],
+          "items": [
+            {
+              "aliases": [
+                "iron dagger"
+              ],
+              "damaged": false,
+              "destroyable": true,
+              "droppable": true,
+              "equippable": true,
+              "hasLore": false,
+              "id": "player:Ada:item#dagger",
+              "kind": "item",
+              "name": "Iron Dagger",
+              "usable": false
+            }
+          ],
+          "keys": [],
+          "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [
+          {
+            "aliases": [
+              "wraith"
+            ],
+            "defeated": false,
+            "health": 2.0,
+            "id": "mob:Wraith",
+            "kind": "occupant",
+            "name": "Wraith"
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A silent nursery.",
+          "id": "room:Nursery",
+          "isLit": true,
+          "name": "Nursery"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "wraith"
+            ],
+            "defeated": false,
+            "health": 2.0,
+            "id": "mob:Wraith",
+            "kind": "occupant",
+            "name": "Wraith"
+          },
+          {
+            "aliases": [
+              "iron dagger"
+            ],
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
+            "equippable": true,
+            "hasLore": false,
+            "id": "player:Ada:item#dagger",
+            "kind": "item",
+            "name": "Iron Dagger",
+            "usable": false
+          }
+        ],
+        "status": {
+          "health": 10.0,
+          "locationName": "Nursery",
+          "maxTurns": 10,
+          "sanity": 10.0,
+          "turn": 0
+        }
+      }
+    },
+    {
+      "command": {
         "kind": "attack",
         "targetId": "mob:Wraith"
       },
       "cues": [
+        {
+          "cue": {
+            "text": "Ada rolls d20 -> 14: hit"
+          },
+          "kind": "mechanic"
+        },
         {
           "action": "takeDamage",
           "actor": {

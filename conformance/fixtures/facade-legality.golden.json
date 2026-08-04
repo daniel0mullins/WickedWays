@@ -2616,6 +2616,12 @@
             "kind": "action"
           },
           {
+            "cue": {
+              "text": "Wraith rolls d20 -> 13: hit"
+            },
+            "kind": "mechanic"
+          },
+          {
             "action": "takeDamage",
             "actor": {
               "id": "player:Ada",
@@ -3438,6 +3444,12 @@
       },
       "result": {
         "cues": [
+          {
+            "cue": {
+              "text": "Ada rolls d20 -> 12: hit"
+            },
+            "kind": "mechanic"
+          },
           {
             "action": "takeDamage",
             "actor": {

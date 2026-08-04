@@ -83,4 +83,8 @@ pub enum DeviceEvent {
     TileAction { actor_id: String, intent: Intent },
     /// A light prop was placed on / removed from a tile.
     Lantern { tile_id: String, placed: bool },
+    /// Physical dice were rolled at the table (a dice tray, or a manual entry) — the `values` are
+    /// supplied to the engine for its upcoming rolls of that `sides` size (e.g. a mob to-hit d20). A
+    /// player with no dice picks "Roll for me" instead, which emits no event (the house rolls).
+    DiceRolled { sides: u32, values: Vec<u32> },
 }

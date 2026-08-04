@@ -4,6 +4,35 @@
       "kind": "startTurn"
     },
     {
+      "dice": [
+        {
+          "sides": 20,
+          "value": 14
+        },
+        {
+          "sides": 20,
+          "value": 14
+        },
+        {
+          "sides": 20,
+          "value": 14
+        },
+        {
+          "sides": 20,
+          "value": 14
+        },
+        {
+          "sides": 20,
+          "value": 14
+        },
+        {
+          "sides": 20,
+          "value": 14
+        }
+      ],
+      "kind": "supplyDice"
+    },
+    {
       "kind": "attack",
       "targetId": "player:Ben"
     },
@@ -554,10 +583,492 @@
     },
     {
       "command": {
+        "dice": [
+          {
+            "sides": 20,
+            "value": 14
+          },
+          {
+            "sides": 20,
+            "value": 14
+          },
+          {
+            "sides": 20,
+            "value": 14
+          },
+          {
+            "sides": 20,
+            "value": 14
+          },
+          {
+            "sides": 20,
+            "value": 14
+          },
+          {
+            "sides": 20,
+            "value": 14
+          }
+        ],
+        "kind": "supplyDice"
+      },
+      "cues": [],
+      "snapshot": {
+        "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 10,
+                "health": 10,
+                "sanity": 10
+              },
+              "id": "fighter",
+              "name": "Fighter"
+            },
+            {
+              "baseStats": {
+                "energy": 8,
+                "health": 6,
+                "sanity": 6
+              },
+              "id": "scout",
+              "name": "Scout"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
+          },
+          "encountered": [],
+          "gmId": "player:Ada",
+          "id": "campaign:Combat (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada",
+            "player:Ben"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Combat (conformance)",
+          "winConditions": []
+        },
+        "characters": [
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
+            },
+            "archetypeId": "fighter",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
+            "equipment": {
+              "leftHand": "player:Ada:item#items/axe",
+              "rightHand": "player:Ada:item#items/cleaver"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "items": [
+                  {
+                    "id": "player:Ada:item#items/axe",
+                    "name": "Hand Axe"
+                  }
+                ],
+                "kind": "pickUp",
+                "round": 0
+              },
+              {
+                "items": [
+                  {
+                    "id": "player:Ada:item#items/cleaver",
+                    "name": "Meat Cleaver"
+                  }
+                ],
+                "kind": "pickUp",
+                "round": 0
+              }
+            ],
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "player:Ada:item#items/axe",
+                "player:Ada:item#items/cleaver"
+              ],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 3,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
+            },
+            "archetypeId": "scout",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
+            "equipment": {
+              "leftIndexFinger": "player:Ben:item#items/charm",
+              "torso": "player:Ben:item#items/vest"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "items": [
+                  {
+                    "id": "player:Ben:item#items/vest",
+                    "name": "Padded Vest"
+                  }
+                ],
+                "kind": "pickUp",
+                "round": 0
+              },
+              {
+                "items": [
+                  {
+                    "id": "player:Ben:item#items/charm",
+                    "name": "Lucky Charm"
+                  }
+                ],
+                "kind": "pickUp",
+                "round": 0
+              }
+            ],
+            "id": "player:Ben",
+            "inventory": {
+              "itemIds": [
+                "player:Ben:item#items/vest",
+                "player:Ben:item#items/charm"
+              ],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "lightAverse": true,
+            "name": "Ben",
+            "stats": {
+              "energy": 8.0,
+              "health": 6.0,
+              "sanity": 6.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "weapon:Hand Axe",
+            "kind": "item",
+            "snapshot": {
+              "name": "Hand Axe",
+              "slot": "hand",
+              "type": "weapon"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "weapon:Meat Cleaver",
+            "kind": "item",
+            "snapshot": {
+              "name": "Meat Cleaver",
+              "slot": "hand",
+              "type": "weapon"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ben",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "armor:Padded Vest",
+            "kind": "item",
+            "snapshot": {
+              "name": "Padded Vest",
+              "slot": "torso",
+              "type": "armor"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ben",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "accessory:Lucky Charm",
+            "kind": "item",
+            "snapshot": {
+              "name": "Lucky Charm",
+              "slot": "finger",
+              "type": "accessory"
+            }
+          }
+        ],
+        "exits": [],
+        "items": [
+          {
+            "behaviorKey": "items/axe",
+            "durability": 2,
+            "id": "player:Ada:item#items/axe",
+            "kind": "item",
+            "modifier": 3
+          },
+          {
+            "behaviorKey": "items/cleaver",
+            "durability": 5,
+            "id": "player:Ada:item#items/cleaver",
+            "kind": "item",
+            "modifier": 4
+          },
+          {
+            "behaviorKey": "items/charm",
+            "id": "player:Ben:item#items/charm",
+            "kind": "item",
+            "modifier": 2
+          },
+          {
+            "behaviorKey": "items/vest",
+            "durability": 2,
+            "id": "player:Ben:item#items/vest",
+            "kind": "item",
+            "modifier": 1
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "player:Ada",
+              "player:Ben"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [
+            "Hand Axe",
+            "Meat Cleaver"
+          ],
+          "items": [
+            {
+              "aliases": [
+                "hand axe",
+                "axe"
+              ],
+              "damaged": false,
+              "destroyable": true,
+              "droppable": true,
+              "equippable": true,
+              "hasLore": false,
+              "id": "player:Ada:item#items/axe",
+              "kind": "item",
+              "name": "Hand Axe",
+              "usable": false
+            },
+            {
+              "aliases": [
+                "meat cleaver",
+                "cleaver"
+              ],
+              "damaged": false,
+              "destroyable": true,
+              "droppable": true,
+              "equippable": true,
+              "hasLore": false,
+              "id": "player:Ada:item#items/cleaver",
+              "kind": "item",
+              "name": "Meat Cleaver",
+              "usable": false
+            }
+          ],
+          "keys": [],
+          "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [
+          {
+            "aliases": [
+              "ben"
+            ],
+            "defeated": false,
+            "health": 6.0,
+            "id": "player:Ben",
+            "kind": "occupant",
+            "name": "Ben",
+            "player": true
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "ben"
+            ],
+            "defeated": false,
+            "health": 6.0,
+            "id": "player:Ben",
+            "kind": "occupant",
+            "name": "Ben",
+            "player": true
+          },
+          {
+            "aliases": [
+              "hand axe",
+              "axe"
+            ],
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
+            "equippable": true,
+            "hasLore": false,
+            "id": "player:Ada:item#items/axe",
+            "kind": "item",
+            "name": "Hand Axe",
+            "usable": false
+          },
+          {
+            "aliases": [
+              "meat cleaver",
+              "cleaver"
+            ],
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
+            "equippable": true,
+            "hasLore": false,
+            "id": "player:Ada:item#items/cleaver",
+            "kind": "item",
+            "name": "Meat Cleaver",
+            "usable": false
+          }
+        ],
+        "status": {
+          "health": 10.0,
+          "locationName": "Hall",
+          "maxTurns": 20,
+          "sanity": 10.0,
+          "turn": 0
+        }
+      }
+    },
+    {
+      "command": {
         "kind": "attack",
         "targetId": "player:Ben"
       },
       "cues": [
+        {
+          "cue": {
+            "text": "Ada rolls d20 -> 14: hit"
+          },
+          "kind": "mechanic"
+        },
         {
           "action": "takeDamage",
           "actor": {
@@ -2938,6 +3449,12 @@
         "targetId": "player:Ben"
       },
       "cues": [
+        {
+          "cue": {
+            "text": "Ada rolls d20 -> 14: hit"
+          },
+          "kind": "mechanic"
+        },
         {
           "action": "takeDamage",
           "actor": {
@@ -5428,6 +5945,12 @@
         "targetId": "player:Ben"
       },
       "cues": [
+        {
+          "cue": {
+            "text": "Ada rolls d20 -> 14: hit"
+          },
+          "kind": "mechanic"
+        },
         {
           "action": "takeDamage",
           "actor": {
@@ -7980,6 +8503,12 @@
         "targetId": "player:Ben"
       },
       "cues": [
+        {
+          "cue": {
+            "text": "Ada rolls d20 -> 14: hit"
+          },
+          "kind": "mechanic"
+        },
         {
           "action": "takeDamage",
           "actor": {
@@ -10602,6 +11131,12 @@
         "targetId": "player:Ben"
       },
       "cues": [
+        {
+          "cue": {
+            "text": "Ada rolls d20 -> 14: hit"
+          },
+          "kind": "mechanic"
+        },
         {
           "action": "takeDamage",
           "actor": {
@@ -13294,6 +13829,12 @@
         "targetId": "player:Ben"
       },
       "cues": [
+        {
+          "cue": {
+            "text": "Ada rolls d20 -> 14: hit"
+          },
+          "kind": "mechanic"
+        },
         {
           "action": "takeDamage",
           "actor": {

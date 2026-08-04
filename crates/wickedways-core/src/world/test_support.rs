@@ -145,6 +145,7 @@ pub fn world_with_party(ids: &[&str], max_rounds: i64) -> World {
         campaign,
         codex: Value::Array(vec![]),
         rng: crate::world::rng::Rng::seeded(0),
+        supplied_dice: alloc::collections::VecDeque::new(),
     }
 }
 
@@ -288,6 +289,7 @@ pub fn world_two_rooms(next_dark: bool) -> World {
         campaign,
         codex: Value::Array(vec![]),
         rng: crate::world::rng::Rng::seeded(0),
+        supplied_dice: alloc::collections::VecDeque::new(),
     }
 }
 

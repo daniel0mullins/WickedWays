@@ -39,12 +39,10 @@
       "result": {
         "cues": [
           {
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
+            "cue": {
+              "text": "Brute rolls d20 -> 2: miss"
             },
-            "kind": "action"
+            "kind": "mechanic"
           },
           {
             "action": "attack",
@@ -55,12 +53,10 @@
             "kind": "action"
           },
           {
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
+            "cue": {
+              "text": "Shade rolls d20 -> 1: critical miss - stumbles"
             },
-            "kind": "action"
+            "kind": "mechanic"
           },
           {
             "action": "attack",
@@ -71,18 +67,7 @@
             "kind": "action"
           }
         ],
-        "mobAttacks": [
-          {
-            "amount": 1.4000000000000004,
-            "name": "Brute",
-            "stat": "health"
-          },
-          {
-            "amount": 1.4000000000000004,
-            "name": "Shade",
-            "stat": "health"
-          }
-        ]
+        "mobAttacks": []
       },
       "snapshot": {
         "campaign": {
@@ -191,10 +176,15 @@
             "actionsPerRound": 2,
             "actionsThisRound": 1,
             "afflictions": {
-              "active": {},
+              "active": {
+                "fear": true
+              },
               "immunity": {},
               "shakenOff": [],
-              "turnsActive": {}
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
             },
             "archetypeImmunities": [],
             "baseEscapeChance": 50,
@@ -227,7 +217,7 @@
             "origin": "room",
             "stats": {
               "energy": 4.0,
-              "health": 5.0,
+              "health": 4.0,
               "sanity": 4.0
             }
           },
@@ -257,18 +247,6 @@
                   "name": "Hall"
                 },
                 "round": 0
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
               }
             ],
             "id": "player:Ada",
@@ -281,7 +259,7 @@
             "name": "Ada",
             "stats": {
               "energy": 8.0,
-              "health": 7.199999999999999,
+              "health": 10.0,
               "sanity": 3.0
             }
           }
@@ -389,7 +367,7 @@
               "shade"
             ],
             "defeated": false,
-            "health": 5.0,
+            "health": 4.0,
             "id": "mob:Shade",
             "kind": "occupant",
             "name": "Shade"
@@ -419,14 +397,14 @@
               "shade"
             ],
             "defeated": false,
-            "health": 5.0,
+            "health": 4.0,
             "id": "mob:Shade",
             "kind": "occupant",
             "name": "Shade"
           }
         ],
         "status": {
-          "health": 7.199999999999999,
+          "health": 10.0,
           "locationName": "Hall",
           "maxTurns": 20,
           "sanity": 3.0,
@@ -444,12 +422,10 @@
       "result": {
         "cues": [
           {
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
+            "cue": {
+              "text": "Brute rolls d20 -> 3: miss"
             },
-            "kind": "action"
+            "kind": "mechanic"
           },
           {
             "action": "attack",
@@ -458,6 +434,12 @@
               "name": "Brute"
             },
             "kind": "action"
+          },
+          {
+            "cue": {
+              "text": "Shade rolls d20 -> 10: hit"
+            },
+            "kind": "mechanic"
           },
           {
             "action": "takeDamage",
@@ -477,11 +459,6 @@
           }
         ],
         "mobAttacks": [
-          {
-            "amount": 1.4000000000000004,
-            "name": "Brute",
-            "stat": "health"
-          },
           {
             "amount": 1.4000000000000004,
             "name": "Shade",
@@ -658,7 +635,7 @@
             "origin": "room",
             "stats": {
               "energy": 4.0,
-              "health": 5.0,
+              "health": 4.0,
               "sanity": 4.0
             }
           },
@@ -693,24 +670,6 @@
               {
                 "amount": 1.4000000000000001,
                 "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 1,
-                "stat": "health"
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
                 "round": 1,
                 "stat": "health"
               }
@@ -725,7 +684,7 @@
             "name": "Ada",
             "stats": {
               "energy": 8.0,
-              "health": 4.399999999999999,
+              "health": 8.6,
               "sanity": 3.0
             }
           }
@@ -833,7 +792,7 @@
               "shade"
             ],
             "defeated": false,
-            "health": 5.0,
+            "health": 4.0,
             "id": "mob:Shade",
             "kind": "occupant",
             "name": "Shade"
@@ -863,14 +822,14 @@
               "shade"
             ],
             "defeated": false,
-            "health": 5.0,
+            "health": 4.0,
             "id": "mob:Shade",
             "kind": "occupant",
             "name": "Shade"
           }
         ],
         "status": {
-          "health": 4.399999999999999,
+          "health": 8.6,
           "locationName": "Hall",
           "maxTurns": 20,
           "sanity": 3.0,
@@ -889,6 +848,12 @@
       "result": {
         "cues": [
           {
+            "cue": {
+              "text": "Ada rolls d20 -> 15: hit"
+            },
+            "kind": "mechanic"
+          },
+          {
             "action": "takeDamage",
             "actor": {
               "id": "mob:Brute",
@@ -905,6 +870,12 @@
             "kind": "action"
           },
           {
+            "cue": {
+              "text": "Brute rolls d20 -> 6: hit"
+            },
+            "kind": "mechanic"
+          },
+          {
             "action": "takeDamage",
             "actor": {
               "id": "player:Ada",
@@ -919,6 +890,12 @@
               "name": "Brute"
             },
             "kind": "action"
+          },
+          {
+            "cue": {
+              "text": "Shade rolls d20 -> 15: hit"
+            },
+            "kind": "mechanic"
           },
           {
             "action": "takeDamage",
@@ -944,7 +921,7 @@
             "stat": "health"
           },
           {
-            "amount": 1.4000000000000001,
+            "amount": 1.4000000000000004,
             "name": "Shade",
             "stat": "health"
           }
@@ -1141,7 +1118,7 @@
             "origin": "room",
             "stats": {
               "energy": 4.0,
-              "health": 5.0,
+              "health": 4.0,
               "sanity": 4.0
             }
           },
@@ -1172,24 +1149,6 @@
                   "name": "Hall"
                 },
                 "round": 0
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 1,
-                "stat": "health"
               },
               {
                 "amount": 1.4000000000000001,
@@ -1228,7 +1187,7 @@
             "name": "Ada",
             "stats": {
               "energy": 8.0,
-              "health": 1.599999999999998,
+              "health": 5.799999999999999,
               "sanity": 3.0
             }
           }
@@ -1336,7 +1295,7 @@
               "shade"
             ],
             "defeated": false,
-            "health": 5.0,
+            "health": 4.0,
             "id": "mob:Shade",
             "kind": "occupant",
             "name": "Shade"
@@ -1366,14 +1325,14 @@
               "shade"
             ],
             "defeated": false,
-            "health": 5.0,
+            "health": 4.0,
             "id": "mob:Shade",
             "kind": "occupant",
             "name": "Shade"
           }
         ],
         "status": {
-          "health": 1.599999999999998,
+          "health": 5.799999999999999,
           "locationName": "Hall",
           "maxTurns": 20,
           "sanity": 3.0,
@@ -1391,12 +1350,10 @@
       "result": {
         "cues": [
           {
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
+            "cue": {
+              "text": "Brute rolls d20 -> 3: miss"
             },
-            "kind": "action"
+            "kind": "mechanic"
           },
           {
             "action": "attack",
@@ -1407,12 +1364,10 @@
             "kind": "action"
           },
           {
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
+            "cue": {
+              "text": "Shade rolls d20 -> 3: miss"
             },
-            "kind": "action"
+            "kind": "mechanic"
           },
           {
             "action": "attack",
@@ -1423,18 +1378,7 @@
             "kind": "action"
           }
         ],
-        "mobAttacks": [
-          {
-            "amount": 1.4000000000000001,
-            "name": "Brute",
-            "stat": "health"
-          },
-          {
-            "amount": 0.19999999999999796,
-            "name": "Shade",
-            "stat": "health"
-          }
-        ]
+        "mobAttacks": []
       },
       "snapshot": {
         "campaign": {
@@ -1643,7 +1587,7 @@
             "origin": "room",
             "stats": {
               "energy": 4.0,
-              "health": 5.0,
+              "health": 4.0,
               "sanity": 4.0
             }
           },
@@ -1651,14 +1595,14 @@
             "actionsPerRound": 3,
             "actionsThisRound": 0,
             "afflictions": {
-              "active": {
-                "ko": true
-              },
+              "active": {},
               "immunity": {},
-              "shakenOff": [],
+              "shakenOff": [
+                "fear"
+              ],
               "turnsActive": {
                 "confused": 0,
-                "fear": 0,
+                "fear": 1,
                 "panic": 0
               }
             },
@@ -1674,24 +1618,6 @@
                   "name": "Hall"
                 },
                 "round": 0
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 1,
-                "stat": "health"
               },
               {
                 "amount": 1.4000000000000001,
@@ -1718,18 +1644,6 @@
                 "kind": "takeDamage",
                 "round": 2,
                 "stat": "health"
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 3,
-                "stat": "health"
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 3,
-                "stat": "health"
               }
             ],
             "id": "player:Ada",
@@ -1742,7 +1656,7 @@
             "name": "Ada",
             "stats": {
               "energy": 8.0,
-              "health": 0.0,
+              "health": 5.799999999999999,
               "sanity": 3.0
             }
           }
@@ -1850,7 +1764,7 @@
               "shade"
             ],
             "defeated": false,
-            "health": 5.0,
+            "health": 4.0,
             "id": "mob:Shade",
             "kind": "occupant",
             "name": "Shade"
@@ -1880,14 +1794,14 @@
               "shade"
             ],
             "defeated": false,
-            "health": 5.0,
+            "health": 4.0,
             "id": "mob:Shade",
             "kind": "occupant",
             "name": "Shade"
           }
         ],
         "status": {
-          "health": 0.0,
+          "health": 5.799999999999999,
           "locationName": "Hall",
           "maxTurns": 20,
           "sanity": 3.0,

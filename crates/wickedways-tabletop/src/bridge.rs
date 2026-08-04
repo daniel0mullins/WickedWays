@@ -3,6 +3,7 @@
 //! Both directions are pure functions of a projection, so they're identical for the on-screen
 //! simulator and real firmware — only the [`transport`](crate::transport) differs.
 
+use wickedways_core::dice::SuppliedDie;
 use wickedways_core::presentation::CampaignOutcome;
 use wickedways_core::sync::Command;
 use wickedways_core::world::descriptor::Catalog;
@@ -148,6 +149,17 @@ pub fn resolve(
         }
         // A light prop maps to a place-light on the physical board (P3); no-op in the v1 simulator.
         DeviceEvent::Lantern { .. } => Ok(None),
+        // Physical dice load the shared tray for upcoming engine rolls. Built directly (it's table
+        // input, not an `Intent`, so it bypasses `command_for`).
+        DeviceEvent::DiceRolled { sides, values } => Ok(Some(Command::SupplyDice {
+            dice: values
+                .iter()
+                .map(|&value| SuppliedDie {
+                    sides: *sides,
+                    value,
+                })
+                .collect(),
+        })),
     }
 }
 

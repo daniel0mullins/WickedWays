@@ -3,7 +3,10 @@
 //! `#floorAndSnapshot`, and `onKnockOut`.
 //!
 //! `take_damage` is internal-only (never a Command — TS only calls it from `attack`).
-//! The sole rng draw in the combat path is the 4a Confused fizzle in `gate`.
+//! Two rng draws live in the combat path: the 4a Confused fizzle in `gate`, and **every** attacker's
+//! d20 to-hit roll (`draw_die(20)` — a table-supplied die if one is queued, else the seeded rng): 20
+//! crits (x1.5), 1 is a critical miss that makes the attacker stumble and self-damage, 2-5 miss, 6-19
+//! hit. Players roll their own attacks; mobs default to the house roll.
 use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::vec::Vec;
@@ -11,7 +14,7 @@ use serde_json::{json, Value};
 
 use crate::damage::{compute_mitigated_damage, DamageInput};
 use crate::error::ProceduralViolation;
-use crate::presentation::{ActionKind, PresentationCue};
+use crate::presentation::{ActionKind, MechanicCue, PresentationCue};
 use crate::stats::StatType;
 use crate::world::descriptor::{Catalog, ItemType};
 use crate::world::gate::GateVerdict;
@@ -228,53 +231,95 @@ impl World {
         // 2. Dark check (after the gate, matching TS order).
         self.require_visible_target(actor, "attack", cat)?;
 
-        // 3. Equipped, non-broken weapons.
-        let equipped = self.equipped_resolved(actor, cat);
-        let weapons: Vec<&ResolvedItem> = equipped
-            .iter()
-            .filter(|r| r.r#type == ItemType::Weapon && !r.is_broken)
-            .collect();
-
-        // 4. Attack matrix in fixed order [Health, Energy, Sanity].
-        let mut matrix: [(StatType, f64); 3] = [
-            (StatType::Health, 0.0),
-            (StatType::Energy, 0.0),
-            (StatType::Sanity, 0.0),
-        ];
-        if weapons.is_empty() {
-            let (nstat, npow) = self.natural_attack(actor);
-            for e in &mut matrix {
-                if e.0 == nstat {
-                    e.1 += npow;
-                }
+        // 2b. To-hit roll. Every attacker — player or mob — rolls a d20 through the dice-supply seam (a
+        // table-supplied die if one is queued, else the seeded rng): 20 crits (x1.5 damage); 1 is a
+        // critical miss where the attacker stumbles and takes 1 self-damage; 2-5 miss; 6-19 hit. Players
+        // roll their own attacks; mobs default to the house roll. The outcome is a mechanic cue.
+        let attacker_name = self
+            .characters
+            .get(actor)
+            .map(|c| c.name.clone())
+            .unwrap_or_default();
+        let mut crit_mult = 1.0_f64;
+        let mut landed = true;
+        let d20 = self.draw_die(20);
+        let outcome = match d20 {
+            20 => {
+                crit_mult = 1.5;
+                "critical hit!"
             }
-        } else {
-            for w in &weapons {
+            1 => "critical miss - stumbles",
+            2..=5 => "miss",
+            _ => "hit",
+        };
+        cues.push(PresentationCue::Mechanic {
+            cue: MechanicCue {
+                text: Some(format!("{attacker_name} rolls d20 -> {d20}: {outcome}")),
+                sound: None,
+            },
+        });
+        if d20 == 1 {
+            // Stumble: a flat 1-point self-hit (no mitigation) that may KO the attacker; the target
+            // takes nothing.
+            if let Some(c) = self.characters.get_mut(actor) {
+                c.stats.health -= 1.0;
+            }
+            self.reconcile(actor, cat, cues);
+            landed = false;
+        } else if (2..=5).contains(&d20) {
+            landed = false;
+        }
+
+        if landed {
+            // 3. Equipped, non-broken weapons.
+            let equipped = self.equipped_resolved(actor, cat);
+            let weapons: Vec<&ResolvedItem> = equipped
+                .iter()
+                .filter(|r| r.r#type == ItemType::Weapon && !r.is_broken)
+                .collect();
+
+            // 4. Attack matrix in fixed order [Health, Energy, Sanity].
+            let mut matrix: [(StatType, f64); 3] = [
+                (StatType::Health, 0.0),
+                (StatType::Energy, 0.0),
+                (StatType::Sanity, 0.0),
+            ];
+            if weapons.is_empty() {
+                let (nstat, npow) = self.natural_attack(actor);
                 for e in &mut matrix {
-                    if e.0 == w.stat {
-                        e.1 += w.modifier as f64;
+                    if e.0 == nstat {
+                        e.1 += npow;
+                    }
+                }
+            } else {
+                for w in &weapons {
+                    for e in &mut matrix {
+                        if e.0 == w.stat {
+                            e.1 += w.modifier as f64;
+                        }
                     }
                 }
             }
-        }
 
-        // Snapshot the weapon wear list (owned) before the &mut self calls below.
-        let worn: Vec<(ItemId, i64)> = weapons
-            .iter()
-            .filter(|r| r.max_durability.is_some())
-            .map(|r| (ItemId(r.id.clone()), r.durability.unwrap_or(0) - 1))
-            .collect();
+            // Snapshot the weapon wear list (owned) before the &mut self calls below.
+            let worn: Vec<(ItemId, i64)> = weapons
+                .iter()
+                .filter(|r| r.max_durability.is_some())
+                .map(|r| (ItemId(r.id.clone()), r.durability.unwrap_or(0) - 1))
+                .collect();
 
-        // 5. Inflict damage per stat with strength > 0, in matrix order.
-        for (stat, strength) in matrix {
-            if strength > 0.0 {
-                self.take_damage(target, strength, stat, cat, cues)?;
+            // 5. Inflict damage per stat with strength > 0, in matrix order (a crit scales it x1.5;
+            // the non-crit path multiplies by exactly 1.0, so player damage is bit-identical).
+            for (stat, strength) in matrix {
+                if strength > 0.0 {
+                    self.take_damage(target, strength * crit_mult, stat, cat, cues)?;
+                }
             }
-        }
 
-        // 6. Each weapon that swung wears one point (after damage).
-        for (id, val) in worn {
-            self.set_durability(&id, val);
+            // 6. Each weapon that swung wears one point (after damage).
+            for (id, val) in worn {
+                self.set_durability(&id, val);
+            }
         }
 
         // 7. Record the budgeted attack on the attacker.
@@ -605,6 +650,7 @@ mod tests {
             .equipment
             .insert("hand".into(), wpn.clone());
 
+        supply_d20(&mut w, 14); // a plain hit so the pinned damage lands unscaled
         w.attack(&cid("ada"), &cid("ben"), &cat, &mut cues).unwrap();
 
         assert_eq!(w.characters[&cid("ben")].stats.health, 0.0);
@@ -637,6 +683,7 @@ mod tests {
         // No weapon → natural attack (Health, 1). ben health 5 → dealt=1*1.0=1 → 4.0.
         let (mut w, cat) = duel_world();
         let mut cues = Vec::new();
+        supply_d20(&mut w, 14); // a plain hit
         w.attack(&cid("ada"), &cid("ben"), &cat, &mut cues).unwrap();
         assert_eq!(w.characters[&cid("ben")].stats.health, 4.0);
     }
@@ -664,7 +711,8 @@ mod tests {
         let (mut w, cat) = duel_world();
         let mut opened = BTreeSet::new();
         let mut cues = Vec::new();
-        // active character is index 0 = "ada".
+        supply_d20(&mut w, 14); // a plain hit
+                                // active character is index 0 = "ada".
         apply_command(
             &mut w,
             Command::Attack {
@@ -1090,5 +1138,136 @@ mod tests {
             .filter(|e| e["kind"] == json!("material"))
             .count();
         assert_eq!(mats, 1);
+    }
+
+    // ── mob to-hit roll ──
+
+    fn mob_vs_pc() -> (World, Catalog) {
+        let mut w = world_with_party(&["horror", "victim"], 10);
+        w.characters.get_mut(&cid("horror")).unwrap().kind = CharacterKind::Mob;
+        (w, Catalog::default())
+    }
+
+    fn supply_d20(w: &mut World, value: u32) {
+        w.supplied_dice
+            .push_back(crate::dice::SuppliedDie { sides: 20, value });
+    }
+
+    fn first_roll_cue(cues: &[PresentationCue]) -> Option<String> {
+        cues.iter().find_map(|c| match c {
+            PresentationCue::Mechanic { cue } => cue.text.clone(),
+            _ => None,
+        })
+    }
+
+    #[test]
+    fn mob_hit_deals_normal_damage() {
+        // Natural attack {Health,1}; mitigator sanity 5 → mult 1.0 → 1.0 dealt → 5.0-1.0 = 4.0.
+        let (mut w, cat) = mob_vs_pc();
+        let mut cues = Vec::new();
+        supply_d20(&mut w, 14);
+        w.attack(&cid("horror"), &cid("victim"), &cat, &mut cues)
+            .unwrap();
+        assert_eq!(w.characters[&cid("victim")].stats.health, 4.0);
+        assert!(first_roll_cue(&cues).unwrap().contains("14: hit"));
+    }
+
+    #[test]
+    fn mob_crit_scales_damage_by_one_and_a_half() {
+        // A nat 20 scales the 1.0 strike to 1.5 → 5.0-1.5 = 3.5.
+        let (mut w, cat) = mob_vs_pc();
+        let mut cues = Vec::new();
+        supply_d20(&mut w, 20);
+        w.attack(&cid("horror"), &cid("victim"), &cat, &mut cues)
+            .unwrap();
+        assert_eq!(w.characters[&cid("victim")].stats.health, 3.5);
+        assert!(first_roll_cue(&cues).unwrap().contains("critical hit"));
+    }
+
+    #[test]
+    fn mob_miss_deals_no_damage() {
+        let (mut w, cat) = mob_vs_pc();
+        let mut cues = Vec::new();
+        supply_d20(&mut w, 3);
+        w.attack(&cid("horror"), &cid("victim"), &cat, &mut cues)
+            .unwrap();
+        assert_eq!(w.characters[&cid("victim")].stats.health, 5.0);
+        assert!(first_roll_cue(&cues).unwrap().contains("3: miss"));
+    }
+
+    #[test]
+    fn mob_critical_miss_stumbles_and_self_damages() {
+        let (mut w, cat) = mob_vs_pc();
+        let mut cues = Vec::new();
+        supply_d20(&mut w, 1);
+        w.attack(&cid("horror"), &cid("victim"), &cat, &mut cues)
+            .unwrap();
+        assert_eq!(
+            w.characters[&cid("victim")].stats.health,
+            5.0,
+            "target untouched on a stumble"
+        );
+        assert_eq!(
+            w.characters[&cid("horror")].stats.health,
+            4.0,
+            "the mob took 1 self-damage"
+        );
+        assert!(first_roll_cue(&cues).unwrap().contains("stumbles"));
+    }
+
+    #[test]
+    fn player_attack_also_rolls_to_hit() {
+        // Players roll their own attacks: a supplied miss (3) makes the player's strike whiff — no
+        // damage — and emits the roll cue.
+        let (mut w, cat) = duel_world();
+        let mut cues = Vec::new();
+        supply_d20(&mut w, 3);
+        w.attack(&cid("ada"), &cid("ben"), &cat, &mut cues).unwrap();
+        assert_eq!(
+            w.characters[&cid("ben")].stats.health,
+            5.0,
+            "a missed player attack deals nothing"
+        );
+        assert!(first_roll_cue(&cues).unwrap().contains("3: miss"));
+        assert!(w.supplied_dice.is_empty(), "player consumed the die");
+    }
+
+    #[test]
+    fn draw_die_prefers_supplied_then_falls_back_to_rng() {
+        let mut w = world_with_party(&["pc"], 10);
+        w.supplied_dice.push_back(crate::dice::SuppliedDie {
+            sides: 20,
+            value: 17,
+        });
+        assert_eq!(w.draw_die(20), 17, "a supplied die is the literal outcome");
+        // Empty queue → seeded rng, in range.
+        assert!((1..=20).contains(&w.draw_die(20)));
+        // A wrong-sized supplied die is skipped (stays queued for its own size).
+        w.supplied_dice
+            .push_back(crate::dice::SuppliedDie { sides: 6, value: 4 });
+        assert!((1..=20).contains(&w.draw_die(20)));
+        assert_eq!(w.supplied_dice.len(), 1, "the d6 waited for a d6 draw");
+        assert_eq!(w.draw_die(6), 4);
+    }
+
+    #[test]
+    fn supply_dice_rejects_out_of_range() {
+        let mut w = world_with_party(&["pc"], 10);
+        assert!(w
+            .supply_dice(&[crate::dice::SuppliedDie {
+                sides: 20,
+                value: 0
+            }])
+            .is_err());
+        assert!(w
+            .supply_dice(&[crate::dice::SuppliedDie { sides: 6, value: 7 }])
+            .is_err());
+        assert!(w
+            .supply_dice(&[crate::dice::SuppliedDie {
+                sides: 20,
+                value: 20
+            }])
+            .is_ok());
+        assert_eq!(w.supplied_dice.len(), 1);
     }
 }

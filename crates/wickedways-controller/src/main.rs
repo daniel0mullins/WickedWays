@@ -79,6 +79,8 @@ fn reject_tile(controller: &Controller, event: &DeviceEvent) -> Option<String> {
             controller.actor_tile(actor_id)
         }
         DeviceEvent::Lantern { tile_id, .. } => Some(tile_id.clone()),
+        // A dice supply isn't tied to a tile — nothing to flash on a rejection.
+        DeviceEvent::DiceRolled { .. } => None,
     }
 }
 
@@ -101,6 +103,18 @@ fn dry_run() {
             print_board(&controller.board());
         }
         Ok(false) => println!("local-only event; no engine command"),
+        Err(reason) => println!("rejected: {reason}"),
+    }
+
+    // A physical dice roll loads the shared tray for the engine's next to-hit d20 (a player attack or a
+    // mob). "Roll for me" would instead emit no event and let the house roll from the seeded rng.
+    let dice = DeviceEvent::DiceRolled {
+        sides: 20,
+        values: vec![20],
+    };
+    println!("\n== inbound event: {dice:?} ==");
+    match controller.handle(&dice) {
+        Ok(_) => println!("supplied a d20=20 (crit) for the next to-hit roll"),
         Err(reason) => println!("rejected: {reason}"),
     }
 }

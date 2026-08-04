@@ -139,6 +139,10 @@
 .tt-controls-gate { display: flex; flex-direction: column; overflow-y: auto; }
 .tt-controls-gate.waiting { opacity: 0.5; pointer-events: none; }
 
+.tt-dice { display: flex; align-items: center; gap: 6px; padding: 8px 4px; flex-wrap: wrap; border-top: 1px solid var(--tt-border, #333); }
+.tt-dice-label { font-size: 0.85em; opacity: 0.8; }
+.tt-dice-input { width: 3.2em; padding: 3px 5px; background: var(--tt-panel, #1a1a1a); color: inherit; border: 1px solid var(--tt-border, #333); border-radius: 4px; }
+
 .tt-dash {
   padding: 0.6rem 0.8rem;
   border-bottom: 1px solid var(--tt-edge);
