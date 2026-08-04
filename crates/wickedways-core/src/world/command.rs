@@ -1,3 +1,4 @@
+use crate::dice::SuppliedDie;
 use crate::error::ProceduralViolation;
 use crate::presentation::PresentationCue;
 use crate::world::descriptor::Catalog;
@@ -69,6 +70,11 @@ pub enum Command {
     Examine {
         target_id: String,
     },
+    /// Free, non-advancing: load the shared dice tray with physical rolls for upcoming to-hit draws
+    /// (mirrors the sync `SupplyDice`; recorded so replays stay deterministic).
+    SupplyDice {
+        dice: Vec<SuppliedDie>,
+    },
 }
 
 pub fn apply_command(
@@ -109,6 +115,7 @@ pub fn apply_command(
             world.talk(&actor, &CharacterId(npc_id), prompt.as_deref(), cat, cues)
         }
         Command::Examine { target_id } => world.examine(&actor, &CharacterId(target_id), cat, cues),
+        Command::SupplyDice { dice } => world.supply_dice(&dice),
     }
 }
 

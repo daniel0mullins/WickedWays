@@ -34,12 +34,10 @@
       "result": {
         "cues": [
           {
-            "action": "takeDamage",
-            "actor": {
-              "id": "mob:Blocked",
-              "name": "Blocked"
+            "cue": {
+              "text": "Ada rolls d20 -> 5: miss"
             },
-            "kind": "action"
+            "kind": "mechanic"
           },
           {
             "action": "attack",
@@ -51,9 +49,39 @@
           },
           {
             "cue": {
-              "text": "Free rolls d20 -> 5: miss"
+              "text": "Blocked rolls d20 -> 17: hit"
             },
             "kind": "mechanic"
+          },
+          {
+            "action": "takeDamage",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            },
+            "kind": "action"
+          },
+          {
+            "action": "attack",
+            "actor": {
+              "id": "mob:Blocked",
+              "name": "Blocked"
+            },
+            "kind": "action"
+          },
+          {
+            "cue": {
+              "text": "Free rolls d20 -> 16: hit"
+            },
+            "kind": "mechanic"
+          },
+          {
+            "action": "takeDamage",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            },
+            "kind": "action"
           },
           {
             "action": "attack",
@@ -64,7 +92,18 @@
             "kind": "action"
           }
         ],
-        "mobAttacks": []
+        "mobAttacks": [
+          {
+            "amount": 0.3999999999999986,
+            "name": "Blocked",
+            "stat": "health"
+          },
+          {
+            "amount": 0.3999999999999986,
+            "name": "Free",
+            "stat": "health"
+          }
+        ]
       },
       "snapshot": {
         "campaign": {
@@ -127,17 +166,12 @@
         "characters": [
           {
             "actionsPerRound": 2,
-            "actionsThisRound": 0,
+            "actionsThisRound": 1,
             "afflictions": {
-              "active": {
-                "panic": true
-              },
+              "active": {},
               "immunity": {},
               "shakenOff": [],
-              "turnsActive": {
-                "confused": 0,
-                "fear": 0
-              }
+              "turnsActive": {}
             },
             "archetypeImmunities": [],
             "baseEscapeChance": 50,
@@ -145,10 +179,12 @@
             "equipment": {},
             "history": [
               {
-                "amount": 2.0,
-                "kind": "takeDamage",
+                "kind": "attack",
                 "round": 0,
-                "stat": "health"
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
               }
             ],
             "id": "mob:Blocked",
@@ -168,7 +204,7 @@
             "origin": "room",
             "stats": {
               "energy": 4.0,
-              "health": 6.0,
+              "health": 8.0,
               "sanity": 0.0
             }
           },
@@ -249,833 +285,17 @@
                   "id": "mob:Blocked",
                   "name": "Blocked"
                 }
-              }
-            ],
-            "id": "player:Ada",
-            "inventory": {
-              "itemIds": [],
-              "keyIds": [],
-              "slots": 5
-            },
-            "kind": "player",
-            "name": "Ada",
-            "stats": {
-              "energy": 8.0,
-              "health": 20.0,
-              "sanity": 8.0
-            }
-          }
-        ],
-        "codex": [
-          {
-            "firstSeen": {
-              "characterId": "player:Ada",
-              "roomId": "room:Hall",
-              "round": 0
-            },
-            "key": "Blocked",
-            "kind": "mob",
-            "snapshot": {
-              "name": "Blocked",
-              "stats": {
-                "energy": 4.0,
-                "health": 8.0,
-                "sanity": 0.0
-              }
-            }
-          },
-          {
-            "firstSeen": {
-              "characterId": "player:Ada",
-              "roomId": "room:Hall",
-              "round": 0
-            },
-            "key": "Free",
-            "kind": "mob",
-            "snapshot": {
-              "name": "Free",
-              "stats": {
-                "energy": 4.0,
-                "health": 8.0,
-                "sanity": 4.0
-              }
-            }
-          },
-          {
-            "firstSeen": {
-              "characterId": "player:Ada",
-              "roomId": "room:Hall",
-              "round": 0
-            },
-            "key": "room:Hall",
-            "kind": "room",
-            "snapshot": {
-              "description": "A stone hall.",
-              "name": "Hall"
-            }
-          }
-        ],
-        "exits": [],
-        "items": [],
-        "loot": [],
-        "materialCaches": [],
-        "rooms": [
-          {
-            "dark": false,
-            "description": "A stone hall.",
-            "exits": {},
-            "id": "room:Hall",
-            "lightSourceIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "name": "Hall",
-            "occupantIds": [
-              "mob:Blocked",
-              "mob:Free",
-              "player:Ada"
-            ],
-            "scenes": [],
-            "spawnModifier": 1
-          }
-        ],
-        "schemaVersion": 6
-      },
-      "view": {
-        "caches": [],
-        "exits": [],
-        "finished": false,
-        "inventory": {
-          "equippedNames": [],
-          "items": [],
-          "keys": [],
-          "slots": 5
-        },
-        "lockedDoors": [],
-        "loot": [],
-        "materials": [],
-        "occupants": [
-          {
-            "aliases": [
-              "blocked"
-            ],
-            "defeated": false,
-            "health": 6.0,
-            "id": "mob:Blocked",
-            "kind": "occupant",
-            "name": "Blocked"
-          },
-          {
-            "aliases": [
-              "free"
-            ],
-            "defeated": false,
-            "health": 8.0,
-            "id": "mob:Free",
-            "kind": "occupant",
-            "name": "Free"
-          }
-        ],
-        "outcome": "ongoing",
-        "recipes": [],
-        "room": {
-          "description": "A stone hall.",
-          "id": "room:Hall",
-          "isLit": true,
-          "name": "Hall"
-        },
-        "scope": [
-          {
-            "aliases": [
-              "blocked"
-            ],
-            "defeated": false,
-            "health": 6.0,
-            "id": "mob:Blocked",
-            "kind": "occupant",
-            "name": "Blocked"
-          },
-          {
-            "aliases": [
-              "free"
-            ],
-            "defeated": false,
-            "health": 8.0,
-            "id": "mob:Free",
-            "kind": "occupant",
-            "name": "Free"
-          }
-        ],
-        "status": {
-          "health": 20.0,
-          "locationName": "Hall",
-          "maxTurns": 20,
-          "sanity": 8.0,
-          "turn": 1
-        }
-      }
-    },
-    {
-      "op": {
-        "intent": {
-          "kind": "wait"
-        },
-        "kind": "submit"
-      },
-      "result": {
-        "cues": [
-          {
-            "cue": {
-              "text": "Free rolls d20 -> 17: hit"
-            },
-            "kind": "mechanic"
-          },
-          {
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
-            },
-            "kind": "action"
-          },
-          {
-            "action": "attack",
-            "actor": {
-              "id": "mob:Free",
-              "name": "Free"
-            },
-            "kind": "action"
-          }
-        ],
-        "mobAttacks": [
-          {
-            "amount": 0.3999999999999986,
-            "name": "Free",
-            "stat": "health"
-          }
-        ]
-      },
-      "snapshot": {
-        "campaign": {
-          "actedThisRound": [],
-          "actionSounds": {},
-          "activeCharacterIndex": 0,
-          "archetypes": [
-            {
-              "baseStats": {
-                "energy": 8.0,
-                "health": 20.0,
-                "sanity": 8.0
-              },
-              "id": "delver",
-              "name": "Delver"
-            }
-          ],
-          "avPolicy": {
-            "enabled": true,
-            "maxParticipants": 6,
-            "video": true
-          },
-          "chatPolicy": {
-            "backfillWindow": 200,
-            "edit": true,
-            "enabled": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "whisper": true
-          },
-          "claims": [],
-          "encounterTable": {
-            "baseChance": 0,
-            "formations": [],
-            "visited": [
-              "room:Hall"
-            ]
-          },
-          "encountered": [
-            "player:Ada:mob:Blocked",
-            "player:Ada:mob:Free"
-          ],
-          "gmId": "player:Ada",
-          "id": "campaign:Facade Afflicted Mob (conformance)",
-          "knownRecipes": [],
-          "loseConditions": [],
-          "materials": {},
-          "maxRounds": 20,
-          "mechanics": [],
-          "outcome": "ongoing",
-          "partyIds": [
-            "player:Ada"
-          ],
-          "round": 2,
-          "started": true,
-          "title": "Facade Afflicted Mob (conformance)",
-          "winConditions": []
-        },
-        "characters": [
-          {
-            "actionsPerRound": 2,
-            "actionsThisRound": 0,
-            "afflictions": {
-              "active": {
-                "panic": true
-              },
-              "immunity": {},
-              "shakenOff": [],
-              "turnsActive": {
-                "confused": 0,
-                "fear": 0
-              }
-            },
-            "archetypeImmunities": [],
-            "baseEscapeChance": 50,
-            "currentRoomId": "room:Hall",
-            "equipment": {},
-            "history": [
-              {
-                "amount": 2.0,
-                "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
-              }
-            ],
-            "id": "mob:Blocked",
-            "inventory": {
-              "itemIds": [],
-              "keyIds": [],
-              "slots": 2
-            },
-            "kind": "mob",
-            "lightAverse": false,
-            "materialDrops": {},
-            "name": "Blocked",
-            "naturalAttack": {
-              "power": 1,
-              "stat": "health"
-            },
-            "origin": "room",
-            "stats": {
-              "energy": 4.0,
-              "health": 6.0,
-              "sanity": 0.0
-            }
-          },
-          {
-            "actionsPerRound": 2,
-            "actionsThisRound": 2,
-            "afflictions": {
-              "active": {
-                "fear": true
-              },
-              "immunity": {},
-              "shakenOff": [],
-              "turnsActive": {
-                "confused": 0,
-                "panic": 0
-              }
-            },
-            "archetypeImmunities": [],
-            "baseEscapeChance": 50,
-            "currentRoomId": "room:Hall",
-            "equipment": {},
-            "history": [
-              {
-                "kind": "attack",
-                "round": 0,
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                }
-              },
-              {
-                "kind": "attack",
-                "round": 1,
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                }
-              }
-            ],
-            "id": "mob:Free",
-            "inventory": {
-              "itemIds": [],
-              "keyIds": [],
-              "slots": 2
-            },
-            "kind": "mob",
-            "lightAverse": false,
-            "materialDrops": {},
-            "name": "Free",
-            "naturalAttack": {
-              "power": 1,
-              "stat": "health"
-            },
-            "origin": "room",
-            "stats": {
-              "energy": 4.0,
-              "health": 8.0,
-              "sanity": 4.0
-            }
-          },
-          {
-            "actionsPerRound": 3,
-            "actionsThisRound": 0,
-            "afflictions": {
-              "active": {},
-              "immunity": {},
-              "shakenOff": [],
-              "turnsActive": {
-                "confused": 0,
-                "fear": 0,
-                "panic": 0
-              }
-            },
-            "archetypeId": "delver",
-            "archetypeImmunities": [],
-            "currentRoomId": "room:Hall",
-            "equipment": {},
-            "history": [
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Hall",
-                  "name": "Hall"
-                },
-                "round": 0
-              },
-              {
-                "kind": "attack",
-                "round": 0,
-                "target": {
-                  "id": "mob:Blocked",
-                  "name": "Blocked"
-                }
               },
               {
                 "amount": 0.4,
                 "kind": "takeDamage",
-                "round": 1,
-                "stat": "health"
-              }
-            ],
-            "id": "player:Ada",
-            "inventory": {
-              "itemIds": [],
-              "keyIds": [],
-              "slots": 5
-            },
-            "kind": "player",
-            "name": "Ada",
-            "stats": {
-              "energy": 8.0,
-              "health": 19.6,
-              "sanity": 8.0
-            }
-          }
-        ],
-        "codex": [
-          {
-            "firstSeen": {
-              "characterId": "player:Ada",
-              "roomId": "room:Hall",
-              "round": 0
-            },
-            "key": "Blocked",
-            "kind": "mob",
-            "snapshot": {
-              "name": "Blocked",
-              "stats": {
-                "energy": 4.0,
-                "health": 8.0,
-                "sanity": 0.0
-              }
-            }
-          },
-          {
-            "firstSeen": {
-              "characterId": "player:Ada",
-              "roomId": "room:Hall",
-              "round": 0
-            },
-            "key": "Free",
-            "kind": "mob",
-            "snapshot": {
-              "name": "Free",
-              "stats": {
-                "energy": 4.0,
-                "health": 8.0,
-                "sanity": 4.0
-              }
-            }
-          },
-          {
-            "firstSeen": {
-              "characterId": "player:Ada",
-              "roomId": "room:Hall",
-              "round": 0
-            },
-            "key": "room:Hall",
-            "kind": "room",
-            "snapshot": {
-              "description": "A stone hall.",
-              "name": "Hall"
-            }
-          }
-        ],
-        "exits": [],
-        "items": [],
-        "loot": [],
-        "materialCaches": [],
-        "rooms": [
-          {
-            "dark": false,
-            "description": "A stone hall.",
-            "exits": {},
-            "id": "room:Hall",
-            "lightSourceIds": [],
-            "lootIds": [],
-            "materialCacheIds": [],
-            "name": "Hall",
-            "occupantIds": [
-              "mob:Blocked",
-              "mob:Free",
-              "player:Ada"
-            ],
-            "scenes": [],
-            "spawnModifier": 1
-          }
-        ],
-        "schemaVersion": 6
-      },
-      "view": {
-        "caches": [],
-        "exits": [],
-        "finished": false,
-        "inventory": {
-          "equippedNames": [],
-          "items": [],
-          "keys": [],
-          "slots": 5
-        },
-        "lockedDoors": [],
-        "loot": [],
-        "materials": [],
-        "occupants": [
-          {
-            "aliases": [
-              "blocked"
-            ],
-            "defeated": false,
-            "health": 6.0,
-            "id": "mob:Blocked",
-            "kind": "occupant",
-            "name": "Blocked"
-          },
-          {
-            "aliases": [
-              "free"
-            ],
-            "defeated": false,
-            "health": 8.0,
-            "id": "mob:Free",
-            "kind": "occupant",
-            "name": "Free"
-          }
-        ],
-        "outcome": "ongoing",
-        "recipes": [],
-        "room": {
-          "description": "A stone hall.",
-          "id": "room:Hall",
-          "isLit": true,
-          "name": "Hall"
-        },
-        "scope": [
-          {
-            "aliases": [
-              "blocked"
-            ],
-            "defeated": false,
-            "health": 6.0,
-            "id": "mob:Blocked",
-            "kind": "occupant",
-            "name": "Blocked"
-          },
-          {
-            "aliases": [
-              "free"
-            ],
-            "defeated": false,
-            "health": 8.0,
-            "id": "mob:Free",
-            "kind": "occupant",
-            "name": "Free"
-          }
-        ],
-        "status": {
-          "health": 19.6,
-          "locationName": "Hall",
-          "maxTurns": 20,
-          "sanity": 8.0,
-          "turn": 2
-        }
-      }
-    },
-    {
-      "op": {
-        "intent": {
-          "kind": "wait"
-        },
-        "kind": "submit"
-      },
-      "result": {
-        "cues": [
-          {
-            "cue": {
-              "text": "Free rolls d20 -> 16: hit"
-            },
-            "kind": "mechanic"
-          },
-          {
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
-            },
-            "kind": "action"
-          },
-          {
-            "action": "attack",
-            "actor": {
-              "id": "mob:Free",
-              "name": "Free"
-            },
-            "kind": "action"
-          }
-        ],
-        "mobAttacks": [
-          {
-            "amount": 0.3999999999999986,
-            "name": "Free",
-            "stat": "health"
-          }
-        ]
-      },
-      "snapshot": {
-        "campaign": {
-          "actedThisRound": [],
-          "actionSounds": {},
-          "activeCharacterIndex": 0,
-          "archetypes": [
-            {
-              "baseStats": {
-                "energy": 8.0,
-                "health": 20.0,
-                "sanity": 8.0
-              },
-              "id": "delver",
-              "name": "Delver"
-            }
-          ],
-          "avPolicy": {
-            "enabled": true,
-            "maxParticipants": 6,
-            "video": true
-          },
-          "chatPolicy": {
-            "backfillWindow": 200,
-            "edit": true,
-            "enabled": true,
-            "reactions": true,
-            "readReceipts": true,
-            "typing": true,
-            "whisper": true
-          },
-          "claims": [],
-          "encounterTable": {
-            "baseChance": 0,
-            "formations": [],
-            "visited": [
-              "room:Hall"
-            ]
-          },
-          "encountered": [
-            "player:Ada:mob:Blocked",
-            "player:Ada:mob:Free"
-          ],
-          "gmId": "player:Ada",
-          "id": "campaign:Facade Afflicted Mob (conformance)",
-          "knownRecipes": [],
-          "loseConditions": [],
-          "materials": {},
-          "maxRounds": 20,
-          "mechanics": [],
-          "outcome": "ongoing",
-          "partyIds": [
-            "player:Ada"
-          ],
-          "round": 3,
-          "started": true,
-          "title": "Facade Afflicted Mob (conformance)",
-          "winConditions": []
-        },
-        "characters": [
-          {
-            "actionsPerRound": 2,
-            "actionsThisRound": 0,
-            "afflictions": {
-              "active": {
-                "panic": true
-              },
-              "immunity": {},
-              "shakenOff": [],
-              "turnsActive": {
-                "confused": 0,
-                "fear": 0
-              }
-            },
-            "archetypeImmunities": [],
-            "baseEscapeChance": 50,
-            "currentRoomId": "room:Hall",
-            "equipment": {},
-            "history": [
-              {
-                "amount": 2.0,
-                "kind": "takeDamage",
                 "round": 0,
-                "stat": "health"
-              }
-            ],
-            "id": "mob:Blocked",
-            "inventory": {
-              "itemIds": [],
-              "keyIds": [],
-              "slots": 2
-            },
-            "kind": "mob",
-            "lightAverse": false,
-            "materialDrops": {},
-            "name": "Blocked",
-            "naturalAttack": {
-              "power": 1,
-              "stat": "health"
-            },
-            "origin": "room",
-            "stats": {
-              "energy": 4.0,
-              "health": 6.0,
-              "sanity": 0.0
-            }
-          },
-          {
-            "actionsPerRound": 2,
-            "actionsThisRound": 3,
-            "afflictions": {
-              "active": {
-                "fear": true
-              },
-              "immunity": {},
-              "shakenOff": [],
-              "turnsActive": {
-                "confused": 0,
-                "panic": 0
-              }
-            },
-            "archetypeImmunities": [],
-            "baseEscapeChance": 50,
-            "currentRoomId": "room:Hall",
-            "equipment": {},
-            "history": [
-              {
-                "kind": "attack",
-                "round": 0,
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                }
-              },
-              {
-                "kind": "attack",
-                "round": 1,
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                }
-              },
-              {
-                "kind": "attack",
-                "round": 2,
-                "target": {
-                  "id": "player:Ada",
-                  "name": "Ada"
-                }
-              }
-            ],
-            "id": "mob:Free",
-            "inventory": {
-              "itemIds": [],
-              "keyIds": [],
-              "slots": 2
-            },
-            "kind": "mob",
-            "lightAverse": false,
-            "materialDrops": {},
-            "name": "Free",
-            "naturalAttack": {
-              "power": 1,
-              "stat": "health"
-            },
-            "origin": "room",
-            "stats": {
-              "energy": 4.0,
-              "health": 8.0,
-              "sanity": 4.0
-            }
-          },
-          {
-            "actionsPerRound": 3,
-            "actionsThisRound": 0,
-            "afflictions": {
-              "active": {},
-              "immunity": {},
-              "shakenOff": [],
-              "turnsActive": {
-                "confused": 0,
-                "fear": 0,
-                "panic": 0
-              }
-            },
-            "archetypeId": "delver",
-            "archetypeImmunities": [],
-            "currentRoomId": "room:Hall",
-            "equipment": {},
-            "history": [
-              {
-                "kind": "move",
-                "room": {
-                  "id": "room:Hall",
-                  "name": "Hall"
-                },
-                "round": 0
-              },
-              {
-                "kind": "attack",
-                "round": 0,
-                "target": {
-                  "id": "mob:Blocked",
-                  "name": "Blocked"
-                }
-              },
-              {
-                "amount": 0.4,
-                "kind": "takeDamage",
-                "round": 1,
                 "stat": "health"
               },
               {
                 "amount": 0.4,
                 "kind": "takeDamage",
-                "round": 2,
+                "round": 0,
                 "stat": "health"
               }
             ],
@@ -1187,7 +407,7 @@
               "blocked"
             ],
             "defeated": false,
-            "health": 6.0,
+            "health": 8.0,
             "id": "mob:Blocked",
             "kind": "occupant",
             "name": "Blocked"
@@ -1217,7 +437,7 @@
               "blocked"
             ],
             "defeated": false,
-            "health": 6.0,
+            "health": 8.0,
             "id": "mob:Blocked",
             "kind": "occupant",
             "name": "Blocked"
@@ -1235,6 +455,897 @@
         ],
         "status": {
           "health": 19.200000000000003,
+          "locationName": "Hall",
+          "maxTurns": 20,
+          "sanity": 8.0,
+          "turn": 1
+        }
+      }
+    },
+    {
+      "op": {
+        "intent": {
+          "kind": "wait"
+        },
+        "kind": "submit"
+      },
+      "result": {
+        "cues": [
+          {
+            "cue": {
+              "text": "Blocked rolls d20 -> 18: hit"
+            },
+            "kind": "mechanic"
+          },
+          {
+            "action": "takeDamage",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            },
+            "kind": "action"
+          },
+          {
+            "action": "attack",
+            "actor": {
+              "id": "mob:Blocked",
+              "name": "Blocked"
+            },
+            "kind": "action"
+          },
+          {
+            "cue": {
+              "text": "Free rolls d20 -> 18: hit"
+            },
+            "kind": "mechanic"
+          },
+          {
+            "action": "takeDamage",
+            "actor": {
+              "id": "player:Ada",
+              "name": "Ada"
+            },
+            "kind": "action"
+          },
+          {
+            "action": "attack",
+            "actor": {
+              "id": "mob:Free",
+              "name": "Free"
+            },
+            "kind": "action"
+          }
+        ],
+        "mobAttacks": [
+          {
+            "amount": 0.3999999999999986,
+            "name": "Blocked",
+            "stat": "health"
+          },
+          {
+            "amount": 0.3999999999999986,
+            "name": "Free",
+            "stat": "health"
+          }
+        ]
+      },
+      "snapshot": {
+        "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
+              },
+              "id": "delver",
+              "name": "Delver"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
+          },
+          "encountered": [
+            "player:Ada:mob:Blocked",
+            "player:Ada:mob:Free"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Afflicted Mob (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 2,
+          "started": true,
+          "title": "Facade Afflicted Mob (conformance)",
+          "winConditions": []
+        },
+        "characters": [
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 2,
+            "afflictions": {
+              "active": {
+                "panic": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0
+              }
+            },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 1,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              }
+            ],
+            "id": "mob:Blocked",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Blocked",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 8.0,
+              "sanity": 0.0
+            }
+          },
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 2,
+            "afflictions": {
+              "active": {
+                "fear": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
+            },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 1,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              }
+            ],
+            "id": "mob:Free",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Free",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 8.0,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
+            },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "mob:Blocked",
+                  "name": "Blocked"
+                }
+              },
+              {
+                "amount": 0.4,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              },
+              {
+                "amount": 0.4,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              },
+              {
+                "amount": 0.4,
+                "kind": "takeDamage",
+                "round": 1,
+                "stat": "health"
+              },
+              {
+                "amount": 0.4,
+                "kind": "takeDamage",
+                "round": 1,
+                "stat": "health"
+              }
+            ],
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 18.400000000000006,
+              "sanity": 8.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "Blocked",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Blocked",
+              "stats": {
+                "energy": 4.0,
+                "health": 8.0,
+                "sanity": 0.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "Free",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Free",
+              "stats": {
+                "energy": 4.0,
+                "health": 8.0,
+                "sanity": 4.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          }
+        ],
+        "exits": [],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "mob:Blocked",
+              "mob:Free",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [
+          {
+            "aliases": [
+              "blocked"
+            ],
+            "defeated": false,
+            "health": 8.0,
+            "id": "mob:Blocked",
+            "kind": "occupant",
+            "name": "Blocked"
+          },
+          {
+            "aliases": [
+              "free"
+            ],
+            "defeated": false,
+            "health": 8.0,
+            "id": "mob:Free",
+            "kind": "occupant",
+            "name": "Free"
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "blocked"
+            ],
+            "defeated": false,
+            "health": 8.0,
+            "id": "mob:Blocked",
+            "kind": "occupant",
+            "name": "Blocked"
+          },
+          {
+            "aliases": [
+              "free"
+            ],
+            "defeated": false,
+            "health": 8.0,
+            "id": "mob:Free",
+            "kind": "occupant",
+            "name": "Free"
+          }
+        ],
+        "status": {
+          "health": 18.400000000000006,
+          "locationName": "Hall",
+          "maxTurns": 20,
+          "sanity": 8.0,
+          "turn": 2
+        }
+      }
+    },
+    {
+      "op": {
+        "intent": {
+          "kind": "wait"
+        },
+        "kind": "submit"
+      },
+      "result": {
+        "cues": [
+          {
+            "cue": {
+              "text": "Free rolls d20 -> 2: miss"
+            },
+            "kind": "mechanic"
+          },
+          {
+            "action": "attack",
+            "actor": {
+              "id": "mob:Free",
+              "name": "Free"
+            },
+            "kind": "action"
+          }
+        ],
+        "mobAttacks": []
+      },
+      "snapshot": {
+        "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 8.0,
+                "health": 20.0,
+                "sanity": 8.0
+              },
+              "id": "delver",
+              "name": "Delver"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall"
+            ]
+          },
+          "encountered": [
+            "player:Ada:mob:Blocked",
+            "player:Ada:mob:Free"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:Facade Afflicted Mob (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 3,
+          "started": true,
+          "title": "Facade Afflicted Mob (conformance)",
+          "winConditions": []
+        },
+        "characters": [
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 2,
+            "afflictions": {
+              "active": {
+                "panic": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0
+              }
+            },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 1,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              }
+            ],
+            "id": "mob:Blocked",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Blocked",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 8.0,
+              "sanity": 0.0
+            }
+          },
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 3,
+            "afflictions": {
+              "active": {
+                "fear": true
+              },
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "panic": 0
+              }
+            },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 1,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              },
+              {
+                "kind": "attack",
+                "round": 2,
+                "target": {
+                  "id": "player:Ada",
+                  "name": "Ada"
+                }
+              }
+            ],
+            "id": "mob:Free",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Free",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 8.0,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
+            },
+            "archetypeId": "delver",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Hall",
+            "equipment": {},
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "kind": "attack",
+                "round": 0,
+                "target": {
+                  "id": "mob:Blocked",
+                  "name": "Blocked"
+                }
+              },
+              {
+                "amount": 0.4,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              },
+              {
+                "amount": 0.4,
+                "kind": "takeDamage",
+                "round": 0,
+                "stat": "health"
+              },
+              {
+                "amount": 0.4,
+                "kind": "takeDamage",
+                "round": 1,
+                "stat": "health"
+              },
+              {
+                "amount": 0.4,
+                "kind": "takeDamage",
+                "round": 1,
+                "stat": "health"
+              }
+            ],
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 8.0,
+              "health": 18.400000000000006,
+              "sanity": 8.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "Blocked",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Blocked",
+              "stats": {
+                "energy": 4.0,
+                "health": 8.0,
+                "sanity": 0.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "Free",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Free",
+              "stats": {
+                "energy": 4.0,
+                "health": 8.0,
+                "sanity": 4.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          }
+        ],
+        "exits": [],
+        "items": [],
+        "loot": [],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {},
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [
+              "mob:Blocked",
+              "mob:Free",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [],
+          "items": [],
+          "keys": [],
+          "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [
+          {
+            "aliases": [
+              "blocked"
+            ],
+            "defeated": false,
+            "health": 8.0,
+            "id": "mob:Blocked",
+            "kind": "occupant",
+            "name": "Blocked"
+          },
+          {
+            "aliases": [
+              "free"
+            ],
+            "defeated": false,
+            "health": 8.0,
+            "id": "mob:Free",
+            "kind": "occupant",
+            "name": "Free"
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A stone hall.",
+          "id": "room:Hall",
+          "isLit": true,
+          "name": "Hall"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "blocked"
+            ],
+            "defeated": false,
+            "health": 8.0,
+            "id": "mob:Blocked",
+            "kind": "occupant",
+            "name": "Blocked"
+          },
+          {
+            "aliases": [
+              "free"
+            ],
+            "defeated": false,
+            "health": 8.0,
+            "id": "mob:Free",
+            "kind": "occupant",
+            "name": "Free"
+          }
+        ],
+        "status": {
+          "health": 18.400000000000006,
           "locationName": "Hall",
           "maxTurns": 20,
           "sanity": 8.0,

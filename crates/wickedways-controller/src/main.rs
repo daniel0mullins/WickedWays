@@ -106,15 +106,15 @@ fn dry_run() {
         Err(reason) => println!("rejected: {reason}"),
     }
 
-    // A physical dice roll loads the shared tray for the engine's next d20 (a mob to-hit). "Roll for
-    // me" would instead emit no event and let the house roll from the seeded rng.
+    // A physical dice roll loads the shared tray for the engine's next to-hit d20 (a player attack or a
+    // mob). "Roll for me" would instead emit no event and let the house roll from the seeded rng.
     let dice = DeviceEvent::DiceRolled {
         sides: 20,
         values: vec![20],
     };
     println!("\n== inbound event: {dice:?} ==");
     match controller.handle(&dice) {
-        Ok(_) => println!("supplied — a d20=20 (a critical hit) is queued for the next mob to-hit"),
+        Ok(_) => println!("supplied a d20=20 (crit) for the next to-hit roll"),
         Err(reason) => println!("rejected: {reason}"),
     }
 }

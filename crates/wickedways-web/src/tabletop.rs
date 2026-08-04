@@ -168,7 +168,7 @@ pub fn tabletop_app() -> Element {
     let started = use_signal(|| matches!(read_config().mode, Mode::Multi));
     let mut settings_open = use_signal(|| false);
     let mut audio_on = use_signal(|| false);
-    // The dice-tray entry: the physical d20 face a player will supply for the next mob to-hit.
+    // The dice-tray entry: the physical d20 face a player will supply for the next to-hit roll.
     let mut dice_value = use_signal(|| "20".to_string());
     let mode = use_hook(|| read_config().mode);
     let welcome = use_hook(|| welcome_for(&read_config().campaign));
@@ -292,12 +292,12 @@ pub fn tabletop_app() -> Element {
                                     };
                                     submit(&transport, &mut coord, command, log).await;
                                     log.write().push(LogLine::plain(format!(
-                                        "🎲 Supplied a d20 = {v} for the next mob to-hit."
+                                        "🎲 Supplied a d20 = {v} for the next to-hit roll."
                                     )));
                                 }
                                 None => {
                                     log.write().push(LogLine::plain(
-                                        "🎲 Roll for me — the house will roll the next mob to-hit."
+                                        "🎲 Roll for me — the house will roll the next to-hit."
                                             .to_string(),
                                     ));
                                 }
@@ -602,7 +602,7 @@ pub fn tabletop_app() -> Element {
                         // ── Dice tray: supply a physical d20 for a mob to-hit, or let the house roll ──
                         if !finished {
                             div { class: "tt-dice",
-                                span { class: "tt-dice-label", "🎲 Mob d20" }
+                                span { class: "tt-dice-label", "🎲 To-hit d20" }
                                 input {
                                     class: "tt-dice-input",
                                     r#type: "number",
@@ -613,7 +613,7 @@ pub fn tabletop_app() -> Element {
                                 }
                                 button {
                                     class: "tt-btn",
-                                    title: "Supply the die you rolled for the monster",
+                                    title: "Supply the die you rolled for the next attack",
                                     onclick: move |_| {
                                         if let Ok(v) = dice_value().trim().parse::<u8>() {
                                             if (1..=20).contains(&v) {

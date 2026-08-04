@@ -8,6 +8,27 @@
       "kind": "go"
     },
     {
+      "dice": [
+        {
+          "sides": 20,
+          "value": 14
+        },
+        {
+          "sides": 20,
+          "value": 14
+        },
+        {
+          "sides": 20,
+          "value": 14
+        },
+        {
+          "sides": 20,
+          "value": 14
+        }
+      ],
+      "kind": "supplyDice"
+    },
+    {
       "kind": "attack",
       "targetId": "mob:Ghoul"
     },
@@ -937,10 +958,519 @@
     },
     {
       "command": {
+        "dice": [
+          {
+            "sides": 20,
+            "value": 14
+          },
+          {
+            "sides": 20,
+            "value": 14
+          },
+          {
+            "sides": 20,
+            "value": 14
+          },
+          {
+            "sides": 20,
+            "value": 14
+          }
+        ],
+        "kind": "supplyDice"
+      },
+      "cues": [],
+      "snapshot": {
+        "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 10,
+                "health": 10,
+                "sanity": 10
+              },
+              "id": "fighter",
+              "name": "Fighter"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Hall",
+              "room:Crypt"
+            ]
+          },
+          "encountered": [
+            "player:Ada:mob:Ghoul",
+            "player:Ada:mob:Wraith"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:Mob Drop (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Mob Drop (conformance)",
+          "winConditions": []
+        },
+        "characters": [
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Crypt",
+            "equipment": {
+              "leftHand": "mob:Ghoul:drop#0"
+            },
+            "history": [],
+            "id": "mob:Ghoul",
+            "inventory": {
+              "itemIds": [
+                "mob:Ghoul:drop#0"
+              ],
+              "keyIds": [
+                "mob:Ghoul:drop#1"
+              ],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {
+              "item": 2
+            },
+            "name": "Ghoul",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 4.0,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Crypt",
+            "equipment": {},
+            "history": [],
+            "id": "mob:Wraith",
+            "inventory": {
+              "itemIds": [
+                "mob:Wraith:drop#0"
+              ],
+              "keyIds": [
+                "mob:Wraith:drop#1"
+              ],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Wraith",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "campaign",
+            "stats": {
+              "energy": 4.0,
+              "health": 4.0,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 1,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
+            },
+            "archetypeId": "fighter",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Crypt",
+            "equipment": {
+              "leftHand": "player:Ada:item#items/dagger"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Hall",
+                  "name": "Hall"
+                },
+                "round": 0
+              },
+              {
+                "items": [
+                  {
+                    "id": "player:Ada:item#items/dagger",
+                    "name": "Iron Dagger"
+                  }
+                ],
+                "kind": "pickUp",
+                "round": 0
+              },
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Crypt",
+                  "name": "Crypt"
+                },
+                "round": 0
+              }
+            ],
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "player:Ada:item#items/dagger"
+              ],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "room:Hall",
+            "kind": "room",
+            "snapshot": {
+              "description": "A stone hall.",
+              "name": "Hall"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Hall",
+              "round": 0
+            },
+            "key": "weapon:Iron Dagger",
+            "kind": "item",
+            "snapshot": {
+              "name": "Iron Dagger",
+              "slot": "hand",
+              "type": "weapon"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "Ghoul",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Ghoul",
+              "stats": {
+                "energy": 4.0,
+                "health": 4.0,
+                "sanity": 4.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "Wraith",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Wraith",
+              "stats": {
+                "energy": 4.0,
+                "health": 4.0,
+                "sanity": 4.0
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Crypt",
+              "round": 0
+            },
+            "key": "room:Crypt",
+            "kind": "room",
+            "snapshot": {
+              "description": "A dark crypt.",
+              "name": "Crypt"
+            }
+          }
+        ],
+        "exits": [
+          {
+            "endpointIds": [
+              "room:Hall",
+              "room:Crypt"
+            ],
+            "id": "exit:Crypt|Hall",
+            "state": {}
+          }
+        ],
+        "items": [
+          {
+            "behaviorKey": "items/dagger",
+            "durability": 5,
+            "id": "mob:Ghoul:drop#0",
+            "kind": "item",
+            "modifier": 3
+          },
+          {
+            "consumeOnUse": false,
+            "id": "mob:Ghoul:drop#1",
+            "keyCode": "crypt",
+            "kind": "key",
+            "name": "Crypt Key"
+          },
+          {
+            "behaviorKey": "items/bone-relic",
+            "id": "mob:Wraith:drop#0",
+            "kind": "item",
+            "modifier": 1
+          },
+          {
+            "consumeOnUse": false,
+            "id": "mob:Wraith:drop#1",
+            "keyCode": "crypt",
+            "kind": "key",
+            "name": "Crypt Key"
+          },
+          {
+            "behaviorKey": "items/dagger",
+            "durability": 5,
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
+            "modifier": 3
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": false,
+            "description": "A dark crypt.",
+            "exits": {
+              "south": "exit:Crypt|Hall"
+            },
+            "id": "room:Crypt",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Crypt",
+            "occupantIds": [
+              "mob:Ghoul",
+              "mob:Wraith",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          },
+          {
+            "dark": false,
+            "description": "A stone hall.",
+            "exits": {
+              "north": "exit:Crypt|Hall"
+            },
+            "id": "room:Hall",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Hall",
+            "occupantIds": [],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [
+          {
+            "dir": "south",
+            "toName": "Hall"
+          }
+        ],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [
+            "Iron Dagger"
+          ],
+          "items": [
+            {
+              "aliases": [
+                "iron dagger",
+                "dagger"
+              ],
+              "damaged": false,
+              "destroyable": true,
+              "droppable": true,
+              "equippable": true,
+              "hasLore": false,
+              "id": "player:Ada:item#items/dagger",
+              "kind": "item",
+              "name": "Iron Dagger",
+              "usable": false
+            }
+          ],
+          "keys": [],
+          "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [
+          {
+            "aliases": [
+              "ghoul"
+            ],
+            "defeated": false,
+            "health": 4.0,
+            "id": "mob:Ghoul",
+            "kind": "occupant",
+            "name": "Ghoul"
+          },
+          {
+            "aliases": [
+              "wraith"
+            ],
+            "defeated": false,
+            "health": 4.0,
+            "id": "mob:Wraith",
+            "kind": "occupant",
+            "name": "Wraith"
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A dark crypt.",
+          "id": "room:Crypt",
+          "isLit": true,
+          "name": "Crypt"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "ghoul"
+            ],
+            "defeated": false,
+            "health": 4.0,
+            "id": "mob:Ghoul",
+            "kind": "occupant",
+            "name": "Ghoul"
+          },
+          {
+            "aliases": [
+              "wraith"
+            ],
+            "defeated": false,
+            "health": 4.0,
+            "id": "mob:Wraith",
+            "kind": "occupant",
+            "name": "Wraith"
+          },
+          {
+            "aliases": [
+              "iron dagger",
+              "dagger"
+            ],
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
+            "equippable": true,
+            "hasLore": false,
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
+            "name": "Iron Dagger",
+            "usable": false
+          }
+        ],
+        "status": {
+          "health": 10.0,
+          "locationName": "Crypt",
+          "maxTurns": 20,
+          "sanity": 10.0,
+          "turn": 0
+        }
+      }
+    },
+    {
+      "command": {
         "kind": "attack",
         "targetId": "mob:Ghoul"
       },
       "cues": [
+        {
+          "cue": {
+            "text": "Ada rolls d20 -> 14: hit"
+          },
+          "kind": "mechanic"
+        },
         {
           "action": "takeDamage",
           "actor": {
@@ -1464,6 +1994,12 @@
         "targetId": "mob:Ghoul"
       },
       "cues": [
+        {
+          "cue": {
+            "text": "Ada rolls d20 -> 14: hit"
+          },
+          "kind": "mechanic"
+        },
         {
           "action": "takeDamage",
           "actor": {
@@ -3355,6 +3891,12 @@
       },
       "cues": [
         {
+          "cue": {
+            "text": "Ada rolls d20 -> 14: hit"
+          },
+          "kind": "mechanic"
+        },
+        {
           "action": "takeDamage",
           "actor": {
             "id": "mob:Wraith",
@@ -4016,6 +4558,12 @@
         "targetId": "mob:Wraith"
       },
       "cues": [
+        {
+          "cue": {
+            "text": "Ada rolls d20 -> 14: hit"
+          },
+          "kind": "mechanic"
+        },
         {
           "action": "takeDamage",
           "actor": {

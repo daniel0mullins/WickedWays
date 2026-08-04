@@ -3,10 +3,10 @@
 //! `#floorAndSnapshot`, and `onKnockOut`.
 //!
 //! `take_damage` is internal-only (never a Command — TS only calls it from `attack`).
-//! Two rng draws live in the combat path: the 4a Confused fizzle in `gate`, and a **mob** attacker's
+//! Two rng draws live in the combat path: the 4a Confused fizzle in `gate`, and **every** attacker's
 //! d20 to-hit roll (`draw_die(20)` — a table-supplied die if one is queued, else the seeded rng): 20
-//! crits (x1.5), 1 is a critical miss that makes the mob stumble and self-damage, 2-5 miss, 6-19 hit.
-//! Player attacks never roll and are byte-stable.
+//! crits (x1.5), 1 is a critical miss that makes the attacker stumble and self-damage, 2-5 miss, 6-19
+//! hit. Players roll their own attacks; mobs default to the house roll.
 use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::vec::Vec;
@@ -231,49 +231,43 @@ impl World {
         // 2. Dark check (after the gate, matching TS order).
         self.require_visible_target(actor, "attack", cat)?;
 
-        // 2b. Mob to-hit roll. Players always connect (byte-stable). A mob rolls a d20 through the
-        // dice-supply seam (a table-supplied die if one is queued, else the seeded rng): 20 crits
-        // (x1.5 damage); 1 is a critical miss that makes the mob stumble and take 1 self-damage; 2-5
-        // miss; 6-19 hit. The outcome is surfaced as a mechanic cue for the log.
-        let is_mob = self
+        // 2b. To-hit roll. Every attacker — player or mob — rolls a d20 through the dice-supply seam (a
+        // table-supplied die if one is queued, else the seeded rng): 20 crits (x1.5 damage); 1 is a
+        // critical miss where the attacker stumbles and takes 1 self-damage; 2-5 miss; 6-19 hit. Players
+        // roll their own attacks; mobs default to the house roll. The outcome is a mechanic cue.
+        let attacker_name = self
             .characters
             .get(actor)
-            .is_some_and(|c| matches!(c.kind, CharacterKind::Mob));
+            .map(|c| c.name.clone())
+            .unwrap_or_default();
         let mut crit_mult = 1.0_f64;
         let mut landed = true;
-        if is_mob {
-            let mob_name = self
-                .characters
-                .get(actor)
-                .map(|c| c.name.clone())
-                .unwrap_or_default();
-            let d20 = self.draw_die(20);
-            let outcome = match d20 {
-                20 => {
-                    crit_mult = 1.5;
-                    "critical hit!"
-                }
-                1 => "critical miss - stumbles",
-                2..=5 => "miss",
-                _ => "hit",
-            };
-            cues.push(PresentationCue::Mechanic {
-                cue: MechanicCue {
-                    text: Some(format!("{mob_name} rolls d20 -> {d20}: {outcome}")),
-                    sound: None,
-                },
-            });
-            if d20 == 1 {
-                // Stumble: a flat 1-point self-hit (no mitigation) that may KO the mob; the target
-                // takes nothing.
-                if let Some(c) = self.characters.get_mut(actor) {
-                    c.stats.health -= 1.0;
-                }
-                self.reconcile(actor, cat, cues);
-                landed = false;
-            } else if (2..=5).contains(&d20) {
-                landed = false;
+        let d20 = self.draw_die(20);
+        let outcome = match d20 {
+            20 => {
+                crit_mult = 1.5;
+                "critical hit!"
             }
+            1 => "critical miss - stumbles",
+            2..=5 => "miss",
+            _ => "hit",
+        };
+        cues.push(PresentationCue::Mechanic {
+            cue: MechanicCue {
+                text: Some(format!("{attacker_name} rolls d20 -> {d20}: {outcome}")),
+                sound: None,
+            },
+        });
+        if d20 == 1 {
+            // Stumble: a flat 1-point self-hit (no mitigation) that may KO the attacker; the target
+            // takes nothing.
+            if let Some(c) = self.characters.get_mut(actor) {
+                c.stats.health -= 1.0;
+            }
+            self.reconcile(actor, cat, cues);
+            landed = false;
+        } else if (2..=5).contains(&d20) {
+            landed = false;
         }
 
         if landed {
@@ -656,6 +650,7 @@ mod tests {
             .equipment
             .insert("hand".into(), wpn.clone());
 
+        supply_d20(&mut w, 14); // a plain hit so the pinned damage lands unscaled
         w.attack(&cid("ada"), &cid("ben"), &cat, &mut cues).unwrap();
 
         assert_eq!(w.characters[&cid("ben")].stats.health, 0.0);
@@ -688,6 +683,7 @@ mod tests {
         // No weapon → natural attack (Health, 1). ben health 5 → dealt=1*1.0=1 → 4.0.
         let (mut w, cat) = duel_world();
         let mut cues = Vec::new();
+        supply_d20(&mut w, 14); // a plain hit
         w.attack(&cid("ada"), &cid("ben"), &cat, &mut cues).unwrap();
         assert_eq!(w.characters[&cid("ben")].stats.health, 4.0);
     }
@@ -715,7 +711,8 @@ mod tests {
         let (mut w, cat) = duel_world();
         let mut opened = BTreeSet::new();
         let mut cues = Vec::new();
-        // active character is index 0 = "ada".
+        supply_d20(&mut w, 14); // a plain hit
+                                // active character is index 0 = "ada".
         apply_command(
             &mut w,
             Command::Attack {
@@ -1219,19 +1216,20 @@ mod tests {
     }
 
     #[test]
-    fn player_attack_does_not_roll_to_hit() {
-        // Player attacker: no to-hit roll (byte-stable), exact unarmed damage, and a queued die is
-        // left untouched (mob-only consumer).
+    fn player_attack_also_rolls_to_hit() {
+        // Players roll their own attacks: a supplied miss (3) makes the player's strike whiff — no
+        // damage — and emits the roll cue.
         let (mut w, cat) = duel_world();
         let mut cues = Vec::new();
-        supply_d20(&mut w, 1);
+        supply_d20(&mut w, 3);
         w.attack(&cid("ada"), &cid("ben"), &cat, &mut cues).unwrap();
-        assert_eq!(w.characters[&cid("ben")].stats.health, 4.0);
-        assert!(
-            first_roll_cue(&cues).is_none(),
-            "no to-hit cue for a player attacker"
+        assert_eq!(
+            w.characters[&cid("ben")].stats.health,
+            5.0,
+            "a missed player attack deals nothing"
         );
-        assert_eq!(w.supplied_dice.len(), 1, "player did not consume the die");
+        assert!(first_roll_cue(&cues).unwrap().contains("3: miss"));
+        assert!(w.supplied_dice.is_empty(), "player consumed the die");
     }
 
     #[test]

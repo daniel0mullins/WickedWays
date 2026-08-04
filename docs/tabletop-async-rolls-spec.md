@@ -174,10 +174,13 @@ an "auto-resolve all pending" affordance drains the whole queue with rng in one 
    auto-resolve unattended sessions after N seconds; the resulting `MobAttack` is recorded, so replay is
    unaffected and "N seconds" never enters the log.
 
-4. **Player-attack to-hit stays out (a game-feel call, not a blocker).** The `draw_die` seam and the
-   `RollRequest` handshake generalize to player attacks trivially, but that makes *players* roll to-hit
-   — a difficulty/feel change that churns every player-attack golden. Keep it mob-only until the game
-   design calls for it; the mechanism is ready when it does.
+4. **Player attacks roll too (decided — now built in the synchronous model).** Every attacker rolls the
+   same d20 to-hit; players roll their own attacks, mobs default to the house roll. Combat-dependent
+   golden fixtures supply hit dice (`SupplyDice`, on both command unions) so their outcomes stay
+   deterministic — a supplied die draws no rng, so those goldens change only by the added roll cue. The
+   async handshake below therefore prompts for **player attacks** (the attacker's own roll) as well as
+   mob reactions; a player-issued `Attack` is itself a command boundary, so it fits with no extra
+   machinery beyond mob reactions.
 
 ## Still open
 

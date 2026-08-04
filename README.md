@@ -460,23 +460,27 @@ Durability wear happens in two places:
 - **Armor wears on `takeDamage`**: each piece of non-broken armor that soaked incoming strength loses
   1 durability at the end of that `takeDamage` call.
 
-#### Mob to-hit rolls & the dice-supply seam
+#### To-hit rolls & the dice-supply seam
 
-A **mob** attacker rolls a **d20 to-hit** before its damage lands (player attacks always connect and
-are byte-stable): a natural **20** is a critical hit dealing **1.5×** damage; a natural **1** is a
-critical miss where the mob *stumbles* and takes 1 self-damage; **2–5** miss; **6–19** hit. Each
-outcome emits a mechanic cue (`"The Wraith rolls d20 → 14: hit."`) for the log.
+**Every** attacker — player or mob — rolls a **d20 to-hit** before its damage lands: a natural **20** is
+a critical hit dealing **1.5×** damage; a natural **1** is a critical miss where the attacker *stumbles*
+and takes 1 self-damage; **2–5** miss; **6–19** hit. Each outcome emits a mechanic cue
+(`"Ada rolls d20 → 14: hit."`) for the log. Players roll their own attacks; mobs default to the house
+roll.
 
 The d20 is drawn through `World::draw_die(sides)`, the one seam any table-supplied die reaches: it
 consumes a matching queued die (a literal physical outcome) if one is present, else the seeded
-`World.rng` — so a physical tabletop can let players **supply the die they rolled for the monster**, or
-pick **"Roll for me"** (supply nothing; the house rolls). Supplied dice arrive as a recorded
-`Command::SupplyDice { dice }` (validated `1 ≤ value ≤ sides`), so replays remain deterministic and the
-golden gates hold — the queue is transient world state, never serialized. On the physical/simulator
-board the dice reach the engine as a `DeviceEvent::DiceRolled { sides, values }` resolved to
-`SupplyDice` by the tabletop bridge; the web surface's dice tray and the controller's `--dry-run` both
-drive it. Because all randomness still flows through `World.rng` or recorded command data, the
-determinism invariant is preserved either way.
+`World.rng` — so a physical tabletop can let a player **supply the die they rolled** (for their own
+attack, or for a monster), or pick **"Roll for me"** (supply nothing; the house rolls). Supplied dice
+arrive as a recorded `SupplyDice { dice }` command (on both the sync and single-seat command unions,
+validated `1 ≤ value ≤ sides`), so replays remain deterministic and the golden gates hold — the queue
+is transient world state, never serialized, and a supplied die draws no rng (so a fixture that supplies
+hits is byte-identical to the pre-roll damage plus the roll cue). On the physical/simulator board the
+dice reach the engine as a `DeviceEvent::DiceRolled { sides, values }` resolved to `SupplyDice` by the
+tabletop bridge; the web surface's dice tray and the controller's `--dry-run` both drive it. Because all
+randomness still flows through `World.rng` or recorded command data, the determinism invariant is
+preserved either way. A **pause-at-the-moment** roll-request handshake (prompt the table *when* a roll
+is owed) is specced in [`docs/tabletop-async-rolls-spec.md`](docs/tabletop-async-rolls-spec.md).
 
 When the defender's Health drops to ≤ 0 as a result of damage, `reconcile` fires and — if this is a
 false→true KO transition — calls `onKnockOut` exactly once. For mobs this drops loot (see

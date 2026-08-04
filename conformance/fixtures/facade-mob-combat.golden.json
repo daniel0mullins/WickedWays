@@ -848,6 +848,12 @@
       "result": {
         "cues": [
           {
+            "cue": {
+              "text": "Ada rolls d20 -> 15: hit"
+            },
+            "kind": "mechanic"
+          },
+          {
             "action": "takeDamage",
             "actor": {
               "id": "mob:Brute",
@@ -865,7 +871,7 @@
           },
           {
             "cue": {
-              "text": "Brute rolls d20 -> 15: hit"
+              "text": "Brute rolls d20 -> 6: hit"
             },
             "kind": "mechanic"
           },
@@ -887,7 +893,7 @@
           },
           {
             "cue": {
-              "text": "Shade rolls d20 -> 6: hit"
+              "text": "Shade rolls d20 -> 15: hit"
             },
             "kind": "mechanic"
           },
@@ -1345,17 +1351,9 @@
         "cues": [
           {
             "cue": {
-              "text": "Brute rolls d20 -> 15: hit"
+              "text": "Brute rolls d20 -> 3: miss"
             },
             "kind": "mechanic"
-          },
-          {
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
-            },
-            "kind": "action"
           },
           {
             "action": "attack",
@@ -1380,13 +1378,7 @@
             "kind": "action"
           }
         ],
-        "mobAttacks": [
-          {
-            "amount": 1.4000000000000004,
-            "name": "Brute",
-            "stat": "health"
-          }
-        ]
+        "mobAttacks": []
       },
       "snapshot": {
         "campaign": {
@@ -1652,12 +1644,6 @@
                 "kind": "takeDamage",
                 "round": 2,
                 "stat": "health"
-              },
-              {
-                "amount": 1.4000000000000001,
-                "kind": "takeDamage",
-                "round": 3,
-                "stat": "health"
               }
             ],
             "id": "player:Ada",
@@ -1670,7 +1656,7 @@
             "name": "Ada",
             "stats": {
               "energy": 8.0,
-              "health": 4.399999999999999,
+              "health": 5.799999999999999,
               "sanity": 3.0
             }
           }
@@ -1815,7 +1801,7 @@
           }
         ],
         "status": {
-          "health": 4.399999999999999,
+          "health": 5.799999999999999,
           "locationName": "Hall",
           "maxTurns": 20,
           "sanity": 3.0,

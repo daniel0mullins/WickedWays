@@ -3445,6 +3445,12 @@
       "result": {
         "cues": [
           {
+            "cue": {
+              "text": "Ada rolls d20 -> 12: hit"
+            },
+            "kind": "mechanic"
+          },
+          {
             "action": "takeDamage",
             "actor": {
               "id": "mob:Wraith",
