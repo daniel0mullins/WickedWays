@@ -251,6 +251,68 @@ Either way the engine and bridge are untouched above the transport: a `CoilGridT
 `LaserFenceTransport`) implements `DeviceTransport`, emits `PieceOn`, and everything from
 `bridge::resolve` up — authorize, the solo loop, the dice seam — already exists.
 
+## Collector format (flagship SKU)
+
+The deluxe instantiation of the recommendation: **coil-grid sensing (Option A) under a single large
+*color* e-ink panel (display option 2), with a dimmable frontlight.** This is the one build where the
+physical pieces are unambiguously justified — the shared art lives *on the table*, so eyes and hands
+stay there and the phone is demoted to an optional private HUD (secret sanity, afflictions, GM
+whispers). It is the app-driven-horror pattern (Mansions of Madness 2e) with the board's art made live.
+
+**"Backlight" is really a frontlight — and that's a feature.** Color e-ink is reflective; a light
+*behind* it does nothing. An edge-lit **frontlight** *above* the panel (Kindle-style) washes the
+surface and is **dimmable**: the engine drives it as a lighting channel (the lantern brightens the
+board, sanity-loss dims it) and can kill it to reach genuine reflective darkness (frontlight off ⇒ the
+room is unreadable until light is brought). Ambiance control *and* the load-bearing darkness mechanic
+from one part.
+
+**The stack resolves the coil/TFT coupling risk** flagged in display option 2 — sensing sits *above*
+the panel, so the TFT backplane never sees the 13.56 MHz field:
+
+```
+pieces → cover glass → transparent coil layer (ITO/mesh) → frontlight guide → color e-ink (reflective)
+```
+
+NFC couples through glass + frontlight (both non-metallic); the rigid cover doubles as structural
+protection for the fragile panel.
+
+### BOM (13.3″ Spectra-6, self-contained; rough 2026, low-volume/hand-assembled)
+
+| Group | Part | ~COGS |
+|---|---|---|
+| Display | 13.3″ Spectra-6 7-color e-ink panel | $190 |
+| | IT8951-class e-ink controller | $30 |
+| Sensing | Transparent coil grid layer (laminated) | $35 |
+| | NFC reader IC + 16:1 mux | $8 |
+| Light & sound | Dimmable warm frontlight (guide + LED + driver) | $20 |
+| | WS2812 accent/edge glow (fast channel) | $5 |
+| | I²S amp + speaker (cues + sanity drone) | $12 |
+| Compute & power | Raspberry Pi (CM/4-class) — runs the engine standalone | $50 |
+| | PSU + internal LiPo + charge/protection | $18 |
+| Physical set | Cover glass / rigid bezel | $12 |
+| | Sculpted minis ×4 + lantern, NFC-tagged bases | $32 |
+| | Metal/resin dice + NFC dice tray (the dice-supply seam) | $22 |
+| Finish | Collector enclosure (wood/resin, magnetic lid, fitted foam) + packaging | $65 |
+| | Numbered plate + premium printed manual | $10 |
+| Overhead | EMC / safety / battery certification (amortized) | $30 |
+| | Assembly & test (hand-built) | $42 |
+| | **Landed COGS** | **≈ $581** |
+
+### Pricing (crowdfunded, numbered limited run)
+
+| SKU | Panel | ~COGS | **Retail** | ~Gross |
+|---|---|---|---|---|
+| Flagship — "Numbered Edition" | 13.3″ color | ~$580 | **$1,199** | ~52% |
+| Compact collector | 7.3″ color (−$140) | ~$440 | **$849** | ~48% |
+| Cost-down: phone-driven (drop the Pi; board is a BLE peripheral) | either | −$50 | −$100 | — |
+
+- That gross is **before** heavy/fragile fulfilment, ~8–10% platform fees, and returns — net is
+  meaningfully thinner; hold the anchor rather than discounting into the low four figures.
+- The panel is ~40% of COGS, so **a cracked panel is a warranty liability** — budget the enclosure to
+  protect it and plan a service-swap path.
+- This is a **limited numbered run, crowdfunded** (the panel MOQ needs pre-funding). Campaign plan:
+  [`kickstarter-campaign-plan.md`](./kickstarter-campaign-plan.md).
+
 ## Open questions
 
 - **Grid density:** 4×4 vs 5×5/6×6 — how many rooms must a single board show at once vs. re-lay-out per
