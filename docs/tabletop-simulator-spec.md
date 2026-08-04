@@ -182,7 +182,8 @@ campaign's status mechanic. Two constraints:
   as a recorded `Command::SupplyDice` (a literal outcome via `World::draw_die`, else the seeded rng
   "rolls for me"), preserving the determinism invariant. Its first consumer is a **mob d20 to-hit**
   roll (20 crit ×1.5 / 1 stumble / 2–5 miss / 6–19 hit), surfaced on the web dice tray and the
-  controller `--dry-run`.
+  controller `--dry-run`. The die is currently *pre-loaded*; a **pause-at-the-moment** roll-request
+  handshake is specced in [`tabletop-async-rolls-spec.md`](./tabletop-async-rolls-spec.md).
 - **Optional — networked Replica (Shape 2).** ⏳ Only if remote/hybrid play is wanted; pulls in
   B/C/D. The client already has the `Multi` (WebSocket) path — the tabletop surface runs on it today
   as one seat per device.

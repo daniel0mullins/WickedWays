@@ -105,10 +105,14 @@ Resolved since:
   `World::draw_die` of that size consumes it (a literal physical outcome), else the seeded rng rolls
   ("Roll for me"). Its first consumer is a **mob d20 to-hit** roll (crit/hit/miss/stumble). Supplied
   dice are recorded command data, so replay stays deterministic. On hardware, a dice-tray MCU (or NFC
-  dice) emits `DiceRolled` on the same COBS link.
+  dice) emits `DiceRolled` on the same COBS link. Today it's a **pre-load** (drop the die before the
+  provoking action); a **pause-at-the-moment** `RollRequest` handshake is specced in
+  [`tabletop-async-rolls-spec.md`](./tabletop-async-rolls-spec.md).
 
 Still open:
 
+- The **async roll-request** flow (prompt the table *when* a roll is needed) — see
+  [`tabletop-async-rolls-spec.md`](./tabletop-async-rolls-spec.md).
 - The `TileAction` hardware affordance (tile buttons vs. item taps) — the protocol carries it, but no
   hardware form is decided.
 - The ESP32 tile firmware itself (this document).
