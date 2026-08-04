@@ -4,6 +4,15 @@
       "kind": "startTurn"
     },
     {
+      "dice": [
+        {
+          "sides": 20,
+          "value": 14
+        }
+      ],
+      "kind": "supplyDice"
+    },
+    {
       "kind": "attack",
       "targetId": "mob:Ghoul"
     }
@@ -395,10 +404,405 @@
     },
     {
       "command": {
+        "dice": [
+          {
+            "sides": 20,
+            "value": 14
+          }
+        ],
+        "kind": "supplyDice"
+      },
+      "cues": [],
+      "snapshot": {
+        "campaign": {
+          "actedThisRound": [],
+          "actionSounds": {},
+          "activeCharacterIndex": 0,
+          "archetypes": [
+            {
+              "baseStats": {
+                "energy": 10,
+                "health": 10,
+                "sanity": 10
+              },
+              "id": "fighter",
+              "name": "Fighter"
+            }
+          ],
+          "avPolicy": {
+            "enabled": true,
+            "maxParticipants": 6,
+            "video": true
+          },
+          "chatPolicy": {
+            "backfillWindow": 200,
+            "edit": true,
+            "enabled": true,
+            "reactions": true,
+            "readReceipts": true,
+            "typing": true,
+            "whisper": true
+          },
+          "claims": [],
+          "encounterTable": {
+            "baseChance": 0,
+            "formations": [],
+            "visited": [
+              "room:Cellar"
+            ]
+          },
+          "encountered": [
+            "player:Ada:mob:Ghoul"
+          ],
+          "gmId": "player:Ada",
+          "id": "campaign:Lantern Dark Combat (conformance)",
+          "knownRecipes": [],
+          "loseConditions": [],
+          "materials": {},
+          "maxRounds": 20,
+          "mechanics": [],
+          "outcome": "ongoing",
+          "partyIds": [
+            "player:Ada"
+          ],
+          "round": 0,
+          "started": true,
+          "title": "Lantern Dark Combat (conformance)",
+          "winConditions": []
+        },
+        "characters": [
+          {
+            "actionsPerRound": 2,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {}
+            },
+            "archetypeImmunities": [],
+            "baseEscapeChance": 50,
+            "currentRoomId": "room:Cellar",
+            "equipment": {},
+            "history": [],
+            "id": "mob:Ghoul",
+            "inventory": {
+              "itemIds": [],
+              "keyIds": [],
+              "slots": 2
+            },
+            "kind": "mob",
+            "lightAverse": false,
+            "materialDrops": {},
+            "name": "Ghoul",
+            "naturalAttack": {
+              "power": 1,
+              "stat": "health"
+            },
+            "origin": "room",
+            "stats": {
+              "energy": 4.0,
+              "health": 4.0,
+              "sanity": 4.0
+            }
+          },
+          {
+            "actionsPerRound": 3,
+            "actionsThisRound": 0,
+            "afflictions": {
+              "active": {},
+              "immunity": {},
+              "shakenOff": [],
+              "turnsActive": {
+                "confused": 0,
+                "fear": 0,
+                "panic": 0
+              }
+            },
+            "archetypeId": "fighter",
+            "archetypeImmunities": [],
+            "currentRoomId": "room:Cellar",
+            "equipment": {
+              "leftHand": "player:Ada:item#items/dagger",
+              "rightHand": "player:Ada:item#items/lantern"
+            },
+            "history": [
+              {
+                "kind": "move",
+                "room": {
+                  "id": "room:Cellar",
+                  "name": "Cellar"
+                },
+                "round": 0
+              },
+              {
+                "items": [
+                  {
+                    "id": "player:Ada:item#items/dagger",
+                    "name": "Iron Dagger"
+                  }
+                ],
+                "kind": "pickUp",
+                "round": 0
+              },
+              {
+                "items": [
+                  {
+                    "id": "player:Ada:item#items/lantern",
+                    "name": "Brass Lantern"
+                  }
+                ],
+                "kind": "pickUp",
+                "round": 0
+              }
+            ],
+            "id": "player:Ada",
+            "inventory": {
+              "itemIds": [
+                "player:Ada:item#items/dagger",
+                "player:Ada:item#items/lantern"
+              ],
+              "keyIds": [],
+              "slots": 5
+            },
+            "kind": "player",
+            "name": "Ada",
+            "stats": {
+              "energy": 10.0,
+              "health": 10.0,
+              "sanity": 10.0
+            }
+          }
+        ],
+        "codex": [
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Cellar",
+              "round": 0
+            },
+            "key": "Ghoul",
+            "kind": "mob",
+            "snapshot": {
+              "name": "Ghoul",
+              "stats": {
+                "energy": 4,
+                "health": 4,
+                "sanity": 4
+              }
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Cellar",
+              "round": 0
+            },
+            "key": "room:Cellar",
+            "kind": "room",
+            "snapshot": {
+              "description": "A pitch-black cellar.",
+              "name": "Cellar"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Cellar",
+              "round": 0
+            },
+            "key": "weapon:Iron Dagger",
+            "kind": "item",
+            "snapshot": {
+              "name": "Iron Dagger",
+              "slot": "hand",
+              "type": "weapon"
+            }
+          },
+          {
+            "firstSeen": {
+              "characterId": "player:Ada",
+              "roomId": "room:Cellar",
+              "round": 0
+            },
+            "key": "accessory:Brass Lantern",
+            "kind": "item",
+            "snapshot": {
+              "emitsLight": true,
+              "name": "Brass Lantern",
+              "slot": "hand",
+              "type": "accessory"
+            }
+          }
+        ],
+        "exits": [],
+        "items": [
+          {
+            "behaviorKey": "items/dagger",
+            "durability": 5,
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
+            "modifier": 3
+          },
+          {
+            "behaviorKey": "items/lantern",
+            "id": "player:Ada:item#items/lantern",
+            "kind": "item",
+            "modifier": 0
+          }
+        ],
+        "loot": [],
+        "materialCaches": [],
+        "rooms": [
+          {
+            "dark": true,
+            "description": "A pitch-black cellar.",
+            "exits": {},
+            "id": "room:Cellar",
+            "lightSourceIds": [],
+            "lootIds": [],
+            "materialCacheIds": [],
+            "name": "Cellar",
+            "occupantIds": [
+              "mob:Ghoul",
+              "player:Ada"
+            ],
+            "scenes": [],
+            "spawnModifier": 1
+          }
+        ],
+        "schemaVersion": 6
+      },
+      "view": {
+        "caches": [],
+        "exits": [],
+        "finished": false,
+        "inventory": {
+          "equippedNames": [
+            "Iron Dagger",
+            "Brass Lantern"
+          ],
+          "items": [
+            {
+              "aliases": [
+                "iron dagger",
+                "dagger"
+              ],
+              "damaged": false,
+              "destroyable": true,
+              "droppable": true,
+              "equippable": true,
+              "hasLore": false,
+              "id": "player:Ada:item#items/dagger",
+              "kind": "item",
+              "name": "Iron Dagger",
+              "usable": false
+            },
+            {
+              "aliases": [
+                "brass lantern",
+                "lantern"
+              ],
+              "damaged": false,
+              "destroyable": false,
+              "droppable": true,
+              "equippable": true,
+              "hasLore": false,
+              "id": "player:Ada:item#items/lantern",
+              "kind": "item",
+              "name": "Brass Lantern",
+              "usable": false
+            }
+          ],
+          "keys": [],
+          "slots": 5
+        },
+        "lockedDoors": [],
+        "loot": [],
+        "materials": [],
+        "occupants": [
+          {
+            "aliases": [
+              "ghoul"
+            ],
+            "defeated": false,
+            "health": 4.0,
+            "id": "mob:Ghoul",
+            "kind": "occupant",
+            "name": "Ghoul"
+          }
+        ],
+        "outcome": "ongoing",
+        "recipes": [],
+        "room": {
+          "description": "A pitch-black cellar.",
+          "id": "room:Cellar",
+          "isLit": true,
+          "name": "Cellar"
+        },
+        "scope": [
+          {
+            "aliases": [
+              "ghoul"
+            ],
+            "defeated": false,
+            "health": 4.0,
+            "id": "mob:Ghoul",
+            "kind": "occupant",
+            "name": "Ghoul"
+          },
+          {
+            "aliases": [
+              "iron dagger",
+              "dagger"
+            ],
+            "damaged": false,
+            "destroyable": true,
+            "droppable": true,
+            "equippable": true,
+            "hasLore": false,
+            "id": "player:Ada:item#items/dagger",
+            "kind": "item",
+            "name": "Iron Dagger",
+            "usable": false
+          },
+          {
+            "aliases": [
+              "brass lantern",
+              "lantern"
+            ],
+            "damaged": false,
+            "destroyable": false,
+            "droppable": true,
+            "equippable": true,
+            "hasLore": false,
+            "id": "player:Ada:item#items/lantern",
+            "kind": "item",
+            "name": "Brass Lantern",
+            "usable": false
+          }
+        ],
+        "status": {
+          "health": 10.0,
+          "locationName": "Cellar",
+          "maxTurns": 20,
+          "sanity": 10.0,
+          "turn": 0
+        }
+      }
+    },
+    {
+      "command": {
         "kind": "attack",
         "targetId": "mob:Ghoul"
       },
       "cues": [
+        {
+          "cue": {
+            "text": "Ada rolls d20 -> 14: hit"
+          },
+          "kind": "mechanic"
+        },
         {
           "action": "takeDamage",
           "actor": {

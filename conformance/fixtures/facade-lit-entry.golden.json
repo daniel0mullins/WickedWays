@@ -359,6 +359,12 @@
       "result": {
         "cues": [
           {
+            "cue": {
+              "text": "Ada rolls d20 -> 16: hit"
+            },
+            "kind": "mechanic"
+          },
+          {
             "action": "takeDamage",
             "actor": {
               "id": "mob:Brute",
@@ -373,6 +379,12 @@
               "name": "Ada"
             },
             "kind": "action"
+          },
+          {
+            "cue": {
+              "text": "Brute rolls d20 -> 6: hit"
+            },
+            "kind": "mechanic"
           },
           {
             "action": "takeDamage",

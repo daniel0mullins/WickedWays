@@ -16,6 +16,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
+use crate::dice::SuppliedDie;
 use crate::world::ids::{CharacterId, ItemId, LootId, MaterialCacheId, RoomId};
 use crate::world::snapshot::CharacterSnapshot;
 
@@ -206,6 +207,14 @@ pub enum Command {
         mob_id: CharacterId,
         target_id: CharacterId,
     },
+    // ── table input: physical dice supplied for upcoming rolls (a mob to-hit, …) ──
+    // Not turn-gated to any seat and not time-advancing: the table drops the dice it rolled into the
+    // shared tray, and the next matching `World::draw_die` consumes them. A "Roll for me" is simply the
+    // absence of this command (the engine draws the seeded rng). Recorded on the log, so a replay
+    // reproduces the same rolls.
+    SupplyDice {
+        dice: Vec<SuppliedDie>,
+    },
 }
 
 impl Command {
@@ -285,6 +294,12 @@ impl Command {
     /// the active seat (like the GM's `nextPlayer`, but self-service).
     pub fn is_end_turn(&self) -> bool {
         matches!(self, Command::EndTurn { .. })
+    }
+
+    /// `true` for the table's dice-supply input (`supplyDice`) — not turn-gated to a seat and not
+    /// time-advancing; it only loads the shared dice tray.
+    pub fn is_dice_supply(&self) -> bool {
+        matches!(self, Command::SupplyDice { .. })
     }
 
     /// `true` for time-advancing player actions — the ones the solo turn loop wraps with

@@ -59,6 +59,12 @@
             "kind": "action"
           },
           {
+            "cue": {
+              "text": "Lurker rolls d20 -> 15: hit"
+            },
+            "kind": "mechanic"
+          },
+          {
             "action": "takeDamage",
             "actor": {
               "id": "player:Ada",
@@ -1177,6 +1183,12 @@
               "name": "Ada"
             },
             "kind": "action"
+          },
+          {
+            "cue": {
+              "text": "Lurker rolls d20 -> 6: hit"
+            },
+            "kind": "mechanic"
           },
           {
             "action": "takeDamage",
@@ -2342,12 +2354,10 @@
       "result": {
         "cues": [
           {
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
+            "cue": {
+              "text": "Lurker rolls d20 -> 3: miss"
             },
-            "kind": "action"
+            "kind": "mechanic"
           },
           {
             "action": "attack",
@@ -2358,13 +2368,7 @@
             "kind": "action"
           }
         ],
-        "mobAttacks": [
-          {
-            "amount": 0.3999999999999986,
-            "name": "Lurker",
-            "stat": "health"
-          }
-        ]
+        "mobAttacks": []
       },
       "snapshot": {
         "campaign": {
@@ -2493,12 +2497,6 @@
                   "name": "Hall"
                 },
                 "round": 0
-              },
-              {
-                "amount": 0.4,
-                "kind": "takeDamage",
-                "round": 0,
-                "stat": "health"
               }
             ],
             "id": "player:Ada",
@@ -2511,7 +2509,7 @@
             "name": "Ada",
             "stats": {
               "energy": 8.0,
-              "health": 19.6,
+              "health": 20.0,
               "sanity": 8.0
             }
           }
@@ -2717,7 +2715,7 @@
           }
         ],
         "status": {
-          "health": 19.6,
+          "health": 20.0,
           "locationName": "Hall",
           "maxTurns": 20,
           "sanity": 8.0,

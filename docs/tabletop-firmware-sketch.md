@@ -98,9 +98,21 @@ The host/controller software now exists (the ESP32 firmware above is still a ske
   `--dry-run` runs the whole engine→bridge→codec loop (paint the opening board, apply one piece move,
   repaint) with no device attached.
 
+Resolved since:
+
+- The **dice-supply** seam is built. A `DeviceEvent::DiceRolled { sides, values }` (a dice tray, or a
+  manual entry) resolves to `Command::SupplyDice`, which loads the engine's shared dice tray; the next
+  `World::draw_die` of that size consumes it (a literal physical outcome), else the seeded rng rolls
+  ("Roll for me"). Its first consumer is a **mob d20 to-hit** roll (crit/hit/miss/stumble). Supplied
+  dice are recorded command data, so replay stays deterministic. On hardware, a dice-tray MCU (or NFC
+  dice) emits `DiceRolled` on the same COBS link. Today it's a **pre-load** (drop the die before the
+  provoking action); a **pause-at-the-moment** `RollRequest` handshake is specced in
+  [`tabletop-async-rolls-spec.md`](./tabletop-async-rolls-spec.md).
+
 Still open:
 
+- The **async roll-request** flow (prompt the table *when* a roll is needed) — see
+  [`tabletop-async-rolls-spec.md`](./tabletop-async-rolls-spec.md).
 - The `TileAction` hardware affordance (tile buttons vs. item taps) — the protocol carries it, but no
   hardware form is decided.
-- The **dice-supply** seam (physical dice → the seeded rng as command data) — see the input note.
 - The ESP32 tile firmware itself (this document).

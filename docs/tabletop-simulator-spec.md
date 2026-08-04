@@ -177,9 +177,13 @@ campaign's status mechanic. Two constraints:
   piece/lantern identity (the `actor_id` source) — the firmware in
   [`tabletop-firmware-sketch.md`](./tabletop-firmware-sketch.md), with parts in
   [`tabletop-prototype-bom.md`](./tabletop-prototype-bom.md).
-- **P3 — full board + engine-gap decisions.** ⏳ N tiles; the design-doc engine gaps are settled per
-  the input note (`placeLight` landed in the core; dice-supply must enter through the seeded rng as
-  command data, per the determinism invariant).
+- **P3 — full board + engine-gap decisions.** 🔨 N tiles remain; the design-doc engine gaps are now
+  settled: `placeLight` landed in the core, and the **dice-supply** seam is built — physical dice enter
+  as a recorded `Command::SupplyDice` (a literal outcome via `World::draw_die`, else the seeded rng
+  "rolls for me"), preserving the determinism invariant. Its first consumer is a **mob d20 to-hit**
+  roll (20 crit ×1.5 / 1 stumble / 2–5 miss / 6–19 hit), surfaced on the web dice tray and the
+  controller `--dry-run`. The die is currently *pre-loaded*; a **pause-at-the-moment** roll-request
+  handshake is specced in [`tabletop-async-rolls-spec.md`](./tabletop-async-rolls-spec.md).
 - **Optional — networked Replica (Shape 2).** ⏳ Only if remote/hybrid play is wanted; pulls in
   B/C/D. The client already has the `Multi` (WebSocket) path — the tabletop surface runs on it today
   as one seat per device.

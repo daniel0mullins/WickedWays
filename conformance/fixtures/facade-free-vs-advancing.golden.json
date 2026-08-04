@@ -411,6 +411,12 @@
             "kind": "action"
           },
           {
+            "cue": {
+              "text": "Lurker rolls d20 -> 8: hit"
+            },
+            "kind": "mechanic"
+          },
+          {
             "action": "takeDamage",
             "actor": {
               "id": "player:Ada",
@@ -1213,12 +1219,10 @@
       "result": {
         "cues": [
           {
-            "action": "takeDamage",
-            "actor": {
-              "id": "player:Ada",
-              "name": "Ada"
+            "cue": {
+              "text": "Lurker rolls d20 -> 1: critical miss - stumbles"
             },
-            "kind": "action"
+            "kind": "mechanic"
           },
           {
             "action": "attack",
@@ -1338,7 +1342,7 @@
             "origin": "room",
             "stats": {
               "energy": 4.0,
-              "health": 5.0,
+              "health": 4.0,
               "sanity": 4.0
             }
           },
@@ -1384,12 +1388,6 @@
                 "amount": 0.0,
                 "kind": "takeDamage",
                 "round": 0,
-                "stat": "health"
-              },
-              {
-                "amount": 0.0,
-                "kind": "takeDamage",
-                "round": 1,
                 "stat": "health"
               }
             ],
@@ -1572,7 +1570,7 @@
               "lurker"
             ],
             "defeated": false,
-            "health": 5.0,
+            "health": 4.0,
             "id": "mob:Lurker",
             "kind": "occupant",
             "name": "Lurker"
@@ -1592,7 +1590,7 @@
               "lurker"
             ],
             "defeated": false,
-            "health": 5.0,
+            "health": 4.0,
             "id": "mob:Lurker",
             "kind": "occupant",
             "name": "Lurker"
@@ -1762,7 +1760,7 @@
             "origin": "room",
             "stats": {
               "energy": 4.0,
-              "health": 5.0,
+              "health": 4.0,
               "sanity": 4.0
             }
           },
@@ -1808,12 +1806,6 @@
                 "amount": 0.0,
                 "kind": "takeDamage",
                 "round": 0,
-                "stat": "health"
-              },
-              {
-                "amount": 0.0,
-                "kind": "takeDamage",
-                "round": 1,
                 "stat": "health"
               },
               {
@@ -2159,7 +2151,7 @@
             "origin": "room",
             "stats": {
               "energy": 4.0,
-              "health": 5.0,
+              "health": 4.0,
               "sanity": 4.0
             }
           },
@@ -2205,12 +2197,6 @@
                 "amount": 0.0,
                 "kind": "takeDamage",
                 "round": 0,
-                "stat": "health"
-              },
-              {
-                "amount": 0.0,
-                "kind": "takeDamage",
-                "round": 1,
                 "stat": "health"
               },
               {

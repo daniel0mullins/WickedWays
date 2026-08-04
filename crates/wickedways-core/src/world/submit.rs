@@ -648,6 +648,12 @@ mod tests {
     fn live_mob_strikes_and_reports_typed_health_delta() {
         let mut w = world_with_pc_in_room();
         seat_test_mob(&mut w, "wraith", "room1"); // natural attack default {health, 1}
+                                                  // Supply a plain (non-crit) hit so the new mob to-hit roll is deterministic and the damage is
+                                                  // the un-scaled 0.6 this test pins.
+        w.supplied_dice.push_back(crate::dice::SuppliedDie {
+            sides: 20,
+            value: 14,
+        });
         let mut cues = Vec::new();
         let attacks = w.run_mob_reactions(&cid("pc"), &Catalog::default(), &mut cues);
         // strength 1, armor 0, mitigator = effective sanity 7 → (10-7)*0.2 = 0.6 dealt
@@ -720,6 +726,12 @@ mod tests {
             c.stats.health = 1.0;
             c.stats.sanity = 0.0;
         }
+        // mob-a lands a plain hit (KO'ing the pc); only one die is needed — the loop breaks before
+        // mob-b ever rolls.
+        w.supplied_dice.push_back(crate::dice::SuppliedDie {
+            sides: 20,
+            value: 14,
+        });
         let attacks = w.run_mob_reactions(&cid("pc"), &Catalog::default(), &mut Vec::new());
         assert_eq!(attacks.len(), 1, "second mob must not pile on");
         assert_eq!(attacks[0].name, "mob-a");
