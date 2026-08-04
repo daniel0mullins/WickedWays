@@ -24,6 +24,11 @@ The talks are written to be spoken to engineers with **no Rust, game-dev, or
 project background**: every term of art gets a short plain-English gloss at
 its first use in each talk. Keep that convention when editing them.
 
+**Presenting to a non-technical audience?** There is a parallel set
+reformulated for gaming enthusiasts — no code, no architecture vocabulary,
+led by the game, the dice, the physical board, and moddability — in
+[`gamers/`](gamers/README.md), at the same four lengths with its own decks.
+
 ## The shared thesis
 
 Most games that ship on several surfaces end up with more implementations of
