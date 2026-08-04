@@ -160,7 +160,7 @@ system underneath (Rust's `no_std` mode), and CI builds it that way on every
 commit. That's not ideology — it's what lets the identical crate compile to
 wasm for the browser and native for a serial-port controller (Act VI).
 
-## Act IV — Discipline #2: closed vocabularies, or how content can't break the engine (6 min)
+## Act IV — Discipline #2: closed vocabularies, or how content can't break the engine (7 min)
 
 *Visual: the extension stack — trait → native lookup → scripted fallback —
 and the eight-variant effect set as a literal closed list.*
@@ -246,6 +246,37 @@ conditions — is authored in **one TOML file** whose compilation reproduces
 the committed description + catalog JSON byte-for-byte. The DSL isn't a
 demo; it's the production authoring surface.
 
+**What the discipline buys: the DOOM ambition (1 min, first flex cut).**
+Say the goal out loud: id Software's DOOM — the 1993 shooter — is the
+high-water mark of mod-friendliness. Its engine was strictly separated from
+its content, and thirty-plus years later strangers are *still* shipping new
+levels for it; the game outlived its own hardware because the community
+could keep feeding it. Wicked Ways is explicitly chasing that property for
+tabletop horror, and everything in this act is the strategy, not a cage:
+
+- **First-party content has no privileges.** Hollow House is, structurally,
+  a mod — the shipped campaign uses the exact TOML surface a modder would.
+  (DOOM shipped as data files its own engine loaded; same move.)
+- **A bad mod is boring, not catastrophic.** An unknown behavior name fails
+  at load, effects are clamped to legal ranges, the 64-per-event cap holds,
+  and there is no path to raw state — the worst a hostile campaign file can
+  do is be dull. It cannot corrupt a save.
+- **Mods outlive engine versions.** A save stores `{ key, state }` and
+  re-binds behavior on load, and the goldens pin engine behavior — so a
+  campaign authored against this year's engine behaves identically on next
+  year's unless a change was made deliberately, with a reviewed diff.
+- **One mod, every surface.** Author a campaign once and it runs in the
+  browser, on desktop, on the multiplayer server, and on the physical board
+  — the modder does nothing.
+- **Modded games keep the guarantees.** Determinism doesn't exempt mods:
+  replays, saves, and reproducible bug reports work for community content
+  exactly as for ours. And the compiler is the declared trust boundary —
+  malformed author input produces an error, never a crash.
+
+Honest gap, stated plainly: mod-friendly also means *shareable*, and the
+packaging story — hand someone a compiled campaign file and load it at
+runtime — is still open work. The rails are built; the loading dock isn't.
+
 ## Act V — Discipline #3 applied: sync, or multiplayer as a solved problem (6 min)
 
 *Visual: the submit pipeline — `submit → authorize → apply → Delta diff →
@@ -305,7 +336,7 @@ doors are gated in the UI via a pure ask-the-engine query
 *issues no command* — rather than letting surfaces re-derive rules. The one
 place surfaces touch rules, it's a read-only question put to the engine.
 
-## Act VI — The faces: pricing a new surface in lines of code (5 min)
+## Act VI — The faces: pricing a new surface in lines of code (6 min)
 
 *Visual: the five surfaces around the core, each annotated with its size:
 web ~10k (all presentation), wasm boundary ~260, tabletop bridge ~1.4k,
@@ -366,6 +397,29 @@ design points:
 Land the point: a *physical board game* was added to a video game for the
 price of a protocol adapter, and the rules never knew. That is the "one
 engine" bet, paid out.
+
+**Coda — blue sky (45 s, second flex cut).** The qualifying test for a
+surface is now visible: *can it render a view of the world and submit
+commands?* Anything that passes is a bridge away, because the game is
+turn-based (latency-tolerant), the authority does all the thinking, and the
+seams are plain JSON. So, without committing to any of them:
+
+- **VR/AR.** The haunted house *around* you — or augmented reality laid
+  over the real tabletop, ghost effects rising off the physical tiles. The
+  bridge already separates "what to show" from "how to show it"; a headset
+  is a very fancy renderer of the same view model.
+- **A voice surface.** It's a turn-based game whose canonical interface is
+  typed commands — a smart speaker is that parser with ears. "You hear
+  something scratching at the cellar door" was practically written for it.
+- **A chat-platform seat.** A Discord or Slack bot holding a seat: commands
+  in, narration out. The room server already speaks WebSocket; a bot is
+  just a client without pixels.
+- **Spectator streams.** Replicas are cheap — the delta applier never runs
+  rules — so a spectator view is a replica with no seat, and a stream
+  overlay is a renderer over it.
+
+None of these would touch `wickedways-core`. The engine doesn't know what a
+screen is — and that ignorance is the entire feature.
 
 ## Act VII — Golden pinning, the rewrite, and what it all costs (4 min)
 
@@ -457,11 +511,14 @@ Likely questions, with the honest answers:
 
 - End of Act II: ~9 min. Long? Cut the exit-id war story (−30 s) — and with
   it, the ASCII line in Act VII's cost list.
-- End of Act IV: ~20 min. Long? Compress Act III's exhibits to one each
-  (triangle + custodians), −90 s.
-- End of Act V: ~26 min. Act V is the thesis's proof — never cut it.
-- End of Act VI: ~31 min. The tabletop is the emotional peak; if desperate,
-  compress browser/desktop/embedding to their size-tally sentence.
-- Act VII lands at ~34–35 min, leaving 5 for questions in a 40-minute slot.
-  For a strict 30, drop the war story, halve Act III, and compress the Q&A
-  buffer.
+- End of Act IV: ~21 min with the DOOM beat. It is the **first flex cut**
+  (−60 s): dropping it loses the ambition framing but no argument. Also
+  cuttable: compress Act III's exhibits to one each (triangle + custodians),
+  −90 s.
+- End of Act V: ~27 min. Act V is the thesis's proof — never cut it.
+- End of Act VI: ~33 min with the blue-sky coda — the **second flex cut**
+  (−45 s). The tabletop is the emotional peak; if desperate, compress
+  browser/desktop/embedding to their size-tally sentence.
+- Act VII lands at ~36 min, leaving ~4 for questions in a 40-minute slot.
+  With both flex beats cut you're back at ~34. For a strict 30, drop both
+  flex beats and the war story, halve Act III, and compress the Q&A buffer.
