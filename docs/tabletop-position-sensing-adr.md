@@ -173,6 +173,35 @@ decision axis is **bounded vs. unbounded map:**
 | Failure mode | dead piece mid-game | none in the pieces |
 | Mitigations | duty-cycle poll, sleep-when-lifted (accelerometer), swappable coin cell, ruggedized base | — |
 
+### C1′ — mat-powered reactive pieces (resonant)
+
+The variant that rescues C1's battery flaw *and* buys a feature passive tokens can't. A **resonant
+inductive mat** (~6.78 MHz ISM, AirFuel/Rezence-style — not tightly-coupled Qi) under the play area
+powers the pieces while they're placed; a **supercapacitor buffers the lift-to-move gap**. The duty
+cycle of the game aligns with the duty cycle of the power: a piece is energized exactly when it's
+placed (and needs to sense), and coasts on the buffer for the few seconds it's airborne. **No lithium
+cell, no charging cradle, no dead-piece-mid-game.**
+
+- **Physics fits this case well.** Flat pieces = the ideal parallel-coil geometry (never tumbles into a
+  bad orientation); the per-piece budget is tiny (~mW–tens of mW); and a bounded 5×5 mat is small
+  enough for one or a few resonant coils to blanket with fairly uniform coupling (coverage uniformity is
+  the hard part of large wireless-power surfaces — bounding the board helps yet again).
+- **The prize is *output*, not just topping up sensing.** A mat-powered mini becomes an engine-driven
+  **reactive** device on the existing `Piece { glow, active }` / `Led` channels: glow amber on your
+  turn, pulse red in combat, flicker as an affliction takes hold, **haptically shudder** when struck. A
+  monster that lights from within when it wakes. Living, battery-free minis — deeply on-brand.
+- **The real cost: power vs. sensing interference.** A strong power field can swamp the 13.56 MHz NFC
+  reads. *Mitigations:* **time-multiplex** (pulse power, blank it a few ms for a read — sensing is only
+  needed a few times/sec and the supercap rides the blanks), frequency-plan/shield the sensing coils,
+  and use **resin (not metal) piece bodies** (metal in an induction field = eddy-current heating +
+  detuning). Efficiency is 30–60%, but at <1–2 W delivered the waste heat is small; the resonant
+  transmitter needs FCC Part 15/18 EMI cert (a mat-side cost, consistent with collector-tier cert).
+- **Decision gate — only if the pieces must be *active*.** If pieces are only *tracked*, stay passive
+  C2: no mat power, cheaper, tougher. Reach for C1′ only when pieces need to **do** things (reactive
+  output, or the unbounded/baseboard-free sensing of C1). Its virtue is directional: it moves complexity
+  **off the many handled pieces onto the one shared mat.** A premium/halo feature; the mass-market SKU
+  stays passive-C2 with no mat power.
+
 ### Why it's compelling regardless of flip 2
 
 - **Cheapest art on the table** + **physical fog-of-war** (unexplored = no tile) — arguably a better
@@ -194,7 +223,9 @@ decision axis is **bounded vs. unbounded map:**
   `bridge::resolve` is unchanged.
 
 This is a **different SKU** from the e-ink collector — the mass-market, expandable volume product to the
-collector's $1,199 halo, not a competitor on the same axis.
+collector's $1,199 halo, not a competitor on the same axis. The bounded-board + tile-churn rules (the
+"collapsing house") that make this replayable are specced in
+[`modular-map-design.md`](./modular-map-design.md).
 
 ---
 
