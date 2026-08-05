@@ -141,6 +141,20 @@ pub fn debug_enabled() -> bool {
     platform::has_flag("debug")
 }
 
+/// Whether THIS client plays the Villain — and therefore sees the entire map
+/// (villain omniscience). True when the client holds the GM identity and the
+/// campaign's designated villain IS the GM's character (the `"@gm"` authoring
+/// path). Identity-based, not turn-based: the GM keeps the full map off-turn.
+/// A solo hero facing a computer villain (a non-GM character) gets fog like
+/// anyone else.
+pub fn villain_omniscient(world: &World, gm: bool) -> bool {
+    gm && world
+        .campaign
+        .villain
+        .as_ref()
+        .is_some_and(|v| Some(&v.character_id) == world.campaign.gm_id.as_ref())
+}
+
 /// A distinct per-tab player identity for multiplayer. An explicit `?token=` wins (so a GM joins as
 /// the configured GM identity — `?token=gm` — and a link can pin an identity); otherwise this mints a
 /// random `player-XXXXXX` and persists it to the URL, so the lobby and the surface it hands off to

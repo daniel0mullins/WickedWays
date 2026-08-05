@@ -3,4 +3,10 @@
 /**
  * One card face in the Villain's hand, for surfaces to render.
  */
-export type CardView = { key: string, name: string, text?: string, };
+export type CardView = { key: string, name: string, text?: string, 
+/**
+ * `true` when playing this card requires a target room (Shadow Step, or any
+ * authored card with `config.target = "room"`), so surfaces can open a room
+ * picker before dispatching. Absent otherwise.
+ */
+needsRoom?: boolean, };

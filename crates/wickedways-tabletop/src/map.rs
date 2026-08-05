@@ -195,6 +195,159 @@ impl MapModel {
         }
     }
 
+    /// Villain omniscience: reveal the ENTIRE world — every room and every
+    /// exit — into the model, clearing the fog stubs (nothing is unexplored to
+    /// the Villain). Idempotent, and it PRESERVES coordinates of rooms already
+    /// placed (the fog origin anchors the reveal), so re-running after each
+    /// refresh keeps the layout stable.
+    ///
+    /// Placement is a BFS over exit directions from the already-placed rooms
+    /// (each additional disconnected component is seeded to the right of the
+    /// current bounding box). A keyed exit whose persisted state is not
+    /// `unlocked` renders as a locked (dashed) link — the Villain sees the
+    /// house AND its wards.
+    pub fn reveal_world(&mut self, world: &wickedways_core::World) {
+        use std::collections::VecDeque;
+
+        // Direction of `exit_id` as seen from room `from`, then its far side.
+        let dir_from = |from: &wickedways_core::world::snapshot::RoomSnapshot,
+                        exit_id: &wickedways_core::world::ids::ExitId|
+         -> Option<Direction> {
+            from.exits
+                .iter()
+                .find(|(_, id)| *id == exit_id)
+                .and_then(|(k, _)| Direction::from_key(k))
+        };
+
+        // Seed the queue with every already-placed room; then sweep unplaced
+        // rooms (BFS per component) until everything has coordinates.
+        let mut queue: VecDeque<String> = self.rooms.keys().cloned().collect();
+        loop {
+            while let Some(id) = queue.pop_front() {
+                let Some(here) = world
+                    .rooms
+                    .get(&wickedways_core::world::ids::RoomId(id.clone()))
+                else {
+                    continue;
+                };
+                let (hx, hy) = match self.rooms.get(&id) {
+                    Some(r) => (r.x, r.y),
+                    None => continue,
+                };
+                for (dir_key, exit_id) in &here.exits {
+                    let Some(dir) = Direction::from_key(dir_key) else {
+                        continue;
+                    };
+                    let Some(ex) = world.exits.get(exit_id) else {
+                        continue;
+                    };
+                    let other = if ex.endpoint_ids[0].0 == id {
+                        ex.endpoint_ids[1].clone()
+                    } else {
+                        ex.endpoint_ids[0].clone()
+                    };
+                    if self.rooms.contains_key(&other.0) {
+                        continue;
+                    }
+                    let Some(dest) = world.rooms.get(&other) else {
+                        continue;
+                    };
+                    let (dx, dy) = direction_delta(dir);
+                    self.rooms.insert(
+                        other.0.clone(),
+                        MapRoom {
+                            id: other.0.clone(),
+                            name: dest.name.clone(),
+                            x: hx + dx,
+                            y: hy + dy,
+                            has_remains: false,
+                        },
+                    );
+                    queue.push_back(other.0.clone());
+                }
+            }
+            // Any room still unplaced starts a fresh component, seeded past the
+            // right edge of what's already laid out.
+            let Some(seed) = world
+                .rooms
+                .values()
+                .find(|r| !self.rooms.contains_key(&r.id.0))
+            else {
+                break;
+            };
+            let offset_x = self.rooms.values().map(|r| r.x).max().unwrap_or(0) + 2;
+            self.rooms.insert(
+                seed.id.0.clone(),
+                MapRoom {
+                    id: seed.id.0.clone(),
+                    name: seed.name.clone(),
+                    x: offset_x,
+                    y: 0,
+                    has_remains: false,
+                },
+            );
+            queue.push_back(seed.id.0.clone());
+        }
+
+        // Refresh names + remains from the live world (fog placeholders carry
+        // ids as names until observed; the reveal knows better).
+        for (id, room) in &mut self.rooms {
+            let Some(snap) = world
+                .rooms
+                .get(&wickedways_core::world::ids::RoomId(id.clone()))
+            else {
+                continue;
+            };
+            room.name.clone_from(&snap.name);
+            room.has_remains = snap.occupant_ids.iter().any(|occ| {
+                world.characters.get(occ).is_some_and(|c| {
+                    c.afflictions
+                        .is_active(wickedways_core::world::afflictions::Status::Ko)
+                })
+            });
+        }
+
+        // Every exit becomes an edge; a keyed, still-warded door renders locked.
+        for ex in world.exits.values() {
+            let known = self.edges.iter().any(|e| {
+                (e.a == ex.endpoint_ids[0].0 && e.b == ex.endpoint_ids[1].0)
+                    || (e.a == ex.endpoint_ids[1].0 && e.b == ex.endpoint_ids[0].0)
+            });
+            let locked = ex.behavior_key.is_some()
+                && !ex
+                    .state
+                    .get("unlocked")
+                    .and_then(serde_json::Value::as_bool)
+                    .unwrap_or(false);
+            if known {
+                // Keep traversal edges, but track the ward state live.
+                for e in &mut self.edges {
+                    if (e.a == ex.endpoint_ids[0].0 && e.b == ex.endpoint_ids[1].0)
+                        || (e.a == ex.endpoint_ids[1].0 && e.b == ex.endpoint_ids[0].0)
+                    {
+                        e.locked = locked;
+                    }
+                }
+                continue;
+            }
+            let Some(from) = world.rooms.get(&ex.endpoint_ids[0]) else {
+                continue;
+            };
+            let Some(dir) = dir_from(from, &ex.id) else {
+                continue;
+            };
+            self.edges.push(MapEdge {
+                a: ex.endpoint_ids[0].0.clone(),
+                b: ex.endpoint_ids[1].0.clone(),
+                dir,
+                locked,
+            });
+        }
+
+        // Nothing is unexplored to the Villain.
+        self.stubs.clear();
+    }
+
     pub fn serialize(&self) -> MapSnapshot {
         MapSnapshot {
             rooms: self.rooms(),
@@ -543,5 +696,48 @@ mod tests {
         m.reset();
         assert!(m.rooms().is_empty());
         assert_eq!(m.current_id(), None);
+    }
+
+    /// The g2-villain genesis (Parlor —north→ Gallery, behavior-free exit).
+    fn villain_world() -> wickedways_core::World {
+        let snap: wickedways_core::CampaignSnapshot = serde_json::from_str(include_str!(
+            "../../../conformance/fixtures/g2-villain.genesis.json"
+        ))
+        .expect("g2-villain genesis parses");
+        wickedways_core::World::from_snapshot(snap)
+    }
+
+    #[test]
+    fn reveal_world_places_every_room_and_edge_and_clears_stubs() {
+        let world = villain_world();
+        let mut m = MapModel::new();
+        m.reveal_world(&world);
+        assert_eq!(m.rooms().len(), 2, "both rooms revealed");
+        assert_eq!(m.edges().len(), 1, "the one exit becomes an edge");
+        for r in m.rooms() {
+            assert!(m.stubs_for(&r.id).is_empty(), "nothing unexplored");
+        }
+        // Idempotent: a second reveal changes nothing.
+        m.reveal_world(&world);
+        assert_eq!(m.rooms().len(), 2);
+        assert_eq!(m.edges().len(), 1);
+    }
+
+    #[test]
+    fn reveal_world_anchors_on_already_observed_rooms() {
+        let world = villain_world();
+        let mut m = MapModel::new();
+        // The fog origin: the player has seen the Parlor at (0, 0).
+        m.observe(&vm("room:Parlor", "Parlor"));
+        m.reveal_world(&world);
+        let parlor = m.rooms().into_iter().find(|r| r.name == "Parlor").unwrap();
+        assert_eq!((parlor.x, parlor.y), (0, 0), "the fog origin is preserved");
+        let gallery = m.rooms().into_iter().find(|r| r.name == "Gallery").unwrap();
+        assert_eq!(
+            (gallery.x, gallery.y),
+            (0, -1),
+            "the Gallery lies north of the Parlor"
+        );
+        assert_eq!(m.current_id(), Some("room:Parlor"));
     }
 }

@@ -139,6 +139,11 @@ pub struct CardView {
     pub name: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text: Option<String>,
+    /// `Some(true)` when playing this card requires a target room (Shadow
+    /// Step, or any authored card with `config.target = "room"`), so surfaces
+    /// can open a room picker before dispatching. `None` otherwise.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub needs_room: Option<bool>,
 }
 
 /// The Villain panel: who the villain is, the hand (faces resolved from the
@@ -686,10 +691,19 @@ impl World {
                         .iter()
                         .map(|key| {
                             let face = cat.cards.get(key);
+                            // A room target is needed for the native Shadow
+                            // Step, or when the authored face says so via
+                            // `config.target = "room"` (free-form config — no
+                            // schema change needed for new targeted cards).
+                            let needs_room = key == "wicked:shadow-step"
+                                || face.is_some_and(|d| {
+                                    d.config.get("target").and_then(|t| t.as_str()) == Some("room")
+                                });
                             CardView {
                                 key: key.clone(),
                                 name: face.map_or_else(|| key.clone(), |d| d.name.clone()),
                                 text: face.and_then(|d| d.text.clone()),
+                                needs_room: needs_room.then_some(true),
                             }
                         })
                         .collect(),

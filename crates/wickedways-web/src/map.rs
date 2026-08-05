@@ -9,6 +9,51 @@ use dioxus::prelude::*;
 
 pub use wickedways_tabletop::map::*;
 
+/// The picker variant of [`map_svg`]: every room tile is clickable and reports
+/// its display NAME (the label) — the shape the `Intent::PlayCard { room }`
+/// field carries. Used by the point-and-click surface to target a
+/// room-requiring card (Shadow Step) on the map overlay.
+pub fn map_svg_pick(layout: &MapLayout, on_pick: Callback<String>) -> Element {
+    rsx! {
+        svg {
+            view_box: "0 0 {layout.width} {layout.height}",
+            class: "map-svg picking",
+            width: "{layout.width}",
+            height: "{layout.height}",
+            for (i, lk) in layout.links.iter().enumerate() {
+                line {
+                    key: "link-{i}",
+                    x1: "{lk.x1}", y1: "{lk.y1}", x2: "{lk.x2}", y2: "{lk.y2}",
+                    class: if lk.locked { "map-link locked" } else { "map-link" },
+                }
+            }
+            for (i, b) in layout.boxes.iter().enumerate() {
+                {
+                    let label = b.label.clone();
+                    rsx! {
+                        g {
+                            key: "pick-{i}",
+                            class: "map-pick",
+                            onclick: move |_| on_pick.call(label.clone()),
+                            rect {
+                                x: "{b.x}", y: "{b.y}", width: "{b.w}", height: "{b.h}", rx: "4",
+                                class: if b.current { "map-box current" } else { "map-box" },
+                            }
+                            text {
+                                x: "{b.x + b.w / 2.0}", y: "{b.y + b.h / 2.0}",
+                                class: "map-label",
+                                text_anchor: "middle",
+                                dominant_baseline: "middle",
+                                "{b.label}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Thin RSX emitter: turn a layout into an `<svg>`. Styled via the `.map-*` CSS classes.
 pub fn map_svg(layout: &MapLayout) -> Element {
     rsx! {

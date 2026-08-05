@@ -38,9 +38,10 @@ use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
     boot, boot_single, has_actions_left, intent_to_command, is_gm, is_my_turn, project,
-    read_config, rebuild_single, toggle_fullscreen, welcome_for, AppTransport, Mode, GM_IDENTITY,
+    read_config, rebuild_single, toggle_fullscreen, villain_omniscient, welcome_for, AppTransport,
+    Mode, GM_IDENTITY,
 };
-use crate::map::{layout_map, map_svg, MapModel};
+use crate::map::{layout_map, map_svg, map_svg_pick, MapModel};
 use crate::narrator::Narrator;
 use crate::savestore::{self, SaveBlob};
 use crate::scene_layout::{body_position, dir_position, partition_hotspots};
@@ -139,8 +140,11 @@ pub fn pnc_app() -> Element {
     let mut audio_on = use_signal(|| false);
     let inv_tab_items = use_signal(|| true); // true = Inventory tab, false = Key Items tab
     let mulligan_sel = use_signal(Vec::<usize>::new); // hand indices toggled for the mulligan
-                                                      // The boot mode + launcher palette, read once. The settings menu (save/restore/restart) shows
-                                                      // only in single-player; the palette (`?theme=`) overrides the pnc.css defaults on `.pnc-app`.
+                                                      // A room-targeted card awaiting its destination: (card key, display name).
+                                                      // Set by the villain panel's Play button; consumed by the map picker.
+    let mut pending_card = use_signal(|| None::<(String, String)>);
+    // The boot mode + launcher palette, read once. The settings menu (save/restore/restart) shows
+    // only in single-player; the palette (`?theme=`) overrides the pnc.css defaults on `.pnc-app`.
     let mode = use_hook(|| read_config().mode);
     let theme_vars = use_hook(|| pnc_theme_vars(&read_config().theme));
     // The campaign's welcome text (title/intro/button) — the manifest passthrough, read once.
@@ -175,6 +179,9 @@ pub fn pnc_app() -> Element {
                 let initial = project(&coord, &catalog);
                 if let Some(v) = &initial {
                     map_model.write().observe(v);
+                    if villain_omniscient(coord.replica(), gm) {
+                        map_model.write().reveal_world(coord.replica());
+                    }
                     print_room(log, narrator, v);
                     audio.update(v);
                 }
@@ -199,6 +206,9 @@ pub fn pnc_app() -> Element {
                             let after = project(&coord, &catalog);
                             if let Some(a) = &after {
                                 map_model.write().observe(a);
+                                if villain_omniscient(coord.replica(), gm) {
+                                    map_model.write().reveal_world(coord.replica());
+                                }
                                 audio.update(a);
                             }
                             vm.set(after);
@@ -214,6 +224,9 @@ pub fn pnc_app() -> Element {
                             let after = project(&coord, &catalog);
                             if let Some(a) = &after {
                                 map_model.write().observe(a);
+                                if villain_omniscient(coord.replica(), gm) {
+                                    map_model.write().reveal_world(coord.replica());
+                                }
                                 audio.update(a);
                             }
                             vm.set(after);
@@ -231,6 +244,9 @@ pub fn pnc_app() -> Element {
                             let after = project(&coord, &catalog);
                             if let Some(a) = &after {
                                 map_model.write().observe(a);
+                                if villain_omniscient(coord.replica(), gm) {
+                                    map_model.write().reveal_world(coord.replica());
+                                }
                                 audio.update(a);
                             }
                             vm.set(after);
@@ -266,6 +282,9 @@ pub fn pnc_app() -> Element {
                                         transport = t;
                                         coord = c;
                                         map_model.write().hydrate(blob.map);
+                                        if villain_omniscient(coord.replica(), gm) {
+                                            map_model.write().reveal_world(coord.replica());
+                                        }
                                         let restored = project(&coord, &catalog);
                                         log.write().push(LogLine::plain("Restored.".into()));
                                         if let Some(v) = &restored {
@@ -299,6 +318,9 @@ pub fn pnc_app() -> Element {
                                         let fresh = project(&coord, &catalog);
                                         if let Some(v) = &fresh {
                                             map_model.write().observe(v);
+                                            if villain_omniscient(coord.replica(), gm) {
+                                                map_model.write().reveal_world(coord.replica());
+                                            }
                                             print_room(log, narrator, v);
                                             audio.update(v);
                                         }
@@ -325,6 +347,9 @@ pub fn pnc_app() -> Element {
                                         transport = t;
                                         coord = c;
                                         map_model.write().hydrate(blob.map);
+                                        if villain_omniscient(coord.replica(), gm) {
+                                            map_model.write().reveal_world(coord.replica());
+                                        }
                                         let reverted = project(&coord, &catalog);
                                         log.write().push(LogLine::plain("Undone.".into()));
                                         if let Some(v) = &reverted {
@@ -443,6 +468,9 @@ pub fn pnc_app() -> Element {
                     }
                     if let Some(a) = &after {
                         map_model.write().observe(a);
+                        if villain_omniscient(coord.replica(), gm) {
+                            map_model.write().reveal_world(coord.replica());
+                        }
                     }
                     if let (Some(b), Some(a)) = (&before, &after) {
                         let lines = narrator.read().render_action(&intent, b, a);
@@ -528,7 +556,7 @@ pub fn pnc_app() -> Element {
                     div { class: if mode == Mode::Multi && (!my_turn() || !my_actions_left()) { "pnc-inv-gate waiting" } else { "pnc-inv-gate" },
                         {inventory_view(view.as_ref(), finished, inv_tab_items, menu)}
                         {crafting_view(view.as_ref(), finished, driver)}
-                        {villain_view(view.as_ref(), finished, is_gm, mulligan_sel, driver)}
+                        {villain_view(view.as_ref(), finished, is_gm, mulligan_sel, pending_card, map_open, driver)}
                     }
                     div { class: "pnc-log",
                         div { class: "log",
@@ -565,13 +593,37 @@ pub fn pnc_app() -> Element {
             }
 
             // ── Map overlay ─────────────────────────────────────────────────────
+            // Doubles as the ROOM PICKER for a room-targeted card play: while a
+            // card is pending, room tiles are clickable and a click dispatches
+            // the play; closing the overlay cancels the pending card.
             if map_open() {
-                div { class: "map-overlay", onclick: move |_| map_open.set(false),
+                div { class: "map-overlay",
+                    onclick: move |_| { map_open.set(false); pending_card.set(None); },
+                    if let Some((_, name)) = pending_card() {
+                        div { class: "overlay-banner", "Choose a room for {name}" }
+                    }
                     div { class: "overlay-frame", onclick: move |e| e.stop_propagation(),
-                        {map_svg(&layout_map(&map_model.read()))}
+                        if pending_card().is_some() {
+                            {map_svg_pick(&layout_map(&map_model.read()), Callback::new(move |room: String| {
+                                if let Some((card_key, _)) = pending_card() {
+                                    driver.send(PncAction::Run(ActionDescriptor::Intent {
+                                        label: "Play".into(),
+                                        intent: Intent::PlayCard { card_key, room: Some(room) },
+                                    }));
+                                }
+                                pending_card.set(None);
+                                map_open.set(false);
+                            }))}
+                        } else {
+                            {map_svg(&layout_map(&map_model.read()))}
+                        }
                     }
                     div { class: "overlay-legend",
-                        "─ open   ╌ locked   ? unexplored   ✕ remains   ▣ here   ·   click to close"
+                        if pending_card().is_some() {
+                            "click a room to play the card   ·   click outside to cancel"
+                        } else {
+                            "─ open   ╌ locked   ? unexplored   ✕ remains   ▣ here   ·   click to close"
+                        }
                     }
                 }
             }
@@ -807,13 +859,16 @@ fn crafting_view(
 /// selection — "Mulligan (n/3)" fires once exactly three are marked. Everyone else sees only the
 /// villain's name and pile counts. Hidden entirely when the campaign has no villain.
 ///
-/// A room-targeted play (Shadow Step) has no picker here yet — the engine's denial names the
-/// problem, and the CRT terminal's `play <card> to <room>` covers targeted plays.
+/// A room-targeted card (Shadow Step) plays through the MAP PICKER: its Play button stashes the
+/// card in `pending_card` and opens the map overlay, where clicking a room dispatches the play —
+/// and the Villain's map is the WHOLE house (villain omniscience), so any room is a legal target.
 fn villain_view(
     view: Option<&ViewModel>,
     finished: bool,
     is_gm: bool,
     mut mulligan_sel: Signal<Vec<usize>>,
+    mut pending_card: Signal<Option<(String, String)>>,
+    mut map_open: Signal<bool>,
     driver: Coroutine<PncAction>,
 ) -> Element {
     let Some(v) = view else { return rsx! {} };
@@ -850,6 +905,7 @@ fn villain_view(
                     let key = c.key.clone();
                     let name = c.name.clone();
                     let text = c.text.clone().unwrap_or_default();
+                    let needs_room = c.needs_room == Some(true);
                     let is_sel = selected.contains(&i);
                     rsx! {
                         div { key: "card-{i}-{c.key}", class: "villain-card",
@@ -872,12 +928,19 @@ fn villain_view(
                                 title: "{text}",
                                 onclick: move |_| {
                                     mulligan_sel.write().clear();
-                                    driver.send(PncAction::Run(ActionDescriptor::Intent {
-                                        label: "Play".into(),
-                                        intent: Intent::PlayCard { card_key: key.clone(), room: None },
-                                    }));
+                                    if needs_room {
+                                        // Room-targeted: stash the card and open
+                                        // the map picker instead of dispatching.
+                                        pending_card.set(Some((key.clone(), name.clone())));
+                                        map_open.set(true);
+                                    } else {
+                                        driver.send(PncAction::Run(ActionDescriptor::Intent {
+                                            label: "Play".into(),
+                                            intent: Intent::PlayCard { card_key: key.clone(), room: None },
+                                        }));
+                                    }
                                 },
-                                "Play {name}"
+                                if needs_room { "Play {name}…" } else { "Play {name}" }
                             }
                         }
                     }

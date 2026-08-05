@@ -421,10 +421,21 @@ character** (authored as `character = "@gm"`); in single-player it is an authore
   (`"<name> plays <card>."` mechanic cues, mirroring `MobAttack::narration`), so every surface
   narrates it for free. **The Warden's Gallery** (the `g2-villain` oracle) is registered as a
   debug-tier launcher campaign to exercise the whole loop.
+- **Villain map omniscience & the map picker.** The Villain sees the ENTIRE map:
+  `MapModel::reveal_world` (the shared fog-of-war model in `wickedways-tabletop`) places every
+  room and exit from the live world — anchored on any already-observed rooms, fog stubs
+  cleared, keyed doors whose state is still warded drawn as locked links. Both surfaces reveal
+  whenever the client *is* the Villain (`villain_omniscient`: the GM identity holds the
+  designated villain character — identity-based, so the full map persists off-turn, and a solo
+  hero facing a computer villain keeps normal fog). A card that needs a target room
+  (`CardView.needsRoom`: Shadow Step natively, or any authored card with
+  `config.target = "room"`) plays through the **map picker** on the point-and-click surface —
+  its Play button opens the map overlay with clickable room tiles, and since the Villain's map
+  is the whole house, any room is a legal Shadow Step target. The CRT hints
+  `(play … to <room>)` for targeted cards.
 - **Non-goals (v1):** no deck-building or draw-economy variants beyond the fixed rules above;
   no card-driven victory conditions; no third multiplayer seat type (the multiplayer Villain
-  is the GM's character); no point-and-click room picker for targeted plays yet (the CRT verb
-  covers them).
+  is the GM's character).
 
 ## Key mechanics
 
