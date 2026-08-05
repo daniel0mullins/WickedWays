@@ -132,6 +132,72 @@ The laser fence is fundamentally in tension with the $65 ceiling *and* with clus
 
 ---
 
+## Option C — Inverted / modular-tile topology
+
+Options A and B assume a *fixed* board (grid or panel) with the reader in the board and passive tags in
+the pieces. Option C flips both: **the map is built from modular tiles laid down as the party explores,
+and (optionally) the reader moves into the pieces.** It is less a third sensor than a different
+*product* — a mass-market, endlessly-expandable modular board game — that solves position sensing as a
+side effect.
+
+### Two independent flips
+
+1. **Modular, manually-placed tiles** (the valuable flip). The map is *emergent*: printed tiles are
+   placed one at a time on reveal, so an unexplored room is the **absence of a tile**. Fog-of-war
+   becomes physical, and the tile art is cheap print — no e-ink, no phone-glass compromise, art
+   genuinely on the table. This is the Mansions-of-Madness-2e model, and it maps onto `PieceOn`: a tile
+   UID → a campaign room; the engine owns the room-graph topology; the app *directs* placement on
+   reveal; legality is checked against the graph, not physical adjacency.
+2. **Reader-in-the-piece** (the contentious flip). Each piece carries an NFC reader + BLE + battery,
+   reads the tile beneath it, and beacons "piece X on tile Y" (BLE *advertising* — no pairing, low
+   power). Sensing becomes flawless — each piece self-reports, so **zero occlusion, calibration, or
+   clustering ambiguity** — but the piece becomes a ~$14 powered device instead of a $2 passive token,
+   with a charging ritual, a dead-piece-mid-game failure mode, and batteries in the most-handled part.
+
+### The XOR at the heart of it
+
+To auto-sense a piece on a *manually-placed* tile, something at the contact point must be the powered
+reader — so you can have **cheap passive tiles** *or* **passive pieces, not both.** Flip 2 buys an
+*unbounded* map (play anywhere, no baseboard) at the cost of powered pieces. The alternative keeps
+pieces passive by **laying the modular tiles on the Option-A coil-grid baseboard** — reader shared in
+the base, tiles cheap print, pieces passive — at the cost of a bounded, powered baseboard. So the real
+decision axis is **bounded vs. unbounded map:**
+
+| | C1 — smart pieces | C2 — modular tiles on a coil baseboard |
+|---|---|---|
+| Map size | **unbounded** (any table) | capped to the baseboard grid |
+| Pieces | powered, ~$14, charged | **passive, ~$2, indestructible** |
+| Tiles | cheap printed + tag | cheap printed (tag optional) |
+| Baseboard | **none** | required (powered) |
+| Sensing | flawless (self-read) | flawless (grid) |
+| Failure mode | dead piece mid-game | none in the pieces |
+| Mitigations | duty-cycle poll, sleep-when-lifted (accelerometer), swappable coin cell, ruggedized base | — |
+
+### Why it's compelling regardless of flip 2
+
+- **Cheapest art on the table** + **physical fog-of-war** (unexplored = no tile) — arguably a better
+  mystery mechanic than reflective e-ink, for free.
+- **Razor-and-blades:** base set once, cheap **tile-pack expansions forever** — each campaign is a ~$20
+  print run, not a hardware run. Base-set COGS drops (no panel) → **mass-market ~$299–499**.
+- **Occlusion-free sensing** either way.
+
+### Cost sketch (base set) & engine fit
+
+- Base station (Pi/ESP32 + BLE + wifi + audio + PSU): ~$60–80. BLE central = a base *device*, not iOS
+  Safari (Web Bluetooth is Android/desktop only — consistent with the rest of this doc).
+- **C1** smart pieces ×4: ~$14 parts each + charging cradle → ~$80–120. **C2**: the Option-A coil
+  baseboard (~$43) + passive pieces (~$8 total).
+- Modular printed tiles: ~$0.30–0.50 each; a 40-tile campaign ~ $20.
+- **Engine fit — already specced:** `PieceOn { tile_id, actor_id }` is the event; a reveal cue tells the
+  player which tile to place, and placing it *is* the physical response. A `ModularTileTransport`
+  (BLE-advertising pieces, or the coil baseboard) implements `DeviceTransport`; everything above
+  `bridge::resolve` is unchanged.
+
+This is a **different SKU** from the e-ink collector — the mass-market, expandable volume product to the
+collector's $1,199 halo, not a competitor on the same axis.
+
+---
+
 ## Where's the display? (a *separable* layer)
 
 Position sensing answers *where a piece is*; it says nothing about *what the board looks like*. Those
@@ -251,6 +317,13 @@ Either way the engine and bridge are untouched above the transport: a `CoilGridT
 `LaserFenceTransport`) implements `DeviceTransport`, emits `PieceOn`, and everything from
 `bridge::resolve` up — authorize, the solo loop, the dice seam — already exists.
 
+**Option C (modular tiles) is a different product, not a competitor on this axis.** It reframes the
+board as an expandable, mass-market game and is the strongest path if "art physically on the table +
+cheap expansions" matters more than a single premium surface. Prefer its **C2** form (modular tiles on
+the Option-A coil baseboard) to keep pieces passive; reserve **C1** (smart, powered pieces) only when an
+unbounded, baseboard-free map is a product pillar. It reuses the same `PieceOn` seam — so A and C2 share
+a sensing layer and differ only in whether the map is a fixed mat or placed tiles on that mat.
+
 ## Collector format (flagship SKU)
 
 The deluxe instantiation of the recommendation: **coil-grid sensing (Option A) under a single large
@@ -325,3 +398,7 @@ protection for the fragile panel.
 - **Display tier at launch:** ship phone-glass only ($99) and hold large-e-ink as a later premium SKU,
   or launch both? The mono-e-ink coil-over-display stack (the TFT-coupling risk above) is the one piece
   that needs a hardware spike before it can be committed.
+- **Fixed board vs. modular tiles (Option C):** is the product a single premium surface (A/B + display
+  options) or an expandable modular-tile game (C)? These are different SKUs with different economics —
+  and if C, the bounded-vs-unbounded map choice (C2 passive-pieces-on-a-baseboard vs. C1 smart pieces)
+  decides whether pieces stay battery-free.
