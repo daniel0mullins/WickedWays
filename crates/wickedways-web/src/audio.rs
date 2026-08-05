@@ -97,7 +97,19 @@ pub fn sound_for_cue(cue: &PresentationCue) -> Option<SynthVoice> {
                 gain: 0.06,
                 attack: 0.04,
             }),
-            ActionKind::Escape | ActionKind::Fumble | ActionKind::MechanicAction => None,
+            // A played Wicked Ways card: a low, ominous descending sweep.
+            ActionKind::PlayCard => Some(SynthVoice {
+                source: Source::Sawtooth,
+                freq: 220.0,
+                end_freq: Some(88.0),
+                duration: 0.35,
+                gain: 0.14,
+                attack: 0.02,
+            }),
+            ActionKind::Escape
+            | ActionKind::Fumble
+            | ActionKind::MechanicAction
+            | ActionKind::Mulligan => None,
         },
         PresentationCue::Encounter { .. } => Some(SynthVoice {
             source: Source::Sawtooth,

@@ -16,7 +16,7 @@ pub use description::CampaignDescription;
 pub use error::{AssembleError, Problem};
 
 use wickedways_core::world::descriptor::Catalog;
-use wickedways_core::world::snapshot::CampaignSnapshot;
+use wickedways_core::world::snapshot::{CampaignSnapshot, VillainSnapshot};
 
 /// One player seat. `archetype` mirrors `CharacterSnapshot::archetype_id`
 /// (`snapshot.rs:130`) — there is no `ArchetypeId` newtype in the core.
@@ -41,5 +41,22 @@ pub fn assemble(
     }
     let mut snap = construct::construct(desc, catalog)?;
     seat::seat_party(&mut snap, desc, catalog, party)?;
+
+    // The "@gm" villain sentinel resolves against the seated GM — after
+    // seating, like `gm_id` itself. An unseated (pristine) genesis carries no
+    // villain designation yet, exactly as it carries no GM.
+    if let Some(vdef) = &desc.villain {
+        if vdef.character == "@gm" && snap.campaign.villain.is_none() {
+            if let Some(gm) = snap.campaign.gm_id.clone() {
+                snap.campaign.villain = Some(VillainSnapshot {
+                    character_id: gm,
+                    deck: vdef.deck.clone(),
+                    hand: Vec::new(),
+                    discard: Vec::new(),
+                    card_action_taken: false,
+                });
+            }
+        }
+    }
     Ok(snap)
 }

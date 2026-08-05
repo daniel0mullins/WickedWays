@@ -516,6 +516,27 @@ impl World {
                 }
             }
         }
+        // Villain cards: every key in the deck, hand, and discard must resolve
+        // (native registry first, then a Card-family catalog script) — the
+        // strict mechanic discipline, not the weaker item one. Scripted cards
+        // additionally shape-check.
+        if let Some(v) = &self.campaign.villain {
+            for key in v.deck.iter().chain(v.hand.iter()).chain(v.discard.iter()) {
+                match crate::world::villain::resolve_card_behavior(key, cat) {
+                    None => {
+                        return Err(ProceduralViolation(format!(
+                            "Card '{key}' is not registered."
+                        )));
+                    }
+                    Some(crate::world::villain::ResolvedCardBehavior::Scripted(_)) => {
+                        if let Some(b) = cat.behaviors.get(key) {
+                            crate::script::validate_behavior(key, b)?;
+                        }
+                    }
+                    Some(crate::world::villain::ResolvedCardBehavior::Native(_)) => {}
+                }
+            }
+        }
         Ok(())
     }
 

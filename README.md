@@ -324,6 +324,95 @@ cannot forge entries. Discovery/completion tracking (e.g. "12 of 30 materials fo
 intentionally **not** part of the Codex — it is left to a separate future achievements feature,
 which can read the Codex's structured entries.
 
+### The Villain & Wicked Ways Cards
+
+A campaign may designate one character as the **Villain** — a true adversary who works
+against the Heroes (the rest of the party) and wields **Wicked Ways Cards**, one-time powers
+drawn from an authored deck. In multiplayer the Villain is the **GM's own pre-seated
+character** (authored as `character = "@gm"`); in single-player it is an authored mob/npc the
+**computer drives** (see the solo policy below).
+
+- **Designation & state.** `campaign.villain` (`crates/wickedways-core/src/world/snapshot.rs`,
+  `VillainSnapshot`) carries the villain's `characterId` plus the card economy: `deck` (draw
+  pile), `hand`, `discard`, and the per-turn `cardActionTaken` latch. All fields are
+  serde-omitted when absent/default, so villain-less campaigns serialize no trace of the
+  feature (the committed golden corpus is byte-unchanged). Sync deltas replicate the state
+  automatically (the campaign core diffs wholesale).
+- **Card economy.** The Villain starts with **5 cards** (`VILLAIN_HAND_SIZE`), dealt at
+  `begin_campaign` after a deterministic `World.rng` shuffle of the authored deck (genesis
+  stays pristine — deck in authored order, hand empty). On their turn they take at most
+  **one card action**, enforced by the latch (reset at their turn start): **play one card**
+  (resolve → discard it → draw 1) **or mulligan** (discard exactly 3 named cards, draw 3,
+  playing nothing). Both are **budgeted** actions. An empty draw pile reshuffles the discard
+  back in (again via `World.rng`); with both piles empty a draw yields nothing.
+- **Cards are the 7th behavior family** (`crates/wickedways-core/src/world/villain.rs`):
+  a `CardBehavior` trait (`playable` probe + `play`), a native `card_behavior(key)` registry,
+  and a `ResolvedCardBehavior` falling back to `BehaviorScript::Card { onPlay }` catalog
+  scripts (the same effect-body grammar as an item's `onUse`). Deck/hand/discard keys are
+  validated strictly at load in `validate_mechanics` (an unresolvable key is a
+  `ProceduralViolation`). Card faces (name/text/config) live in `catalog.cards`
+  (`CardDescriptor`), keyed by the same card key.
+- **The card-effect layer is villain-privileged and open by default.** Unlike mechanics
+  (a closed, party-restricted union), cards may reach **anything in the world except what is
+  specifically prohibited**. `CardEffect` wraps the standard `Effect` vocabulary applied
+  *without* the party-only targeting restriction (damage/heal/adjust/immunity may target any
+  character), and adds world-level powers: `DestroyItem` (inventory + equipment-slot cleanup,
+  no material deposit — loss, not scrapping), `Teleport` (any character, through the shared
+  `relocate` path: exit/enter scenes fire, the visibility cue emits, but no budget tick, no
+  move history, no spawn tail), `LightsOut`, and `SetExitState` (merge a JSON patch into an
+  exit's persisted state — seal or unseal doors). The **prohibition list** is the explicit
+  exception (`card_protected`): quest items (`droppable: false`) and keys cannot be
+  destroyed. Integrity clamps (stat floors, reconcile, the 64-effect cap) still hold —
+  privilege lifts targeting, never state integrity.
+- **The three shipped cards** (native, always compiled in): **`wicked:lights-out`** —
+  supernatural darkness for `config.rounds` (default 2) rounds: `campaign.lightsOutRounds`
+  makes **every** room unlit (`is_lit` short-circuits first, so the targeting gate,
+  light-averse ×1.5, entry-swing initiative, and both view projections all follow), ticking
+  down at round end with a "darkness lifts" cue on expiry; **`wicked:ruin`** — destroy a
+  random unprotected item a Hero carries (unplayable when no candidate exists — rejected
+  before anything is spent); **`wicked:shadow-step`** — teleport a character (default: the
+  villain) to any room (`roomId` target required).
+- **Wire commands.** `playCard { actorId, cardKey, roomId?, targetId? }` and
+  `mulligan { actorId, cardKeys }` are Rust-side extensions (like `talk`/`wait`/`destroy`):
+  budgeted, turn-gated turn-actions; the villain designation, hand membership, and the
+  play-XOR-mulligan latch are engine guards (rollback-safe denials). The `ViewModel` projects
+  a `villain` panel (hand faces from the catalog, pile counts, `isYou`, the latch) and
+  `lightsOutRounds` — both omitted when absent, keeping pinned view shapes byte-stable.
+- **The solo computer Villain.** In solo mode, a designated **non-party** villain acts after
+  each player turn — alongside mob reactions, before `next_player` (so a fatal card lands in
+  the round's outcome check). The deterministic rng-driven policy probes each distinct card
+  in hand for playability (Shadow Step stalks the active hero's room), plays one at random if
+  any qualifies, otherwise mulligans the first 3, otherwise passes. A party-member villain
+  (the multiplayer GM case) is skipped — they take real turns. KO'd villains skip.
+- **Authoring.** The TOML surface: a `[villain]` table (`character` — a declared mob/npc name,
+  mob-first resolution, or `"@gm"` resolved at seating exactly like `gmId`; `deck` — card
+  keys in authored order), `[[cards]]` faces (`key`/`name`/`text`/`config`), and optional
+  `[behaviors.card.<key>]` scripted behaviors. Native `wicked:*` cards need no `[[cards]]`
+  entry at all. Pinned by the `g2-villain` author + genesis goldens:
+
+  ```toml
+  [villain]
+  character = "Warden"          # or "@gm" — the seated GM plays the Villain
+  deck = ["wicked:lights-out", "wicked:ruin", "wicked:shadow-step", "hex"]
+
+  [[cards]]
+  key = "wicked:lights-out"
+  name = "Lights Out"
+  text = "Every flame gutters and dies for three rounds."
+  config = { rounds = 3 }
+
+  [behaviors.card.hex]
+  onPlay = '''
+    emit cue('A whispered curse crawls through the walls.')
+    emit adjustStat(party[0], sanity, -2)
+  '''
+  ```
+
+- **Non-goals (v1):** no deck-building or draw-economy variants beyond the fixed rules above;
+  no card-driven victory conditions; no third multiplayer seat type (the multiplayer Villain
+  is the GM's character); the web client's card-hand UI / CRT `play`/`mulligan` verbs are a
+  follow-up (the engine, wire protocol, and view projections are in place).
+
 ## Key mechanics
 
 ### Action budget

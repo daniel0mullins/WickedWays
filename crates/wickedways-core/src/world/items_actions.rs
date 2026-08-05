@@ -976,6 +976,7 @@ mod tests {
             behaviors: BTreeMap::default(),
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
+            cards: BTreeMap::default(),
         }
     }
 
@@ -1810,6 +1811,7 @@ mod tests {
             behaviors: BTreeMap::default(),
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
+            cards: BTreeMap::default(),
         };
 
         let (mut world, pc_id) = world_with_items(&[("key-x", "items/brass-key")], &cat);
@@ -2059,6 +2061,7 @@ mod tests {
             behaviors,
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
+            cards: BTreeMap::default(),
         };
 
         let (mut world, pc_id) = world_with_items(&[("potion-1", "items/potion")], &cat);

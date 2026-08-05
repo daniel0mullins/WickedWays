@@ -1,0 +1,59 @@
+{
+  "archetypes": [],
+  "caches": [],
+  "exits": [
+    {
+      "direction": "north",
+      "from": "Parlor",
+      "to": "Gallery"
+    }
+  ],
+  "formations": [],
+  "loot": [],
+  "loseConditions": [],
+  "materials": [],
+  "mechanics": [],
+  "mobs": [
+    {
+      "name": "Warden",
+      "naturalAttack": {
+        "power": 2,
+        "stat": "sanity"
+      },
+      "room": "Gallery",
+      "stats": {
+        "energy": 6.0,
+        "health": 8.0,
+        "sanity": 6.0
+      }
+    }
+  ],
+  "npcs": [],
+  "opts": {},
+  "recipes": [],
+  "rooms": [
+    {
+      "description": "A parlor of shrouded furniture.",
+      "name": "Parlor"
+    },
+    {
+      "description": "A long gallery of watchful portraits.",
+      "name": "Gallery"
+    }
+  ],
+  "scenes": [],
+  "startRoom": "Parlor",
+  "title": "Villain",
+  "villain": {
+    "character": "Warden",
+    "deck": [
+      "wicked:lights-out",
+      "wicked:ruin",
+      "wicked:shadow-step",
+      "hex",
+      "wicked:lights-out",
+      "wicked:ruin"
+    ]
+  },
+  "winConditions": []
+}

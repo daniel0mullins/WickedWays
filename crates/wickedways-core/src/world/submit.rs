@@ -190,6 +190,11 @@ impl World {
                 Vec::new()
             };
             if advances {
+                // The computer-driven Villain acts after the mobs (card powers
+                // are not ambush swings, so lit-room entry does not deny them)
+                // and before next_player, so a fatal card lands in the round's
+                // outcome check. No-op unless a non-party villain is designated.
+                self.run_villain_turn(&actor, cat, &mut cues)?;
                 self.next_player(cat, &mut cues)?;
             }
             Ok(Some(mob_attacks))
@@ -820,6 +825,7 @@ mod tests {
             behaviors: BTreeMap::new(),
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
+            cards: BTreeMap::default(),
         }
     }
 

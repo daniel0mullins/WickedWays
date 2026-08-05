@@ -171,6 +171,27 @@ pub enum Command {
     EndTurn {
         actor_id: CharacterId,
     },
+    // ── Villain card actions: play one card, or mulligan (discard 3, draw 3) ──
+    // Rust-side extensions beyond the TS union (like `talk`/`wait`/`destroy`): the
+    // Wicked Ways card system is a Rust-era feature. Both are budgeted turn-actions
+    // gated to the active character AND (in the engine) to the designated Villain;
+    // the per-turn play-XOR-mulligan exclusivity is the engine's latch, not the
+    // wire's. `playCard` carries optional targets (a room for a teleport, a
+    // character to aim a power at) the card behavior may require.
+    #[serde(rename_all = "camelCase")]
+    PlayCard {
+        actor_id: CharacterId,
+        card_key: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        room_id: Option<RoomId>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        target_id: Option<CharacterId>,
+    },
+    #[serde(rename_all = "camelCase")]
+    Mulligan {
+        actor_id: CharacterId,
+        card_keys: Vec<String>,
+    },
     // ── setup: pre-start, on your own character ──
     #[serde(rename_all = "camelCase")]
     SelectArchetype {
@@ -240,6 +261,8 @@ impl Command {
                 | Command::PlaceLight { .. }
                 | Command::TakeLight { .. }
                 | Command::Harvest { .. }
+                | Command::PlayCard { .. }
+                | Command::Mulligan { .. }
         )
     }
 
@@ -314,6 +337,8 @@ impl Command {
                 | Command::Use { .. }
                 | Command::Attack { .. }
                 | Command::Wait { .. }
+                | Command::PlayCard { .. }
+                | Command::Mulligan { .. }
         )
     }
 
@@ -338,6 +363,8 @@ impl Command {
             | Command::PlaceLight { actor_id, .. }
             | Command::TakeLight { actor_id, .. }
             | Command::Harvest { actor_id, .. }
+            | Command::PlayCard { actor_id, .. }
+            | Command::Mulligan { actor_id, .. }
             | Command::Talk { actor_id, .. }
             | Command::Wait { actor_id }
             | Command::EndTurn { actor_id }

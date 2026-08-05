@@ -9,6 +9,7 @@ import type { RecipeView } from "./RecipeView";
 import type { ScopeEntity } from "./ScopeEntity";
 import type { StatusView } from "./StatusView";
 import type { ThinRoom } from "./ThinRoom";
+import type { VillainView } from "./VillainView";
 
 /**
  * The widened ViewModel.
@@ -25,4 +26,14 @@ materials: Array<MaterialView>,
 /**
  * Recipes the party knows (with current affordability).
  */
-recipes: Array<RecipeView>, status: StatusView, outcome: CampaignOutcome, finished: boolean, };
+recipes: Array<RecipeView>, status: StatusView, outcome: CampaignOutcome, finished: boolean, 
+/**
+ * The Villain panel. Absent (and omitted on serialize) when no villain is
+ * designated, so pre-villain ViewModel goldens stay byte-stable.
+ */
+villain?: VillainView, 
+/**
+ * Rounds of supernatural darkness remaining (the `wicked:lights-out`
+ * card). Absent while inactive, keeping pre-villain goldens byte-stable.
+ */
+lightsOutRounds?: bigint, };

@@ -372,6 +372,8 @@ mod tests {
             },
             outcome: CampaignOutcome::Ongoing,
             finished: false,
+            villain: None,
+            lights_out_rounds: None,
         }
     }
 
