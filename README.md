@@ -408,10 +408,23 @@ character** (authored as `character = "@gm"`); in single-player it is an authore
   '''
   ```
 
+- **The web client surface.** Both shipped surfaces play the Villain. The CRT terminal parses
+  `play <card> [to <room>]` (the room is a NAME, resolved against the live world — Shadow Step
+  may target any room) and `mulligan <a>, <b>, <c>`; the active villain's hand is minted into
+  the parser scope as `kind: "card"` entities (verb-namespaced so a card never collides with a
+  same-named item). The CRT sidebar shows the hand face-up for the villain's own seat (pile
+  counts for everyone else) and the HUD pulses a `DARK n` countdown during supernatural
+  darkness; the point-and-click sidebar mirrors it with per-card Play buttons and a 3-card
+  mulligan toggle-selection. Face-up rendering is gated on the GM identity (the view projects
+  for the *active* seat, so an ungated panel would show the hand to players while the
+  GM-villain acts). The solo computer villain announces its plays from the engine
+  (`"<name> plays <card>."` mechanic cues, mirroring `MobAttack::narration`), so every surface
+  narrates it for free. **The Warden's Gallery** (the `g2-villain` oracle) is registered as a
+  debug-tier launcher campaign to exercise the whole loop.
 - **Non-goals (v1):** no deck-building or draw-economy variants beyond the fixed rules above;
   no card-driven victory conditions; no third multiplayer seat type (the multiplayer Villain
-  is the GM's character); the web client's card-hand UI / CRT `play`/`mulligan` verbs are a
-  follow-up (the engine, wire protocol, and view projections are in place).
+  is the GM's character); no point-and-click room picker for targeted plays yet (the CRT verb
+  covers them).
 
 ## Key mechanics
 
