@@ -836,6 +836,13 @@ impl World {
             }
         }
 
+        // Attribution prose for the surfaces (Action cues are presentation-
+        // silent by design, mirroring MobAttack::narration for mob strikes).
+        let villain_name = self
+            .characters
+            .get(&villain_id)
+            .map(|c| c.name.clone())
+            .unwrap_or_default();
         if !playable.is_empty() {
             let idx = if playable.len() == 1 {
                 0
@@ -843,10 +850,28 @@ impl World {
                 (i64::from(roll(playable.len() as u32, self.rng.next_f64())) - 1) as usize
             };
             let (key, room_target, char_target) = playable[idx].clone();
+            let card_name = cat
+                .cards
+                .get(&key)
+                .map_or_else(|| key.clone(), |d| d.name.clone());
+            cues.push(PresentationCue::Mechanic {
+                cue: MechanicCue {
+                    text: Some(format!("{villain_name} plays {card_name}.")),
+                    sound: None,
+                },
+            });
             return self.play_card(&villain_id, &key, room_target, char_target, cat, cues);
         }
         if hand.len() >= MULLIGAN_SIZE {
             let discards: Vec<String> = hand[..MULLIGAN_SIZE].to_vec();
+            cues.push(PresentationCue::Mechanic {
+                cue: MechanicCue {
+                    text: Some(format!(
+                        "{villain_name} sweeps cards from the table and draws anew."
+                    )),
+                    sound: None,
+                },
+            });
             return self.mulligan(&villain_id, &discards, cat, cues);
         }
         Ok(()) // nothing worth doing — the villain bides its time

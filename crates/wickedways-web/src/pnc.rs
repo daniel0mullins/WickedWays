@@ -138,8 +138,9 @@ pub fn pnc_app() -> Element {
     let mut settings_open = use_signal(|| false);
     let mut audio_on = use_signal(|| false);
     let inv_tab_items = use_signal(|| true); // true = Inventory tab, false = Key Items tab
-                                             // The boot mode + launcher palette, read once. The settings menu (save/restore/restart) shows
-                                             // only in single-player; the palette (`?theme=`) overrides the pnc.css defaults on `.pnc-app`.
+    let mulligan_sel = use_signal(Vec::<usize>::new); // hand indices toggled for the mulligan
+                                                      // The boot mode + launcher palette, read once. The settings menu (save/restore/restart) shows
+                                                      // only in single-player; the palette (`?theme=`) overrides the pnc.css defaults on `.pnc-app`.
     let mode = use_hook(|| read_config().mode);
     let theme_vars = use_hook(|| pnc_theme_vars(&read_config().theme));
     // The campaign's welcome text (title/intro/button) — the manifest passthrough, read once.
@@ -527,6 +528,7 @@ pub fn pnc_app() -> Element {
                     div { class: if mode == Mode::Multi && (!my_turn() || !my_actions_left()) { "pnc-inv-gate waiting" } else { "pnc-inv-gate" },
                         {inventory_view(view.as_ref(), finished, inv_tab_items, menu)}
                         {crafting_view(view.as_ref(), finished, driver)}
+                        {villain_view(view.as_ref(), finished, is_gm, mulligan_sel, driver)}
                     }
                     div { class: "pnc-log",
                         div { class: "log",
@@ -794,6 +796,109 @@ fn crafting_view(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/// The Villain panel: the Wicked Ways hand. For the villain's own seat (GM identity, or
+/// single-player) each card shows face-up with a Play button and a toggle for the mulligan
+/// selection — "Mulligan (n/3)" fires once exactly three are marked. Everyone else sees only the
+/// villain's name and pile counts. Hidden entirely when the campaign has no villain.
+///
+/// A room-targeted play (Shadow Step) has no picker here yet — the engine's denial names the
+/// problem, and the CRT terminal's `play <card> to <room>` covers targeted plays.
+fn villain_view(
+    view: Option<&ViewModel>,
+    finished: bool,
+    is_gm: bool,
+    mut mulligan_sel: Signal<Vec<usize>>,
+    driver: Coroutine<PncAction>,
+) -> Element {
+    let Some(v) = view else { return rsx! {} };
+    let Some(vn) = v.villain.as_ref() else {
+        return rsx! {};
+    };
+    let show_hand = vn.is_you && is_gm;
+    if !show_hand {
+        return rsx! {
+            div { class: "pnc-villain",
+                span { class: "panel-label", "Villain" }
+                span { class: "villain-status",
+                    "{vn.name} — hand {vn.hand.len()} · deck {vn.deck_count} · discard {vn.discard_count}"
+                }
+            }
+        };
+    }
+    let spent = vn.card_action_taken;
+    let selected = mulligan_sel();
+    let sel_count = selected.len();
+    let mulligan_ready = sel_count == 3 && !spent && !finished;
+    let mulligan_keys: Vec<String> = selected
+        .iter()
+        .filter_map(|i| vn.hand.get(*i).map(|c| c.key.clone()))
+        .collect();
+    rsx! {
+        div { class: "pnc-villain",
+            span { class: "panel-label",
+                "Wicked Ways — deck {vn.deck_count} · discard {vn.discard_count}"
+                if spent { " · card action spent" }
+            }
+            for (i, c) in vn.hand.iter().enumerate() {
+                {
+                    let key = c.key.clone();
+                    let name = c.name.clone();
+                    let text = c.text.clone().unwrap_or_default();
+                    let is_sel = selected.contains(&i);
+                    rsx! {
+                        div { key: "card-{i}-{c.key}", class: "villain-card",
+                            button {
+                                class: if is_sel { "card-toggle selected" } else { "card-toggle" },
+                                title: "Mark for the mulligan (discard 3, draw 3)",
+                                onclick: move |_| {
+                                    let mut sel = mulligan_sel.write();
+                                    if let Some(pos) = sel.iter().position(|x| *x == i) {
+                                        sel.remove(pos);
+                                    } else if sel.len() < 3 {
+                                        sel.push(i);
+                                    }
+                                },
+                                if is_sel { "☑" } else { "☐" }
+                            }
+                            button {
+                                class: "craft-btn card-play",
+                                disabled: spent || finished,
+                                title: "{text}",
+                                onclick: move |_| {
+                                    mulligan_sel.write().clear();
+                                    driver.send(PncAction::Run(ActionDescriptor::Intent {
+                                        label: "Play".into(),
+                                        intent: Intent::PlayCard { card_key: key.clone(), room: None },
+                                    }));
+                                },
+                                "Play {name}"
+                            }
+                        }
+                    }
+                }
+            }
+            if vn.hand.is_empty() {
+                span { class: "villain-status", "No cards in hand." }
+            } else {
+                button {
+                    class: "craft-btn mulligan-btn",
+                    disabled: !mulligan_ready,
+                    title: "Discard the three marked cards and draw three",
+                    onclick: move |_| {
+                        let keys = mulligan_keys.clone();
+                        mulligan_sel.write().clear();
+                        driver.send(PncAction::Run(ActionDescriptor::Intent {
+                            label: "Mulligan".into(),
+                            intent: Intent::Mulligan { card_keys: keys },
+                        }));
+                    },
+                    "Mulligan ({sel_count}/3)"
                 }
             }
         }

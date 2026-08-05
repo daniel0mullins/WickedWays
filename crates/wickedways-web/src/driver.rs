@@ -53,6 +53,12 @@ const HOLLOW_CATALOG: &str =
 // the launcher's `?campaign=` boot path requires.
 const COVENANT_GENESIS: &str = include_str!("../../../conformance/fixtures/covenant.genesis.json");
 const COVENANT_CATALOG: &str = include_str!("../../../conformance/fixtures/covenant.catalog.json");
+// The Warden's Gallery — the Villain & Wicked Ways Cards smoke campaign (the g2-villain author
+// oracle): a two-room gallery stalked by the Warden, a computer-driven Villain with a six-card
+// deck. Debug-tier: it exists to exercise the villain panel, the card verbs, and the solo villain
+// policy, not to be winnable.
+const VILLAIN_GENESIS: &str = include_str!("../../../conformance/fixtures/g2-villain.genesis.json");
+const VILLAIN_CATALOG: &str = include_str!("../../../conformance/fixtures/g2-villain.catalog.json");
 
 /// The default single-player campaign id when `?campaign=` is absent or unknown.
 pub const DEFAULT_CAMPAIGN: &str = "demo";
@@ -67,6 +73,7 @@ fn bundled(id: &str) -> Option<(&'static str, Option<&'static str>)> {
         "status-bar" | "g2-status-bar" => Some((STATUS_BAR_GENESIS, Some(STATUS_BAR_CATALOG))),
         "hollow-house" | "hollow" => Some((HOLLOW_GENESIS, Some(HOLLOW_CATALOG))),
         "covenant" => Some((COVENANT_GENESIS, Some(COVENANT_CATALOG))),
+        "villain" | "g2-villain" => Some((VILLAIN_GENESIS, Some(VILLAIN_CATALOG))),
         _ => None,
     }
 }
@@ -497,6 +504,16 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "Enter Hollow House",
             surfaces: BOTH_SURFACES,
             debug: false,
+            multiplayer: false,
+        },
+        CampaignInfo {
+            slug: "villain",
+            title: "The Warden's Gallery",
+            blurb: "A watchful gallery where the Warden plays Wicked Ways cards against you.",
+            intro: "The Warden keeps this gallery, and it does not keep it kindly. Somewhere behind the portraits it holds a hand of wicked cards — the lights, your belongings, even the walls answer to them. Endure.",
+            button_text: "",
+            surfaces: BOTH_SURFACES,
+            debug: true,
             multiplayer: false,
         },
         CampaignInfo {

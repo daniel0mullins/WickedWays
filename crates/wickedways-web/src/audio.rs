@@ -206,6 +206,13 @@ pub fn cue_for_intent(intent: &Intent) -> Option<PresentationCue> {
             actor: entity(target_id),
             sound: None,
         },
+        // A played card gets its ominous sweep (`sound_for_cue`); the mulligan
+        // stays silent, like every other unvoiced action.
+        Intent::PlayCard { card_key, .. } => PresentationCue::Action {
+            action: ActionKind::PlayCard,
+            actor: entity(card_key),
+            sound: None,
+        },
         _ => return None,
     })
 }

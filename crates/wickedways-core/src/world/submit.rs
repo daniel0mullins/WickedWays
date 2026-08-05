@@ -363,6 +363,30 @@ impl World {
             Intent::Craft { recipe_id } => self.craft(actor, &recipe_id, cat, cues).map(|_| ()),
             Intent::Repair { target_id } => self.repair(actor, &ItemId(target_id), cat, cues),
             Intent::Destroy { target_id } => self.destroy(actor, &ItemId(target_id), cat, cues),
+            // The Villain's card actions. The intent carries the room TARGET
+            // as a name; resolve it case-insensitively against the live rooms
+            // (Shadow Step may target any room, visited or not).
+            Intent::PlayCard { card_key, room } => {
+                let room_id = match room {
+                    None => None,
+                    Some(name) => {
+                        let want = name.to_lowercase();
+                        Some(
+                            self.rooms
+                                .values()
+                                .find(|r| r.name.to_lowercase() == want)
+                                .map(|r| r.id.clone())
+                                .ok_or_else(|| {
+                                    ProceduralViolation(alloc::format!(
+                                        "You know of no place called \"{name}\"."
+                                    ))
+                                })?,
+                        )
+                    }
+                };
+                self.play_card(actor, &card_key, room_id, None, cat, cues)
+            }
+            Intent::Mulligan { card_keys } => self.mulligan(actor, &card_keys, cat, cues),
         }
     }
 

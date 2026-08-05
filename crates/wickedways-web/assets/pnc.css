@@ -72,6 +72,16 @@ body {
 .craft-btn { text-align: left; padding: 0.3rem 0.5rem; background: var(--color-panel); color: var(--color-text); border: 1px solid var(--color-accent); border-radius: 3px; cursor: pointer; font: inherit; font-size: 0.85rem; }
 .craft-btn:hover:not(:disabled) { background: var(--color-accent); color: var(--color-bg); }
 .craft-btn.unaffordable, .craft-btn:disabled { border-color: var(--color-muted); color: var(--color-muted); cursor: not-allowed; opacity: 0.7; }
+
+/* ── the Villain panel (Wicked Ways cards) ── */
+.pnc-villain { display: flex; flex-direction: column; gap: 0.35rem; padding: 0.5rem 0.25rem 0; border-top: 1px solid rgba(184, 148, 60, 0.25); margin-top: 0.5rem; }
+.pnc-villain .panel-label { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-muted); }
+.pnc-villain .villain-status { font-size: 0.85rem; color: var(--color-text); }
+.villain-card { display: flex; gap: 0.3rem; align-items: stretch; }
+.villain-card .card-play { flex: 1 1 auto; }
+.card-toggle { flex: 0 0 auto; padding: 0.3rem 0.4rem; background: var(--color-panel); color: var(--color-muted); border: 1px solid var(--color-muted); border-radius: 3px; cursor: pointer; font: inherit; font-size: 0.85rem; }
+.card-toggle.selected { color: var(--color-accent); border-color: var(--color-accent); }
+.mulligan-btn { margin-top: 0.15rem; }
 .pnc-sidebar {
   width: clamp(220px, 28%, 360px);
   display: flex;

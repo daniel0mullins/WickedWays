@@ -575,6 +575,53 @@ impl World {
             .unwrap_or_default();
         materials.sort_by(|a, b| a.component.cmp(&b.component));
 
+        // Card scope entities let `play <name>` / `mulligan <names>` resolve a
+        // hand card by its face name — minted only while the ACTIVE character
+        // IS the Villain (nobody else can reference the hand), one entry per
+        // distinct key. Absent for villain-less campaigns, so pinned scope
+        // shapes stay byte-stable.
+        let card_scope: Vec<ScopeEntity> = self
+            .campaign
+            .villain
+            .as_ref()
+            .filter(|v| v.character_id == active_id)
+            .map(|v| {
+                let mut seen: Vec<&String> = Vec::new();
+                v.hand
+                    .iter()
+                    .filter(|key| {
+                        if seen.contains(key) {
+                            false
+                        } else {
+                            seen.push(key);
+                            true
+                        }
+                    })
+                    .map(|key| {
+                        let face = cat.cards.get(key);
+                        let name = face.map_or_else(|| key.clone(), |d| d.name.clone());
+                        ScopeEntity {
+                            id: key.clone(),
+                            aliases: alloc::vec![name.to_lowercase(), key.clone()],
+                            name,
+                            kind: "card".into(),
+                            health: None,
+                            image: None,
+                            equippable: None,
+                            usable: None,
+                            has_lore: None,
+                            droppable: None,
+                            destroyable: None,
+                            damaged: None,
+                            defeated: None,
+                            talkable: None,
+                            player: None,
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
         let mut scope: Vec<ScopeEntity> = Vec::new();
         scope.extend(occupants.clone());
         scope.extend(loot_content_scope);
@@ -584,6 +631,8 @@ impl World {
         // Crafting scope entities append after the pinned base ordering.
         scope.extend(caches.clone());
         scope.extend(recipe_scope);
+        // Card scope entities append last (villain-only; usually empty).
+        scope.extend(card_scope);
 
         // ── status ────────────────────────────────────────────────────────────
         let health = self.effective_stat(&active_id, StatType::Health, cat);

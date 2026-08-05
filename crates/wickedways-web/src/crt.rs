@@ -478,7 +478,11 @@ pub fn crt_app() -> Element {
     // scrolling region of the left column. All empty until the first projection.
     let vmodel = vm();
     let (hud, dock, side) = match &vmodel {
-        Some(v) => (hud_bar(v, &status_fields()), dock_bar(v), side_bar(v)),
+        Some(v) => (
+            hud_bar(v, &status_fields()),
+            dock_bar(v),
+            side_bar(v, is_gm),
+        ),
         None => (rsx! {}, rsx! {}, rsx! {}),
     };
     let (room_panel, log) = match vmodel {
@@ -676,6 +680,11 @@ fn hud_bar(v: &ViewModel, fields: &[StatusField]) -> Element {
             span { "HP {s.health}" }
             span { class: "sep", "·" }
             span { "SAN {s.sanity}" }
+            // Supernatural darkness countdown (the Villain's Lights Out card).
+            if let Some(n) = v.lights_out_rounds {
+                span { class: "sep", "·" }
+                span { class: "hud-dark", "DARK {n}" }
+            }
         }
         if !extra.is_empty() {
             div { class: "campaign-status",
@@ -730,8 +739,54 @@ fn dock_bar(v: &ViewModel) -> Element {
 }
 
 /// The right-third sidebar: the player's inventory and the shared material pool, kept in view
-/// alongside the scrolling transcript.
-fn side_bar(v: &ViewModel) -> Element {
+/// alongside the scrolling transcript — plus the Villain panel when a villain is designated.
+///
+/// `may_see_hand` guards the face-up hand: `VillainView.is_you` reflects the ACTIVE seat, and in
+/// multiplayer every replica projects the active character's view — so while the GM-villain is
+/// acting, a player's client would otherwise render the hand too. Only the GM identity (or
+/// single-player, where you drive every seat) sees faces; everyone else sees pile counts.
+fn side_bar(v: &ViewModel, may_see_hand: bool) -> Element {
+    let villain_section = v.villain.as_ref().map(|vn| {
+        let show_hand = vn.is_you && may_see_hand;
+        if show_hand {
+            let label = format!(
+                "Wicked Ways (deck {} · discard {})",
+                vn.deck_count, vn.discard_count
+            );
+            let hint = if vn.card_action_taken {
+                "(spent)"
+            } else {
+                "(play)"
+            };
+            chip_section(
+                label,
+                rsx! {
+                    for (i, c) in vn.hand.iter().enumerate() {
+                        span {
+                            key: "card-{i}-{c.key}",
+                            class: "chip",
+                            title: c.text.clone().unwrap_or_default(),
+                            "{c.name} ",
+                            span { class: "meta", "{hint}" }
+                        }
+                    }
+                    if vn.hand.is_empty() {
+                        span { class: "chip meta", "no cards" }
+                    }
+                },
+            )
+        } else {
+            chip_section(
+                "Villain".into(),
+                rsx! {
+                    span { class: "chip", "{vn.name} " }
+                    span { class: "chip meta",
+                        "hand {vn.hand.len()} · deck {vn.deck_count} · discard {vn.discard_count}"
+                    }
+                },
+            )
+        }
+    });
     let inv = &v.inventory;
     let empty = inv.items.is_empty() && inv.keys.is_empty();
     let label = format!(
@@ -762,6 +817,7 @@ fn side_bar(v: &ViewModel) -> Element {
                 }
             })}
         }
+        {villain_section}
     }
 }
 
