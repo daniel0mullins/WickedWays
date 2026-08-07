@@ -6,6 +6,12 @@
 > [`tabletop-firmware-sketch.md`](./tabletop-firmware-sketch.md). Both options plug into the *same*
 > `wickedways-tabletop` bridge — this is a **transport/sensor** decision, nothing above the transport
 > changes.
+>
+> ⚠️ **Costs here are estimates, not quotes, and an August 2026 review corrected several of them
+> downward-optimistic.** Corrections are marked inline. No vendor quote has been obtained for any line
+> item; no part of this ADR has been prototyped. Read every dollar figure as a planning placeholder
+> pending a real quote. Commercial sequencing — and why the campaign is gated on audience, not on
+> hardware — is in [`go-to-market-reality.md`](./go-to-market-reality.md).
 
 ## Context & constraints
 
@@ -21,10 +27,18 @@
   ~$30–40 once fulfilment/returns/support are counted). The display + compute are the customer's own
   phone/tablet (the shipped wasm web client) — $0 BOM — so this budget buys *sensing + pieces + mat*
   only.
-- **New protocol surface (either option):** `DeviceEvent::PieceOn { tile_id, actor_id }` — an absolute
-  "piece X is now on tile Y" report, from which the controller derives the `dir` for
-  `bridge::resolve` (or a `bridge` helper does, rejecting non-adjacent jumps as today). Absolute
-  reports self-heal a missed frame; the existing relative `PieceMoved` stays for the discrete-tap tiers.
+- **New protocol surface (either option) — ⚠️ PROPOSED, NOT IMPLEMENTED.**
+  `DeviceEvent::PieceOn { tile_id, actor_id }` — an absolute "piece X is now on tile Y" report, from
+  which the controller derives the `dir` for `bridge::resolve` (or a `bridge` helper does, rejecting
+  non-adjacent jumps as today). Absolute reports self-heal a missed frame; the existing relative
+  `PieceMoved` stays for the discrete-tap tiers.
+
+  **`PieceOn` does not exist in code.** Today `crates/wickedways-tabletop/src/protocol.rs` defines
+  exactly four events — `PieceMoved`, `TileAction`, `Lantern`, `DiceRolled` — and eight commands
+  (`Tile`, `Piece`, `Dashboard`, `Banner`, `Led`, `Sound`, `Resolution`, `Clear`). `PieceOn` and
+  `TileIn` appear only in these design docs. Adding them is small, but statements elsewhere in this
+  document that "the engine and bridge are untouched" describe the *intended* design, not the current
+  build.
 
 ---
 
@@ -41,9 +55,21 @@ occlude and nothing to calibrate.
   (the existing `tag_to_actor` table). Reuses the NTAG tags already in the BOM.
 - **LC-resonant tags (the e-chessboard approach).** Each piece holds a passive LC circuit tuned to a
   unique frequency; the board sweeps frequency per coil and reads identity + position. **This is how
-  DGT / Chessnut electronic boards work — a mass-produced, camera-free, calibration-free product that
-  identifies which piece is on which square, retailing right around the $100 target.** That is the
-  existence proof that the capability *and* the price point are real today.
+  DGT / Chessnut electronic boards work — mass-produced, camera-free, calibration-free products that
+  identify which piece is on which square.** That is the existence proof that the capability is real
+  and manufacturable today.
+
+  ⚠️ **Correction (Aug 2026): the price claim was wrong, and the comp cuts both ways.** An earlier
+  draft said these retail "right around the $100 target." Actual: **Chessnut Air is ~$219–250** — 13″,
+  cherry-wood frame, built-in LEDs, BLE, companion app, and *full piece recognition* (type and colour
+  on every square, individual sensors per square). So:
+  - **Good news for feasibility.** A polished consumer product ships exactly the sensing capability
+    Option A describes, which strongly de-risks the *technology* choice.
+  - **Bad news for pricing.** It sets the market's reference price for "smart board that knows which
+    piece is where" at **~$250**, with a mature supply chain, tooling, and support behind it. Any
+    Wicked Ways board must justify its delta over that number — see the collector-format caveats below,
+    where the $1,199 flagship is ~5× this comp and the entire difference is a colour e-ink panel plus
+    an IP with no existing audience.
 
 ### Why it fits this game
 
@@ -74,9 +100,15 @@ occlude and nothing to calibrate.
 | Box, insert, certification amortized | $6 |
 | **Landed COGS** | **≈ $43** |
 
-**Closes comfortably:** $99 retail on ~$43 COGS ≈ **57% gross margin**, leaving real headroom for
+**Closes on paper:** $99 retail on ~$43 COGS ≈ **57% gross margin**, leaving headroom for
 channel/fulfilment before the 30% floor. A finer (5×5/6×6) grid adds ~$1/mux + PCB area and still
 lands under $55.
+
+> ⚠️ **Same caveat as the collector BOM: these are estimates at an assumed volume that a first run
+> won't have.** At a few hundred units, PCB, enclosure, packaging, and assembly all cost materially
+> more per unit than budgeted here, and certification is a fixed cost spread over very few units. The
+> *technology* choice is well de-risked by the Chessnut comp; the *unit economics* at low volume are
+> not. Treat $43 as a target to validate with quotes, not a number to plan a price around.
 
 ---
 
@@ -175,6 +207,14 @@ decision axis is **bounded vs. unbounded map:**
 
 ### C1′ — mat-powered reactive pieces (resonant)
 
+> ⚠️ **Sourcing correction (Aug 2026): this variant rests on a standard that lost.** The A4WP/PMA
+> merger produced AirFuel, which *"failed to keep pace with Qi"*; Apple's Qi adoption effectively
+> **ended Rezence as a market standard**. Consequence: there is no mainstream ~6.78 MHz resonant
+> chipset ecosystem, reference design, or module to buy. C1′ therefore implies **custom RF engineering**
+> — schedule and cost measured in engineer-months, not a BOM line. Additionally, the power-vs-NFC
+> time-multiplexing below is **asserted, never bench-validated**. Treat C1′ as the most speculative
+> item in this document.
+
 The variant that rescues C1's battery flaw *and* buys a feature passive tokens can't. A **resonant
 inductive mat** (~6.78 MHz ISM, AirFuel/Rezence-style — not tightly-coupled Qi) under the play area
 powers the pieces while they're placed; a **supercapacitor buffers the lift-to-move gap**. The duty
@@ -266,10 +306,17 @@ layer. This is the **only** option that restores *both* art-on-the-table **and**
 darkness: an unlit e-ink region is genuinely unreadable until you bring light — the load-bearing horror
 mechanic, native, no LED trickery needed (though LEDs still carry the fast channel).
 
-- **Color vs mono is really a refresh-*granularity* decision.** Color ACeP / Spectra-6 needs a
-  **full-panel** refresh (~15–30 s, no partial update) — so revealing one room redraws the *whole
-  board*, slowly. **Mono** e-ink supports **partial/windowed** refresh (~0.3–1 s) — repaint just the
-  room that changed. For a *single large* panel, **mono wins decisively on UX.** If color is a must,
+- **⚠️ Refresh is a design-defining constraint, not a footnote.** Colour ACeP / Spectra-6 has **no
+  partial refresh at all** (verified) and takes **~10–30 s** for a full-panel update. So *every single
+  room reveal freezes and flashes the entire board* for up to half a minute. In a horror game the
+  reveal is the core beat — this directly attacks pacing and tension, and it is the strongest
+  functional argument against a single large colour panel. Any colour build must either accept that
+  cadence as a deliberate ritual ("the house redraws itself"), tile the board so only one panel
+  repaints, or use mono.
+- **Color vs mono is really a refresh-*granularity* decision.** Because colour cannot partial-refresh,
+  revealing one room redraws the *whole board*, slowly. **Mono** e-ink supports **partial/windowed**
+  refresh (~0.3–1 s) — repaint just the room that changed. For a *single large* panel, **mono wins
+  decisively on UX.** If color is a must,
   use a *few medium panels* so a reveal refreshes only the affected panel (the per-tile firmware
   topology, coarsened).
 - **Panel granularity — one big vs. several small.** Panel count is *decoupled* from the room grid: a
@@ -295,10 +342,13 @@ mechanic, native, no LED trickery needed (though LEDs still carry the fast chann
 - **Cost reality — this is a premium SKU, not the $99 product.** Large e-ink is the cost driver and
   scales *nonlinearly* with area:
 
+  ⚠️ **Corrected Aug 2026** — the colour panel prices below were 40–60% low; verified retail for the
+  13.3″ Spectra 6 is **$326–500**, which pushes the colour row well past a "$199–299 deluxe edition."
+
   | Panel | ~Landed COGS | Verdict |
   |---|---|---|
-  | Large **color** (13″ Spectra-6, ~$180–200 panel) | **$150–250** | blows $100 — a $199–299 "deluxe" edition only |
-  | Large **mono** (10–13″, ~$90–130 panel) | **$90–120** | at/over the ceiling — realistically a ~$129–149 SKU |
+  | Large **color** (13″ Spectra-6, ⚠️ ~~$180–200~~ → **$326–500** panel) | **$400–600+** | far past $100; realistically a four-figure SKU, not a $199–299 "deluxe" |
+  | Large **mono** (10–13″, ~$90–130 panel — *unverified, treat as the colour figure was*) | **$90–120** | at/over the ceiling — realistically a ~$129–149 SKU |
   | Repurposed **ESL** / salvaged e-reader panels | cheaper | not a productizable supply chain |
 
 **Product framing: the coil grid is the constant; the display is the SKU tier.** Coil grid + phone =
@@ -334,8 +384,9 @@ one engine.
 
 **Adopt Option A (coil grid), NFC-UID flavor first.** For a tile-quantized game where pieces cluster
 in combat, the grid wins on every axis that matters — occlusion, calibration, cluster-robustness — and
-delivers identity+position natively at exactly the engine's resolution, at a COGS the e-chessboard
-industry has already proven at this price. NFC-UID reuses the tags already in the BOM and the existing
+delivers identity+position natively at exactly the engine's resolution. The e-chessboard industry
+proves the **capability** is manufacturable and consumer-priced (~$219–250 retail for Chessnut Air);
+it does *not* prove the $43 COGS at a first run's volume, which still needs quotes. NFC-UID reuses the tags already in the BOM and the existing
 `tag_to_actor` table; LC-resonant is a later cost-down (cheaper passive pieces, no per-tag silicon)
 once volume justifies custom-tuned tags.
 
@@ -370,7 +421,7 @@ board, sanity-loss dims it) and can kill it to reach genuine reflective darkness
 room is unreadable until light is brought). Ambiance control *and* the load-bearing darkness mechanic
 from one part.
 
-**The stack resolves the coil/TFT coupling risk** flagged in display option 2 — sensing sits *above*
+**The stack moves the coil/TFT coupling risk** flagged in display option 2 — sensing sits *above*
 the panel, so the TFT backplane never sees the 13.56 MHz field:
 
 ```
@@ -380,13 +431,32 @@ pieces → cover glass → transparent coil layer (ITO/mesh) → frontlight guid
 NFC couples through glass + frontlight (both non-metallic); the rigid cover doubles as structural
 protection for the fragile panel.
 
+> ⚠️ **UNVALIDATED — this is the collector build's weakest link, and it trades one risk for another.**
+> An earlier draft claimed this stack "resolves" the coupling risk. More accurately it *relocates* it:
+> the TFT is no longer in the field, but the sensing coils must now be **transparent**, and transparent
+> conductors (ITO/fine mesh) have far higher sheet resistance than copper. Since **Q ∝ 1/R**, and an
+> NFC **reader** antenna wants **Q > 20**, this is a hard constraint — with a design paradox on top:
+> enlarging the loop to raise inductance *also* lengthens the conductor and raises resistance, so Q
+> does not simply improve with area. A reader antenna (which must energise a tag) is a harder case than
+> a tag antenna.
+>
+> **The $35 line item for this layer is invented — there is no quote behind it.** Before any collector
+> board is committed, this needs a **bench spike**: build one transparent coil at the intended size,
+> measure Q and read range through the actual cover glass and frontlight guide, with the e-ink panel
+> powered underneath. If Q can't be made workable, the fallbacks are copper coils *below* the panel
+> (reintroducing the TFT problem), a non-transparent grid in the bezel, or abandoning the
+> sensing-over-display combination entirely.
+
 ### BOM (13.3″ Spectra-6, self-contained; rough 2026, low-volume/hand-assembled)
+
+> ⚠️ **Corrected Aug 2026 — the original BOM understated its largest line by 40–60%, and three others
+> are understated at this run size. None of these figures are quotes.**
 
 | Group | Part | ~COGS |
 |---|---|---|
-| Display | 13.3″ Spectra-6 7-color e-ink panel | $190 |
-| | IT8951-class e-ink controller | $30 |
-| Sensing | Transparent coil grid layer (laminated) | $35 |
+| Display | 13.3″ Spectra-6 7-color e-ink panel — ⚠️ was **$190**; retail-verified **$326–500** | **$330–500** |
+| | IT8951-class e-ink controller (may already be included in module pricing above) | $30 |
+| Sensing | Transparent coil grid layer (laminated) — ⚠️ **invented figure, unvalidated** (see Q-factor note) | $35? |
 | | NFC reader IC + 16:1 mux | $8 |
 | Light & sound | Dimmable warm frontlight (guide + LED + driver) | $20 |
 | | WS2812 accent/edge glow (fast channel) | $5 |
@@ -396,25 +466,49 @@ protection for the fragile panel.
 | Physical set | Cover glass / rigid bezel | $12 |
 | | Sculpted minis ×4 + lantern, NFC-tagged bases | $32 |
 | | Metal/resin dice + NFC dice tray (the dice-supply seam) | $22 |
-| Finish | Collector enclosure (wood/resin, magnetic lid, fitted foam) + packaging | $65 |
+| Finish | Collector enclosure (wood/resin, magnetic lid, fitted foam) + packaging — ⚠️ understated | $65+ |
 | | Numbered plate + premium printed manual | $10 |
-| Overhead | EMC / safety / battery certification (amortized) | $30 |
-| | Assembly & test (hand-built) | $42 |
-| | **Landed COGS** | **≈ $581** |
+| Overhead | EMC / safety / battery certification (amortized) — ⚠️ low for an intentional radiator | $30+ |
+| | Assembly & test (hand-built) — ⚠️ understated (2–4 h skilled labour) | $42+ |
+| | **Landed COGS — original estimate** | ~~≈ $581~~ |
+| | **Landed COGS — corrected** | **≈ $700–860** |
+
+**The four corrections, and why:**
+
+1. **Panel $190 → $330–500.** Retail-verified. This alone moves COGS ~$140–310.
+2. **"Volume pricing" does not apply at 500 units.** 500 is *prototype scale*. Injection tooling
+   doesn't amortise; a hand-built wood/resin enclosure with magnetic lid and fitted foam is not $65 at
+   that quantity. Assembly of a laminated glass/coil/frontlight/e-ink/Pi/battery stack is 2–4 h of
+   skilled labour, not $42.
+3. **Certification is low.** $30/unit × 500 = $15k total for a device that is an intentional radiator
+   (BLE/NFC) with a lithium cell — FCC Part 15 + CE/UKCA + UN38.3. If the C1′ powered mat ever ships,
+   Part 18 testing adds materially.
+4. **Sole-source supply risk.** E Ink is the only maker of Spectra 6 film; Waveshare/Good Display are
+   module resellers. **A 500-unit order carries no allocation leverage** — you buy near retail, through
+   distributors, with no second source. If supply tightens, the flagship has no fallback panel.
 
 ### Pricing (crowdfunded, numbered limited run)
 
-| SKU | Panel | ~COGS | **Retail** | ~Gross |
+| SKU | Panel | Corrected COGS | **Retail** | Corrected gross |
 |---|---|---|---|---|
-| Flagship — "Numbered Edition" | 13.3″ color | ~$580 | **$1,199** | ~52% |
-| Compact collector | 7.3″ color (−$140) | ~$440 | **$849** | ~48% |
+| Flagship — "Numbered Edition" | 13.3″ color | **~$700–860** | **$1,199** | ⚠️ **~28–42%** (was claimed ~52%) |
+| Compact collector | 7.3″ color | ~$500–600 | **$849** | ~29–41% (was claimed ~48%) |
 | Cost-down: phone-driven (drop the Pi; board is a BLE peripheral) | either | −$50 | −$100 | — |
 
-- That gross is **before** heavy/fragile fulfilment, ~8–10% platform fees, and returns — net is
-  meaningfully thinner; hold the anchor rather than discounting into the low four figures.
-- The panel is ~40% of COGS, so **a cracked panel is a warranty liability** — budget the enclosure to
-  protect it and plan a service-swap path.
-- This is a **limited numbered run, crowdfunded** (the panel MOQ needs pre-funding). Campaign plan:
+- **The corrected flagship margin sits at or below the 30% floor**, *before* heavy/fragile fulfilment,
+  ~8–10% platform fees, and returns. On the pessimistic panel price the unit is close to
+  break-even after fulfilment. The $1,199 anchor does not survive its own BOM without either a
+  materially cheaper panel (a real quote, or a smaller/mono panel) or a higher price.
+- **The competitive frame is unfavourable.** Chessnut Air delivers equivalent piece-recognition
+  sensing, in wood, with LEDs and an app, at **~$219–250** (see Option A). The flagship asks ~5× that
+  for a colour e-ink surface plus an IP with, as of Aug 2026, **under 100 subscribers**.
+- The panel is ~45–55% of corrected COGS, so **a cracked panel is a severe warranty liability** —
+  budget the enclosure to protect it and plan a service-swap path.
+- **Every reveal repaints the whole board.** Spectra 6 has **no partial refresh** and takes ~10–30 s
+  full-panel. This is not a footnote — see the refresh constraint under display option 2.
+- This is a **limited numbered run, crowdfunded** (the panel MOQ needs pre-funding). ⚠️ **A 500-unit
+  flagship run implies a ~$600k raise**, which is not achievable at the current audience size — see
+  [`go-to-market-reality.md`](./go-to-market-reality.md). Campaign plan:
   [`kickstarter-campaign-plan.md`](./kickstarter-campaign-plan.md).
 
 ## Open questions

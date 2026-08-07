@@ -63,6 +63,26 @@ leave the graph mid-game. This lands on machinery that already exists:
   live map/deck/collapsed-pile a **serialization shape** (they become snapshot + save state). That is a
   meatier change than dice, with golden/save implications — expect deliberate golden regeneration.
 
+### Verified scope (Aug 2026 audit)
+
+**Today the map is strictly fixed at genesis.** `World` holds `rooms: BTreeMap<RoomId, RoomSnapshot>`
+and `exits: BTreeMap<ExitId, ExitSnapshot>` (`world/mod.rs`); `World::from_snapshot` is the **only**
+hydration path; no `Command` variant is map-structural; and `add_room`/`spawn_room`/`create_room` grep
+to **zero** hits outside `#[cfg(test)]` fixtures. The room graph itself is just an adjacency map
+embedded in the room snapshots (`RoomSnapshot.exits: direction → ExitId`,
+`ExitSnapshot.endpoint_ids: [RoomId; 2]`), which is a *simple* structure to mutate.
+
+**One significant mitigation:** the replication half is already built. `sync::delta::EntitySnapshot`
+has a `Room(Box<RoomSnapshot>)` variant, and `sync/applier.rs` already **inserts and removes rooms** on
+a replica. So a room created on the authority would replicate correctly today — what's missing is
+purely the *authority-side* mechanism to create one. That makes this meaningfully cheaper than a
+from-scratch mutable-map project.
+
+**The dominant cost is the golden corpus, not the code.** `conformance/fixtures/` holds large committed
+golden-replay files gated by `cargo test --workspace` (`combat.golden.json` ~439 KB,
+`afflictions.golden.json` ~260 KB, and ~15 more). Any change to snapshot *shape* or RNG *draw order*
+forces regenerating all of them and reviewing the diff. Sequence the work to change the shape **once**.
+
 ## Replayability compounds (multiplicatively)
 
 `which subset of the deck surfaces` × `how tiles are placed/connected` × `which rooms churn in over the

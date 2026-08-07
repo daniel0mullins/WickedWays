@@ -12,6 +12,13 @@
 >
 > **Companion assets:** a page-design concept ([`kickstarter-campaign-mockup.html`](./kickstarter-campaign-mockup.html)
 > — open in a browser) and the image-generation brief ([`assets-brief.md`](./assets-brief.md)).
+>
+> 🛑 **NOT READY TO LAUNCH — read [`go-to-market-reality.md`](./go-to-market-reality.md) first.**
+> An August 2026 review found this plan rests on two things that do not exist: **a publicly playable
+> demo** (nothing deploys the web client — only the docs site is published) and **an audience** (under
+> 100 subscribers as of Aug 2026, against an evidence-based requirement of ~1,000 for even a modest
+> campaign). The strategy below is sound *in shape*; its prerequisites are unbuilt. Treat it as the
+> plan for a campaign that is **two to three steps away**, not the next step.
 
 ## The pitch (hook)
 
@@ -35,10 +42,25 @@ game* before pledging — the single strongest de-risker we have. What the money
 narrow and legible: the **hardware production run** and the **flagship campaign's art + writing** — not
 "will the software work."
 
+> 🛑 **BLOCKED: the demo is not deployed.** As of Aug 2026 nothing in the repo publishes the playable
+> client. `.github/workflows/docs.yml` deploys **only** the VitePress docs site; the root `Dockerfile`
+> *builds* the wasm client + server but no hosting config of any kind is committed (no
+> `fly.toml`/`vercel.json`/`netlify.toml`/`render.yaml`/compose/k8s), and the only public URL in the
+> repo is the docs site. `landing/index.html` is a "Coming Soon" capture page with **no play link**.
+>
+> This pillar is the campaign's central claim *and* the best top-of-funnel for fixing the audience
+> problem, which makes **deploying it the highest-leverage single action available** — see
+> [`go-to-market-reality.md`](./go-to-market-reality.md). Until it is live, this section describes an
+> intention, not an asset.
+
 ## Why Kickstarter, why now
 
-- **Fall 2026 timing** matches the landing page's existing promise, and the email list + socials are
-  already capturing an audience to convert on day one.
+- ⚠️ **Fall 2026 is the *software* launch, not this campaign** (confirmed Aug 2026). The landing page's
+  "Launching Fall 2026" refers to the digital game. **The hardware campaign has no committed date**, and
+  should not acquire one until the audience gate in
+  [`go-to-market-reality.md`](./go-to-market-reality.md) is cleared. The email list exists and is wired
+  to Mailchimp, but at **under 100 subscribers** it cannot yet "convert on day one" in any meaningful
+  volume.
 - **The color e-ink panel needs MOQ pre-funding** — it's ~40% of unit COGS and orders at volume. A
   crowd both funds that buy and *validates demand* for a genuinely niche luxury object before we commit
   capital to panels.
@@ -74,13 +96,29 @@ number. Inputs we know vs. `TODO`:
 | Tooling — mini molds, enclosure, coil-layer lamination NRE | quotes needed | `TODO` |
 | Certification (EMC/FCC/CE, battery/UN38.3) | one-time + per-region | `TODO` |
 | Panel MOQ pre-buy | vendor quote | `TODO` |
-| **Fee stack on raised funds** | KS ~5% + payment ~3–5% + failed-payment ~7–8% | plan **~15%** off the top |
+| **Fee stack on raised funds** | ⚠️ corrected: KS **5%** + Stripe **~3% + $0.20/pledge** = **~8–10% in actual fees**. Dropped pledges are *lost revenue*, not a fee; budgeting ~15% all-in for fees + drops is still a reasonable planning number, but the two must not be conflated. | fees **~8–10%**; plan ~15% incl. drops |
 | Fulfilment (heavy, fragile, insured) | per-unit, region-dependent | `TODO` — model separately, charge shipping at pledge |
 | Contingency buffer | hardware always slips | **+15%** |
 
 Rule of thumb: **goal = (fixed costs + tooling + cert + campaign art) ÷ (1 − fee% − buffer%)**, chosen
 so a *modest* number of collector units + the digital/phone volume clears it. Charge shipping as a
 separate post-campaign step (BackerKit-style) so fragile-freight variance doesn't eat the pledge.
+
+> ⚠️ **This formula is necessary but not sufficient — and on its own it is circular.** It computes what
+> you *need*, never what backers will *give*. The binding constraint is the audience, and it is
+> testable: opted-in subscribers convert at **5–15%**; a campaign is launch-ready when its list alone
+> raises **30% of goal in the first 24 hours**; campaigns that miss 30% in 48 h *almost never recover*.
+> So the real rule is **goal ≤ (list size × conversion × average pledge) ÷ 0.30** — and the costs-based
+> figure must come in *under* that ceiling, not above it.
+>
+> | Scenario | Raise implied | Day-one needed (30%) | Backers @ ~$150 avg | Subscribers @ 10% conv. |
+> |---|---|---|---|---|
+> | **Today (<100 subs)** | ~$2.5–7.5k max | ~$750–2,250 | 5–15 | **~100 (current)** |
+> | Minimal modular-tile run | ~$50k | ~$15k | ~100 | **~1,000 (10×)** |
+> | Collector flagship, 500 units | **~$600k** | ~$180k | ~1,200 | **~12,000 (120×)** |
+>
+> The 500-unit numbered flagship implies a **~$600k raise** — a two-orders-of-magnitude audience gap.
+> Full reasoning and the recommended sequence: [`go-to-market-reality.md`](./go-to-market-reality.md).
 
 ## Stretch goals (with a logistics caveat)
 
@@ -113,13 +151,34 @@ pick-pack and freight on an already-heavy box:
   protective enclosure, service-swap program, insured freight.
 - **Fulfilment of heavy/fragile electronics.** Thin *net* margin despite healthy gross. *Mitigation:*
   shipping charged separately at cost; numbered run caps exposure.
-- **Software risk: low, and that's the story.** The engine ships today; backers play it pre-pledge.
+- **Software risk: low, and that's the story.** The engine ships today — but ⚠️ **only as source**, and
+  "backers play it pre-pledge" is blocked until the client is actually deployed (see above).
 - **Narrative readiness.** `TODO(launch-campaign)` — the flagship story must be far enough along to
   *show* (art, tone, a vertical slice) before launch, or the campaign leans too hard on the tech.
+- ⚠️ **Audience risk — currently the largest, and the plan's true blocker.** Under 100 subscribers.
+  Evidence says most board-game campaigns fail *before* launch day, in the months the creator should
+  have spent building an audience. No amount of hardware readiness compensates.
+- ⚠️ **Content risk.** Shipped playable content today is Hollow House (9 rooms, 2 mobs, 1 NPC, 8 items
+  — small but genuinely complete), `covenant` (5 rooms), and a 2-room default demo. The launch campaign
+  does not exist. A horror game is sold on its story; that is the product, and it is unwritten.
+- ⚠️ **Positioning risk.** The engine's virtues (deterministic, Rust, golden-pinned replay) are
+  *engineering* virtues. Horror-game buyers don't buy those. The campaign copy — including the mockup's
+  proof strip — currently markets to engineers. Rewrite for players before launch.
+- ⚠️ **Cloneability (AGPL).** The engine is AGPL-3.0, so a competitor with better supply-chain access
+  can legally build the same product if they publish source. The moat has to be brand, content, and
+  execution — see [`licensing-and-moat.md`](./licensing-and-moat.md).
 
 ## Pre-launch checklist
 
+**Gates (nothing below matters until these clear):**
+
+- [ ] 🛑 **Deploy the playable client publicly** and link it from `landing/` — the `Dockerfile` builds
+      it; no host is configured. Highest-leverage single action.
+- [ ] 🛑 **Grow the list to ~1,000 opted-in subscribers** (from <100). This gates any campaign.
 - [ ] `TODO(launch-campaign)` — flagship narrative to a showable vertical slice (this gates launch)
+
+**Then:**
+
 - [ ] Playable web demo polished as the KS lead magnet (Hollow House proof)
 - [ ] KS pre-launch page live; drive the existing Mailchimp list + `@wickedways_vtt` to "notify me"
 - [ ] Vendor quotes to fill the funding worksheet `TODO`s (panels, molds, cert, lamination NRE)
