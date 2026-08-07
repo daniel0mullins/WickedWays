@@ -8,6 +8,19 @@
 > `crates/wickedways-web` is the **pattern template** — the studio mirrors its idioms but
 > shares no code with it.
 
+## Implementation status (built)
+
+**P0 + P1 (the MVP) are implemented** as `crates/wickedways-studio`, including the upstream
+`Serialize` derives on `author_doc.rs` (change #1 below). All asset-family CRUD screens, the
+room hub, the return-exit convenience, the four validation layers (probe-doc body validation
+included), localStorage persistence, and TOML import/export ship; the flagship round-trip
+corpus test (`crates/wickedways-studio/tests/roundtrip.rs`) holds compiled equality over every
+fixture. Two MVP simplifications vs. the letter of this spec: autosave is a synchronous
+write-through rather than a 500 ms debounce (blobs are tens of KB), and import takes pasted
+TOML text rather than a file-picker upload. P2/P3 (undo, upstream parse entry points,
+compiled-artifact export, template gallery beyond three bundled fixtures, graph view,
+embedded playtest, structured builders) remain open; the sections below are the design.
+
 ## Context
 
 Campaigns are authored today by hand-writing TOML against the `AuthorDoc` surface and

@@ -2660,6 +2660,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "wickedways-studio"
+version = "0.0.1"
+dependencies = [
+ "dioxus",
+ "js-sys",
+ "serde",
+ "serde_json",
+ "toml",
+ "wasm-bindgen",
+ "web-sys",
+ "wickedways-assemble",
+ "wickedways-author",
+ "wickedways-core",
+]
+
+[[package]]
 name = "wickedways-tabletop"
 version = "0.0.1"
 dependencies = [

@@ -43,6 +43,7 @@ Everything that ships lives in `crates/`:
 | `wickedways-tabletop` | The physical-tabletop bridge: engine state ↔ device commands/events, the COBS-framed serial codec, and the `DeviceTransport` seam. Serde-only + `wickedways-core`, so it compiles native (the controller) and to wasm (the web client's on-screen simulator renders through it). |
 | `wickedways-controller` | The host controller binary: runs the engine solo, projects the board through `wickedways-tabletop`, and speaks the device protocol over a serial line to real e-ink/NFC hardware. `--dry-run` exercises the whole engine→bridge→codec path with no device. |
 | `wickedways-web` | The Dioxus web client — the shipped product (see the root `Dockerfile`). |
+| `wickedways-studio` | Campaign Studio: the graphical campaign-authoring app (a second, standalone Dioxus wasm app — see `docs/campaign-studio-spec.md`). |
 
 One crate lives outside the workspace: **`desktop/`**, a thin native shell that runs the same
 client (`wickedways-web` with its `native-app` feature) in a desktop window via `dioxus`'s
@@ -1704,3 +1705,34 @@ contents was previously rejected by the `Loot` constructor guard; that guard was
 campaign authors can seed a key in a container (as `g2-vault` does — `vault-key` in the `shelf`).
 The runtime add-to-loot guards (`Loot.receiveItem` / player mid-game stashing) are **unchanged** —
 a player stashing a key during play is a distinct action still governed by those guards.
+
+### Campaign Studio (`crates/wickedways-studio`)
+
+The graphical authoring app for the TOML surface above — a **standalone** Dioxus wasm app
+(separate from the play client; shares upstream crates and idioms, not code). Spec:
+`docs/campaign-studio-spec.md`. The P0+P1 MVP is built:
+
+- **CRUD for every asset family** over an `AuthorDoc`-shaped `EditorDoc` (stable editor ids,
+  total conversion both ways), with a room hub (exits in/out, loot, caches, mobs, NPCs,
+  scenes, add-here shortcuts), a return-exit convenience, enum dropdowns for the
+  silently-defaulting `type`/`slot`/`stat` fields, and formations presented honestly as the
+  global weighted encounter table.
+- **Layered validation, all in-browser** (author + assemble are wasm-clean): instant field
+  constraints → a live all-errors referential-integrity pass (`refs::check_refs`, clickable
+  problems panel + per-section badges) → per-body DSL validation by probe-doc `compile()`
+  (`gate::validate_body`) → the authoritative **Check campaign** gate
+  (`compile()` → `assemble()` → `World::from_snapshot` + `validate_mechanics`).
+- **Persistence & interchange**: versioned JSON blobs in localStorage
+  (`wickedways:studio:campaign:<id>` + an index), synchronous write-through autosave; TOML
+  import (paste) and export (download). Round-trip is gated by
+  `crates/wickedways-studio/tests/roundtrip.rs`: every fixture TOML imports, re-exports, and
+  recompiles to **byte-equal description + catalog JSON** (compiled equality is the
+  equivalence — comments/formatting are lossy by design). The `Serialize` derives this needs
+  live in `wickedways-author`'s `author_doc.rs` (absent-means-default fields are skipped, so
+  exports stay close to the hand-authored idiom).
+
+Build/serve like the play client: `dx serve` in `crates/wickedways-studio` for dev,
+`crates/wickedways-studio/build-studio.sh` for the static bundle. Deferred (P2/P3, per the
+spec): undo, precise per-field spans via upstream parse entry points, template gallery
+beyond the three bundled fixtures, graph map view, embedded playtest, structured behavior
+builders, a native desktop arm.

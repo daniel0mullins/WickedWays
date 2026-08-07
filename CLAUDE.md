@@ -20,6 +20,7 @@ The workspace:
 | `wickedways-transport` | The multiplayer wire protocol (serde only, engine-free). |
 | `wickedways-server` | The axum room server: per-campaign table actors, seat auth, SQLite persistence. |
 | `wickedways-web` | The Dioxus web client (the shipped product; see the root `Dockerfile`). |
+| `wickedways-studio` | Campaign Studio: the standalone graphical campaign-authoring app (Dioxus wasm; spec in `docs/campaign-studio-spec.md`). |
 
 The TypeScript engine and its packages have been deleted; the golden corpus under
 `conformance/fixtures/` (goldens + TOML campaign sources) is all that remains of `conformance/`.
@@ -42,6 +43,7 @@ cargo fmt --all --check
 cargo build -p wickedways-core --no-default-features            # the no_std gate
 cargo clippy -p wickedways-web --all-targets --target wasm32-unknown-unknown -- -D warnings
 cargo build -p wickedways-web --target wasm32-unknown-unknown   # the shipped client
+cargo build -p wickedways-studio --target wasm32-unknown-unknown # Campaign Studio (authoring app)
 cargo run --manifest-path desktop/Cargo.toml                    # the native desktop shell (workspace-excluded; needs GTK/WebKit dev libs on Linux)
 cd desktop && dx bundle --release --platform desktop            # desktop installers (.deb/.rpm/AppImage | .app/.dmg | .msi) — dioxus-cli 0.6.3; --platform is required
 cargo clippy -p wickedways-wasm --target wasm32-unknown-unknown --features conformance -- -D warnings

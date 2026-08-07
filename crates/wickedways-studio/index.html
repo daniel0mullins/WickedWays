@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title></title>
+    <style>
+      /* Reset the default body margin: without it the white page background shows as a border
+         around the full-viewport dark app. */
+      html, body { margin: 0; padding: 0; background: #14121a; }
+    </style>
+  </head>
+  <body>
+    <div id="main"></div>
+    <!--
+      Doubles as the `dx serve` template and the static-bundle template. The title is empty and
+      there is no loader script on purpose: dx injects its title + loader here, and
+      build-studio.sh injects the wasm-bindgen loader + title when it copies this file into
+      dist/. (Nothing in this file may contain the literal closing-body-tag text — both
+      injectors match on it.) Dioxus mounts the app into <div id="main">.
+    -->
+  </body>
+</html>
