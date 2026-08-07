@@ -53,6 +53,12 @@ pub enum Problem {
     AvMaxParticipants {
         got: i64,
     },
+    UndefinedVillainCharacter {
+        character: String,
+    },
+    UnregisteredCard {
+        key: String,
+    },
 }
 
 impl fmt::Display for Problem {
@@ -96,6 +102,13 @@ impl fmt::Display for Problem {
             }
             Problem::AvMaxParticipants { got } => {
                 write!(f, "av.maxParticipants must be >= 1 (got {got}).")
+            }
+            Problem::UndefinedVillainCharacter { character } => write!(
+                f,
+                "villain references undefined character '{character}' (declare a mob/npc by that name, or use \"@gm\")."
+            ),
+            Problem::UnregisteredCard { key } => {
+                write!(f, "villain deck references unregistered card key '{key}'.")
             }
         }
     }

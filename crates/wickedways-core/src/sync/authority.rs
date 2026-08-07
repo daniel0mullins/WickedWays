@@ -280,6 +280,11 @@ fn apply_command(
                     });
                 }
             }
+            // The computer-driven Villain acts after the mobs (card powers are
+            // not ambush swings, so lit-room entry does not deny them) and
+            // before next_player, so a fatal card lands in the round's outcome
+            // check. No-op unless a non-party villain is designated.
+            world.run_villain_turn(&actor, cat, &mut cues)?;
             world.next_player(cat, &mut cues)?;
             // The next actor's turn hasn't begun — it will `start_turn` on their first action.
             *turn_started = false;
@@ -359,6 +364,25 @@ fn apply_action(
         } => world.craft(actor_id, recipe_id, cat, cues).map(|_| ()),
         Command::Repair { actor_id, item_id } => world.repair(actor_id, item_id, cat, cues),
         Command::Destroy { actor_id, item_id } => world.destroy(actor_id, item_id, cat, cues),
+        // Villain card actions (budgeted; the engine enforces the villain
+        // designation and the per-turn play-XOR-mulligan latch).
+        Command::PlayCard {
+            actor_id,
+            card_key,
+            room_id,
+            target_id,
+        } => world.play_card(
+            actor_id,
+            card_key,
+            room_id.clone(),
+            target_id.clone(),
+            cat,
+            cues,
+        ),
+        Command::Mulligan {
+            actor_id,
+            card_keys,
+        } => world.mulligan(actor_id, card_keys, cat, cues),
         // Table input: load the shared dice tray for upcoming rolls (free, non-advancing).
         Command::SupplyDice { dice } => world.supply_dice(dice),
         // A1/A2 engine-action ports, join/seat handling (C), and the mob commands are not yet

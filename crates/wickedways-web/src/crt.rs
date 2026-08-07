@@ -36,7 +36,8 @@ use crate::audio_pack::wickedways_campaign_audio;
 use crate::audio_runtime::AudioRuntime;
 use crate::driver::{
     boot, boot_single, has_actions_left, intent_to_command, is_gm, is_my_turn, project,
-    read_config, rebuild_single, toggle_fullscreen, welcome_for, Mode, GM_IDENTITY,
+    read_config, rebuild_single, toggle_fullscreen, villain_omniscient, welcome_for, Mode,
+    GM_IDENTITY,
 };
 use crate::link_nouns::{link_nouns, Segment};
 use crate::map::{layout_map, map_svg, MapModel};
@@ -149,6 +150,9 @@ pub fn crt_app() -> Element {
                 let initial = project(&coord, &catalog);
                 if let Some(v) = &initial {
                     map_model.write().observe(v);
+                    if villain_omniscient(coord.replica(), gm) {
+                        map_model.write().reveal_world(coord.replica());
+                    }
                     audio.update(v);
                 }
                 vm.set(initial);
@@ -170,6 +174,9 @@ pub fn crt_app() -> Element {
                             let after = project(&coord, &catalog);
                             if let Some(a) = &after {
                                 map_model.write().observe(a);
+                                if villain_omniscient(coord.replica(), gm) {
+                                    map_model.write().reveal_world(coord.replica());
+                                }
                                 audio.update(a);
                             }
                             vm.set(after);
@@ -342,6 +349,9 @@ pub fn crt_app() -> Element {
                                 }
                                 if let Some(a) = &after {
                                     map_model.write().observe(a);
+                                    if villain_omniscient(coord.replica(), gm) {
+                                        map_model.write().reveal_world(coord.replica());
+                                    }
                                 }
                                 if let (Some(intent), Some(b), Some(a)) =
                                     (intent_for_narration, &before_view, &after)
@@ -404,6 +414,9 @@ pub fn crt_app() -> Element {
                                     transport = t;
                                     coord = c;
                                     map_model.write().hydrate(blob.map);
+                                    if villain_omniscient(coord.replica(), gm) {
+                                        map_model.write().reveal_world(coord.replica());
+                                    }
                                     let restored = project(&coord, &catalog);
                                     narration.write().push("Restored.".into());
                                     if let Some(v) = &restored {
@@ -430,6 +443,9 @@ pub fn crt_app() -> Element {
                                     let fresh = project(&coord, &catalog);
                                     if let Some(v) = &fresh {
                                         map_model.write().observe(v);
+                                        if villain_omniscient(coord.replica(), gm) {
+                                            map_model.write().reveal_world(coord.replica());
+                                        }
                                         audio.update(v);
                                     }
                                     vm.set(fresh);
@@ -447,6 +463,9 @@ pub fn crt_app() -> Element {
                                     transport = t;
                                     coord = c;
                                     map_model.write().hydrate(blob.map);
+                                    if villain_omniscient(coord.replica(), gm) {
+                                        map_model.write().reveal_world(coord.replica());
+                                    }
                                     let reverted = project(&coord, &catalog);
                                     narration.write().push("Undone.".into());
                                     if let Some(v) = &reverted {
@@ -478,7 +497,11 @@ pub fn crt_app() -> Element {
     // scrolling region of the left column. All empty until the first projection.
     let vmodel = vm();
     let (hud, dock, side) = match &vmodel {
-        Some(v) => (hud_bar(v, &status_fields()), dock_bar(v), side_bar(v)),
+        Some(v) => (
+            hud_bar(v, &status_fields()),
+            dock_bar(v),
+            side_bar(v, is_gm),
+        ),
         None => (rsx! {}, rsx! {}, rsx! {}),
     };
     let (room_panel, log) = match vmodel {
@@ -676,6 +699,11 @@ fn hud_bar(v: &ViewModel, fields: &[StatusField]) -> Element {
             span { "HP {s.health}" }
             span { class: "sep", "·" }
             span { "SAN {s.sanity}" }
+            // Supernatural darkness countdown (the Villain's Lights Out card).
+            if let Some(n) = v.lights_out_rounds {
+                span { class: "sep", "·" }
+                span { class: "hud-dark", "DARK {n}" }
+            }
         }
         if !extra.is_empty() {
             div { class: "campaign-status",
@@ -730,8 +758,60 @@ fn dock_bar(v: &ViewModel) -> Element {
 }
 
 /// The right-third sidebar: the player's inventory and the shared material pool, kept in view
-/// alongside the scrolling transcript.
-fn side_bar(v: &ViewModel) -> Element {
+/// alongside the scrolling transcript — plus the Villain panel when a villain is designated.
+///
+/// `may_see_hand` guards the face-up hand: `VillainView.is_you` reflects the ACTIVE seat, and in
+/// multiplayer every replica projects the active character's view — so while the GM-villain is
+/// acting, a player's client would otherwise render the hand too. Only the GM identity (or
+/// single-player, where you drive every seat) sees faces; everyone else sees pile counts.
+fn side_bar(v: &ViewModel, may_see_hand: bool) -> Element {
+    let villain_section = v.villain.as_ref().map(|vn| {
+        let show_hand = vn.is_you && may_see_hand;
+        if show_hand {
+            let label = format!(
+                "Wicked Ways (deck {} · discard {})",
+                vn.deck_count, vn.discard_count
+            );
+            chip_section(
+                label,
+                rsx! {
+                    for (i, c) in vn.hand.iter().enumerate() {
+                        {
+                            let hint = if vn.card_action_taken {
+                                "(spent)"
+                            } else if c.needs_room == Some(true) {
+                                "(play … to <room>)"
+                            } else {
+                                "(play)"
+                            };
+                            rsx! {
+                                span {
+                                    key: "card-{i}-{c.key}",
+                                    class: "chip",
+                                    title: c.text.clone().unwrap_or_default(),
+                                    "{c.name} ",
+                                    span { class: "meta", "{hint}" }
+                                }
+                            }
+                        }
+                    }
+                    if vn.hand.is_empty() {
+                        span { class: "chip meta", "no cards" }
+                    }
+                },
+            )
+        } else {
+            chip_section(
+                "Villain".into(),
+                rsx! {
+                    span { class: "chip", "{vn.name} " }
+                    span { class: "chip meta",
+                        "hand {vn.hand.len()} · deck {vn.deck_count} · discard {vn.discard_count}"
+                    }
+                },
+            )
+        }
+    });
     let inv = &v.inventory;
     let empty = inv.items.is_empty() && inv.keys.is_empty();
     let label = format!(
@@ -762,6 +842,7 @@ fn side_bar(v: &ViewModel) -> Element {
                 }
             })}
         }
+        {villain_section}
     }
 }
 

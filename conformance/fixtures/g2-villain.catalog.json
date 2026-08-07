@@ -1,0 +1,59 @@
+{
+  "aliases": {},
+  "behaviors": {
+    "hex": {
+      "family": "card",
+      "script": {
+        "onPlay": [
+          {
+            "effect": {
+              "kind": "cue",
+              "text": {
+                "kind": "lit",
+                "value": "A whispered curse crawls through the walls."
+              }
+            },
+            "kind": "emit"
+          },
+          {
+            "effect": {
+              "delta": {
+                "kind": "lit",
+                "value": -2.0
+              },
+              "kind": "adjustStat",
+              "stat": "sanity",
+              "target": {
+                "index": {
+                  "kind": "lit",
+                  "value": 0.0
+                },
+                "kind": "index",
+                "list": {
+                  "kind": "party"
+                }
+              }
+            },
+            "kind": "emit"
+          }
+        ]
+      }
+    }
+  },
+  "cards": {
+    "hex": {
+      "name": "Creeping Hex",
+      "text": "A whispered curse saps the heroes' resolve."
+    },
+    "wicked:lights-out": {
+      "config": {
+        "rounds": 3
+      },
+      "name": "Lights Out",
+      "text": "Every flame gutters and dies for three rounds."
+    }
+  },
+  "formations": {},
+  "items": {},
+  "recipes": {}
+}

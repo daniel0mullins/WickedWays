@@ -60,6 +60,16 @@ pub enum ActionHistoryEntry {
         mechanic: String,
         action: String,
     },
+    /// The Villain played a Wicked Ways card.
+    PlayCard {
+        round: i64,
+        card: String,
+    },
+    /// The Villain took the mulligan (discard 3, draw 3, no card played).
+    Mulligan {
+        round: i64,
+        cards: Vec<String>,
+    },
 }
 
 #[cfg(test)]

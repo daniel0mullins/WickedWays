@@ -29,6 +29,10 @@ impl World {
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
         self.campaign.started = true;
+        // Villain setup BEFORE the round-0 dispatch: shuffle the authored deck
+        // and deal the opening hand. A no-op (zero rng draws) without a
+        // villain, so villain-less campaigns keep their pinned rng streams.
+        self.villain_deal_opening_hand();
         // Round-0 onRoundStart readout FIRST.
         self.dispatch_round(RoundPhase::Start, cat, cues)?;
         // Then the active player's start-room enter-scenes, into the SAME cue
@@ -122,6 +126,12 @@ impl World {
             c.afflictions
                 .on_turn_start(health, sanity, energy, &passive, &config, rng);
         }
+        // The Villain's per-turn card-action latch resets at their turn start.
+        if let Some(v) = self.campaign.villain.as_mut() {
+            if &v.character_id == actor {
+                v.card_action_taken = false;
+            }
+        }
         // Affliction tick first, THEN the mechanic hook (TS fire-point order).
         self.dispatch_turn(TurnPhase::Start, actor, cat, cues)
     }
@@ -213,6 +223,9 @@ impl World {
         }
         // onRoundEnd fires BEFORE the round increment (TS fire-point order).
         self.dispatch_round(RoundPhase::End, cat, cues)?;
+        // Supernatural darkness ticks down after the round-end dispatch (so
+        // mechanics observe the pre-decrement value) and before the increment.
+        self.tick_lights_out(cues);
         self.campaign.round += 1;
         self.campaign.acted_this_round.clear();
         // Full resolver (TS resolveOutcome): loss list → win list → timeout.
@@ -774,6 +787,7 @@ mod tests {
             behaviors: BTreeMap::default(),
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
+            cards: BTreeMap::default(),
         };
 
         // Insert item into world and equip it

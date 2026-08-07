@@ -204,6 +204,21 @@ fn is_true(b: &bool) -> bool {
     *b
 }
 
+/// Serde `skip_serializing_if` for `VillainSnapshot::card_action_taken`: omit
+/// the key while the latch is clear (the default between turns).
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_false(b: &bool) -> bool {
+    !*b
+}
+
+/// Serde `skip_serializing_if` for `CampaignCoreSnapshot::lights_out_rounds`:
+/// omit the key while no supernatural darkness is active, so pre-villain
+/// goldens stay byte-stable.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_zero(n: &i64) -> bool {
+    *n == 0
+}
+
 pub const SCHEMA_VERSION: i64 = 6;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -211,6 +226,35 @@ pub const SCHEMA_VERSION: i64 = 6;
 pub struct MechanicSnapshot {
     pub key: String,
     pub state: Value,
+}
+
+/// The Villain designation plus the Wicked Ways card economy: which character
+/// plays against the heroes, and the deck (draw pile) / hand / discard of
+/// one-time card keys. Cards are pure keys — behavior resolves through the
+/// card registry / catalog at play time, mirroring `MechanicSnapshot.key`.
+/// The whole struct rides `CampaignCoreSnapshot.villain` as an optional-tail
+/// field, so a villain-less campaign serialises no trace of it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VillainSnapshot {
+    /// The character playing the Villain. In multiplayer this is the GM's own
+    /// pre-seated party character; in single-player it is a non-party,
+    /// computer-driven character.
+    pub character_id: CharacterId,
+    /// The draw pile, bottom-to-top (draws pop from the END). Authored order
+    /// at genesis; shuffled through `World.rng` at `begin_campaign`.
+    pub deck: Vec<String>,
+    /// The cards currently playable. Filled to `VILLAIN_HAND_SIZE` at
+    /// `begin_campaign`.
+    pub hand: Vec<String>,
+    /// Spent/discarded cards; reshuffled into `deck` (via `World.rng`) when a
+    /// draw finds the deck empty.
+    pub discard: Vec<String>,
+    /// The per-turn exclusivity latch: `true` once the villain has taken its
+    /// one card action this turn (play-and-draw OR mulligan), reset on the
+    /// villain's turn start. Omitted while `false` so goldens stay byte-stable.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub card_action_taken: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -252,6 +296,15 @@ pub struct CampaignCoreSnapshot {
     pub chat_policy: Value,
     pub av_policy: Value,
     pub mechanics: Vec<MechanicSnapshot>,
+    /// The Villain designation + card state. Absent (and omitted on serialize)
+    /// for a campaign with no villain, so pre-villain goldens stay byte-stable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub villain: Option<VillainSnapshot>,
+    /// Rounds of supernatural darkness remaining (the `wicked:lights-out`
+    /// card). While `> 0`, every room is unlit regardless of light sources.
+    /// Ticks down at round end; omitted while `0` so goldens stay byte-stable.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub lights_out_rounds: i64,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -488,5 +541,49 @@ mod tests {
           "items":[],"loot":[],"materialCaches":[],"codex":[]
         }"#;
         roundtrip::<CampaignSnapshot>(json);
+    }
+
+    #[test]
+    fn campaign_without_villain_keys_parses_and_omits_them() {
+        // Backward-compat: a pre-villain snapshot has neither `villain` nor
+        // `lightsOutRounds` and must hydrate to None/0 — and serialise neither
+        // key back out, so pre-existing goldens stay byte-stable.
+        let json = r#"{
+            "id":"camp1","title":"T","maxRounds":20,"round":0,"started":false,
+            "outcome":"ongoing","winConditions":[],"loseConditions":[],
+            "activeCharacterIndex":0,"partyIds":[],"actedThisRound":[],"gmId":null,
+            "materials":{},"claims":[],"encountered":[],"knownRecipes":[],"archetypes":[],
+            "actionSounds":{},"encounterTable":{},"chatPolicy":{},"avPolicy":{},"mechanics":[]
+        }"#;
+        let core: CampaignCoreSnapshot = serde_json::from_str(json).unwrap();
+        assert!(core.villain.is_none());
+        assert_eq!(core.lights_out_rounds, 0);
+        let out = serde_json::to_value(&core).unwrap();
+        assert!(
+            out.get("villain").is_none(),
+            "absent villain must not serialise"
+        );
+        assert!(
+            out.get("lightsOutRounds").is_none(),
+            "zero lightsOutRounds must not serialise"
+        );
+    }
+
+    #[test]
+    fn villain_snapshot_roundtrips_and_omits_clear_latch() {
+        roundtrip::<VillainSnapshot>(
+            r#"{"characterId":"mob:Warden","deck":["a","b"],"hand":["c"],"discard":[],"cardActionTaken":true}"#,
+        );
+        // The clear latch is omitted on serialize.
+        let v: VillainSnapshot = serde_json::from_str(
+            r#"{"characterId":"mob:Warden","deck":[],"hand":[],"discard":[]}"#,
+        )
+        .unwrap();
+        assert!(!v.card_action_taken, "absent latch must parse to false");
+        let out = serde_json::to_value(&v).unwrap();
+        assert!(
+            out.get("cardActionTaken").is_none(),
+            "clear latch must not serialise"
+        );
     }
 }

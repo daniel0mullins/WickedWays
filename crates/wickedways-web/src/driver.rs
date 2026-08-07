@@ -53,6 +53,12 @@ const HOLLOW_CATALOG: &str =
 // the launcher's `?campaign=` boot path requires.
 const COVENANT_GENESIS: &str = include_str!("../../../conformance/fixtures/covenant.genesis.json");
 const COVENANT_CATALOG: &str = include_str!("../../../conformance/fixtures/covenant.catalog.json");
+// The Warden's Gallery — the Villain & Wicked Ways Cards smoke campaign (the g2-villain author
+// oracle): a two-room gallery stalked by the Warden, a computer-driven Villain with a six-card
+// deck. Debug-tier: it exists to exercise the villain panel, the card verbs, and the solo villain
+// policy, not to be winnable.
+const VILLAIN_GENESIS: &str = include_str!("../../../conformance/fixtures/g2-villain.genesis.json");
+const VILLAIN_CATALOG: &str = include_str!("../../../conformance/fixtures/g2-villain.catalog.json");
 
 /// The default single-player campaign id when `?campaign=` is absent or unknown.
 pub const DEFAULT_CAMPAIGN: &str = "demo";
@@ -67,6 +73,7 @@ fn bundled(id: &str) -> Option<(&'static str, Option<&'static str>)> {
         "status-bar" | "g2-status-bar" => Some((STATUS_BAR_GENESIS, Some(STATUS_BAR_CATALOG))),
         "hollow-house" | "hollow" => Some((HOLLOW_GENESIS, Some(HOLLOW_CATALOG))),
         "covenant" => Some((COVENANT_GENESIS, Some(COVENANT_CATALOG))),
+        "villain" | "g2-villain" => Some((VILLAIN_GENESIS, Some(VILLAIN_CATALOG))),
         _ => None,
     }
 }
@@ -132,6 +139,20 @@ pub fn toggle_fullscreen() -> bool {
 /// launcher.
 pub fn debug_enabled() -> bool {
     platform::has_flag("debug")
+}
+
+/// Whether THIS client plays the Villain — and therefore sees the entire map
+/// (villain omniscience). True when the client holds the GM identity and the
+/// campaign's designated villain IS the GM's character (the `"@gm"` authoring
+/// path). Identity-based, not turn-based: the GM keeps the full map off-turn.
+/// A solo hero facing a computer villain (a non-GM character) gets fog like
+/// anyone else.
+pub fn villain_omniscient(world: &World, gm: bool) -> bool {
+    gm && world
+        .campaign
+        .villain
+        .as_ref()
+        .is_some_and(|v| Some(&v.character_id) == world.campaign.gm_id.as_ref())
 }
 
 /// A distinct per-tab player identity for multiplayer. An explicit `?token=` wins (so a GM joins as
@@ -497,6 +518,16 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             button_text: "Enter Hollow House",
             surfaces: BOTH_SURFACES,
             debug: false,
+            multiplayer: false,
+        },
+        CampaignInfo {
+            slug: "villain",
+            title: "The Warden's Gallery",
+            blurb: "A watchful gallery where the Warden plays Wicked Ways cards against you.",
+            intro: "The Warden keeps this gallery, and it does not keep it kindly. Somewhere behind the portraits it holds a hand of wicked cards — the lights, your belongings, even the walls answer to them. Endure.",
+            button_text: "",
+            surfaces: BOTH_SURFACES,
+            debug: true,
             multiplayer: false,
         },
         CampaignInfo {

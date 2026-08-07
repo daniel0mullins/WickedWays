@@ -26,6 +26,12 @@ impl Direction {
         Direction::Southwest,
     ];
 
+    /// Parse a wire name back to a direction (the inverse of `as_key`).
+    /// `None` for anything that is not one of the eight compass keys.
+    pub fn from_key(key: &str) -> Option<Direction> {
+        Direction::ALL.into_iter().find(|d| d.as_key() == key)
+    }
+
     /// The wire name of this direction — identical to its serde serialization
     /// (pinned by the `wire_names_match_serde` test below). Room exit maps are
     /// keyed by these strings.

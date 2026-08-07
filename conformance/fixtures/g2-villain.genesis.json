@@ -1,0 +1,197 @@
+{
+  "campaign": {
+    "actedThisRound": [],
+    "actionSounds": {},
+    "activeCharacterIndex": 0,
+    "archetypes": [],
+    "avPolicy": {
+      "enabled": true,
+      "maxParticipants": 6,
+      "video": true
+    },
+    "chatPolicy": {
+      "backfillWindow": 200,
+      "edit": true,
+      "enabled": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "whisper": true
+    },
+    "claims": [],
+    "encounterTable": {
+      "baseChance": 20,
+      "formations": [],
+      "visited": [
+        "room:Parlor"
+      ]
+    },
+    "encountered": [],
+    "gmId": "player:Ada",
+    "id": "campaign:Villain",
+    "knownRecipes": [],
+    "loseConditions": [],
+    "materials": {},
+    "maxRounds": 100,
+    "mechanics": [],
+    "outcome": "ongoing",
+    "partyIds": [
+      "player:Ada"
+    ],
+    "round": 0,
+    "started": false,
+    "title": "Villain",
+    "villain": {
+      "characterId": "mob:Warden",
+      "deck": [
+        "wicked:lights-out",
+        "wicked:ruin",
+        "wicked:shadow-step",
+        "hex",
+        "wicked:lights-out",
+        "wicked:ruin"
+      ],
+      "discard": [],
+      "hand": []
+    },
+    "winConditions": []
+  },
+  "characters": [
+    {
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeImmunities": [],
+      "currentRoomId": "room:Parlor",
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Parlor",
+            "name": "Parlor"
+          },
+          "round": 0
+        }
+      ],
+      "id": "player:Ada",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 5
+      },
+      "kind": "player",
+      "name": "Ada",
+      "stats": {
+        "energy": 10.0,
+        "health": 10.0,
+        "sanity": 10.0
+      }
+    },
+    {
+      "actionsPerRound": 2,
+      "actionsThisRound": 0,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeImmunities": [],
+      "baseEscapeChance": 50,
+      "currentRoomId": "room:Gallery",
+      "equipment": {},
+      "history": [],
+      "id": "mob:Warden",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 2
+      },
+      "kind": "mob",
+      "lightAverse": false,
+      "materialDrops": {},
+      "name": "Warden",
+      "naturalAttack": {
+        "power": 2,
+        "stat": "sanity"
+      },
+      "origin": "room",
+      "stats": {
+        "energy": 6.0,
+        "health": 8.0,
+        "sanity": 6.0
+      }
+    }
+  ],
+  "codex": [
+    {
+      "firstSeen": {
+        "characterId": "player:Ada",
+        "roomId": "room:Parlor",
+        "round": 0
+      },
+      "key": "room:Parlor",
+      "kind": "room",
+      "snapshot": {
+        "description": "A parlor of shrouded furniture.",
+        "name": "Parlor"
+      }
+    }
+  ],
+  "exits": [
+    {
+      "endpointIds": [
+        "room:Parlor",
+        "room:Gallery"
+      ],
+      "id": "exit:Gallery|Parlor",
+      "state": {}
+    }
+  ],
+  "items": [],
+  "loot": [],
+  "materialCaches": [],
+  "rooms": [
+    {
+      "dark": false,
+      "description": "A parlor of shrouded furniture.",
+      "exits": {
+        "north": "exit:Gallery|Parlor"
+      },
+      "id": "room:Parlor",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Parlor",
+      "occupantIds": [
+        "player:Ada"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A long gallery of watchful portraits.",
+      "exits": {
+        "south": "exit:Gallery|Parlor"
+      },
+      "id": "room:Gallery",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Gallery",
+      "occupantIds": [
+        "mob:Warden"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
+    }
+  ],
+  "schemaVersion": 6
+}

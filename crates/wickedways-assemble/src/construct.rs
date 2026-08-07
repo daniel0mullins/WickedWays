@@ -23,7 +23,7 @@ use wickedways_core::world::ids::{CharacterId, ExitId, ItemId, LootId, MaterialC
 use wickedways_core::world::snapshot::{
     CampaignCoreSnapshot, CampaignSnapshot, CharacterKind, CharacterSnapshot, ExitSnapshot,
     InventorySnapshot, ItemSnapshot, LootSnapshot, MaterialCacheSnapshot, MechanicSnapshot,
-    RoomSnapshot, SceneSnapshot, VictoryConditionSnapshot, SCHEMA_VERSION,
+    RoomSnapshot, SceneSnapshot, VictoryConditionSnapshot, VillainSnapshot, SCHEMA_VERSION,
 };
 
 use crate::description::{CampaignDescription, ConditionEntry, MobDef, NpcDef};
@@ -56,6 +56,30 @@ pub fn construct(
             state: mechanic_init(catalog, &m.key),
         })
         .collect();
+
+    // The Villain designation: a declared mob/npc name resolves here (mob-first,
+    // matching the id-derivation table); the "@gm" sentinel resolves at seating
+    // (like `gm_id` itself). Hand/discard start empty — `begin_campaign` shuffles
+    // the deck and deals the opening hand, so genesis stays pristine.
+    let villain = desc.villain.as_ref().and_then(|v| {
+        if v.character == "@gm" {
+            return None; // resolved by the seating pass
+        }
+        let id = if desc.mobs.iter().any(|m| m.name == v.character) {
+            ids::mob_id(&v.character)
+        } else if desc.npcs.iter().any(|n| n.name == v.character) {
+            ids::npc_id(&v.character)
+        } else {
+            return None; // validation reports the dangling reference
+        };
+        Some(VillainSnapshot {
+            character_id: CharacterId(id),
+            deck: v.deck.clone(),
+            hand: Vec::new(),
+            discard: Vec::new(),
+            card_action_taken: false,
+        })
+    });
 
     // ---- Intermediate build structures (declaration order) ----
     // Rooms in declaration order; each accumulates its exits/occupants/loot/etc.
@@ -347,6 +371,8 @@ pub fn construct(
         chat_policy: desc.chat.clone().unwrap_or_else(default_chat_policy),
         av_policy: desc.av.clone().unwrap_or_else(default_av_policy),
         mechanics,
+        villain,
+        lights_out_rounds: 0,
     };
 
     // Genesis codex: one recipe entry per declared recipe key (declaration

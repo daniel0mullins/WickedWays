@@ -5,4 +5,4 @@
  * `ActionHistoryEntry` variant — derive it via `From<&ActionHistoryEntry>`
  * rather than naming both in parallel.
  */
-export type ActionKind = "attack" | "move" | "pickUp" | "drop" | "escape" | "takeDamage" | "fumble" | "mechanicAction";
+export type ActionKind = "attack" | "move" | "pickUp" | "drop" | "escape" | "takeDamage" | "fumble" | "mechanicAction" | "playCard" | "mulligan";

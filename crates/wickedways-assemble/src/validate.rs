@@ -210,6 +210,28 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         }
     }
 
+    // ---- villain ----
+    // The character must be a declared mob/npc (mob-first, matching
+    // construct.rs's id resolution) or the "@gm" sentinel; every deck key must
+    // resolve — the compiled-in card registry first, then a Card-family
+    // catalog behavior (mirroring the engine's native-then-catalog lookup).
+    if let Some(v) = &desc.villain {
+        if v.character != "@gm"
+            && !desc.mobs.iter().any(|m| m.name == v.character)
+            && !desc.npcs.iter().any(|n| n.name == v.character)
+        {
+            problems.push(Problem::UndefinedVillainCharacter {
+                character: v.character.clone(),
+            });
+        }
+        for key in &v.deck {
+            let native = wickedways_core::world::villain::card_behavior(key).is_some();
+            if !native && !has_behavior(catalog, key, "card") {
+                problems.push(Problem::UnregisteredCard { key: key.clone() });
+            }
+        }
+    }
+
     // ---- policy bounds ----
     if let Some(w) = desc
         .chat

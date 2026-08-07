@@ -67,6 +67,20 @@ pub enum Intent {
         prompt: Option<String>,
     },
     Wait,
+    /// The Villain plays a Wicked Ways card. `room` is an optional room NAME
+    /// (e.g. Shadow Step's destination) — the surface layer resolves it to a
+    /// `RoomId` against the live world, so the text parser needs no room scope.
+    #[serde(rename_all = "camelCase")]
+    PlayCard {
+        card_key: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        room: Option<String>,
+    },
+    /// The Villain's mulligan: discard exactly three named cards, draw three.
+    #[serde(rename_all = "camelCase")]
+    Mulligan {
+        card_keys: alloc::vec::Vec<String>,
+    },
 }
 
 /// Port of `isTimeAdvancing`: move/take/drop/use/attack/wait
@@ -81,6 +95,8 @@ pub fn is_time_advancing(intent: &Intent) -> bool {
             | Intent::Use { .. }
             | Intent::Attack { .. }
             | Intent::Wait
+            | Intent::PlayCard { .. }
+            | Intent::Mulligan { .. }
     )
 }
 

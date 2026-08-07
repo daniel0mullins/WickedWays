@@ -6,8 +6,8 @@ use serde_json::Value as Json;
 
 use crate::presentation::MechanicCue;
 use crate::script::ast::{
-    DialogueEntry, DialogueMatch, ExitScript, ItemScript, MechanicScript, NpcScript, SceneScript,
-    Stmt, VictoryScript,
+    CardScript, DialogueEntry, DialogueMatch, ExitScript, ItemScript, MechanicScript, NpcScript,
+    SceneScript, Stmt, VictoryScript,
 };
 use crate::script::eval::{
     eval_damage, eval_effect_templates, eval_effects, eval_expr, eval_predicate, eval_script,
@@ -153,6 +153,35 @@ impl crate::world::item_behavior::ItemBehavior for ScriptedItem<'_> {
 
     fn on_read(&self, base: &mut HookCtx<'_>, actor: &CharacterView) -> Vec<Effect> {
         self.run_body(self.script.on_read.as_ref(), base, actor)
+    }
+}
+
+/// A Wicked Ways card's `on_play` hook, bound to a borrowed `CardScript`.
+/// Built per play in `play_card`. A card hook sees the villain (actor), the
+/// campaign view, and the injected rng — exactly an item hook's power; cards
+/// are one-shot so there is no persistent script state (the `Ctx` state is a
+/// throwaway). The resulting `Effect`s are applied villain-privileged
+/// (`CardEffect::Std`) by the play path.
+pub struct ScriptedCard<'a> {
+    pub script: &'a CardScript,
+}
+
+impl ScriptedCard<'_> {
+    pub fn on_play(&self, base: &mut HookCtx<'_>, actor: &CharacterView) -> Vec<Effect> {
+        let Some(body) = self.script.on_play.as_ref() else {
+            return Vec::new();
+        };
+        let mut cx = Ctx {
+            view: Some(base.view),
+            state: CtxState::Write(base.state),
+            actor: Some(actor),
+            action: None,
+            damage: None,
+            element: None,
+            rng: Some(base.rng),
+            rooms: RoomSource::None,
+        };
+        eval_effects(body, &mut cx)
     }
 }
 

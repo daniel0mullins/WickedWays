@@ -96,6 +96,8 @@ mod tests {
             },
             outcome: CampaignOutcome::Ongoing,
             finished: false,
+            villain: None,
+            lights_out_rounds: None,
         };
         m.observe(&v);
         m.record_move("hall", Direction::North, "landing");

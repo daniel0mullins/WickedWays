@@ -98,6 +98,23 @@ pub struct RecipeMeta {
     pub output_item_key: Option<String>,
 }
 
+/// A Wicked Ways card face — the display half of a card's identity. The card's
+/// key doubles as its behavior key (native registry first, then a
+/// `BehaviorScript::Card` in `catalog.behaviors`), mirroring how an item's
+/// `behavior_key` doubles as its descriptor key.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CardDescriptor {
+    pub name: String,
+    /// Rules/flavor text shown on the card face.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    /// Behavior-specific tuning read by the card op (e.g. `{"rounds": 2}` for
+    /// `wicked:lights-out`). Omitted when null.
+    #[serde(default, skip_serializing_if = "serde_json::Value::is_null")]
+    pub config: serde_json::Value,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Catalog {
     pub items: BTreeMap<String, ItemDescriptor>,
@@ -119,6 +136,12 @@ pub struct Catalog {
     /// keyless fixtures deserializable.
     #[serde(default)]
     pub recipes: BTreeMap<String, RecipeMeta>,
+    /// Wicked Ways card faces, keyed by card key (which doubles as the card's
+    /// behavior key). Unlike the oracle-pinned maps above, this post-oracle
+    /// field is OMITTED when empty so the committed catalog fixtures stay
+    /// byte-stable.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub cards: BTreeMap<String, CardDescriptor>,
 }
 
 #[cfg(test)]
@@ -254,6 +277,38 @@ mod tests {
         assert_eq!(r.output_name, "Widget");
         assert_eq!(r.materials.get("metal"), Some(&2));
         // round-trips: the parsed catalog re-serializes with its recipe intact
+        let back: Catalog = serde_json::from_value(serde_json::to_value(&cat).unwrap()).unwrap();
+        assert_eq!(back, cat);
+    }
+
+    #[test]
+    fn catalog_without_cards_parses_and_omits_the_key() {
+        // Every committed fixture catalog lacks "cards" — must stay loadable,
+        // and (unlike the oracle-pinned maps) an empty cards map is OMITTED on
+        // serialize so those fixtures stay byte-stable.
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {}
+        }))
+        .unwrap();
+        assert!(cat.cards.is_empty());
+        let out = serde_json::to_value(&cat).unwrap();
+        assert_eq!(out.get("cards"), None);
+    }
+
+    #[test]
+    fn catalog_parses_a_card() {
+        let cat: Catalog = serde_json::from_value(serde_json::json!({
+            "items": {}, "aliases": {},
+            "cards": { "wicked:lights-out": {
+                "name": "Lights Out",
+                "text": "Every flame gutters and dies.",
+                "config": { "rounds": 2 }
+            } }
+        }))
+        .unwrap();
+        let c = cat.cards.get("wicked:lights-out").unwrap();
+        assert_eq!(c.name, "Lights Out");
+        assert_eq!(c.config["rounds"], 2);
         let back: Catalog = serde_json::from_value(serde_json::to_value(&cat).unwrap()).unwrap();
         assert_eq!(back, cat);
     }

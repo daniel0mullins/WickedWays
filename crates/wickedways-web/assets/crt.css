@@ -123,6 +123,9 @@
 }
 .dock .section { margin-top: 0; }
 .hud .sep { opacity: 0.5; }
+/* Supernatural-darkness countdown (the Villain's Lights Out card): urgent pulse. */
+.hud .hud-dark { color: var(--color-bad, #ff5f56); font-weight: bold; animation: hud-dark-pulse 1.6s ease-in-out infinite; }
+@keyframes hud-dark-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
 
 /* Two-column body: the transcript/exits/prompt flow on the left two-thirds, inventory + materials
    pinned in the right third. Both columns sit under the full-width HUD and share its height. */

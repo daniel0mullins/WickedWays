@@ -36,6 +36,13 @@ pub struct AuthorDoc {
     pub formations: Vec<FormationEntry>,
     #[serde(default)]
     pub mechanics: Vec<MechanicEntryToml>,
+    /// The `[villain]` table: which character plays the Villain, and the
+    /// authored deck of Wicked Ways card keys.
+    #[serde(default)]
+    pub villain: Option<VillainEntry>,
+    /// `[[cards]]` entries: Wicked Ways card faces (key/name/text/config).
+    #[serde(default)]
+    pub cards: Vec<CardEntryToml>,
     #[serde(default)]
     pub behaviors: Behaviors,
     #[serde(default)]
@@ -209,6 +216,46 @@ pub struct Behaviors {
     pub npc: BTreeMap<String, NpcBehaviorEntry>,
     #[serde(default)]
     pub mechanic: BTreeMap<String, MechanicBehaviorEntry>,
+    #[serde(default)]
+    pub card: BTreeMap<String, CardBehaviorEntry>,
+}
+
+/// The `[villain]` table. `character` names a declared mob/npc (resolved
+/// mob-first) or the sentinel `"@gm"` (the seated GM plays the Villain);
+/// `deck` lists card keys — native (`wicked:*`) or `[[cards]]`/
+/// `[behaviors.card.<key>]` authored — in authored order (the engine shuffles
+/// at `begin_campaign`).
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct VillainEntry {
+    pub character: String,
+    #[serde(default)]
+    pub deck: Vec<String>,
+}
+
+/// A `[[cards]]` entry: a Wicked Ways card face. `key` doubles as the card's
+/// behavior key (native registry first, then a `[behaviors.card.<key>]` body);
+/// `config` is inert author-data the card behavior reads (e.g.
+/// `{ rounds = 3 }` for `wicked:lights-out`).
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CardEntryToml {
+    pub key: String,
+    pub name: String,
+    #[serde(default)]
+    pub text: Option<String>,
+    #[serde(default)]
+    pub config: Option<toml::Value>,
+}
+
+/// A `[behaviors.card.<key>]` body: the `onPlay` statement block fired when
+/// the Villain plays the card (the same effect-body grammar as an item's
+/// `onUse`). Lowers to `CardScript`.
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CardBehaviorEntry {
+    #[serde(default)]
+    pub on_play: Option<String>,
 }
 
 /// A `[[mechanics]]` entry: a placed mechanic. `key` names the
@@ -526,6 +573,43 @@ mod tests {
             Some("emit adjustStat(actor, sanity, 6)")
         );
         assert!(ib.on_read.is_none());
+    }
+
+    #[test]
+    fn parses_the_villain_surface() {
+        let src = r#"
+            title = "Villain"
+            [villain]
+            character = "Warden"
+            deck = ["wicked:lights-out", "hex"]
+            [[cards]]
+            key = "wicked:lights-out"
+            name = "Lights Out"
+            text = "The dark is absolute."
+            config = { rounds = 3 }
+            [[cards]]
+            key = "hex"
+            name = "Creeping Hex"
+            [behaviors.card.hex]
+            onPlay = "emit adjustStat(party[0], sanity, -2)"
+        "#;
+        let doc: AuthorDoc = toml::from_str(src).expect("parse");
+        let v = doc.villain.as_ref().expect("villain present");
+        assert_eq!(v.character, "Warden");
+        assert_eq!(v.deck, vec!["wicked:lights-out", "hex"]);
+        assert_eq!(doc.cards.len(), 2);
+        assert_eq!(doc.cards[0].key, "wicked:lights-out");
+        let config = doc.cards[0].config.as_ref().expect("config present");
+        assert_eq!(
+            config.get("rounds").and_then(toml::Value::as_integer),
+            Some(3)
+        );
+        assert!(doc.cards[1].text.is_none());
+        let cb = &doc.behaviors.card["hex"];
+        assert_eq!(
+            cb.on_play.as_deref(),
+            Some("emit adjustStat(party[0], sanity, -2)")
+        );
     }
 
     #[test]

@@ -98,5 +98,34 @@ pub fn command_for(
             prompt: prompt.clone(),
         }),
         Intent::Wait => Ok(Command::Wait { actor_id: actor }),
+        // The Villain's card actions. `room` arrives as a NAME (the text
+        // parser has no room scope); resolve it here against the live world,
+        // case-insensitively — Shadow Step may target ANY room, visited or not.
+        Intent::PlayCard { card_key, room } => {
+            let room_id = match room {
+                None => None,
+                Some(name) => {
+                    let want = name.to_lowercase();
+                    Some(
+                        world
+                            .rooms
+                            .values()
+                            .find(|r| r.name.to_lowercase() == want)
+                            .map(|r| r.id.clone())
+                            .ok_or_else(|| format!("You know of no place called \"{name}\"."))?,
+                    )
+                }
+            };
+            Ok(Command::PlayCard {
+                actor_id: actor,
+                card_key: card_key.clone(),
+                room_id,
+                target_id: None,
+            })
+        }
+        Intent::Mulligan { card_keys } => Ok(Command::Mulligan {
+            actor_id: actor,
+            card_keys: card_keys.clone(),
+        }),
     }
 }
