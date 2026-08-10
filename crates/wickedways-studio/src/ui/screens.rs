@@ -155,7 +155,7 @@ fn RenameRoomControl(id: u64, current: String) -> Element {
             }
         }
         p { class: "studio-hint",
-            "Renames rewrite every reference (exits, placements, startRoom). References inside behavior-body text are NOT rewritten — the problems panel flags them."
+            "Renames rewrite every reference (exits, placements, startRoom). Behavior-body text is NOT rewritten — stale room.name comparisons and typed-call keys are flagged in the problems panel; prose mentions need a manual look."
         }
     }
 }
@@ -220,7 +220,8 @@ pub fn RoomsScreen(asset: Option<u64>) -> Element {
                 items,
                 selected: asset,
                 on_select: move |id| store.select("rooms", Some(id)),
-                on_add: move |()| store.mutate(move |d| {
+                on_add: move |()| {
+                let id = store.mutate(move |d| {
                     let id = d.mint();
                     let name = format!("New Room {id}");
                     d.rooms.push(WithId { id, entry: RoomEntry {
@@ -230,7 +231,10 @@ pub fn RoomsScreen(asset: Option<u64>) -> Element {
                         spawn_modifier: None,
                         lights: Vec::new(),
                     }});
-                }),
+                    id
+                });
+                store.select("rooms", Some(id));
+            },
                 add_label: "Room",
             }
             if let Some(room) = selected {
@@ -383,28 +387,30 @@ fn RoomHub(room: String) -> Element {
             div { class: "studio-hub-adds",
                 button { class: "studio-btn small", onclick: move |_| {
                     let room = room_add_exit.clone();
-                    store.mutate(move |d| {
+                    let id = store.mutate(move |d| {
                         let id = d.mint();
                         d.exits.push(WithId { id, entry: ExitEntry {
                             from: room, to: String::new(), direction: "north".into(),
                             behavior: None, name: None, initial_state: None, one_way: None,
                         }});
+                        id
                     });
-                    store.select("exits", None);
+                    store.select("exits", Some(id));
                 }, "+ Exit from here" }
                 button { class: "studio-btn small", onclick: move |_| {
                     let room = room_add_loot.clone();
-                    store.mutate(move |d| {
+                    let id = store.mutate(move |d| {
                         let id = d.mint();
                         d.loot.push(WithId { id, entry: LootEntry {
                             name: format!("container-{id}"), room, items: Vec::new(), description: None,
                         }});
+                        id
                     });
-                    store.select("loot", None);
+                    store.select("loot", Some(id));
                 }, "+ Loot here" }
                 button { class: "studio-btn small", onclick: move |_| {
                     let room = room_add_mob.clone();
-                    store.mutate(move |d| {
+                    let id = store.mutate(move |d| {
                         let id = d.mint();
                         d.mobs.push(WithId { id, entry: MobEntry {
                             name: format!("New Mob {id}"), stats: default_stats(), room: Some(room),
@@ -412,8 +418,9 @@ fn RoomHub(room: String) -> Element {
                             actions_per_round: None, base_escape_chance: None,
                             material_drops: None, light_averse: None,
                         }});
+                        id
                     });
-                    store.select("mobs", None);
+                    store.select("mobs", Some(id));
                 }, "+ Mob here" }
             }
         }
@@ -446,14 +453,16 @@ pub fn ExitsScreen(asset: Option<u64>) -> Element {
                 on_select: move |id| store.select("exits", Some(id)),
                 on_add: move |()| {
                     let from = first_room.clone();
-                    store.mutate(move |d| {
+                    let id = store.mutate(move |d| {
                         let id = d.mint();
                         let to = from.clone();
                         d.exits.push(WithId { id, entry: ExitEntry {
                             from, to, direction: "north".into(),
                             behavior: None, name: None, initial_state: None, one_way: None,
                         }});
+                        id
                     });
+                    store.select("exits", Some(id));
                 },
                 add_label: "Exit",
             }
@@ -575,7 +584,8 @@ pub fn ItemsScreen(asset: Option<u64>) -> Element {
                 items,
                 selected: asset,
                 on_select: move |id| store.select("items", Some(id)),
-                on_add: move |()| store.mutate(move |d| {
+                on_add: move |()| {
+                let id = store.mutate(move |d| {
                     let id = d.mint();
                     d.items.push(WithId { id, entry: ItemEntry {
                         key: format!("item-{id}"), name: format!("New Item {id}"),
@@ -584,7 +594,10 @@ pub fn ItemsScreen(asset: Option<u64>) -> Element {
                         droppable: None, slot: None, two_handed: None, emits_light: None,
                         max_durability: None, lore: None, aliases: Vec::new(),
                     }});
-                }),
+                    id
+                });
+                store.select("items", Some(id));
+            },
                 add_label: "Item",
             }
             if let Some(item) = selected {
@@ -740,12 +753,14 @@ pub fn LootScreen(asset: Option<u64>) -> Element {
                 on_select: move |id| store.select("loot", Some(id)),
                 on_add: move |()| {
                     let room = first_room.clone();
-                    store.mutate(move |d| {
+                    let id = store.mutate(move |d| {
                         let id = d.mint();
                         d.loot.push(WithId { id, entry: LootEntry {
                             name: format!("container-{id}"), room, items: Vec::new(), description: None,
                         }});
+                        id
                     });
+                    store.select("loot", Some(id));
                 },
                 add_label: "Loot container",
             }
@@ -819,12 +834,14 @@ pub fn CachesScreen(asset: Option<u64>) -> Element {
                 on_select: move |id| store.select("caches", Some(id)),
                 on_add: move |()| {
                     let room = first_room.clone();
-                    store.mutate(move |d| {
+                    let id = store.mutate(move |d| {
                         let id = d.mint();
                         d.caches.push(WithId { id, entry: CacheEntry {
                             name: format!("cache-{id}"), room, materials: BTreeMap::new(),
                         }});
+                        id
                     });
+                    store.select("caches", Some(id));
                 },
                 add_label: "Material cache",
             }
@@ -888,13 +905,17 @@ pub fn RecipesScreen(asset: Option<u64>) -> Element {
                 items,
                 selected: asset,
                 on_select: move |id| store.select("recipes", Some(id)),
-                on_add: move |()| store.mutate(move |d| {
+                on_add: move |()| {
+                let id = store.mutate(move |d| {
                     let id = d.mint();
                     d.recipes.push(WithId { id, entry: RecipeEntry {
                         id: format!("recipe-{id}"), output_name: String::new(),
                         output_item: String::new(), materials: BTreeMap::new(),
                     }});
-                }),
+                    id
+                });
+                store.select("recipes", Some(id));
+            },
                 add_label: "Recipe",
             }
             if let Some(r) = selected {
@@ -993,7 +1014,8 @@ pub fn MobsScreen(asset: Option<u64>) -> Element {
                 items,
                 selected: asset,
                 on_select: move |id| store.select("mobs", Some(id)),
-                on_add: move |()| store.mutate(move |d| {
+                on_add: move |()| {
+                let id = store.mutate(move |d| {
                     let id = d.mint();
                     d.mobs.push(WithId { id, entry: MobEntry {
                         name: format!("New Mob {id}"), stats: default_stats(), room: None,
@@ -1001,7 +1023,10 @@ pub fn MobsScreen(asset: Option<u64>) -> Element {
                         actions_per_round: None, base_escape_chance: None,
                         material_drops: None, light_averse: None,
                     }});
-                }),
+                    id
+                });
+                store.select("mobs", Some(id));
+            },
                 add_label: "Mob",
             }
             if let Some(m) = selected {
@@ -1099,7 +1124,8 @@ pub fn NpcsScreen(asset: Option<u64>) -> Element {
                 items,
                 selected: asset,
                 on_select: move |id| store.select("npcs", Some(id)),
-                on_add: move |()| store.mutate(move |d| {
+                on_add: move |()| {
+                let id = store.mutate(move |d| {
                     let id = d.mint();
                     let behavior = format!("npc-{id}");
                     // Creating an NPC also seeds its behavior body — the shared-key
@@ -1118,7 +1144,10 @@ pub fn NpcsScreen(asset: Option<u64>) -> Element {
                         name: format!("New NPC {id}"), stats: default_stats(),
                         room: None, behavior, holds: Vec::new(),
                     }});
-                }),
+                    id
+                });
+                store.select("npcs", Some(id));
+            },
                 add_label: "NPC",
             }
             if let Some(n) = selected {
@@ -1199,13 +1228,17 @@ pub fn ArchetypesScreen(asset: Option<u64>) -> Element {
                 items,
                 selected: asset,
                 on_select: move |id| store.select("archetypes", Some(id)),
-                on_add: move |()| store.mutate(move |d| {
+                on_add: move |()| {
+                let id = store.mutate(move |d| {
                     let id = d.mint();
                     d.archetypes.push(WithId { id, entry: ArchetypeEntry {
                         id: format!("archetype-{id}"), name: format!("New Archetype {id}"),
                         base_stats: None, inventory_slots: None, immunities: Vec::new(),
                     }});
-                }),
+                    id
+                });
+                store.select("archetypes", Some(id));
+            },
                 add_label: "Archetype",
             }
             if let Some(a) = selected {
@@ -1311,12 +1344,16 @@ pub fn FormationsScreen(asset: Option<u64>) -> Element {
                 items,
                 selected: asset,
                 on_select: move |id| store.select("formations", Some(id)),
-                on_add: move |()| store.mutate(move |d| {
+                on_add: move |()| {
+                let id = store.mutate(move |d| {
                     let id = d.mint();
                     d.formations.push(WithId { id, entry: FormationEntry {
                         key: format!("formation-{id}"), weight: None, mobs: Vec::new(),
                     }});
-                }),
+                    id
+                });
+                store.select("formations", Some(id));
+            },
                 add_label: "Formation",
             }
             div { class: "studio-form",
@@ -1496,7 +1533,7 @@ pub fn ScenesScreen(asset: Option<u64>) -> Element {
                 on_select: move |id| store.select("scenes", Some(id)),
                 on_add: move |()| {
                     let room = first_room.clone();
-                    store.mutate(move |d| {
+                    let id = store.mutate(move |d| {
                         let id = d.mint();
                         let key = format!("scene-{id}");
                         // The shared-key link: a placement without a body never
@@ -1509,7 +1546,9 @@ pub fn ScenesScreen(asset: Option<u64>) -> Element {
                         d.scenes.push(WithId { id, entry: SceneEntry {
                             room, key, phase: None, initial_state: None,
                         }});
+                        id
                     });
+                    store.select("scenes", Some(id));
                 },
                 add_label: "Scene",
             }
@@ -1539,6 +1578,15 @@ fn SceneForm(id: u64, entry: SceneEntry) -> Element {
                         let new = e.value();
                         let old = old_key.clone();
                         store.mutate(move |d| {
+                            // A rename must never overwrite another key's behavior
+                            // body — collisions are refused (the input snaps back).
+                            if new.trim().is_empty()
+                                || new == old
+                                || d.scenes.iter().any(|w| w.id != id && w.entry.key == new)
+                                || d.behaviors.scene.contains_key(&new)
+                            {
+                                return;
+                            }
                             // The behavior follows the key (shared-key identity).
                             if let Some(body) = d.behaviors.scene.remove(&old) {
                                 d.behaviors.scene.insert(new.clone(), body);
@@ -1601,7 +1649,8 @@ pub fn MechanicsScreen(asset: Option<u64>) -> Element {
                 items,
                 selected: asset,
                 on_select: move |id| store.select("mechanics", Some(id)),
-                on_add: move |()| store.mutate(move |d| {
+                on_add: move |()| {
+                let id = store.mutate(move |d| {
                     let id = d.mint();
                     let key = format!("mechanic-{id}");
                     d.behaviors.mechanic.entry(key.clone()).or_insert_with(|| MechanicBehaviorEntry {
@@ -1610,7 +1659,10 @@ pub fn MechanicsScreen(asset: Option<u64>) -> Element {
                         modify_damage: None, actions: BTreeMap::new(),
                     });
                     d.mechanics.push(WithId { id, entry: MechanicEntryToml { key, config: None } });
-                }),
+                    id
+                });
+                store.select("mechanics", Some(id));
+            },
                 add_label: "Mechanic",
             }
             if let Some(m) = selected {
@@ -1638,6 +1690,13 @@ fn MechanicForm(id: u64, entry: MechanicEntryToml) -> Element {
                         let new = e.value();
                         let old = old_key.clone();
                         store.mutate(move |d| {
+                            if new.trim().is_empty()
+                                || new == old
+                                || d.mechanics.iter().any(|w| w.id != id && w.entry.key == new)
+                                || d.behaviors.mechanic.contains_key(&new)
+                            {
+                                return;
+                            }
                             if let Some(body) = d.behaviors.mechanic.remove(&old) {
                                 d.behaviors.mechanic.insert(new.clone(), body);
                             }
@@ -1685,13 +1744,17 @@ pub fn CardsScreen(asset: Option<u64>) -> Element {
                 items,
                 selected: asset,
                 on_select: move |id| store.select("cards", Some(id)),
-                on_add: move |()| store.mutate(move |d| {
+                on_add: move |()| {
+                let id = store.mutate(move |d| {
                     let id = d.mint();
                     d.cards.push(WithId { id, entry: CardEntryToml {
                         key: format!("card-{id}"), name: format!("New Card {id}"),
                         text: None, config: None,
                     }});
-                }),
+                    id
+                });
+                store.select("cards", Some(id));
+            },
                 add_label: "Card",
             }
             if let Some(c) = selected {
@@ -1719,6 +1782,13 @@ fn CardForm(id: u64, entry: CardEntryToml) -> Element {
                         let new = e.value();
                         let old = old_key.clone();
                         store.mutate(move |d| {
+                            if new.trim().is_empty()
+                                || new == old
+                                || d.cards.iter().any(|w| w.id != id && w.entry.key == new)
+                                || d.behaviors.card.contains_key(&new)
+                            {
+                                return;
+                            }
                             if let Some(body) = d.behaviors.card.remove(&old) {
                                 d.behaviors.card.insert(new.clone(), body);
                             }

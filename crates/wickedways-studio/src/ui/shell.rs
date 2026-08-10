@@ -45,12 +45,14 @@ pub fn EditorShell(
     route: Signal<StudioRoute>,
 ) -> Element {
     // Load once per mounted shell (the shell is keyed on the campaign id).
-    let initial = use_hook(|| match store::load_campaign(&campaign) {
+    let initial = use_hook(|| {
+        match store::load_campaign(&campaign) {
         Loaded::Ok(doc) => Ok(*doc),
         Loaded::NewerSchema(v) => Err(format!(
-            "This campaign was saved by a newer studio (schema v{v}) and is read-only here."
+            "This campaign was saved by a newer studio (schema v{v}) and cannot be opened by this one — opening it here could silently drop fields it doesn't know. The stored blob is untouched; use the newer studio."
         )),
         Loaded::Missing => Err("No campaign stored under this id.".to_string()),
+    }
     });
     let campaign_id = use_signal(|| campaign.clone());
     let doc = use_signal(|| {
@@ -88,15 +90,6 @@ pub fn EditorShell(
         .iter()
         .filter(|p| p.severity == Severity::Error)
         .count();
-    let export = to_toml(&current).ok().map(|t| {
-        (
-            format!(
-                "data:application/toml;charset=utf-8,{}",
-                js_sys::encode_uri_component(&t)
-            ),
-            export_filename(&current.title),
-        )
-    });
 
     rsx! {
         div { class: "studio-shell",
@@ -119,13 +112,20 @@ pub fn EditorShell(
                     onclick: move |_| gate_report.set(Some(check_campaign(&(store.doc)()))),
                     "Check campaign"
                 }
-                if let Some((href, filename)) = export {
-                    a { class: "studio-btn primary", href, download: "{filename}",
-                        if error_count > 0 {
-                            "Export ({error_count} error(s) outstanding)"
-                        } else {
-                            "Export .toml"
+                // Serialization happens ON CLICK (platform::download_text), not per
+                // render — the shell re-renders on every keystroke.
+                button {
+                    class: "studio-btn primary",
+                    onclick: move |_| {
+                        let doc = (store.doc)();
+                        if let Ok(toml_src) = to_toml(&doc) {
+                            crate::platform::download_text(&export_filename(&doc.title), &toml_src);
                         }
+                    },
+                    if error_count > 0 {
+                        "Export ({error_count} error(s) outstanding)"
+                    } else {
+                        "Export .toml"
                     }
                 }
             }

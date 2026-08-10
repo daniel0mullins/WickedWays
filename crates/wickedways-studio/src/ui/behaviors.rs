@@ -185,12 +185,12 @@ pub fn BehaviorsScreen() -> Element {
                 div { class: "studio-form",
                     if let Some(key) = sel {
                         match fam.as_str() {
-                            "exit" => rsx! { ExitBehaviorForm { key: "e-{key}", bkey: key } },
-                            "scene" => rsx! { SceneBehaviorForm { key: "s-{key}", bkey: key } },
-                            "item" => rsx! { ItemBehaviorForm { key: "i-{key}", bkey: key } },
-                            "npc" => rsx! { NpcBehaviorForm { key: "n-{key}", bkey: key } },
-                            "mechanic" => rsx! { MechanicBehaviorForm { key: "m-{key}", bkey: key } },
-                            _ => rsx! { CardBehaviorForm { key: "c-{key}", bkey: key } },
+                            "exit" => rsx! { ExitBehaviorForm { key: "e-{key}", bkey: key.clone() } },
+                            "scene" => rsx! { SceneBehaviorForm { key: "s-{key}", bkey: key.clone() } },
+                            "item" => rsx! { ItemBehaviorForm { key: "i-{key}", bkey: key.clone() } },
+                            "npc" => rsx! { NpcBehaviorForm { key: "n-{key}", bkey: key.clone() } },
+                            "mechanic" => rsx! { MechanicBehaviorForm { key: "m-{key}", bkey: key.clone() } },
+                            _ => rsx! { CardBehaviorForm { key: "c-{key}", bkey: key.clone() } },
                         }
                     } else {
                         p { class: "studio-empty", "Select a behavior key, or add one. Bodies are the DSL — validated by the real compiler as you type." }
@@ -378,7 +378,6 @@ fn DialogueEditor(bkey: String, index: Option<usize>, entry: DialogueEntryToml) 
                 span { class: "studio-field-label", "Match kind" }
                 select {
                     class: "studio-input",
-                    value: if is_fuzzy { "fuzzy" } else { "exact" },
                     onchange: move |e| {
                         let fuzzy = e.value() == "fuzzy";
                         edit_dialogue(store, k1.clone(), index, move |d| {
@@ -389,8 +388,8 @@ fn DialogueEditor(bkey: String, index: Option<usize>, entry: DialogueEntryToml) 
                             };
                         });
                     },
-                    option { value: "exact", "exact prompt" }
-                    option { value: "fuzzy", "fuzzy tokens" }
+                    option { value: "exact", selected: !is_fuzzy, "exact prompt" }
+                    option { value: "fuzzy", selected: is_fuzzy, "fuzzy tokens" }
                 }
             }
             label { class: "studio-field",

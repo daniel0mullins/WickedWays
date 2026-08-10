@@ -272,8 +272,9 @@ except the author's confidence.
   `wickedways:studio:campaign:<id>`, plus an index at `wickedways:studio:index` (a JSON
   array of `{ id, title, updatedAt, schemaVersion }`). Ids are generated wasm-clean
   (time + counter via `js_sys`, no `getrandom`). Every blob carries `schemaVersion: 1`;
-  on load, older versions run an upgrade function, an unknown *newer* version opens
-  read-only with a warning.
+  on load, older versions run an upgrade function; an unknown *newer* version is refused
+  with a warning naming the version — the blob is left untouched (opening it through an
+  older `EditorDoc` shape could silently drop fields the newer studio wrote).
 - **Why JSON of the editor model, not TOML text:** it preserves editor ids and in-progress
   state that isn't yet valid TOML, and avoids reparsing on every load. TOML is the
   *interchange* format only — produced on export, consumed on import.

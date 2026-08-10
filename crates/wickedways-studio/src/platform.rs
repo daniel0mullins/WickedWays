@@ -79,3 +79,23 @@ pub fn storage_delete(key: &str) {
 pub fn now_ms() -> u64 {
     js_sys::Date::now() as u64
 }
+
+/// Trigger a browser download of `text` as `filename` (a transient `a[download]`
+/// with a data: URI — no Blob APIs). Built and clicked only when the user asks for
+/// an export, so the document is never re-serialized per render.
+pub fn download_text(filename: &str, text: &str) {
+    use wasm_bindgen::JsCast;
+    let Some(document) = web_sys::window().and_then(|w| w.document()) else {
+        return;
+    };
+    let Ok(el) = document.create_element("a") else {
+        return;
+    };
+    let Ok(anchor) = el.dyn_into::<web_sys::HtmlAnchorElement>() else {
+        return;
+    };
+    let encoded = js_sys::encode_uri_component(text);
+    anchor.set_href(&format!("data:application/toml;charset=utf-8,{encoded}"));
+    anchor.set_download(filename);
+    anchor.click();
+}

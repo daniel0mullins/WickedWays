@@ -120,7 +120,10 @@ pub fn HomeView(route: Signal<StudioRoute>) -> Element {
                     p { class: "studio-empty", "No campaigns yet — create one above." }
                 }
                 for entry in index() {
-                    CampaignRow { key: "{entry.id}", entry, route, refresh, err }
+                    {
+                        let row_key = entry.id.clone();
+                        rsx! { CampaignRow { key: "{row_key}", entry, route, refresh, err } }
+                    }
                 }
             }
             p { class: "studio-usage", "~{usage_kb} KB of browser storage in use" }
@@ -143,17 +146,6 @@ fn CampaignRow(
     let del_id = id.clone();
     let exp_id = id.clone();
     let mut confirm_delete = use_signal(|| false);
-    // The export link is a data: URI so no Blob APIs are needed.
-    let export_href = use_memo(move || match store::load_campaign(&exp_id) {
-        store::Loaded::Ok(doc) => to_toml(&doc).ok().map(|t| {
-            let encoded = js_sys::encode_uri_component(&t);
-            (
-                format!("data:application/toml;charset=utf-8,{encoded}"),
-                export_filename(&doc.title),
-            )
-        }),
-        _ => None,
-    });
 
     rsx! {
         div { class: "studio-row",
@@ -168,8 +160,23 @@ fn CampaignRow(
                 span { class: "studio-row-id", "{entry.id}" }
             }
             div { class: "studio-row-actions",
-                if let Some((href, filename)) = export_href() {
-                    a { class: "studio-btn small", href, download: "{filename}", "Export" }
+                // Serializes on click only (platform::download_text), not per render.
+                button {
+                    class: "studio-btn small",
+                    onclick: move |_| {
+                        if let store::Loaded::Ok(doc) = store::load_campaign(&exp_id) {
+                            match to_toml(&doc) {
+                                Ok(toml_src) => platform::download_text(
+                                    &export_filename(&doc.title),
+                                    &toml_src,
+                                ),
+                                Err(e) => err.set(format!("Export failed: {e}")),
+                            }
+                        } else {
+                            err.set("This campaign cannot be exported here (missing or newer-schema blob).".into());
+                        }
+                    },
+                    "Export"
                 }
                 button {
                     class: "studio-btn small",
@@ -184,7 +191,7 @@ fn CampaignRow(
                                 refresh.set(refresh() + 1);
                             }
                             store::Loaded::NewerSchema(v) => err.set(format!(
-                                "This campaign was saved by a newer studio (schema v{v}) and is read-only here."
+                                "This campaign was saved by a newer studio (schema v{v}) and cannot be opened by this one."
                             )),
                             store::Loaded::Missing => err.set("Campaign blob is missing.".into()),
                         }

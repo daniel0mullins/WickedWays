@@ -127,7 +127,7 @@ pub fn check_refs(doc: &EditorDoc) -> Vec<StudioProblem> {
     // ---- duplicates (name/key is the reference identity, so a duplicate breaks
     // every reference to it) ----
     type DupEntries = Vec<(Option<u64>, String)>;
-    let dup_checks: [(&str, Family, DupEntries); 8] = [
+    let dup_checks: [(&str, Family, DupEntries); 7] = [
         (
             "room name",
             Family::Rooms,
@@ -150,15 +150,6 @@ pub fn check_refs(doc: &EditorDoc) -> Vec<StudioProblem> {
             doc.archetypes
                 .iter()
                 .map(|a| (Some(a.id), a.entry.id.clone()))
-                .collect(),
-        ),
-        (
-            "mob/npc name",
-            Family::Mobs,
-            doc.mobs
-                .iter()
-                .map(|m| (Some(m.id), m.entry.name.clone()))
-                .chain(doc.npcs.iter().map(|n| (Some(n.id), n.entry.name.clone())))
                 .collect(),
         ),
         (
@@ -207,6 +198,41 @@ pub fn check_refs(doc: &EditorDoc) -> Vec<StudioProblem> {
                     family,
                     *asset,
                     format!("duplicate {kind} '{name}'"),
+                ));
+            }
+        }
+    }
+    // Mobs and NPCs share one character-name namespace (villain resolution is
+    // name-keyed), but each duplicate must badge and jump to ITS OWN family — a
+    // duplicate NPC filed under Mobs would navigate to a nonexistent mob.
+    {
+        let mut seen: BTreeMap<&str, u32> = BTreeMap::new();
+        for name in doc
+            .mobs
+            .iter()
+            .map(|m| m.entry.name.as_str())
+            .chain(doc.npcs.iter().map(|n| n.entry.name.as_str()))
+        {
+            *seen.entry(name).or_default() += 1;
+        }
+        let dup = |name: &str| !name.is_empty() && seen.get(name).copied().unwrap_or(0) > 1;
+        for m in &doc.mobs {
+            if dup(&m.entry.name) {
+                out.push(problem(
+                    Severity::Error,
+                    Family::Mobs,
+                    Some(m.id),
+                    format!("duplicate mob/npc name '{}'", m.entry.name),
+                ));
+            }
+        }
+        for n in &doc.npcs {
+            if dup(&n.entry.name) {
+                out.push(problem(
+                    Severity::Error,
+                    Family::Npcs,
+                    Some(n.id),
+                    format!("duplicate mob/npc name '{}'", n.entry.name),
                 ));
             }
         }
@@ -534,7 +560,195 @@ pub fn check_refs(doc: &EditorDoc) -> Vec<StudioProblem> {
         }
     }
 
+    // ---- best-effort literal lint inside raw DSL bodies ----
+    // Renames never rewrite body text (it is opaque), so the closest the integrity
+    // pass can get is flagging the STRUCTURED literal positions: the typed calls'
+    // key arguments and `room.name ==/!= '<lit>'` comparisons. Prose (cue text)
+    // is deliberately not scanned.
+    let key_codes: BTreeSet<&str> = doc
+        .items
+        .iter()
+        .filter_map(|i| i.entry.key_code.as_deref())
+        .collect();
+    let lint_body = |out: &mut Vec<StudioProblem>,
+                     family: Family,
+                     asset: Option<u64>,
+                     owner: &str,
+                     body: &str| {
+        for key in typed_call_keys(body, "hasItem")
+            .into_iter()
+            .chain(typed_call_keys(body, "hasEquipped"))
+        {
+            if !items.contains(key.as_str()) {
+                out.push(problem(
+                    Severity::Info,
+                    family,
+                    asset,
+                    format!("{owner} references unknown item '{key}' in hasItem/hasEquipped"),
+                ));
+            }
+        }
+        for code in typed_call_keys(body, "hasKey") {
+            if !key_codes.contains(code.as_str()) {
+                out.push(problem(
+                    Severity::Info,
+                    family,
+                    asset,
+                    format!("{owner} references unknown key code '{code}' in hasKey"),
+                ));
+            }
+        }
+        for room in room_name_comparisons(body) {
+            if !rooms.contains(room.as_str()) {
+                out.push(problem(
+                    Severity::Info,
+                    family,
+                    asset,
+                    format!("{owner} compares room.name against unknown room '{room}'"),
+                ));
+            }
+        }
+    };
+    for (key, b) in &doc.behaviors.exit {
+        let owner = format!("exit behavior '{key}'");
+        lint_body(&mut out, Family::Behaviors, None, &owner, &b.can_pass);
+        if let Some(s) = &b.run_script {
+            lint_body(&mut out, Family::Behaviors, None, &owner, s);
+        }
+    }
+    for (key, b) in &doc.behaviors.scene {
+        let owner = format!("scene behavior '{key}'");
+        for s in [&b.can_play, &b.on_enter, &b.on_exit].into_iter().flatten() {
+            lint_body(&mut out, Family::Behaviors, None, &owner, s);
+        }
+    }
+    for (key, b) in &doc.behaviors.item {
+        let owner = format!("item behavior '{key}'");
+        for s in [&b.on_use, &b.on_read].into_iter().flatten() {
+            lint_body(&mut out, Family::Behaviors, None, &owner, s);
+        }
+    }
+    for (key, b) in &doc.behaviors.npc {
+        let owner = format!("npc behavior '{key}'");
+        for entry in std::iter::once(&b.default).chain(b.dialogue.iter()) {
+            if let Some(s) = &entry.effects {
+                lint_body(&mut out, Family::Behaviors, None, &owner, s);
+            }
+        }
+    }
+    for (key, b) in &doc.behaviors.mechanic {
+        let owner = format!("mechanic behavior '{key}'");
+        let hooks = [
+            &b.on_round_start,
+            &b.on_round_end,
+            &b.on_turn_start,
+            &b.on_turn_end,
+            &b.on_action,
+            &b.modify_damage,
+        ];
+        for s in hooks.into_iter().flatten() {
+            lint_body(&mut out, Family::Behaviors, None, &owner, s);
+        }
+        for s in b.actions.values() {
+            lint_body(&mut out, Family::Behaviors, None, &owner, s);
+        }
+    }
+    for (key, b) in &doc.behaviors.card {
+        if let Some(s) = &b.on_play {
+            let owner = format!("card behavior '{key}'");
+            lint_body(&mut out, Family::Behaviors, None, &owner, s);
+        }
+    }
+    for c in doc.victory_win.iter().chain(doc.victory_lose.iter()) {
+        let owner = format!("victory condition '{}'", c.entry.key);
+        lint_body(&mut out, Family::Victory, Some(c.id), &owner, &c.entry.test);
+    }
+
     out.sort_by_key(|p| p.severity);
+    out
+}
+
+/// The quoted key argument of each `call(…)` occurrence in a body — the LAST
+/// string literal inside the call's parens (the typed calls are 2-arg with a
+/// string-literal key). Best-effort text scan, not a parse.
+fn typed_call_keys(body: &str, call: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = body;
+    while let Some(pos) = rest.find(call) {
+        let after = &rest[pos + call.len()..];
+        if let Some(args) = after.trim_start().strip_prefix('(') {
+            let mut depth = 1usize;
+            let mut in_quote: Option<char> = None;
+            let mut end = None;
+            for (i, c) in args.char_indices() {
+                match (in_quote, c) {
+                    (Some(q), _) if c == q => in_quote = None,
+                    (None, '\'' | '"') => in_quote = Some(c),
+                    (None, '(') => depth += 1,
+                    (None, ')') => {
+                        depth -= 1;
+                        if depth == 0 {
+                            end = Some(i);
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            if let Some(end) = end {
+                if let Some(lit) = last_quoted(&args[..end]) {
+                    out.push(lit);
+                }
+            }
+        }
+        rest = after;
+    }
+    out
+}
+
+/// The last `'…'`/`"…"` literal in `s` (quotes are ASCII, so byte indexing is
+/// char-boundary-safe).
+fn last_quoted(s: &str) -> Option<String> {
+    let bytes = s.as_bytes();
+    let mut i = 0;
+    let mut result = None;
+    while i < bytes.len() {
+        let q = bytes[i];
+        if q == b'\'' || q == b'"' {
+            match s[i + 1..].find(q as char) {
+                Some(j) => {
+                    result = Some(s[i + 1..i + 1 + j].to_string());
+                    i = i + 1 + j + 1;
+                    continue;
+                }
+                None => break,
+            }
+        }
+        i += 1;
+    }
+    result
+}
+
+/// Each `room.name ==/!= '<lit>'` comparison's literal.
+fn room_name_comparisons(body: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut rest = body;
+    while let Some(pos) = rest.find("room.name") {
+        let after = &rest[pos + "room.name".len()..];
+        let t = after.trim_start();
+        if let Some(t) = t
+            .strip_prefix("==")
+            .or_else(|| t.strip_prefix("!="))
+            .map(str::trim_start)
+        {
+            if let Some(q) = t.chars().next().filter(|c| matches!(c, '\'' | '"')) {
+                if let Some(j) = t[1..].find(q) {
+                    out.push(t[1..1 + j].to_string());
+                }
+            }
+        }
+        rest = after;
+    }
     out
 }
 
@@ -644,17 +858,61 @@ pub fn rename_item_key(doc: &mut EditorDoc, old: &str, new: &str) -> usize {
     n
 }
 
-/// How many references a rename/delete would touch (the confirm dialogs), computed
-/// on a clone so the document is untouched.
+/// How many references a rename/delete would touch (the confirm dialogs). A
+/// read-only mirror of [`rename_room`]'s traversal — runs on every form render, so
+/// no clones.
 #[must_use]
 pub fn count_room_refs(doc: &EditorDoc, name: &str) -> usize {
-    rename_room(&mut doc.clone(), name, "\u{0}probe\u{0}")
+    let hit = |s: &str| usize::from(s == name);
+    let mut n = doc.start_room.as_deref().map_or(0, hit);
+    for e in &doc.exits {
+        n += hit(&e.entry.from) + hit(&e.entry.to);
+    }
+    for l in &doc.loot {
+        n += hit(&l.entry.room);
+    }
+    for c in &doc.caches {
+        n += hit(&c.entry.room);
+    }
+    for s in &doc.scenes {
+        n += hit(&s.entry.room);
+    }
+    for m in &doc.mobs {
+        n += m.entry.room.as_deref().map_or(0, hit);
+    }
+    for p in &doc.npcs {
+        n += p.entry.room.as_deref().map_or(0, hit);
+    }
+    n
 }
 
-/// See [`count_room_refs`].
+/// See [`count_room_refs`] — the read-only mirror of [`rename_item_key`]
+/// (the shared-key behavior entry counts as one reference, as in the rename).
 #[must_use]
 pub fn count_item_refs(doc: &EditorDoc, key: &str) -> usize {
-    rename_item_key(&mut doc.clone(), key, "\u{0}probe\u{0}")
+    let hit = |s: &str| usize::from(s == key);
+    let mut n = 0;
+    for l in &doc.loot {
+        n += l.entry.items.iter().map(|s| hit(s)).sum::<usize>();
+    }
+    for m in &doc.mobs {
+        n += m.entry.drops.iter().map(|s| hit(s)).sum::<usize>();
+    }
+    for p in &doc.npcs {
+        n += p.entry.holds.iter().map(|s| hit(s)).sum::<usize>();
+    }
+    for r in &doc.rooms {
+        n += r.entry.lights.iter().map(|s| hit(s)).sum::<usize>();
+    }
+    for rec in &doc.recipes {
+        n += hit(&rec.entry.output_item);
+    }
+    for f in &doc.formations {
+        for spec in &f.entry.mobs {
+            n += spec.drops.iter().map(|s| hit(s)).sum::<usize>();
+        }
+    }
+    n + usize::from(doc.behaviors.item.contains_key(key))
 }
 
 /// The return leg of an exit: swapped ends, opposite direction, copied
@@ -669,7 +927,9 @@ pub fn reverse_exit(exit: &ExitEntry) -> Option<ExitEntry> {
         direction: opposite_direction(&exit.direction)?.to_string(),
         behavior: exit.behavior.clone(),
         name: exit.name.clone(),
-        initial_state: exit.initial_state.clone(),
+        // Deliberately NOT copied — a stateful door's seed belongs to one leg;
+        // a copied seed would give the return leg an independent lock state.
+        initial_state: None,
         one_way: None,
     })
 }
@@ -899,14 +1159,14 @@ mod tests {
     }
 
     #[test]
-    fn reverse_exit_swaps_ends_and_direction() {
+    fn reverse_exit_swaps_ends_and_direction_without_copying_state() {
         let e = ExitEntry {
             from: "A".into(),
             to: "B".into(),
             direction: "northeast".into(),
             behavior: Some("door".into()),
             name: Some("iron door".into()),
-            initial_state: None,
+            initial_state: Some(toml::from_str("unlocked = false").unwrap()),
             one_way: None,
         };
         let r = reverse_exit(&e).expect("reversible");
@@ -914,5 +1174,107 @@ mod tests {
         assert_eq!(r.to, "A");
         assert_eq!(r.direction, "southwest");
         assert_eq!(r.behavior.as_deref(), Some("door"));
+        assert_eq!(
+            r.initial_state, None,
+            "state seeds belong to one leg — never copied to the return exit"
+        );
+    }
+
+    #[test]
+    fn duplicate_npc_names_badge_the_npcs_family() {
+        let d = doc(r#"
+            title = "T"
+            [[npcs]]
+            name = "Keeper"
+            stats = { health = 1.0, sanity = 1.0, energy = 1.0 }
+            behavior = "keeper"
+            [[npcs]]
+            name = "Keeper"
+            stats = { health = 1.0, sanity = 1.0, energy = 1.0 }
+            behavior = "keeper"
+            [behaviors.npc.keeper]
+            description = "…"
+            [behaviors.npc.keeper.default]
+            match = ""
+            response = "…"
+        "#);
+        let problems = check_refs(&d);
+        let dup_problems: Vec<&StudioProblem> = problems
+            .iter()
+            .filter(|p| p.message.contains("duplicate mob/npc name"))
+            .collect();
+        assert_eq!(dup_problems.len(), 2);
+        for p in &dup_problems {
+            assert_eq!(
+                p.family,
+                Family::Npcs,
+                "duplicate NPCs badge NPCs, not Mobs"
+            );
+            assert!(d.npcs.iter().any(|n| Some(n.id) == p.asset));
+        }
+    }
+
+    #[test]
+    fn body_literal_lint_flags_structured_references_only() {
+        let d = doc(r#"
+            title = "T"
+            startRoom = "A"
+            [[rooms]]
+            name = "A"
+            description = "a"
+            [[items]]
+            key = "lantern"
+            name = "Lantern"
+            [[exits]]
+            from = "A"
+            to = "A"
+            direction = "north"
+            behavior = "door"
+            oneWay = true
+            [behaviors.exit.door]
+            canPass = "hasKey(actor, 'cellar') && hasItem(actor, 'ghost-item')"
+            [[victory.win]]
+            key = "reach"
+            test = "party[0].room.name == 'Gone'"
+            [[victory.lose]]
+            key = "safe"
+            test = "party[0].room.name == 'A' && hasEquipped(actor, 'lantern')"
+        "#);
+        let problems = check_refs(&d);
+        let infos: Vec<&StudioProblem> = problems
+            .iter()
+            .filter(|p| p.severity == Severity::Info)
+            .collect();
+        // Unknown item in a typed call, unknown key code, unknown room comparison…
+        assert!(infos.iter().any(|p| p.message.contains("'ghost-item'")));
+        assert!(infos.iter().any(|p| p.message.contains("'cellar'")));
+        let room_lint = infos
+            .iter()
+            .find(|p| p.message.contains("'Gone'"))
+            .expect("room.name lint");
+        assert_eq!(room_lint.family, Family::Victory);
+        assert_eq!(room_lint.asset, Some(d.victory_win[0].id));
+        // …while valid references stay quiet.
+        assert!(!problems.iter().any(|p| p.message.contains("'lantern'")));
+        assert!(!problems
+            .iter()
+            .any(|p| p.severity == Severity::Info && p.message.contains("room 'A'")));
+    }
+
+    #[test]
+    fn typed_call_scan_handles_nesting_and_both_quotes() {
+        assert_eq!(
+            typed_call_keys("hasItem(first(party), \"brass-key\")", "hasItem"),
+            vec!["brass-key".to_string()]
+        );
+        assert_eq!(
+            typed_call_keys("hasKey(actor, 'a') || hasKey(actor, 'b')", "hasKey"),
+            vec!["a".to_string(), "b".to_string()]
+        );
+        assert!(typed_call_keys("no calls here", "hasItem").is_empty());
+        assert_eq!(
+            room_name_comparisons("x == 1 && party[0].room.name != \"Vault\""),
+            vec!["Vault".to_string()]
+        );
     }
 }

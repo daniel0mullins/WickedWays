@@ -83,10 +83,11 @@ impl StudioStore {
         );
     }
 
-    /// Apply a mutation, then re-lint and write through to storage.
-    pub fn mutate(mut self, f: impl FnOnce(&mut EditorDoc)) {
+    /// Apply a mutation, then re-lint and write through to storage. Returns the
+    /// closure's value (add-handlers return the minted id to select it).
+    pub fn mutate<R>(mut self, f: impl FnOnce(&mut EditorDoc) -> R) -> R {
         let mut doc = self.doc.write();
-        f(&mut doc);
+        let out = f(&mut doc);
         let snapshot = doc.clone();
         drop(doc);
         self.problems.set(check_refs(&snapshot));
@@ -95,6 +96,7 @@ impl StudioStore {
             Ok(()) => self.save_error.set(None),
             Err(e) => self.save_error.set(Some(e)),
         }
+        out
     }
 }
 
@@ -105,15 +107,20 @@ pub fn studio_app() -> Element {
         style { {include_str!("../assets/studio.css")} }
         match route() {
             StudioRoute::Home => rsx! { crate::ui::home::HomeView { route } },
-            StudioRoute::Edit { campaign, section, asset } => rsx! {
-                crate::ui::shell::EditorShell {
-                    key: "{campaign}",
-                    campaign,
-                    section,
-                    asset,
-                    route,
+            StudioRoute::Edit { campaign, section, asset } => {
+                // The remount key formats `campaign` while the prop consumes it —
+                // a copy keeps the release rsx expansion (which moves eagerly) happy.
+                let ckey = campaign.clone();
+                rsx! {
+                    crate::ui::shell::EditorShell {
+                        key: "{ckey}",
+                        campaign,
+                        section,
+                        asset,
+                        route,
+                    }
                 }
-            },
+            }
         }
     }
 }

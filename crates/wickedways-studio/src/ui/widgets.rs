@@ -126,9 +126,10 @@ pub fn TriBoolRow(
     rsx! {
         label { class: "studio-field",
             span { class: "studio-field-label", "{label}" }
+            // The stored choice is marked per-option (`selected`) — a `value`
+            // attribute on `<select>` does not reliably apply at mount.
             select {
                 class: "studio-input",
-                value: "{current}",
                 onchange: move |e| {
                     on_change.call(match e.value().as_str() {
                         "true" => Some(true),
@@ -136,9 +137,9 @@ pub fn TriBoolRow(
                         _ => None,
                     });
                 },
-                option { value: "unset", "(unset)" }
-                option { value: "true", "true" }
-                option { value: "false", "false" }
+                option { value: "unset", selected: current == "unset", "(unset)" }
+                option { value: "true", selected: current == "true", "true" }
+                option { value: "false", selected: current == "false", "false" }
             }
         }
     }
@@ -155,21 +156,35 @@ pub fn SelectRow(
     on_change: EventHandler<Option<String>>,
 ) -> Element {
     let current = value.clone().unwrap_or_default();
+    // A stored value missing from the vocabulary (a dangling reference after a
+    // delete, or an imported free-form value) must stay visible as the selection —
+    // otherwise the browser silently displays the first option while the model
+    // still holds the dangling value.
+    let dangling = value
+        .clone()
+        .filter(|v| !v.is_empty() && !options.contains(v));
     rsx! {
         label { class: "studio-field",
             span { class: "studio-field-label", "{label}" }
+            // The stored choice is marked per-option (`selected`) — a `value`
+            // attribute on `<select>` does not reliably apply at mount.
             select {
                 class: "studio-input",
-                value: "{current}",
                 onchange: move |e| {
                     let v = e.value();
                     on_change.call(if v.is_empty() { None } else { Some(v) });
                 },
                 if allow_unset {
-                    option { value: "", "(unset)" }
+                    option { value: "", selected: current.is_empty(), "(unset)" }
+                }
+                if let Some(d) = dangling {
+                    option { value: "{d}", selected: true, "{d} (missing)" }
                 }
                 for opt in options {
-                    option { key: "{opt}", value: "{opt}", "{opt}" }
+                    {
+                        let is_current = opt == current;
+                        rsx! { option { key: "{opt}", value: "{opt}", selected: is_current, "{opt}" } }
+                    }
                 }
             }
         }
@@ -255,13 +270,7 @@ pub fn OptTomlRow(
     value: Option<toml::Value>,
     on_change: EventHandler<Option<toml::Value>>,
 ) -> Element {
-    let initial = value
-        .as_ref()
-        .map(|v| {
-            toml::to_string(&WrapVal { v: v.clone() })
-                .map_or_else(|_| String::new(), |s| unwrap_shown(&s))
-        })
-        .unwrap_or_default();
+    let initial = value.as_ref().map(inline_toml).unwrap_or_default();
     let mut text = use_signal(|| initial.clone());
     let mut parse_err = use_signal(String::new);
     // Re-seed the local text when the underlying value changes identity (e.g. the
@@ -304,7 +313,7 @@ pub fn OptTomlRow(
     }
 }
 
-/// Serde vehicle for parsing/printing a bare TOML value as `v = <value>`.
+/// Serde vehicle for parsing a bare TOML value as `v = <value>`.
 #[derive(serde::Serialize, serde::Deserialize)]
 struct WrapVal {
     v: toml::Value,
@@ -316,6 +325,45 @@ fn unwrap_shown(s: &str) -> String {
         .strip_prefix("v = ")
         .unwrap_or(s.trim())
         .to_string()
+}
+
+/// Render a TOML value in INLINE form (`{ unlocked = false }`, `[1, 2]`, `"x"`) —
+/// the shape `OptTomlRow` parses back via `v = <text>`. `toml::to_string` cannot do
+/// this: a table serializes as a `[v]` header block, which neither displays nor
+/// re-parses as an inline value.
+fn inline_toml(v: &toml::Value) -> String {
+    match v {
+        toml::Value::Table(t) => {
+            if t.is_empty() {
+                return "{}".to_string();
+            }
+            let inner = t
+                .iter()
+                .map(|(k, val)| format!("{} = {}", inline_key(k), inline_toml(val)))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{{ {inner} }}")
+        }
+        toml::Value::Array(a) => {
+            let inner = a.iter().map(inline_toml).collect::<Vec<_>>().join(", ");
+            format!("[{inner}]")
+        }
+        // Scalars round-trip through the `v = <scalar>` form (always single-line).
+        _ => toml::to_string(&WrapVal { v: v.clone() })
+            .map_or_else(|_| String::new(), |s| unwrap_shown(&s)),
+    }
+}
+
+/// A table key, bare when TOML allows it, else quoted via the scalar printer.
+fn inline_key(k: &str) -> String {
+    if !k.is_empty()
+        && k.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    {
+        k.to_string()
+    } else {
+        inline_toml(&toml::Value::String(k.to_string()))
+    }
 }
 
 /// The master/detail list pane: one row per entry, a selected highlight, an add
@@ -356,6 +404,40 @@ pub fn ConfirmDelete(label: String, on_delete: EventHandler<()>) -> Element {
             }
         } else {
             button { class: "studio-btn small danger", onclick: move |_| armed.set(true), "Delete…" }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{inline_toml, WrapVal};
+
+    fn parse(s: &str) -> toml::Value {
+        toml::from_str::<WrapVal>(&format!("v = {s}"))
+            .expect("parses")
+            .v
+    }
+
+    /// The display form must re-parse to the same value — the `OptTomlRow`
+    /// contract (a table used to render as a `[v]` header block, which neither
+    /// displayed nor re-parsed).
+    #[test]
+    fn inline_toml_round_trips_through_the_input_form() {
+        for src in [
+            "{ unlocked = false }",
+            "{}",
+            "{ rounds = 3, deep = { a = [1, 2], b = \"x\" } }",
+            "[1, 2, 3]",
+            "\"a 'quoted' string\"",
+            "-4",
+            "2.5",
+            "true",
+            "{ \"key with spaces\" = 1 }",
+        ] {
+            let v = parse(src);
+            let shown = inline_toml(&v);
+            assert_eq!(parse(&shown), v, "{src} → {shown} must re-parse equal");
+            assert!(!shown.contains('\n'), "{shown} must be single-line");
         }
     }
 }
