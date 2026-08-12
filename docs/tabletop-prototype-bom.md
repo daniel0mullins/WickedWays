@@ -111,6 +111,11 @@ and the Raspberry Pi imager / `rustup` toolchain. No specialist gear beyond that
 - **Scaling to a full board:** e-ink, PN532, and LEDs scale linearly per tile; the TCA9548A handles 8
   I²C devices (chain a second mux beyond that), and past ~4 tiles you'll want a per-tile MCU (ESP32) on
   a shared bus (the firmware-sketch topology) rather than everything on the Pi's GPIO.
+- **Position sensing for a consumer SKU:** this per-tile-PN532 board is the *prototype* topology. For a
+  sub-$100 product that senses *which piece is on which tile* without a per-tile reader (or a camera),
+  see [`tabletop-position-sensing-adr.md`](./tabletop-position-sensing-adr.md) — a single reader
+  time-muxed across a **coil grid** (the e-chessboard approach; recommended) vs. a **coded laser fence**
+  (theatrical, but fights occlusion + the $100 budget).
 - **Dice input:** the dice-supply seam is built (`DiceRolled` → `SupplyDice`, feeding a mob d20
   to-hit; a supplied die is the literal outcome, else the house rolls). A minimal prototype can enter
   rolls on-screen / from a keypad; a fancier build adds a **dice-reading tray** (NFC dice or a camera)
