@@ -33,3 +33,6 @@ jobs:
       - run: cargo build -p wickedways-web --target wasm32-unknown-unknown
       # The shipped wasm cdylib on its real target, with the features it ships with.
       - run: cargo clippy -p wickedways-wasm --target wasm32-unknown-unknown --features conformance -- -D warnings
+      # Campaign Studio (the authoring app) on its shipped target.
+      - run: cargo clippy -p wickedways-studio --all-targets --target wasm32-unknown-unknown -- -D warnings
+      - run: cargo build -p wickedways-studio --target wasm32-unknown-unknown

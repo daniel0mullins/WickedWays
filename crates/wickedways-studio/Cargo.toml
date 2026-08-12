@@ -1,0 +1,45 @@
+[package]
+name = "wickedways-studio"
+version = "0.0.1"
+edition = "2021"
+
+# Campaign Studio — the graphical campaign-authoring app (docs/campaign-studio-spec.md).
+# A SEPARATE application from the play client (`wickedways-web`): it shares upstream
+# crates and idioms, not code. The author + assemble crates are wasm-clean, so the
+# whole validation pipeline (compile → assemble → validate_mechanics) runs in-browser;
+# the app ships as a static bundle (build-studio.sh) with no server component.
+#
+# This crate targets wasm32-unknown-unknown; build it with
+#   cargo build -p wickedways-studio --target wasm32-unknown-unknown
+
+[lib]
+name = "wickedways_studio"
+path = "src/lib.rs"
+
+[[bin]]
+name = "wickedways-studio"
+path = "src/main.rs"
+
+[dependencies]
+dioxus = { version = "0.6", features = ["web"] }
+# The authoring compiler (this crate is its first in-repo consumer) and the
+# assembler behind the authoritative "Check campaign" gate.
+wickedways-author = { path = "../wickedways-author" }
+wickedways-assemble = { path = "../wickedways-assemble" }
+wickedways-core = { path = "../wickedways-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Browser bindings (compile on host too — extern declarations only — so the
+# model/refs/gate layers stay host-testable).
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+  "Window", "Location", "UrlSearchParams", "Url", "History", "Storage",
+  # The transient download anchor (platform::download_text).
+  "Document", "Element", "HtmlElement", "HtmlAnchorElement",
+] }
+
+[lints]
+workspace = true
