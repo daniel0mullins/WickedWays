@@ -80,6 +80,13 @@ pub fn validate_behavior(key: &str, b: &BehaviorScript) -> Result<(), Procedural
             }
             Ok(())
         }
+        BehaviorScript::Card { script } => {
+            // `on_play` is an effect body, exactly like an item's `on_use`.
+            if let Some(body) = &script.on_play {
+                check_stmts(body, /*allow_pass=*/ false, /*allow_emit=*/ true).or_else(bad)?;
+            }
+            Ok(())
+        }
     }
 }
 

@@ -144,4 +144,5 @@ gate! {
     g2_status_bar => "g2-status-bar",
     g2_victory => "g2-victory",
     g2_effects => "g2-effects",
+    g2_villain => "g2-villain",
 }

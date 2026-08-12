@@ -24,7 +24,16 @@ impl World {
     /// a non-broken placed light source, OR an occupant carries an equipped,
     /// non-broken light. Needs `&Catalog` to read each item's `emits_light` and
     /// `max_durability` (broken-state).
+    ///
+    /// Supernatural darkness (the Villain's `wicked:lights-out` card) overrides
+    /// everything: while `campaign.lights_out_rounds > 0`, EVERY room is unlit
+    /// regardless of `dark` flags or light sources. The check is first so it
+    /// propagates to every consumer (targeting gate, light-averse multiplier,
+    /// entry-swing initiative, visibility cues, view projections) at once.
     pub fn is_lit(&self, room: &RoomId, cat: &Catalog) -> bool {
+        if self.campaign.lights_out_rounds > 0 {
+            return false;
+        }
         let Some(r) = self.rooms.get(room) else {
             return true;
         };
@@ -398,14 +407,12 @@ impl World {
         Ok(())
     }
 
-    /// Move `actor` to `room`, updating occupancy in both rooms, emitting a
-    /// visibility cue if the destination is dark, then recording the action
-    /// (budget tick + history + action cue). Mirrors `Character.move`
-    /// and `Character.#enterRoom`.
-    ///
-    /// Occupancy is a `Vec`: exit via `retain`, enter via `push` (guards against
-    /// duplicates). Insertion order matches TS.
-    pub fn move_to(
+    /// The bare relocation shared by `move_to` and the Villain's `Teleport` card
+    /// effect: exit-phase scenes of the departed room (mover still an occupant) →
+    /// occupancy swap → enter-phase scenes of the destination → visibility cue
+    /// when the destination is dark. No budget tick, no history, no spawn/codex
+    /// tail — callers layer those on.
+    pub(crate) fn relocate(
         &mut self,
         actor: &CharacterId,
         room: &RoomId,
@@ -457,6 +464,24 @@ impl World {
                 lit: false,
             });
         }
+        Ok(())
+    }
+
+    /// Move `actor` to `room`, updating occupancy in both rooms, emitting a
+    /// visibility cue if the destination is dark, then recording the action
+    /// (budget tick + history + action cue). Mirrors `Character.move`
+    /// and `Character.#enterRoom`.
+    ///
+    /// Occupancy is a `Vec`: exit via `retain`, enter via `push` (guards against
+    /// duplicates). Insertion order matches TS.
+    pub fn move_to(
+        &mut self,
+        actor: &CharacterId,
+        room: &RoomId,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
+        self.relocate(actor, room, cat, cues)?;
 
         // After a successful move: maybe_spawn (encounter table visited) and the
         // room codex record. Both apply only to player characters.

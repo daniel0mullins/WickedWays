@@ -1,0 +1,61 @@
+# g2-villain — authors the g2-villain golden pair.
+#
+# The Villain & Wicked Ways Cards authoring surface: a `[villain]` table naming a
+# declared mob as the adversary and its authored deck; `[[cards]]` faces (a native
+# `wicked:lights-out` with a `config` override, plus an authored `hex` card); and a
+# `[behaviors.card.hex]` scripted behavior whose `onPlay` is an effect body (the
+# same grammar as an item's `onUse`). The `hex` face and behavior SHARE the key
+# (the engine resolves a card native-first, then via `catalog.behaviors[card_key]`).
+# The deck also references `wicked:ruin` face-less: a native card needs no
+# `[[cards]]` entry at all.
+# ASCII only.
+
+title = "Villain"
+startRoom = "Parlor"
+
+[[rooms]]
+name = "Parlor"
+description = "A parlor of shrouded furniture."
+
+[[rooms]]
+name = "Gallery"
+description = "A long gallery of watchful portraits."
+
+[[exits]]
+from = "Parlor"
+to = "Gallery"
+direction = "north"
+
+[[mobs]]
+name = "Warden"
+stats = { health = 8, sanity = 6, energy = 6 }
+room = "Gallery"
+naturalAttack = { stat = "sanity", power = 2 }
+
+[villain]
+character = "Warden"
+deck = [
+  "wicked:lights-out",
+  "wicked:ruin",
+  "wicked:shadow-step",
+  "hex",
+  "wicked:lights-out",
+  "wicked:ruin",
+]
+
+[[cards]]
+key = "wicked:lights-out"
+name = "Lights Out"
+text = "Every flame gutters and dies for three rounds."
+config = { rounds = 3 }
+
+[[cards]]
+key = "hex"
+name = "Creeping Hex"
+text = "A whispered curse saps the heroes' resolve."
+
+[behaviors.card.hex]
+onPlay = '''
+  emit cue('A whispered curse crawls through the walls.')
+  emit adjustStat(party[0], sanity, -2)
+'''

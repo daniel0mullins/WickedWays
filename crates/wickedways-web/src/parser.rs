@@ -222,6 +222,79 @@ pub fn parse(input: &str, scope: &[ScopeEntity]) -> ParseResult {
         });
     }
 
+    // play <card> [to/at <room>] — the Villain's card action. The optional
+    // trailing room (Shadow Step's destination) is split off at the FIRST
+    // bare "to"/"at" and carried as a NAME — the command layer resolves it
+    // against the live world, so the parser needs no room scope.
+    if verb == "play" || verb == "cast" {
+        let args: Vec<&str> = tokens.iter().skip(1).copied().collect();
+        let split = args.iter().position(|t| *t == "to" || *t == "at");
+        let (card_tokens, room_tokens) = match split {
+            Some(i) => (&args[..i], &args[i + 1..]),
+            None => (&args[..], &[][..]),
+        };
+        let card_phrase = card_tokens
+            .iter()
+            .filter(|t| !is_stop(t))
+            .copied()
+            .collect::<Vec<_>>()
+            .join(" ");
+        if card_phrase.is_empty() {
+            return ParseResult::Error("Play which card?".into());
+        }
+        let room = {
+            let name = room_tokens
+                .iter()
+                .filter(|t| !is_stop(t))
+                .copied()
+                .collect::<Vec<_>>()
+                .join(" ");
+            (!name.is_empty()).then_some(name)
+        };
+        return resolve_then(verb, &card_phrase, scope, |t| {
+            ParseResult::Intent(Intent::PlayCard {
+                card_key: t.id.clone(),
+                room: room.clone(),
+            })
+        });
+    }
+
+    // mulligan <card>, <card>, <card> — discard three, draw three. The only
+    // comma-separated argument list in the grammar.
+    if verb == "mulligan" || verb == "redraw" {
+        let rest = lowered[verb.len()..].trim();
+        if rest.is_empty() {
+            return ParseResult::Error(
+                "Mulligan which cards? Name three, separated by commas.".into(),
+            );
+        }
+        let mut card_keys: Vec<String> = Vec::new();
+        for fragment in rest.split(',') {
+            let phrase = fragment
+                .split_whitespace()
+                .filter(|t| !is_stop(t))
+                .collect::<Vec<_>>()
+                .join(" ");
+            if phrase.is_empty() {
+                continue;
+            }
+            let matches: Vec<&ScopeEntity> = resolve(&phrase, scope)
+                .into_iter()
+                .filter(|e| verb_targets(verb, &e.kind))
+                .collect();
+            match matches.len() {
+                0 => {
+                    return ParseResult::Error(format!(
+                        "You're not holding a card called \"{phrase}\"."
+                    ))
+                }
+                1 => card_keys.push(matches[0].id.clone()),
+                _ => return ParseResult::Ambiguous(matches.into_iter().cloned().collect()),
+            }
+        }
+        return ParseResult::Intent(Intent::Mulligan { card_keys });
+    }
+
     let noun_phrase = tokens
         .iter()
         .skip(1)
@@ -264,8 +337,11 @@ fn verb_targets(verb: &str, kind: &str) -> bool {
     match verb {
         "craft" | "forge" | "make" => kind == "recipe",
         "harvest" | "scavenge" | "gather" => kind == "cache",
-        "examine" | "x" | "look-at" | "read" | "look" | "l" => kind != "recipe",
-        _ => kind != "recipe" && kind != "cache",
+        // Only the card verbs see the Villain's hand; card faces live in the
+        // panel, so `examine` (like recipes) ignores them.
+        "play" | "cast" | "mulligan" | "redraw" => kind == "card",
+        "examine" | "x" | "look-at" | "read" | "look" | "l" => kind != "recipe" && kind != "card",
+        _ => kind != "recipe" && kind != "cache" && kind != "card",
     }
 }
 
@@ -374,6 +450,94 @@ mod tests {
             ent("i:torch", "Torch", "item", &["torch", "brand"]),
             ent("l:chest", "Chest", "loot", &["chest"]),
         ]
+    }
+
+    /// A villain hand: the three shipped cards as `kind: "card"` scope entities
+    /// (the shape the core view mints for the active villain).
+    fn card_scope() -> Vec<ScopeEntity> {
+        vec![
+            ent(
+                "wicked:lights-out",
+                "Lights Out",
+                "card",
+                &["lights out", "wicked:lights-out"],
+            ),
+            ent("wicked:ruin", "Ruin", "card", &["ruin", "wicked:ruin"]),
+            ent(
+                "wicked:shadow-step",
+                "Shadow Step",
+                "card",
+                &["shadow step", "wicked:shadow-step"],
+            ),
+        ]
+    }
+
+    #[test]
+    fn play_resolves_a_card_by_face_name() {
+        assert_eq!(
+            parse("play lights out", &card_scope()),
+            ParseResult::Intent(Intent::PlayCard {
+                card_key: "wicked:lights-out".into(),
+                room: None,
+            })
+        );
+    }
+
+    #[test]
+    fn play_splits_a_room_target_at_to() {
+        assert_eq!(
+            parse("play shadow step to the gallery", &card_scope()),
+            ParseResult::Intent(Intent::PlayCard {
+                card_key: "wicked:shadow-step".into(),
+                room: Some("gallery".into()),
+            })
+        );
+    }
+
+    #[test]
+    fn play_without_a_card_asks_which() {
+        assert_eq!(
+            parse("play", &card_scope()),
+            ParseResult::Error("Play which card?".into())
+        );
+    }
+
+    #[test]
+    fn mulligan_parses_a_comma_list() {
+        assert_eq!(
+            parse("mulligan lights out, ruin, shadow step", &card_scope()),
+            ParseResult::Intent(Intent::Mulligan {
+                card_keys: vec![
+                    "wicked:lights-out".into(),
+                    "wicked:ruin".into(),
+                    "wicked:shadow-step".into(),
+                ],
+            })
+        );
+    }
+
+    #[test]
+    fn mulligan_rejects_an_unknown_card() {
+        assert_eq!(
+            parse("mulligan lights out, nonsense, ruin", &card_scope()),
+            ParseResult::Error("You're not holding a card called \"nonsense\".".into())
+        );
+    }
+
+    #[test]
+    fn cards_are_invisible_to_physical_verbs() {
+        // The verb-target namespace keeps a card named like an item from ever
+        // resolving for take/equip/etc. — and keeps `play` from seeing items.
+        let mut s = card_scope();
+        s.push(ent("i:torch", "Torch", "item", &["torch"]));
+        assert_eq!(
+            parse("take lights out", &s),
+            ParseResult::Error("You don't see that here.".into())
+        );
+        assert_eq!(
+            parse("play torch", &s),
+            ParseResult::Error("You don't see that here.".into())
+        );
     }
 
     #[test]

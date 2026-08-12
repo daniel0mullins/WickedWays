@@ -13,11 +13,11 @@ use wickedways_assemble::description::{
     MechanicEntry, MobDef, NpcDef, RoomDef, SceneDef,
 };
 use wickedways_core::script::ast::{
-    BehaviorScript, ExitScript, ItemScript, SceneScript, VictoryScript,
+    BehaviorScript, CardScript, ExitScript, ItemScript, SceneScript, VictoryScript,
 };
 use wickedways_core::stats::StatType;
 use wickedways_core::world::descriptor::{
-    Catalog, ItemDescriptor, ItemProperties, ItemType, RecipeMeta,
+    CardDescriptor, Catalog, ItemDescriptor, ItemProperties, ItemType, RecipeMeta,
 };
 use wickedways_core::world::formation_descriptor::FormationDescriptor;
 
@@ -199,6 +199,16 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 config: m.config.as_ref().and_then(|v| serde_json::to_value(v).ok()),
             })
             .collect(),
+        // The `[villain]` table → the description's `VillainDef` (character
+        // reference + authored deck), passed through verbatim; the assembler
+        // resolves the character (mob-first, or the "@gm" sentinel at seating).
+        villain: doc
+            .villain
+            .as_ref()
+            .map(|v| wickedways_assemble::description::VillainDef {
+                character: v.character.clone(),
+                deck: v.deck.clone(),
+            }),
         // A `timeoutNarration` string lowers to the cue shape `{ "text": … }` (the
         // same shape as a victory condition's narration).
         timeout_narration: doc.timeout_narration.as_ref().map(|text| {
@@ -309,6 +319,22 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
         behaviors.insert(key.clone(), BehaviorScript::Mechanic { script });
     }
 
+    // Card behaviors: each `[behaviors.card.<key>]` lowers to a `CardScript`
+    // with an optional `on_play` effect body (the same grammar as an item's
+    // `onUse`). Keyed by `<key>` — shared with the `[[cards]]` face and the
+    // `[villain]` deck reference (the engine resolves a card native-first,
+    // then via `catalog.behaviors[card_key]`).
+    for (key, entry) in &doc.behaviors.card {
+        let script = CardScript {
+            on_play: entry
+                .on_play
+                .as_deref()
+                .map(|s| parse_stmts(s, EXPR_BASE))
+                .transpose()?,
+        };
+        behaviors.insert(key.clone(), BehaviorScript::Card { script });
+    }
+
     // Victory behaviors: each win/lose condition's `test` is a parsed predicate,
     // keyed by the condition key (shared with the description's condition entry).
     for cond in doc.victory.win.iter().chain(doc.victory.lose.iter()) {
@@ -358,12 +384,32 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
         );
     }
 
+    // Each `[[cards]]` entry → a `CardDescriptor` face (name/text/config),
+    // keyed by card key. `config` is inert author-data the card behavior reads;
+    // a conversion failure drops it (Null) rather than panicking.
+    let mut cards = BTreeMap::new();
+    for c in &doc.cards {
+        cards.insert(
+            c.key.clone(),
+            CardDescriptor {
+                name: c.name.clone(),
+                text: c.text.clone(),
+                config: c
+                    .config
+                    .as_ref()
+                    .and_then(|v| serde_json::to_value(v).ok())
+                    .unwrap_or(Value::Null),
+            },
+        );
+    }
+
     Ok(Catalog {
         items,
         aliases,
         behaviors,
         formations,
         recipes,
+        cards,
     })
 }
 

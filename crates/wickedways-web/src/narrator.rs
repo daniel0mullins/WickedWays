@@ -171,6 +171,9 @@ impl Narrator {
                 "inventory — what you are carrying".into(),
                 "exits — the ways out of this room".into(),
                 "wait — let a turn pass".into(),
+                "play <card> [to <room>] — as the Villain, play a Wicked Ways card".into(),
+                "mulligan <card>, <card>, <card> — as the Villain, discard three and draw three"
+                    .into(),
                 "map — show the explored map".into(),
                 "save / restore — store or reload your game".into(),
                 "undo — take back the last turn".into(),
@@ -271,6 +274,15 @@ impl Narrator {
                 "You break the {} down for parts.",
                 name_of(target_id)
             )],
+            // The played card's own effects narrate via mechanic cues; this
+            // line is the confirmation. Cards resolve in `before`'s scope (the
+            // hand entry may be gone from `after`).
+            Intent::PlayCard { card_key, .. } => {
+                vec![format!("You play {}.", name_of(card_key))]
+            }
+            Intent::Mulligan { .. } => {
+                vec!["You bury three cards and draw three more.".to_string()]
+            }
             Intent::Move { .. } | Intent::Talk { .. } => Vec::new(),
         }
     }
@@ -372,6 +384,8 @@ mod tests {
             },
             outcome: CampaignOutcome::Ongoing,
             finished: false,
+            villain: None,
+            lights_out_rounds: None,
         }
     }
 

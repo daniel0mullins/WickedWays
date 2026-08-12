@@ -63,6 +63,8 @@ pub enum ActionKind {
     TakeDamage,
     Fumble,
     MechanicAction,
+    PlayCard,
+    Mulligan,
 }
 
 impl From<&crate::world::history::ActionHistoryEntry> for ActionKind {
@@ -77,6 +79,8 @@ impl From<&crate::world::history::ActionHistoryEntry> for ActionKind {
             E::TakeDamage { .. } => ActionKind::TakeDamage,
             E::Fumble { .. } => ActionKind::Fumble,
             E::MechanicAction { .. } => ActionKind::MechanicAction,
+            E::PlayCard { .. } => ActionKind::PlayCard,
+            E::Mulligan { .. } => ActionKind::Mulligan,
         }
     }
 }

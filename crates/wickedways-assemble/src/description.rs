@@ -160,6 +160,21 @@ pub struct MechanicEntry {
     pub config: Option<Value>,
 }
 
+/// The Villain declaration: which character plays against the heroes, and the
+/// authored deck of Wicked Ways card keys (draw order fixed by the engine's
+/// seeded shuffle at `begin_campaign`, not here).
+///
+/// `character` is either the name of a declared mob/npc (resolved mob-first),
+/// or the sentinel `"@gm"` — resolved at seating to the GM's seat, for the
+/// multiplayer "the GM plays the Villain" table.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VillainDef {
+    pub character: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub deck: Vec<String>,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CampaignDescription {
@@ -196,6 +211,10 @@ pub struct CampaignDescription {
     pub lose_conditions: Vec<ConditionEntry>,
     #[serde(default)]
     pub mechanics: Vec<MechanicEntry>,
+    /// The Villain declaration. Absent (and omitted on serialize) for a
+    /// villain-less campaign, so committed description fixtures stay byte-stable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub villain: Option<VillainDef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_narration: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

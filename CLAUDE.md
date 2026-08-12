@@ -79,7 +79,7 @@ golden.
 
 - **The Behavior-trait pattern.** Every extensible family follows the same idiom: a trait
   (`MechanicOp`, `ExitBehavior`, `SceneBehavior`, `VictoryConditionBehavior`, `ItemBehavior`,
-  `FormationBehavior`), a native `key → &'static dyn` registry lookup, a
+  `FormationBehavior`, `CardBehavior`), a native `key → &'static dyn` registry lookup, a
   `Resolved{Native,Scripted}` enum falling back to `catalog.behaviors` scripts, and load-time
   shape validation in `validate_mechanics`. Extend this pattern rather than inline-matching new
   behavior. One deliberate exception: item behaviors validate **weaker** than the rest — an

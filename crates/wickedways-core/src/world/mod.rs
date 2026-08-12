@@ -28,6 +28,7 @@ pub mod submit;
 mod turn;
 pub mod victory;
 pub mod view;
+pub mod villain;
 
 #[cfg(test)]
 pub mod test_support;

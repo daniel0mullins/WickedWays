@@ -131,6 +131,38 @@ pub struct RecipeView {
     pub affordable: bool,
 }
 
+/// One card face in the Villain's hand, for surfaces to render.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CardView {
+    pub key: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    /// `Some(true)` when playing this card requires a target room (Shadow
+    /// Step, or any authored card with `config.target = "room"`), so surfaces
+    /// can open a room picker before dispatching. `None` otherwise.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub needs_room: Option<bool>,
+}
+
+/// The Villain panel: who the villain is, the hand (faces resolved from the
+/// catalog), pile counts, and whether this turn's card action is spent. Only
+/// projected for the viewing seat when a villain is designated.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VillainView {
+    pub character_id: String,
+    pub name: String,
+    /// True when the viewing character IS the villain — surfaces show the hand
+    /// face-up only then.
+    pub is_you: bool,
+    pub hand: Vec<CardView>,
+    pub deck_count: i64,
+    pub discard_count: i64,
+    pub card_action_taken: bool,
+}
+
 /// The widened ViewModel.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -151,6 +183,14 @@ pub struct ViewModel {
     pub status: StatusView,
     pub outcome: CampaignOutcome,
     pub finished: bool,
+    /// The Villain panel. Absent (and omitted on serialize) when no villain is
+    /// designated, so pre-villain ViewModel goldens stay byte-stable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub villain: Option<VillainView>,
+    /// Rounds of supernatural darkness remaining (the `wicked:lights-out`
+    /// card). Absent while inactive, keeping pre-villain goldens byte-stable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lights_out_rounds: Option<i64>,
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -540,6 +580,53 @@ impl World {
             .unwrap_or_default();
         materials.sort_by(|a, b| a.component.cmp(&b.component));
 
+        // Card scope entities let `play <name>` / `mulligan <names>` resolve a
+        // hand card by its face name — minted only while the ACTIVE character
+        // IS the Villain (nobody else can reference the hand), one entry per
+        // distinct key. Absent for villain-less campaigns, so pinned scope
+        // shapes stay byte-stable.
+        let card_scope: Vec<ScopeEntity> = self
+            .campaign
+            .villain
+            .as_ref()
+            .filter(|v| v.character_id == active_id)
+            .map(|v| {
+                let mut seen: Vec<&String> = Vec::new();
+                v.hand
+                    .iter()
+                    .filter(|key| {
+                        if seen.contains(key) {
+                            false
+                        } else {
+                            seen.push(key);
+                            true
+                        }
+                    })
+                    .map(|key| {
+                        let face = cat.cards.get(key);
+                        let name = face.map_or_else(|| key.clone(), |d| d.name.clone());
+                        ScopeEntity {
+                            id: key.clone(),
+                            aliases: alloc::vec![name.to_lowercase(), key.clone()],
+                            name,
+                            kind: "card".into(),
+                            health: None,
+                            image: None,
+                            equippable: None,
+                            usable: None,
+                            has_lore: None,
+                            droppable: None,
+                            destroyable: None,
+                            damaged: None,
+                            defeated: None,
+                            talkable: None,
+                            player: None,
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
         let mut scope: Vec<ScopeEntity> = Vec::new();
         scope.extend(occupants.clone());
         scope.extend(loot_content_scope);
@@ -549,6 +636,8 @@ impl World {
         // Crafting scope entities append after the pinned base ordering.
         scope.extend(caches.clone());
         scope.extend(recipe_scope);
+        // Card scope entities append last (villain-only; usually empty).
+        scope.extend(card_scope);
 
         // ── status ────────────────────────────────────────────────────────────
         let health = self.effective_stat(&active_id, StatType::Health, cat);
@@ -587,6 +676,44 @@ impl World {
             },
             outcome,
             finished,
+            villain: self.campaign.villain.as_ref().map(|v| {
+                let name = self
+                    .characters
+                    .get(&v.character_id)
+                    .map(|c| c.name.clone())
+                    .unwrap_or_default();
+                VillainView {
+                    character_id: v.character_id.0.clone(),
+                    name,
+                    is_you: active_char.id == v.character_id,
+                    hand: v
+                        .hand
+                        .iter()
+                        .map(|key| {
+                            let face = cat.cards.get(key);
+                            // A room target is needed for the native Shadow
+                            // Step, or when the authored face says so via
+                            // `config.target = "room"` (free-form config — no
+                            // schema change needed for new targeted cards).
+                            let needs_room = key == "wicked:shadow-step"
+                                || face.is_some_and(|d| {
+                                    d.config.get("target").and_then(|t| t.as_str()) == Some("room")
+                                });
+                            CardView {
+                                key: key.clone(),
+                                name: face.map_or_else(|| key.clone(), |d| d.name.clone()),
+                                text: face.and_then(|d| d.text.clone()),
+                                needs_room: needs_room.then_some(true),
+                            }
+                        })
+                        .collect(),
+                    deck_count: v.deck.len() as i64,
+                    discard_count: v.discard.len() as i64,
+                    card_action_taken: v.card_action_taken,
+                }
+            }),
+            lights_out_rounds: (self.campaign.lights_out_rounds > 0)
+                .then_some(self.campaign.lights_out_rounds),
         })
     }
 }
@@ -660,6 +787,7 @@ mod tests {
             behaviors: BTreeMap::default(),
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
+            cards: BTreeMap::default(),
         }
     }
 
@@ -826,6 +954,8 @@ mod tests {
             chat_policy: json!({}),
             av_policy: json!({}),
             mechanics: alloc::vec![],
+            villain: None,
+            lights_out_rounds: 0,
         };
 
         let mut characters = BTreeMap::new();

@@ -97,7 +97,19 @@ pub fn sound_for_cue(cue: &PresentationCue) -> Option<SynthVoice> {
                 gain: 0.06,
                 attack: 0.04,
             }),
-            ActionKind::Escape | ActionKind::Fumble | ActionKind::MechanicAction => None,
+            // A played Wicked Ways card: a low, ominous descending sweep.
+            ActionKind::PlayCard => Some(SynthVoice {
+                source: Source::Sawtooth,
+                freq: 220.0,
+                end_freq: Some(88.0),
+                duration: 0.35,
+                gain: 0.14,
+                attack: 0.02,
+            }),
+            ActionKind::Escape
+            | ActionKind::Fumble
+            | ActionKind::MechanicAction
+            | ActionKind::Mulligan => None,
         },
         PresentationCue::Encounter { .. } => Some(SynthVoice {
             source: Source::Sawtooth,
@@ -192,6 +204,13 @@ pub fn cue_for_intent(intent: &Intent) -> Option<PresentationCue> {
         Intent::Drop { target_id } => PresentationCue::Action {
             action: ActionKind::Drop,
             actor: entity(target_id),
+            sound: None,
+        },
+        // A played card gets its ominous sweep (`sound_for_cue`); the mulligan
+        // stays silent, like every other unvoiced action.
+        Intent::PlayCard { card_key, .. } => PresentationCue::Action {
+            action: ActionKind::PlayCard,
+            actor: entity(card_key),
             sound: None,
         },
         _ => return None,

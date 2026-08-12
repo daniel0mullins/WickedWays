@@ -392,7 +392,18 @@ pub struct SceneScript {
     pub on_exit: Option<Vec<Stmt>>,
 }
 
-/// A scripted behavior, tagged on `family` (mechanic / exit / victory / item / npc / scene).
+/// A Wicked Ways card's author-defined behavior: the effect body fired when the
+/// Villain plays the card. `on_play` is an effect body (`Vec<Stmt>`,
+/// `allow_pass=false`, `allow_emit=true`), identical in shape to an item's
+/// `on_use`. One-shot by construction — cards carry no persistent script state.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CardScript {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_play: Option<Vec<Stmt>>,
+}
+
+/// A scripted behavior, tagged on `family` (mechanic / exit / victory / item / npc / scene / card).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "family", rename_all = "camelCase")]
 pub enum BehaviorScript {
@@ -402,4 +413,5 @@ pub enum BehaviorScript {
     Item { script: ItemScript },
     Npc { script: NpcScript },
     Scene { script: SceneScript },
+    Card { script: CardScript },
 }

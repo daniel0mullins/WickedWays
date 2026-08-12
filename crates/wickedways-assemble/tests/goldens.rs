@@ -262,6 +262,28 @@ fn g2_mechanic_genesis_golden() {
     );
 }
 
+/// The g2-villain author oracle (the Villain & Wicked Ways Cards), seated with a
+/// single PC that declares NO archetype. Gates the assembler over the `[villain]`
+/// declaration: the villain reaches the genesis as a pristine
+/// `campaign.villain` — `characterId: "mob:Warden"` (mob-first name resolution),
+/// the authored 6-card deck IN AUTHORED ORDER (the shuffle happens at
+/// `begin_campaign`, never at assembly), and empty hand/discard; the `[[cards]]`
+/// faces (incl. the native `wicked:lights-out` with a `config` override) and the
+/// scripted `hex` `BehaviorScript::Card` ride in the catalog untouched.
+#[test]
+fn g2_villain_genesis_golden() {
+    let party = vec![Seat {
+        name: "Ada".into(),
+        archetype: None,
+    }];
+    gate(
+        "g2-villain",
+        "g2-villain.genesis.json",
+        Some("g2-villain"),
+        &party,
+    );
+}
+
 /// The g2-archetype author oracle: the real hollow-house `Heir` archetype, with a
 /// PC seated AS it — so the genesis PC carries the archetype id + its statline/immunities.
 #[test]

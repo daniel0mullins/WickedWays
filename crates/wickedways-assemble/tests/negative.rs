@@ -189,6 +189,73 @@ fn av_max_participants_below_one() {
         .any(|p| matches!(p, Problem::AvMaxParticipants { got: 0 })));
 }
 
+#[test]
+fn villain_referencing_undeclared_character() {
+    let mut v = base();
+    v["villain"] = json!({ "character": "Nobody", "deck": [] });
+    let ps = problems(v);
+    assert!(ps.iter().any(
+        |p| matches!(p, Problem::UndefinedVillainCharacter { character } if character == "Nobody")
+    ));
+}
+
+#[test]
+fn villain_deck_with_unregistered_card() {
+    let mut v = base();
+    v["mobs"] = json!([{
+        "name": "Warden",
+        "stats": { "health": 8.0, "sanity": 6.0, "energy": 6.0 },
+        "room": "start"
+    }]);
+    v["villain"] = json!({
+        "character": "Warden",
+        "deck": ["wicked:lights-out", "no-such-card"]
+    });
+    let ps = problems(v);
+    // Native keys pass; the unknown key is the only complaint.
+    assert!(!ps
+        .iter()
+        .any(|p| matches!(p, Problem::UnregisteredCard { key } if key == "wicked:lights-out")));
+    assert!(ps
+        .iter()
+        .any(|p| matches!(p, Problem::UnregisteredCard { key } if key == "no-such-card")));
+}
+
+#[test]
+fn gm_villain_sentinel_is_always_a_legal_character() {
+    let mut v = base();
+    v["villain"] = json!({ "character": "@gm", "deck": ["wicked:ruin"] });
+    let ps = problems(v);
+    assert!(!ps
+        .iter()
+        .any(|p| matches!(p, Problem::UndefinedVillainCharacter { .. })));
+}
+
+/// The "@gm" sentinel resolves to the seated GM; a pristine (unseated) genesis
+/// carries no villain, exactly as it carries no GM.
+#[test]
+fn gm_villain_resolves_at_seating() {
+    use wickedways_assemble::Seat;
+    let mut v = base();
+    v["villain"] = json!({ "character": "@gm", "deck": ["wicked:ruin"] });
+    let desc = desc_from(v);
+    let pristine = assemble(&desc, &Catalog::default(), &[]).expect("assembles");
+    assert!(pristine.campaign.villain.is_none(), "unseated: no villain");
+    let seated = assemble(
+        &desc,
+        &Catalog::default(),
+        &[Seat {
+            name: "Ada".into(),
+            archetype: None,
+        }],
+    )
+    .expect("assembles");
+    let villain = seated.campaign.villain.expect("seated villain");
+    assert_eq!(villain.character_id.0, "player:Ada");
+    assert_eq!(villain.deck, vec!["wicked:ruin".to_string()]);
+    assert!(villain.hand.is_empty(), "the hand deals at begin_campaign");
+}
+
 /// The modding trust boundary: malformed author data must never panic.
 #[test]
 fn never_panics_on_hostile_input() {
