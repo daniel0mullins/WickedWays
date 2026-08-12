@@ -13,12 +13,17 @@
 > **Companion assets:** a page-design concept ([`kickstarter-campaign-mockup.html`](./kickstarter-campaign-mockup.html)
 > — open in a browser) and the image-generation brief ([`assets-brief.md`](./assets-brief.md)).
 >
-> 🛑 **NOT READY TO LAUNCH — read [`go-to-market-reality.md`](./go-to-market-reality.md) first.**
-> An August 2026 review found this plan rests on two things that do not exist: **a publicly playable
-> demo** (nothing deploys the web client — only the docs site is published) and **an audience** (under
-> 100 subscribers as of Aug 2026, against an evidence-based requirement of ~1,000 for even a modest
-> campaign). The strategy below is sound *in shape*; its prerequisites are unbuilt. Treat it as the
-> plan for a campaign that is **two to three steps away**, not the next step.
+> ⚠️ **NOT READY TO LAUNCH — read [`go-to-market-reality.md`](./go-to-market-reality.md) first.**
+> An August 2026 review found the blocker is **audience**: under 100 subscribers as of Aug 2026,
+> against an evidence-based requirement of ~1,000 for even a modest campaign. The strategy below is
+> sound *in shape*; treat it as the plan for a campaign that is **a step or two away**, not the next
+> step.
+>
+> ✅ **The playable demo does exist** — an earlier draft of this warning wrongly listed it as missing.
+> The project deploys via **Coolify** (per-PR previews plus a public production URL), configured
+> out-of-band rather than in-repo, which is why a repository-only search missed it. So the
+> anti-vaporware pillar below is a **true claim**; the remaining gap is that `landing/` doesn't link
+> to it.
 
 ## The pitch (hook)
 
@@ -42,16 +47,15 @@ game* before pledging — the single strongest de-risker we have. What the money
 narrow and legible: the **hardware production run** and the **flagship campaign's art + writing** — not
 "will the software work."
 
-> 🛑 **BLOCKED: the demo is not deployed.** As of Aug 2026 nothing in the repo publishes the playable
-> client. `.github/workflows/docs.yml` deploys **only** the VitePress docs site; the root `Dockerfile`
-> *builds* the wasm client + server but no hosting config of any kind is committed (no
-> `fly.toml`/`vercel.json`/`netlify.toml`/`render.yaml`/compose/k8s), and the only public URL in the
-> repo is the docs site. `landing/index.html` is a "Coming Soon" capture page with **no play link**.
+> ✅ **This pillar is real — the demo is deployed and publicly playable.** The project deploys through
+> **Coolify** (per-PR preview environments plus a public production URL), configured in the PaaS rather
+> than in the repository. An earlier draft of this note claimed the opposite, on the mistaken inference
+> that no in-repo hosting config meant no deployment; see
+> [`go-to-market-reality.md`](./go-to-market-reality.md).
 >
-> This pillar is the campaign's central claim *and* the best top-of-funnel for fixing the audience
-> problem, which makes **deploying it the highest-leverage single action available** — see
-> [`go-to-market-reality.md`](./go-to-market-reality.md). Until it is live, this section describes an
-> intention, not an asset.
+> **One gap remains:** `landing/index.html` is still a "Coming Soon" capture page with **no play
+> link**, so visitors are asked to subscribe without being offered the game. Linking it is hours of
+> work and the cheapest available conversion win. **TODO:** record the canonical public play URL here.
 
 ## Why Kickstarter, why now
 
@@ -172,8 +176,9 @@ pick-pack and freight on an already-heavy box:
 
 **Gates (nothing below matters until these clear):**
 
-- [ ] 🛑 **Deploy the playable client publicly** and link it from `landing/` — the `Dockerfile` builds
-      it; no host is configured. Highest-leverage single action.
+- [x] ✅ **Publicly playable client deployed** (Coolify: per-PR previews + a public production URL).
+- [ ] **Link the demo from `landing/`** and record its canonical URL — the game is live but the
+      marketing page doesn't point at it. Cheapest conversion win available.
 - [ ] 🛑 **Grow the list to ~1,000 opted-in subscribers** (from <100). This gates any campaign.
 - [ ] `TODO(launch-campaign)` — flagship narrative to a showable vertical slice (this gates launch)
 

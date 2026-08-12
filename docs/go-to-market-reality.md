@@ -42,25 +42,44 @@ magnitude audience deficit and no prior campaign history. **It is not a near-ter
 
 ## The three prerequisites, in order
 
-### 1. Deploy the playable client — the highest-leverage action available
+### 1. Point the funnel at the demo that already exists
 
-It is the campaign's central claim *and* the fix for the audience problem, and it is currently unbuilt:
+> ✅ **Corrected.** An earlier draft of this document claimed the playable client "is currently
+> unbuilt" and that "nothing deploys it." **That was wrong.** The deployment exists: the project runs
+> **Coolify**, which builds per-PR preview environments (e.g. `<pr-number>.hollow.wickedways.online`,
+> with build and application logs on `dashboard.wickedways.online`) **and serves a public, playable
+> production URL**. The root `Dockerfile`'s own comment — "so a deploy is a single Coolify resource /
+> preview URL" — describes reality, not an aspiration.
+>
+> **Why the review got it wrong, because the failure mode is reusable:** the search looked for
+> deployment config *in the repository* (`fly.toml`, `vercel.json`, `netlify.toml`, `render.yaml`,
+> compose, k8s) and found none — which is accurate, and remains accurate. But Coolify holds its
+> configuration **out-of-band, in the PaaS**, so "no deploy config in-tree" does not imply "no
+> deployment." Inferring the latter from the former was an unfounded leap of exactly the kind this
+> review was written to catch.
 
-- `.github/workflows/docs.yml` deploys **only** the VitePress docs site.
-- The root `Dockerfile` **does** build the wasm client + `wickedways-server` on one port — the hard part
-  is done — but **no hosting config is committed** (no `fly.toml`, `vercel.json`, `netlify.toml`,
-  `render.yaml`, compose, or k8s).
-- The only public URL in the repo is the docs site. `landing/index.html` has **no play link**.
+**So the anti-vaporware pillar is real.** "Backers play the actual game before pledging" is a true
+claim and a genuine asset — most hardware campaigns cannot say it. The campaign plan should lean on it
+harder, not hedge it.
 
-Nothing else on this list moves until a stranger can click a link and play. A free, instantly playable
-horror game *is* the top-of-funnel; the "Coming Soon" page is currently asking people to subscribe to
-an abstraction.
+**What is still missing is the link, not the deployment:**
+
+- `landing/index.html` is a "Coming Soon" email capture with **no play link** (verified in-repo). A
+  live playable game that the marketing page doesn't point at is the cheapest available win — it turns
+  the page from "subscribe to an abstraction" into "play this now, then subscribe."
+- `.github/workflows/docs.yml` still deploys only the VitePress docs site, and the only public URL
+  *referenced in the repo* is that docs site. Nothing points a visitor at the game.
+- **TODO:** record the canonical public play URL here and in `landing/`, so it stops living only in
+  Coolify's dashboard and in per-PR bot comments.
+
+The action, then, is **not** "deploy the demo" but **"link it and drive traffic to it."** That is
+hours of work, not a project — which makes the audience gate below the only real obstacle.
 
 ### 2. Grow the list to ~1,000 opted-in subscribers
 
 That is the gate for even a modest campaign, and it is 10× the current figure. Instrument it: know the
 number, its growth rate, and the play→subscribe conversion, because every funding decision downstream
-is a function of it.
+is a function of it. With a playable demo already live, the funnel's hard half is built.
 
 ### 3. Write the launch campaign
 
@@ -104,7 +123,7 @@ engineering as credibility, not as the pitch.
 
 1. **Correct the docs** so nothing in the repo asserts a $190 panel, a 52% margin, a live demo, or a
    Fall 2026 hardware date. *(done — this review)*
-2. **Deploy the demo.** Link it from `landing/`.
+2. **Link the demo** (already deployed via Coolify) from `landing/`, and record the canonical URL.
 3. **Measure and grow the list** toward ~1,000.
 4. **Write the launch campaign** to a showable vertical slice.
 5. **De-risk hardware cheaply** — Tier-0 smoke test; modular tiles first; bench-spike the transparent
