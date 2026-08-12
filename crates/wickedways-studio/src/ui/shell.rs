@@ -63,12 +63,16 @@ pub fn EditorShell(
     let problems = use_signal(|| check_refs(&doc.peek()));
     let save_error = use_signal(|| None::<String>);
     let mut gate_report = use_signal(|| None::<GateReport>);
+    let undo = use_signal(Vec::new);
+    let undo_stamp = use_signal(|| 0u64);
     let store = use_context_provider(|| StudioStore {
         campaign_id,
         doc,
         problems,
         save_error,
         route,
+        undo,
+        undo_stamp,
     });
 
     if let Err(msg) = initial {
@@ -109,6 +113,12 @@ pub fn EditorShell(
                 }
                 button {
                     class: "studio-btn",
+                    disabled: (store.undo)().is_empty(),
+                    onclick: move |_| store.undo(),
+                    "Undo"
+                }
+                button {
+                    class: "studio-btn",
                     onclick: move |_| gate_report.set(Some(check_campaign(&(store.doc)()))),
                     "Check campaign"
                 }
@@ -119,7 +129,11 @@ pub fn EditorShell(
                     onclick: move |_| {
                         let doc = (store.doc)();
                         if let Ok(toml_src) = to_toml(&doc) {
-                            crate::platform::download_text(&export_filename(&doc.title), &toml_src);
+                            crate::platform::download_text(
+                                &export_filename(&doc.title),
+                                "application/toml",
+                                &toml_src,
+                            );
                         }
                     },
                     if error_count > 0 {
@@ -230,12 +244,40 @@ fn ProblemsPanel(problems: Vec<StudioProblem>) -> Element {
 
 #[component]
 fn GateOverlay(report: GateReport, on_close: EventHandler<()>) -> Element {
+    let store = use_context::<StudioStore>();
+    // Compiled-artifact downloads (green gate only): the same files `wwauthor`
+    // writes, named `<title-slug>.<artifact>.json`.
+    let artifacts: Vec<(&str, Option<String>)> = vec![
+        ("description", report.description_json.clone()),
+        ("catalog", report.catalog_json.clone()),
+        ("genesis", report.genesis_json.clone()),
+    ];
     rsx! {
         div { class: "studio-overlay", onclick: move |_| on_close.call(()),
             div { class: "studio-overlay-frame", onclick: move |e| e.stop_propagation(),
                 if report.ok() {
                     h2 { class: "studio-gate-ok", "✓ Campaign checks out" }
                     p { "It compiles, assembles, and loads — the full engine pipeline is green." }
+                    div { class: "studio-artifacts",
+                        for (kind, json) in artifacts {
+                            if let Some(json) = json {
+                                button {
+                                    key: "{kind}",
+                                    class: "studio-btn small",
+                                    onclick: move |_| {
+                                        let stem = crate::export::export_filename(&(store.doc)().title);
+                                        let stem = stem.trim_end_matches(".toml");
+                                        crate::platform::download_text(
+                                            &format!("{stem}.{kind}.json"),
+                                            "application/json",
+                                            &json,
+                                        );
+                                    },
+                                    "Download {kind}.json"
+                                }
+                            }
+                        }
+                    }
                 } else {
                     h2 { class: "studio-gate-bad", "Campaign has problems" }
                     if let Some(e) = &report.compile_error {

@@ -8,7 +8,7 @@ use crate::model::EditorDoc;
 use crate::platform;
 use crate::store::{self, IndexEntry};
 
-/// Bundled fixture campaigns offered as "start from template" seeds.
+/// The featured "start from template" seeds — full campaigns.
 const TEMPLATES: &[(&str, &str)] = &[
     (
         "Hollow House (the full campaign)",
@@ -21,6 +21,88 @@ const TEMPLATES: &[(&str, &str)] = &[
     (
         "Vault (a keyed door)",
         include_str!("../../../../conformance/fixtures/g2-vault.toml"),
+    ),
+];
+
+/// The full gallery — every single-feature `g2-*` fixture, each the smallest
+/// working example of one mechanic (the fixtures corpus doubles as the template
+/// library, per the spec).
+const GALLERY: &[(&str, &str)] = &[
+    (
+        "archetypes",
+        include_str!("../../../../conformance/fixtures/g2-archetype.toml"),
+    ),
+    (
+        "dark rooms",
+        include_str!("../../../../conformance/fixtures/g2-dark-rooms.toml"),
+    ),
+    (
+        "a scripted door",
+        include_str!("../../../../conformance/fixtures/g2-door.toml"),
+    ),
+    (
+        "effects",
+        include_str!("../../../../conformance/fixtures/g2-effects.toml"),
+    ),
+    (
+        "equipment",
+        include_str!("../../../../conformance/fixtures/g2-equipment.toml"),
+    ),
+    (
+        "stateful exits",
+        include_str!("../../../../conformance/fixtures/g2-exit-state.toml"),
+    ),
+    (
+        "formations",
+        include_str!("../../../../conformance/fixtures/g2-formations.toml"),
+    ),
+    (
+        "a consumable item",
+        include_str!("../../../../conformance/fixtures/g2-item.toml"),
+    ),
+    (
+        "a mechanic",
+        include_str!("../../../../conformance/fixtures/g2-mechanic.toml"),
+    ),
+    (
+        "mechanic actions",
+        include_str!("../../../../conformance/fixtures/g2-mechanic-actions.toml"),
+    ),
+    (
+        "mobs",
+        include_str!("../../../../conformance/fixtures/g2-mobs.toml"),
+    ),
+    (
+        "an NPC dialogue",
+        include_str!("../../../../conformance/fixtures/g2-npc.toml"),
+    ),
+    (
+        "campaign opts",
+        include_str!("../../../../conformance/fixtures/g2-opts.toml"),
+    ),
+    (
+        "a scene",
+        include_str!("../../../../conformance/fixtures/g2-scene.toml"),
+    ),
+    (
+        "the status bar",
+        include_str!("../../../../conformance/fixtures/g2-status-bar.toml"),
+    ),
+    (
+        "the storyteller",
+        include_str!("../../../../conformance/fixtures/g2-storyteller.toml"),
+    ),
+    (
+        "timeout narration",
+        include_str!("../../../../conformance/fixtures/g2-timeout.toml"),
+    ),
+    (
+        "victory conditions",
+        include_str!("../../../../conformance/fixtures/g2-victory.toml"),
+    ),
+    (
+        "a villain + deck",
+        include_str!("../../../../conformance/fixtures/g2-villain.toml"),
     ),
 ];
 
@@ -89,9 +171,51 @@ pub fn HomeView(route: Signal<StudioRoute>) -> Element {
                     "Import .toml…"
                 }
             }
+            details { class: "studio-gallery",
+                summary { "Template gallery — one minimal example per mechanic" }
+                div { class: "studio-home-actions",
+                    for (label, toml_src) in GALLERY {
+                        button {
+                            key: "{label}",
+                            class: "studio-btn small",
+                            onclick: move |_| {
+                                match import(toml_src) {
+                                    Ok(doc) => create_and_open(route, &doc, &mut err),
+                                    Err(e) => err.set(format!("Template failed to parse: {e}")),
+                                }
+                            },
+                            "{label}"
+                        }
+                    }
+                }
+            }
             if import_open() {
                 div { class: "studio-import",
-                    p { "Paste a campaign TOML file (or open one and copy its contents):" }
+                    label { class: "studio-btn",
+                        "Choose a .toml file…"
+                        input {
+                            r#type: "file",
+                            accept: ".toml",
+                            style: "display: none",
+                            onchange: move |e| {
+                                if let Some(files) = e.files() {
+                                    let mut err = err;
+                                    spawn(async move {
+                                        for name in files.files() {
+                                            match files.read_file_to_string(&name).await {
+                                                Some(text) => match import(&text) {
+                                                    Ok(doc) => create_and_open(route, &doc, &mut err),
+                                                    Err(e) => err.set(format!("{name}: import failed: {e}")),
+                                                },
+                                                None => err.set(format!("{name}: could not read the file")),
+                                            }
+                                        }
+                                    });
+                                }
+                            },
+                        }
+                    }
+                    p { "…or paste a campaign TOML file:" }
                     textarea {
                         class: "studio-import-text",
                         value: "{import_text}",
@@ -168,6 +292,7 @@ fn CampaignRow(
                             match to_toml(&doc) {
                                 Ok(toml_src) => platform::download_text(
                                     &export_filename(&doc.title),
+                                    "application/toml",
                                     &toml_src,
                                 ),
                                 Err(e) => err.set(format!("Export failed: {e}")),

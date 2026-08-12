@@ -1731,8 +1731,15 @@ The graphical authoring app for the TOML surface above — a **standalone** Diox
   live in `wickedways-author`'s `author_doc.rs` (absent-means-default fields are skipped, so
   exports stay close to the hand-authored idiom).
 
+The P2 set ships too: a bounded coalescing **undo** stack; **compiled-artifact export**
+(a green Check-campaign gate offers description/catalog/genesis JSON — the same files
+`wwauthor` writes); **file-picker import** alongside paste; the **full template gallery**
+(every single-feature `g2-*` fixture, one click each); an **unreachable-rooms** lint (BFS
+from `startRoom`); and per-body validation now dispatches to
+`wickedways_author::validate`'s public span-bearing single-body parsers (the second
+upstream change the spec mandated) instead of the MVP's probe-document hack.
+
 Build/serve like the play client: `dx serve` in `crates/wickedways-studio` for dev,
-`crates/wickedways-studio/build-studio.sh` for the static bundle. Deferred (P2/P3, per the
-spec): undo, precise per-field spans via upstream parse entry points, template gallery
-beyond the three bundled fixtures, graph map view, embedded playtest, structured behavior
-builders, a native desktop arm.
+`crates/wickedways-studio/build-studio.sh` for the static bundle. Deferred (P3, per the
+spec): graph map view, embedded playtest, structured behavior builders, multi-error
+compile, a native desktop arm.
