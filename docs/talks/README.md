@@ -14,6 +14,7 @@ All four talks share one thesis and escalate in depth. Pick by venue:
 | [The lightning talk](02-lightning-talk.md) | 7–10 min | Meetup lightning slot, internal demo day | [pptx](decks/02-lightning-talk.pptx) |
 | [The systems tour](03-systems-tour.md) | 10–15 min | Conference short slot, team onboarding | [pptx](decks/03-systems-tour.pptx) |
 | [The deep dive](04-deep-dive.md) | 30–40 min | Full conference slot, architecture review | [pptx](decks/04-deep-dive.pptx) |
+| [The Rust ecosystem tour](05-rust-ecosystem.md) | 30–40 min | Rust meetup, team evaluating Rust | [pptx](decks/05-rust-ecosystem.pptx) |
 
 The decks in `decks/` are ready to present: 16:9, dark theme, with each talk's
 script embedded as per-slide speaker notes. The talk documents remain the
@@ -23,6 +24,12 @@ there, not in the decks.
 The talks are written to be spoken to engineers with **no Rust, game-dev, or
 project background**: every term of art gets a short plain-English gloss at
 its first use in each talk. Keep that convention when editing them.
+
+Talk 05 inverts the framing: where 01–04 gloss Rust away, it is *about* the
+Rust — a brief, grounded introduction to the language's ecosystem (rustup,
+cargo, crates.io, workspaces, features, targets, clippy, and the marquee
+libraries) taught entirely through the jobs each piece does in this repo.
+Same no-experience-assumed conventions apply.
 
 **Presenting to a non-technical audience?** There is a parallel set
 reformulated for gaming enthusiasts — no code, no architecture vocabulary,
