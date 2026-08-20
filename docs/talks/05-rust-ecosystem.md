@@ -287,7 +287,10 @@ small; read the official Book (it's genuinely good). Best first project:
 port a small tool you already understand, so you're learning the language,
 not the problem. And this repo is public — the root README is the
 architecture document, and `cargo test --workspace` runs everything you
-saw today.
+saw today. The closing slide leaves both links on screen:
+<https://github.com/daniel0mullins/WickedWays> for the code, and
+<https://hollow.wickedways.online> to play the shipped campaign in the
+browser — that's the wasm build from Part 3, live.
 
 **Q&A preparation:**
 
