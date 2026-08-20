@@ -301,6 +301,36 @@ pub fn check_refs(doc: &EditorDoc) -> Vec<StudioProblem> {
         }
     }
 
+    // ---- reachability: rooms the party can never walk to (info) ----
+    if let Some(start) = doc.start_room.as_deref().filter(|s| rooms.contains(s)) {
+        let mut reachable: BTreeSet<&str> = BTreeSet::new();
+        reachable.insert(start);
+        let mut frontier = vec![start];
+        while let Some(cur) = frontier.pop() {
+            for e in &doc.exits {
+                if e.entry.from == cur
+                    && rooms.contains(e.entry.to.as_str())
+                    && reachable.insert(e.entry.to.as_str())
+                {
+                    frontier.push(e.entry.to.as_str());
+                }
+            }
+        }
+        for r in &doc.rooms {
+            if !reachable.contains(r.entry.name.as_str()) {
+                out.push(problem(
+                    Severity::Info,
+                    Family::Rooms,
+                    Some(r.id),
+                    format!(
+                        "room '{}' is unreachable from startRoom '{start}'",
+                        r.entry.name
+                    ),
+                ));
+            }
+        }
+    }
+
     // ---- placements referencing rooms ----
     for l in &doc.loot {
         require_room(
@@ -1259,6 +1289,52 @@ mod tests {
         assert!(!problems
             .iter()
             .any(|p| p.severity == Severity::Info && p.message.contains("room 'A'")));
+    }
+
+    #[test]
+    fn unreachable_rooms_are_flagged_info() {
+        let d = doc(r#"
+            title = "T"
+            startRoom = "A"
+            [[rooms]]
+            name = "A"
+            description = "a"
+            [[rooms]]
+            name = "B"
+            description = "b"
+            [[rooms]]
+            name = "Oubliette"
+            description = "no way in"
+            [[exits]]
+            from = "A"
+            to = "B"
+            direction = "north"
+            [[exits]]
+            from = "B"
+            to = "A"
+            direction = "south"
+            [[exits]]
+            from = "Oubliette"
+            to = "A"
+            direction = "north"
+            oneWay = true
+        "#);
+        let problems = check_refs(&d);
+        let lint = problems
+            .iter()
+            .find(|p| p.message.contains("unreachable"))
+            .expect("reachability lint fires");
+        assert_eq!(lint.severity, Severity::Info);
+        assert!(lint.message.contains("Oubliette"));
+        assert_eq!(lint.asset, Some(d.rooms[2].id));
+        // A and B are reachable — exactly one unreachable finding.
+        assert_eq!(
+            problems
+                .iter()
+                .filter(|p| p.message.contains("unreachable"))
+                .count(),
+            1
+        );
     }
 
     #[test]

@@ -10,16 +10,22 @@
 
 ## Implementation status (built)
 
-**P0 + P1 (the MVP) are implemented** as `crates/wickedways-studio`, including the upstream
-`Serialize` derives on `author_doc.rs` (change #1 below). All asset-family CRUD screens, the
-room hub, the return-exit convenience, the four validation layers (probe-doc body validation
-included), localStorage persistence, and TOML import/export ship; the flagship round-trip
-corpus test (`crates/wickedways-studio/tests/roundtrip.rs`) holds compiled equality over every
-fixture. Two MVP simplifications vs. the letter of this spec: autosave is a synchronous
-write-through rather than a 500 ms debounce (blobs are tens of KB), and import takes pasted
-TOML text rather than a file-picker upload. P2/P3 (undo, upstream parse entry points,
-compiled-artifact export, template gallery beyond three bundled fixtures, graph view,
-embedded playtest, structured builders) remain open; the sections below are the design.
+**P0 + P1 (the MVP) and P2 are implemented** as `crates/wickedways-studio`, including both
+upstream `wickedways-author` changes: the `Serialize` derives on `author_doc.rs` (change #1
+below) and the public span-bearing single-body validators (`wickedways_author::validate`,
+change #2) — the studio's per-field layer 3 dispatches to them directly; the MVP's
+probe-document hack is gone. All asset-family CRUD screens, the room hub, the return-exit
+convenience, the four validation layers, localStorage persistence, and TOML import/export
+ship, plus the P2 set: a bounded coalescing **undo** stack, **compiled-artifact export**
+(description/catalog/genesis JSON from a green Check-campaign gate), **file-picker import**
+(alongside paste), the **full template gallery** (all single-feature fixtures), and the
+**unreachable-rooms** reachability lint. The flagship round-trip corpus test
+(`crates/wickedways-studio/tests/roundtrip.rs`) holds compiled equality over every fixture.
+**Deployment is wired**: the root `Dockerfile` builds the studio bundle and the room server
+serves it at `/studio` (see §Architecture). One remaining simplification vs. the letter of
+this spec: autosave is a synchronous write-through rather than a 500 ms debounce (blobs are
+tens of KB). P3 (graph view, embedded playtest, structured builders, multi-error compile,
+desktop arm) remains open; the sections below are the design.
 
 ## Context
 
@@ -93,8 +99,11 @@ action model with editor state. What *is* shared is upstream crates and idioms, 
 - **Build/serve/deploy:** `dx serve` for dev; a `build-studio.sh` cloned from
   `crates/wickedways-web/build-web.sh` (cargo wasm32 build → pinned `wasm-bindgen` CLI →
   inject loader into its own `index.html`) producing a **static bundle** — no server
-  component. Optionally the root `Dockerfile` later serves it at a `/studio` path beside
-  the game client; that is packaging polish, not P0.
+  component of its own. **(Built)** the root `Dockerfile` builds the bundle and the room
+  server nests it at **`/studio`** (`STUDIO_DIR` env, default `./studio`; empty or missing
+  directory ⇒ off), so the single Coolify deploy ships play + authoring on one port. The
+  studio routes entirely by query params, so `/studio/?c=…` deep-links resolve to its
+  `index.html` with no SPA fallback gymnastics.
 
 ## The document model
 

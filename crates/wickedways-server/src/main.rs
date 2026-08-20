@@ -13,6 +13,9 @@
 //!   server can host several authored campaigns. Absent ⇒ the shared `CATALOG_PATH` catalog.
 //! - `CATALOG_PATH` — optional JSON [`Catalog`], the shared default when a campaign ships no catalog.
 //! - `WEB_DIR`      — directory of the bundled Dioxus web client served as a fallback under `/ws` (default `./dist`; empty ⇒ off). Unmatched paths fall back to `index.html` so `?campaign=…`/`?surface=…` deep-links load.
+//! - `STUDIO_DIR`   — directory of the bundled Campaign Studio (the authoring app), served under
+//!   `/studio` (default `./studio`; empty or absent directory ⇒ off). The studio routes entirely by
+//!   query params, so `/studio/?c=…` deep-links resolve to its `index.html` naturally.
 //!
 //! `verify_token` here is the development default (identity = the token string, empty rejected) —
 //! a real deployment injects a proper verifier. Chat/AV are not implemented yet.
@@ -80,7 +83,20 @@ async fn main() {
     // file in `WEB_DIR`, and anything unmatched falls back to `index.html` (SPA deep-links). Absent
     // or empty `WEB_DIR` leaves the server socket-only (unchanged behaviour).
     let web_dir = std::env::var("WEB_DIR").unwrap_or_else(|_| "./dist".into());
+    // Campaign Studio (the authoring app) rides the same binary under `/studio`, so one deploy
+    // ships play + authoring. Its bundle is fully static (no server endpoints of its own); the
+    // route is mounted only when the directory exists, so a bundle-less deploy stays unchanged.
+    let studio_dir = std::env::var("STUDIO_DIR").unwrap_or_else(|_| "./studio".into());
     let mut app = router(RoomServer::new(opts));
+    let studio_on = !studio_dir.is_empty() && std::path::Path::new(&studio_dir).is_dir();
+    if studio_on {
+        let index = std::path::Path::new(&studio_dir).join("index.html");
+        app = app.nest_service(
+            "/studio",
+            tower_http::services::ServeDir::new(&studio_dir)
+                .fallback(tower_http::services::ServeFile::new(index)),
+        );
+    }
     if !web_dir.is_empty() {
         let index = std::path::Path::new(&web_dir).join("index.html");
         app = app.fallback_service(
@@ -100,12 +116,17 @@ async fn main() {
         .local_addr()
         .map_or_else(|_| format!("0.0.0.0:{port}"), |a| a.to_string());
     println!(
-        "wickedways-server listening on {addr} — /ws ({}), web client: {}",
+        "wickedways-server listening on {addr} — /ws ({}), web client: {}, studio: {}",
         if durable { "durable" } else { "ephemeral" },
         if web_dir.is_empty() {
             "disabled".to_string()
         } else {
             format!("{web_dir}/")
+        },
+        if studio_on {
+            format!("/studio ({studio_dir}/)")
+        } else {
+            "disabled".to_string()
         }
     );
     if let Err(e) = axum::serve(listener, app).await {

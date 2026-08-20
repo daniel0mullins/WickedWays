@@ -9,6 +9,7 @@ pub(crate) mod lower;
 pub(crate) mod mechanic;
 pub(crate) mod npc;
 pub(crate) mod stmt;
+pub mod validate;
 
 use error::CompileError;
 use wickedways_assemble::description::CampaignDescription;

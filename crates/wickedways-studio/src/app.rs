@@ -67,7 +67,20 @@ pub struct StudioStore {
     /// The app route — screens navigate (select assets, jump across sections)
     /// through the store.
     pub route: Signal<StudioRoute>,
+    /// Undo history: document snapshots taken BEFORE mutations, bounded to
+    /// [`UNDO_CAP`]. Keystroke runs coalesce ([`UNDO_COALESCE_MS`]), so one undo
+    /// step reverts one editing burst, not one character.
+    pub undo: Signal<Vec<EditorDoc>>,
+    /// When the last undo snapshot was pushed (the coalescing clock).
+    pub undo_stamp: Signal<u64>,
 }
+
+/// Bounded undo depth — a full real campaign is tens of KB, so 50 clones are
+/// cheap (the spec's P2 sizing argument).
+const UNDO_CAP: usize = 50;
+/// Mutations closer together than this share one undo snapshot (a typing burst
+/// reverts as a unit).
+const UNDO_COALESCE_MS: u64 = 800;
 
 impl StudioStore {
     /// Jump to a section (optionally selecting an asset), keeping the URL in sync.
@@ -83,20 +96,50 @@ impl StudioStore {
         );
     }
 
+    /// Re-lint and write through to storage (shared by mutate and undo).
+    fn persist(mut self, snapshot: &EditorDoc) {
+        self.problems.set(check_refs(snapshot));
+        let id = (self.campaign_id)();
+        match crate::store::save_campaign(&id, snapshot, platform::now_ms()) {
+            Ok(()) => self.save_error.set(None),
+            Err(e) => self.save_error.set(Some(e)),
+        }
+    }
+
     /// Apply a mutation, then re-lint and write through to storage. Returns the
     /// closure's value (add-handlers return the minted id to select it).
     pub fn mutate<R>(mut self, f: impl FnOnce(&mut EditorDoc) -> R) -> R {
+        let now = platform::now_ms();
+        let before = self.doc.peek().clone();
         let mut doc = self.doc.write();
         let out = f(&mut doc);
         let snapshot = doc.clone();
         drop(doc);
-        self.problems.set(check_refs(&snapshot));
-        let id = (self.campaign_id)();
-        match crate::store::save_campaign(&id, &snapshot, platform::now_ms()) {
-            Ok(()) => self.save_error.set(None),
-            Err(e) => self.save_error.set(Some(e)),
+        // Snapshot the pre-mutation doc unless this extends a coalesced burst.
+        if snapshot != before {
+            let mut undo = self.undo.write();
+            if undo.is_empty() || now.saturating_sub(*self.undo_stamp.peek()) > UNDO_COALESCE_MS {
+                undo.push(before);
+                if undo.len() > UNDO_CAP {
+                    undo.remove(0);
+                }
+            }
+            drop(undo);
+            self.undo_stamp.set(now);
         }
+        self.persist(&snapshot);
         out
+    }
+
+    /// Revert to the most recent undo snapshot (no-op on an empty history).
+    pub fn undo(mut self) {
+        let Some(prev) = self.undo.write().pop() else {
+            return;
+        };
+        self.doc.set(prev.clone());
+        // Reset the coalescing clock so the next edit starts a fresh burst.
+        self.undo_stamp.set(0);
+        self.persist(&prev);
     }
 }
 
