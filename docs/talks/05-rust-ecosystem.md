@@ -8,12 +8,12 @@ experience assumed; familiarity with some package ecosystem (npm, pip) is
 leaned on for analogies. Unlike talks 01–04, this one is *about* the Rust,
 using Wicked Ways as the case study — every ecosystem concept is shown
 doing a real job in a shipped codebase, never taught abstractly.
-**Format:** 5 parts, ≈32 minutes of talk + Q&A. Speaker notes are the
+**Format:** 6 parts, ≈34–37 minutes of talk + Q&A. Speaker notes are the
 script; timing checkpoints and cut order at the end.
 
 ---
 
-## Part 1 — Why Rust exists (4 min)
+## Part 1 — Why Rust exists (3 min)
 
 *Visual: one slide, three claims — no garbage collector, "if it compiles
 it usually works," one language from browser to bare metal.*
@@ -35,14 +35,76 @@ The pitch itself, honestly compressed:
    web server and a microcontroller.
 2. **"If it compiles, it usually works."** The type system is expressive
    enough that whole categories of bugs become compile errors. You fight
-   the compiler up front instead of the debugger at 2 a.m. (Part 4 shows
+   the compiler up front instead of the debugger at 2 a.m. (Part 5 shows
    this doing *architectural* work, not just catching typos.)
 3. **One language, an absurd range.** The same source compiles natively for
    your OS, to WebAssembly for the browser, and for bare-metal targets with
-   no operating system at all. Most stacks need three languages for that
-   spread; this repo needs zero glue.
+   no operating system at all.
 
-## Part 2 — The toolbox: the ecosystem in nine beats (9 min)
+## Part 2 — The language in five ideas (6 min)
+
+*Visual: two slides — a dozen lines of real Rust, annotated; then the five
+ideas as labeled rows.*
+
+Before the ecosystem, meet the language — once, concretely. Put real code
+on screen and read it aloud; this is adapted from the engine's effect
+system:
+
+```rust
+// A fixed menu of outcomes — each variant carries its own data.
+enum Effect {
+    Damage { target: CharacterId, amount: u32 },
+    Heal   { target: CharacterId, amount: u32 },
+    Cue(String),
+}
+
+// `&` means "borrow it to look at it" — no copy, no handover.
+fn describe(effect: &Effect, world: &World) -> String {
+    match effect {
+        Effect::Damage { target, amount } =>
+            format!("{} takes {amount}", world.name(target)),
+        Effect::Heal { target, amount } =>
+            format!("{} recovers {amount}", world.name(target)),
+        Effect::Cue(line) => line.clone(),
+    }
+}
+```
+
+Then walk the five ideas — this is the whole language orientation, and
+everything later in the talk hangs off it:
+
+1. **Ownership & borrowing.** Every value in Rust has exactly one owner.
+   Everyone else *borrows* it — that's the `&` in the code above — and the
+   compiler checks every borrow at build time: nothing is used after it's
+   gone, and there are never two writers at once. This is the mechanism
+   behind Part 1's headline: memory safety from rules checked at compile
+   time, not from a garbage collector at runtime.
+2. **Enums that carry data.** An enum is a fixed menu of variants — and
+   unlike the numbered constants of C or Java, each variant carries its own
+   payload: `Damage` holds a target and an amount; `Cue` holds a line of
+   text. Most Rust designs start exactly here — model the possibilities as
+   a closed list.
+3. **Exhaustive `match`.** `match` is switch, grown up: it unpacks the
+   variant's data, and it must cover *every* variant or the program doesn't
+   compile. Add a variant next month, and the compiler hands you a to-do
+   list of every place that must now handle it.
+4. **Traits — and `#[derive]`.** A trait is Rust's interface: a contract a
+   type can implement. The everyday superpower is `#[derive(...)]`: one
+   annotation above a type asks a library to implement its trait for you,
+   generated at compile time. Hold that thought for serde in Part 4.
+5. **No null, no exceptions.** Absence is `Option` (a value, or nothing);
+   failure is `Result` (a value, or an error). Both are ordinary enums —
+   which means `match` forces you to handle the empty and error cases —
+   and the `?` operator passes a failure up the call chain in one
+   keystroke.
+
+Land the forward-ties before moving on: **all five come back with jobs.**
+Ownership becomes the engine's state-custody rule (Part 5). Enums plus
+exhaustive match are the game's command and effect menus. `#[derive]` is
+how serde carries every data seam. Traits are the engine's six-family
+extension pattern. Nothing you just learned is a toy.
+
+## Part 3 — The toolbox: the ecosystem in nine beats (8 min)
 
 *Visual: one icon row per beat; each beat names the tool, the npm/pip
 analogy, and the file in this repo where it's earning its keep.*
@@ -106,7 +168,7 @@ each ~1 minute, each pointing at a real file:
    enabled by name — with comments explaining which noisy ones were
    deliberately left out. Lint policy as reviewed, documented code.
 
-## Part 3 — The ecosystem in the wild: the crate map (13 min)
+## Part 4 — The ecosystem in the wild: the crate map (12 min)
 
 *Visual: the hub diagram — the engine core in the center, each marquee
 library annotated on the crate that uses it.*
@@ -117,7 +179,8 @@ site. For each: what it is, why it's the ecosystem default, what it does
 
 - **`serde` — serialization for everything.** THE Rust answer to "turn my
   data into JSON and back": you annotate a struct with
-  `#[derive(Serialize, Deserialize)]` and the compiler writes the code.
+  `#[derive(Serialize, Deserialize)]` — the derive trick from Part 2 —
+  and the compiler writes the code.
   Here it carries every seam in the system — save files, the multiplayer
   wire protocol, the JSON-only wasm boundary, the campaign artifacts, the
   serial messages to the physical board. Nine of the ten crates use it;
@@ -173,31 +236,32 @@ cost of a shell" sounds like marketing until you see the mechanics:
   serve the browser *and* the serial-line hardware controller, and CI
   builds that configuration on every commit.
 
-## Part 4 — What Rust bought this project (6 min)
+## Part 5 — What Rust bought this project (5 min)
 
 *Visual: two-column spread — "language features doing architectural work"
 vs "the honest costs."*
 
-The features that turned out to be load-bearing architecture, not syntax:
+Each of Part 2's five ideas, grown up into load-bearing architecture:
 
-- **Closed enums + exhaustive matching.** The game's command set and
-  effect set are enums — fixed lists of variants — and `match` must handle
-  every variant or the build fails. Add a command, and the compiler hands
-  you a to-do list of every place that must handle it. A missed case isn't
-  a runtime surprise; it's a compile error.
+- **Closed enums + exhaustive matching.** The enum-plus-match you met in
+  Part 2, at architectural scale: the game's command set and effect set
+  are enums, and `match` must handle every variant or the build fails.
+  Add a command, and the compiler hands you a to-do list of every place
+  that must handle it. A missed case isn't a runtime surprise; it's a
+  compile error.
 - **Branded id types at zero cost.** A `RoomId` and a `CharacterId` are
   both just strings underneath, but the type system treats them as
   incompatible — passing one where the other belongs doesn't compile, and
   the wrapper vanishes at runtime. A whole bug family, deleted for free.
-- **Traits as the extension idiom.** A trait is Rust's interface. Every
-  extensible family in the engine — mechanics, doors, scenes, victory
-  conditions, items, encounters — is one trait plus a lookup table plus a
-  scripted fallback. Same idiom six times; the compiler enforces the
-  contract each time.
+- **Traits as the extension idiom.** Every extensible family in the
+  engine — mechanics, doors, scenes, victory conditions, items,
+  encounters — is one trait plus a lookup table plus a scripted fallback.
+  Same idiom six times; the compiler enforces the contract each time.
 - **Ownership as custody enforcement.** The engine's "no raw setters"
   rule — every state change goes through one guarded door — isn't a code
   review convention. Accessors are keyed by private types outside code
-  cannot construct, and the ownership system makes that stick.
+  cannot construct, and the ownership system from Part 2 makes that
+  stick.
 
 Then pay the toll onstage — the costs are real:
 
@@ -214,7 +278,7 @@ Then pay the toll onstage — the costs are real:
   assume you meant it. For this project — determinism, five targets, one
   codebase — it paid. A CRUD app would not collect these dividends.
 
-## Part 5 — Getting started, and Q&A (3 min)
+## Part 6 — Getting started, and Q&A (3 min)
 
 *Visual: three lines — `rustup`, `cargo new`, the Book.*
 
@@ -249,18 +313,21 @@ saw today.
 
 ## Timing checkpoints
 
-- End of Part 1: ~4 min. Don't linger — the pitch earns nothing until the
-  toolbox shows receipts.
-- End of Part 2: ~13 min. Running long? Beats 4 (crates.io) and 9 (lints)
+- End of Part 1: ~3 min. Don't linger — the pitch earns nothing until the
+  language and toolbox show receipts.
+- End of Part 2: ~9 min. The code slide is **not** cuttable — an audience
+  that never sees Rust never met it. If long, compress ideas 4–5 to one
+  sentence each; the enum / match / borrow trio is the load-bearing half.
+- End of Part 3: ~17 min. Running long? Beats 4 (crates.io) and 9 (lints)
   compress to one sentence each; never cut beat 6 (the exclusion) or the
   `float_roundtrip` story in beat 7 — they're the memorable ones.
-- End of Part 3: ~26 min with the web-vs-native aside. The aside is the
+- End of Part 4: ~29 min with the web-vs-native aside. The aside is the
   talk's **flex cut** (−3 min): fold it back into one sentence on the
   Dioxus beat if the slot is tight. The crate map itself is the heart; if
   desperate, also fold `axum` into the `tokio` beat.
-- End of Part 4: ~32 min. Never cut the costs column — it buys the whole
+- End of Part 5: ~34 min. Never cut the costs column — it buys the whole
   talk its credibility.
-- Part 5 lands at ~35 min, leaving 5 for Q&A in a 40-minute slot. With the
-  flex cut you're back at ~32. For a strict 30: take the flex cut,
-  compress Part 1 to one minute, and trim Part 3 to
-  serde/tokio/Dioxus/no_std.
+- Part 6 lands at ~37 min, leaving ~3 for Q&A in a 40-minute slot; with
+  the flex cut you're at ~34, leaving 6. For a strict 30: take the flex
+  cut, compress Part 1 to one minute, trim Part 2's ideas 4–5 to a
+  sentence each, and trim Part 4 to serde/tokio/Dioxus/no_std.
