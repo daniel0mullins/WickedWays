@@ -29,8 +29,13 @@ mkdir -p "$dist"
 echo "wasm-bindgen → $dist"
 wasm-bindgen "$wasm" --out-dir "$dist" --target web --no-typescript
 # index.html doubles as the dx-serve template, so it ships an empty <title> and no loader
-# script; inject both for the static bundle here.
+# script; inject both for the static bundle here. The loader computes its base from the
+# document URL instead of a bare relative import, so the bundle also boots when a host
+# serves index.html at a slash-less mount path (e.g. `/studio`) where `./x.js` would
+# resolve against the parent — a directory pathname without its trailing slash is
+# treated as the directory.
+loader='<script type="module">const p=location.pathname;const base=p.endsWith("/")?p:(p.split("/").pop().includes(".")?p.replace(/[^/]*$/,""):p+"/");const{default:init}=await import(base+"wickedways-studio.js");await init();</script>'
 sed -e 's|<title></title>|<title>WickedWays Campaign Studio</title>|' \
-    -e 's|</body>|  <script type="module">import init from "./wickedways-studio.js"; init();</script>\n  </body>|' \
+    -e "s|</body>|  ${loader}\n  </body>|" \
   "$crate_dir/index.html" > "$dist/index.html"
 echo "done: serve $dist (index.html loads ./wickedways-studio.js)"

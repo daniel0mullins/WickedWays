@@ -91,11 +91,19 @@ async fn main() {
     let studio_on = !studio_dir.is_empty() && std::path::Path::new(&studio_dir).is_dir();
     if studio_on {
         let index = std::path::Path::new(&studio_dir).join("index.html");
-        app = app.nest_service(
-            "/studio",
-            tower_http::services::ServeDir::new(&studio_dir)
-                .fallback(tower_http::services::ServeFile::new(index)),
-        );
+        app = app
+            .nest_service(
+                "/studio",
+                tower_http::services::ServeDir::new(&studio_dir)
+                    .fallback(tower_http::services::ServeFile::new(index)),
+            )
+            // Bare `/studio` must redirect to `/studio/`: the nested ServeDir happily
+            // serves index.html at the slash-less URL, but the page's relative module
+            // import (`./wickedways-studio.js`) then resolves against `/` and falls
+            // through to the WEB client's catch-all — which returns HTML where the
+            // browser demands a JS module (strict MIME checking). ServeDir does this
+            // redirect for subdirectories itself; the nest root needs it done here.
+            .layer(axum::middleware::from_fn(redirect_bare_studio));
     }
     if !web_dir.is_empty() {
         let index = std::path::Path::new(&web_dir).join("index.html");
@@ -133,6 +141,24 @@ async fn main() {
         eprintln!("wickedways-server: serve error: {e}");
         std::process::exit(1);
     }
+}
+
+/// Redirect exactly `/studio` (no trailing slash) to `/studio/`, preserving the
+/// query, so the studio page's relative asset URLs resolve under its mount.
+async fn redirect_bare_studio(
+    req: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    use axum::response::IntoResponse;
+    if req.uri().path() == "/studio" {
+        let query = req
+            .uri()
+            .query()
+            .map(|q| format!("?{q}"))
+            .unwrap_or_default();
+        return axum::response::Redirect::permanent(&format!("/studio/{query}")).into_response();
+    }
+    next.run(req).await
 }
 
 /// The base campaign an id belongs to: a **room id** is `<base>~<token>` (a unique per-host session of
