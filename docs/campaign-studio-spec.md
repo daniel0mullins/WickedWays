@@ -21,10 +21,11 @@ ship, plus the P2 set: a bounded coalescing **undo** stack, **compiled-artifact 
 (alongside paste), the **full template gallery** (all single-feature fixtures), and the
 **unreachable-rooms** reachability lint. The flagship round-trip corpus test
 (`crates/wickedways-studio/tests/roundtrip.rs`) holds compiled equality over every fixture.
-One remaining simplification vs. the letter of this spec: autosave is a synchronous
-write-through rather than a 500 ms debounce (blobs are tens of KB). P3 (graph view, embedded
-playtest, structured builders, multi-error compile, desktop arm) remains open; the sections
-below are the design.
+**Deployment is wired**: the root `Dockerfile` builds the studio bundle and the room server
+serves it at `/studio` (see §Architecture). One remaining simplification vs. the letter of
+this spec: autosave is a synchronous write-through rather than a 500 ms debounce (blobs are
+tens of KB). P3 (graph view, embedded playtest, structured builders, multi-error compile,
+desktop arm) remains open; the sections below are the design.
 
 ## Context
 
@@ -98,8 +99,11 @@ action model with editor state. What *is* shared is upstream crates and idioms, 
 - **Build/serve/deploy:** `dx serve` for dev; a `build-studio.sh` cloned from
   `crates/wickedways-web/build-web.sh` (cargo wasm32 build → pinned `wasm-bindgen` CLI →
   inject loader into its own `index.html`) producing a **static bundle** — no server
-  component. Optionally the root `Dockerfile` later serves it at a `/studio` path beside
-  the game client; that is packaging polish, not P0.
+  component of its own. **(Built)** the root `Dockerfile` builds the bundle and the room
+  server nests it at **`/studio`** (`STUDIO_DIR` env, default `./studio`; empty or missing
+  directory ⇒ off), so the single Coolify deploy ships play + authoring on one port. The
+  studio routes entirely by query params, so `/studio/?c=…` deep-links resolve to its
+  `index.html` with no SPA fallback gymnastics.
 
 ## The document model
 

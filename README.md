@@ -1740,6 +1740,8 @@ from `startRoom`); and per-body validation now dispatches to
 upstream change the spec mandated) instead of the MVP's probe-document hack.
 
 Build/serve like the play client: `dx serve` in `crates/wickedways-studio` for dev,
-`crates/wickedways-studio/build-studio.sh` for the static bundle. Deferred (P3, per the
-spec): graph map view, embedded playtest, structured behavior builders, multi-error
-compile, a native desktop arm.
+`crates/wickedways-studio/build-studio.sh` for the static bundle. **Deployment**: the root
+`Dockerfile` builds the studio bundle alongside the play client, and the room server serves
+it at **`/studio`** (`STUDIO_DIR`, default `./studio`; empty or missing ⇒ off) — one deploy
+ships play + authoring on one port. Deferred (P3, per the spec): graph map view, embedded
+playtest, structured behavior builders, multi-error compile, a native desktop arm.

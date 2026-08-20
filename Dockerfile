@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1.7
 # Multi-stage image for the WickedWays **Dioxus** web client + room server: one
-# binary serves the bundled Dioxus app (static WASM + assets) AND the multiplayer
-# `/ws` endpoint on one port, so a deploy is a single Coolify resource / preview URL.
+# binary serves the bundled Dioxus app (static WASM + assets), Campaign Studio (the
+# authoring app, under /studio) AND the multiplayer `/ws` endpoint on one port, so a
+# deploy is a single Coolify resource / preview URL.
 #
 # Build context MUST be the repo root. The Dioxus bundle and the server binary are
 # compiled inside the image (the client derives its socket URL same-origin, so no
@@ -56,6 +57,14 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/app/target,sharing=locked \
     crates/wickedways-web/build-web.sh /app/dist
+# Campaign Studio (the authoring app): same cargo→wasm32→wasm-bindgen path, served
+# by the same binary under /studio. Shares the cached target/ with the client build
+# above, so the overlapping dependency tree (dioxus, web-sys, the engine crates)
+# compiles once.
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git \
+    --mount=type=cache,target=/app/target,sharing=locked \
+    crates/wickedways-studio/build-studio.sh /app/studio-dist
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/app/target,sharing=locked \
@@ -76,6 +85,7 @@ RUN apt-get update \
 # The server binary was cp'd out of the cache-mounted `target/` to `/usr/local/bin` in the builder.
 COPY --from=builder /usr/local/bin/wickedways-server /usr/local/bin/wickedways-server
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/studio-dist ./studio
 # Seed the ephemeral multiplayer demo campaign (the client's default `?campaign=demo`).
 # Single-player campaigns are bundled in the client and need no server-side genesis.
 COPY conformance/fixtures/sync-move.genesis.json ./genesis/demo.json
@@ -89,6 +99,7 @@ COPY conformance/fixtures/covenant.catalog.json ./genesis/covenant.catalog.json
 # No DB_PATH → the store is ephemeral (a clean slate per deploy).
 ENV PORT=8080 \
     WEB_DIR=/app/dist \
+    STUDIO_DIR=/app/studio \
     GENESIS_DIR=/app/genesis \
     GM_IDENTITY=gm
 EXPOSE 8080
