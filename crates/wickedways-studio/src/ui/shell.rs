@@ -20,6 +20,7 @@ use crate::ui::screens::{
 const SECTIONS: &[(&str, &str)] = &[
     ("settings", "Settings"),
     ("rooms", "Rooms"),
+    ("map", "Map"),
     ("exits", "Exits"),
     ("items", "Items"),
     ("loot", "Loot"),
@@ -166,6 +167,7 @@ pub fn EditorShell(
                     match section.as_str() {
                         "settings" => rsx! { SettingsScreen {} },
                         "rooms" => rsx! { RoomsScreen { asset } },
+                        "map" => rsx! { crate::ui::map::MapScreen {} },
                         "exits" => rsx! { ExitsScreen { asset } },
                         "items" => rsx! { ItemsScreen { asset } },
                         "loot" => rsx! { LootScreen { asset } },
@@ -280,10 +282,11 @@ fn GateOverlay(report: GateReport, on_close: EventHandler<()>) -> Element {
                     }
                 } else {
                     h2 { class: "studio-gate-bad", "Campaign has problems" }
-                    if let Some(e) = &report.compile_error {
-                        h3 { "Compile" }
-                        p { class: "studio-gate-err", "{e}" }
-                        p { class: "studio-hint", "compile() is fail-fast — fix and re-check for the next error." }
+                    if !report.compile_errors.is_empty() {
+                        h3 { "Compile ({report.compile_errors.len()} finding(s))" }
+                        for (i, e) in report.compile_errors.iter().enumerate() {
+                            p { key: "{i}", class: "studio-gate-err", "{e}" }
+                        }
                     }
                     if !report.assemble_problems.is_empty() {
                         h3 { "Assemble ({report.assemble_problems.len()} problem(s))" }

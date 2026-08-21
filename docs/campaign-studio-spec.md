@@ -22,10 +22,21 @@ ship, plus the P2 set: a bounded coalescing **undo** stack, **compiled-artifact 
 **unreachable-rooms** reachability lint. The flagship round-trip corpus test
 (`crates/wickedways-studio/tests/roundtrip.rs`) holds compiled equality over every fixture.
 **Deployment is wired**: the root `Dockerfile` builds the studio bundle and the room server
-serves it at `/studio` (see §Architecture). One remaining simplification vs. the letter of
-this spec: autosave is a synchronous write-through rather than a 500 ms debounce (blobs are
-tens of KB). P3 (graph view, embedded playtest, structured builders, multi-error compile,
-desktop arm) remains open; the sections below are the design.
+serves it at `/studio` (see §Architecture). **P3 is built except the embedded playtest**:
+the read-only **Map view** (the campaign compiled+assembled into a `World` and revealed
+through the play client's own `wickedways_tabletop::map` geometry — locked doors dashed,
+dark rooms shaded, click-through to the room form); **structured behavior builders** (the
+hybrid model: a snippet bar under every DSL body with document-fed pickers, property-tested
+so a builder can only emit text its slot's parser accepts; raw text stays the escape
+hatch); **`compile_all`** upstream (collect-all, each finding labeled with its body's TOML
+path — the Check-campaign overlay now lists every compile finding at once); the **native
+desktop arm** (`native-app` feature: CLI param store, file-backed campaigns in the shared
+data dir, exports to Downloads; launched by the excluded `desktop/` shell's second binary
+`wickedways-studio-desktop`); and **IndexedDB** as the campaign-blob store (boot-primed
+in-memory cache keeps every call site synchronous; one-time migration drains pre-existing
+localStorage blobs; the index stays in localStorage). One remaining simplification vs. the
+letter of this spec: autosave is a synchronous write-through rather than a 500 ms debounce.
+**Open: the embedded playtest** (§Playtest hook). The sections below are the design.
 
 ## Context
 
@@ -284,6 +295,11 @@ except the author's confidence.
   on load, older versions run an upgrade function; an unknown *newer* version is refused
   with a warning naming the version — the blob is left untouched (opening it through an
   older `EditorDoc` shape could silently drop fields the newer studio wrote).
+  **(P3)** Blobs live in **IndexedDB** (database `wickedways-studio`, store `campaigns`) —
+  no localStorage quota — primed into an in-memory cache at boot so reads/writes stay
+  synchronous (writes persist fire-and-forget; failures are logged and healed by the next
+  save). Boot migrates any pre-IndexedDB blob out of localStorage. The tiny index remains
+  in the synchronous platform store, and the native arm's blobs are data-dir files.
 - **Why JSON of the editor model, not TOML text:** it preserves editor ids and in-progress
   state that isn't yet valid TOML, and avoids reparsing on every load. TOML is the
   *interchange* format only — produced on export, consumed on import.

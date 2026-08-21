@@ -44,7 +44,8 @@ cargo build -p wickedways-core --no-default-features            # the no_std gat
 cargo clippy -p wickedways-web --all-targets --target wasm32-unknown-unknown -- -D warnings
 cargo build -p wickedways-web --target wasm32-unknown-unknown   # the shipped client
 cargo build -p wickedways-studio --target wasm32-unknown-unknown # Campaign Studio (authoring app)
-cargo run --manifest-path desktop/Cargo.toml                    # the native desktop shell (workspace-excluded; needs GTK/WebKit dev libs on Linux)
+cargo run --manifest-path desktop/Cargo.toml --bin wickedways-desktop         # the native desktop shell (workspace-excluded; needs GTK/WebKit dev libs on Linux)
+cargo run --manifest-path desktop/Cargo.toml --bin wickedways-studio-desktop  # Campaign Studio as a native desktop app (same shell crate)
 cd desktop && dx bundle --release --platform desktop            # desktop installers (.deb/.rpm/AppImage | .app/.dmg | .msi) — dioxus-cli 0.6.3; --platform is required
 cargo clippy -p wickedways-wasm --target wasm32-unknown-unknown --features conformance -- -D warnings
 pnpm docs:build                                                 # VitePress docs site (docs-site/)

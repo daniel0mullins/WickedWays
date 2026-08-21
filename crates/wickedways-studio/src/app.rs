@@ -146,21 +146,33 @@ impl StudioStore {
 /// The root component: route signal + the top-level match.
 pub fn studio_app() -> Element {
     let route = use_signal(read_route);
+    // Prime the blob cache from the platform store (IndexedDB in the browser)
+    // before any screen reads a campaign — screens stay fully synchronous.
+    let primed = use_resource(|| async {
+        let blobs = crate::platform::blob_store_prime(crate::store::CAMPAIGN_PREFIX).await;
+        crate::store::prime_cache(blobs);
+    });
     rsx! {
         style { {include_str!("../assets/studio.css")} }
-        match route() {
-            StudioRoute::Home => rsx! { crate::ui::home::HomeView { route } },
-            StudioRoute::Edit { campaign, section, asset } => {
-                // The remount key formats `campaign` while the prop consumes it —
-                // a copy keeps the release rsx expansion (which moves eagerly) happy.
-                let ckey = campaign.clone();
-                rsx! {
-                    crate::ui::shell::EditorShell {
-                        key: "{ckey}",
-                        campaign,
-                        section,
-                        asset,
-                        route,
+        if primed.read().is_none() {
+            div { class: "studio-home",
+                p { class: "studio-empty", "Loading campaigns…" }
+            }
+        } else {
+            match route() {
+                StudioRoute::Home => rsx! { crate::ui::home::HomeView { route } },
+                StudioRoute::Edit { campaign, section, asset } => {
+                    // The remount key formats `campaign` while the prop consumes it —
+                    // a copy keeps the release rsx expansion (which moves eagerly) happy.
+                    let ckey = campaign.clone();
+                    rsx! {
+                        crate::ui::shell::EditorShell {
+                            key: "{ckey}",
+                            campaign,
+                            section,
+                            asset,
+                            route,
+                        }
                     }
                 }
             }

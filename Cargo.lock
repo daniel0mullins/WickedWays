@@ -2664,15 +2664,19 @@ name = "wickedways-studio"
 version = "0.0.1"
 dependencies = [
  "dioxus",
+ "dirs",
+ "futures-channel",
  "js-sys",
  "serde",
  "serde_json",
  "toml",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
  "wickedways-assemble",
  "wickedways-author",
  "wickedways-core",
+ "wickedways-tabletop",
 ]
 
 [[package]]

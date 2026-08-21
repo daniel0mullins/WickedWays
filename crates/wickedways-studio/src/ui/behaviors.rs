@@ -14,7 +14,8 @@ use wickedways_author::author_doc::{
     MechanicBehaviorEntry, NpcBehaviorEntry, SceneBehaviorEntry,
 };
 
-/// A required DSL body: monospace textarea + inline compiler verdict.
+/// A required DSL body: monospace textarea + inline compiler verdict + the
+/// structured-snippet builder bar (raw text stays the escape hatch).
 #[component]
 pub fn BodyField(
     label: String,
@@ -23,6 +24,7 @@ pub fn BodyField(
     on_change: EventHandler<String>,
 ) -> Element {
     let err = validate_body(slot, &value);
+    let current = value.clone();
     rsx! {
         label { class: "studio-field",
             span { class: "studio-field-label", "{label}" }
@@ -32,6 +34,12 @@ pub fn BodyField(
                 spellcheck: "false",
                 oninput: move |e| on_change.call(e.value()),
             }
+        }
+        crate::ui::builders::SnippetBar {
+            slot,
+            on_insert: move |snippet: String| {
+                on_change.call(crate::ui::builders::insert_snippet(slot, &current, &snippet));
+            },
         }
         if let Some(msg) = err.clone() {
             p { class: "studio-field-err", "{msg}" }
@@ -53,6 +61,7 @@ pub fn OptBodyField(
     } else {
         validate_body(slot, &shown)
     };
+    let current = shown.clone();
     rsx! {
         label { class: "studio-field",
             span { class: "studio-field-label", "{label}" }
@@ -65,6 +74,13 @@ pub fn OptBodyField(
                     on_change.call(if v.trim().is_empty() { None } else { Some(v) });
                 },
             }
+        }
+        crate::ui::builders::SnippetBar {
+            slot,
+            on_insert: move |snippet: String| {
+                let merged = crate::ui::builders::insert_snippet(slot, &current, &snippet);
+                on_change.call(if merged.trim().is_empty() { None } else { Some(merged) });
+            },
         }
         if let Some(msg) = err.clone() {
             p { class: "studio-field-err", "{msg}" }
