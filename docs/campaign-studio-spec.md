@@ -47,7 +47,7 @@ write-through rather than a 500 ms debounce. The sections below are the design.
 
 Campaigns are authored today by hand-writing TOML against the `AuthorDoc` surface and
 compiling with `wwauthor` (or `wickedways_author::compile`). That works — the entire shipped
-Hollow House campaign is authored this way (`conformance/fixtures/hollow-house.toml`, 369
+Hollow House campaign is authored this way (`campaigns/hollow-house.toml`, 369
 lines) — but the barrier is real: an author must memorize a large camelCase schema
 (`deny_unknown_fields` — one stray key is a hard error), a web of name/key cross-references,
 and the behavior DSL, and `compile()` reports **one error at a time** with spans that are
@@ -76,9 +76,10 @@ a friendlier way to produce and edit one, not a replacement for it.
   `CompiledCampaign`-shaped.
 - **No collaboration / multi-user editing.** One browser, one author, localStorage.
 
-The fixtures corpus does double duty: the 22 TOML sources are the **import-test corpus**
-(round-trip gate, below) and the seed **templates** offered on the campaign-list screen
-("start from Hollow House", "start from Covenant", or any single-feature `g2-*` example).
+The `campaigns/` directory does double duty: the 22 TOML sources are the **import-test
+corpus** (round-trip gate, below) and the seed **templates** offered on the campaign-list
+screen ("start from Hollow House", "start from Covenant", or any single-feature `g2-*`
+example).
 
 ## Architecture: a new crate, `wickedways-studio`
 

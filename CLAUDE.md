@@ -23,7 +23,9 @@ The workspace:
 | `wickedways-studio` | Campaign Studio: the standalone graphical campaign-authoring app (Dioxus wasm; spec in `docs/campaign-studio-spec.md`). |
 
 The TypeScript engine and its packages have been deleted; the golden corpus under
-`conformance/fixtures/` (goldens + TOML campaign sources) is all that remains of `conformance/`.
+`conformance/fixtures/` (compiled goldens only) is all that remains of `conformance/`. The
+authored TOML campaign sources live in `campaigns/` (the modder-facing directory — see its
+`README.md`); the gates compile from there and pin against the goldens.
 `landing/` is a separate PHP marketing page, not part of the engine build. The root
 `package.json` exists only for the VitePress docs site.
 

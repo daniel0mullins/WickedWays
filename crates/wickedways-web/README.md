@@ -100,7 +100,7 @@ default. Host-tested (each bundled campaign boots, begins, and projects) and ver
 `facade-free-vs-advancing` boots the Hall with its Lurker + chest.
 
 The shipped campaign is **The Hollow House** — the full authored campaign, faithfully re-authored in
-the TOML surface (`conformance/fixtures/hollow-house.toml`, the G2 author capstone) and compiled
+the TOML surface (`campaigns/hollow-house.toml`, the G2 author capstone) and compiled
 through `wickedways-author` → `wickedways-assemble` to the committed genesis + catalog (a gate
 re-assembles the playable genesis — the pristine snapshot seated with one Heir PC as GM — so it stays
 faithful). Its catalog carries the scripted mechanics (dread / the sanity status bar / victory
@@ -112,7 +112,7 @@ unless the page carries **`?debug`** ([`driver::menu_campaigns`](src/driver.rs) 
 House plays — Foyer start, its live Sanity/Round status bar, traversable rooms.
 
 **The Covenant** is the **co-op multiplayer** campaign, authored the same way
-(`conformance/fixtures/covenant.toml` → `wickedways-author` → `wickedways-assemble`). It is a
+(`campaigns/covenant.toml` → `wickedways-author` → `wickedways-assemble`). It is a
 **GM-host + self-join** campaign: the genesis seats only the GM/host (`Keeper`), and players **create
 their own characters and join at runtime** (see the lobby below). Its `twin-wards-held` victory (a
 scripted `some(party, element.room.name == 'North Ward') && some(party, … 'South Ward')`) only fires

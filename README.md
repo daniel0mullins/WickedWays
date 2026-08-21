@@ -12,7 +12,9 @@ corpus.
 
 The engine began life in TypeScript and has fully cut over to Rust; the TS tree has
 been removed. The golden corpus under `conformance/fixtures/` pins the Rust engine's
-own behavior.
+own behavior. The authored campaign TOMLs those goldens are compiled from live in
+[`campaigns/`](campaigns/README.md) — the place to start if you want to write or mod
+a campaign.
 
 ## Documentation site
 
@@ -759,7 +761,7 @@ onRoundEnd = '''
 ```
 
 Hollow House's `dread`, `storyteller`, and `status-bar` mechanics
-(`conformance/fixtures/hollow-house.toml`) are the shipped reference examples.
+(`campaigns/hollow-house.toml`) are the shipped reference examples.
 
 ### Scripted behaviors (the ops DSL)
 
@@ -798,7 +800,7 @@ applies the results through the same collect-then-apply pipeline as native ops.
 - **Hollow House** is the reference user: its dread/storyteller/status-bar
   mechanics, all three keyed doors (cellar/study/attic), all three victory conditions,
   and laudanum's `onUse` effect are authored as scripts in
-  `conformance/fixtures/hollow-house.toml` and pinned by the `scripted-*` replay
+  `campaigns/hollow-house.toml` and pinned by the `scripted-*` replay
   goldens.
 
 ### Mob encounters & loot

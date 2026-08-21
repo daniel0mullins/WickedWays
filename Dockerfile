@@ -41,9 +41,11 @@ RUN apt-get update \
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 # The web client bundles the demo/caretaker/facade/status-bar campaigns via
-# `include_str!("../../../conformance/fixtures/*.json")`, so those files must be present at compile
-# time (not just in the runtime stage's genesis seed below).
+# `include_str!("../../../conformance/fixtures/*.json")`, and the studio bundles its
+# templates via `include_str!("../../../../campaigns/*.toml")`, so both directories must be
+# present at compile time (not just in the runtime stage's genesis seed below).
 COPY conformance/fixtures ./conformance/fixtures
+COPY campaigns ./campaigns
 
 # Bundle the Dioxus web client (cargo → wasm32 → wasm-bindgen --target web → /app/dist),
 # then build the room server that serves it. `--locked` pins the committed Cargo.lock.

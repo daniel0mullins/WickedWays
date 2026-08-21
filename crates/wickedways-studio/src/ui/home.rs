@@ -12,15 +12,15 @@ use crate::store::{self, IndexEntry};
 const TEMPLATES: &[(&str, &str)] = &[
     (
         "Hollow House (the full campaign)",
-        include_str!("../../../../conformance/fixtures/hollow-house.toml"),
+        include_str!("../../../../campaigns/hollow-house.toml"),
     ),
     (
         "Covenant (crafting: caches + recipes)",
-        include_str!("../../../../conformance/fixtures/covenant.toml"),
+        include_str!("../../../../campaigns/covenant.toml"),
     ),
     (
         "Vault (a keyed door)",
-        include_str!("../../../../conformance/fixtures/g2-vault.toml"),
+        include_str!("../../../../campaigns/g2-vault.toml"),
     ),
 ];
 
@@ -30,79 +30,76 @@ const TEMPLATES: &[(&str, &str)] = &[
 const GALLERY: &[(&str, &str)] = &[
     (
         "archetypes",
-        include_str!("../../../../conformance/fixtures/g2-archetype.toml"),
+        include_str!("../../../../campaigns/g2-archetype.toml"),
     ),
     (
         "dark rooms",
-        include_str!("../../../../conformance/fixtures/g2-dark-rooms.toml"),
+        include_str!("../../../../campaigns/g2-dark-rooms.toml"),
     ),
     (
         "a scripted door",
-        include_str!("../../../../conformance/fixtures/g2-door.toml"),
+        include_str!("../../../../campaigns/g2-door.toml"),
     ),
     (
         "effects",
-        include_str!("../../../../conformance/fixtures/g2-effects.toml"),
+        include_str!("../../../../campaigns/g2-effects.toml"),
     ),
     (
         "equipment",
-        include_str!("../../../../conformance/fixtures/g2-equipment.toml"),
+        include_str!("../../../../campaigns/g2-equipment.toml"),
     ),
     (
         "stateful exits",
-        include_str!("../../../../conformance/fixtures/g2-exit-state.toml"),
+        include_str!("../../../../campaigns/g2-exit-state.toml"),
     ),
     (
         "formations",
-        include_str!("../../../../conformance/fixtures/g2-formations.toml"),
+        include_str!("../../../../campaigns/g2-formations.toml"),
     ),
     (
         "a consumable item",
-        include_str!("../../../../conformance/fixtures/g2-item.toml"),
+        include_str!("../../../../campaigns/g2-item.toml"),
     ),
     (
         "a mechanic",
-        include_str!("../../../../conformance/fixtures/g2-mechanic.toml"),
+        include_str!("../../../../campaigns/g2-mechanic.toml"),
     ),
     (
         "mechanic actions",
-        include_str!("../../../../conformance/fixtures/g2-mechanic-actions.toml"),
+        include_str!("../../../../campaigns/g2-mechanic-actions.toml"),
     ),
-    (
-        "mobs",
-        include_str!("../../../../conformance/fixtures/g2-mobs.toml"),
-    ),
+    ("mobs", include_str!("../../../../campaigns/g2-mobs.toml")),
     (
         "an NPC dialogue",
-        include_str!("../../../../conformance/fixtures/g2-npc.toml"),
+        include_str!("../../../../campaigns/g2-npc.toml"),
     ),
     (
         "campaign opts",
-        include_str!("../../../../conformance/fixtures/g2-opts.toml"),
+        include_str!("../../../../campaigns/g2-opts.toml"),
     ),
     (
         "a scene",
-        include_str!("../../../../conformance/fixtures/g2-scene.toml"),
+        include_str!("../../../../campaigns/g2-scene.toml"),
     ),
     (
         "the status bar",
-        include_str!("../../../../conformance/fixtures/g2-status-bar.toml"),
+        include_str!("../../../../campaigns/g2-status-bar.toml"),
     ),
     (
         "the storyteller",
-        include_str!("../../../../conformance/fixtures/g2-storyteller.toml"),
+        include_str!("../../../../campaigns/g2-storyteller.toml"),
     ),
     (
         "timeout narration",
-        include_str!("../../../../conformance/fixtures/g2-timeout.toml"),
+        include_str!("../../../../campaigns/g2-timeout.toml"),
     ),
     (
         "victory conditions",
-        include_str!("../../../../conformance/fixtures/g2-victory.toml"),
+        include_str!("../../../../campaigns/g2-victory.toml"),
     ),
     (
         "a villain + deck",
-        include_str!("../../../../conformance/fixtures/g2-villain.toml"),
+        include_str!("../../../../campaigns/g2-villain.toml"),
     ),
 ];
 

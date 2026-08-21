@@ -48,7 +48,7 @@ docker run --rm -p 8080:8080 wickedways
 
 Campaigns are TOML files compiled by `wickedways-author` and assembled into a
 genesis snapshot by `wickedways-assemble`. Start from the shipped campaign at
-`conformance/fixtures/hollow-house.toml` and the [Architecture](./architecture)
+`campaigns/hollow-house.toml` and the [Architecture](./architecture)
 page's author-format sections; the golden gates
 (`cargo test -p wickedways-author --test gate`) validate a campaign compiles to
 a stable description + catalog.
