@@ -125,8 +125,14 @@ pub fn check_campaign(doc: &EditorDoc) -> GateReport {
             return report;
         }
     };
-    // Empty party = the pristine genesis — assemble runs the collect-all validate.
-    let seats: [Seat; 0] = [];
+    // One default seat (the GM, archetype-free — the TOML-author path) so the genesis
+    // artifact is PLAYABLE: the Playtest handoff boots it directly, and the bundled
+    // fixtures follow the same convention (seated, first seat = GM). Assemble still
+    // runs the collect-all validate first, so the gate's authority is unchanged.
+    let seats = [Seat {
+        name: "Playtester".into(),
+        archetype: None,
+    }];
     let snap = match assemble(&compiled.description, &compiled.catalog, &seats) {
         Ok(snap) => snap,
         Err(e) => {

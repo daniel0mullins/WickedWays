@@ -1741,7 +1741,7 @@ from `startRoom`); and per-body validation now dispatches to
 `wickedways_author::validate`'s public span-bearing single-body parsers (the second
 upstream change the spec mandated) instead of the MVP's probe-document hack.
 
-And the P3 set (all but the embedded playtest): the read-only **Map view** — the campaign
+And the full P3 set: the read-only **Map view** — the campaign
 compiled, assembled, loaded into a `World`, and revealed through the play client's own
 `wickedways_tabletop::map` geometry (locked doors dashed, dark rooms shaded, click a room
 to edit it); **structured behavior builders** — a snippet bar under every DSL body whose
@@ -1750,13 +1750,19 @@ slot's parser accepts; raw text stays the escape hatch); **`compile_all`** — t
 collect-all compile (each finding labeled with its body's TOML path), now behind the
 Check-campaign overlay; a **native desktop arm** (`native-app` feature + the `desktop/`
 shell's `wickedways-studio-desktop` binary — file-backed campaigns in the shared data
-dir, exports to Downloads); and **IndexedDB** as the campaign-blob store (boot-primed
-cache, one-time localStorage migration, no more ~5 MB ceiling).
+dir, exports to Downloads); **IndexedDB** as the campaign-blob store (boot-primed
+cache, one-time localStorage migration, no more ~5 MB ceiling); and the **Playtest
+handoff** — a green Check-campaign gate offers **▶ Playtest**, which writes the compiled
+genesis + catalog to a shared storage slot (`wickedways:playtest:genesis` / `:catalog`:
+localStorage on the web, files in the shared data dir natively) and opens the game client
+at `/?campaign=playtest&mode=single`. On the play-client side, `wickedways-web` resolves
+`playtest` from that slot (`driver::bundled_campaign` — an explicit error when no slot is
+saved, never a silent demo fallback) and lists a synthetic "Studio Playtest" launcher
+campaign while the slot exists. Same-origin serving makes the handoff work with zero
+server involvement; the desktop shells share it through the common data dir.
 
 Build/serve like the play client: `dx serve` in `crates/wickedways-studio` for dev,
 `crates/wickedways-studio/build-studio.sh` for the static bundle. **Deployment**: the root
 `Dockerfile` builds the studio bundle alongside the play client, and the room server serves
 it at **`/studio`** (`STUDIO_DIR`, default `./studio`; empty or missing ⇒ off) — one deploy
-ships play + authoring on one port. Still deferred (per the spec): the **embedded
-playtest** (author it, hit Play, it runs — needs the play client to grow a
-load-external-campaign entry point).
+ships play + authoring on one port.

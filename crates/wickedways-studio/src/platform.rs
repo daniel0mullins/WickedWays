@@ -108,6 +108,15 @@ mod imp {
         anchor.click();
     }
 
+    /// Open `url` in a new browser tab — the playtest handoff into the game client, which is
+    /// served same-origin at `/` (so relative URLs resolve to it). Popup-blocked or windowless
+    /// contexts are a silent no-op; the saved slot still appears in the game's launcher menu.
+    pub fn open_url(url: &str) {
+        if let Some(w) = web_sys::window() {
+            let _ = w.open_with_url_and_target(url, "_blank");
+        }
+    }
+
     // ---- the campaign-blob store: IndexedDB ------------------------------
     // Campaign blobs live in IndexedDB (no ~5 MB localStorage ceiling); the
     // app primes them into an in-memory cache at boot and persists changes
@@ -410,6 +419,13 @@ mod imp {
                 path.display()
             ),
         }
+    }
+
+    /// Opening the game client isn't possible from the native studio process — the playtest
+    /// slot is still written (to the shared data dir the desktop game shell reads), so the
+    /// campaign appears in that app's launcher menu; this only notes where to find it.
+    pub fn open_url(url: &str) {
+        eprintln!("wickedways-studio: playtest saved — open the WickedWays app ({url})");
     }
 
     // ---- the campaign-blob store: data-dir files -------------------------

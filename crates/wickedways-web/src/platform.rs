@@ -122,6 +122,12 @@ mod imp {
     }
 
     fn local_storage() -> Option<web_sys::Storage> {
+        // Host builds of this arm (the lib's unit tests) can't call wasm-bindgen imports —
+        // `web_sys::window()` PANICS off-wasm rather than returning `None` — so storage is
+        // simply absent there (e.g. no playtest slot in launcher tests).
+        if cfg!(not(target_arch = "wasm32")) {
+            return None;
+        }
         web_sys::window()?.local_storage().ok()?
     }
 

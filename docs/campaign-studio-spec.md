@@ -22,7 +22,7 @@ ship, plus the P2 set: a bounded coalescing **undo** stack, **compiled-artifact 
 **unreachable-rooms** reachability lint. The flagship round-trip corpus test
 (`crates/wickedways-studio/tests/roundtrip.rs`) holds compiled equality over every fixture.
 **Deployment is wired**: the root `Dockerfile` builds the studio bundle and the room server
-serves it at `/studio` (see §Architecture). **P3 is built except the embedded playtest**:
+serves it at `/studio` (see §Architecture). **All of P3 is built**:
 the read-only **Map view** (the campaign compiled+assembled into a `World` and revealed
 through the play client's own `wickedways_tabletop::map` geometry — locked doors dashed,
 dark rooms shaded, click-through to the room form); **structured behavior builders** (the
@@ -34,9 +34,14 @@ desktop arm** (`native-app` feature: CLI param store, file-backed campaigns in t
 data dir, exports to Downloads; launched by the excluded `desktop/` shell's second binary
 `wickedways-studio-desktop`); and **IndexedDB** as the campaign-blob store (boot-primed
 in-memory cache keeps every call site synchronous; one-time migration drains pre-existing
-localStorage blobs; the index stays in localStorage). One remaining simplification vs. the
-letter of this spec: autosave is a synchronous write-through rather than a 500 ms debounce.
-**Open: the embedded playtest** (§Playtest hook). The sections below are the design.
+localStorage blobs; the index stays in localStorage); and the **Playtest handoff**
+(§Playtest hook): a green Check-campaign gate offers a **▶ Playtest** button that writes the
+compiled genesis + catalog to the shared storage slot (`wickedways:playtest:genesis` /
+`:catalog` — localStorage on the web, the shared data dir natively) and opens the game
+client on `/?campaign=playtest&mode=single`; `wickedways-web` resolves that slot as a
+dynamic launcher campaign ("Studio Playtest", menu-listed only while a slot exists). One
+remaining simplification vs. the letter of this spec: autosave is a synchronous
+write-through rather than a 500 ms debounce. The sections below are the design.
 
 ## Context
 
@@ -348,10 +353,13 @@ Because author + assemble are wasm-clean, the full pipeline — TOML → `compil
 - **P2:** an "Export compiled" action downloads `description`/`catalog` (and optionally an
   assembled genesis) JSON — the same artifacts `wwauthor` writes — for use with the
   existing tooling.
-- **P3:** a true **Playtest** button handing off to the game client. This depends on
-  `wickedways-web` growing a load-external-campaign entry point (today campaigns are
-  `include_str!`-bundled; `driver.rs` itself notes manifest-driven assembly as future
-  work). That is a cross-crate ask, flagged here — not assumed.
+- **P3 (built):** a true **Playtest** button handing off to the game client. The
+  cross-crate ask landed as the storage-slot entry point: `wickedways-web`'s
+  `bundled_campaign`/`bundled_catalog` resolve `playtest` from the shared storage keys
+  (`wickedways:playtest:genesis` / `:catalog`), a synthetic launcher entry ("Studio
+  Playtest") appears while a slot is saved, and the studio's green gate writes the slot and
+  opens `/?campaign=playtest&mode=single` (same origin, so the relative link lands on the
+  game). Natively the slot is files in the shared data dir, read by the desktop game shell.
 
 ## Phasing
 
