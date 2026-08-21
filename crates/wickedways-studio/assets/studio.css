@@ -282,6 +282,9 @@ h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; color: var(--ink-dim); }
 .studio-gallery summary { color: var(--accent); cursor: pointer; padding: 0.45rem 0.8rem; }
 .studio-gallery .studio-home-actions { margin: 0.5rem 0.8rem 0.8rem; }
 .studio-artifacts { display: flex; gap: 0.4rem; margin: 0.6rem 0; }
+.studio-playtest { display: flex; align-items: center; gap: 0.7rem; margin: 0.8rem 0; }
+.studio-playtest .studio-btn { font-weight: 700; }
+.studio-playtest-hint { color: var(--ink-dim); font-size: 0.85rem; }
 
 /* ── map view (P3) ───────────────────────────────────────────────── */
 .studio-map { max-width: 60rem; }

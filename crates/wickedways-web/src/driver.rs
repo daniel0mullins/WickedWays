@@ -63,6 +63,27 @@ const VILLAIN_CATALOG: &str = include_str!("../../../conformance/fixtures/g2-vil
 /// The default single-player campaign id when `?campaign=` is absent or unknown.
 pub const DEFAULT_CAMPAIGN: &str = "demo";
 
+// ── The Studio playtest handoff ──────────────────────────────────────────────────
+// Campaign Studio (served same-origin at `/studio`) compiles the authored TOML and, on a green
+// Check-campaign gate, writes the genesis + catalog JSON under these storage keys, then deep-links
+// `/?campaign=playtest&mode=single`. This client reads the slot back as one more single-player
+// campaign — no server involvement, and the desktop builds share it too (both platform arms mangle
+// the same keys to the same data-dir filenames). The key literals are mirrored in
+// `wickedways-studio` (`ui/shell.rs`); change them in both places or the handoff breaks.
+
+/// The `?campaign=` id of the Studio's playtest slot.
+pub const PLAYTEST_CAMPAIGN: &str = "playtest";
+/// Storage key the Studio writes the compiled genesis snapshot JSON under.
+pub const PLAYTEST_GENESIS_KEY: &str = "wickedways:playtest:genesis";
+/// Storage key the Studio writes the compiled catalog JSON under (absent = empty catalog).
+pub const PLAYTEST_CATALOG_KEY: &str = "wickedways:playtest:catalog";
+
+/// Whether a Studio playtest campaign is currently saved (→ it appears in the launcher menu and
+/// `?campaign=playtest` resolves).
+pub fn playtest_available() -> bool {
+    platform::storage_read(PLAYTEST_GENESIS_KEY).is_some()
+}
+
 /// Resolve a bundled campaign id to `(genesis, catalog)` JSON, or `None` for an unknown id. A `None`
 /// catalog means the default (empty) catalog.
 fn bundled(id: &str) -> Option<(&'static str, Option<&'static str>)> {
@@ -78,12 +99,13 @@ fn bundled(id: &str) -> Option<(&'static str, Option<&'static str>)> {
     }
 }
 
-/// The parsed genesis snapshot + catalog for a bundled campaign id, falling back to
-/// [`DEFAULT_CAMPAIGN`] for an unknown id.
-pub fn bundled_campaign(id: &str) -> Result<(CampaignSnapshot, Catalog), String> {
-    let (genesis, catalog) = bundled(id)
-        .or_else(|| bundled(DEFAULT_CAMPAIGN))
-        .ok_or("no campaign")?;
+/// Parse a campaign's genesis + optional catalog JSON (`None` catalog → the empty default).
+/// Shared by the bundled table and the Studio playtest slot; `id` only labels errors.
+fn parse_campaign(
+    id: &str,
+    genesis: &str,
+    catalog: Option<&str>,
+) -> Result<(CampaignSnapshot, Catalog), String> {
     let snapshot =
         serde_json::from_str(genesis).map_err(|e| format!("genesis '{id}' malformed: {e}"))?;
     let catalog = match catalog {
@@ -95,12 +117,33 @@ pub fn bundled_campaign(id: &str) -> Result<(CampaignSnapshot, Catalog), String>
     Ok((snapshot, catalog))
 }
 
+/// The parsed genesis snapshot + catalog for a campaign id: the Studio playtest slot for
+/// [`PLAYTEST_CAMPAIGN`] (an error when none is saved — never a silent fallback), else the bundled
+/// table, falling back to [`DEFAULT_CAMPAIGN`] for an unknown id.
+pub fn bundled_campaign(id: &str) -> Result<(CampaignSnapshot, Catalog), String> {
+    if base_campaign(id) == PLAYTEST_CAMPAIGN {
+        let genesis = platform::storage_read(PLAYTEST_GENESIS_KEY)
+            .ok_or("no playtest campaign saved — use Campaign Studio's Playtest button")?;
+        let catalog = platform::storage_read(PLAYTEST_CATALOG_KEY);
+        return parse_campaign(id, &genesis, catalog.as_deref());
+    }
+    let (genesis, catalog) = bundled(id)
+        .or_else(|| bundled(DEFAULT_CAMPAIGN))
+        .ok_or("no campaign")?;
+    parse_campaign(id, genesis, catalog)
+}
+
 /// The bundled catalog for a campaign id (resolving a hosted `<slug>~<token>` room id to its base
 /// campaign), or the empty catalog when the campaign ships none / isn't bundled. Used by the
 /// multiplayer client for projection — the server holds the authoritative catalog, but the client
 /// projects its replica locally and needs the same catalog to resolve aliases/recipes.
 pub fn bundled_catalog(id: &str) -> Catalog {
     let base = base_campaign(id);
+    if base == PLAYTEST_CAMPAIGN {
+        return platform::storage_read(PLAYTEST_CATALOG_KEY)
+            .and_then(|json| serde_json::from_str(&json).ok())
+            .unwrap_or_default();
+    }
     match bundled(base).or_else(|| bundled(id)) {
         Some((_, Some(json))) => serde_json::from_str(json).unwrap_or_default(),
         _ => Catalog::default(),
@@ -544,6 +587,19 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
     REGISTRY
 }
 
+/// Launcher metadata for the Studio playtest slot — not in [`campaign_registry`] (its presence is
+/// dynamic: it resolves and lists only while a slot is saved, via [`playtest_available`]).
+static PLAYTEST_INFO: CampaignInfo = CampaignInfo {
+    slug: PLAYTEST_CAMPAIGN,
+    title: "Studio Playtest",
+    blurb: "Your own campaign, exactly as Campaign Studio last checked it green.",
+    intro: "The Studio hands the house over just as you authored it. Walk it, break it, then go back and fix what you find.",
+    button_text: "Enter the Playtest",
+    surfaces: BOTH_SURFACES,
+    debug: false,
+    multiplayer: false,
+};
+
 /// The base campaign of a room id: a multiplayer room is `<slug>~<token>` (a unique per-host session),
 /// so `covenant~a5f3` resolves to the `covenant` registry entry. An id with no `~` is its own base.
 pub fn base_campaign(id: &str) -> &str {
@@ -561,6 +617,9 @@ pub fn mint_room_id(slug: &str) -> String {
 /// still shows the right title, surfaces, and welcome.
 pub fn resolve_campaign_info(slug: Option<&str>) -> Option<&'static CampaignInfo> {
     let slug = base_campaign(slug?);
+    if slug == PLAYTEST_CAMPAIGN {
+        return playtest_available().then_some(&PLAYTEST_INFO);
+    }
     campaign_registry().iter().find(|c| c.slug == slug)
 }
 
@@ -571,12 +630,17 @@ fn visible(info: &CampaignInfo, debug: bool) -> bool {
 }
 
 /// The campaigns the launcher menu should list, in order: the shipped Hollow House always, plus the
-/// debug/conformance campaigns when `?debug` is present.
+/// debug/conformance campaigns when `?debug` is present, plus the Studio playtest slot while one is
+/// saved.
 pub fn menu_campaigns(debug: bool) -> Vec<&'static CampaignInfo> {
-    campaign_registry()
+    let mut list: Vec<&'static CampaignInfo> = campaign_registry()
         .iter()
         .filter(|c| visible(c, debug))
-        .collect()
+        .collect();
+    if playtest_available() {
+        list.push(&PLAYTEST_INFO);
+    }
+    list
 }
 
 /// A campaign's welcome-screen text — the `CampaignManifest` display passthrough consumed by both
@@ -1284,5 +1348,43 @@ mod tests {
                 surface: "crt-terminal".into()
             }
         );
+    }
+
+    /// The Studio playtest slot: on the host there is no storage (`web_sys::window()` is `None`),
+    /// so the slot is absent — `playtest` must not resolve, list, or silently fall back to the
+    /// demo, and `bundled_campaign` must say what's missing.
+    #[test]
+    fn playtest_without_a_saved_slot_is_absent_everywhere() {
+        assert!(!playtest_available());
+        assert!(resolve_campaign_info(Some("playtest")).is_none());
+        assert_eq!(
+            resolve_route(Some("playtest"), None, false),
+            LauncherRoute::Menu
+        );
+        assert!(menu_campaigns(false)
+            .iter()
+            .all(|c| c.slug != PLAYTEST_CAMPAIGN));
+        let err = bundled_campaign(PLAYTEST_CAMPAIGN).unwrap_err();
+        assert!(err.contains("Playtest button"), "unhelpful error: {err}");
+        // The projection catalog degrades to the empty default rather than erroring.
+        assert_eq!(bundled_catalog(PLAYTEST_CAMPAIGN), Catalog::default());
+    }
+
+    /// The slot parser is the same code path the bundled table uses: feeding it the Hollow House
+    /// fixture JSON (what the Studio would write for that campaign) yields the same world as the
+    /// bundled boot.
+    #[test]
+    fn playtest_slot_parsing_matches_the_bundled_pipeline() {
+        let (via_slot, slot_catalog) =
+            parse_campaign("playtest", HOLLOW_GENESIS, Some(HOLLOW_CATALOG)).unwrap();
+        let (bundled, catalog) = bundled_campaign("hollow-house").unwrap();
+        assert_eq!(
+            serde_json::to_string(&via_slot).unwrap(),
+            serde_json::to_string(&bundled).unwrap()
+        );
+        assert_eq!(slot_catalog, catalog);
+        // A slot with no catalog degrades to the empty default, like a catalog-free bundle.
+        let (_, empty) = parse_campaign("playtest", HOLLOW_GENESIS, None).unwrap();
+        assert_eq!(empty, Catalog::default());
     }
 }

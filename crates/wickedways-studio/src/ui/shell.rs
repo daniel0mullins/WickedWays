@@ -244,6 +244,14 @@ fn ProblemsPanel(problems: Vec<StudioProblem>) -> Element {
     }
 }
 
+// The playtest handoff: on a green gate the compiled genesis + catalog are written under these
+// storage keys and the game client (served same-origin at `/`) is opened on the `playtest`
+// campaign. The key + URL literals are MIRRORED in `wickedways-web` (`driver.rs`) — change both
+// sides or the handoff breaks.
+const PLAYTEST_GENESIS_KEY: &str = "wickedways:playtest:genesis";
+const PLAYTEST_CATALOG_KEY: &str = "wickedways:playtest:catalog";
+const PLAYTEST_URL: &str = "/?campaign=playtest&mode=single";
+
 #[component]
 fn GateOverlay(report: GateReport, on_close: EventHandler<()>) -> Element {
     let store = use_context::<StudioStore>();
@@ -254,12 +262,40 @@ fn GateOverlay(report: GateReport, on_close: EventHandler<()>) -> Element {
         ("catalog", report.catalog_json.clone()),
         ("genesis", report.genesis_json.clone()),
     ];
+    // Playtest needs the genesis (the catalog may legally be empty-but-present; a green gate
+    // serializes both, but degrade gracefully if only the genesis is there).
+    let playtest = report
+        .genesis_json
+        .clone()
+        .map(|g| (g, report.catalog_json.clone()));
     rsx! {
         div { class: "studio-overlay", onclick: move |_| on_close.call(()),
             div { class: "studio-overlay-frame", onclick: move |e| e.stop_propagation(),
                 if report.ok() {
                     h2 { class: "studio-gate-ok", "✓ Campaign checks out" }
                     p { "It compiles, assembles, and loads — the full engine pipeline is green." }
+                    if let Some((genesis, catalog)) = playtest {
+                        div { class: "studio-playtest",
+                            button {
+                                class: "studio-btn",
+                                onclick: move |_| {
+                                    if crate::platform::storage_write(PLAYTEST_GENESIS_KEY, &genesis).is_ok() {
+                                        match &catalog {
+                                            Some(c) => {
+                                                let _ = crate::platform::storage_write(PLAYTEST_CATALOG_KEY, c);
+                                            }
+                                            None => crate::platform::storage_delete(PLAYTEST_CATALOG_KEY),
+                                        }
+                                        crate::platform::open_url(PLAYTEST_URL);
+                                    }
+                                },
+                                "▶ Playtest"
+                            }
+                            span { class: "studio-playtest-hint",
+                                "Saves this build as the game's “Studio Playtest” campaign and opens it."
+                            }
+                        }
+                    }
                     div { class: "studio-artifacts",
                         for (kind, json) in artifacts {
                             if let Some(json) = json {
