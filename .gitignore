@@ -8,7 +8,9 @@ coverage/
 vendor
 composer.*
 .vscode
-.claude/
+# Local Claude Code state stays untracked, but the repo ships its skills.
+.claude/*
+!.claude/skills/
 docs-site/.vitepress/dist/
 docs-site/.vitepress/cache/
 docs-site/api/

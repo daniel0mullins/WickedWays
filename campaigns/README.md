@@ -4,17 +4,20 @@ The authored campaign sources — every campaign is one TOML file in the
 campaign-author format compiled by `wickedways-author`. **This is the directory to
 start from if you want to write or modify a campaign.**
 
-Two ways to work with these files:
+Three ways to work with these files:
 
 - **Campaign Studio** (served at `/studio` on a deployed instance, or
   `dx serve` in `crates/wickedways-studio`): the graphical editor. Every file
   here is available in the studio as a template ("New from …" and the template
   gallery), and the studio imports/exports this exact TOML format.
-- **By hand + the compiler**: edit the TOML, then compile and validate it with
-  `wickedways_author::compile` (the author gate in
-  `crates/wickedways-author/tests/gate.rs` shows the pipeline). The format is
-  documented in `docs/` and by example — `hollow-house.toml` is the complete
-  shipped campaign.
+- **By hand + the compiler**: edit the TOML, then validate with
+  `cargo run -p wickedways-author --bin wwauthor -- campaigns/<name>.toml` — it
+  reports every compile finding at once, labeled by TOML path. The format is
+  documented by example — `hollow-house.toml` is the complete shipped campaign.
+- **Describe it to Claude Code**: the repo ships the `author-campaign` skill
+  (`.claude/skills/author-campaign/`) — tell Claude the campaign you want in plain
+  language ("a lighthouse where the keeper's ghost guards the lamp-room key…") and
+  it generates, validates, and iterates the TOML here for you.
 
 ## What's here
 

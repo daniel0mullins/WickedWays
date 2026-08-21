@@ -1436,10 +1436,14 @@ compile(toml_src: &str) -> Result<CompiledCampaign, CompileError>
 //                              ^ { description, catalog }
 ```
 
-— and the `wwauthor` bin wraps it: `wwauthor <campaign.toml>` reads the TOML, compiles it, and
-writes `<stem>.description.json` + `<stem>.catalog.json` (`serde_json::to_string_pretty` +
-trailing newline) beside the input. On any `CompileError` it prints the `Display` message to
-stderr and exits non-zero; author input never panics (`compile` is the modding trust boundary).
+— and the `wwauthor` bin wraps it: `wwauthor <campaign.toml>` reads the TOML, compiles it
+via `compile_all` (the collect-all compile), and writes `<stem>.description.json` +
+`<stem>.catalog.json` (`serde_json::to_string_pretty` + trailing newline) beside the input.
+On failure it prints EVERY collected finding to stderr — one line each, labeled with its
+body's TOML path — and exits non-zero; author input never panics (`compile` is the modding
+trust boundary). Modders can also skip hand-writing TOML entirely: the repo's
+`author-campaign` Claude Code skill (`.claude/skills/author-campaign/`) generates and
+validates a campaign from a plain-language description.
 
 **The TOML surface.** Rooms, exits, items, loot containers, and a victory condition are declared
 as tables/arrays; behaviors are named tables the exits/victory reference by key:
