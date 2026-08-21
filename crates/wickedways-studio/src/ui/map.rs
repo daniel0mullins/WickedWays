@@ -115,7 +115,7 @@ mod tests {
 
     #[test]
     fn hollow_house_lays_out_every_room_with_locked_wards() {
-        let src = include_str!("../../../../conformance/fixtures/hollow-house.toml");
+        let src = include_str!("../../../../campaigns/hollow-house.toml");
         let layout = build_layout(&import(src).unwrap()).expect("hollow-house builds");
         assert_eq!(layout.boxes.len(), 9, "all nine rooms are placed");
         let mut labels: Vec<&str> = layout.boxes.iter().map(|b| b.label.as_str()).collect();

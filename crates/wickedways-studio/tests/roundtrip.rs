@@ -1,6 +1,6 @@
 //! The flagship round-trip gate (docs/campaign-studio-spec.md §Verification).
 //!
-//! For every TOML source in the conformance corpus: import → `EditorDoc` → export
+//! For every TOML source in `campaigns/`: import → `EditorDoc` → export
 //! TOML → compile BOTH the original and the exported text → the compiled
 //! `description` + `catalog` JSON must be **equal**. Compiled equality is the
 //! round-trip equivalence relation — comments and formatting are lossy by design.
@@ -12,14 +12,14 @@ use std::path::{Path, PathBuf};
 use wickedways_author::compile;
 use wickedways_studio::export::{import, to_toml};
 
-fn fixtures() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../conformance/fixtures")
+fn campaigns() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../campaigns")
 }
 
 #[test]
 fn every_fixture_round_trips_at_compiled_equality() {
-    let mut names: Vec<String> = std::fs::read_dir(fixtures())
-        .expect("fixtures dir")
+    let mut names: Vec<String> = std::fs::read_dir(campaigns())
+        .expect("campaigns dir")
         .filter_map(|e| {
             let p = e.ok()?.path();
             (p.extension()? == "toml")
@@ -34,7 +34,7 @@ fn every_fixture_round_trips_at_compiled_equality() {
     );
 
     for name in &names {
-        let src = std::fs::read_to_string(fixtures().join(format!("{name}.toml")))
+        let src = std::fs::read_to_string(campaigns().join(format!("{name}.toml")))
             .unwrap_or_else(|e| panic!("read {name}.toml: {e}"));
 
         let doc = import(&src).unwrap_or_else(|e| panic!("{name}: import failed: {e}"));

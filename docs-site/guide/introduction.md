@@ -34,6 +34,6 @@ The engine lives in a Rust workspace under `crates/`:
 Campaigns are authored in a declarative TOML format compiled by
 `wickedways-author`: rooms, exits, loot, mobs, NPCs, scenes, victory
 conditions, items, and scripted behaviors in one file. The complete shipped
-campaign (`conformance/fixtures/hollow-house.toml`) doubles as the reference
+campaign (`campaigns/hollow-house.toml`) doubles as the reference
 example, and the [Architecture](./architecture) page documents the format
 alongside the mechanics it drives.

@@ -17,6 +17,12 @@ fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../conformance/fixtures")
 }
 
+/// The authored TOML sources live in `campaigns/` (the modder-facing directory);
+/// only the compiled goldens live in the conformance corpus.
+fn campaigns() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../campaigns")
+}
+
 fn read(p: &Path) -> String {
     std::fs::read_to_string(p).unwrap_or_else(|e| panic!("read {}: {e}", p.display()))
 }
@@ -86,7 +92,7 @@ fn first_diff(a: &Value, b: &Value, path: &mut String) -> (String, String) {
 /// output halves and check compile() determinism.
 fn check(name: &str) {
     let dir = fixtures();
-    let src = read(&dir.join(format!("{name}.toml")));
+    let src = read(&campaigns().join(format!("{name}.toml")));
     let compiled = compile(&src).expect("compile");
 
     let desc = serde_json::to_value(&compiled.description).expect("to_value description");

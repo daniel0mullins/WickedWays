@@ -150,7 +150,7 @@ The seat dashboards surface each player's Health/Sanity/Energy + Panic/Fear/KO, 
 in the `ViewModel` (occupants/scope are *others*) — they arrive via the **`status` cue** from a
 campaign's status mechanic. Two constraints:
 
-- **Reference campaign is Hollow House** (`conformance/fixtures/hollow-house.toml`, compiled to the
+- **Reference campaign is Hollow House** (`campaigns/hollow-house.toml`, compiled to the
   bundled `hollow-house.genesis.json` + `.catalog.json`) — it has a status-bar mechanic (plus dark
   rooms, a keyed door, a resident mob).
 - **Multi-seat routing gap:** only the `action` cue carries an actor; `status` does not, so it
