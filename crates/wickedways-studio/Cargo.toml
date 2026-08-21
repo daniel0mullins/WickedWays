@@ -12,6 +12,13 @@ edition = "2021"
 # This crate targets wasm32-unknown-unknown; build it with
 #   cargo build -p wickedways-studio --target wasm32-unknown-unknown
 
+[features]
+# The native desktop build (the `desktop/` shell crate turns this on): swaps the
+# platform seam from browser APIs to a CLI param store + file-backed storage.
+# Deliberately pulls NO windowing stack — `dioxus/desktop` lives in the shell
+# crate only (the play client's idiom).
+native-app = ["dep:dirs"]
+
 [lib]
 name = "wickedways_studio"
 path = "src/lib.rs"
@@ -27,18 +34,30 @@ dioxus = { version = "0.6", features = ["web"] }
 wickedways-author = { path = "../wickedways-author" }
 wickedways-assemble = { path = "../wickedways-assemble" }
 wickedways-core = { path = "../wickedways-core" }
+# The transport-agnostic map bridge: `MapModel::reveal_world` + `layout_map` give
+# the Map view its whole-world compass-delta layout (the same geometry the play
+# client's fog-of-war map uses).
+wickedways-tabletop = { path = "../wickedways-tabletop" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
+# native-app only: the platform data/download directories (pure Rust, no system deps).
+dirs = { version = "6", optional = true }
 
 # Browser bindings (compile on host too — extern declarations only — so the
 # model/refs/gate layers stay host-testable).
 wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
+futures-channel = "0.3"
 web-sys = { version = "0.3", features = [
   "Window", "Location", "UrlSearchParams", "Url", "History", "Storage",
   # The transient download anchor (platform::download_text).
   "Document", "Element", "HtmlElement", "HtmlAnchorElement",
+  # The campaign-blob store (IndexedDB) + its diagnostics.
+  "Event", "IdbFactory", "IdbOpenDbRequest", "IdbRequest", "IdbDatabase",
+  "IdbTransaction", "IdbTransactionMode", "IdbObjectStore",
+  "IdbVersionChangeEvent", "DomException", "console",
 ] }
 
 [lints]

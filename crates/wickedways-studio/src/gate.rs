@@ -17,7 +17,7 @@
 //! exist to make reaching a green gate pleasant, not to replace it.
 
 use wickedways_assemble::{assemble, Seat};
-use wickedways_author::{compile, validate};
+use wickedways_author::{compile_all, validate};
 use wickedways_core::World;
 
 use crate::export::to_toml;
@@ -79,8 +79,9 @@ pub fn validate_body(slot: BodySlot, body: &str) -> Option<String> {
 pub struct GateReport {
     /// The exported TOML (present whenever serialization succeeded).
     pub toml: Option<String>,
-    /// A serialization or `compile()` failure (fail-fast — one at a time).
-    pub compile_error: Option<String>,
+    /// Compile findings — ALL of them at once (`compile_all`), each labeled with
+    /// the body it came from.
+    pub compile_errors: Vec<String>,
     /// The assembler's collect-all validation problems.
     pub assemble_problems: Vec<String>,
     /// The engine's `validate_mechanics` shape-check failure.
@@ -99,7 +100,7 @@ impl GateReport {
     /// Green: the campaign compiles, assembles, and loads.
     #[must_use]
     pub fn ok(&self) -> bool {
-        self.compile_error.is_none()
+        self.compile_errors.is_empty()
             && self.assemble_problems.is_empty()
             && self.mechanics_error.is_none()
     }
@@ -112,15 +113,15 @@ pub fn check_campaign(doc: &EditorDoc) -> GateReport {
     let toml_src = match to_toml(doc) {
         Ok(s) => s,
         Err(e) => {
-            report.compile_error = Some(e);
+            report.compile_errors = vec![e];
             return report;
         }
     };
     report.toml = Some(toml_src.clone());
-    let compiled = match compile(&toml_src) {
+    let compiled = match compile_all(&toml_src) {
         Ok(c) => c,
-        Err(e) => {
-            report.compile_error = Some(e.to_string());
+        Err(errors) => {
+            report.compile_errors = errors.iter().map(ToString::to_string).collect();
             return report;
         }
     };

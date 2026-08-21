@@ -14,10 +14,23 @@ name = "wickedways-desktop"
 version = "0.0.1"
 edition = "2021"
 
+# Two windowed apps ship from this one shell crate (one GTK/WebKit link):
+# the play client (default bin) and Campaign Studio.
+#   cargo run --manifest-path desktop/Cargo.toml --bin wickedways-desktop
+#   cargo run --manifest-path desktop/Cargo.toml --bin wickedways-studio-desktop
+[[bin]]
+name = "wickedways-desktop"
+path = "src/main.rs"
+
+[[bin]]
+name = "wickedways-studio-desktop"
+path = "src/studio.rs"
+
 [dependencies]
 # Pinned to the same dioxus the web client resolves to (root Cargo.lock).
 dioxus = { version = "=0.6.3", features = ["desktop"] }
 wickedways-web = { path = "../crates/wickedways-web", features = ["native-app"] }
+wickedways-studio = { path = "../crates/wickedways-studio", features = ["native-app"] }
 
 # dx auto-appends these profiles on first run; kept committed so `dx bundle`/`dx serve`
 # don't dirty the tree.

@@ -47,10 +47,12 @@ Everything that ships lives in `crates/`:
 
 One crate lives outside the workspace: **`desktop/`**, a thin native shell that runs the same
 client (`wickedways-web` with its `native-app` feature) in a desktop window via `dioxus`'s
-webview. It is workspace-`exclude`d so the workspace-wide gates need no system GTK/WebKit
-packages; build it with `cargo run --manifest-path desktop/Cargo.toml` (on Linux install
-`libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev` first). Single-player only for now — it has
-no multiplayer transport yet, and audio is silent pending a native backend.
+webview — and, as a second binary, Campaign Studio (`wickedways-studio` with ITS `native-app`
+feature). It is workspace-`exclude`d so the workspace-wide gates need no system GTK/WebKit
+packages; build with `cargo run --manifest-path desktop/Cargo.toml --bin wickedways-desktop`
+(or `--bin wickedways-studio-desktop` for the authoring app; on Linux install
+`libwebkit2gtk-4.1-dev libgtk-3-dev libxdo-dev` first). The play shell is single-player only
+for now — it has no multiplayer transport yet, and audio is silent pending a native backend.
 
 Distributable packages are built with the Dioxus CLI (pinned `dioxus-cli --version 0.6.3`,
 matching `Cargo.lock`) from `desktop/`:
@@ -1739,9 +1741,22 @@ from `startRoom`); and per-body validation now dispatches to
 `wickedways_author::validate`'s public span-bearing single-body parsers (the second
 upstream change the spec mandated) instead of the MVP's probe-document hack.
 
+And the P3 set (all but the embedded playtest): the read-only **Map view** — the campaign
+compiled, assembled, loaded into a `World`, and revealed through the play client's own
+`wickedways_tabletop::map` geometry (locked doors dashed, dark rooms shaded, click a room
+to edit it); **structured behavior builders** — a snippet bar under every DSL body whose
+document-fed forms generate the DSL (property-tested: a builder can only emit text its
+slot's parser accepts; raw text stays the escape hatch); **`compile_all`** — the
+collect-all compile (each finding labeled with its body's TOML path), now behind the
+Check-campaign overlay; a **native desktop arm** (`native-app` feature + the `desktop/`
+shell's `wickedways-studio-desktop` binary — file-backed campaigns in the shared data
+dir, exports to Downloads); and **IndexedDB** as the campaign-blob store (boot-primed
+cache, one-time localStorage migration, no more ~5 MB ceiling).
+
 Build/serve like the play client: `dx serve` in `crates/wickedways-studio` for dev,
 `crates/wickedways-studio/build-studio.sh` for the static bundle. **Deployment**: the root
 `Dockerfile` builds the studio bundle alongside the play client, and the room server serves
 it at **`/studio`** (`STUDIO_DIR`, default `./studio`; empty or missing ⇒ off) — one deploy
-ships play + authoring on one port. Deferred (P3, per the spec): graph map view, embedded
-playtest, structured behavior builders, multi-error compile, a native desktop arm.
+ships play + authoring on one port. Still deferred (per the spec): the **embedded
+playtest** (author it, hit Play, it runs — needs the play client to grow a
+load-external-campaign entry point).

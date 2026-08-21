@@ -1,4 +1,4 @@
-//! Campaign persistence — versioned JSON blobs in the platform store.
+//! Campaign persistence — versioned JSON blobs behind a primed in-memory cache.
 //!
 //! Schema (docs/campaign-studio-spec.md §Persistence): one blob per campaign under
 //! `wickedways:studio:campaign:<id>` (the serialized [`EditorDoc`] + a
@@ -6,12 +6,19 @@
 //! model — not TOML text — so editor ids and in-progress (not-yet-valid) drafts
 //! persist; TOML is the interchange format only ([`crate::export`]).
 //!
-//! Saves are synchronous write-throughs on every mutation (blobs are tens of KB —
-//! well under the ~5 MB localStorage ceiling; the spec's debounce is an optimization
-//! deferred until it matters). A failed write surfaces as an error banner upstream,
-//! never a silent drop.
+//! Campaign BLOBS live in the platform blob store — IndexedDB in the browser
+//! (escaping the ~5 MB localStorage ceiling, with a one-time migration of any
+//! pre-IndexedDB blobs), data-dir files in the native arm. At boot the app
+//! primes every blob into an in-memory cache ([`prime_cache`]); reads are pure
+//! cache hits and writes update the cache synchronously then persist
+//! fire-and-forget, so every call site stays synchronous. The tiny INDEX stays
+//! in the synchronous platform store (localStorage / a file). A failed index
+//! write surfaces as an error banner; a failed async blob write is logged and
+//! retried by the next save of that campaign.
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+use std::sync::{Mutex, OnceLock};
 
 use crate::model::EditorDoc;
 use crate::platform;
@@ -22,8 +29,26 @@ pub const SCHEMA_VERSION: u32 = 1;
 
 const INDEX_KEY: &str = "wickedways:studio:index";
 
+/// The blob-key namespace (also the prime scan's prefix).
+pub const CAMPAIGN_PREFIX: &str = "wickedways:studio:campaign:";
+
 fn campaign_key(id: &str) -> String {
-    format!("wickedways:studio:campaign:{id}")
+    format!("{CAMPAIGN_PREFIX}{id}")
+}
+
+/// The boot-primed blob cache: key → serialized [`CampaignBlob`].
+fn cache() -> &'static Mutex<BTreeMap<String, String>> {
+    static CACHE: OnceLock<Mutex<BTreeMap<String, String>>> = OnceLock::new();
+    CACHE.get_or_init(|| Mutex::new(BTreeMap::new()))
+}
+
+/// Seed the cache from [`platform::blob_store_prime`]'s result. Called once at
+/// app boot, before any screen renders.
+pub fn prime_cache(blobs: Vec<(String, String)>) {
+    let mut c = cache().lock().expect("blob cache poisoned");
+    for (k, v) in blobs {
+        c.insert(k, v);
+    }
 }
 
 /// One campaign-list row.
@@ -75,7 +100,12 @@ pub fn save_campaign(id: &str, doc: &EditorDoc, now_ms: u64) -> Result<(), Strin
         doc: doc.clone(),
     };
     let json = serde_json::to_string(&blob).map_err(|e| format!("serialize campaign: {e}"))?;
-    platform::storage_write(&campaign_key(id), &json)?;
+    let key = campaign_key(id);
+    cache()
+        .lock()
+        .expect("blob cache poisoned")
+        .insert(key.clone(), json.clone());
+    platform::blob_put(&key, &json);
     let mut index = read_index();
     if let Some(row) = index.iter_mut().find(|e| e.id == id) {
         row.title.clone_from(&doc.title);
@@ -94,7 +124,12 @@ pub fn save_campaign(id: &str, doc: &EditorDoc, now_ms: u64) -> Result<(), Strin
 /// Load the campaign stored under `id`.
 #[must_use]
 pub fn load_campaign(id: &str) -> Loaded {
-    let Some(json) = platform::storage_read(&campaign_key(id)) else {
+    let Some(json) = cache()
+        .lock()
+        .expect("blob cache poisoned")
+        .get(&campaign_key(id))
+        .cloned()
+    else {
         return Loaded::Missing;
     };
     let Ok(blob) = serde_json::from_str::<CampaignBlob>(&json) else {
@@ -109,7 +144,9 @@ pub fn load_campaign(id: &str) -> Loaded {
 
 /// Delete a campaign blob and its index row.
 pub fn delete_campaign(id: &str) {
-    platform::storage_delete(&campaign_key(id));
+    let key = campaign_key(id);
+    cache().lock().expect("blob cache poisoned").remove(&key);
+    platform::blob_delete(&key);
     let index: Vec<IndexEntry> = read_index().into_iter().filter(|e| e.id != id).collect();
     let _ = write_index(&index);
 }
@@ -129,15 +166,16 @@ pub fn mint_campaign_id(now_ms: u64) -> String {
     }
 }
 
-/// Approximate stored bytes across the index + all blobs (the campaign list shows
-/// this against the ~5 MB localStorage ceiling).
+/// Approximate stored bytes across the index + all cached blobs (informational —
+/// blobs live in IndexedDB, whose quota is origin-wide and far larger than the
+/// old ~5 MB localStorage ceiling).
 #[must_use]
 pub fn usage_bytes() -> usize {
-    let index = read_index();
-    let blobs: usize = index
-        .iter()
-        .filter_map(|e| platform::storage_read(&campaign_key(&e.id)))
-        .map(|s| s.len())
+    let blobs: usize = cache()
+        .lock()
+        .expect("blob cache poisoned")
+        .values()
+        .map(String::len)
         .sum();
     blobs + platform::storage_read(INDEX_KEY).map_or(0, |s| s.len())
 }

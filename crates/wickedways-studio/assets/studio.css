@@ -282,3 +282,21 @@ h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; color: var(--ink-dim); }
 .studio-gallery summary { color: var(--accent); cursor: pointer; padding: 0.45rem 0.8rem; }
 .studio-gallery .studio-home-actions { margin: 0.5rem 0.8rem 0.8rem; }
 .studio-artifacts { display: flex; gap: 0.4rem; margin: 0.6rem 0; }
+
+/* ── map view (P3) ───────────────────────────────────────────────── */
+.studio-map { max-width: 60rem; }
+.studio-map-svg { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; margin-top: 0.6rem; max-width: 100%; height: auto; }
+.studio-map-link { stroke: var(--ink-dim); stroke-width: 2; }
+.studio-map-link.locked { stroke: var(--color-warn); stroke-dasharray: 5 4; }
+.studio-map-room { cursor: pointer; }
+.studio-map-box { fill: var(--bg-raised); stroke: var(--border); stroke-width: 1.5; }
+.studio-map-room:hover .studio-map-box { stroke: var(--accent); }
+.studio-map-box.dark { fill: var(--bg); stroke: var(--accent-dim); }
+.studio-map-label { fill: var(--ink); font-size: 11px; }
+
+/* ── snippet builders (P3) ───────────────────────────────────────── */
+.studio-snips { align-items: center; display: flex; flex-wrap: wrap; gap: 0.25rem; margin: 0.25rem 0 0.4rem; }
+.studio-snips-label { color: var(--ink-dim); font-size: 0.75rem; margin-right: 0.2rem; }
+.studio-chip.selected { border-color: var(--accent); color: var(--accent); }
+.studio-snips-form { background: var(--bg-panel); border: 1px dashed var(--border); border-radius: 8px; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: flex-end; margin-bottom: 0.6rem; padding: 0.6rem; }
+.studio-snips-param { margin-bottom: 0; min-width: 10rem; }
