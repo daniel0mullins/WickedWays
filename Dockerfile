@@ -24,6 +24,14 @@ WORKDIR /app
 # workspace crates, which build serially anyway, so this costs them almost nothing.
 # Applies to both build steps below (wasm bundle + server binary).
 ENV CARGO_BUILD_JOBS=1
+# jobs=1 serializes CRATES, but within one crate rustc still runs up to
+# codegen-units (default 16) parallel LLVM codegen threads — and a single big
+# crate's codegen has now OOM-killed a deploy the same way (wickedways-studio,
+# grown by the P3 batch, died mid-compile with no rustc error while a retry on a
+# quieter host succeeded). Capping codegen-units bounds that within-crate
+# parallelism to two LLVM threads; slightly slower codegen, marginally better
+# optimization, and a build whose peak memory no longer scales with crate size × 16.
+ENV CARGO_PROFILE_RELEASE_CODEGEN_UNITS=2
 
 # Prebuilt wasm-bindgen CLI (release tarball beats `cargo install` by minutes); the
 # version MUST match the `wasm-bindgen` crate in Cargo.lock (build-web.sh asserts it).

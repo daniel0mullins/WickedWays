@@ -2,15 +2,16 @@
 //!
 //! Usage: `wwauthor <campaign.toml>`
 //!
-//! Reads the TOML path from argv, [`compile`](wickedways_author::compile)s it, and
+//! Reads the TOML path from argv, [`compile_all`](wickedways_author::compile_all)s it, and
 //! writes `<stem>.description.json` + `<stem>.catalog.json` (pretty-printed, trailing
-//! newline) beside the input. A [`CompileError`](wickedways_author::error::CompileError)
-//! prints its `Display` to stderr and exits non-zero; author input never panics.
+//! newline) beside the input. Compile failures print EVERY collected finding to stderr
+//! (one line each, labeled with its body's TOML path) and exit non-zero; author input
+//! never panics.
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use wickedways_author::compile;
+use wickedways_author::compile_all;
 
 fn main() -> ExitCode {
     let mut args = std::env::args_os().skip(1);
@@ -37,7 +38,16 @@ fn run(input: &Path) -> Result<(), String> {
     let toml_src = std::fs::read_to_string(input)
         .map_err(|e| format!("failed to read {}: {e}", input.display()))?;
 
-    let compiled = compile(&toml_src).map_err(|e| e.to_string())?;
+    // The collect-all compile: report every broken body at once (each finding
+    // labeled with its TOML path), not just the first — the modder's fix loop.
+    let compiled = compile_all(&toml_src).map_err(|errors| {
+        let mut msg = format!("{} compile finding(s):", errors.len());
+        for e in &errors {
+            msg.push_str("\n  ");
+            msg.push_str(&e.to_string());
+        }
+        msg
+    })?;
 
     let description = serde_json::to_string_pretty(&compiled.description)
         .map_err(|e| format!("failed to serialize description: {e}"))?;

@@ -25,7 +25,11 @@ The workspace:
 The TypeScript engine and its packages have been deleted; the golden corpus under
 `conformance/fixtures/` (compiled goldens only) is all that remains of `conformance/`. The
 authored TOML campaign sources live in `campaigns/` (the modder-facing directory — see its
-`README.md`); the gates compile from there and pin against the goldens.
+`README.md`); the gates compile from there and pin against the goldens. The
+`author-campaign` skill (`.claude/skills/author-campaign/`) generates campaign TOML from
+plain language; its `references/format.md` mirrors `author_doc.rs` and a test
+(`wickedways-author/tests/skill_reference.rs`) fails CI if a schema field is missing from
+it — when you change the author schema, update the skill reference in the same change.
 `landing/` is a separate PHP marketing page, not part of the engine build. The root
 `package.json` exists only for the VitePress docs site.
 
