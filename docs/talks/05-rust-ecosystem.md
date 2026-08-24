@@ -8,7 +8,8 @@ experience assumed; familiarity with some package ecosystem (npm, pip) is
 leaned on for analogies. Unlike talks 01–04, this one is *about* the Rust,
 using Wicked Ways as the case study — every ecosystem concept is shown
 doing a real job in a shipped codebase, never taught abstractly.
-**Format:** 6 parts, ≈34–37 minutes of talk + Q&A. Speaker notes are the
+**Format:** 6 parts, ≈38–41 minutes of talk (≈35 with both flex cuts taken)
++ Q&A. Speaker notes are the
 script; timing checkpoints and cut order at the end.
 
 ---
@@ -104,7 +105,7 @@ exhaustive match are the game's command and effect menus. `#[derive]` is
 how serde carries every data seam. Traits are the engine's six-family
 extension pattern. Nothing you just learned is a toy.
 
-## Part 3 — The toolbox: the ecosystem in nine beats (8 min)
+## Part 3 — The toolbox: the ecosystem in nine beats (12 min)
 
 *Visual: one icon row per beat; each beat names the tool, the npm/pip
 analogy, and the file in this repo where it's earning its keep.*
@@ -144,6 +145,71 @@ each ~1 minute, each pointing at a real file:
    system GUI stack (GTK/WebKit on Linux), and excluding it means nobody
    needs those system packages installed to build or test everything else.
    Ecosystem lesson: workspace membership is a boundary you *design*.
+**An interlude — the ten crates, introduced (3 min).** The table is the
+shape; here is the tour. Three groups, and one thing to notice as you go:
+every dependency arrow points *inward*. Nothing the player touches is
+depended on by anything else.
+
+*The engine and the content pipeline:*
+
+- **`wickedways-core`** (~26,600 lines) — the engine: world state, turn
+  loop, combat, mechanics, sync. The only crate that knows the rules.
+  Depends on `serde` and nothing else of consequence, and builds without
+  an operating system underneath.
+- **`wickedways-author`** (~4,300) — compiles a TOML campaign into the
+  description + catalog pair. Its `Cargo.toml` carries a comment worth
+  reading aloud: `rand` and `uuid` are *deliberately absent* — ids are
+  derived from author-supplied names, never generated, and adding either
+  crate "is a spec violation."
+- **`wickedways-assemble`** (~1,800) — folds a seated party into those
+  artifacts and emits the genesis snapshot. Same no-randomness rule: the
+  same inputs produce byte-identical output, every time.
+
+*Multiplayer and embedding:*
+
+- **`wickedways-transport`** (245 lines) — the multiplayer wire protocol,
+  and the smallest crate in the repo. It depends on `serde` *only* — not
+  even on the engine. The protocol is a data contract, and the crate
+  boundary proves it.
+- **`wickedways-server`** (~1,900) — the room server: `axum` for the
+  socket, `tokio` for one task per campaign, `rusqlite` for persistence
+  with SQLite compiled in-tree so there's no system library to install.
+- **`wickedways-wasm`** (260 lines) — the JavaScript embedding boundary:
+  one stateful handle, nothing but JSON strings across the seam.
+
+*The surfaces — where all the lines actually are:*
+
+- **`wickedways-web`** (~10,800) — the shipped Dioxus client. Every line
+  is presentation; its browser-API list reads like a tour of the platform
+  (WebSocket, Web Audio, fullscreen, local storage).
+- **`wickedways-studio`** (~7,400) — Campaign Studio, the graphical
+  editor: another Dioxus app in the same workspace that reuses the author
+  and assembler crates *directly* for its "Check campaign" button, and
+  keeps campaigns in the browser's own database.
+- **`wickedways-tabletop`** (~1,600) — the physical-board bridge. It
+  depends on the core and `serde` and nothing else, which is exactly why
+  it compiles both native for the hardware controller *and* to wasm for
+  the on-screen simulator: one bridge, two worlds.
+- **`wickedways-controller`** (423 lines) — the host binary that speaks
+  to real hardware over a serial cable; its `--dry-run` exercises the
+  whole path with no board attached.
+
+And the eleventh, outside the workspace: **`desktop`** (162 lines) — the
+native shell from the previous beat, and a good punchline for the group.
+The exclusion isn't protecting something big; it's protecting everyone
+else from 162 lines' worth of system GUI dependencies.
+
+*And then show the graph.* The last slide of the interlude draws the whole
+thing: the authoring pipeline feeding down into the core, the core spanning
+the middle, the three boundary crates beneath it, and the four surfaces
+reaching up through them. Two things to say over it. First, **every crate
+on that slide depends on the core — except `wickedways-transport`**, which
+depends on `serde` alone: the wire protocol doesn't know the game exists,
+by design. Second, and better: **there are no arrows pointing *down* from
+the core.** The engine has never heard of the browser, the board, or the
+server. That's the architecture the other talks in this folder argue for —
+and here it isn't a diagram in a wiki that drifts, it's the build.
+
 7. **Features — compile-time configuration.** A crate can expose named
    feature flags that compile code in or out. Three real ones here: the
    core's `std` feature (off = the engine builds with no operating-system
@@ -321,16 +387,19 @@ browser — that's the wasm build from Part 3, live.
 - End of Part 2: ~9 min. The code slide is **not** cuttable — an audience
   that never sees Rust never met it. If long, compress ideas 4–5 to one
   sentence each; the enum / match / borrow trio is the load-bearing half.
-- End of Part 3: ~17 min. Running long? Beats 4 (crates.io) and 9 (lints)
+- End of Part 3: ~21 min. The crate interlude is the **first flex cut**
+  (−3 min): sweep it by naming the three groups and going straight to the
+  connection diagram, which is the beat that actually pays. Running long
+  elsewhere? Beats 4 (crates.io) and 9 (lints)
   compress to one sentence each; never cut beat 6 (the exclusion) or the
   `float_roundtrip` story in beat 7 — they're the memorable ones.
-- End of Part 4: ~29 min with the web-vs-native aside. The aside is the
-  talk's **flex cut** (−3 min): fold it back into one sentence on the
+- End of Part 4: ~33 min with the web-vs-native aside. The aside is the
+  talk's **second flex cut** (−3 min): fold it back into one sentence on the
   Dioxus beat if the slot is tight. The crate map itself is the heart; if
   desperate, also fold `axum` into the `tokio` beat.
-- End of Part 5: ~34 min. Never cut the costs column — it buys the whole
+- End of Part 5: ~38 min. Never cut the costs column — it buys the whole
   talk its credibility.
-- Part 6 lands at ~37 min, leaving ~3 for Q&A in a 40-minute slot; with
-  the flex cut you're at ~34, leaving 6. For a strict 30: take the flex
-  cut, compress Part 1 to one minute, trim Part 2's ideas 4–5 to a
-  sentence each, and trim Part 4 to serde/tokio/Dioxus/no_std.
+- Part 6 lands at ~41 min. **Take both flex cuts for a 40-minute slot** —
+  that puts you at ~35 with 5 for Q&A. For a strict 30: take both cuts,
+  compress Part 1 to one minute, trim Part 2's ideas 4–5 to a sentence
+  each, and trim Part 4 to serde/tokio/Dioxus/no_std.
