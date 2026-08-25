@@ -35,6 +35,14 @@ viewport changed in `capture.py` (`--width 720 --height 1280`) and the layout
 coordinates in `teaser.html` adjusted to match; a shorter cut means trimming
 `DURATION` and the scene table (`SC`) at the top of the script block.
 
+### Reference frames for video generation
+
+[`teaser/shot-list.md`](teaser/shot-list.md) breaks the teaser into its seven
+beats, each with reference frames and a prompt written for a text-to-video
+model — for regenerating the beats as filmed plates under the existing type
+layer. Render the frames with `python3 teaser/refshots.py` (1920×1080, two per
+beat); they are derived artifacts and are not committed.
+
 ### Editing the content
 
 Copy, timings, and motion all live in `teaser.html`:
