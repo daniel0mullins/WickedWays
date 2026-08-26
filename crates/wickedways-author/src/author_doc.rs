@@ -1,5 +1,30 @@
+//! The TOML author surface: the typed document `toml::from_str` deserializes a
+//! campaign file into.
+//!
+//! Every struct here mirrors the TOML an author writes, one table (or array of
+//! tables) each. The serde derives make deserialization a *typed* parse — think
+//! `JSON.parse` run through a Zod schema in TS: `rename_all = "camelCase"` maps
+//! Rust's `snake_case` fields to the `camelCase` keys authors write,
+//! `deny_unknown_fields` rejects a typo'd key outright instead of silently
+//! ignoring it, and an `Option<T>` field is simply one that may be absent
+//! (`#[serde(default)]` fills in `None`/empty — like an optional property that
+//! reads as `undefined`). Nothing is validated beyond shape here: expression and
+//! statement bodies stay raw `String`s, parsed later by `expr`/`stmt` during
+//! `lower`.
+//!
+//! CAUTION: this file IS the author schema. Field changes are behavior changes
+//! (the golden gates pin compiled output) and must be mirrored in the
+//! `author-campaign` skill's `references/format.md` — `tests/skill_reference.rs`
+//! fails CI when a field is missing there.
+//!
+//! File layout: the document root first, then the world entries in the root's
+//! field order, then the `[behaviors.*]` script bodies, then victory, then the
+//! export (`Serialize`) helpers.
+
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+
+// ── The document root ───────────────────────────────────────────────────────
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -52,6 +77,8 @@ pub struct AuthorDoc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_narration: Option<String>,
 }
+
+// ── World entries (in the root's field order) ───────────────────────────────
 
 /// A `[[archetypes]]` entry: a player-character template. `base_stats` is a
 /// stat-name → value map (`PartialStats`); `inventory_slots` overrides the default
@@ -203,115 +230,19 @@ pub struct SceneEntry {
     pub initial_state: Option<toml::Value>,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Behaviors {
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub exit: BTreeMap<String, ExitBehaviorEntry>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub scene: BTreeMap<String, SceneBehaviorEntry>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub item: BTreeMap<String, ItemBehaviorEntry>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub npc: BTreeMap<String, NpcBehaviorEntry>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub mechanic: BTreeMap<String, MechanicBehaviorEntry>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub card: BTreeMap<String, CardBehaviorEntry>,
-}
-
-/// The `[villain]` table. `character` names a declared mob/npc (resolved
-/// mob-first) or the sentinel `"@gm"` (the seated GM plays the Villain);
-/// `deck` lists card keys — native (`wicked:*`) or `[[cards]]`/
-/// `[behaviors.card.<key>]` authored — in authored order (the engine shuffles
-/// at `begin_campaign`).
+/// A `[[npcs]]` entry: a placed NPC character. `stats` is the core `Stats`
+/// snapshot (`energy`/`sanity`/`health`, all `f64`); `behavior` names the
+/// `[behaviors.npc.<key>]` dialogue body; `holds` lists item keys it carries.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct VillainEntry {
-    pub character: String,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub deck: Vec<String>,
-}
-
-/// A `[[cards]]` entry: a Wicked Ways card face. `key` doubles as the card's
-/// behavior key (native registry first, then a `[behaviors.card.<key>]` body);
-/// `config` is inert author-data the card behavior reads (e.g.
-/// `{ rounds = 3 }` for `wicked:lights-out`).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct CardEntryToml {
-    pub key: String,
+pub struct NpcEntry {
     pub name: String,
+    pub stats: wickedways_core::world::snapshot::Stats,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub config: Option<toml::Value>,
-}
-
-/// A `[behaviors.card.<key>]` body: the `onPlay` statement block fired when
-/// the Villain plays the card (the same effect-body grammar as an item's
-/// `onUse`). Lowers to `CardScript`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct CardBehaviorEntry {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub on_play: Option<String>,
-}
-
-/// A `[[mechanics]]` entry: a placed mechanic. `key` names the
-/// `[behaviors.mechanic.<key>]` body (the shared-key link); `config` is inert
-/// author-data (mechanic-specific configuration) carried through to the
-/// description untouched.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct MechanicEntryToml {
-    pub key: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub config: Option<toml::Value>,
-}
-
-/// A `[behaviors.mechanic.<key>]` body, keyed the same as its `[[mechanics]]`
-/// entry's `key`. `init` is a literal state seed (inert author-data, becomes the
-/// mechanic's `initialState`); the five `on_*` hooks are statement-block bodies
-/// (the `'''...'''` grammar) lowering to `MechanicScript` hooks. `modify_damage`
-/// is a `modifyDamage` transform body (its own `final`/ternary/value grammar);
-/// `actions` maps each custom-action key to a statement-block body. Each field is
-/// optional (absent init → `{}`; absent hook/transform → no-op; no `actions` → an
-/// empty map).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct MechanicBehaviorEntry {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub init: Option<toml::Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub on_round_start: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub on_round_end: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub on_turn_start: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub on_turn_end: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub on_action: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub modify_damage: Option<String>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub actions: BTreeMap<String, String>,
-}
-
-/// A `[[formations]]` entry: a data-driven encounter formation. It carries BOTH
-/// halves of a formation — the description-side `weight` opt-in (a `FormationDef`)
-/// and the catalog-side `mobs` roster (a `FormationDescriptor` of core `MobSpec`s) —
-/// keyed the same. `mobs` deserializes straight into the core spec (same camelCase
-/// shape); absent `weight` → `None`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct FormationEntry {
-    pub key: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub weight: Option<i64>,
+    pub room: Option<String>,
+    pub behavior: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub mobs: Vec<wickedways_core::world::formation_descriptor::MobSpec>,
+    pub holds: Vec<String>,
 }
 
 /// A `[[mobs]]` entry: a placed enemy. `stats` is the core `Stats` snapshot (same
@@ -343,19 +274,121 @@ pub struct MobEntry {
     pub light_averse: Option<bool>,
 }
 
-/// A `[[npcs]]` entry: a placed NPC character. `stats` is the core `Stats`
-/// snapshot (`energy`/`sanity`/`health`, all `f64`); `behavior` names the
-/// `[behaviors.npc.<key>]` dialogue body; `holds` lists item keys it carries.
+/// A `[[formations]]` entry: a data-driven encounter formation. It carries BOTH
+/// halves of a formation — the description-side `weight` opt-in (a `FormationDef`)
+/// and the catalog-side `mobs` roster (a `FormationDescriptor` of core `MobSpec`s) —
+/// keyed the same. `mobs` deserializes straight into the core spec (same camelCase
+/// shape); absent `weight` → `None`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct NpcEntry {
-    pub name: String,
-    pub stats: wickedways_core::world::snapshot::Stats,
+pub struct FormationEntry {
+    pub key: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub room: Option<String>,
-    pub behavior: String,
+    pub weight: Option<i64>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub holds: Vec<String>,
+    pub mobs: Vec<wickedways_core::world::formation_descriptor::MobSpec>,
+}
+
+/// A `[[mechanics]]` entry: a placed mechanic. `key` names the
+/// `[behaviors.mechanic.<key>]` body (the shared-key link); `config` is inert
+/// author-data (mechanic-specific configuration) carried through to the
+/// description untouched.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MechanicEntryToml {
+    pub key: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub config: Option<toml::Value>,
+}
+
+/// The `[villain]` table. `character` names a declared mob/npc (resolved
+/// mob-first) or the sentinel `"@gm"` (the seated GM plays the Villain);
+/// `deck` lists card keys — native (`wicked:*`) or `[[cards]]`/
+/// `[behaviors.card.<key>]` authored — in authored order (the engine shuffles
+/// at `begin_campaign`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct VillainEntry {
+    pub character: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub deck: Vec<String>,
+}
+
+/// A `[[cards]]` entry: a Wicked Ways card face. `key` doubles as the card's
+/// behavior key (native registry first, then a `[behaviors.card.<key>]` body);
+/// `config` is inert author-data the card behavior reads (e.g.
+/// `{ rounds = 3 }` for `wicked:lights-out`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CardEntryToml {
+    pub key: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub config: Option<toml::Value>,
+}
+
+// ── Behavior bodies: the `[behaviors.<family>.<key>]` tables ────────────────
+// Each family's body carries raw DSL strings; `lower` parses them with that
+// family's grammar. The `<key>` is the shared-key link back to the placed entry.
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Behaviors {
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub exit: BTreeMap<String, ExitBehaviorEntry>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub scene: BTreeMap<String, SceneBehaviorEntry>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub item: BTreeMap<String, ItemBehaviorEntry>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub npc: BTreeMap<String, NpcBehaviorEntry>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub mechanic: BTreeMap<String, MechanicBehaviorEntry>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub card: BTreeMap<String, CardBehaviorEntry>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ExitBehaviorEntry {
+    pub can_pass: String,
+    /// Optional narration script run on a successful pass (a script body — `pass
+    /// <expr>` is legal here). Absent → an empty `run_script`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub run_script: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pass_message: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fail_message: Option<String>,
+}
+
+/// A `[behaviors.scene.<key>]` body. `can_play` is an expression string gating
+/// whether the scene may play; `on_enter`/`on_exit` are statement-block bodies
+/// (the `'''...'''` grammar). Each is optional (absent = no-op / always plays).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct SceneBehaviorEntry {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub can_play: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_enter: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_exit: Option<String>,
+}
+
+/// A `[behaviors.item.<key>]` body, keyed the same as its `[[items]]` entry (the
+/// shared-key link). `on_use`/`on_read` are statement-block bodies (the `'''...'''`
+/// grammar) lowering to `ItemScript { on_use, on_read }`. Each is optional (absent
+/// = that hook stays native / a no-op).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct ItemBehaviorEntry {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_use: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_read: Option<String>,
 }
 
 /// A `[behaviors.npc.<key>]` body, keyed the same as its `[[npcs]]` entry's
@@ -396,46 +429,46 @@ pub enum MatchToml {
     Fuzzy { fuzzy: Vec<String> },
 }
 
-/// A `[behaviors.item.<key>]` body, keyed the same as its `[[items]]` entry (the
-/// shared-key link). `on_use`/`on_read` are statement-block bodies (the `'''...'''`
-/// grammar) lowering to `ItemScript { on_use, on_read }`. Each is optional (absent
-/// = that hook stays native / a no-op).
+/// A `[behaviors.mechanic.<key>]` body, keyed the same as its `[[mechanics]]`
+/// entry's `key`. `init` is a literal state seed (inert author-data, becomes the
+/// mechanic's `initialState`); the five `on_*` hooks are statement-block bodies
+/// (the `'''...'''` grammar) lowering to `MechanicScript` hooks. `modify_damage`
+/// is a `modifyDamage` transform body (its own `final`/ternary/value grammar);
+/// `actions` maps each custom-action key to a statement-block body. Each field is
+/// optional (absent init → `{}`; absent hook/transform → no-op; no `actions` → an
+/// empty map).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ItemBehaviorEntry {
+pub struct MechanicBehaviorEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub on_use: Option<String>,
+    pub init: Option<toml::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub on_read: Option<String>,
+    pub on_round_start: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_round_end: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_turn_start: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_turn_end: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_action: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub modify_damage: Option<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub actions: BTreeMap<String, String>,
 }
 
-/// A `[behaviors.scene.<key>]` body. `can_play` is an expression string gating
-/// whether the scene may play; `on_enter`/`on_exit` are statement-block bodies
-/// (the `'''...'''` grammar). Each is optional (absent = no-op / always plays).
+/// A `[behaviors.card.<key>]` body: the `onPlay` statement block fired when
+/// the Villain plays the card (the same effect-body grammar as an item's
+/// `onUse`). Lowers to `CardScript`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct SceneBehaviorEntry {
+pub struct CardBehaviorEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub can_play: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub on_enter: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub on_exit: Option<String>,
+    pub on_play: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub struct ExitBehaviorEntry {
-    pub can_pass: String,
-    /// Optional narration script run on a successful pass (a script body — `pass
-    /// <expr>` is legal here). Absent → an empty `run_script`.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub run_script: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub pass_message: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub fail_message: Option<String>,
-}
+// ── Victory ─────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -459,6 +492,8 @@ pub struct ConditionEntry {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub narration: Option<String>,
 }
+
+// ── Export (`Serialize`) helpers ────────────────────────────────────────────
 
 // The `Serialize` derives (and the `skip_serializing_if` attributes) exist for the
 // studio's TOML export: absent-means-default is the hand-authored idiom, so a field

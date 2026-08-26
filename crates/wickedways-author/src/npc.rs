@@ -10,10 +10,13 @@ use crate::author_doc::{DialogueEntryToml, MatchToml, NpcBehaviorEntry};
 use crate::error::{CompileError, Span};
 use crate::stmt::parse_effects;
 
+/// Lower one authored NPC behavior into its catalog [`NpcScript`].
 pub(crate) fn to_npc_script(entry: &NpcBehaviorEntry) -> Result<NpcScript, CompileError> {
     Ok(NpcScript {
         description: entry.description.clone(),
         default: to_entry(&entry.default)?,
+        // Collecting an iterator of `Result`s into `Result<Vec, _>` short-circuits
+        // on the first `Err` — like `Promise.all`'s fail-fast, but synchronous.
         dialogue: entry
             .dialogue
             .iter()

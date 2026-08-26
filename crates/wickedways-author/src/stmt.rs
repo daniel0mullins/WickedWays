@@ -14,6 +14,10 @@
 //!
 //! [`parse_effects`] parses an **emit-only** block into a `Vec<EffectTemplate>`
 //! (dialogue/effect bodies): any non-`emit` statement is an error.
+//!
+//! File layout: the three `pub(crate)` entry points first, then the per-form
+//! statement parsers they dispatch to, then the low-level text scanners
+//! (quote/brace/comma tracking) everything above leans on.
 
 use wickedways_core::script::ast::{EffectTemplate, FieldTemplate, Stmt};
 use wickedways_core::stats::StatType;
@@ -21,17 +25,19 @@ use wickedways_core::stats::StatType;
 use crate::error::{CompileError, Span};
 use crate::expr::parse_expr;
 
+/// Recursion-depth ceiling for nested `when` blocks. A modding trust boundary:
+/// deeply-nested `when { when { … } }` author input would otherwise overflow the
+/// stack and abort. Real bodies nest a level or two; this is a comfortable margin.
+const MAX_STMT_DEPTH: usize = 128;
+
+// ── Entry points ────────────────────────────────────────────────────────────
+
 /// Parse a newline-separated block of statements into a `Vec<Stmt>`.
 ///
 /// Statements are split on newlines at brace-depth 0 (so a multi-line
 /// `when … { … }` stays one unit), then dispatched by leading keyword. Blank
 /// lines are skipped. `base` is passed through to `parse_expr` for embedded
 /// expressions.
-/// Recursion-depth ceiling for nested `when` blocks. A modding trust boundary:
-/// deeply-nested `when { when { … } }` author input would otherwise overflow the
-/// stack and abort. Real bodies nest a level or two; this is a comfortable margin.
-const MAX_STMT_DEPTH: usize = 128;
-
 pub(crate) fn parse_stmts(src: &str, base: Span) -> Result<Vec<Stmt>, CompileError> {
     parse_body(src, base, false, 0)
 }
@@ -42,6 +48,31 @@ pub(crate) fn parse_stmts(src: &str, base: Span) -> Result<Vec<Stmt>, CompileErr
 pub(crate) fn parse_script(src: &str, base: Span) -> Result<Vec<Stmt>, CompileError> {
     parse_body(src, base, true, 0)
 }
+
+/// Parse an **emit-only** block into its effect templates: run [`parse_stmts`],
+/// then require every resulting statement be an `emit` (a
+/// [`Stmt::Emit`]), collecting the [`EffectTemplate`]s. A non-`emit` statement
+/// (`guard`/`when`/`set`/`pass`) is an `ExprParse` error — an effects body may
+/// only emit. This is how dialogue effect bodies (a `Vec<EffectTemplate>`, not a
+/// `Vec<Stmt>`) are parsed.
+pub(crate) fn parse_effects(src: &str, base: Span) -> Result<Vec<EffectTemplate>, CompileError> {
+    let mut effects = Vec::new();
+    for stmt in parse_stmts(src, base)? {
+        match stmt {
+            Stmt::Emit { effect } => effects.push(effect),
+            _ => {
+                return Err(CompileError::ExprParse {
+                    span: base,
+                    message: "an effects body may only contain `emit <effect>(...)` statements"
+                        .into(),
+                });
+            }
+        }
+    }
+    Ok(effects)
+}
+
+// ── Statement forms ─────────────────────────────────────────────────────────
 
 /// Parse a newline-separated block into a `Vec<Stmt>`. `allow_pass` gates the
 /// `pass` statement (legal only in script bodies); `depth` is the nested-`when`
@@ -94,16 +125,6 @@ fn parse_stmt(
             span: base,
             message: format!("unknown statement keyword '{kw}'"),
         }),
-    }
-}
-
-/// Split off the leading whitespace-delimited keyword, returning
-/// `(keyword, remainder)` with the remainder left-trimmed.
-fn split_keyword(s: &str) -> (&str, &str) {
-    let s = s.trim();
-    match s.find(char::is_whitespace) {
-        Some(i) => (&s[..i], s[i..].trim_start()),
-        None => (s, ""),
     }
 }
 
@@ -198,47 +219,6 @@ fn parse_set(rest: &str, base: Span) -> Result<Stmt, CompileError> {
         field: target.to_string(),
         value,
     })
-}
-
-/// String-state tracker shared by the top-level scanners: `None` outside a string,
-/// `Some(q)` inside one opened by quote `q` (`'` or `"`). The other quote kind inside
-/// a string is a literal character — so a double-quoted string may contain
-/// apostrophes (the storyteller lore) and a single-quoted one may contain `"`.
-fn track_quote(state: Option<char>, c: char) -> Option<char> {
-    match state {
-        None if c == '\'' || c == '"' => Some(c),
-        Some(q) if q == c => None,
-        other => other,
-    }
-}
-
-/// Byte index of the assignment `=`: a single `=` (not part of `==`/`!=`/`<=`/
-/// `>=`) at bracket-depth 0 and outside a string. `None` if absent.
-fn find_assignment_eq(s: &str) -> Option<usize> {
-    let mut depth: i32 = 0;
-    let mut quote: Option<char> = None;
-    let bytes = s.as_bytes();
-    for (i, c) in s.char_indices() {
-        match c {
-            '\'' | '"' => quote = track_quote(quote, c),
-            '[' | '(' if quote.is_none() => depth += 1,
-            ']' | ')' if quote.is_none() => depth -= 1,
-            '=' if quote.is_none() && depth <= 0 => {
-                let prev = if i > 0 { bytes[i - 1] } else { b' ' };
-                let next = if i + 1 < bytes.len() {
-                    bytes[i + 1]
-                } else {
-                    b' '
-                };
-                // Skip `==`; skip the second `=` of `!=`/`<=`/`>=`/`==`.
-                if next != b'=' && !matches!(prev, b'=' | b'!' | b'<' | b'>') {
-                    return Some(i);
-                }
-            }
-            _ => {}
-        }
-    }
-    None
 }
 
 /// `emit <effect>(<args>)` — emittable effects: `cue`, `adjustStat`, `giveItem`,
@@ -443,29 +423,6 @@ fn parse_field(src: &str, base: Span) -> Result<FieldTemplate, CompileError> {
     })
 }
 
-/// Parse an **emit-only** block into its effect templates: run [`parse_stmts`],
-/// then require every resulting statement be an `emit` (a
-/// [`Stmt::Emit`]), collecting the [`EffectTemplate`]s. A non-`emit` statement
-/// (`guard`/`when`/`set`/`pass`) is an `ExprParse` error — an effects body may
-/// only emit. This is how dialogue effect bodies (a `Vec<EffectTemplate>`, not a
-/// `Vec<Stmt>`) are parsed.
-pub(crate) fn parse_effects(src: &str, base: Span) -> Result<Vec<EffectTemplate>, CompileError> {
-    let mut effects = Vec::new();
-    for stmt in parse_stmts(src, base)? {
-        match stmt {
-            Stmt::Emit { effect } => effects.push(effect),
-            _ => {
-                return Err(CompileError::ExprParse {
-                    span: base,
-                    message: "an effects body may only contain `emit <effect>(...)` statements"
-                        .into(),
-                });
-            }
-        }
-    }
-    Ok(effects)
-}
-
 /// Map a bare stat keyword (`sanity`/`health`/`energy`) to [`StatType`]. An
 /// unknown keyword is an `ExprParse` error — the stat argument is a keyword, not
 /// an expression, so it is never parsed as an identifier.
@@ -479,6 +436,61 @@ fn parse_stat_keyword(kw: &str, base: Span) -> Result<StatType, CompileError> {
             message: format!("unknown stat `{kw}` (expected `sanity`, `health`, or `energy`)"),
         }),
     }
+}
+
+// ── Text scanners ───────────────────────────────────────────────────────────
+// Character-walking helpers that find structure (assignment `=`, braces, commas,
+// newlines) while ignoring anything nested in brackets or string literals.
+
+/// Split off the leading whitespace-delimited keyword, returning
+/// `(keyword, remainder)` with the remainder left-trimmed.
+fn split_keyword(s: &str) -> (&str, &str) {
+    let s = s.trim();
+    match s.find(char::is_whitespace) {
+        Some(i) => (&s[..i], s[i..].trim_start()),
+        None => (s, ""),
+    }
+}
+
+/// String-state tracker shared by the top-level scanners: `None` outside a string,
+/// `Some(q)` inside one opened by quote `q` (`'` or `"`). The other quote kind inside
+/// a string is a literal character — so a double-quoted string may contain
+/// apostrophes (the storyteller lore) and a single-quoted one may contain `"`.
+fn track_quote(state: Option<char>, c: char) -> Option<char> {
+    match state {
+        None if c == '\'' || c == '"' => Some(c),
+        Some(q) if q == c => None,
+        other => other,
+    }
+}
+
+/// Byte index of the assignment `=`: a single `=` (not part of `==`/`!=`/`<=`/
+/// `>=`) at bracket-depth 0 and outside a string. `None` if absent.
+fn find_assignment_eq(s: &str) -> Option<usize> {
+    let mut depth: i32 = 0;
+    let mut quote: Option<char> = None;
+    let bytes = s.as_bytes();
+    for (i, c) in s.char_indices() {
+        match c {
+            '\'' | '"' => quote = track_quote(quote, c),
+            '[' | '(' if quote.is_none() => depth += 1,
+            ']' | ')' if quote.is_none() => depth -= 1,
+            '=' if quote.is_none() && depth <= 0 => {
+                let prev = if i > 0 { bytes[i - 1] } else { b' ' };
+                let next = if i + 1 < bytes.len() {
+                    bytes[i + 1]
+                } else {
+                    b' '
+                };
+                // Skip `==`; skip the second `=` of `!=`/`<=`/`>=`/`==`.
+                if next != b'=' && !matches!(prev, b'=' | b'!' | b'<' | b'>') {
+                    return Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 /// Split an argument list on top-level commas, tracking `(`/`[` nesting and
@@ -507,6 +519,9 @@ fn split_args(src: &str) -> Vec<String> {
                 current.push(c);
             }
             ',' if quote.is_none() && depth <= 0 => {
+                // `mem::take` moves the accumulated String out and leaves a fresh
+                // empty one behind — ownership transfer, not a copy (Rust strings
+                // move; there is no JS-style shared reference to hang onto).
                 args.push(std::mem::take(&mut current));
             }
             _ => current.push(c),

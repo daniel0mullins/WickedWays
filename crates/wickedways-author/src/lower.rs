@@ -85,6 +85,10 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 to: e.to.clone(),
                 behavior_key: e.behavior.clone(),
                 name: e.name.clone(),
+                // The `.as_ref().and_then(…)` chain on an `Option` reads like
+                // optional chaining (`v?.toJson()`): absent stays absent, and
+                // `.ok()` turns a failed toml→json conversion into absent too.
+                // The same idiom recurs for every inert author-data field below.
                 initial_state: e
                     .initial_state
                     .as_ref()
@@ -244,6 +248,9 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
     for (key, entry) in &doc.behaviors.exit {
         let script = ExitScript {
             can_pass: parse_expr(&entry.can_pass, EXPR_BASE)?,
+            // `transpose` flips `Option<Result<…>>` into `Result<Option<…>>` so
+            // `?` can bail on a parse error while an ABSENT body stays legal —
+            // "optional, but if present it must parse". Used throughout below.
             run_script: entry
                 .run_script
                 .as_deref()
