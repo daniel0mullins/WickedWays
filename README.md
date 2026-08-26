@@ -16,6 +16,12 @@ own behavior. The authored campaign TOMLs those goldens are compiled from live i
 [`campaigns/`](campaigns/README.md) — the place to start if you want to write or mod
 a campaign.
 
+A few TS-era behaviors did not make the cut and have no Rust equivalent yet — map generation,
+runtime light placement, `teaches`, one-time material claims, the codex query API, and a couple
+more. They are tracked as a porting backlog in
+[`docs/unported-from-typescript.md`](docs/unported-from-typescript.md); this README documents the
+engine as it actually is, not as TS left it.
+
 ## Documentation site
 
 Full docs are published to GitHub Pages at
@@ -94,12 +100,12 @@ gated in CI (`.github/workflows/checks.yml`, toolchain pinned by
 
 - It tracks a `party` of player characters, a `gm` (always one of the party members), the
   current `round`, and `maxRounds` (default `100`).
-- **Lifecycle:** `beginCampaign()` validates that the party is non-empty and that the GM is
-  a member, then starts the campaign; `endCampaign()` finishes it. `nextPlayer()` advances
+- **Lifecycle:** `begin_campaign` validates that the party is non-empty and that the GM is
+  a member, then starts the campaign; `end_campaign` finishes it. `next_player` advances
   the active character and ends the round once everyone has acted; the campaign auto-finishes
   when `round` reaches `maxRounds`.
-- **Membership:** `addPlayer()` and `leaveCampaign()` adjust the party during play (the GM
-  cannot leave), and `transfer()` hands the GM role to another member mid-campaign.
+- **Membership:** `join_campaign` and `leave_campaign` adjust the party during play (the GM
+  cannot leave — it throws), and `transfer_gm` hands the GM role to another member mid-campaign.
 - The `gm` may only be assigned during setup; once the campaign has begun, the GM can only be
   changed via `transfer()`.
 - Every illegal operation (acting before `beginCampaign()`, beginning twice, a GM leaving,
@@ -107,34 +113,26 @@ gated in CI (`.github/workflows/checks.yml`, toolchain pinned by
 
 ### Characters
 
-The character hierarchy is layered so shared behavior lives in one place:
+There is no class hierarchy. Every character — player, mob, or NPC — is one flat
+`CharacterSnapshot` carrying a `kind` discriminant (`CharacterKind::{Player, Mob, Npc}`), and
+every verb is a method on `World` that takes the actor's id. Behavior varies by `kind` and by
+which optional fields a character carries, not by type.
 
-```
-Character
-├── Combatant (abstract)        adds attack()
-│   ├── PlayerCharacter         joinCampaign, loot interaction, move action
-│   └── Mob                     drops, escape()
-└── NonPlayerCharacter          dialogue trees
-```
-
-- `Character` is the base: it holds `stats`, an `inventory`,
-  a `campaign` reference, the current room, status effects, and the action-budget machinery.
-  It implements the item-holder contract (`addToInventory` / `removeFromInventory`),
-  `move(room)`, `takeDamage(...)`, crafting and gear (`craft`, `repair`, `equip`, `unequip`),
-  the keyring (`transferKey`, `consumeKey`), and the turn lifecycle (`startTurn` / `endTurn`).
-- `Combatant` adds `attack(target)` (see Combat below) and
-  is shared by player characters and mobs.
-- `PlayerCharacter` adds `joinCampaign()` and
-  co-located loot interaction: `openLootBox`, `takeFromLootBox`, `putInLootBox`.
-- `Mob` is an enemy with a smaller default budget (2 actions,
-  2 inventory slots), a `drops` list, and `escape()` — a Health-gated roll (see Mob encounters
-  below). It also tracks an `origin` (`"room"` / `"campaign"` / `"unbound"`) that controls
-  whether it drops key items on defeat.
-- `NonPlayerCharacter` stays on `Character`
-  directly and exposes `dialogue(prompt?)` over a list of dialogue blocks. Authored NPCs may
-  start holding registry items via `.npc(name, { holds: [...] })`; each held item is seeded
-  into both the NPC's inventory and the campaign items map under a deterministic id
-  (`npc:{name}:item#{i}`).
+- **Shared state.** `stats`, an `inventory` (slots, items, keyring), `equipment`, the current
+  room, afflictions, action history, and the action-budget counters live on every character.
+  The shared verbs are `World` methods: `go` / `move_to`, `attack`, `take` / `drop`, `equip` /
+  `unequip`, `craft` / `repair`, `use_item` / `read_item`, and the turn lifecycle
+  (`start_turn` / `end_turn`).
+- **`Player`** characters are the seated party: they join via `join_campaign` (or the
+  `joinCampaign` command), interact with loot containers, and default to a 3-action budget.
+- **`Mob`** is an enemy with a smaller default budget (2 actions, 2 inventory slots), a `drops`
+  list, and an escape action — a Health-gated roll (see Mob encounters below). It also tracks an
+  `origin` — `"room"` for an authored resident, `"campaign"` for one spawned by a formation, and
+  absent for a mob that has neither — which controls whether it drops key items on defeat.
+- **`Npc`** carries an `npc_behavior_key` and its own `npc_state`, and is talked to through
+  `World::talk` (the `talk` command). Authored NPCs may start holding catalog items via the
+  `[[npcs]]` table's `holds` list; each held item is seeded into both the NPC's inventory and the
+  campaign items map under a deterministic id (`npc:{name}:item#{i}`).
 
 Every character carries a reversible `visible` flag (default `true`, flipped by the `setVisible`
 effect). An invisible character is filtered out of a room's `view.occupants` and `view.scope` — the
@@ -142,41 +140,34 @@ way a hidden NPC "disappears" — and serializes only when `false` (omitted when
 
 ### Character archetypes
 
-Player characters may choose an `Archetype` during setup. Archetypes are
-authored, declarative descriptors registered on the campaign via `Campaign.registerArchetype`
-(idempotent by id, like recipes), and a character adopts one with
-`PlayerCharacter.selectArchetype(id)`. Selecting an archetype modifies the character's baseline
+Player characters may choose an archetype during setup. Archetypes are authored, declarative
+descriptors that ride in the campaign description (`campaign.archetypes`, authored as
+`[[archetypes]]`), and a character adopts one through
+`World::select_archetype(actor, archetype_id, …)`. Selecting an archetype modifies the character's baseline
 exactly once: `baseStats` set the stats they name (a missing stat keeps its baseline of 10),
 `inventorySlots` adjusts inventory capacity (floored at 0), and
 `immunities` become a standing passive trait — a new source unioned
 with equipped-gear immunities (Panic/Fear/Confused only; KO is never immunizable).
 
 Selection is **once-only** and **setup-only** (it throws after the campaign begins). Whether an
-archetype is required at `Campaign.beginCampaign()` depends on the campaign's catalog: with **none**
-registered, archetypes are optional and a character with none keeps its base stats and slots; with
-**exactly one** registered, it is auto-selected as the default for any member who hasn't chosen;
-with **several** registered, every member must have chosen one explicitly or `beginCampaign()`
+archetype is required at `begin_campaign` depends on the campaign's catalog: with **none**
+declared, archetypes are optional and a character with none keeps its base stats and slots; with
+**exactly one** declared, it is auto-selected as the default for any member who hasn't chosen;
+with **several** declared, every member must have chosen one explicitly or `begin_campaign`
 throws.
 
 ### Rooms, the map, and scenes
 
 - A `Room` has a description, a `loot` map, an `exits` map keyed by compass
   `Direction`, occupants, and a `spawnModifier` (default 1; 0 = never spawns) that scales the
-  campaign's base encounter chance. `Room.placeMob` seats a mob as a room-attached resident
-  (origin `"room"`), enabling key-item drops on defeat. Entering or exiting a room fires any
+  campaign's base encounter chance. A mob authored into a room is seated by the assembler as a
+  room-attached resident (origin `"room"`), enabling key-item drops on defeat. Entering or exiting a room fires any
   `Scene` registered for that phase.
-- A room's `loot` and `exits` are **optional at construction** (both default to none). Loot
-  containers can be added or removed afterwards with `Room.addLoot` / `Room.removeLoot`, and a
-  room authored without exits is wired up later by `buildMap`.
-- `buildMap(rooms, options)` wires a list of rooms into a connected
-  dungeon via a randomized **spanning tree** (every room reachable, `n - 1` edges). Exits are
-  bidirectional (north↔south, etc.), a room is never connected to itself, and no room exceeds
-  8 exits. `extraConnections` adds loops/shortcuts (an absolute count, or a fraction of `n - 1`
-  when between 0 and 1), `requiredConnections` pins specific room pairs as direct neighbors
-  before the tree is laid down (best-effort: an impossible pair is skipped), and an injectable
-  `rng` makes generation deterministic. Connecting is best-effort, but reachability is enforced:
-  if a room cannot be wired into the map (its component is fully saturated), `buildMap` throws a
-  `ProceduralViolation` rather than leaving it stranded.
+- A room's loot and exits are both optional. The map is **authored, not generated**: each
+  `[[exits]]` entry in the campaign TOML declares one directed edge, and
+  `wickedways-assemble` constructs the room graph from them. (There is no runtime map
+  generator in the Rust engine — exits are wired at assembly time, and the return leg of a
+  passage is a separate authored entry.)
 - A `Scene` runs its `script(room, state)` only when the trigger phase (`"enter"` / `"exit"`)
   matches **and** all of its `preconditions` pass — preconditions short-circuit on the first
   failure. Each scene owns a private, typed **state bag** (seeded by `initialState`, empty by
@@ -196,15 +187,16 @@ throws.
     `script`, and `passMessage`/`failMessage` strings. Doors that check for a matching key are a common
     pattern — the precondition checks the character's inventory (or the exit's own `state.unlocked` flag),
     and the script flips the flag permanently so subsequent characters pass without the key.
-  - **Registry.** For serializable exits, register an `ExitBehavior` under a stable
-    key in the `CampaignRegistry` via `registry.registerExit(key, behavior)`, or via `defineRegistry`'s
-    `exits` map. The `behaviorKey` is stored in the snapshot; on deserialization the preconditions and
-    script re-bind from the registry (just as scenes do).
-  - **Authoring.** When using `authorTemplate` /
-    `TemplateBuilder`, call
-    `.exit(from, dir, to, { behaviorKey, name, initialState })` to wire a keyed door. The `name`
-    field (e.g. `"Iron Door"`) is a display label readable by UIs; it survives serialize → deserialize.
-    Plain exits (no `behaviorKey`) are just `.exit(from, dir, to)`.
+  - **Resolution.** Only the `behaviorKey` is stored in the snapshot; the behavior itself is never
+    serialized. On load, `resolve_exit_behavior(key, catalog)` re-binds it — the native
+    `key → &'static dyn ExitBehavior` registry first, then the campaign catalog's
+    `family: "exit"` script (just as scenes do). An unresolvable key fails at load, when
+    `validate_mechanics` reports `Exit behavior '<key>' is not registered.`
+  - **Authoring.** Wire a keyed door in the campaign TOML: an `[[exits]]` entry carries
+    `behavior` (the key), an optional `name` display label (e.g. `"Iron Door"`, readable by UIs and
+    preserved across serialize → deserialize), and an optional `initialState` seed. The behavior
+    itself is a `[behaviors.exit.<key>]` table — `canPass`, optional `runScript`, and
+    `passMessage`/`failMessage`. Plain exits simply omit `behavior`.
   - **Serialization.** Exit state serializes natively — the persisted `state` object is included in
     the exit snapshot, so a door that was unlocked during play stays unlocked across save/reload.
     Exits without a `behaviorKey` carry an empty state and no behavior on restore.
@@ -256,19 +248,20 @@ optional `Presentation` descriptor (`{ image?, sound? }`, where each
 value is an opaque host-interpreted `AssetRef`). The host reads `presentation.image` when it
 draws an entity.
 
-Sounds are delivered as a push **cue stream**: subscribe with `Campaign.onCue(handler)` (and
-`offCue`). The engine emits an `action` cue for every recorded action (move, pickUp, attack, …),
+Sounds are delivered as a **cue stream the caller owns**: every lifecycle and command entry point
+takes a `&mut Vec<PresentationCue>` to append to, `World::submit` hands them back in
+`ExecuteResult.cues`, and in multiplayer they ride along on `Delta.cues`. The engine holds no
+handler and never calls out. It emits an `action` cue for every recorded action (move, pickUp, attack, …),
 an `encounter` cue each time a character enters a room containing a live, non-party occupant
 (deduped per viewer:mob pair — each character/mob combination fires at most once across the
 whole campaign, covering both spawned mobs and room-resident mobs), and a `visibility` cue
 (`{ room, lit }`) when a character
-enters an unlit room or a light action (`equip`/`unequip`/`placeLight`/`takeLight`) flips a dark
+enters an unlit room or a light action (`equip`/`unequip` of a light source) flips a dark
 room's lit state — the renderer uses it to reveal or conceal the room's contents (the data model is
 never hidden). The `action` and `encounter` cues carry a pre-resolved `sound`: the involved
 entity's sound wins (a chest's coins on a loot pickup, a hobgoblin's growl on encounter), falling
 back to the campaign's `actionSounds` default for that action kind (e.g. `move → marching`), else
-none. The `visibility` cue carries no `sound` (it drives reveal/conceal, not audio). Subscriber
-errors are isolated so a faulty handler can't disrupt the turn loop.
+none. The `visibility` cue carries no `sound` (it drives reveal/conceal, not audio).
 
 The web client builds a full procedural audio layer on this cue stream (four SFX
 categories + a sanity-reactive ambient drone); see `crates/wickedways-web/src/audio.rs`.
@@ -276,19 +269,20 @@ categories + a sanity-reactive ambient drone); see `crates/wickedways-web/src/au
 ### Loot and inventory
 
 - `Loot` is a fixed-capacity container (default: initial contents + 2 slots).
-  `stowItem` throws `ContainerFullException` once full; `removeItems` extracts items by id.
+  `World::put_in_loot_box` throws a `ProceduralViolation` once full (every engine error is a
+  `ProceduralViolation`); `World::take` extracts items by id.
 - `Item` carries a type (weapon, armor, accessory, consumable,
   throwable, key), recipe, modifier, target stat, and properties
   (equippable/equipped/destroyable/usable, plus optional `droppable`), plus actions: `pickUp`,
   `equip`, `unequip`, `transfer`, `use`, `read`, `destroy`. Optional authored fields layer on
   behaviour: `maxDurability` (gear that wears), `slot` / `twoHanded` (equipment slots and
-  handedness), `keyCode` / `consumeOnUse` (keys), `teaches` (a recipe imparted to the party on
-  pickup), and `lore` (evocative backstory text).
+  handedness), `keyCode` / `consumeOnUse` (keys), `teaches` (an authored recipe hint the engine
+  does not yet read — see *Materials and crafting*), and `lore` (evocative backstory text).
 - **Item capability flags are enforced, not advisory.** `use` is rejected (a `ProceduralViolation`,
   nothing consumed) unless the item is `usable`; and `droppable: false` marks a required item — a
   quest item such as a win-condition object — that the drop path refuses to set down. `droppable`
   is absent on ordinary items (⇒ droppable); only required items opt out.
-- **Reading** is a first-class, non-consuming interaction. `Character.read(item)` is free
+- **Reading** is a first-class, non-consuming interaction. `World::read_item` is free
   (no budget tick, no history), emits the item's `lore` as a cue, and fires the item's
   optional `onRead` hook — so the item stays in inventory and can be read again. Unlike `use`
   (which consumes the item, and only works on a `usable` one), `read` is the seam for examinable
@@ -323,10 +317,10 @@ no-op), so it can never break the turn loop. Recipes passed to the `Campaign` co
 `knownRecipes` are seeded the same way, so they appear in `codex.recipes` from the start as
 round-0, party-attributed entries (no character/room) — the Codex can be non-empty before play.
 
-Read it via `campaign.codex`: `mobs`, `items`, `keys`, `rooms`, `recipes`, `materials` (each
-sorted by name), `all` (every entry, discovery order), `get(kind, key)` (a single entry), and
-`size`. Recording is gated behind the `RECORD_ENCOUNTER` symbol seam so scene/external code
-cannot forge entries. Discovery/completion tracking (e.g. "12 of 30 materials found") is
+In Rust the codex is a flat, inert `serde_json::Value` array on `World` (`world.codex`) in
+discovery order: entries are appended by the engine's own record paths, and there are no
+grouped, sorted, or keyed accessors over it — a host that wants per-kind views builds them
+itself. Discovery/completion tracking (e.g. "12 of 30 materials found") is
 intentionally **not** part of the Codex — it is left to a separate future achievements feature,
 which can read the Codex's structured entries.
 
@@ -448,10 +442,11 @@ character** (authored as `character = "@gm"`); in single-player it is an authore
 ### Action budget
 
 Each character has an `actionsPerRound` budget (default 3 for player characters, 2 for mobs).
-Only methods registered in the character's `isActionMap` count against it — methods register
-themselves by identity (e.g. `move`, `attack`, `escape`, `addToInventory`,
-`removeFromInventory`). `recordAction(fn)` ignores unregistered functions and, once the budget
-is spent, automatically calls `endTurn()`. Notably, `takeDamage` is **not** a recordable
+Whether an action costs a slot is decided per call site: each verb tail-routes through
+`World::record_action(actor, budgeted, …)` passing an explicit `budgeted` flag, so the budgeted
+set (move, attack, escape, take, drop, …) is fixed in code rather than in a registry keyed by
+function identity. Once the budget is spent, `record_action` automatically ends the turn.
+Notably, taking damage is **not** a recordable
 action — taking a hit never consumes your turn. It still tail-routes through the same cap
 check, though: attacking a target whose `actionsThisRound` is already at its cap auto-ends
 *that target's* turn (reconcile + `onTurnEnd`/mechanic `on_turn_end`), even though the hit
@@ -500,7 +495,7 @@ Statuses are triggered by stat thresholds (using effective stats — base plus a
 - **Fear** — 0 < Sanity < 5
 - **Confused** — Energy ≤ 0 (with a (0, 1] hysteresis band so it does not flicker at the boundary)
 
-A character with no active afflictions reports `isNormal === true`.
+A character with no active afflictions has an empty affliction set (`afflictions.list()` yields nothing).
 
 #### Consequences
 
@@ -549,10 +544,10 @@ option); passing a seeded RNG makes every roll deterministic for tests.
 
 Passive and timed immunity both cover Panic, Fear, and Confused only — KO can never be immunized:
 
-- **Passive (equipped item):** an `IItem` with an `immunities?: Status[]` field
+- **Passive (equipped item):** an item descriptor with an `immunities` field
   confers immunity to those statuses while the item is equipped and intact. Consulted on every
   `applyFromStats` reconciliation, exactly like the accessory effectiveStat bonuses.
-- **Timed (consumable):** an `IItem` with a `grantsImmunity?: { statuses: Status[]; turns: number }` field
+- **Timed (consumable):** an item descriptor with a `grantsImmunity` field (`{ statuses, turns }`)
   grants immunity for `turns` of the holder's turns when the item is used. The grant goes through the
   `GRANT_IMMUNITY` symbol seam (unforgeable by stray code); the timer ticks down
   in `Afflictions.onTurnStart` and the active status is cleared on grant.
@@ -561,7 +556,7 @@ Both fields are plain declarative `Item` descriptor fields — no factory or sub
 
 ### Combat
 
-`Combatant.attack(target)` collects the attacker's *equipped, non-broken weapons*, sums each
+`World::attack` collects the attacker's *equipped, non-broken weapons*, sums each
 weapon's modifier onto the stat it targets, and applies the result to the defender via `takeDamage`
 (which runs the mitigation above). Broken weapons (durability = 0) are silently excluded — they
 neither contribute to the attack matrix nor wear further. With no non-broken equipped weapon an
@@ -618,7 +613,7 @@ without touching engine internals.
 
 #### Hook taxonomy
 
-Every mechanic implements the `Mechanic<S, Cfg, A>` interface. Hooks fall into two
+Every mechanic implements the `MechanicOp` trait. Hooks fall into two
 categories:
 
 - **Reducers** — `onRoundStart`, `onRoundEnd`, `onTurnStart`, `onTurnEnd`,
@@ -664,17 +659,17 @@ target is a no-op.
 
 #### Hook contexts
 
-Every hook receives a `HookCtx<S>`:
+Every hook receives a `HookCtx<'a>` — three borrowed fields:
 
-- `state` — the mechanic's own `JsonObject` state; **mutate in place**
-- `view` — a read-only `CampaignView` (round, maxRounds, party as `CharacterView[]`,
-  rooms); no engine handles, no clock, no IO (guardrail B)
-- `rng()` — the campaign's injected RNG function
-- `roll(n)` — integer in `[1, n]` drawn from `rng`
+- `state: &mut Value` — the mechanic's own JSON state; **mutate in place**
+- `view: &CampaignView` — a read-only projection (round, maxRounds, party, rooms); no engine
+  handles, no clock, no IO (guardrail B)
+- `rng: &mut Rng` — a mutable borrow of the campaign's seeded RNG, the only randomness available
+  (`dice::roll(sides, unit)` is a free function that turns a draw into a die face)
 
-`TurnCtx` adds `actor: CharacterView`. `ActionCtx` adds `action: ActionDetail`.
-`CharacterView.hasEquipped(key)` returns `true` when an equipped item was
-registered under the given registry key (matched via the item's `behaviorKey`).
+`TurnCtx` adds `actor: &CharacterView`. `ActionCtx` adds the action being taken.
+`CharacterView::has_equipped(key)` returns `true` when an equipped item resolves under the given
+catalog key (matched via the item's `behavior_key`).
 
 #### Guardrails
 
@@ -692,29 +687,28 @@ Four guardrails protect engine integrity, in priority order:
 
 #### Opt-in and precedence
 
-Mechanics are inert unless a campaign opts in via `.useMechanic(key, config?)` on
-the `TemplateBuilder`. The opt-in list is static config fixed at authoring time —
-it cannot change mid-play. **Opt-in order is precedence**: earlier mechanics' hooks
-run first, so an earlier transformer's `{ value, final: true }` pre-empts all
-later ones.
+Mechanics are inert unless a campaign opts in with a `[[mechanics]]` entry in its TOML —
+`key` plus an optional `config` table. The opt-in list is static config fixed at authoring
+time; it cannot change mid-play. **Authored order is precedence**: earlier mechanics' hooks
+run first, so an earlier transformer's `final` result pre-empts all later ones.
 
 #### Custom actions
 
-A mechanic may expose named actions via `actions: Record<A, CustomAction<S>>`.
-Each `CustomAction` has a `run(h: ActionCtx<S>)` method and an optional `cost`
-(default 1, reserved for future budget-multiplier support — in v1 every action
-costs 1). A player character invokes them via
-`character.useMechanicAction(mechanicKey, actionKey)`, which is a **budgeted**
-action (counts against the per-round action budget by method identity) routed
-through `Campaign[INVOKE_MECHANIC_ACTION]`.
+A mechanic may expose named actions. A native op implements
+`MechanicOp::run_action(action_key, cx) -> Option<Vec<Effect>>` (returning `None` when it has no
+such action); a scripted one authors them as `[behaviors.mechanic.<key>.actions]` statement
+bodies. Every action costs 1. A player character invokes one through
+`World::use_mechanic_action(mechanic_key, action_key, …)` — reached from the surfaces as the
+`mechanicAction` command — which is a **budgeted** action: it counts against the per-round action
+budget, and a fizzled invocation still ticks it.
 
-#### Serialization (schema v5)
+#### Serialization
 
-Only `{ key, state }` persists per mechanic — behavior is not serialized.
-On hydrate, `registry.mechanic(key)` re-binds the behavior; if the key is absent
-the deserializer throws `ProceduralViolation`. State is a `JsonObject`, namespaced
-by key. A v4→v5 migration injects `mechanics: []` into old snapshots, so existing
-saves round-trip cleanly.
+Only `{ key, state }` persists per mechanic — behavior is never serialized. On load,
+`resolve_mechanic_op(key, catalog)` re-binds it (native registry first, then the catalog's
+`family: "mechanic"` script); an unresolvable key is rejected by `validate_mechanics` with
+`Mechanic '<key>' is not registered.` State is a JSON object namespaced by key. The snapshot
+format as a whole is versioned by `SCHEMA_VERSION` (currently `6`).
 
 #### v1 exclusions
 
@@ -809,7 +803,7 @@ applies the results through the same collect-then-apply pipeline as native ops.
 #### Mob origin
 
 A mob's **origin** (`"room"` | `"campaign"` | `"unbound"`) gates which drops it releases on
-defeat. Room-attached mobs (seated via `Room.placeMob`, which sets origin `"room"`) may drop
+defeat. Room-attached mobs (seated by the assembler with origin `"room"`) may drop
 key items; campaign-roving mobs (spawned by the encounter table, origin `"campaign"`) never do.
 A freshly constructed mob starts as `"unbound"` until the engine sets its origin.
 
@@ -818,7 +812,7 @@ A freshly constructed mob starts as `"unbound"` until the engine sets its origin
 When a mob's Health hits 0, its `onKnockOut` hook fires exactly once:
 
 1. **Material drops** — any `materialDrops` in the mob's options are deposited into the
-   campaign's shared material pool via `DEPOSIT_MATERIALS`, and each new material type is
+   campaign's shared material pool via `World::deposit_materials`, and each new material type is
    also recorded in the Codex (attributed to the defeating character, or the party if no
    defeater is resolvable).
 2. **Item loot box** — held items are relinquished and placed into a fresh `Loot` box
@@ -827,7 +821,7 @@ When a mob's Health hits 0, its `onKnockOut` hook fires exactly once:
    no box is created.
 3. **Key items** — if the mob is room-attached (`origin === "room"`), keys on its keyring
    are also stashed into the box via the `STASH_DROP` seam (past normal capacity, bypassing
-   the key-exclusion guard on regular `stowItem`). Campaign-roving mobs never drop keys.
+   the key-exclusion guard on the regular stow path). Campaign-roving mobs never drop keys.
 
 #### Escape
 
@@ -844,12 +838,14 @@ escape succeeds or fails, the action is recorded and the budget ticks.
 
 #### Roving formations and the encounter table
 
-`Campaign.addFormation` registers a weighted `Formation` — a
-named factory (`build`) and a positive `weight`. The table rejects any formation whose mobs
-carry key-item drops (roving mobs may not drop keys). `Campaign` is constructed with an
-optional `baseEncounterChance` (default 20, on a 0–100 scale) and an injectable `rng`.
+Formations are **authored, not registered at runtime**: `[[formations]]` entries ride in the
+description into `campaign.encounter_table`, each a `behaviorKey` plus a positive `weight`, and
+`World::maybe_spawn` resolves each key at spawn time (native registry first, then
+`Catalog.formations`). Roving mobs may not drop key items — the author/assembler validation
+enforces that. The table carries a `baseChance` (default 20, on a 0–100 scale, authored as
+`[opts] baseEncounterChance`), and all spawn randomness is drawn from `World.rng`.
 
-When a player character moves into a room, `PlayerCharacter.move` calls `Campaign.maybeSpawn`.
+When a player character moves into a room, the move path calls `World::maybe_spawn`.
 The spawn check runs only on the **first visit** to each room (the room is marked visited
 regardless of outcome) and is suppressed when an active (non-KO) mob is already present. If
 the check proceeds:
@@ -887,26 +883,29 @@ is a legal roving-formation drop.
 ### Materials and crafting
 
 Crafting components are pooled at the **campaign** level and shared party-wide, not held per
-character. The pool (`MaterialMap`) is fed only through sanctioned paths
-— destroying (scrapping) an item deposits its `recipe`, harvesting a material cache, and one-time
-`Campaign.claimMaterials(claimId, …)` grants (idempotent by `claimId`, so a cache can't be
-farmed). `Campaign.materials` exposes a read-only copy; `canAfford` / `withdrawMaterials` gate
-spending, and a component is deleted from the pool when it reaches zero. All deposits go through
-the `DEPOSIT_MATERIALS` symbol.
+character. The pool (`campaign.materials`) is fed only through sanctioned paths — destroying
+(scrapping) an item deposits its `recipe`, and harvesting a material cache. A cache can't be
+farmed because harvesting latches its `depleted` flag and a depleted cache yields nothing.
+`World::can_afford` gates spending, a component is deleted from the pool when it reaches zero, and
+every deposit funnels through the single `World::deposit_materials` seam.
 
-`Character.craft(recipeId)` turns a known recipe into an item and is a **free** action (no budget
-tick, no history); it returns `null` if the attempt fizzles while the character is Confused. A
+`World::craft(recipe_id, …)` turns a known recipe into an item and is a **free** action (no budget
+tick, no history); the attempt fizzles while the character is Confused. A
 `CraftingRecipe` is discriminated into two tracks: a
 **materials** recipe withdraws from the pool, while a **keys** recipe consumes keys by code
 (validated atomically — every code must be fully available before any key is spent). Recipe
-knowledge is party-wide: picking up an item whose `teaches` field names a recipe calls
-`Campaign.discoverRecipe()` (idempotent by id), so the whole party can then craft it.
+knowledge is party-wide and campaign-scoped: `campaign.known_recipes` is seeded by the assembler
+from the campaign's declared `[[recipes]]`, so every member can craft them. (An item descriptor
+may carry a `teaches` field, but the engine does not yet read it — picking such an item up does
+not currently impart its recipe.)
 
 ### Durability and repair
 
 Gear authored with `maxDurability` wears with use. Armor loses 1 durability each time it absorbs
-a hit and stops mitigating once `isBroken` (durability 0). Durability is read publicly but written
-only through the `SET_DURABILITY` symbol, which clamps to `[0, maxDurability]`. `Character.repair(item)`
+a hit and stops mitigating once broken (durability 0). Durability is read freely but written
+through exactly one seam, `World::set_durability` — the only place an item's durability is
+mutated. The seam itself does not clamp: callers pass `durability - 1`, and only non-broken items
+(durability ≥ 1) ever wear, so the floor is upheld by the callers rather than the setter. `repair`
 restores a held, damaged item to full for a material cost proportional to the missing fraction —
 `ceil(recipe[c] × missing ∕ maxDurability)` per component — drawn from the campaign pool. Repair is
 **free** and throws if the item is unheld, has no durability, is already full, or the party can't
@@ -925,18 +924,18 @@ equipping a one-handed weapon displaces a worn two-hander; `Character.unequip(it
 slot the item occupies. Both are **free** and leave displaced items in inventory, unequipped.
 
 Occupancy lives in the character's slot map but mirrors `properties.equipped`, so the combat
-filters are unchanged — and now naturally capped. The item's own `actions.equip` routes a slotted
-item through `Character.equip` (finishing via the `EQUIP` / `UNEQUIP` symbols), so slot capacity
-can't be bypassed even through the item's own API.
+filters are unchanged — and now naturally capped. Every equip path routes through
+`World::equip` / `World::unequip`, so slot capacity can't be bypassed.
 
 ### Keys
 
-Keys (`createKey`) are a distinct item type that lives on a character's
+Keys are a distinct item variant (`ItemSnapshot::Key`) that lives on a character's
 keyring rather than in inventory slots. A key carries a `keyCode` matched by scene/lock gates and a
-`consumeOnUse` flag. Keys are **transfer-only**: the generic drop path rejects them, so the only way
-a key changes hands is `Character.transferKey(key, recipient)` (recorded as a pickup on the
-recipient). `Character.consumeKey(key)` spends a key — removing it from the keyring and unhoming it
-— used by scene scripts when a `consumeOnUse` gate is satisfied.
+`consumeOnUse` flag. Keys are **transfer-only**: the generic drop path rejects them
+(`Keys cannot be dropped; hand them over with transferKey instead`), so the only way a key changes
+hands is the `transferKey` command (recorded as a pickup on the recipient). The `consumeKey`
+command spends a key — removing it from the keyring and unhoming it — when a `consumeOnUse` gate is
+satisfied.
 
 ### Dialogue
 
@@ -967,18 +966,17 @@ entry fires its effects a single time, recorded in the NPC's per-instance `npcSt
 replays the response cue without re-firing the effects. Two NPCs sharing one behavior key keep
 independent latches.
 
-The `talk` verb resolves a co-located **visible** `NonPlayerCharacter` occupant. It is a **free**
+The `talk` verb resolves a co-located **visible** NPC occupant (`CharacterKind::Npc`). It is a **free**
 interaction: it does **not** advance the round and does **not** provoke mob reactions. Talking to a
 missing, invisible, or non-NPC target fails with "There's no one here to talk to." The CRT parser
 accepts `talk`/`speak`/`ask` in a bare form (`talk to the keeper`) or with a quoted prompt
 (`talk to the keeper "how do I get out"`). `examine <npc>` is likewise a **free**, non-advancing
 action that returns the resolved NPC's `description`.
 
-**Authoring.** Assemble the behavior with the
-`npc({ description, default, dialogue })` builder,
-whose entries come from `entry({ match, response, effects?, once? })` paired with `exact("…")` or
-`fuzzy("tok", …)` match rules; it emits the `BehaviorScript::Npc` AST, registered in the campaign's
-`behaviors` map under the NPC's `npcBehaviorKey`.
+**Authoring.** Write the behavior as a `[behaviors.npc.<key>]` table — a `description`, a
+`[behaviors.npc.<key>.default]` reply, and any number of dialogue entries, each with `match`,
+`response`, and optional `effects` / `once`. The compiler lowers it to the
+`BehaviorScript::Npc` AST in the campaign's `behaviors` map under the NPC's `npcBehaviorKey`.
 
 **The Hollow House caretaker.** The reference campaign puts this machinery to work in its start
 room. Entering the Foyer at game start fires an `"enter"` scene that sets the mood — the front
@@ -1009,9 +1007,12 @@ and formation carries a `behavior_key` — a stable string resolved against the 
 `Catalog` at hydrate time (native registry first, then `catalog.behaviors` scripts; see
 the Behavior-trait pattern under *The Rust engine core* below). Key items (`keyCode`
 set) are exempt: they are rebuilt from their stored fields without a catalog lookup.
-Hydrate is fail-fast: an unknown `schemaVersion` or a dangling id reference throws
-`ProceduralViolation`; the RNG state rides in the snapshot so replay determinism
-survives save/load.
+`World::from_snapshot` itself is infallible — it does no `schemaVersion` check and no
+id-reference check; behavior-key resolution is what fails loudly, and it is
+`validate_mechanics` (called after loading) that reports an unregistered key as a
+`ProceduralViolation`. The RNG does **not** ride in the snapshot: `from_snapshot` reseeds to
+`Rng::seeded(0)`, so a host that needs the stream to survive save/load carries it across itself —
+the wasm `Authority::restore` does exactly that, preserving its rng around the swap.
 
 ## Multi-client sync
 
@@ -1064,8 +1065,8 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
 
 - **The sync core** in [`crates/wickedways-core/src/sync/`](crates/wickedways-core/src/sync/): the
   actor-tagged [`Command`](crates/wickedways-core/src/sync/command.rs) union (mirroring
-  the original TS wire shapes byte-for-byte, plus two Rust-side extensions — `talk` and
-  `wait`), the [`authorize`](crates/wickedways-core/src/sync/authorize.rs)
+  the original TS wire shapes byte-for-byte, plus the Rust-side extensions — `talk`, `wait`,
+  `destroy`, `playCard`, `mulligan`, and `supplyDice`), the [`authorize`](crates/wickedways-core/src/sync/authorize.rs)
   gate, and the native [`SyncAuthority`](crates/wickedways-core/src/sync/authority.rs) (submit →
   authorize → apply → `Delta` diff → ordered log) + `Delta` apply + `SyncCoordinator`. The **sync
   gate** ([`crates/wickedways-assemble/tests/sync_gate.rs`](crates/wickedways-assemble/tests/sync_gate.rs))
@@ -1149,8 +1150,8 @@ registry throw at hydrate.
 `MechanicOp` exposes the same hook set as the TS `Mechanic` interface —
 `on_round_start`/`on_round_end`, `on_turn_start`/`on_turn_end`, `on_action`, and the
 damage transformer `modify_damage` — each defaulted to a no-op so an op only implements
-the hooks it needs. Hooks return the same closed, six-variant `Effect` enum as the TS
-union — `Damage`, `Heal`, `AdjustStat`, `GrantImmunity`, `Cue`, `Status` — routed through
+the hooks it needs. Hooks return the closed, eight-variant `Effect` enum — `Damage`, `Heal`,
+`AdjustStat`, `GrantImmunity`, `Cue`, `Status`, `GiveItem`, `SetVisible` — routed through
 `apply_effect`/`adjust_stat` (Damage/Heal/AdjustStat reconcile
 the target; GrantImmunity/Cue/Status do not). Damage/Heal/AdjustStat/GrantImmunity may only
 target a **party member** — mirroring TS's `campaign[FIND_CHARACTER]` lookup — so a mechanic
@@ -1237,11 +1238,10 @@ cap (exceeding it is a `ProceduralViolation`). The scene's own JSON `state` is t
 the body (readable by `can_play`, mutated by `SetState`) and written back before the effects
 apply. Native scenes are untouched — they keep the cue-only `run_script` path.
 
-**Authoring.** Assemble a scripted scene with the
-`scene({ canPlay, onEnter, onExit })` builder —
-the hook bodies are DSL `Stmt` lists and `canPlay` a DSL `Expr` — which emits the
-`BehaviorScript::Scene` AST, registered in the campaign's `behaviors` map under the room scene's
-`behaviorKey`. `canPlay` is always serialized (`null` = always playable), mirroring the Rust
+**Authoring.** Write a scripted scene as a `[behaviors.scene.<key>]` table with `canPlay`,
+`onEnter`, and `onExit` — the hook bodies compile to DSL `Stmt` lists and `canPlay` to a DSL
+`Expr` — which the compiler emits as the `BehaviorScript::Scene` AST in the campaign's
+`behaviors` map under the room scene's `behaviorKey`. `canPlay` is always serialized (`null` = always playable), mirroring the Rust
 `SceneScript` serde shape (`#[serde(default)]`, not skip-if-none).
 
 `World::move_to` fires scenes at two points per move, matching TS `Room.exitRoom`/
@@ -1305,7 +1305,7 @@ otherwise use, but the cues are discarded, matching the TS `[PLACE]` behavior of
 narrating a spawn's own arrival. `maybe_spawn` itself emits no cues; only the spawn's
 subsequent detection (below) does.
 
-`PlayerCharacter.move`'s player-only tail runs its steps in this order, all **after**
+The move path's player-only tail runs its steps in this order, all **after**
 `record_action` (so any turn-end/reconcile from the budget-exhausting move happens
 first): `maybe_spawn` → `NOTE_ENCOUNTERS` → room codex. Because the spawn runs before
 the occupant scan, a freshly spawned mob is picked up by that same move's encounter
@@ -1400,8 +1400,9 @@ any number of seats; the **first seat becomes the GM** (`gmId`), all seats — G
 diffs Rust's assembled genesis against the committed goldens **byte-for-byte**. The goldens
 are regression pins of the assembler's own output — regenerate deliberately with
 `UPDATE_GOLDENS=1` and review the diff like code. It is
-gated against the **17 pre-begin goldens only** (2 pristine snapshots + 14 single-PC facade
-genesis fixtures + the two-PC fixture + a determinism check). The 31 `started: true`
+gated against **pre-begin goldens only** — 27 tests covering the pristine snapshots, the
+single-PC facade genesis fixtures, the `g2-*` genesis family, the playable genesis fixtures, and
+a determinism check. The 31 `started: true`
 snapshots in the corpus are **not** valid oracles for the assembler: they capture state
 *after* `begin_campaign` and turn execution (round/turn wrap, mob reactions, scene fires),
 which is the core's job, not the assembler's. Gating `assemble()` against a post-begin

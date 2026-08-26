@@ -334,5 +334,5 @@ with the bundle in `WEB_DIR`.
 Verified by running the release server with `WEB_DIR=dist` locally: `/` serves `index.html`, the WASM
 asset serves as `application/wasm`, deep-links fall back to the app, and `/ws` upgrades. (The
 `docker build` itself can't run in every sandbox — some block Docker Hub egress — but the build steps
-and the runtime topology are the same ones verified here.) Supersedes the legacy TypeScript-SPA image
-at `packages/play/Dockerfile` for the Rust stack.
+and the runtime topology are the same ones verified here.) It superseded the legacy TypeScript-SPA
+image, which was removed along with the rest of the TS tree.
