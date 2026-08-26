@@ -7,7 +7,10 @@
 //! *only* to derive the acting seat.
 //!
 //! The tag key is `t` and every field is camelCase; the shape tests below pin the exact wire
-//! shapes. Chat and A/V arms (`chatSend`/`callJoin`/`signal`/…) are deliberately absent and land
+//! shapes. To a TypeScript eye a `#[serde(tag = "t")]` enum *is* a discriminated union — the
+//! variant name lands in the `t` field, `{ t: "join", … } | { t: "submit", … }` — and `match`
+//! over it is the switch the compiler forces to be exhaustive.
+//! Chat and A/V arms (`chatSend`/`callJoin`/`signal`/…) are deliberately absent and land
 //! as new variants when that feature ships (additive — a `#[serde(tag = "t")]` enum simply
 //! rejects an unknown tag until then).
 //!

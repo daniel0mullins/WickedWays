@@ -4663,6 +4663,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "wickedways-assemble"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "wickedways-core",
+]
+
+[[package]]
+name = "wickedways-author"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "toml",
+ "wickedways-assemble",
+ "wickedways-core",
+]
+
+[[package]]
 name = "wickedways-core"
 version = "0.0.1"
 dependencies = [
@@ -4675,7 +4695,37 @@ name = "wickedways-desktop"
 version = "0.0.1"
 dependencies = [
  "dioxus",
+ "wickedways-studio",
  "wickedways-web",
+]
+
+[[package]]
+name = "wickedways-studio"
+version = "0.0.1"
+dependencies = [
+ "dioxus",
+ "dirs",
+ "futures-channel",
+ "js-sys",
+ "serde",
+ "serde_json",
+ "toml",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "wickedways-assemble",
+ "wickedways-author",
+ "wickedways-core",
+ "wickedways-tabletop",
+]
+
+[[package]]
+name = "wickedways-tabletop"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
+ "wickedways-core",
 ]
 
 [[package]]
@@ -4701,6 +4751,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "wickedways-core",
+ "wickedways-tabletop",
  "wickedways-transport",
 ]
 

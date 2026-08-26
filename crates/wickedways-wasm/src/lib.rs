@@ -1,13 +1,23 @@
+//! The wasm-bindgen boundary — everything JavaScript can call. Each
+//! `#[wasm_bindgen]` item below becomes a named export of the generated JS
+//! module; the stateful [`Authority`] handle (a JS class) lives in `authority`.
+//!
+//! For a JS reader, the two idioms that carry this whole crate:
+//!
+//! - **JSON strings cross the seam.** Engine objects never leave Rust; the host
+//!   passes and receives strings (or plain `JsValue`s) and `serde` does the
+//!   parse/stringify on this side.
+//! - **`Result<T, JsValue>` is "return or throw".** wasm-bindgen turns `Ok(v)`
+//!   into a normal JS return value and `Err(e)` into a thrown exception. The
+//!   `?` operator is the early throw — it unwraps an `Ok` or returns the `Err`
+//!   to the caller immediately — and [`js_err`] is the one place engine errors
+//!   become JS strings.
+
 use wasm_bindgen::prelude::*;
 use wickedways_core::{compute_mitigated_damage, DamageInput};
 
 mod authority;
 pub use authority::Authority;
-
-/// One conversion for every host-visible error: anything Display becomes a JS string.
-pub(crate) fn js_err<E: core::fmt::Display>(e: E) -> JsValue {
-    JsValue::from_str(&e.to_string())
-}
 
 /// Toolchain smoke test: proves Rust→WASM→Node loading works end-to-end.
 #[wasm_bindgen]
@@ -22,11 +32,17 @@ pub fn roll(sides: u32, unit: f64) -> u32 {
 }
 
 /// Mitigation formula over the serde boundary. Proves struct marshalling
-/// (serde-wasm-bindgen) end-to-end.
+/// (serde-wasm-bindgen) end-to-end: the caller passes a plain JS object and
+/// `from_value` is a schema-checked `JSON.parse` into the Rust struct.
 #[wasm_bindgen]
 pub fn mitigated_damage(input: JsValue) -> Result<f64, JsValue> {
     let parsed: DamageInput = serde_wasm_bindgen::from_value(input)?;
     Ok(compute_mitigated_damage(parsed))
+}
+
+/// One conversion for every host-visible error: anything `Display` becomes a JS string.
+pub(crate) fn js_err<E: core::fmt::Display>(e: E) -> JsValue {
+    JsValue::from_str(&e.to_string())
 }
 
 /// Conformance-gate-only entry points. Compiled ONLY under `--features
@@ -52,7 +68,7 @@ mod conformance_api {
         Ok(s.to_string())
     }
 
-    /// Parse a CampaignSnapshot JSON, fold into the id-keyed World, and re-emit.
+    /// Parse a `CampaignSnapshot` JSON, fold into the id-keyed `World`, and re-emit.
     /// Used by the conformance harness to prove the round-trip is byte-faithful.
     #[wasm_bindgen]
     pub fn roundtrip_snapshot(json: &str) -> Result<String, JsValue> {
@@ -61,7 +77,7 @@ mod conformance_api {
         serde_json::to_string(&out).map_err(crate::js_err)
     }
 
-    /// Build the widened ViewModel from a snapshot, a catalog, and the set of opened
+    /// Build the widened `ViewModel` from a snapshot, a catalog, and the set of opened
     /// loot container IDs.
     ///
     /// - `snapshot_json`    — JSON-serialized `CampaignSnapshot`
@@ -89,7 +105,7 @@ mod conformance_api {
     /// Replay a sequence of commands against a starting snapshot, returning a JSON
     /// array of `{ command, cues, snapshot, view }` — one entry per command.
     /// Used by the conformance harness to validate command dispatch against the
-    /// widened ViewModel.
+    /// widened `ViewModel`.
     #[wasm_bindgen]
     pub fn replay_commands(
         start_snapshot_json: &str,

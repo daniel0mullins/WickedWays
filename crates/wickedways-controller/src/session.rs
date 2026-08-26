@@ -22,6 +22,8 @@ use wickedways_tabletop::protocol::{DeviceCommand, DeviceEvent};
 use wickedways_tabletop::roster::party_roster;
 
 // The Tier-0 prototype plays the Hollow House opening; the fixtures ship in the golden corpus.
+// `include_str!` embeds the file's text into the binary at compile time — the build-step
+// analog of a bundler inlining a JSON import, so the binary needs no files at runtime.
 const GENESIS: &str = include_str!("../../../conformance/fixtures/hollow-house.genesis.json");
 const CATALOG: &str = include_str!("../../../conformance/fixtures/hollow-house.catalog.json");
 
@@ -117,6 +119,9 @@ impl Controller {
     /// - `Err(reason)` — the move was blocked or denied; the caller flashes a `reject` LED.
     pub fn handle(&mut self, event: &DeviceEvent) -> Result<bool, String> {
         let before = self.view();
+        // `resolve` returns Result<Option<Command>, String> — two layers, unwrapped in
+        // one line: `?` propagates a blocked move as our Err, then let-else peels the
+        // Option, returning Ok(false) for a local-only event that maps to no command.
         let Some(command) = resolve(event, self.coord.replica(), &self.catalog)? else {
             return Ok(false);
         };

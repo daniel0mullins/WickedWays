@@ -12,8 +12,13 @@ use wickedways_web::platform::{self, DesktopHooks};
 /// (seeded with an empty value — present for `has_flag`, absent for `query_param`). The keys
 /// are the web build's query params: `--campaign hollow-house`, `--surface crt-terminal`,
 /// `--theme <id>`, `--debug`.
+///
+/// `impl Iterator<Item = String>` accepts any iterable of strings — the tests feed an array,
+/// `main` feeds `env::args`.
 fn parse_args(args: impl Iterator<Item = String>) -> Vec<(String, String)> {
     let mut pairs = Vec::new();
+    // A one-key lookahead: `pending` holds a `--key` seen without a value yet.
+    // `Option::take()` swaps the value out and leaves `None` — grab-and-clear in one step.
     let mut pending: Option<String> = None;
     for arg in args {
         if let Some(rest) = arg.strip_prefix("--") {
