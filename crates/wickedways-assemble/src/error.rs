@@ -5,9 +5,47 @@
 
 use std::fmt;
 
+// ---------------------------------------------------------------------------
+// The top-level error `assemble` returns
+// ---------------------------------------------------------------------------
+
+/// The whole validation report: every [`Problem`] found, never just the first.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AssembleError {
+    pub problems: Vec<Problem>,
+}
+
+impl fmt::Display for AssembleError {
+    // `Display` is Rust's `toString()`: what `{}` and `.to_string()` produce.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "campaign failed to assemble ({} problems):",
+            self.problems.len()
+        )?;
+        for p in &self.problems {
+            writeln!(f, "  - {p}")?;
+        }
+        Ok(())
+    }
+}
+
+// An empty marker impl — roughly `class AssembleError extends Error`: it lets
+// this type flow anywhere a generic `dyn Error` is expected.
+impl std::error::Error for AssembleError {}
+
+// ---------------------------------------------------------------------------
+// The individual problems
+// ---------------------------------------------------------------------------
+
+/// One validation failure. A Rust enum whose variants carry data — the closest
+/// TS shape is a discriminated union (`{ kind: "duplicateName", name: … } | …`),
+/// except `match` forces every arm to be handled.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Problem {
     DuplicateName {
+        // `&'static str` = a string literal baked into the binary, alive for the
+        // whole program — which is why no allocation/ownership is needed here.
         kind: &'static str,
         name: String,
     },
@@ -65,6 +103,8 @@ impl fmt::Display for Problem {
     /// Message wording is deliberate — the CLI surfaces these strings verbatim —
     /// but they are NOT byte-compared by the gate.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // An exhaustive `match`: add a `Problem` variant and this fails to
+        // compile until the new arm exists (no silent fall-through `default`).
         match self {
             Problem::DuplicateName { kind, name } => write!(f, "Duplicate {kind} name '{name}'."),
             Problem::UndefinedRoom { ctx, room } => {
@@ -113,24 +153,3 @@ impl fmt::Display for Problem {
         }
     }
 }
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct AssembleError {
-    pub problems: Vec<Problem>,
-}
-
-impl fmt::Display for AssembleError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "campaign failed to assemble ({} problems):",
-            self.problems.len()
-        )?;
-        for p in &self.problems {
-            writeln!(f, "  - {p}")?;
-        }
-        Ok(())
-    }
-}
-
-impl std::error::Error for AssembleError {}

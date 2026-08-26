@@ -8,24 +8,11 @@ use wickedways_core::world::descriptor::Catalog;
 use crate::description::CampaignDescription;
 use crate::error::Problem;
 
-/// Does `catalog.behaviors` hold `key` with the given `family` tag?
-fn has_behavior(catalog: &Catalog, key: &str, family: &str) -> bool {
-    catalog
-        .behaviors
-        .get(key)
-        .is_some_and(|b| behavior_family(b) == family)
-}
-
-/// `BehaviorScript` is an externally-tagged union with a `family` field.
-/// Serializing to `Value` and reading the tag keeps this independent of the AST's
-/// internal Rust shape.
-fn behavior_family(b: &wickedways_core::script::ast::BehaviorScript) -> String {
-    serde_json::to_value(b)
-        .ok()
-        .and_then(|v| v.get("family").and_then(|f| f.as_str().map(str::to_owned)))
-        .unwrap_or_default()
-}
-
+// A note on the closure style throughout this pass: each helper closure takes
+// `problems: &mut Vec<Problem>` as a PARAMETER instead of capturing it. In JS a
+// closure would simply close over the array; here two closures both capturing
+// `problems` mutably would collide with the one-`&mut`-at-a-time borrow rule,
+// so each call site lends the list for the duration of the call instead.
 pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
     let mut problems = Vec::new();
 
@@ -33,6 +20,8 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
     let dup = |kind: &'static str, names: Vec<&str>, problems: &mut Vec<Problem>| {
         let mut seen = BTreeSet::new();
         for n in names {
+            // `insert` returns false when the value was already present —
+            // JS `Set.add` returns the set, so this dual-purpose call reads odd.
             if !seen.insert(n) {
                 problems.push(Problem::DuplicateName {
                     kind,
@@ -233,6 +222,9 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
     }
 
     // ---- policy bounds ----
+    // The `as_ref().and_then(..).and_then(..)` chain is Rust's optional
+    // chaining: read it as `desc.chat?.backfillWindow` where the value must
+    // also parse as an integer, else the whole chain yields `None`.
     if let Some(w) = desc
         .chat
         .as_ref()
@@ -255,4 +247,28 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
     }
 
     problems
+}
+
+// ---------------------------------------------------------------------------
+// Catalog-lookup helpers
+// ---------------------------------------------------------------------------
+
+/// Does `catalog.behaviors` hold `key` with the given `family` tag?
+fn has_behavior(catalog: &Catalog, key: &str, family: &str) -> bool {
+    catalog
+        .behaviors
+        .get(key)
+        // `is_some_and` = "present AND the predicate holds" — the Option-aware
+        // cousin of `map.get(key)?.family === family`.
+        .is_some_and(|b| behavior_family(b) == family)
+}
+
+/// `BehaviorScript` is an externally-tagged union with a `family` field.
+/// Serializing to `Value` and reading the tag keeps this independent of the AST's
+/// internal Rust shape.
+fn behavior_family(b: &wickedways_core::script::ast::BehaviorScript) -> String {
+    serde_json::to_value(b)
+        .ok()
+        .and_then(|v| v.get("family").and_then(|f| f.as_str().map(str::to_owned)))
+        .unwrap_or_default()
 }

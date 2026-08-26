@@ -298,6 +298,7 @@ fn run_facade_gate(name: &str) {
             "submit" => {
                 let intent_kind = op["intent"]["kind"].as_str().expect("intent.kind");
                 let advancing = TIME_ADVANCING.contains(&intent_kind);
+                // `bool::then` = `advancing ? snapshot() : undefined`, as an Option.
                 let pre = advancing.then(|| world.to_snapshot());
                 let intent: Intent =
                     serde_json::from_value(op["intent"].clone()).expect("parse intent");
@@ -327,6 +328,8 @@ fn run_facade_gate(name: &str) {
             }
             "undo" => {
                 let ok = undo_stash.is_some();
+                // `.take()` moves the value out and leaves `None` behind — the
+                // stash is single-use, consumed by the restore.
                 if let Some(stash) = undo_stash.take() {
                     // Restore semantics: the rng stream CONTINUES across a
                     // restore; the opened-loot set clears.

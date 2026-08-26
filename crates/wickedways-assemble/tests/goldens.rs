@@ -16,6 +16,8 @@ use wickedways_assemble::{assemble, description::CampaignDescription, Seat};
 use wickedways_core::world::descriptor::Catalog;
 
 fn fixtures() -> PathBuf {
+    // `env!` reads the env var at COMPILE time (a build-time constant, not
+    // `process.env`): the absolute path of this crate's directory.
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../conformance/fixtures")
 }
 
