@@ -15,6 +15,12 @@
 //! - the per-campaign `Table` tokio actor (in-order submit → persist → ack);
 //! - the axum WebSocket handler + connection lifecycle;
 //! - the binary entry point (plus the two-client convergence e2e in `tests/`).
+//!
+//! Reading this crate from a JavaScript/TypeScript background: axum plays the role of Express,
+//! tokio is the event loop made explicit (an `async fn` returns a lazy future that runs only once
+//! awaited or spawned — nothing starts at the call site), and each campaign is an actor — an
+//! isolated worker that owns its state and is reached only through message channels — rather than
+//! shared objects behind locks.
 
 // Re-export the core sync surface this crate hosts, so downstream code names it through the
 // server crate rather than reaching into `wickedways_core` directly.

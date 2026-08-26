@@ -18,6 +18,8 @@ use wickedways_core::{CampaignSnapshot, World};
 use wickedways_server::server::{router, RoomServer, ServerOptions};
 use wickedways_server::transport::{ClientMsg, ServerMsg};
 
+// ── shared plumbing: the demo server + a thin WebSocket test client ───────────────────────────
+
 fn genesis() -> CampaignSnapshot {
     let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../conformance/fixtures/sync-move.genesis.json");
@@ -119,6 +121,110 @@ impl Client {
 fn delta_from(value: Value) -> Delta {
     serde_json::from_value(value).expect("delta")
 }
+
+// ── the convergence proof (+ healthz) over the demo server ────────────────────────────────────
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn two_clients_converge_over_a_real_websocket() {
+    let port = start_server().await;
+
+    // A joins as the GM (so it may issue a seat-free GM command); B as a spectator. Both seed their
+    // replica from the genesis checkpoint (seq 0). A plain `join` authenticates + subscribes but
+    // claims no character seat, which is why the acting client here is the GM issuing `nextPlayer`.
+    let mut a = Client::connect(port).await;
+    let mut replica_a = a.join_and_seed("demo", "gm").await;
+
+    let mut b = Client::connect(port).await;
+    let mut replica_b = b.join_and_seed("demo", "ben").await;
+
+    // Normalize `base` through the same World round-trip the replicas take, so entity arrays are in
+    // the same id-sorted order (a raw snapshot is in reachable-walk order — a difference the sync
+    // gate canonicalizes too; here both sides go through `World`, so they line up).
+    let base = World::from_snapshot(genesis()).to_snapshot();
+    assert_eq!(
+        replica_a.to_snapshot(),
+        base,
+        "replica A seeds from the genesis checkpoint"
+    );
+    assert_eq!(
+        replica_b.to_snapshot(),
+        base,
+        "replica B seeds from the genesis checkpoint"
+    );
+
+    // The GM submits `nextPlayer`. A is the submitter → `committed`; B, the other participant →
+    // `entry`. Both carry the SAME authoritative delta (here a campaign-core advance).
+    a.send(ClientMsg::Submit {
+        campaign_id: "demo".into(),
+        command: json!({ "kind": "nextPlayer" }),
+    })
+    .await;
+
+    let committed = a
+        .recv_until("committed", |m| matches!(m, ServerMsg::Committed { .. }))
+        .await;
+    let ServerMsg::Committed { seq, delta } = committed else {
+        unreachable!()
+    };
+    assert_eq!(seq, 1, "the first commit is seq 1");
+    apply_delta(&mut replica_a, &delta_from(delta));
+
+    let entry = b
+        .recv_until("entry", |m| matches!(m, ServerMsg::Entry { .. }))
+        .await;
+    let ServerMsg::Entry { entry } = entry else {
+        unreachable!()
+    };
+    assert_eq!(entry.seq, 1, "B sees the same seq");
+    apply_delta(&mut replica_b, &delta_from(entry.delta));
+
+    // Convergence: both replicas reach the identical post-move snapshot, and it actually changed.
+    let after_a = replica_a.to_snapshot();
+    let after_b = replica_b.to_snapshot();
+    assert_eq!(
+        after_a, after_b,
+        "the two clients converge to the identical snapshot"
+    );
+    assert_ne!(
+        after_a, base,
+        "the move actually advanced the state (a non-trivial delta was applied)"
+    );
+}
+
+/// The `/healthz` liveness probe answers `200 OK` with `ok` — the signal container orchestrators
+/// (and the platform health check) poll to confirm the one binary is serving. Driven over a raw TCP
+/// HTTP/1.1 request so it exercises the real router, not just the handler in isolation.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn healthz_probe_returns_200_ok() {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let port = start_server().await;
+    let mut stream = TcpStream::connect(("127.0.0.1", port))
+        .await
+        .expect("connect");
+    stream
+        .write_all(b"GET /healthz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+        .await
+        .expect("write request");
+
+    let mut response = String::new();
+    stream
+        .read_to_string(&mut response)
+        .await
+        .expect("read response");
+
+    let status = response.lines().next().unwrap_or_default();
+    assert!(
+        status.starts_with("HTTP/1.1 200"),
+        "expected 200 status line, got {status:?}"
+    );
+    assert!(
+        response.ends_with("ok"),
+        "expected an `ok` body, got {response:?}"
+    );
+}
+
+// ── the Covenant: per-campaign catalogs + the self-join push ──────────────────────────────────
 
 fn covenant_genesis() -> CampaignSnapshot {
     let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -311,105 +417,5 @@ async fn without_its_catalog_the_covenant_round_wrap_is_denied() {
     assert!(
         matches!(wrap, ServerMsg::Denied { .. }),
         "without its catalog the round-wrap can't resolve twin-wards-held, got {wrap:?}",
-    );
-}
-
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn two_clients_converge_over_a_real_websocket() {
-    let port = start_server().await;
-
-    // A joins as the GM (so it may issue a seat-free GM command); B as a spectator. Both seed their
-    // replica from the genesis checkpoint (seq 0). A plain `join` authenticates + subscribes but
-    // claims no character seat, which is why the acting client here is the GM issuing `nextPlayer`.
-    let mut a = Client::connect(port).await;
-    let mut replica_a = a.join_and_seed("demo", "gm").await;
-
-    let mut b = Client::connect(port).await;
-    let mut replica_b = b.join_and_seed("demo", "ben").await;
-
-    // Normalize `base` through the same World round-trip the replicas take, so entity arrays are in
-    // the same id-sorted order (a raw snapshot is in reachable-walk order — a difference the sync
-    // gate canonicalizes too; here both sides go through `World`, so they line up).
-    let base = World::from_snapshot(genesis()).to_snapshot();
-    assert_eq!(
-        replica_a.to_snapshot(),
-        base,
-        "replica A seeds from the genesis checkpoint"
-    );
-    assert_eq!(
-        replica_b.to_snapshot(),
-        base,
-        "replica B seeds from the genesis checkpoint"
-    );
-
-    // The GM submits `nextPlayer`. A is the submitter → `committed`; B, the other participant →
-    // `entry`. Both carry the SAME authoritative delta (here a campaign-core advance).
-    a.send(ClientMsg::Submit {
-        campaign_id: "demo".into(),
-        command: json!({ "kind": "nextPlayer" }),
-    })
-    .await;
-
-    let committed = a
-        .recv_until("committed", |m| matches!(m, ServerMsg::Committed { .. }))
-        .await;
-    let ServerMsg::Committed { seq, delta } = committed else {
-        unreachable!()
-    };
-    assert_eq!(seq, 1, "the first commit is seq 1");
-    apply_delta(&mut replica_a, &delta_from(delta));
-
-    let entry = b
-        .recv_until("entry", |m| matches!(m, ServerMsg::Entry { .. }))
-        .await;
-    let ServerMsg::Entry { entry } = entry else {
-        unreachable!()
-    };
-    assert_eq!(entry.seq, 1, "B sees the same seq");
-    apply_delta(&mut replica_b, &delta_from(entry.delta));
-
-    // Convergence: both replicas reach the identical post-move snapshot, and it actually changed.
-    let after_a = replica_a.to_snapshot();
-    let after_b = replica_b.to_snapshot();
-    assert_eq!(
-        after_a, after_b,
-        "the two clients converge to the identical snapshot"
-    );
-    assert_ne!(
-        after_a, base,
-        "the move actually advanced the state (a non-trivial delta was applied)"
-    );
-}
-
-/// The `/healthz` liveness probe answers `200 OK` with `ok` — the signal container orchestrators
-/// (and the platform health check) poll to confirm the one binary is serving. Driven over a raw TCP
-/// HTTP/1.1 request so it exercises the real router, not just the handler in isolation.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn healthz_probe_returns_200_ok() {
-    use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-    let port = start_server().await;
-    let mut stream = TcpStream::connect(("127.0.0.1", port))
-        .await
-        .expect("connect");
-    stream
-        .write_all(b"GET /healthz HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
-        .await
-        .expect("write request");
-
-    let mut response = String::new();
-    stream
-        .read_to_string(&mut response)
-        .await
-        .expect("read response");
-
-    let status = response.lines().next().unwrap_or_default();
-    assert!(
-        status.starts_with("HTTP/1.1 200"),
-        "expected 200 status line, got {status:?}"
-    );
-    assert!(
-        response.ends_with("ok"),
-        "expected an `ok` body, got {response:?}"
     );
 }

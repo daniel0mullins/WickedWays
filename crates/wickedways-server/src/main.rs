@@ -27,6 +27,8 @@ use wickedways_core::CampaignSnapshot;
 use wickedways_server::server::{router, RoomServer, ServerOptions};
 use wickedways_server::store::{CampaignStore, SqliteStore};
 
+// Unlike Node, Rust has no ambient event loop: `#[tokio::main]` builds the tokio runtime and
+// blocks the process on this one async fn. Everything async below runs inside it.
 #[tokio::main]
 async fn main() {
     let port: u16 = std::env::var("PORT")

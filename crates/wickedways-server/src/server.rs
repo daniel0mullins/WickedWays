@@ -78,14 +78,19 @@ pub struct ServerOptions {
 pub struct RoomServer {
     opts: ServerOptions,
     /// Loaded campaigns. A `std::sync::Mutex` held only for the brief get/insert — never across an
-    /// `.await`.
+    /// `.await`. (Rust has two mutex flavors: this synchronous one blocks its whole worker thread,
+    /// so it must be locked and released between await points; contrast `load_lock` below.)
     tables: Mutex<HashMap<String, TableHandle>>,
     /// campaign → identity → live-connection count (an identity is online while any connection lives).
     online: Mutex<HashMap<String, HashMap<String, u32>>>,
     /// Serializes campaign loads so two concurrent `join`s for the same campaign don't build two
     /// authorities (inflight dedup). Global rather than per-campaign because loads are rare; a
     /// future optimization is per-campaign inflight tracking.
+    ///
+    /// This one is tokio's **async** mutex — the flavor that MAY be held across an `.await`
+    /// (waiters park their task, not their thread), which the slow store load underneath requires.
     load_lock: tokio::sync::Mutex<()>,
+    /// Connection-id counter. An atomic is the thread-safe `next_conn += 1` with no lock at all.
     next_conn: AtomicU64,
 }
 
@@ -307,6 +312,8 @@ impl RoomServer {
         }
     }
 }
+
+// ── the connection lifecycle ──────────────────────────────────────────────────────────────────
 
 /// One WebSocket connection's server-side state + message handling. Holds the connection's outbound
 /// [`Subscriber`], its authenticated identity (set on the first successful `join`), and the set of
@@ -536,6 +543,11 @@ async fn ws_handler(ws: WebSocketUpgrade, State(server): State<Arc<RoomServer>>)
 /// Drives one WebSocket: bridges the synchronous [`Subscriber`] (fed by the `Table`) to the async
 /// socket via an unbounded channel, and pumps inbound frames into [`Connection::handle`]. A single
 /// task multiplexes read + write with `select!`, so no split/extra dependency is needed.
+///
+/// The channel exists because the `Subscriber` callback is synchronous while the socket send is
+/// async: the callback just enqueues (like emitting onto an event queue) and this loop drains.
+/// `select!` itself is `Promise.race` run in a loop — whichever side has something ready wins that
+/// iteration, all on one task.
 async fn serve_socket(mut socket: WebSocket, server: Arc<RoomServer>) {
     let (out_tx, mut out_rx) = tokio::sync::mpsc::unbounded_channel::<ServerMsg>();
     let send: Subscriber = Arc::new(move |msg| {

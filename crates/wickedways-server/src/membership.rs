@@ -22,6 +22,10 @@ pub struct Membership {
 
 impl Membership {
     /// A fresh membership with `gm_identity` as GM and no seats claimed.
+    ///
+    /// (`impl Into<String>` — here and on the mutators below — is the Rust idiom for a "string-ish"
+    /// parameter: callers may pass `&str` or an owned `String`, the way a JS function just takes a
+    /// string.)
     pub fn new(gm_identity: impl Into<String>) -> Self {
         Self {
             gm_identity: gm_identity.into(),
