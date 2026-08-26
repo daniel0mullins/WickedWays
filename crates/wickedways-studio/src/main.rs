@@ -6,5 +6,8 @@
 //! entry.
 
 fn main() {
+    // Mount the root component — the `ReactDOM.createRoot(...).render(<App/>)`
+    // of Dioxus. On wasm this attaches to the page; under `native-app` it opens
+    // a desktop window instead.
     dioxus::launch(wickedways_studio::app::studio_app);
 }

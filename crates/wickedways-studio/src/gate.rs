@@ -107,6 +107,11 @@ impl GateReport {
 }
 
 /// Run the full authoritative pipeline over the document.
+///
+/// Each stage either advances or files its findings and returns early. The
+/// `Result`s are `match`ed rather than `?`-propagated because the error VALUE is
+/// the point — it becomes report content for the overlay, not a failure to pass
+/// upward.
 #[must_use]
 pub fn check_campaign(doc: &EditorDoc) -> GateReport {
     let mut report = GateReport::default();

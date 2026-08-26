@@ -221,9 +221,17 @@ pub fn BehaviorsScreen() -> Element {
 fn ExitBehaviorForm(bkey: String) -> Element {
     let store = use_context::<StudioStore>();
     let doc = (store.doc)();
+    // `let … else`: destructure or render nothing — the key can vanish
+    // mid-render (just deleted), and an empty element beats a panic. All the
+    // sibling forms open the same way.
     let Some(entry) = doc.behaviors.exit.get(&bkey).cloned() else {
         return rsx! {};
     };
+    // One owned copy of the key per handler: each `move` closure owns its
+    // captures (no shared GC references). The `let k = k1.clone()` INSIDE each
+    // handler clones again because handlers fire repeatedly, and every firing
+    // moves a fresh copy into the `mutate` closure. This dance repeats across
+    // every form in this file.
     let k1 = bkey.clone();
     let k2 = bkey.clone();
     let k3 = bkey.clone();
@@ -364,6 +372,9 @@ fn DialogueEditor(bkey: String, index: Option<usize>, entry: DialogueEntryToml) 
         format!("dialogue[{i}]")
     });
     // One helper closure-shape shared by all fields: edit this entry in place.
+    // `impl FnOnce(…) + 'static` accepts any one-shot callback that borrows
+    // nothing — a nested `fn` (not a closure) so every handler below can call
+    // it without ownership games.
     fn edit_dialogue(
         store: StudioStore,
         bkey: String,

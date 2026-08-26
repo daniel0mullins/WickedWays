@@ -23,6 +23,8 @@ use std::sync::{Mutex, OnceLock};
 use crate::model::EditorDoc;
 use crate::platform;
 
+// ---- storage keys + schema ------------------------------------------------
+
 /// The current stored-blob schema. Bump on breaking `EditorDoc` shape changes and
 /// add an upgrade arm in [`load_campaign`].
 pub const SCHEMA_VERSION: u32 = 1;
@@ -36,7 +38,14 @@ fn campaign_key(id: &str) -> String {
     format!("{CAMPAIGN_PREFIX}{id}")
 }
 
+// ---- the boot-primed blob cache -------------------------------------------
+
 /// The boot-primed blob cache: key → serialized [`CampaignBlob`].
+///
+/// The `OnceLock` initializes the map on first use — Rust statics cannot run
+/// construction code, so this is the moral equivalent of a module-scope
+/// `const cache = new Map()` in JS, plus the `Mutex` Rust demands before
+/// letting anything mutate shared state.
 fn cache() -> &'static Mutex<BTreeMap<String, String>> {
     static CACHE: OnceLock<Mutex<BTreeMap<String, String>>> = OnceLock::new();
     CACHE.get_or_init(|| Mutex::new(BTreeMap::new()))
@@ -50,6 +59,11 @@ pub fn prime_cache(blobs: Vec<(String, String)>) {
         c.insert(k, v);
     }
 }
+
+// ---- stored shapes --------------------------------------------------------
+// The Serialize/Deserialize derives are the storage contract: these structs
+// ARE the JSON in the store, field names included — renaming a field here
+// orphans every existing save.
 
 /// One campaign-list row.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -67,7 +81,8 @@ pub struct CampaignBlob {
     pub doc: EditorDoc,
 }
 
-/// The result of loading a stored campaign.
+/// The result of loading a stored campaign. A three-arm tagged union — `match`
+/// makes every caller handle all three outcomes; there is no forgotten branch.
 pub enum Loaded {
     /// Current-schema blob, ready to edit (boxed — the doc dwarfs the other arms).
     Ok(Box<EditorDoc>),
@@ -76,6 +91,8 @@ pub enum Loaded {
     /// Absent or unparseable.
     Missing,
 }
+
+// ---- the campaign API -----------------------------------------------------
 
 /// The campaign index, newest-first. Missing/corrupt index reads as empty.
 #[must_use]
@@ -124,6 +141,8 @@ pub fn save_campaign(id: &str, doc: &EditorDoc, now_ms: u64) -> Result<(), Strin
 /// Load the campaign stored under `id`.
 #[must_use]
 pub fn load_campaign(id: &str) -> Loaded {
+    // `let … else`: destructure or bail — Rust's guard-clause idiom for the
+    // "return early unless this exists" shape.
     let Some(json) = cache()
         .lock()
         .expect("blob cache poisoned")

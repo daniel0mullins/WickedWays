@@ -34,6 +34,10 @@ fn default_stats() -> Stats {
 
 /// Generate the per-family `edit_*` helpers: find the entry by editor id, apply the
 /// mutation through the store (re-lint + write-through).
+///
+/// A `macro_rules!` macro writes these thirteen near-identical functions at
+/// compile time — the Rust substitute for one runtime-generic version keyed by
+/// field name (there is no reflection to reach `d[field]`).
 macro_rules! edit_helper {
     ($name:ident, $field:ident, $ty:ty) => {
         fn $name(store: StudioStore, id: u64, f: impl FnOnce(&mut $ty) + 'static) {
@@ -1922,7 +1926,9 @@ fn ConditionList(win: bool) -> Element {
         "Lose conditions"
     };
     let len = list.len();
-    // One mutable-list helper both arms share.
+    // One mutable-list helper both arms share — a nested `fn` rather than a
+    // closure: it captures nothing, so every `move` handler below can call it
+    // freely (a capturing closure could be moved into at most one of them).
     fn with_list(d: &mut EditorDoc, win: bool) -> &mut Vec<WithId<ConditionEntry>> {
         if win {
             &mut d.victory_win

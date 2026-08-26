@@ -17,7 +17,8 @@ use wickedways_author::author_doc::{
 
 pub use wickedways_assemble::description::CampaignOpts;
 
-/// A list entry wrapped with its stable editor id.
+/// A list entry wrapped with its stable editor id — the TypeScript
+/// `{ id: number; entry: T }`, as a generic struct.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct WithId<T> {
     pub id: u64,
@@ -52,22 +53,10 @@ pub struct EditorDoc {
     pub behaviors: Behaviors,
     pub victory_win: Vec<WithId<ConditionEntry>>,
     pub victory_lose: Vec<WithId<ConditionEntry>>,
+    /// Private to the struct but still serialized (serde does not care about
+    /// visibility) — the counter must survive the storage round trip so a
+    /// reloaded document never re-mints an id already in use.
     next_id: u64,
-}
-
-fn wrap<T>(next: &mut u64, entries: Vec<T>) -> Vec<WithId<T>> {
-    entries
-        .into_iter()
-        .map(|entry| {
-            let id = *next;
-            *next += 1;
-            WithId { id, entry }
-        })
-        .collect()
-}
-
-fn strip<T: Clone>(entries: &[WithId<T>]) -> Vec<T> {
-    entries.iter().map(|w| w.entry.clone()).collect()
 }
 
 impl EditorDoc {
@@ -178,6 +167,28 @@ impl EditorDoc {
         self.items.iter().map(|i| i.entry.key.clone()).collect()
     }
 }
+
+// ---- id-wrapping helpers --------------------------------------------------
+
+/// Wrap each entry with the next fresh id (import direction).
+fn wrap<T>(next: &mut u64, entries: Vec<T>) -> Vec<WithId<T>> {
+    entries
+        .into_iter()
+        .map(|entry| {
+            let id = *next;
+            *next += 1;
+            WithId { id, entry }
+        })
+        .collect()
+}
+
+/// Drop the id wrappers, cloning the entries back out (export direction).
+fn strip<T: Clone>(entries: &[WithId<T>]) -> Vec<T> {
+    entries.iter().map(|w| w.entry.clone()).collect()
+}
+
+// ---- picker vocabularies --------------------------------------------------
+// Fixed lists the form dropdowns draw from, mirroring the engine's enums.
 
 /// The `ItemType` picker vocabulary. `lower_item` silently defaults an unrecognized
 /// string, so the UI must constrain these — free text is forbidden by the spec.
