@@ -1,9 +1,12 @@
-//! Serde wire structs mirroring —
-//! the leaf snapshots that compose a full `CampaignSnapshot`.
+//! Serde wire structs — the leaf snapshots that compose a full
+//! `CampaignSnapshot`. Field names and omission rules are pinned by the golden
+//! gates and saved campaigns; treat any change here as a behavior change.
 use super::ids::*;
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+// ---- item / loot / scene / exit snapshots ----
 
 /// `ItemSnapshot` — a discriminated union on `kind`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -74,6 +77,8 @@ pub struct ExitSnapshot {
     pub state: Value,
 }
 
+// ---- character snapshots ----
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Stats {
@@ -92,7 +97,10 @@ impl Stats {
         }
     }
 
-    /// Mutable access to one stat, selected by `StatType`.
+    /// Mutable access to one stat, selected by `StatType`. Returns a mutable
+    /// reference *into* the struct — callers assign through it
+    /// (`*stats.get_mut(s) += 1.0`), handing out an assignable "place" the way
+    /// no JS function can.
     pub const fn get_mut(&mut self, stat: crate::stats::StatType) -> &mut f64 {
         match stat {
             crate::stats::StatType::Energy => &mut self.energy,
@@ -218,6 +226,8 @@ fn is_false(b: &bool) -> bool {
 fn is_zero(n: &i64) -> bool {
     *n == 0
 }
+
+// ---- campaign snapshots ----
 
 pub const SCHEMA_VERSION: i64 = 6;
 

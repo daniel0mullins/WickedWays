@@ -30,6 +30,8 @@ pub struct CharacterView {
     pub energy: f64,
     pub status: Vec<Status>,
     pub room_id: Option<String>,
+    // No `pub` on these three: visible only inside this module, so outside code
+    // must go through the `has_*` accessors below — encapsulation without a class.
     equipped_keys: BTreeSet<String>,
     held_keys: BTreeSet<String>,
     key_codes: BTreeSet<String>,
@@ -74,6 +76,8 @@ impl World {
     /// Build the owned party projection (`#campaignView` + `#characterView`).
     /// `party_ids` order is preserved. `rooms` is intentionally empty (v1).
     pub fn build_campaign_view(&self, cat: &Catalog) -> CampaignView {
+        // `filter_map` maps and drops the `None`s in one pass — a fused
+        // `.map(...).filter(x => x != null)`.
         let party = self
             .campaign
             .party_ids
@@ -92,6 +96,8 @@ impl World {
     /// scene preconditions/scripts). `occupants` are projected in `occupant_ids`
     /// order via `character_view`. `None` if the room is absent.
     pub fn room_view(&self, room_id: &RoomId, cat: &Catalog) -> Option<RoomView> {
+        // `?` on an `Option` early-returns `None` from the whole function —
+        // optional chaining's short-circuit, at statement level.
         let r = self.rooms.get(room_id)?;
         let occupant_ids: Vec<String> = r.occupant_ids.iter().map(|id| id.0.clone()).collect();
         let occupants: Vec<CharacterView> = r

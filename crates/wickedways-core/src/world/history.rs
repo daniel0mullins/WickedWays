@@ -1,4 +1,5 @@
-//! Typed action history — JSON byte-compatible with.
+//! Typed per-character action history: the `kind`-tagged entries pushed onto
+//! `CharacterSnapshot.history`. JSON shapes are pinned by the golden gates.
 use crate::stats::StatType;
 use crate::world::ids::{CharacterId, ItemId, RoomId};
 use alloc::string::String;

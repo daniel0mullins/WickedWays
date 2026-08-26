@@ -19,6 +19,8 @@ use alloc::format;
 use alloc::vec::Vec;
 
 impl World {
+    // ---- room lighting ----
+
     /// Whether `room` is currently lit:
     /// a non-dark room is always lit; a dark room is lit iff it holds
     /// a non-broken placed light source, OR an occupant carries an equipped,
@@ -116,6 +118,8 @@ impl World {
             name,
         }
     }
+
+    // ---- exits: the `go` action ----
 
     /// Evaluate the exit in `dir` from the actor's current room, then call
     /// `move_to`. Behavior is pinned byte-exact by the conformance goldens.
@@ -265,6 +269,8 @@ impl World {
         }
     }
 
+    // ---- scenes ----
+
     /// Fire every scene of the given `phase` registered on `room_id`, in snapshot
     /// order. Each firing may mutate its own `state` and returns mechanic cues,
     /// pushed onto `cues` as `PresentationCue::Mechanic`. Mirrors
@@ -317,6 +323,9 @@ impl World {
         // scripted scene in the same room+phase. Safe today -- native scenes are
         // compiled-in and only `conformance:visit-counter` exists (real campaigns are
         // all-scripted), so this case is unreachable; this note guards future authors.
+        // An index loop instead of `for scene in r.scenes`: iterating the room
+        // directly would hold a borrow of `self` for the whole loop, and the scene
+        // bodies below need `&mut self`. Indexing re-borrows fresh each iteration.
         for i in 0..scene_count {
             let (scene_phase, behavior_key) =
                 match self.rooms.get(room_id).and_then(|r| r.scenes.get(i)) {
@@ -406,6 +415,8 @@ impl World {
         }
         Ok(())
     }
+
+    // ---- relocation & the move action ----
 
     /// The bare relocation shared by `move_to` and the Villain's `Teleport` card
     /// effect: exit-phase scenes of the departed room (mover still an occupant) →

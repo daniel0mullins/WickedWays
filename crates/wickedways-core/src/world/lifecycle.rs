@@ -54,6 +54,8 @@ impl World {
             ));
         }
 
+        // `position` is `findIndex` (returning `Option`, not -1); `retain` is an
+        // in-place `filter` — it mutates the Vec rather than allocating a new one.
         let index = self.campaign.party_ids.iter().position(|id| id == target);
         self.campaign.party_ids.retain(|id| id != target);
 

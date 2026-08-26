@@ -1,6 +1,6 @@
 //! Item descriptor primitives — the data half of an item's identity, sourced
 //! from the campaign's registry (the catalog), not the per-instance snapshot.
-//! JSON byte-compatible with +.
+//! JSON shapes are pinned by the golden gates.
 use crate::stats::StatType;
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 use serde::{Deserialize, Serialize};
@@ -52,6 +52,8 @@ pub struct Presentation {
 #[serde(rename_all = "camelCase")]
 pub struct ItemDescriptor {
     pub name: String,
+    /// `r#type` is a *raw identifier*: `type` is a Rust keyword, so the `r#`
+    /// prefix lets the field keep the wire name (serde still emits `"type"`).
     pub r#type: ItemType,
     pub stat: StatType,
     pub modifier: i64,

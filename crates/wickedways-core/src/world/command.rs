@@ -1,3 +1,9 @@
+//! The internal `Command` union and its single dispatch point.
+//!
+//! `Command` is the engine/multiplayer representation of one atomic operation —
+//! player intents plus internal lifecycle ops (`startTurn`/`endTurn`/…). It is
+//! what the sync log records and replays; `apply_command` routes each variant to
+//! the `World` mutator that implements it.
 use crate::dice::SuppliedDie;
 use crate::error::ProceduralViolation;
 use crate::presentation::PresentationCue;
@@ -77,6 +83,11 @@ pub enum Command {
     },
 }
 
+/// Route one command to the `World` mutator implementing it.
+///
+/// `opened` and `cues` are out-parameters: the caller passes mutable collections
+/// the engine appends to, rather than getting fresh arrays back — this keeps one
+/// allocation across a whole command batch.
 pub fn apply_command(
     world: &mut World,
     cmd: Command,
@@ -85,6 +96,9 @@ pub fn apply_command(
     cues: &mut Vec<PresentationCue>,
 ) -> Result<(), ProceduralViolation> {
     let actor = world.active_character_id()?;
+    // Exhaustive `match` with no `_` fallback: adding a `Command` variant is a
+    // compile error until it gets an arm here — the dispatch can never silently
+    // miss a case the way a JS `switch` default would.
     match cmd {
         Command::StartTurn => world.start_turn(&actor, cat, cues),
         Command::EndTurn => world.end_turn(&actor, cat, cues),

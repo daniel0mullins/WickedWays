@@ -1,4 +1,10 @@
 //! The id-keyed runtime world model.
+//!
+//! [`World`] is the engine's mutable in-memory state: every entity lives in a
+//! `BTreeMap` keyed by its branded id (a `BTreeMap` is like a JS `Map` that
+//! iterates in sorted key order — which is what makes snapshot output
+//! deterministic). Submodules hold the mechanics that mutate it; this file
+//! holds only the struct and its snapshot round-trip.
 pub mod afflictions;
 pub mod archetype;
 mod combat;
@@ -69,6 +75,10 @@ pub struct World {
 impl World {
     /// Single pass: fold each entity array into its id-keyed store. No two-pass
     /// hydration — references are ids, so there is nothing to re-wire.
+    ///
+    /// Takes `s` by value (no `&`), consuming the snapshot: `into_iter()` moves each
+    /// element into the map instead of cloning it. The caller's snapshot is gone
+    /// afterwards — ownership transferred, a concept JS has no equivalent for.
     pub fn from_snapshot(s: CampaignSnapshot) -> World {
         World {
             characters: s

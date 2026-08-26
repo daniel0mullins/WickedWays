@@ -35,8 +35,12 @@ pub enum GateVerdict {
 impl World {
     /// Verdict for an attempted action by `actor`. Hard blocks (KO, Panic-on-non-move,
     /// Fear-on-move) come first; an active Confused then rolls a fizzle. Draws the rng
-    /// ONLY in the Confused branch. Mirrors.
+    /// ONLY in the Confused branch.
     pub fn gate(&mut self, actor: &CharacterId, is_move: bool) -> GateVerdict {
+        // Copy the four flags out as plain bools first: this ends the borrow of
+        // `self.characters` immediately, freeing `self` so the Confused branch can
+        // mutably draw `self.rng` below (the borrow checker forbids reading the
+        // character while mutating the rng through the same `self`).
         let (ko, panic, fear, confused) = match self.characters.get(actor) {
             Some(c) => (
                 c.afflictions.is_active(Status::Ko),

@@ -188,6 +188,8 @@ impl World {
         // (serialized snapshots always carry `visited`; this is defensive parity
         // with TS's always-present `Set`).
         if let Some(obj) = self.campaign.encounter_table.as_object_mut() {
+            // `entry(..).or_insert_with(..)` = "get, creating if missing" — the
+            // one-lookup version of `map[k] ??= []`.
             let arr = obj
                 .entry("visited")
                 .or_insert_with(|| serde_json::Value::Array(alloc::vec::Vec::new()));
@@ -199,6 +201,8 @@ impl World {
         // 3. suppressed if any active (non-KO) non-party occupant present.
         let party: alloc::collections::BTreeSet<CharacterId> =
             self.campaign.party_ids.iter().cloned().collect();
+        // The ids are cloned out rather than borrowed: holding a borrow of
+        // `self.rooms` would lock `self` and forbid the `self.is_ko(..)` calls below.
         let occupants: Vec<CharacterId> = self
             .rooms
             .get(room)

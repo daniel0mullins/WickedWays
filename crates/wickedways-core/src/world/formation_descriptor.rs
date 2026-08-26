@@ -75,6 +75,9 @@ impl FormationDescriptor {
     /// The drops are seeded by `World::maybe_spawn`'s descriptor arm, which
     /// owns `&mut World` + `&Catalog`, right after this `build` runs.
     pub fn build(&self) -> Vec<CharacterSnapshot> {
+        // Iterator chain in place of a loop: `enumerate` pairs each spec with its
+        // index (like `.map((m, i) => …)`), and nothing runs until `collect`
+        // materializes the `Vec` — Rust iterators are lazy.
         self.mobs
             .iter()
             .enumerate()

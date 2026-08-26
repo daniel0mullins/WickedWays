@@ -15,6 +15,10 @@ use crate::world::mechanics::{CharacterView, Effect, HookCtx};
 /// A first-party item behavior. `on_use` fires from `use_item` — after the
 /// usable/KO guards, before `grantsImmunity` + consume; `on_read` fires from
 /// `read_item` — before the lore cue. Both default to "no effects".
+///
+/// The method bodies below are trait *default implementations* — an implementor
+/// overrides only the hooks it cares about, like optional methods on a JS
+/// interface. Leading-underscore parameter names mark them deliberately unused.
 pub trait ItemBehavior: Sync {
     fn on_use(&self, _base: &mut HookCtx<'_>, _actor: &CharacterView) -> Vec<Effect> {
         Vec::new()

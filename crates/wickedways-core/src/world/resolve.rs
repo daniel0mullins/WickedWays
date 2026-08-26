@@ -1,8 +1,6 @@
-//! Item resolution: snapshot + catalog → effective item identity.
-//!
-//! Mirrors `hydrateItem`, `[HYDRATE]`,
-//! and `isBroken`.
-//! Also provides `World::effective_stat`, mirroring.
+//! Item resolution: snapshot + catalog → effective item identity
+//! (the `hydrateItem`/`isBroken` port), plus `World::effective_stat`
+//! (base stat + equipped-accessory modifiers).
 use alloc::{collections::BTreeSet, format, string::String};
 
 use crate::{
@@ -141,6 +139,8 @@ impl World {
     /// Silently skips equipped item ids whose `ItemSnapshot` is absent in
     /// `World.items` or whose catalog lookup fails — the non-panicking choice.
     pub fn effective_stat(&self, character: &CharacterId, stat: StatType, cat: &Catalog) -> f64 {
+        // `let … else`: destructure-or-bail. Binds `ch` when the lookup hits;
+        // the `else` block must diverge (here: early return).
         let Some(ch) = self.characters.get(character) else {
             return 0.0;
         };
@@ -150,6 +150,8 @@ impl World {
         // De-duplicate: a two-handed item occupies two slot-map entries.
         let equipped_ids: BTreeSet<&crate::world::ids::ItemId> = ch.equipment.values().collect();
 
+        // `.ok()` converts a `Result` to an `Option`, so `filter_map` silently
+        // drops unresolvable items instead of propagating the error.
         let bonus: i64 = equipped_ids
             .into_iter()
             .filter_map(|item_id| self.items.get(item_id))

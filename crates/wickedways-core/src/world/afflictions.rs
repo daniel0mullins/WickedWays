@@ -1,5 +1,6 @@
-//! Typed affliction data model — mirrors +.
-//! Serialize shape is byte-identical to `AfflictionsSnapshot` / `Status`.
+//! Typed affliction data model: status flags, clear odds, and the per-turn
+//! affliction lifecycle. Serialize shape is byte-identical to
+//! `AfflictionsSnapshot` / `Status`.
 use alloc::{collections::BTreeMap, collections::BTreeSet, vec::Vec};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -77,6 +78,8 @@ pub fn default_affliction_config() -> AfflictionConfig {
 /// The `active` field emits **only true entries** on serialize.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Afflictions {
+    // Private (no `pub`) so every write funnels through `set_active` — the other
+    // three fields are open because their raw maps ARE the serialized shape.
     active: BTreeMap<Status, bool>,
     pub turns_active: BTreeMap<Status, i64>,
     pub shaken_off: Vec<Status>,
@@ -107,7 +110,6 @@ impl Afflictions {
 
     /// Grant timed immunity to each status in `statuses` for `turns` turns,
     /// refreshing to max if already higher. KO is never immunizable.
-    /// Mirrors.
     pub fn grant_immunity(&mut self, statuses: &[Status], turns: i64) {
         for &s in statuses {
             if s == Status::Ko {
@@ -224,6 +226,9 @@ impl Afflictions {
 // Custom Serialize: `active` emits only-true entries; camelCase keys.
 // ---------------------------------------------------------------------------
 
+// Hand-written `Serialize` (instead of `#[derive]`) — the Rust analog of a
+// custom `toJSON`: it lets `active` filter down to only-true entries while the
+// in-memory map keeps explicit `false`s.
 impl Serialize for Afflictions {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
@@ -247,6 +252,8 @@ impl Serialize for Afflictions {
 // Custom Deserialize via a wire struct (camelCase).
 // ---------------------------------------------------------------------------
 
+// Parse into a permissive intermediate (every field defaulted), then convert —
+// the DTO pattern: it keeps `Afflictions` itself free of serde field attributes.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AfflictionsWire {

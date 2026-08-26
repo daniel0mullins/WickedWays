@@ -585,6 +585,8 @@ impl World {
         // IS the Villain (nobody else can reference the hand), one entry per
         // distinct key. Absent for villain-less campaigns, so pinned scope
         // shapes stay byte-stable.
+        // `Option` combinators: `.as_ref().filter(..).map(..)` treat the optional
+        // villain as a zero-or-one-element collection, so no nested `if let`s.
         let card_scope: Vec<ScopeEntity> = self
             .campaign
             .villain
@@ -712,6 +714,8 @@ impl World {
                     card_action_taken: v.card_action_taken,
                 }
             }),
+            // `bool::then_some(x)` = `cond ? x : undefined`, but typed: `Some(x)`
+            // when the condition holds, `None` (omitted on serialize) otherwise.
             lights_out_rounds: (self.campaign.lights_out_rounds > 0)
                 .then_some(self.campaign.lights_out_rounds),
         })

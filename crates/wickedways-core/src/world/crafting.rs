@@ -1,8 +1,8 @@
 //! Materials & crafting: the campaign material pool, harvesting caches, crafting
 //! recipes, and repairing gear.
 //!
-//! Ports's pool ops (`canAfford`/`withdrawMaterials`/`claimMaterials`/
-//! `discoverRecipe`) and's `harvest`/`craft`/`repair`. All three
+//! Ports the pool ops (`canAfford`/`withdrawMaterials`/`claimMaterials`/
+//! `discoverRecipe`) and the character verbs `harvest`/`craft`/`repair`. All three
 //! character verbs are **free** (no budget tick, no history) — they require the
 //! actor's turn (enforced upstream in the sync `authorize`) but never spend an
 //! action. Material deposits (harvest) still route through
@@ -114,6 +114,9 @@ impl World {
                 return Ok(());
             }
             cache.depleted = true;
+            // `mem::replace` moves the contents out and leaves `{}` in their place —
+            // Rust can't just "take" a field out of a borrowed struct (that would
+            // leave a hole), so the swap hands us ownership without a clone.
             core::mem::replace(&mut cache.contents, json!({}))
         };
         // Deposit into the pool + record the `material` codex entries.
@@ -224,6 +227,8 @@ impl World {
             .ok_or_else(|| ProceduralViolation("Item snapshot not found.".into()))?
             .clone();
         let resolved = resolve_item(&snap, cat)?;
+        // `let (Some(a), Some(b)) = … else`: both options must be present or we
+        // bail — a two-value destructure-or-return in one statement.
         let (Some(max), Some(cur)) = (resolved.max_durability, resolved.durability) else {
             return Err(ProceduralViolation(
                 "Cannot repair an item that has no durability.".into(),

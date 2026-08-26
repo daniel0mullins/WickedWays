@@ -15,6 +15,7 @@ use serde_json::Value;
 use crate::presentation::{MechanicCue, StatusField};
 use crate::stats::StatType;
 use crate::world::afflictions::Status;
+use crate::world::descriptor::Catalog;
 use crate::world::ids::{CharacterId, ItemId};
 
 pub use view::{CampaignView, CharacterView, DamageView, RoomView};
@@ -79,6 +80,11 @@ pub enum TransformResult {
 
 /// Contexts passed to hooks. Views are owned (built once before dispatch); `state`
 /// and `rng` are live mutable borrows of disjoint `World` fields.
+///
+/// Two simultaneous `&mut` into one `World` is legal only because the dispatch
+/// site carves them out field-by-field (a "split borrow") — the compiler proves
+/// they can never alias. The `<'a>` lifetime ties the context to that borrow:
+/// a `HookCtx` cannot be stored past the dispatch call that built it.
 pub struct HookCtx<'a> {
     pub state: &'a mut Value,
     pub view: &'a CampaignView,
@@ -168,8 +174,6 @@ pub fn mechanic_op(key: &str) -> Option<&'static dyn MechanicOp> {
         _ => None,
     }
 }
-
-use crate::world::descriptor::Catalog;
 
 /// A key resolved to an op: a compiled-in native, or an interpreter bound to a
 /// catalog-borrowed AST (no per-fire-point clone — spec risk note).

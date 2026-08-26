@@ -25,6 +25,8 @@ use crate::world::snapshot::{CharacterKind, ItemSnapshot, LootSnapshot};
 use crate::world::World;
 
 impl World {
+    // ---- durability, reconcile & KO ----
+
     /// Durability write seam (mirrors `SET_DURABILITY`). The ONLY place
     /// `ItemSnapshot::Item.durability` is mutated. No clamp — callers pass
     /// `durability - 1`, and only non-broken items (durability >= 1) ever wear.
@@ -90,7 +92,9 @@ impl World {
             return;
         }
 
-        // Snapshot drop-relevant fields.
+        // Snapshot drop-relevant fields. The `{ … }` block is an expression whose
+        // value is this six-field tuple: cloning everything out at once ends the
+        // borrow of `self.characters` before the mutations below need `&mut self`.
         let (material_drops, room_id, is_room_origin, item_ids, key_ids, mob_name) = {
             let Some(c) = self.characters.get(actor) else {
                 return;
@@ -152,6 +156,8 @@ impl World {
             r.loot_ids.push(box_id);
         }
     }
+
+    // ---- the attack action ----
 
     /// Resolve a character's equipped items (de-duplicating two-handed items that
     /// occupy two slots), mirroring `effective_stat`'s equipped-set derivation.
@@ -243,6 +249,8 @@ impl World {
         let mut crit_mult = 1.0_f64;
         let mut landed = true;
         let d20 = self.draw_die(20);
+        // `match` is an expression — the selected arm's value becomes `outcome`.
+        // `2..=5` is an inclusive range pattern; `_` is the required catch-all.
         let outcome = match d20 {
             20 => {
                 crit_mult = 1.5;
@@ -353,6 +361,8 @@ impl World {
         Ok(())
     }
 
+    // ---- codex & materials ----
+
     /// Append a codex entry, first-write-wins per `(kind, key)`.
     /// `firstSeen.characterId`/`roomId` are omitted when `by`/`room` are `None`.
     pub(crate) fn record_codex(
@@ -424,6 +434,8 @@ impl World {
             );
         }
     }
+
+    // ---- incoming damage ----
 
     /// Apply an incoming hit to `target`'s `attack_stat` after armor + mitigation,
     /// wear contributing armor, reconcile, and record a NON-budgeted `takeDamage`.

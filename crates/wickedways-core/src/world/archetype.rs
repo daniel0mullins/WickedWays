@@ -54,6 +54,9 @@ impl World {
                 "Cannot select an archetype after the campaign has begun.".into(),
             ));
         }
+        // `ok_or_else(...)?` turns a missing map entry into an early error return —
+        // `?` propagates the `Err` to the caller, like a `throw` that is visible in
+        // the function's `Result` signature.
         let ch = self
             .characters
             .get(actor)
@@ -73,6 +76,8 @@ impl World {
             .ok_or_else(|| ProceduralViolation("Unknown archetype.".into()))?;
 
         // Apply. The named base stats OVERRIDE (not add to) the character's stats, matching the TS.
+        // `let ch = …` *shadows* the earlier read-only `ch`: the immutable borrow above has
+        // ended, so we can now take the single allowed mutable borrow of the same entry.
         let ch = self.characters.get_mut(actor).expect("actor present above");
         if let Some(v) = def.base_stats.health {
             ch.stats.health = v;
