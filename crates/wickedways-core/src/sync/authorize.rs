@@ -24,7 +24,8 @@ pub enum AuthResult {
 }
 
 impl AuthResult {
-    /// `true` when the command is permitted.
+    /// `true` when the command is permitted. (`matches!` tests a value against a pattern and
+    /// returns a bool — a compiler-checked type guard, no string comparison involved.)
     pub fn is_ok(&self) -> bool {
         matches!(self, AuthResult::Ok)
     }
@@ -49,6 +50,9 @@ pub fn authorize(world: &World, command: &Command) -> AuthResult {
         }
         // The actor must be the active character. `active_character_id` is `Ok` once
         // the campaign has started; a missing active seat fails the turn-owner check.
+        // `.ok()` collapses the `Result` to an `Option` (an error just becomes `None` — no
+        // throw); `.as_ref()` below turns `&Option<Id>` into `Option<&Id>` so the comparison
+        // borrows the id instead of cloning it.
         let active = world.active_character_id().ok();
         if active.as_ref() != command.actor_id() {
             return denied("Not the active character's turn.");

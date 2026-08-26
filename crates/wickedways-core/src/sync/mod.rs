@@ -11,6 +11,8 @@ pub mod command;
 pub mod coordinator;
 pub mod delta;
 
+// Re-exports flatten the public surface (a barrel `index.ts`, in JS terms):
+// callers write `sync::Command` rather than `sync::command::Command`.
 pub use applier::apply as apply_delta;
 pub use authority::{AuthorityOpts, LogEntry, SubmitResult, SyncAuthority};
 pub use authorize::{authorize, AuthResult};

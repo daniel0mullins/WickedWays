@@ -1,4 +1,9 @@
 //! The closed expression/statement AST (serde + ts-rs).
+//!
+//! Every node family here is an enum whose variants carry their operands — Rust's tagged
+//! union, mirroring the TS discriminated unions these types replaced. The serde attributes
+//! pin the wire shape (`tag = "kind"` puts the discriminant inline, camelCase renames match
+//! the JSON), so field names and attributes on these types are golden-gated wire contract.
 use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -28,6 +33,10 @@ pub enum BinOp {
 }
 
 /// The closed expression set. Tagged on `kind` (codebase discriminant convention).
+///
+/// Recursive nodes hold children behind `Box` (an owned heap pointer): a Rust enum must have
+/// one fixed size, so a variant cannot embed another `Expr` inline the way a JS object nests.
+/// serde treats `Box<T>` transparently — it never shows on the wire.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(
     tag = "kind",
@@ -52,6 +61,8 @@ pub enum Expr {
     Not {
         expr: Box<Expr>,
     },
+    /// `else` is a Rust keyword; the `r#` prefix (a "raw identifier") lets it name a field
+    /// anyway, and it still serializes as plain `"else"`.
     IfElse {
         cond: Box<Expr>,
         then: Box<Expr>,

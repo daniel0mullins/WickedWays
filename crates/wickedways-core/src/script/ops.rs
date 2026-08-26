@@ -24,6 +24,10 @@ use crate::world::World;
 
 /// A `MechanicOp` bound to a borrowed script (built per fire-point by
 /// `resolve_mechanic_op` — no cloning of the AST).
+///
+/// The `'a` lifetime (a pattern every adapter here repeats) says the struct merely borrows
+/// the AST out of the catalog for the span of one call and cannot outlive it — the
+/// compile-time answer to "who owns this?", which is what makes zero-clone adapters safe.
 pub struct ScriptedMechanic<'a> {
     pub script: &'a MechanicScript,
 }
@@ -36,6 +40,7 @@ impl ScriptedMechanic<'_> {
         actor: Option<&crate::world::mechanics::CharacterView>,
         action: Option<&crate::world::mechanics::ActionView>,
     ) -> Vec<Effect> {
+        // `let … else` destructures or early-returns — an inverted `if (!body) return []`.
         let Some(body) = body else { return Vec::new() }; // missing hook = no-op
         let mut cx = Ctx {
             view: Some(base.view),
@@ -51,6 +56,8 @@ impl ScriptedMechanic<'_> {
     }
 }
 
+// `impl Trait for Type` ≈ implementing an interface: the engine drives every mechanic —
+// native or scripted — through the `MechanicOp` trait, never knowing which it holds.
 impl MechanicOp for ScriptedMechanic<'_> {
     fn init_state(&self, _config: &Json) -> Json {
         self.script.init.clone()
@@ -108,6 +115,7 @@ impl MechanicOp for ScriptedMechanic<'_> {
         }
     }
     fn run_action(&self, action_key: &str, cx: &mut ActionCtx<'_>) -> Option<Vec<Effect>> {
+        // `?` on an `Option`: an unknown action key early-returns `None` (no throw, no panic).
         let body = self.script.actions.get(action_key)?;
         let actor = cx.actor.clone();
         let action = cx.action.clone();
@@ -388,6 +396,7 @@ const LATCH_FIELD: &str = "onceFired";
 
 /// Full normalize+tokenize: lowercase, split on whitespace, strip ASCII-punctuation
 /// from both edges of each piece, drop emptied pieces. Order-preserving, NOT deduped.
+/// (`filter_map` is map + filter in one lazy pass: returning `None` drops the piece.)
 fn tokenize(s: &str) -> Vec<String> {
     s.to_lowercase()
         .split_whitespace()
@@ -503,7 +512,8 @@ impl ScriptedNpc<'_> {
     ) -> (Vec<MechanicCue>, Vec<Effect>) {
         let sel = select_entry(self.script, prompt);
 
-        // Read the latch BEFORE the mutable state reborrow.
+        // Read the latch BEFORE the mutable state reborrow. The `and_then`/`unwrap_or`
+        // chain is optional chaining: `state?.[LATCH_FIELD]?.[key] ?? false`.
         let already = base
             .state
             .get(LATCH_FIELD)
@@ -534,6 +544,8 @@ impl ScriptedNpc<'_> {
         } else {
             eval_effect_templates(&sel.entry.effects, &mut cx)
         };
+        // `drop(cx)` explicitly ends `cx`'s exclusive borrow of `base.state`, freeing the
+        // latch write below to re-borrow it — the borrow checker allows only one at a time.
         drop(cx);
 
         // A `once` entry sets its latch the first time it fires.

@@ -136,6 +136,8 @@ impl SyncAuthority {
     }
 
     /// Committed entries with `seq >= from_seq`, in order.
+    /// The iterator chain is lazy until `collect` materializes the `Vec` — like
+    /// `log.filter(…).map(clone)`, but nothing is built until the end.
     pub fn entries_since(&self, from_seq: u64) -> Vec<LogEntry> {
         self.log
             .iter()
@@ -173,6 +175,8 @@ impl SyncAuthority {
         // Keep an exact pre-apply copy of the world (rng included) to roll back to on a
         // violation — a partially-applied-then-rejected command must leave nothing behind. A
         // direct clone is guaranteed faithful, where a snapshot round-trip need not be.
+        // (`clone` is an explicit deep copy; Rust assignment moves ownership and never
+        // aliases, so `backup` cannot be mutated out from under us like a JS reference.)
         let backup = self.world.clone();
         let before = self.world.to_snapshot();
         let cues = match apply_command(
@@ -229,6 +233,9 @@ fn apply_command(
     turn_started: &mut bool,
 ) -> Result<Vec<PresentationCue>, ProceduralViolation> {
     let mut cues: Vec<PresentationCue> = Vec::new();
+    // Throughout this function `?` propagates a `ProceduralViolation` to the caller immediately
+    // — a typed, explicit early-return (Rust's answer to throw); `submit` catches it and
+    // restores the pre-image.
     // Managed-turns (multiplayer): a turn-changing command begins the new active player's turn —
     // `start_turn` resets their budget, ticks afflictions, and fires `onTurnStart` (dread).
     if manage_turns

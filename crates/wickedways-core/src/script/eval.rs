@@ -19,6 +19,8 @@ use crate::world::mechanics::{
 };
 use crate::world::World;
 
+// ─── Runtime values & evaluation contexts ────────────────────────────────────
+
 /// Runtime evaluation result: plain values, plus the read-model SUBJECTS
 /// (characters/rooms/action/damage) which flow through expressions but are
 /// never first-class serialized values.
@@ -53,6 +55,10 @@ impl Ev {
 /// The mechanic/exit/victory state a script may read (and, for statement
 /// bodies, write). `Read` supports predicate contexts (`can_pass` borrows
 /// `&exit.state`); `Write` supports hook/script bodies.
+///
+/// This is borrow-checking surfacing in an API: `Read` carries a shared `&` view while
+/// `Write` carries the one exclusive `&mut` handle — the compiler enforces at most one
+/// writer, so which of the two a calling context can legally lend is part of the type.
 pub enum CtxState<'a> {
     None,
     Read(&'a serde_json::Value),
@@ -86,6 +92,9 @@ impl RoomSource<'_> {
     }
 }
 
+/// Everything one evaluation may see. The `'a` lifetime ties every borrowed field to data the
+/// caller still owns: a `Ctx` is a bundle of views, valid only for the duration of that one
+/// evaluation — there is no GC, the compiler proves the references stay alive.
 pub struct Ctx<'a> {
     pub view: Option<&'a CampaignView>,
     pub state: CtxState<'a>,
@@ -115,6 +124,10 @@ impl<'a> Ctx<'a> {
     }
 }
 
+// ─── Expression evaluation ───────────────────────────────────────────────────
+
+/// One exhaustive `match` over every node kind. Unlike a JS `switch`, a missing variant is a
+/// compile error — adding an `Expr` node forces a decision here (totality by construction).
 pub fn eval_expr(e: &Expr, cx: &mut Ctx<'_>) -> Ev {
     match e {
         Expr::Lit { value } => Ev::Val(value.clone()),
@@ -265,6 +278,8 @@ pub fn eval_predicate(e: &Expr, cx: &mut Ctx<'_>) -> bool {
     eval_expr(e, cx).truthy()
 }
 
+// ─── Statement bodies (hook / script execution) ──────────────────────────────
+
 /// Control flow through a statement body: a falsy `Guard` halts.
 enum Flow {
     Continue,
@@ -348,6 +363,8 @@ fn exec_stmts(
     Flow::Continue
 }
 
+// ─── Effect building ─────────────────────────────────────────────────────────
+
 /// Resolve an effect-target expr to a `CharacterId` (a character subject or a
 /// string id). `None` skips the emit — an unresolvable target drops that one
 /// effect, not the whole body.
@@ -378,6 +395,8 @@ fn as_number(ev: Ev) -> Option<f64> {
 
 /// Build one closed `Effect` from a template; `None` when target/amount are
 /// unresolvable (skips that emit rather than halting the body).
+/// `?` here operates on `Option`, not `Result`: any `None` from a resolver
+/// early-returns `None` for the whole template — optional chaining with an exit.
 fn build_effect(t: &EffectTemplate, cx: &mut Ctx<'_>) -> Option<Effect> {
     match t {
         EffectTemplate::Damage { target, amount } => Some(Effect::Damage {
@@ -454,6 +473,8 @@ pub fn eval_damage(body: &DamageBody, d: &DamageView, cx: &mut Ctx<'_>) -> Trans
     }
 }
 
+// ─── State write helpers ─────────────────────────────────────────────────────
+
 /// `state[field] = v`, converting a non-object state to `{}` first (total).
 pub(crate) fn state_set(state: &mut serde_json::Value, field: &str, v: serde_json::Value) {
     if !state.is_object() {
@@ -481,9 +502,13 @@ pub(crate) fn state_set_in(
     state[map_field][key] = v;
 }
 
+// ─── Expression helpers ──────────────────────────────────────────────────────
+
 /// Bounded quantification. Binds `Ctx.element` per iteration (saving/restoring
 /// any outer binding, so nesting shadows correctly). `every([])` is vacuously
 /// true, `some([])` false — JS Array semantics.
+/// `cx.element.take()` MOVES the outer binding out (leaving `None` behind) so it can be put
+/// back afterwards — ownership changes hands explicitly instead of being silently shared.
 fn quantify(list: &Expr, pred: &Expr, cx: &mut Ctx<'_>, every: bool) -> bool {
     let items: Vec<Ev> = match eval_expr(list, cx) {
         Ev::Chars(cs) => cs.into_iter().map(Ev::Char).collect(),
