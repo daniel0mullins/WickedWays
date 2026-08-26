@@ -28,11 +28,10 @@ pub fn BodyField(
     rsx! {
         label { class: "studio-field",
             span { class: "studio-field-label", "{label}" }
-            textarea {
-                class: if err.is_some() { "studio-input studio-body invalid" } else { "studio-input studio-body" },
-                value: "{value}",
-                spellcheck: "false",
-                oninput: move |e| on_change.call(e.value()),
+            crate::ui::highlight::DslEditor {
+                value,
+                invalid: err.is_some(),
+                on_input: move |v: String| on_change.call(v),
             }
         }
         crate::ui::builders::SnippetBar {
@@ -65,12 +64,10 @@ pub fn OptBodyField(
     rsx! {
         label { class: "studio-field",
             span { class: "studio-field-label", "{label}" }
-            textarea {
-                class: if err.is_some() { "studio-input studio-body invalid" } else { "studio-input studio-body" },
-                value: "{shown}",
-                spellcheck: "false",
-                oninput: move |e| {
-                    let v = e.value();
+            crate::ui::highlight::DslEditor {
+                value: shown.clone(),
+                invalid: err.is_some(),
+                on_input: move |v: String| {
                     on_change.call(if v.trim().is_empty() { None } else { Some(v) });
                 },
             }

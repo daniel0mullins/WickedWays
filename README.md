@@ -1772,6 +1772,13 @@ saved, never a silent demo fallback) and lists a synthetic "Studio Playtest" lau
 campaign while the slot exists. Same-origin serving makes the handoff work with zero
 server involvement; the desktop shells share it through the common data dir.
 
+Post-P3 polish: every DSL body edits with **syntax highlighting** — the overlay idiom
+(a transparent-text textarea over an `aria-hidden` `<pre>` of colored token spans,
+scroll-synced), driven by a lossless tokenizer (`ui/highlight.rs`) whose vocabulary
+mirrors the real grammar's keyword/effect/call/subject lists and is property-tested to
+reproduce every line of the campaign corpus byte-for-byte. The compiler stays the
+validity authority; the colors are cosmetic and never guess at unknown words.
+
 Build/serve like the play client: `dx serve` in `crates/wickedways-studio` for dev,
 `crates/wickedways-studio/build-studio.sh` for the static bundle. **Deployment**: the root
 `Dockerfile` builds the studio bundle alongside the play client, and the room server serves

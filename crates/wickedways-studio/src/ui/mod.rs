@@ -3,6 +3,7 @@
 
 pub mod behaviors;
 pub mod builders;
+pub mod highlight;
 pub mod home;
 pub mod map;
 pub mod screens;
