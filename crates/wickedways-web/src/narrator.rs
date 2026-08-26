@@ -34,6 +34,8 @@ pub struct RoomParts {
     pub first_visit: bool,
 }
 
+/// The prose renderer shared by all three surfaces. Its only state is the set of visited room ids
+/// (for [`RoomParts::first_visit`] pacing); everything else is a pure translation of the inputs.
 #[derive(Default)]
 pub struct Narrator {
     visited: BTreeSet<String>,
@@ -44,6 +46,8 @@ impl Narrator {
         Self::default()
     }
 
+    /// The room description as structured parts (header / description / body), for surfaces that
+    /// style them separately. [`render_room`](Self::render_room) is the flattened form.
     pub fn render_room_parts(&mut self, vm: &ViewModel) -> RoomParts {
         let header = vm.room.name.clone();
         let first_visit = !self.visited.contains(&vm.room.id);
@@ -84,6 +88,7 @@ impl Narrator {
         }
     }
 
+    /// [`render_room_parts`](Self::render_room_parts) flattened to plain transcript lines.
     pub fn render_room(&mut self, vm: &ViewModel) -> Vec<String> {
         let parts = self.render_room_parts(vm);
         let mut lines = vec![parts.header];
@@ -94,6 +99,8 @@ impl Narrator {
         lines
     }
 
+    /// Render a committed delta's presentation cues (mechanic text, encounters, light changes,
+    /// resolution narration) as transcript lines; action/status cues are handled elsewhere.
     pub fn render_cues(&self, cues: &[PresentationCue]) -> Vec<String> {
         let mut lines = Vec::new();
         for cue in cues {
@@ -125,6 +132,8 @@ impl Narrator {
         lines
     }
 
+    /// Answer a zero-noun informational query (look / inventory / exits / help) from the current
+    /// view — rendered locally, no engine command involved.
     pub fn render_query(&mut self, query: Query, vm: &ViewModel) -> Vec<String> {
         match query {
             Query::Look => self.render_room(vm),

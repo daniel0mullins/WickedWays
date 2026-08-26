@@ -154,6 +154,9 @@ pub fn pnc_app() -> Element {
     let mut my_turn = use_signal(|| false);
     let mut my_actions_left = use_signal(|| true);
 
+    // The transport coroutine: one long-lived async event loop owning the non-`Send` transport /
+    // coordinator / audio, fed `PncAction`s by the UI via `driver.send(..)` — the same pattern as
+    // `crt_app` (see the fuller note there).
     let driver = use_coroutine(move |rx: UnboundedReceiver<PncAction>| async move {
         let cfg = read_config();
         let single = matches!(cfg.mode, Mode::Single);
@@ -604,6 +607,8 @@ pub fn pnc_app() -> Element {
                     }
                     div { class: "overlay-frame", onclick: move |e| e.stop_propagation(),
                         if pending_card().is_some() {
+                            // `Callback::new` wraps a closure as a passable prop (≈ handing a child
+                            // component an `onPick` function in React).
                             {map_svg_pick(&layout_map(&map_model.read()), Callback::new(move |room: String| {
                                 if let Some((card_key, _)) = pending_card() {
                                     driver.send(PncAction::Run(ActionDescriptor::Intent {

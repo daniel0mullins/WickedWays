@@ -82,6 +82,11 @@ enum Overlay {
     Map,
 }
 
+// A Dioxus surface is a React-shaped function component: `use_signal` ≈ `useState`, but it returns
+// ONE handle that is both getter and setter — read with `sig()` / `sig.read()`, write with
+// `sig.set(...)` / `sig.write()`. A `Signal` is `Copy` (a cheap ID into Dioxus's state store, not
+// the data itself), which is why the `move` closures below can capture signals by value everywhere
+// without `.clone()` noise, and why writes from inside the coroutine still re-render the component.
 pub fn crt_app() -> Element {
     let mut status = use_signal(|| "connecting…".to_string());
     let mut vm = use_signal(|| None::<ViewModel>);
@@ -115,7 +120,9 @@ pub fn crt_app() -> Element {
 
     // Auto-scroll the transcript to the newest line whenever the narration or view changes, so the
     // latest output stays in view between the pinned status bar and dock. `document::eval` reaches
-    // the DOM on both hosts (the browser page, or the desktop webview).
+    // the DOM on both hosts (the browser page, or the desktop webview). `use_effect` ≈ `useEffect`,
+    // but with no dependency array: it re-runs when any signal it READS changes, so the two
+    // otherwise-unused reads below are the subscription.
     use_effect(move || {
         let _ = narration.read();
         let _ = vm.read();
@@ -124,6 +131,12 @@ pub fn crt_app() -> Element {
         );
     });
 
+    // `use_coroutine` spawns one long-lived async task fed by a channel: UI handlers `driver.send(..)`
+    // an `Action` in, the loop below awaits them (think a reducer/event loop, or a saga). Everything
+    // that must NOT live in render state — the non-`Send` transport, the coordinator, the undo stack,
+    // the `AudioRuntime` — is owned by this task as plain local variables; only display state is
+    // written back out through the signals. (wasm is single-threaded, so "async" here is
+    // cooperative scheduling on the browser's event loop, like JS promises.)
     let driver = use_coroutine(move |rx: UnboundedReceiver<Action>| async move {
         let cfg = read_config();
         let single = matches!(cfg.mode, Mode::Single);
@@ -206,6 +219,8 @@ pub fn crt_app() -> Element {
                             let view = project(&coord, &catalog);
                             before_view.clone_from(&view);
                             let scope: &[_] = view.as_ref().map_or(&[], |v| v.scope.as_slice());
+                            // An exhaustive `match` (compiler-enforced, unlike a TS switch): add a
+                            // `ParseResult` variant and this fails to compile until it's handled.
                             match parse(&text, scope) {
                                 ParseResult::Query(q) => {
                                     if let Some(v) = &view {
@@ -641,6 +656,8 @@ fn linked_line(line: &str, nouns: &[String], draft: Signal<String>) -> Element {
                         span {
                             key: "seg{i}",
                             class: "noun",
+                            // `Signal` is `Copy`, so `let mut d = draft` just re-binds the same
+                            // handle mutably inside the closure — no clone, same underlying state.
                             onclick: move |_| { let mut d = draft; d.set(format!("examine {n}")); },
                             "{text}"
                         }
@@ -675,11 +692,9 @@ fn emphasis_class(field: &StatusField) -> &'static str {
     }
 }
 
-/// Renders the engine's `ViewModel` as the CRT game view — HUD, room, exits, occupants, inventory,
-/// plus the running narration log. The room description and narration lines link the scope's nouns;
-/// `fields` are the campaign's live `Status` readout, shown as a color-coded status bar when present.
 /// The fixed status bar pinned to the top of the CRT screen (above the scrolling transcript): the
-/// core HUD (location · turn · HP · SAN) plus the campaign's authored `StatusField` readout.
+/// core HUD (location · turn · HP · SAN) plus the campaign's authored `StatusField` readout,
+/// color-coded by emphasis when present.
 fn hud_bar(v: &ViewModel, fields: &[StatusField]) -> Element {
     let s = &v.status;
     // The HUD already shows turn / HP / SAN, so a campaign's authored StatusFields that just repeat
