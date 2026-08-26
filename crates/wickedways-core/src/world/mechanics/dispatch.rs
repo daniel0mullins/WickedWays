@@ -31,6 +31,8 @@ pub enum TurnPhase {
 }
 
 impl World {
+    // ---- effect application ----
+
     /// `campaign[FIND_CHARACTER]`: effects resolve against
     /// the PARTY only and throw when the target is absent. Error text is not
     /// gate-observable (a ProceduralViolation aborts replay before comparison).
@@ -176,6 +178,8 @@ impl World {
         Ok(())
     }
 
+    // ---- hook dispatch (collect-then-apply) ----
+
     /// Dispatch a round hook to every live mechanic (collect-then-apply, opt-in order,
     /// per-mechanic 64-cap). No-op when there are no mechanics (existing goldens unchanged).
     pub fn dispatch_round(
@@ -200,6 +204,9 @@ impl World {
                     )));
                 };
                 let op = resolved.as_op();
+                // `&mut *rng` is a *reborrow*: it lends the mutable reference to
+                // this iteration's ctx without giving it away, so the next
+                // iteration can lend it again (plain `rng` would move it once).
                 let mut cx = HookCtx {
                     state: &mut m.state,
                     view: &view,
@@ -385,6 +392,8 @@ impl World {
         value
     }
 
+    // ---- load-time validation ----
+
     /// Fail-fast on an unresolvable mechanic key or an ill-shaped scripted AST
     /// (TS registry throw at hydrate). Call after building a `World` for replay.
     /// Tasks 13/14 extend this to exit behavior keys and victory condition keys.
@@ -539,6 +548,8 @@ impl World {
         }
         Ok(())
     }
+
+    // ---- custom mechanic actions ----
 
     /// Invoke a mechanic's custom action (`useMechanicAction` + `INVOKE_MECHANIC_ACTION`).
     /// Budgeted: gate → run the op's action → apply effects → record the `mechanicAction`

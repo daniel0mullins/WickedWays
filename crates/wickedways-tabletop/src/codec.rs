@@ -24,7 +24,11 @@ use crate::protocol::DeviceCommand;
 /// The frame delimiter. COBS output never contains a zero byte, so this can only mean "end of frame".
 pub const DELIMITER: u8 = 0x00;
 
+// ─── COBS primitives ─────────────────────────────────────────────────────────
+
 /// COBS-encode `data` (does **not** append the delimiter). The result never contains a `0x00` byte.
+// `#[must_use]` makes the compiler warn if a caller drops the return value — for a pure function,
+// calling it and ignoring the result is always a bug.
 #[must_use]
 pub fn cobs_encode(data: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(data.len() + data.len() / 254 + 2);
@@ -74,10 +78,14 @@ pub fn cobs_decode(frame: &[u8]) -> Option<Vec<u8>> {
     Some(out)
 }
 
+// ─── framing: message ↔ wire frame ───────────────────────────────────────────
+
 /// Encode a value into a complete wire frame: COBS-stuffed JSON + the `0x00` delimiter.
 ///
 /// # Panics
 /// Panics only if the value fails to serialize to JSON, which the device protocol never does.
+// `<T: Serialize>` is a bounded generic, like TS `<T extends Serializable>` — any serde-derived
+// type frames the same way.
 #[must_use]
 pub fn encode<T: Serialize>(msg: &T) -> Vec<u8> {
     let json = serde_json::to_vec(msg).expect("device protocol serializes to JSON");
@@ -91,6 +99,8 @@ pub fn encode<T: Serialize>(msg: &T) -> Vec<u8> {
 pub fn encode_command(cmd: &DeviceCommand) -> Vec<u8> {
     encode(cmd)
 }
+
+// ─── stream reassembly ───────────────────────────────────────────────────────
 
 /// Reassembles delimiter-terminated frames from a byte stream that may arrive in arbitrary chunks.
 ///
@@ -128,6 +138,8 @@ impl FrameDecoder {
 
     /// Feed a chunk of bytes; deserialize each completed frame as `T`, dropping any that fail.
     pub fn feed_typed<T: DeserializeOwned>(&mut self, bytes: &[u8]) -> Vec<T> {
+        // `.ok()` turns a parse `Result` into an `Option`, and `filter_map` keeps only the `Some`s
+        // — i.e. a frame that fails to parse is silently dropped, matching the doc contract above.
         self.feed(bytes)
             .iter()
             .filter_map(|frame| serde_json::from_slice(frame).ok())

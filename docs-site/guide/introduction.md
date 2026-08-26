@@ -22,8 +22,11 @@ The engine lives in a Rust workspace under `crates/`:
 
 ## How these docs are organized
 
-- **[Getting started](./getting-started)** — build and run the engine, the web
-  client, and the test suites from a fresh checkout.
+- **[Getting started](./getting-started)** — build and run the engine from a
+  fresh checkout, then a guided tour of every concept with runnable code: the
+  authoring pipeline, the `World` and its snapshots, turns and lifecycle
+  guards, intents and cues, damage and determinism, the behavior-trait pattern
+  and the ops DSL, multiplayer sync, and the golden gates.
 - **[Architecture](./architecture)** — the authoritative deep dive: the campaign
   turn loop, character hierarchy, combat and mitigation math, status effects,
   mobs and encounters, loot, crafting, durability, equipment slots, keys, and

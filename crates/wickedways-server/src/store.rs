@@ -60,6 +60,9 @@ impl fmt::Display for StoreError {
 
 impl Error for StoreError {}
 
+// These `From` impls are what power the `?` operator below: `conn.execute(…)?` returns early with
+// the rusqlite error auto-converted into a `StoreError` — the closest Rust gets to `throw`, except
+// every propagation point is visible as a `?` and the wrapping is spelled out here.
 impl From<rusqlite::Error> for StoreError {
     fn from(e: rusqlite::Error) -> Self {
         StoreError::Db(e)
@@ -83,13 +86,16 @@ pub trait CampaignStore: Send + Sync {
     fn save(&self, campaign_id: &str, record: &CampaignRecord) -> Result<(), StoreError>;
 }
 
+// ── the SQLite implementation ─────────────────────────────────────────────────────────────────
+
 /// A [`CampaignStore`] backed by SQLite (rusqlite, bundled). One row per campaign; each [`save`] is
 /// a single-row upsert, so snapshot and membership land atomically (no torn read). WAL mode for
 /// crash safety. Parameterized statements only.
 ///
 /// The [`Connection`] is wrapped in a [`Mutex`] to satisfy `Sync` (rusqlite's connection is `Send`
 /// but not `Sync`); contention is nil in practice because the per-campaign actor already serializes
-/// access.
+/// access. (Single-threaded JS gets this serialization for free; Rust makes the value prove it is
+/// safe to share across threads before it will compile.)
 ///
 /// [`save`]: CampaignStore::save
 pub struct SqliteStore {

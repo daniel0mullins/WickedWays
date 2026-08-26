@@ -8,6 +8,11 @@ use crate::presentation::CampaignOutcome;
 use crate::stats::StatType;
 use crate::world::descriptor::{ItemDescriptor, ItemProperties, ItemType};
 use crate::world::ids::{CharacterId, ExitId, RoomId};
+use crate::world::snapshot::{
+    CampaignCoreSnapshot, CharacterKind, CharacterSnapshot, ExitSnapshot, InventorySnapshot,
+    RoomSnapshot, SceneSnapshot, Stats,
+};
+use crate::world::World;
 
 /// Shorthand `CharacterId`.
 pub fn cid(s: &str) -> CharacterId {
@@ -54,11 +59,6 @@ pub fn item_desc(name: &str, r#type: ItemType, stat: StatType, modifier: i64) ->
         grants_immunity: json!(null),
     }
 }
-use crate::world::snapshot::{
-    CampaignCoreSnapshot, CharacterKind, CharacterSnapshot, ExitSnapshot, InventorySnapshot,
-    RoomSnapshot, SceneSnapshot, Stats,
-};
-use crate::world::World;
 
 /// Build a minimal started `World` with the given party ids, each backed by a
 /// minimal player `CharacterSnapshot` in no room. Fields: `started = true`,

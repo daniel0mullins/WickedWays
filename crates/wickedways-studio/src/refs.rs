@@ -103,6 +103,9 @@ pub fn check_refs(doc: &EditorDoc) -> Vec<StudioProblem> {
     let rooms: BTreeSet<&str> = doc.rooms.iter().map(|r| r.entry.name.as_str()).collect();
     let items: BTreeSet<&str> = doc.items.iter().map(|i| i.entry.key.as_str()).collect();
 
+    // These helpers take `out` as a parameter instead of capturing it: Rust
+    // allows exactly one mutable borrow at a time, so two closures could not
+    // both close over the same Vec (in JS both would simply share the array).
     let require_room = |out: &mut Vec<StudioProblem>, family, asset, ctx: &str, room: &str| {
         if !rooms.contains(room) {
             out.push(problem(
@@ -791,6 +794,8 @@ pub fn rename_room(doc: &mut EditorDoc, old: &str, new: &str) -> usize {
         return 0;
     }
     let mut n = 0;
+    // An `FnMut` closure: it captures `n` mutably and bumps it on every hit —
+    // which is also why the closure itself must be bound `mut`.
     let mut touch = |s: &mut String| {
         if s == old {
             *s = new.to_string();

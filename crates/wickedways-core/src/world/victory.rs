@@ -17,6 +17,11 @@ pub trait VictoryConditionBehavior: Sync {
 /// note 2) is NOT a `VictoryConditionBehavior` — the trait's `test(&CampaignView)`
 /// cannot carry the `World` the lazy `character.room` resolver needs — so the
 /// `resolve_outcome` seam calls `ScriptedVictory::test` directly for this arm.
+// `<'a>` is a lifetime parameter: the `Scripted` arm borrows the script out of the
+// catalog rather than copying it, and the annotation tells the compiler this value
+// must not outlive that catalog. `&'static dyn Trait` in the `Native` arm is a
+// pointer to a compiled-in singleton implementing the trait (`'static` = lives for
+// the whole program) — roughly a frozen module-level object satisfying an interface.
 pub enum ResolvedVictory<'a> {
     Native(&'static dyn VictoryConditionBehavior),
     Scripted(&'a crate::script::ast::VictoryScript),

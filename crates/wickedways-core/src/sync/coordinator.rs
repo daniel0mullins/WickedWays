@@ -24,6 +24,10 @@ use super::command::Command;
 /// The ordered, broadcast surface a [`SyncCoordinator`] submits commands to and reads entries
 /// from. The in-process impl wraps a [`SyncAuthority`]; a WebSocket impl forwards to the
 /// room server. Only this trait and the coordinator need know the difference.
+///
+/// A trait is Rust's take on a TS interface: `impl SyncTransport for X` wires a type in, and
+/// the coordinator's generic bounds (`<T: SyncTransport>`) are resolved at compile time —
+/// each transport gets its own specialized code, no dynamic dispatch.
 pub trait SyncTransport {
     /// Highest committed seq.
     fn head(&self) -> u64;
@@ -91,6 +95,8 @@ impl SyncCoordinator {
 
     /// The most recent campaign `Status` fields (empty until a `Status` cue has been applied). Kept
     /// live from every applied delta's cues, so it reflects the current turn's readout.
+    /// Returned as a borrowed slice (`&[..]`): a read-only view into the coordinator's own
+    /// storage, valid only while the coordinator is — no copy, unlike returning a fresh array.
     pub fn status_fields(&self) -> &[StatusField] {
         &self.latest_status
     }

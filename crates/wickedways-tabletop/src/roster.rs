@@ -27,7 +27,12 @@ pub struct SeatView {
 
 /// Read every party seat's location + stats from the live replica, in `party_ids` order.
 pub fn party_roster(world: &World) -> Vec<SeatView> {
+    // `.ok()` discards the error and keeps an `Option` — here we only care *whether* there is an
+    // active seat, not why there isn't one.
     let active = world.active_character_id().ok();
+    // `filter_map` is `.map().filter(Boolean)` in one pass: the closure returns an `Option`, and
+    // `None`s are dropped. The `?` inside early-returns `None` from the *closure* (like optional
+    // chaining bailing out), so a party id with no character record simply yields no row.
     world
         .campaign
         .party_ids

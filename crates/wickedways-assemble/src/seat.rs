@@ -76,6 +76,8 @@ pub(crate) fn seat_party(
     // The boot move seats each PC into `startRoom`. Validation guarantees a valid
     // start room; if it is somehow absent there is nowhere to seat, so leave the
     // player-less snapshot untouched rather than panic.
+    // (`let Some(x) = ... else { return }` is a guard clause: unwrap the Option
+    // or bail — the same shape as `if (x == null) return;` in JS.)
     let Some(start_name) = desc.start_room.as_deref() else {
         return Ok(());
     };
@@ -83,6 +85,9 @@ pub(crate) fn seat_party(
     let Some(room_idx) = snap.rooms.iter().position(|r| r.id.0 == start_room_id) else {
         return Ok(());
     };
+    // Clone these Strings out now. In JS you'd hold a reference into the room;
+    // here a borrow of `snap.rooms[..]` would lock `snap` against the mutation
+    // below, so we take owned copies and the borrow ends immediately.
     let room_name = snap.rooms[room_idx].name.clone();
     let room_description = snap.rooms[room_idx].description.clone();
 
@@ -208,6 +213,7 @@ pub(crate) fn seat_party(
     }
 
     // Party members sort ahead of room occupants in `characters[]`.
+    // `splice(0..0, pc_snaps)` inserts at the front — `arr.unshift(...pcs)`.
     snap.characters.splice(0..0, pc_snaps);
     snap.campaign.active_character_index = 0;
     snap.campaign.encountered = encountered;
@@ -250,8 +256,12 @@ fn apply_archetype(
         }
     }
     if let Some(delta) = arch.inventory_slots {
+        // `*slots` dereferences the `&mut i64` to assign through it — mutating
+        // the caller's variable, which JS can't do with a number parameter.
         *slots = (*slots + delta).max(0);
     }
+    // `filter_map(...ok())` = map each name through the parser and silently drop
+    // failures — `.map(parse).filter(x => x !== undefined)` in one pass.
     *immunities = arch
         .immunities
         .iter()

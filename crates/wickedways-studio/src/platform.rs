@@ -129,7 +129,11 @@ mod imp {
     const DB_NAME: &str = "wickedways-studio";
     const STORE: &str = "campaigns";
 
-    /// Await an `IdbRequest` (they are event-driven, not Promises).
+    /// Await an `IdbRequest` (they are event-driven, not Promises) — the
+    /// `new Promise((resolve, reject) => …)` wrapper, done with a oneshot
+    /// channel. The `Closure::once` values are Rust closures handed to the JS
+    /// engine as callbacks; Rust must keep them alive until the event fires
+    /// (the explicit `drop`s after the await), or JS would call freed memory.
     async fn await_request(req: web_sys::IdbRequest) -> Result<JsValue, String> {
         let (tx, rx) = futures_channel::oneshot::channel::<Result<JsValue, String>>();
         let tx = std::rc::Rc::new(std::cell::RefCell::new(Some(tx)));
@@ -276,6 +280,9 @@ mod imp {
     /// Persist one campaign blob (fire-and-forget; a failure is logged — the
     /// in-memory copy and the next successful write keep the session safe).
     pub fn blob_put(key: &str, value: &str) {
+        // Owned copies first: the future outlives this call, so it cannot hold
+        // the caller's `&str` borrows. `spawn_local` then runs it on the JS
+        // microtask queue — the `void (async () => { … })()` idiom.
         let key = key.to_string();
         let value = value.to_string();
         wasm_bindgen_futures::spawn_local(async move {

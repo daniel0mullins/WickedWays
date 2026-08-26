@@ -17,47 +17,6 @@ use crate::map::MapModel;
 use crate::protocol::{DeviceCommand, DeviceEvent, PieceGlow};
 use crate::roster::SeatView;
 
-/// The glow for a seat's piece — worst affliction first.
-fn glow_for(seat: &SeatView) -> PieceGlow {
-    if seat.ko {
-        PieceGlow::Ko
-    } else if seat.panic {
-        PieceGlow::Panic
-    } else if seat.fear {
-        PieceGlow::Fear
-    } else {
-        PieceGlow::Normal
-    }
-}
-
-/// The wire label for a campaign outcome.
-fn outcome_str(o: &CampaignOutcome) -> String {
-    match o {
-        CampaignOutcome::Ongoing => "ongoing",
-        CampaignOutcome::Won => "won",
-        CampaignOutcome::Lost => "lost",
-        CampaignOutcome::TimedOut => "timed-out",
-        CampaignOutcome::Ended => "ended",
-    }
-    .to_string()
-}
-
-/// The affliction chip labels for a seat's dashboard.
-fn affliction_labels(seat: &SeatView) -> Vec<String> {
-    let mut labels = Vec::new();
-    for (on, label) in [
-        (seat.ko, "KO"),
-        (seat.panic, "Panic"),
-        (seat.fear, "Fear"),
-        (seat.confused, "Confused"),
-    ] {
-        if on {
-            labels.push(label.to_string());
-        }
-    }
-    labels
-}
-
 /// Project the whole board: a `Tile` per placed room, a `Piece` + `Dashboard` per seat, the shared
 /// status `Banner`, and a `Resolution` when the campaign has ended. v1 re-emits the full board each
 /// turn (the device/simulator is idempotent); diffing is a later optimization.
@@ -124,6 +83,10 @@ pub fn render(
 /// - `Ok(Some(cmd))` — submit it (the engine's `authorize` still gates it by turn/lock).
 /// - `Ok(None)` — a local-only or reserved event (a container open, a lantern) — nothing to submit.
 /// - `Err(reason)` — the move is blocked (a locked door) — the caller flashes a `reject` LED.
+///
+/// The nested `Result<Option<…>>` return encodes those three outcomes in the type itself — where a
+/// JS function might return `null`, throw, or return a value, here all three paths are spelled out
+/// and the caller must handle each.
 pub fn resolve(
     event: &DeviceEvent,
     world: &World,
@@ -140,7 +103,8 @@ pub fn resolve(
             Ok(Some(cmd))
         }
         DeviceEvent::TileAction { actor_id, intent } => {
-            // `open` reveals a container locally — no engine command.
+            // `open` reveals a container locally — no engine command. (`matches!` is a one-line
+            // pattern test — "is this the `Open` variant?" — without a full `match` block.)
             if matches!(intent, Intent::Open { .. }) {
                 return Ok(None);
             }
@@ -161,6 +125,51 @@ pub fn resolve(
                 .collect(),
         })),
     }
+}
+
+// ─── projection helpers ──────────────────────────────────────────────────────
+
+/// The glow for a seat's piece — worst affliction first.
+fn glow_for(seat: &SeatView) -> PieceGlow {
+    if seat.ko {
+        PieceGlow::Ko
+    } else if seat.panic {
+        PieceGlow::Panic
+    } else if seat.fear {
+        PieceGlow::Fear
+    } else {
+        PieceGlow::Normal
+    }
+}
+
+/// The wire label for a campaign outcome.
+fn outcome_str(o: &CampaignOutcome) -> String {
+    // A `match` is an expression — every arm yields a value, and the whole block evaluates to the
+    // chosen `&str`, which `.to_string()` then turns into an owned `String`.
+    match o {
+        CampaignOutcome::Ongoing => "ongoing",
+        CampaignOutcome::Won => "won",
+        CampaignOutcome::Lost => "lost",
+        CampaignOutcome::TimedOut => "timed-out",
+        CampaignOutcome::Ended => "ended",
+    }
+    .to_string()
+}
+
+/// The affliction chip labels for a seat's dashboard.
+fn affliction_labels(seat: &SeatView) -> Vec<String> {
+    let mut labels = Vec::new();
+    for (on, label) in [
+        (seat.ko, "KO"),
+        (seat.panic, "Panic"),
+        (seat.fear, "Fear"),
+        (seat.confused, "Confused"),
+    ] {
+        if on {
+            labels.push(label.to_string());
+        }
+    }
+    labels
 }
 
 #[cfg(test)]

@@ -38,6 +38,8 @@ impl World {
         }
 
         // 1. Current room + its exits (in the room's stored order).
+        // `Option::and_then`/`map` chains are Rust's `?.` — each step short-circuits
+        // to `None` instead of throwing on a missing link.
         let room_id = self
             .characters
             .get(mob)

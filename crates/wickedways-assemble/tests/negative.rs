@@ -35,6 +35,8 @@ fn duplicate_room_name() {
         { "name": "start", "description": "b" }
     ]);
     let ps = problems(v);
+    // `matches!(value, Pattern if guard)` is a structural test — "is this the
+    // DuplicateName variant with these fields?" — used this way throughout.
     assert!(ps
         .iter()
         .any(|p| matches!(p, Problem::DuplicateName { kind: "room", name } if name == "start")));

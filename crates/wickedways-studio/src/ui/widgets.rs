@@ -5,6 +5,12 @@
 //! (an explicit `false` differs from absent in the exported TOML); enum fields are
 //! dropdowns, never free text (the compiler silently defaults unknown enum strings —
 //! see the spec's silent-default hazard).
+//!
+//! Every widget is the controlled-input pattern: the parent owns the value and
+//! passes it down with an [`EventHandler`] callback (`value` + `onChange` in
+//! React terms); the widget renders and reports, never stores — except
+//! [`OptTomlRow`], which keeps local text state so half-typed TOML isn't
+//! destroyed by the round trip through the document.
 
 use std::collections::BTreeMap;
 
@@ -274,7 +280,9 @@ pub fn OptTomlRow(
     let mut text = use_signal(|| initial.clone());
     let mut parse_err = use_signal(String::new);
     // Re-seed the local text when the underlying value changes identity (e.g. the
-    // selected asset switched).
+    // selected asset switched) — the React "sync local state when a prop changes"
+    // pattern, done inline because Dioxus re-runs the whole function per render
+    // just as React does.
     let mut seeded_for = use_signal(|| initial.clone());
     if seeded_for() != initial {
         seeded_for.set(initial.clone());

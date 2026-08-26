@@ -1,8 +1,16 @@
 //! Branded entity-id newtypes. Serialize as a bare string (transparent) to
 //! preserve the existing string-id snapshot format.
+// `alloc::` rather than `std::`: this crate is no_std-capable, so heap types come from
+// the `alloc` crate (same `String`, different import path).
 use alloc::string::String;
 use serde::{Deserialize, Serialize};
 
+// `macro_rules!` stamps out one wrapper type per invocation below — compile-time code
+// generation, not a runtime factory. Each id is a "newtype": a one-field tuple struct
+// wrapping `String`, giving it a distinct type so a `RoomId` cannot be passed where a
+// `CharacterId` is expected (the branding TS approximates with intersection types,
+// Rust enforces natively). `#[serde(transparent)]` makes it serialize as the bare
+// inner string, so the JSON shape is unchanged.
 macro_rules! branded_id {
     ($name:ident) => {
         #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]

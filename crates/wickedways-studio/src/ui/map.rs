@@ -68,6 +68,9 @@ pub fn MapScreen() -> Element {
                     for (i, b) in layout.boxes.iter().enumerate() {
                         {
                             let info = room_info.iter().find(|(name, _, _)| *name == b.label);
+                            // `target` is `Option<u64>` — a `Copy` type, so the
+                            // `move` handler below captures it by value with no
+                            // clone dance (contrast the `String` keys elsewhere).
                             let target = info.map(|(_, id, _)| *id);
                             let dark = info.is_some_and(|(_, _, dark)| *dark);
                             rsx! {

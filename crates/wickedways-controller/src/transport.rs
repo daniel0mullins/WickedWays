@@ -16,6 +16,9 @@ use wickedways_tabletop::transport::DeviceTransport;
 
 /// A device link over a serial port. Wraps an open port plus the inbound frame reassembler.
 pub struct SerialTransport {
+    /// `Box<dyn SerialPort>` is an interface-typed field: any concrete port
+    /// implementation behind one pointer (boxed because its size isn't known
+    /// at compile time — the closest Rust gets to holding "a `SerialPort`").
     port: Box<dyn SerialPort>,
     decoder: FrameDecoder,
     scratch: [u8; 1024],

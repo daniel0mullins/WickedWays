@@ -3,6 +3,9 @@
 //! These rules are the load-bearing assumption of the conformance gate: get one
 //! wrong and the byte diff fires. No randomness, no uuids — an id is a pure
 //! function of content.
+//!
+//! Every minter borrows its input (`&str` — a read-only string view) and
+//! returns a freshly built owned `String`; `format!` is Rust's template literal.
 
 pub fn campaign_id(title: &str) -> String {
     format!("campaign:{title}")
@@ -36,6 +39,8 @@ pub fn player_id(name: &str) -> String {
 /// UTF-16 code units; `str: Ord` compares UTF-8 bytes. They agree on ASCII and
 /// diverge above the BMP, which is why room names are constrained to ASCII.
 pub fn exit_id(from: &str, to: &str) -> String {
+    // `<=` on `&str` is lexicographic byte order (see the doc note above) —
+    // like JS `from <= to` on strings, minus the UTF-16 caveat.
     let (a, b) = if from <= to { (from, to) } else { (to, from) };
     format!("exit:{a}|{b}")
 }

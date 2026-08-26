@@ -125,6 +125,9 @@ pub fn HomeView(route: Signal<StudioRoute>) -> Element {
     let mut err = use_signal(String::new);
     let mut import_open = use_signal(|| false);
     let mut import_text = use_signal(String::new);
+    // `use_memo` ≈ `useMemo`, but dependencies are tracked by READS, not a deps
+    // array: calling `refresh()` inside subscribes the memo to that signal, so
+    // bumping `refresh` after a delete/duplicate recomputes the index.
     let index = use_memo(move || {
         let _ = refresh();
         store::read_index()
@@ -197,6 +200,9 @@ pub fn HomeView(route: Signal<StudioRoute>) -> Element {
                             onchange: move |e| {
                                 if let Some(files) = e.files() {
                                     let mut err = err;
+                                    // `spawn` schedules a future on the component —
+                                    // the async-event-handler idiom (file reads are
+                                    // async in the browser).
                                     spawn(async move {
                                         for name in files.files() {
                                             match files.read_file_to_string(&name).await {
@@ -259,8 +265,13 @@ fn CampaignRow(
     refresh: Signal<u32>,
     err: Signal<String>,
 ) -> Element {
+    // Props arrive immutable; Signals are `Copy` handles, so rebinding them as
+    // `mut` locals is free — both copies point at the same state.
     let mut refresh = refresh;
     let mut err = err;
+    // One owned copy of the id per `move` handler below: each closure OWNS its
+    // captures (there is no shared GC reference to a `String`), so an id used by
+    // four handlers is cloned four times up front.
     let id = entry.id.clone();
     let open_id = id.clone();
     let dup_id = id.clone();

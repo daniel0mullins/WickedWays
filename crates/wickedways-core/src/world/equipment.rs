@@ -1,5 +1,4 @@
 //! Equipment slot constants and lookup helpers.
-//! Mirrors.
 //!
 //! `EquipmentSlot` string constants: the named positions a character can equip items into.
 //! `SLOT_KIND`: maps each named slot to its `SlotKind` category.
@@ -39,8 +38,9 @@ pub const DEFAULT_EQUIPMENT_SLOTS: [&str; 12] = [
     RIGHT_RING_FINGER,
 ];
 
-/// Map a named slot to its `SlotKind` category.
-/// Mirrors `SLOT_KIND` record in.
+/// Map a named slot to its `SlotKind` category (the `SLOT_KIND` record).
+/// Returns `Option` rather than throwing: `None` is the typed "no such slot",
+/// which callers must handle explicitly — Rust's stand-in for `undefined`.
 pub fn slot_kind_of(slot: &str) -> Option<SlotKind> {
     match slot {
         HEAD => Some(SlotKind::Head),

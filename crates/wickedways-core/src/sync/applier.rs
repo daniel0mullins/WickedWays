@@ -13,9 +13,17 @@ use super::delta::{Delta, EntitySnapshot};
 
 /// Patches `replica` in place to reflect `delta`. Never runs game logic and never draws rng — a
 /// replica trusts the ordered log and converges by mirroring the authority's entity snapshots.
+/// (`&mut World` is an exclusive in-place borrow — the caller keeps ownership and sees the
+/// mutations; nothing is returned.)
 pub fn apply(replica: &mut World, delta: &Delta) {
     // created ∪ changed — a flat `insert` handles both (it replaces on an existing key).
+    // `chain` glues the two iterators lazily, like `[...created, ...changed]` without
+    // building the intermediate array.
     for entity in delta.created.iter().chain(delta.changed.iter()) {
+        // Exhaustive `match` on the enum: a new `EntitySnapshot` variant is a compile error
+        // here until it gets an arm — unlike a JS switch, nothing falls through silently.
+        // `**r` peels `&Box<Snapshot>` down to the snapshot itself; `.clone()` then deep-copies
+        // it into the map (Rust assignment moves — it never aliases like a JS object reference).
         match entity {
             EntitySnapshot::Room(r) => {
                 replica.rooms.insert(r.id.clone(), (**r).clone());

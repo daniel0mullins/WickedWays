@@ -195,7 +195,10 @@ pub struct WsTransport {
     inner: Rc<RefCell<Inner>>,
     ws: WebSocket,
     campaign_id: String,
-    // Closures kept alive for the socket's lifetime.
+    // Closures kept alive for the socket's lifetime. A wasm-bindgen `Closure` is a Rust closure
+    // wrapped as a real JS function object (what `set_onmessage` needs); unlike a JS function, it is
+    // FREED when the Rust value drops, so these fields exist purely to own them — an underscore name
+    // marks them as never read.
     _on_message: Closure<dyn FnMut(MessageEvent)>,
     _on_close: Closure<dyn FnMut()>,
 }
@@ -226,7 +229,9 @@ impl WsTransport {
         });
         ws.set_onclose(Some(on_close.as_ref().unchecked_ref()));
 
-        // Await open.
+        // Await open. A `oneshot` channel is a single-use promise: the event callback resolves the
+        // sender, the async fn awaits the receiver — the standard bridge from callback-style browser
+        // APIs to async/await.
         let (open_tx, open_rx) = oneshot::channel::<()>();
         let open_cell = Rc::new(RefCell::new(Some(open_tx)));
         let on_open = Closure::<dyn FnMut()>::new(move || {

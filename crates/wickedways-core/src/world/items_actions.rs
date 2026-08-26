@@ -38,6 +38,8 @@ struct GrantsImmunity {
 }
 
 impl World {
+    // ---- take (loot container -> inventory) ----
+
     /// Take `target` from a loot container in the actor's current room into
     /// their inventory. **Budgeted** — ticks `actions_this_round` and records
     /// a `pickUp` history entry. Returns `Some(LootId)` of the container taken from
@@ -135,6 +137,8 @@ impl World {
         if let Some(loot) = self.loot.get_mut(&loot_id) {
             loot.content_ids.retain(|id| id != target);
         }
+        // A bare `{ … }` block scopes a borrow: `ch`'s `&mut self.characters`
+        // ends at the closing brace, freeing `self` for the steps below.
         {
             let ch = self
                 .characters
@@ -279,6 +283,8 @@ impl World {
         )?;
         Ok(Some(loot_id))
     }
+
+    // ---- equip / unequip ----
 
     /// Equip `item` on `actor`. Free — no budget tick, no history.
     ///
@@ -542,6 +548,8 @@ impl World {
         Ok(())
     }
 
+    // ---- drop / stow / use ----
+
     /// Remove `target` from the actor's inventory (the item orphans in `World.items`
     /// — no room mutation), tick the action budget, record a `drop` history entry,
     /// and emit a `Drop` action cue.
@@ -720,6 +728,8 @@ impl World {
             .get(actor)
             .map(|c| c.inventory.item_ids.clone())
             .unwrap_or_default();
+        // `present` is a lazy iterator — nothing is filtered until `take(free)`
+        // + `collect()` below pull elements through it.
         let present = item_ids.iter().filter(|id| held.contains(id)).cloned();
 
         // 4. Cap to the container's free space.

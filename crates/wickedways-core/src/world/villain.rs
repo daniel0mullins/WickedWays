@@ -497,6 +497,9 @@ impl World {
                 .as_ref()
                 .is_some_and(|v| v.deck.is_empty() && !v.discard.is_empty());
             if needs_reshuffle {
+                // `mem::take` moves the pile out, leaving an empty Vec behind —
+                // ownership must transfer to shuffle without cloning, and Rust
+                // won't let a field simply be left "empty-handed".
                 let discard = self
                     .campaign
                     .villain
@@ -538,6 +541,8 @@ impl World {
         self.villain_draw(VILLAIN_HAND_SIZE);
     }
 
+    // -- card actions -------------------------------------------------------
+
     /// Guards shared by both card actions: a villain is designated, `actor` IS
     /// the villain, and the per-turn card-action latch is clear.
     fn require_villain_card_action(&self, actor: &CharacterId) -> Result<(), ProceduralViolation> {
@@ -571,6 +576,9 @@ impl World {
             .ok_or_else(|| ProceduralViolation(format!("Card '{key}' is not registered.")))?;
         match resolved {
             ResolvedCardBehavior::Native(op) => {
+                // Swap the rng out (an inert placeholder takes its slot) so the op
+                // can hold `&self` and `&mut rng` at once — one value can't be
+                // borrowed immutably and mutably through `self` simultaneously.
                 let mut rng = core::mem::replace(&mut self.rng, Rng::seeded(0));
                 let out = op.play(self, cat, &mut rng, args);
                 self.rng = rng;
@@ -754,6 +762,8 @@ impl World {
             cues,
         )
     }
+
+    // -- the solo villain ---------------------------------------------------
 
     /// The computer-driven Villain reaction (single-player solo mode). Runs
     /// after the player's turn — alongside mob reactions, before `next_player`

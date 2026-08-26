@@ -45,7 +45,9 @@ pub fn EditorShell(
     asset: Option<u64>,
     route: Signal<StudioRoute>,
 ) -> Element {
-    // Load once per mounted shell (the shell is keyed on the campaign id).
+    // Load once per mounted shell: `use_hook` runs its closure on first render
+    // only and caches the value (`useMemo(fn, [])`). The shell is keyed on the
+    // campaign id, so switching campaigns remounts and reloads.
     let initial = use_hook(|| {
         match store::load_campaign(&campaign) {
         Loaded::Ok(doc) => Ok(*doc),
@@ -66,6 +68,8 @@ pub fn EditorShell(
     let mut gate_report = use_signal(|| None::<GateReport>);
     let undo = use_signal(Vec::new);
     let undo_stamp = use_signal(|| 0u64);
+    // ≈ `<StoreContext.Provider value={store}>` for the whole subtree — every
+    // screen and widget below reaches this via `use_context::<StudioStore>()`.
     let store = use_context_provider(|| StudioStore {
         campaign_id,
         doc,
@@ -254,6 +258,9 @@ const PLAYTEST_URL: &str = "/?campaign=playtest&mode=single";
 
 #[component]
 fn GateOverlay(report: GateReport, on_close: EventHandler<()>) -> Element {
+    // `EventHandler<()>` is a callback prop — `onClose: () => void`. Unlike a
+    // bare closure it is `Copy`, so it can be `.call`ed from several handlers
+    // below without the clone dance plain captures need.
     let store = use_context::<StudioStore>();
     // Compiled-artifact downloads (green gate only): the same files `wwauthor`
     // writes, named `<title-slug>.<artifact>.json`.

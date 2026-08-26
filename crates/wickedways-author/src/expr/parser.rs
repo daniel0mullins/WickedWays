@@ -159,6 +159,9 @@ impl Parser {
             let then = self.parse_ternary()?;
             self.expect(&Token::Colon, "':' in ternary expression")?;
             let els = self.parse_ternary()?;
+            // `Box::new` heap-allocates the child node. JS objects are always
+            // references, but a Rust enum holds its data inline — a recursive
+            // variant needs this indirection or the type would be infinitely big.
             return Ok(Expr::IfElse {
                 cond: Box::new(cond),
                 then: Box::new(then),
@@ -276,6 +279,8 @@ impl Parser {
 
     // ── primary: literals, subjects, grouping, calls ────────────────────────
     fn parse_primary(&mut self) -> Result<Expr, CompileError> {
+        // `let … else`: destructure or bail — a guard clause whose happy path
+        // binds the variables for the rest of the function.
         let Some((tok, span)) = self.advance() else {
             return Err(CompileError::ExprParse {
                 span: self.eof_span(),

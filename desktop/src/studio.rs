@@ -12,6 +12,8 @@
 use wickedways_studio::platform;
 
 /// CLI args → platform params (`--key=value`, `--key value`, bare `--flag`).
+/// The same one-key-lookahead parser as `main.rs` — see its comments; kept as a
+/// copy because the two binaries share no library crate.
 fn parse_args(args: impl Iterator<Item = String>) -> Vec<(String, String)> {
     let mut pairs = Vec::new();
     let mut pending: Option<String> = None;

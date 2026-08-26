@@ -1,7 +1,13 @@
+//! Dice: the pure [`roll`] mapping and [`SuppliedDie`], the physical-die command payload.
+//!
+//! No randomness lives here — the uniform draw comes from `World.rng` (or from a die the
+//! table actually rolled), keeping every roll on the deterministic replay path.
 use serde::{Deserialize, Serialize};
 
 /// Rolls a die with `sides` faces from a pre-drawn uniform `unit` in `[0, 1)`.
 /// Pure: `floor(unit * sides) + 1`.
+// `as u32` truncates toward zero — the `Math.floor` in the formula above; `f64::from`
+// is the explicit widening cast Rust demands where JS would coerce silently.
 pub fn roll(sides: u32, unit: f64) -> u32 {
     (unit * f64::from(sides)) as u32 + 1
 }

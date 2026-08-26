@@ -2,6 +2,17 @@
 //! the seed reaches the engine through `Authority::new` instead.
 //!
 //! Rust owns this schema; TypeScript conforms. `pnpm run bindings:check` fails on drift.
+//!
+//! A one-time serde primer for the attribute pattern repeated on every struct
+//! below (the derives are the Rust analog of a TS interface plus its JSON codec):
+//!   * `rename_all = "camelCase"` — fields are `snake_case` in Rust but
+//!     camelCase on the wire (`start_room` <-> `"startRoom"`).
+//!   * `Option<T>` — an optional field, like `field?: T`.
+//!   * `#[serde(default)]` — a missing JSON key parses as the type's default
+//!     instead of erroring (JS destructuring-with-default).
+//!   * `skip_serializing_if = ...` — omit the key entirely when empty/absent,
+//!     the way `JSON.stringify` drops `undefined`; this keeps committed
+//!     fixtures byte-stable.
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -13,6 +24,64 @@ use wickedways_core::world::snapshot::Stats;
 pub type PartialStats = BTreeMap<String, f64>;
 /// Item-component type -> quantity.
 pub type MaterialMap = BTreeMap<String, i64>;
+
+// ---------------------------------------------------------------------------
+// The root document
+// ---------------------------------------------------------------------------
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CampaignDescription {
+    pub title: String,
+    #[serde(default)]
+    pub opts: CampaignOpts,
+    #[serde(default)]
+    pub archetypes: Vec<ArchetypeDef>,
+    #[serde(default)]
+    pub rooms: Vec<RoomDef>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub start_room: Option<String>,
+    #[serde(default)]
+    pub exits: Vec<ExitDef>,
+    #[serde(default)]
+    pub mobs: Vec<MobDef>,
+    #[serde(default)]
+    pub loot: Vec<LootDef>,
+    #[serde(default)]
+    pub caches: Vec<CacheDef>,
+    #[serde(default)]
+    pub npcs: Vec<NpcDef>,
+    #[serde(default)]
+    pub formations: Vec<FormationDef>,
+    #[serde(default)]
+    pub scenes: Vec<SceneDef>,
+    #[serde(default)]
+    pub recipes: Vec<String>,
+    #[serde(default)]
+    pub materials: Vec<MaterialsEntry>,
+    #[serde(default)]
+    pub win_conditions: Vec<ConditionEntry>,
+    #[serde(default)]
+    pub lose_conditions: Vec<ConditionEntry>,
+    #[serde(default)]
+    pub mechanics: Vec<MechanicEntry>,
+    /// The Villain declaration. Absent (and omitted on serialize) for a
+    /// villain-less campaign, so committed description fixtures stay byte-stable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub villain: Option<VillainDef>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timeout_narration: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ended_narration: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chat: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub av: Option<Value>,
+}
+
+// ---------------------------------------------------------------------------
+// Building blocks, in the order the root lists them
+// ---------------------------------------------------------------------------
 
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -173,56 +242,6 @@ pub struct VillainDef {
     pub character: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub deck: Vec<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CampaignDescription {
-    pub title: String,
-    #[serde(default)]
-    pub opts: CampaignOpts,
-    #[serde(default)]
-    pub archetypes: Vec<ArchetypeDef>,
-    #[serde(default)]
-    pub rooms: Vec<RoomDef>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub start_room: Option<String>,
-    #[serde(default)]
-    pub exits: Vec<ExitDef>,
-    #[serde(default)]
-    pub mobs: Vec<MobDef>,
-    #[serde(default)]
-    pub loot: Vec<LootDef>,
-    #[serde(default)]
-    pub caches: Vec<CacheDef>,
-    #[serde(default)]
-    pub npcs: Vec<NpcDef>,
-    #[serde(default)]
-    pub formations: Vec<FormationDef>,
-    #[serde(default)]
-    pub scenes: Vec<SceneDef>,
-    #[serde(default)]
-    pub recipes: Vec<String>,
-    #[serde(default)]
-    pub materials: Vec<MaterialsEntry>,
-    #[serde(default)]
-    pub win_conditions: Vec<ConditionEntry>,
-    #[serde(default)]
-    pub lose_conditions: Vec<ConditionEntry>,
-    #[serde(default)]
-    pub mechanics: Vec<MechanicEntry>,
-    /// The Villain declaration. Absent (and omitted on serialize) for a
-    /// villain-less campaign, so committed description fixtures stay byte-stable.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub villain: Option<VillainDef>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timeout_narration: Option<Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ended_narration: Option<Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub chat: Option<Value>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub av: Option<Value>,
 }
 
 #[cfg(test)]

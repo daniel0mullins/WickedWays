@@ -32,6 +32,8 @@ fn main() {
         return;
     }
 
+    // let-else: destructure the Option or bail. `args.get(1)` returns `Option` (no
+    // undefined in Rust), and the else arm must diverge — here, exit with a usage line.
     let Some(port) = args.get(1) else {
         eprintln!("usage: wickedways-controller <serial-port> [baud]   |   --dry-run");
         std::process::exit(2);
@@ -53,6 +55,8 @@ fn run(port: &str, baud: u32) -> Result<(), serialport::Error> {
 
     loop {
         for event in device.poll() {
+            // `handle` returns Result<bool, String>: the match must cover all three
+            // outcomes (committed / local-only / rejected) — the compiler checks.
             match controller.handle(&event) {
                 Ok(true) => device.send(&controller.board()),
                 Ok(false) => {}

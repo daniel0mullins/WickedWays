@@ -24,7 +24,10 @@ pub const MULTIPLAYER: bool = cfg!(not(feature = "native-app"));
 mod imp {
     //! Browser implementations: URL query, `localStorage`, the Fullscreen API.
 
-    /// A param from the page URL query, `None` when absent or empty.
+    /// A param from the page URL query, `None` when absent or empty. (The `and_then` chain is
+    /// Rust's optional chaining — each step short-circuits to `None`, like `?.` in JS; `web_sys`
+    /// calls are typed bindings to the same browser APIs, returning `Option`/`Result` where JS
+    /// would return `null` or throw.)
     pub fn query_param(key: &str) -> Option<String> {
         web_sys::window()
             .and_then(|w| w.location().search().ok())

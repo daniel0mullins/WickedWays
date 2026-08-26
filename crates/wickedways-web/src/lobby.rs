@@ -140,6 +140,10 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
 
     // Connect, then refresh state on every server PUSH (no polling): the push channel ticks on each
     // committed entry / presence update, and we re-read the coordinator + roster.
+    //
+    // The double clone below is Rust's answer to JS closure capture: `move` closures and `async move`
+    // blocks each take OWNERSHIP of what they use, so the values are cloned once into the outer
+    // closure and again into the async block it returns. (Signals skip this dance — they're `Copy`.)
     use_future({
         let slug = slug.clone();
         let identity = identity.clone();
@@ -218,6 +222,9 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
             let Some(t) = transport.borrow().clone() else {
                 return;
             };
+            // `spawn` ≈ a fire-and-forget promise: the click handler must return immediately, so
+            // the awaits run in a detached task. `t` is an `Rc` clone (a shared pointer, like a JS
+            // object reference), moved into the task so it outlives the handler.
             spawn(async move {
                 for c in cmds {
                     let _ = t.submit_async(c).await;

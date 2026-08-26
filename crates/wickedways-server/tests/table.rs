@@ -119,6 +119,8 @@ impl CampaignStore for MockStore {
 
 // ── core Table behaviour ──────────────────────────────────────────────────────────────────────
 
+// `#[tokio::test]` spins up a fresh tokio runtime per test — each test gets its own private event
+// loop, so nothing leaks between them.
 #[tokio::test]
 async fn acks_the_submitter_with_committed_and_broadcasts_entry_to_others() {
     let mut t = table(None);

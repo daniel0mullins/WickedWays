@@ -1,90 +1,17 @@
 //! Presentation cues — the engine emits intent; the surface owns presentation.
 //! JSON byte-compatible with the cue format the conformance goldens pin.
+//!
+//! [`PresentationCue`] is the union a host renders; everything else here is a payload
+//! piece of one of its arms.
 use alloc::string::String;
 use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
-/// Opaque campaign-supplied asset reference (sound/image). Passthrough — the
-/// engine never inspects it. The seed campaign defines no sounds.
-pub type AssetRef = serde_json::Value;
+// — The cue union —
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct EntityRef {
-    pub id: String,
-    pub name: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct StatusField {
-    pub label: String,
-    pub value: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub emphasis: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct MechanicCue {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sound: Option<AssetRef>,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct OutcomeNarration {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub text: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub sound: Option<AssetRef>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum CampaignOutcome {
-    Ongoing,
-    Won,
-    Lost,
-    TimedOut,
-    Ended,
-}
-
-/// The action-cue discriminant. Each variant corresponds 1:1 to an
-/// `ActionHistoryEntry` variant — derive it via `From<&ActionHistoryEntry>`
-/// rather than naming both in parallel.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ActionKind {
-    Attack,
-    Move,
-    PickUp,
-    Drop,
-    Escape,
-    TakeDamage,
-    Fumble,
-    MechanicAction,
-    PlayCard,
-    Mulligan,
-}
-
-impl From<&crate::world::history::ActionHistoryEntry> for ActionKind {
-    fn from(entry: &crate::world::history::ActionHistoryEntry) -> Self {
-        use crate::world::history::ActionHistoryEntry as E;
-        match entry {
-            E::Attack { .. } => ActionKind::Attack,
-            E::Move { .. } => ActionKind::Move,
-            E::PickUp { .. } => ActionKind::PickUp,
-            E::Drop { .. } => ActionKind::Drop,
-            E::Escape { .. } => ActionKind::Escape,
-            E::TakeDamage { .. } => ActionKind::TakeDamage,
-            E::Fumble { .. } => ActionKind::Fumble,
-            E::MechanicAction { .. } => ActionKind::MechanicAction,
-            E::PlayCard { .. } => ActionKind::PlayCard,
-            E::Mulligan { .. } => ActionKind::Mulligan,
-        }
-    }
-}
-
+/// One presentation cue. An enum whose variants carry data — on the wire this is a
+/// classic TS discriminated union: `#[serde(tag = "kind")]` writes the variant name
+/// into a `"kind"` field instead of nesting the payload.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum PresentationCue {
@@ -106,6 +33,8 @@ pub enum PresentationCue {
     },
     Resolution {
         outcome: CampaignOutcome,
+        // `skip_serializing_if` drops the key entirely when the Option is `None` — the
+        // way `JSON.stringify` drops `undefined` — keeping the golden-pinned JSON lean.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         reason: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -117,6 +46,99 @@ pub enum PresentationCue {
     Status {
         fields: Vec<StatusField>,
     },
+}
+
+// — Cue vocabularies —
+
+/// The action-cue discriminant. Each variant corresponds 1:1 to an
+/// `ActionHistoryEntry` variant — derive it via `From<&ActionHistoryEntry>`
+/// rather than naming both in parallel.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ActionKind {
+    Attack,
+    Move,
+    PickUp,
+    Drop,
+    Escape,
+    TakeDamage,
+    Fumble,
+    MechanicAction,
+    PlayCard,
+    Mulligan,
+}
+
+// The `From` trait is Rust's blessed conversion hook: implementing it is what makes
+// `entry.into()` / `ActionKind::from(&entry)` work. The `match` is exhaustive, so
+// adding an `ActionHistoryEntry` variant is a compile error here until it gets a kind.
+impl From<&crate::world::history::ActionHistoryEntry> for ActionKind {
+    fn from(entry: &crate::world::history::ActionHistoryEntry) -> Self {
+        use crate::world::history::ActionHistoryEntry as E;
+        match entry {
+            E::Attack { .. } => ActionKind::Attack,
+            E::Move { .. } => ActionKind::Move,
+            E::PickUp { .. } => ActionKind::PickUp,
+            E::Drop { .. } => ActionKind::Drop,
+            E::Escape { .. } => ActionKind::Escape,
+            E::TakeDamage { .. } => ActionKind::TakeDamage,
+            E::Fumble { .. } => ActionKind::Fumble,
+            E::MechanicAction { .. } => ActionKind::MechanicAction,
+            E::PlayCard { .. } => ActionKind::PlayCard,
+            E::Mulligan { .. } => ActionKind::Mulligan,
+        }
+    }
+}
+
+/// How a campaign resolved (or hasn't). Serialized in kebab-case (`"timed-out"`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CampaignOutcome {
+    Ongoing,
+    Won,
+    Lost,
+    TimedOut,
+    Ended,
+}
+
+// — Payload pieces —
+
+/// Opaque campaign-supplied asset reference (sound/image). Passthrough — the
+/// engine never inspects it. The seed campaign defines no sounds.
+pub type AssetRef = serde_json::Value;
+
+/// A named entity as a cue names it: stable id plus display name.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct EntityRef {
+    pub id: String,
+    pub name: String,
+}
+
+/// One line of a `Status` cue.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StatusField {
+    pub label: String,
+    pub value: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub emphasis: Option<String>,
+}
+
+/// Payload of a `Mechanic` cue: optional text and/or a sound to play.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct MechanicCue {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sound: Option<AssetRef>,
+}
+
+/// Campaign-authored narration attached to a `Resolution` cue.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct OutcomeNarration {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sound: Option<AssetRef>,
 }
 
 #[cfg(test)]

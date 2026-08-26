@@ -185,6 +185,9 @@ pub fn tabletop_app() -> Element {
     let mut my_turn = use_signal(|| false);
     let mut my_actions_left = use_signal(|| true);
 
+    // The transport coroutine: one long-lived async event loop owning the non-`Send` transport /
+    // coordinator / audio, fed `TtAction`s by the UI via `driver.send(..)` — the same pattern as
+    // `crt_app` (see the fuller note there).
     let driver = use_coroutine(move |rx: UnboundedReceiver<TtAction>| async move {
         let cfg = read_config();
         let single = matches!(cfg.mode, Mode::Single);
@@ -353,6 +356,8 @@ pub fn tabletop_app() -> Element {
                             if cfg.mode == Mode::Single {
                                 // Restart re-seats the same party from the setup drafts via a fresh
                                 // hotseat boot; fall back to a plain begin if none were added.
+                                // (`peek` reads a signal WITHOUT registering a reactive dependency —
+                                // the right read outside render.)
                                 let seats: Vec<SeatSpec> = drafts
                                     .peek()
                                     .iter()

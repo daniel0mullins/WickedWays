@@ -111,6 +111,9 @@ pub fn construct(
 
     // loot — box + contents, placed in its room.
     for l in &desc.loot {
+        // `let Some(x) = ... else { continue }` is a per-iteration guard clause:
+        // unwrap the lookup or skip this entry (validation already reported any
+        // dangling reference; construction just stays panic-free).
         let Some(&idx) = room_index.get(&l.room) else {
             continue;
         };
@@ -282,6 +285,10 @@ pub fn construct(
     // (2) after rooms — each character's inventory items, keys, then equipment.
     let mut items: Vec<ItemSnapshot> = Vec::new();
     let mut seen_items: BTreeSet<String> = BTreeSet::new();
+    // The closure captures `seen_items` mutably but takes `items` as a
+    // parameter: capturing BOTH mutably would trip the one-`&mut`-at-a-time
+    // borrow rule at the call sites, so the Vec is lent per call instead
+    // (in JS you'd just close over both arrays).
     let mut add_item = |items: &mut Vec<ItemSnapshot>, snap: &ItemSnapshot| {
         if seen_items.insert(snap.id().0.clone()) {
             items.push(snap.clone());
@@ -490,7 +497,12 @@ fn condition_snapshot(c: &ConditionEntry) -> VictoryConditionSnapshot {
 /// `durability` starts at `maxDurability`). Returns `None` only if the key is
 /// absent from the catalog (validation guarantees it is not, in practice).
 fn item_snapshot(catalog: &Catalog, key: &str, id: String) -> Option<ItemSnapshot> {
+    // `?` on an Option: `None` short-circuits the whole function to `None` —
+    // the same move as `catalog.items.get(key)?.…` optional chaining.
     let d = catalog.items.get(key)?;
+    // `r#type` is the raw-identifier escape: the field really is named `type`,
+    // which is a Rust keyword (like using a reserved word as a JS property name,
+    // except Rust needs the `r#` prefix to say so).
     Some(if matches!(d.r#type, ItemType::Key) {
         ItemSnapshot::Key {
             id: ItemId(id),
@@ -515,6 +527,8 @@ fn build_mob(m: &MobDef, catalog: &Catalog, room_id: &str) -> CharBuild {
     let mut key_ids = Vec::new();
     for (i, key) in m.drops.iter().enumerate() {
         if let Some(snap) = item_snapshot(catalog, key, ids::mob_drop_id(&m.name, i)) {
+            // Route the item by variant: `match` destructures the enum arm
+            // (a type-narrowing switch; `..` = "ignore the other fields").
             match &snap {
                 ItemSnapshot::Key { id, .. } => {
                     key_ids.push(id.clone());

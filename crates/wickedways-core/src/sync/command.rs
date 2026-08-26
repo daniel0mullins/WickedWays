@@ -43,6 +43,10 @@ pub enum EquipmentSlot {
 
 /// A serializable player/GM/NPC command. Every entity reference is an id; the tag is
 /// `kind` (camelCase). Mirrors the `Command` union field-for-field.
+///
+/// An enum whose variants carry fields is Rust's tagged union — the closest TS analogue is a
+/// discriminated union (`{ kind: "move", actorId, roomId } | …`) — and serde's `tag = "kind"`
+/// makes the JSON exactly that shape (serde ≈ `JSON.parse`/`stringify` with types).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Command {
@@ -241,6 +245,8 @@ pub enum Command {
 impl Command {
     /// `true` for player turn-actions (move, attack, equip, …) — the ones gated to
     /// the active character's turn. Mirrors `TURN_ACTION_KINDS`.
+    /// The `matches!` or-pattern (`A { .. } | B { .. }`) is a membership test over variants —
+    /// think `KINDS.includes(cmd.kind)`, but the compiler knows every variant name.
     pub fn is_turn_action(&self) -> bool {
         matches!(
             self,
@@ -344,6 +350,11 @@ impl Command {
 
     /// The acting player's id for turn/setup commands; `None` for GM/lifecycle/NPC/join
     /// commands. Mirrors `commandActorId`.
+    ///
+    /// One `match` arm covers every actor-carrying variant via or-patterns; each alternative
+    /// must bind the same `actor_id` name (destructuring, with `..` as the "rest"), so a
+    /// single arm returns the field from any of them. The `_ => None` arm deliberately makes
+    /// new actor-less variants default to `None`.
     pub fn actor_id(&self) -> Option<&CharacterId> {
         match self {
             Command::Move { actor_id, .. }

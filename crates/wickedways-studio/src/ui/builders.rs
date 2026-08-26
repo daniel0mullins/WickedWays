@@ -39,6 +39,9 @@ pub enum Param {
 pub struct Snippet {
     pub label: &'static str,
     pub params: &'static [(&'static str, Param)],
+    /// `fn(…)` (lowercase) is a plain function POINTER — a callback that
+    /// captures nothing, which is exactly what lets the catalogs below live in
+    /// `const`s. A capturing closure would need a closure type and heap state.
     pub build: fn(&[String]) -> String,
 }
 
@@ -55,6 +58,9 @@ pub fn dsl_quote(s: &str) -> String {
         format!("'{}'", s.replace('\'', ""))
     }
 }
+
+// ---- parameter sanitizers -------------------------------------------------
+// Each maps a raw input-field string to something the DSL grammar accepts.
 
 fn num(raw: &str) -> String {
     let t = raw.trim();
@@ -77,6 +83,16 @@ fn ident(raw: &str) -> String {
         cleaned
     }
 }
+
+fn stat(raw: &str) -> String {
+    if STAT_TYPES.contains(&raw.trim()) {
+        raw.trim().to_string()
+    } else {
+        "health".to_string()
+    }
+}
+
+// ---- the snippet catalogs, one per body-slot grammar ----------------------
 
 /// Condition snippets (expression slots: `canPass`, `canPlay`, victory `test`).
 const CONDITIONS: &[Snippet] = &[
@@ -198,14 +214,6 @@ const TRANSFORMS: &[Snippet] = &[
     },
 ];
 
-fn stat(raw: &str) -> String {
-    if STAT_TYPES.contains(&raw.trim()) {
-        raw.trim().to_string()
-    } else {
-        "health".to_string()
-    }
-}
-
 /// The snippet catalog for a body slot, plus how an insert combines with the
 /// existing text.
 #[must_use]
@@ -293,6 +301,9 @@ pub fn SnippetBar(slot: BodySlot, on_insert: EventHandler<String>) -> Element {
                             Param::Item => rsx! {
                                 select {
                                     class: "studio-input",
+                                    // `write()` grants a scoped mutable borrow of the
+                                    // Vec inside the signal — mutate in place, released
+                                    // at the end of the statement.
                                     onchange: move |e| { values.write()[pi] = e.value(); },
                                     option { value: "", "(choose)" }
                                     for k in item_keys.clone() {

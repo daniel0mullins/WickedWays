@@ -1,6 +1,18 @@
 //! Campaign author: `toml -> (CampaignDescription, Catalog)`.
 //! Compiles the friendly TOML surface + an infix expression language into the
 //! artifacts `wickedways_assemble::assemble` consumes. Panic-free on author input.
+//!
+//! Reading order: [`author_doc`] is the typed TOML surface (the schema);
+//! [`lower`] turns a parsed doc into the description/catalog pair, calling into
+//! [`expr`] / [`stmt`] / `damage_body` (the DSL parsers) and the `npc` /
+//! `mechanic` converters; [`validate`] re-exposes the per-body parsers for
+//! editor tooling; [`error`] is the one error type everything returns.
+//!
+//! A note for readers coming from JS/TS: fallible functions here return
+//! `Result<T, CompileError>` — a value that is *either* the success or the
+//! error, like a discriminated `{ ok } | { err }` union, with no exceptions.
+//! The `?` postfix unwraps the success or returns the error to the caller
+//! early, so `parse(x)?` reads like an automatic `if (isErr) return err`.
 pub mod author_doc;
 pub(crate) mod damage_body;
 pub mod error;
@@ -15,6 +27,9 @@ use error::CompileError;
 use wickedways_assemble::description::CampaignDescription;
 use wickedways_core::world::descriptor::Catalog;
 
+/// The compiler's output pair: the world layout (`description`) plus the
+/// behavior/item lookup tables (`catalog`) — exactly what
+/// `wickedways_assemble::assemble` takes in.
 #[derive(Clone, Debug, PartialEq, serde::Serialize)]
 pub struct CompiledCampaign {
     pub description: CampaignDescription,
@@ -67,6 +82,8 @@ pub fn compile_all(toml_src: &str) -> Result<CompiledCampaign, Vec<LabeledError>
         }
     };
     let mut errors: Vec<LabeledError> = Vec::new();
+    // A `FnMut` closure — like an arrow function, except the borrow checker knows
+    // it mutates `errors`, so nothing else may touch `errors` while `check` lives.
     let mut check = |context: String, result: Result<(), CompileError>| {
         if let Err(error) = result {
             errors.push(LabeledError { context, error });

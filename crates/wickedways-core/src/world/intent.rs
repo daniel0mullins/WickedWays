@@ -1,6 +1,4 @@
-//! The surface-facing `Intent` boundary type.
-//!
-//! Mirrors 1:1 — the parser-produced
+//! The surface-facing `Intent` boundary type: the parser-produced
 //! player intents. Distinct from `Command` (`world/command.rs`), which
 //! additionally carries internal lifecycle ops (startTurn/endTurn/nextPlayer/
 //! endCampaign/mechanicAction) and has no `wait`/`talk`; `Command` stays the
@@ -10,6 +8,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::world::direction::Direction;
 
+// A `#[serde(tag = "kind")]` enum is a discriminated union — the exact shape TS
+// models with a `kind` field; each variant's fields inline beside the tag.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Intent {
@@ -87,6 +87,8 @@ pub enum Intent {
 /// advance the turn; open/equip/unequip/talk are free. `talk` is a free
 /// interaction (dialogue spends no round) — a co-located NPC just answers.
 pub fn is_time_advancing(intent: &Intent) -> bool {
+    // `matches!` tests a value against a pattern and returns bool — a one-line
+    // stand-in for a `switch` that only asks "is it one of these variants?".
     matches!(
         intent,
         Intent::Move { .. }

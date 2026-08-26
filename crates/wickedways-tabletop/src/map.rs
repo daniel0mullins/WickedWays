@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 use wickedways_core::world::direction::Direction;
 use wickedways_core::world::view::ViewModel;
 
+// ─── map data ────────────────────────────────────────────────────────────────
+
 /// A room placed on the fog-of-war grid.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MapRoom {
@@ -46,38 +48,14 @@ pub struct MapSnapshot {
     pub current_id: Option<String>,
 }
 
-/// Grid step per direction (north = up). Shared with the map layout.
-fn direction_delta(dir: Direction) -> (i32, i32) {
-    use Direction::*;
-    match dir {
-        North => (0, -1),
-        South => (0, 1),
-        East => (1, 0),
-        West => (-1, 0),
-        Northeast => (1, -1),
-        Northwest => (-1, -1),
-        Southeast => (1, 1),
-        Southwest => (-1, 1),
-    }
-}
-
-/// The compass opposite of `dir`.
-fn reverse_direction(dir: Direction) -> Direction {
-    use Direction::*;
-    match dir {
-        North => South,
-        South => North,
-        East => West,
-        West => East,
-        Northeast => Southwest,
-        Southwest => Northeast,
-        Northwest => Southeast,
-        Southeast => Northwest,
-    }
-}
+// ─── the model ───────────────────────────────────────────────────────────────
 
 /// Fog-of-war map of the house, built incrementally from what the play surface sees each turn. Pure
 /// (no DOM); [`layout_map`]/[`map_svg`] read it via the getters.
+//
+// `BTreeMap` (not `HashMap`) is deliberate: it's a key-value map like JS `Map`, but iteration is
+// always in sorted key order — so every walk over the rooms is deterministic, which the replayable
+// engine (and its golden gates) depend on.
 #[derive(Clone, Debug, Default)]
 pub struct MapModel {
     rooms: BTreeMap<String, MapRoom>,
@@ -112,9 +90,12 @@ impl MapModel {
         let id = view.room.id.clone();
         let name = view.room.name.clone();
         let has_remains = view.occupants.iter().any(|o| o.defeated == Some(true));
+        // The map `entry` API is an upsert: update the room in place if it exists, insert it
+        // otherwise — one lookup, no `if (map.has(k))` double-check.
         self.rooms
             .entry(id.clone())
             .and_modify(|r| {
+                // `clone_from` is `r.name = name.clone()` that reuses the existing allocation.
                 r.name.clone_from(&name);
                 r.has_remains = has_remains;
             })
@@ -224,6 +205,9 @@ impl MapModel {
         let mut queue: VecDeque<String> = self.rooms.keys().cloned().collect();
         loop {
             while let Some(id) = queue.pop_front() {
+                // `let Some(x) = … else { continue; }` is a guard clause: bind the value if it's
+                // there, skip this iteration if not — the shape JS writes as
+                // `if (x == null) continue;`. It recurs throughout this sweep.
                 let Some(here) = world
                     .rooms
                     .get(&wickedways_core::world::ids::RoomId(id.clone()))
@@ -348,6 +332,7 @@ impl MapModel {
         self.stubs.clear();
     }
 
+    /// Snapshot the model as plain data (see [`MapSnapshot`]) for save/restore.
     pub fn serialize(&self) -> MapSnapshot {
         MapSnapshot {
             rooms: self.rooms(),
@@ -361,6 +346,7 @@ impl MapModel {
         }
     }
 
+    /// Restore the model from a saved [`MapSnapshot`] (the inverse of [`serialize`](Self::serialize)).
     pub fn hydrate(&mut self, snap: MapSnapshot) {
         self.rooms = snap.rooms.into_iter().map(|r| (r.id.clone(), r)).collect();
         self.edges = snap.edges;
@@ -368,8 +354,41 @@ impl MapModel {
         self.current_id = snap.current_id;
     }
 
+    /// Forget everything (new game / restart).
     pub fn reset(&mut self) {
         *self = Self::default();
+    }
+}
+
+// ─── grid helpers (shared by the model and the layout) ───────────────────────
+
+/// Grid step per direction (north = up). Shared with the map layout.
+fn direction_delta(dir: Direction) -> (i32, i32) {
+    use Direction::*;
+    match dir {
+        North => (0, -1),
+        South => (0, 1),
+        East => (1, 0),
+        West => (-1, 0),
+        Northeast => (1, -1),
+        Northwest => (-1, -1),
+        Southeast => (1, 1),
+        Southwest => (-1, 1),
+    }
+}
+
+/// The compass opposite of `dir`.
+fn reverse_direction(dir: Direction) -> Direction {
+    use Direction::*;
+    match dir {
+        North => South,
+        South => North,
+        East => West,
+        West => East,
+        Northeast => Southwest,
+        Southwest => Northeast,
+        Northwest => Southeast,
+        Southeast => Northwest,
     }
 }
 
@@ -381,6 +400,7 @@ const BOX_H: f64 = 36.0;
 const PAD: f64 = 30.0;
 const STUB: f64 = CELL * 0.42;
 
+/// A room tile in pixel space.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LaidBox {
     /// The room id this tile represents, so a surface can match entities (pieces) to their tile.
@@ -394,6 +414,7 @@ pub struct LaidBox {
     pub remains: bool,
 }
 
+/// A traversed passage drawn between two tile centers (dashed when `locked`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct LaidLink {
     pub x1: f64,
@@ -403,6 +424,7 @@ pub struct LaidLink {
     pub locked: bool,
 }
 
+/// An unexplored-exit stub: a short line out of a tile, with a `?` glyph at (`qx`, `qy`).
 #[derive(Clone, Debug, PartialEq)]
 pub struct LaidStub {
     pub x1: f64,
@@ -414,6 +436,7 @@ pub struct LaidStub {
     pub locked: bool,
 }
 
+/// The whole laid-out map: overall size plus every shape a renderer needs to draw.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct MapLayout {
     pub width: f64,
@@ -434,11 +457,15 @@ pub fn layout_map(model: &MapModel) -> MapLayout {
         };
     }
 
+    // `.min()`/`.max()` return `Option` (an empty list has no minimum); the `unwrap()`s are safe
+    // because the empty case returned above.
     let min_x = rooms.iter().map(|r| r.x).min().unwrap();
     let min_y = rooms.iter().map(|r| r.y).min().unwrap();
     let max_x = rooms.iter().map(|r| r.x).max().unwrap();
     let max_y = rooms.iter().map(|r| r.y).max().unwrap();
 
+    // Local closures (arrow functions, capturing the bounds above). `f64::from` is the explicit
+    // int→float conversion — Rust never coerces numeric types implicitly.
     let left = |r: &MapRoom| f64::from(r.x - min_x) * CELL + PAD;
     let top = |r: &MapRoom| f64::from(r.y - min_y) * CELL + PAD;
     let cx = |r: &MapRoom| left(r) + BOX_W / 2.0;

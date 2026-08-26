@@ -53,6 +53,8 @@ impl MobAttack {
 }
 
 impl World {
+    // ---- mob reactions ----
+
     /// Each live (non-KO) mob in the active player's current room attacks the
     /// player (the "aggro while sharing its room" rule). Returns the typed damage
     /// each dealt, derived from the player's effective-stat deltas. A mob that
@@ -149,6 +151,8 @@ pub struct ExecuteResult {
 }
 
 impl World {
+    // ---- the submit flow ----
+
     /// The session execute flow, minus the host-side undo snapshot (undo stays
     /// host-side via `Authority::snapshot`):
     /// classify → `start_turn` → dispatch → `run_mob_reactions` → `next_player`;
@@ -163,6 +167,10 @@ impl World {
         let mut cues: Vec<PresentationCue> = Vec::new();
         let advances = is_time_advancing(&intent);
         let is_move = matches!(intent, Intent::Move { .. });
+        // `(|| { … })()` is an immediately-invoked closure — Rust's IIFE. It gives
+        // `?` a boundary: a violation anywhere inside short-circuits to `outcome`
+        // (caught by the `match` below) instead of returning from `submit`, the
+        // moral equivalent of a try/catch around the block.
         let outcome: Result<Option<Vec<MobAttack>>, ProceduralViolation> = (|| {
             let actor = self.active_character_id()?;
             if advances {
@@ -390,6 +398,8 @@ impl World {
         }
     }
 
+    // ---- free interactions: read / talk / examine ----
+
     /// Reads a held item, emitting its lore as a `mechanic` cue. Free, ungated,
     /// non-consuming. A non-held item is a quiet no-op — the session facade
     /// returns `[]` instead of surfacing the engine throw.
@@ -589,6 +599,8 @@ impl World {
         });
         Ok(())
     }
+
+    // ---- dispatch guards ----
 
     fn current_room_id_of(
         &self,

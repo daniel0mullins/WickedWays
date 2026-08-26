@@ -1,4 +1,4 @@
-//! Compass directions — mirrors `Directions` (`:19-31`).
+//! The eight compass directions and their pinned wire names (room exit-map keys).
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

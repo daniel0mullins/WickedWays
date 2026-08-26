@@ -20,8 +20,14 @@ pub fn command_for(
     intent: &Intent,
 ) -> Result<Command, String> {
     let actor = actor_id;
+    // An exhaustive `match`: every `Intent` variant must have an arm, or this fails to *compile* —
+    // unlike a JS `switch`, there is no silent fall-through and no need for a `default`. Adding a
+    // new intent to the engine forces this function to handle it.
     match intent {
         Intent::Move { dir } => {
+            // `.get()` returns an `Option` (Rust's explicit `T | undefined`); `ok_or` upgrades it
+            // to a `Result` with an error message, and `?` early-returns that `Err` — the moral
+            // equivalent of `throw`, except the failure is part of the signature.
             let room_id = world
                 .characters
                 .get(&actor)
@@ -49,6 +55,11 @@ pub fn command_for(
                 room_id: dest,
             })
         }
+        // The arms below are mechanical translation. `ItemId(...)`/`CharacterId(...)` are newtype
+        // wrappers — single-field tuple structs that "brand" a plain `String` so an item id can't
+        // be passed where a character id belongs (the type-level trick TS emulates with branded
+        // types). The `.clone()`s exist because `intent` is borrowed (we only have a reference to
+        // it), while the returned `Command` must own its strings outright.
         Intent::Take { target_id } => Ok(Command::PickUp {
             actor_id: actor,
             item_ids: vec![ItemId(target_id.clone())],

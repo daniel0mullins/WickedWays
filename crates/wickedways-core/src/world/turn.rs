@@ -1,3 +1,7 @@
+//! The turn loop: campaign begin, turn start/end, the action budget, round
+//! rollover, and outcome resolution (win/lose/timeout). Fire-point ordering
+//! (afflictions vs. mechanic hooks, round-end vs. round-start) is pinned by the
+//! conformance goldens — treat any re-sequencing here as a behavior change.
 use crate::error::ProceduralViolation;
 use crate::presentation::{CampaignOutcome, OutcomeNarration, PresentationCue};
 use crate::stats::StatType;
@@ -14,6 +18,8 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 impl World {
+    // ---- the turn loop ----
+
     pub fn active_character_id(&self) -> Result<CharacterId, ProceduralViolation> {
         let i = self.campaign.active_character_index as usize;
         self.campaign
@@ -118,8 +124,10 @@ impl World {
         let energy = self.effective_stat(actor, StatType::Energy, cat);
         let passive = self.passive_immune(actor, cat);
         let config = default_affliction_config();
-        // Disjoint mutable borrows of self.rng and self.characters (different
-        // fields of self, borrowed directly to satisfy the borrow checker).
+        // Split borrow: `self.rng` and `self.characters` are borrowed mutably at
+        // the same time, which the compiler allows only because they are distinct
+        // fields named directly (a single `&mut self` method call here would lock
+        // the whole struct and be rejected).
         let rng = &mut self.rng;
         if let Some(c) = self.characters.get_mut(actor) {
             c.actions_this_round = 0;
@@ -238,6 +246,8 @@ impl World {
         self.dispatch_round(RoundPhase::Start, cat, cues)
     }
 
+    // ---- outcome resolution ----
+
     /// Behavior is pinned byte-exact by the conformance goldens. Runs AFTER the
     /// round increment, so `campaign.round` is current. Order: loss list, then
     /// win list, then the `round >= max_rounds` ceiling, then ongoing.
@@ -246,6 +256,8 @@ impl World {
         cat: &Catalog,
     ) -> Result<(CampaignOutcome, Option<String>), ProceduralViolation> {
         let view = self.build_campaign_view(cat);
+        // A local closure (an inner arrow function, with its types spelled out)
+        // so the loss and win loops below share one resolution path.
         let fired =
             |c: &VictoryConditionSnapshot, this: &World| -> Result<bool, ProceduralViolation> {
                 match crate::world::victory::resolve_victory(&c.key, cat).ok_or_else(|| {
@@ -316,6 +328,8 @@ impl World {
             .find(|c| c.key.as_str() == reason)
             .and_then(|c| c.narration.clone())
     }
+
+    // ---- lifecycle guards ----
 
     pub(crate) fn assert_running(&self) -> Result<(), ProceduralViolation> {
         if !self.campaign.started || self.campaign.outcome != CampaignOutcome::Ongoing {

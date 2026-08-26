@@ -6,7 +6,9 @@ use serde_json::Value;
 
 use crate::world::mechanics::CharacterView;
 
-/// A first-party exit behavior. `state` is the exit's serialized `Value`.
+/// A first-party exit behavior. `state` is the exit's serialized `Value`. Only
+/// `can_pass` is required — the other methods have default bodies (optional
+/// interface methods), so an implementor overrides just what it needs.
 pub trait ExitBehavior: Sync {
     /// `canPass` — all preconditions pass (read-only).
     fn can_pass(&self, actor: &CharacterView, state: &Value) -> bool;

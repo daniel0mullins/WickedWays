@@ -129,6 +129,8 @@ pub fn diff(before: &CampaignSnapshot, after: &CampaignSnapshot) -> Delta {
     );
 
     let core_changed = before.campaign != after.campaign || before.codex != after.codex;
+    // `bool::then(closure)` ≈ `core_changed ? Some(build()) : None` — the closure only runs
+    // (and only clones) when the core actually changed.
     let campaign_core = core_changed.then(|| {
         Box::new(CampaignCoreDelta {
             core: after.campaign.clone(),
@@ -149,6 +151,11 @@ pub fn diff(before: &CampaignSnapshot, after: &CampaignSnapshot) -> Delta {
 /// entity (in array order) as created (absent in before) or changed (present but not
 /// structurally equal), then each `before` id absent from `after` as removed. Mirrors
 /// `DeltaComputer.diffArray`.
+///
+/// Generic over the entity type, with `id_of`/`wrap` passed as closures — like handing in
+/// arrow functions, except `Fn(&T) -> &str` is a checked signature and each `T` gets its own
+/// compiled copy. The `before_by_id` index holds `&T` references (no cloning); the borrow
+/// checker ties its lifetime to `before`, which is why it is rebuilt per call.
 #[allow(clippy::too_many_arguments)]
 fn diff_collection<T, F, G>(
     before: &[T],

@@ -13,6 +13,9 @@ use crate::stmt::parse_stmts;
 
 const BASE: Span = Span { line: 1, col: 1 };
 
+/// Parse an optional hook body. The nested return type reads inside-out:
+/// `Option` because the hook may be absent (≈ `src ? parse(src) : null`), and
+/// the whole thing wrapped in `Result` because the parse itself can fail.
 fn hook(src: &Option<String>) -> Result<Option<Vec<Stmt>>, CompileError> {
     match src {
         Some(s) => Ok(Some(parse_stmts(s, BASE)?)),

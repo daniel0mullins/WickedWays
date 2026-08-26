@@ -34,6 +34,9 @@ pub fn read_route() -> StudioRoute {
 }
 
 /// Move to `next`, syncing the URL query first (the state stays deep-linkable).
+///
+/// `Signal` is `Copy`, so the handle is taken by value — the caller keeps its own
+/// copy pointing at the same state. The `mut` only lets THIS copy call `set`.
 pub fn navigate(mut route: Signal<StudioRoute>, next: StudioRoute) {
     match &next {
         StudioRoute::Home => platform::clear_params(&["c", "s", "a"]),
@@ -54,6 +57,12 @@ pub fn navigate(mut route: Signal<StudioRoute>, next: StudioRoute) {
 
 /// The editor's shared state — the codebase's first `provide_context` (a document
 /// editor's deep CRUD tree is what finally justifies one; see the spec §Architecture).
+///
+/// `Clone, Copy` is what makes it ergonomic: every field is a [`Signal`], and a
+/// `Signal` is a `Copy` *handle* into state, not the state itself (think a ref
+/// into an external store). So the whole struct copies freely into any `move`
+/// event handler, where a plain `String` field would force a `.clone()` per
+/// closure.
 #[derive(Clone, Copy)]
 pub struct StudioStore {
     /// The stored campaign id the open document belongs to.
@@ -110,7 +119,12 @@ impl StudioStore {
     /// closure's value (add-handlers return the minted id to select it).
     pub fn mutate<R>(mut self, f: impl FnOnce(&mut EditorDoc) -> R) -> R {
         let now = platform::now_ms();
+        // `peek()` reads without subscribing this scope to changes (calling the
+        // signal like a function would subscribe — the reactive read).
         let before = self.doc.peek().clone();
+        // `write()` hands out a guard holding THE mutable borrow of the doc —
+        // unlike JS, mutation is exclusive, so the guard must be released
+        // (the explicit `drop(doc)`) before anything reads the signal again.
         let mut doc = self.doc.write();
         let out = f(&mut doc);
         let snapshot = doc.clone();
@@ -148,6 +162,8 @@ pub fn studio_app() -> Element {
     let route = use_signal(read_route);
     // Prime the blob cache from the platform store (IndexedDB in the browser)
     // before any screen reads a campaign — screens stay fully synchronous.
+    // `use_resource` ≈ an async effect plus state: it runs the future and
+    // `primed.read()` stays `None` until it resolves (the loading gate below).
     let primed = use_resource(|| async {
         let blobs = crate::platform::blob_store_prime(crate::store::CAMPAIGN_PREFIX).await;
         crate::store::prime_cache(blobs);

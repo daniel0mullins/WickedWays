@@ -32,11 +32,19 @@ pub type ConnId = u64;
 
 /// A connected participant: receives ordered server messages for one [`Table`]. The real transport
 /// feeds a WebSocket sink; tests feed a closure over a shared buffer.
+///
+/// For JS readers: this is "a callback", but with the plumbing single-threaded JS never surfaces —
+/// `Arc` makes it a shared, reference-counted value (many tasks can hold the same one), and
+/// `Send + Sync` is the compiler-checked proof it is safe to call from any thread.
 pub type Subscriber = Arc<dyn Fn(ServerMsg) + Send + Sync>;
 
 /// Runs after the in-memory commit and before persistence, so a seat-claim it performs on the
 /// membership is written in the SAME atomic `save` as the commit (closes the orphaned-character
 /// window on join).
+///
+/// `FnOnce` = a callback the compiler guarantees is invoked at most once (it may consume what it
+/// captured); `Box` because callers hand in arbitrary closures, like passing any function value in
+/// JS.
 pub type OnCommit = Box<dyn FnOnce(&mut Membership) + Send>;
 
 /// The outcome of [`Table::submit`]: committed with its seq, or not committed (denied or
@@ -71,6 +79,8 @@ pub struct MembershipView {
     pub gm_identity: String,
     pub seats: Vec<(String, String)>,
 }
+
+// ── the coordinator ───────────────────────────────────────────────────────────────────────────
 
 /// The server-side coordinator for one campaign's session — the virtual tabletop.
 pub struct Table {
@@ -311,6 +321,8 @@ impl Table {
     }
 }
 
+// ── helpers ───────────────────────────────────────────────────────────────────────────────────
+
 /// Builds a `WireLogEntry` (opaque `command`/`delta`) from a typed authority log entry.
 fn wire_entry(
     command: &Command,
@@ -328,6 +340,12 @@ fn wire_entry(
 
 /// Runs a synchronous store call on the blocking pool, flattening the join error into a
 /// [`StoreError`] so a task panic surfaces as a persist failure (the room stays alive).
+///
+/// `spawn_blocking` moves synchronous work onto a dedicated thread pool so the async runtime keeps
+/// turning — the moral equivalent of Node farming blocking file I/O out to libuv's thread pool,
+/// except it is opt-in and visible here. The `'static + Send` bounds are ownership at work: the
+/// closure must own everything it carries (no borrows of `self`), because it outlives this stack
+/// frame on another thread — hence the `.clone()`s at the call sites.
 async fn run_blocking<T, F>(f: F) -> Result<T, StoreError>
 where
     F: FnOnce() -> Result<T, StoreError> + Send + 'static,
@@ -343,6 +361,9 @@ where
 
 /// A message to a running [`Table`] actor. Processed strictly in arrival order by the single task,
 /// so submit → persist → ack is atomic per campaign for free.
+///
+/// Every variant carries a `oneshot` reply channel — the Rust spelling of "a `Promise` the actor
+/// resolves exactly once". The handle methods send a variant, then await its `reply`.
 pub enum TableMsg {
     // Join/Leave/GetSnapshot/Broadcast carry an ack `reply` so their handle methods resolve only
     // once the actor has actually processed them — deterministic ordering for callers and tests,
@@ -396,6 +417,10 @@ pub enum TableMsg {
 
 /// A handle to a running [`Table`] actor: cloneable, cheap, and the only way to reach the campaign's
 /// state once it is spawned.
+///
+/// Cloning copies only the mpsc sender — like handing out another reference to the same worker's
+/// message port. The `Table` itself is owned by the actor task; nothing else can touch it, which is
+/// why no `Mutex` guards the game state.
 #[derive(Clone)]
 pub struct TableHandle {
     tx: mpsc::Sender<TableMsg>,
@@ -550,11 +575,19 @@ impl TableHandle {
 
 /// Spawns `table` as a per-campaign actor and returns a handle to it. The task ends when every
 /// handle is dropped (the mpsc closes).
+///
+/// Two Rust-isms worth naming for JS readers: `tokio::spawn` is what sets the future running — an
+/// async block by itself does nothing until spawned or awaited, unlike a JS async call, which
+/// starts immediately. And `async move` transfers ownership of `table` into the task, so the actor
+/// alone can reach it — the mpsc channel is its mailbox, and awaiting `recv()` parks the task until
+/// mail arrives.
 pub fn spawn_table(table: Table) -> TableHandle {
     let (tx, mut rx) = mpsc::channel::<TableMsg>(64);
     tokio::spawn(async move {
         let mut table = table;
         while let Some(msg) = rx.recv().await {
+            // `let _ = reply.send(…)` throughout: a failed send only means the caller stopped
+            // waiting (its rx was dropped) — like resolving a promise nobody awaits. Ignore it.
             match msg {
                 TableMsg::Join {
                     conn,

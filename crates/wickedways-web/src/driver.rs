@@ -404,7 +404,9 @@ pub async fn boot(cfg: &Config) -> Result<(AppTransport, SyncCoordinator, Catalo
     }
 }
 
-/// Both transport arms expose the same call — write the two-arm match once.
+/// Both transport arms expose the same call — write the two-arm match once. (`macro_rules!` is a
+/// compile-time template, expanded inline before type-checking — think of it as a hygienic code
+/// snippet, not a runtime function.)
 macro_rules! delegate {
     ($self:ident, $t:ident => $call:expr) => {
         match $self {
@@ -749,13 +751,13 @@ pub fn project(coord: &SyncCoordinator, catalog: &Catalog) -> Option<ViewModel> 
     coord.replica().view(catalog, &BTreeSet::new()).ok()
 }
 
-/// Resolve a parser [`Intent`] into a sync [`Command`] against the replica. The key step is a
-/// `move`, whose compass direction becomes the destination room id via the active character's room
-/// and the exit graph. Intents with no sync command in the multiplayer path (open/talk/wait) return
-/// a human-readable note the surface narrates back.
 /// Resolve a UI [`Intent`] into an actor-tagged [`Command`] for the **active** seat, delegating to the
-/// tabletop bridge's `command_for` (the shared builder the physical board also uses). The tabletop
-/// surface can additionally build a command for a *named* seat — the NFC path — via `command_for`.
+/// tabletop bridge's `command_for` (the shared builder the physical board also uses). The key step is
+/// a `move`, whose compass direction becomes the destination room id via the active character's room
+/// and the exit graph. An unresolvable intent returns `Err` with a human-readable note the surface
+/// narrates back (the `?` below is Rust's early-return-on-error, ≈ a thrown exception the caller
+/// catches as a value). The tabletop surface can additionally build a command for a *named* seat —
+/// the NFC path — via `command_for`.
 pub fn intent_to_command(
     world: &World,
     catalog: &Catalog,

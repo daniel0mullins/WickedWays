@@ -8,6 +8,10 @@ use serde::{Deserialize, Serialize};
 /// The closed set of first-class script values. Serialized UNTAGGED so
 /// authored literals read as plain JSON (`5`, `"x"`, `true`, `[..]`,
 /// `null`). Numbers are f64 (JS `number` semantics).
+///
+/// An enum-with-data — the Rust spelling of the TS union
+/// `boolean | number | string | Value[] | null`. With `#[serde(untagged)]` there is no
+/// discriminant field on the wire; deserialization tries each variant in declared order.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Value {

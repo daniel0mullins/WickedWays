@@ -1,6 +1,8 @@
 //! Scripted-ops DSL: a closed, serde-serializable AST + a pure, total,
 //! deterministic interpreter.
-//! `alloc`-only — this module must build under `--no-default-features`.
+//! `alloc`-only — this module must build under `--no-default-features`: without `std`, heap
+//! types (`String`, `Vec`, `Box`, `format!`) come from the lower-level `alloc` crate — the
+//! same types under a different import path, which is why `alloc::` paths appear throughout.
 pub mod ast;
 pub mod eval;
 pub mod ops;
@@ -15,6 +17,9 @@ use ast::{BehaviorScript, Expr, Stmt};
 /// a `Pass` in an effect body, an `Emit` in an exit script, a non-`MapLit`
 /// `Lookup`/`Has` operand.
 pub fn validate_behavior(key: &str, b: &BehaviorScript) -> Result<(), ProceduralViolation> {
+    // The checkers below report failures as bare `&'static str` reasons; `.or_else(bad)`
+    // re-wraps such a reason into the keyed `ProceduralViolation`, and `?` then early-returns
+    // it — Rust's typed, explicit take on throw, visible in the signature.
     let bad = |why: &str| {
         Err(ProceduralViolation(format!(
             "Behavior '{key}' is invalid: {why}"
@@ -202,6 +207,8 @@ fn check_expr(e: &Expr) -> Result<(), &'static str> {
             }
             Ok(())
         }
+        // The leaf nodes, listed rather than wildcarded: the `match` stays exhaustive, so a
+        // new `Expr` variant is a compile error here until someone decides how to check it.
         Expr::Lit { .. }
         | Expr::MapLit { .. }
         | Expr::Round

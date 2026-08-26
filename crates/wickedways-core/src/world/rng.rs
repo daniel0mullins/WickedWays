@@ -16,6 +16,9 @@ impl Rng {
     }
 
     /// Advance and return the next float in [0, 1). Equivalent to the `mulberry32` closure.
+    ///
+    /// Takes `&mut self`: advancing the state mutates it in place, so callers must hold
+    /// mutable access — which is why every draw is routed through the one `World.rng`.
     pub fn next_f64(&mut self) -> f64 {
         self.a = self.a.wrapping_add(0x6d2b_79f5);
         let mut t = (self.a ^ (self.a >> 15)).wrapping_mul(1 | self.a);
