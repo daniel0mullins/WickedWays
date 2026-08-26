@@ -232,8 +232,12 @@ Modals ride one `Overlay` enum signal (delete confirm, rename confirm, import er
       the `actions` map (action key → statement body);
     - **card**: `onPlay`.
 
-    Every body field is a monospace textarea with validate-on-idle and inline errors, plus
-    a collapsible **DSL reference sidebar** generated from this vocabulary:
+    Every body field is a monospace editor with validate-on-idle and inline errors — and
+    (built, post-P3) **syntax highlighting** via the overlay idiom: a transparent-text
+    textarea stacked on an `aria-hidden` `<pre>` of colored token spans
+    (`ui/highlight.rs`), the tokenizer lossless by property test over the campaign corpus
+    and its vocabulary mirroring the real grammar's keyword/effect/call/subject lists —
+    plus a collapsible **DSL reference sidebar** generated from this vocabulary:
     subjects `actor` `party` `round` `maxRounds` `damage` `action` `element`; calls
     `hasKey(x,'k')` `hasItem(x,'k')` `hasEquipped(x,'k')` `stateGet('f', default)`
     `stateGetIn('map', key, default)` `mapLit(k,v,…)` `lookup(map,key)` `has(map,key)`

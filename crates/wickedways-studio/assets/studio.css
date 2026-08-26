@@ -183,9 +183,47 @@ h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; color: var(--ink-dim); }
 .studio-input:focus { border-color: var(--accent); outline: none; }
 .studio-textarea { min-height: 4.5rem; resize: vertical; }
 .studio-num { max-width: 10rem; }
-.studio-mono, .studio-body { font-family: "SF Mono", "Cascadia Code", Consolas, monospace; font-size: 0.85rem; }
+.studio-mono, .studio-body, .studio-hl { font-family: "SF Mono", "Cascadia Code", Consolas, monospace; font-size: 0.85rem; }
 .studio-body { min-height: 5.5rem; resize: vertical; white-space: pre; }
 .studio-body.invalid { border-color: var(--color-error); }
+
+/* ── DSL syntax highlighting (the overlay editor) ────────────────── */
+/* A transparent-text textarea (caret/selection/events) stacked on an
+   aria-hidden <pre> of colored spans. The two MUST share font metrics,
+   padding, border width, and line-height, or the layers drift. */
+.studio-editor { position: relative; }
+.studio-editor .studio-body {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--ink);
+  line-height: 1.45;
+}
+.studio-editor .studio-body::selection { background: var(--accent-dim); }
+.studio-hl {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--bg);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 0.35rem 0.55rem;
+  white-space: pre;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.hl-kw { color: var(--accent); font-weight: 600; }
+.hl-eff { color: var(--color-warn); }
+.hl-fn { color: var(--color-info); }
+.hl-sub { color: var(--color-ok); }
+.hl-str { color: #e0a96f; }
+.hl-num { color: #7fdcd0; }
+.hl-op { color: var(--ink-dim); }
+.hl-plain { color: var(--ink); }
 .studio-field-err { color: var(--color-error); font-size: 0.8rem; margin: 0.2rem 0 0.6rem; white-space: pre-wrap; }
 .studio-hint { color: var(--ink-dim); font-size: 0.8rem; }
 .studio-statsrow { display: flex; gap: 0.8rem; }
