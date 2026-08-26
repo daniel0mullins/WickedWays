@@ -293,10 +293,11 @@ categories + a sanity-reactive ambient drone); see `crates/wickedways-web/src/au
   optional `onRead` hook — so the item stays in inventory and can be read again. Unlike `use`
   (which consumes the item, and only works on a `usable` one), `read` is the seam for examinable
   flavour and for read-triggered side effects (e.g. a cursed tome that drains Sanity via `onRead`).
-- Both characters and loot boxes are **item holders**. State that must not be forged is
-  symbol-keyed: ownership through `HELD_BY` (read-only) and `CLAIM`, durability through
-  `SET_DURABILITY`, and equip/unequip through `EQUIP` / `UNEQUIP` — so external code can't
-  silently re-point a holder, refill durability, or bypass slot capacity.
+- Both characters and loot boxes are **item holders**. State that must not be forged changes
+  only through the engine's own action verbs — ownership via the pick-up/transfer/stow paths,
+  durability via its single write seam, and equip/unequip via the slot-aware equipment path — so
+  a holder can't be silently re-pointed, durability can't be refilled, and slot capacity can't be
+  bypassed.
 
 ### Codex
 
@@ -1014,46 +1015,48 @@ survives save/load.
 
 ## Multi-client sync
 
-The snapshot format powers multiplayer over a command-log driven by an authoritative
-`Authority` (`crates/wickedways-core/src/sync/`). Each client runs a
-`SyncCoordinator` that owns a local replica and delegates all resolution to the authority.
+The snapshot format powers multiplayer over a command log driven by an authoritative
+[`SyncAuthority`](crates/wickedways-core/src/sync/authority.rs). Each client runs a
+`SyncCoordinator` that owns a local replica `World` and delegates all resolution to the authority.
 
-`coordinator.submit(command)` is a thin pass-through: it calls `transport.submit(command)`, waits
-for the authority's response, then applies the returned delta to the local replica via `DeltaApplier`
-and returns `{ ok: true, seq, delta }`. The coordinator never resolves commands itself and never
-optimistically mutates — state changes only when an authoritative delta arrives, so there is no
-rollback and no CAS conflict. A denial returns `{ ok: false, rejected: true, reason }`.
+`SyncCoordinator::submit(&mut transport, command)` is a thin pass-through: it calls
+`transport.submit(command)`, then applies the authoritative response to the local replica and
+returns the authority's `SubmitResult` — `Committed { seq, delta }` or `Denied { reason }`. The
+coordinator never resolves commands itself and never optimistically mutates — state changes only
+when an authoritative delta arrives, so there is no rollback and no CAS conflict.
 
-**Reject ≠ fizzle.** A rejection (`{ ok: false, rejected: true }`) means the authority denied the
+**Reject ≠ fizzle.** A rejection (`SubmitResult::Denied`) means the authority denied the
 command (wrong turn, bad lifecycle state, seat-ownership check, or an engine constraint thrown by
 `ProceduralViolation`). A fizzle is a legal action that simply had no mechanical effect (e.g. an
 attack that dealt 0 damage) — those commit, produce a delta, and propagate normally.
 
-Inbound, `start()` subscribes from `lastApplied + 1`; remote entries are applied to the replica via
-`DeltaApplier` (which patches state and **never draws rng or runs game logic**, so replicas converge
-deterministically with zero determinism burden), and gaps heal via `entriesSince`.
-`SyncCoordinator.join(...)` brings a late client up to date from the transport's latest checkpoint
-plus the deltas since.
+The coordinator is **pull**-based: after a submit, and on demand via `SyncCoordinator::sync`, it
+drains `entries_since(last_applied + 1)` and applies each delta in order through
+[`sync::apply_delta`](crates/wickedways-core/src/sync/applier.rs) — which patches state and
+**never draws rng or runs game logic**, so replicas converge deterministically with zero
+determinism burden. An out-of-order entry is buffered until its predecessor lands.
+`SyncCoordinator::join(&transport)` brings a late client up to date from the transport's latest
+checkpoint plus the deltas since. A genuinely-async push subscription is a WebSocket-transport
+concern, not the coordinator's.
 
-Because a `join` may swap in a freshly deserialized `Campaign`, consumers must always read state
-through `coordinator.campaign` and never cache the reference across a `submit`.
+Because a `join` may swap in a freshly deserialized world, consumers read state through
+`coordinator.replica()` / `coordinator.snapshot()` rather than caching a reference across a `submit`.
 
-**`SyncTransport` seam.** The sync core depends only on the `SyncTransport` interface (`submit`,
-`head`, `subscribe`, `entriesSince`, `loadSnapshot`). `InProcessTransport` wraps an in-process
-`Authority` and drives the single-player and test paths. `WebSocketTransport` forwards to the room
-server, which hosts its own `Authority` per campaign — both topologies are the same shape.
+**`SyncTransport` seam.** The sync core depends only on the `SyncTransport` trait — `head`,
+`submit`, `entries_since`, `load_snapshot`. `InProcessTransport` wraps an in-process
+`SyncAuthority` and drives the single-player and test paths; the web client's `WsTransport`
+forwards to the room server, which hosts its own `SyncAuthority` per campaign — both topologies
+are the same shape.
 
-```ts
-const authority = new Authority(genesis, { registry });
-const transport = new InProcessTransport(authority);
+```rust
+let mut transport = InProcessTransport::new(SyncAuthority::new(world, catalog, opts));
 
-const coordinator = SyncCoordinator.join({ registry, transport });
-coordinator.start();
-const result = await coordinator.submit({ kind: "move", actorId: active.id, roomId: dest.id });
+let mut coordinator = SyncCoordinator::join(&transport);
+let result = coordinator.submit(&mut transport, Command::NextPlayer);
 
 // elsewhere / another client on the same transport:
-const replica = SyncCoordinator.join({ registry, transport });
-replica.start();
+let mut replica = SyncCoordinator::join(&transport);
+replica.sync(&transport);
 ```
 
 **Rust port (landed).** The sync layer and room server are ported to Rust
@@ -1108,8 +1111,8 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
 - **The room server** in [`crates/wickedways-server/`](crates/wickedways-server/): a Rust/axum
   server. A `RoomServer` hosts a native `SyncAuthority` per campaign behind a per-campaign
   tokio actor (`Table`) that serializes submit → persist → ack (flush-before-ack), gates appends by
-  seat ownership (`Membership`), persists to SQLite (`SqliteStore`), and speaks the `transport-shared`
-  wire protocol over a `/ws` WebSocket endpoint. A two-client convergence e2e proves two replicas
+  seat ownership (`Membership`), persists to SQLite (`SqliteStore`), and speaks the
+  `wickedways-transport` wire protocol over a `/ws` WebSocket endpoint. A two-client convergence e2e proves two replicas
   converge over a real socket.
 
 The sync gate (`cargo test -p wickedways-assemble --test sync_gate`) replays the committed
@@ -1123,8 +1126,9 @@ message arms (`crates/wickedways-transport`).
   give `CharacterId`, `RoomId`, `ItemId`, `LootId`, etc. distinct compile-time identities at zero
   runtime cost, so one kind of id can't be passed where another is expected.
 - **Lifecycle guards** throw `ProceduralViolation` to keep the game in a legal state.
-- **Hidden state** — item holders, status maps, and campaign progress are exposed through
-  getters and symbol-keyed accessors rather than mutable public fields.
+- **Single write seams** — invariant-bearing mutations funnel through one engine function
+  rather than ad-hoc field writes (durability wear, for instance, has exactly one writer), so
+  the rule that guards an invariant lives in exactly one place.
 
 ## The Rust engine core, module by module
 
