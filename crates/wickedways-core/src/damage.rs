@@ -1,11 +1,21 @@
+//! The damage-mitigation formula — a pure function from combat inputs to a damage number.
+//!
+//! Kept separate from the combat flow in `world` so it can be pinned in isolation: the
+//! replay goldens fix its results byte-for-byte.
 use serde::{Deserialize, Serialize};
 
+/// A stat's ceiling; a mitigator at `MAX_STAT` absorbs a hit entirely.
 pub const MAX_STAT: f64 = 10.0;
+/// How much of the multiplier each missing mitigator point contributes.
 pub const MITIGATION_PER_POINT: f64 = 0.2;
+/// Damage multiplier for a light-averse defender caught in a lit room.
 pub const LIGHT_VULNERABILITY: f64 = 1.5;
 
 /// Pure inputs to the mitigation formula. Field names cross the boundary in
 /// camelCase — the wire shape is pinned by the conformance goldens.
+// The `derive` attribute auto-implements traits (compare a decorator that generates
+// methods). `Copy` marks this struct cheap enough to pass by value everywhere — callers
+// hand it over like a JS primitive, with no ownership/borrowing bookkeeping.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DamageInput {
@@ -18,6 +28,9 @@ pub struct DamageInput {
 
 /// Mitigation formula. The IEEE-754 operation order is load-bearing: the
 /// replay goldens pin results byte-for-byte, so do not reassociate the math.
+// `f64` is exactly the JS `number` type, so hosts on either side of the wasm seam
+// compute identical bits. Note `if`/`else` is an expression here — it yields the
+// multiplier directly, like a ternary.
 pub fn compute_mitigated_damage(input: DamageInput) -> f64 {
     let mitigated_strength = (input.attack_strength - input.armor_sum).max(0.0);
     let damage_multiplier = (MAX_STAT - input.mitigator).max(0.0) * MITIGATION_PER_POINT;
