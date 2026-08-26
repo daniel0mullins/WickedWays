@@ -7,6 +7,10 @@ use std::collections::VecDeque;
 use crate::protocol::{DeviceCommand, DeviceEvent};
 
 /// A physical board (or its simulator): push commands out, poll events in.
+///
+/// A `trait` is Rust's interface: any type can `impl DeviceTransport` and the bridge code works
+/// against the trait alone. `&mut self` marks both methods as mutating — the compiler enforces
+/// what a TS `interface` can only document.
 pub trait DeviceTransport {
     /// Apply a batch of board commands (paint tiles, place pieces, drive dashboards/LEDs).
     fn send(&mut self, commands: &[DeviceCommand]);
@@ -38,9 +42,15 @@ impl FakeTransport {
 
     /// Drain and return everything sent so far (resets the record) — convenient between test steps.
     pub fn take_sent(&mut self) -> Vec<DeviceCommand> {
+        // `mem::take` swaps the field for an empty `Vec` and hands back the old one — a move, not
+        // a copy. (Rust values have one owner, so "return it AND keep the field valid" needs this
+        // explicit swap; there's no JS-style shared reference to lean on.)
         std::mem::take(&mut self.commands)
     }
 }
+
+// The `impl Trait for Type` block is where a type declares it satisfies an interface — explicit
+// opt-in, unlike TS's structural "has the right methods" typing.
 
 impl DeviceTransport for FakeTransport {
     fn send(&mut self, commands: &[DeviceCommand]) {

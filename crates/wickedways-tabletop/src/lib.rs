@@ -9,6 +9,15 @@
 //! hardware transport uses. Depends only on `wickedways-core` + serde, so it compiles native (the
 //! controller) and to wasm (the web simulator).
 
+// The modules, alphabetically (rustfmt's order). A good *reading* order — unlike JS imports,
+// `mod` declarations carry no load-order semantics — is:
+//   protocol   the vocabulary: `DeviceCommand` out, `DeviceEvent` in
+//   bridge     the pure mappers: engine state → device commands, device events → engine commands
+//   command    `Intent` → engine `Command` for a *named* seat (the piece that moved)
+//   map        the shared fog-of-war map model + grid layout
+//   roster     every party seat's location + stats, read off the replica
+//   transport  the seam a board (or its simulator) implements
+//   codec      COBS-framed JSON for the serial hardware transport
 pub mod bridge;
 pub mod codec;
 pub mod command;

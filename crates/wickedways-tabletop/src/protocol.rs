@@ -10,26 +10,11 @@ use wickedways_core::presentation::StatusField;
 use wickedways_core::world::direction::Direction;
 use wickedways_core::world::intent::Intent;
 
-/// How a piece glows — its worst affliction (the "glowing piece"). The active-turn ring is a separate
-/// `active` flag on [`DeviceCommand::Piece`].
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum PieceGlow {
-    Normal,
-    Fear,
-    Panic,
-    Ko,
-}
-
-/// A transient LED effect on a tile (the fast channel e-ink can't drive).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum LedEffect {
-    Encounter,
-    Combat,
-    Reject,
-    Off,
-}
+// For readers new to Rust: an enum whose variants carry fields is a discriminated union — the
+// same shape as a TypeScript `{ kind: "tile", ... } | { kind: "piece", ... }` union type.
+// `#[serde(tag = "kind")]` makes the JSON literally that: the variant name becomes the `kind`
+// field, camelCased, alongside the variant's own fields. The derives above each type are like
+// auto-generated `toJSON`/`fromJSON`/`===`/`clone` — no hand-written boilerplate.
 
 /// A command from the bridge to the board (or its on-screen simulator).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -87,4 +72,27 @@ pub enum DeviceEvent {
     /// supplied to the engine for its upcoming rolls of that `sides` size (e.g. a mob to-hit d20). A
     /// player with no dice picks "Roll for me" instead, which emits no event (the house rolls).
     DiceRolled { sides: u32, values: Vec<u32> },
+}
+
+// ─── supporting vocabulary ───────────────────────────────────────────────────
+
+/// How a piece glows — its worst affliction (the "glowing piece"). The active-turn ring is a separate
+/// `active` flag on [`DeviceCommand::Piece`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PieceGlow {
+    Normal,
+    Fear,
+    Panic,
+    Ko,
+}
+
+/// A transient LED effect on a tile (the fast channel e-ink can't drive).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum LedEffect {
+    Encounter,
+    Combat,
+    Reject,
+    Off,
 }
