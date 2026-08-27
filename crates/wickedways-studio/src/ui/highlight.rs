@@ -48,11 +48,11 @@ impl Tok {
 }
 
 /// Statement-body keywords, plus `modifyDamage`'s `final`.
-const KEYWORDS: &[&str] = &["guard", "when", "set", "emit", "pass", "final"];
+pub(crate) const KEYWORDS: &[&str] = &["guard", "when", "set", "emit", "pass", "final"];
 
 /// The closed effect family (`stmt.rs::parse_emit`) + `status`'s `field(...)`.
 /// `damage` is here AND in [`SUBJECTS`] — the call/lookahead rule disambiguates.
-const EFFECTS: &[&str] = &[
+pub(crate) const EFFECTS: &[&str] = &[
     "cue",
     "adjustStat",
     "giveItem",
@@ -65,7 +65,7 @@ const EFFECTS: &[&str] = &[
 ];
 
 /// The closed expression call names (`expr/parser.rs`).
-const CALLS: &[&str] = &[
+pub(crate) const CALLS: &[&str] = &[
     "hasKey",
     "hasItem",
     "hasEquipped",
@@ -86,7 +86,7 @@ const CALLS: &[&str] = &[
 
 /// Read-model subjects (`expr/parser.rs::resolve_subject`) + the `state` write
 /// target + boolean literals.
-const SUBJECTS: &[&str] = &[
+pub(crate) const SUBJECTS: &[&str] = &[
     "actor",
     "party",
     "round",

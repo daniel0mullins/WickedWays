@@ -290,8 +290,33 @@ h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; color: var(--ink-dim); }
 .studio-addkey { display: flex; gap: 0.35rem; margin-bottom: 0.5rem; }
 .studio-dsl { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.8rem; }
 .studio-dsl summary { cursor: pointer; padding: 0.45rem 0.8rem; color: var(--accent); }
-.studio-dsl-body { font-size: 0.82rem; padding: 0 0.9rem 0.6rem; }
-.studio-dsl-body p { margin: 0.35rem 0; }
+.studio-dsl-body { font-size: 0.85rem; padding: 0 1rem 0.9rem; max-width: 68rem; }
+.studio-ref-section h4 { color: var(--accent); font-size: 0.9rem; margin: 1.1rem 0 0.25rem; }
+.studio-ref-section:first-child h4 { margin-top: 0.4rem; }
+.studio-ref-intro { color: var(--ink-dim); margin: 0 0 0.5rem; }
+.studio-ref-grid {
+  display: grid;
+  grid-template-columns: minmax(18rem, max-content) 1fr;
+  column-gap: 1.2rem;
+  row-gap: 0.45rem;
+  align-items: baseline;
+}
+.studio-ref-sig {
+  font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 0.82rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.2rem 0.45rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  justify-self: start;
+}
+.studio-ref-desc { color: var(--ink); line-height: 1.5; }
+@media (max-width: 60rem) {
+  .studio-ref-grid { grid-template-columns: 1fr; row-gap: 0.2rem; }
+  .studio-ref-desc { margin-bottom: 0.5rem; color: var(--ink-dim); }
+}
 
 /* ── problems panel ──────────────────────────────────────────────── */
 .studio-problems {

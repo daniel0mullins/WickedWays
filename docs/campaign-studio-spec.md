@@ -243,7 +243,11 @@ Modals ride one `Overlay` enum signal (delete confirm, rename confirm, import er
     names, `setVisible`/`giveItem` → `npc:` refs, `stateGet` → state fields seen in the
     body, `includes(….status, …)` → status keys — in a popover (click or ↑↓/Enter/Tab/Esc).
     Sugar only: unknown names never error (the info-tier literal lint is unchanged) —
-    plus a collapsible **DSL reference sidebar** generated from this vocabulary:
+    plus a collapsible **DSL reference panel** (`ui/reference.rs`): nine sections — body
+    kinds, subjects, fields, functions, operators, statements, effects, the modifyDamage
+    grammar, and the gotcha rules — every signature rendered through the editors' own
+    highlighter, with a test holding the panel complete against the grammar vocabulary.
+    The original crib-sheet vocabulary, for the record:
     subjects `actor` `party` `round` `maxRounds` `damage` `action` `element`; calls
     `hasKey(x,'k')` `hasItem(x,'k')` `hasEquipped(x,'k')` `stateGet('f', default)`
     `stateGetIn('map', key, default)` `mapLit(k,v,…)` `lookup(map,key)` `has(map,key)`

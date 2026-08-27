@@ -7,6 +7,7 @@ pub mod builders;
 pub mod highlight;
 pub mod home;
 pub mod map;
+pub mod reference;
 pub mod screens;
 pub mod shell;
 pub mod widgets;
