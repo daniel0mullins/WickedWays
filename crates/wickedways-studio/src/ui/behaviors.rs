@@ -85,30 +85,9 @@ pub fn OptBodyField(
     }
 }
 
-/// The collapsible DSL reference — the spec's embedded vocabulary, verbatim.
-#[component]
-pub fn DslReference() -> Element {
-    rsx! {
-        details { class: "studio-dsl",
-            summary { "DSL reference" }
-            div { class: "studio-dsl-body",
-                p { b { "Subjects: " } "actor, party, round, maxRounds, damage (modifyDamage), action/element (storyteller hooks)" }
-                p { b { "Calls: " }
-                    "hasKey(x,'k') · hasItem(x,'k') · hasEquipped(x,'k') · stateGet('f', default) · stateGetIn('map', key, default) · mapLit(k,v,…) · lookup(map,key) · has(map,key) · some(list,pred) · every(list,pred) · includes(list,v) · str(x) · length(x) · first(x) · defined(x) · concat(…)"
-                }
-                p { b { "Operators (loosest→tightest): " } "?: — || — && — == != — < <= > >= — + - — * / — unary ! - — postfix .field [i]" }
-                p { b { "Statements: " }
-                    "guard <expr> · when <expr> {{ … }} · set state.<f> = <expr> · set state.<map>[<key>] = <expr> · emit <effect> · pass <expr> (exit runScript only)"
-                }
-                p { b { "Effects: " }
-                    "cue('…') · adjustStat(target, stat, delta) · giveItem(from, to, item) · setVisible(target, bool) · status(field(label, value[, emphasis]), …) · damage · heal · grantImmunity"
-                }
-                p { b { "modifyDamage: " } "<cond> ? final <expr> : <expr> — `final` halts the transformer chain; reads damage.amount" }
-                p { b { "Strings: " } "single or double quotes. Dialogue effects are emit-only." }
-            }
-        }
-    }
-}
+/// The collapsible DSL reference — the comprehensive sectioned panel
+/// (`ui/reference.rs`), re-exported so existing call sites keep their path.
+pub use crate::ui::reference::DslReference;
 
 const FAMILIES: &[&str] = &["exit", "scene", "item", "npc", "mechanic", "card"];
 

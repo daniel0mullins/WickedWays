@@ -1907,6 +1907,7 @@ pub fn VictoryScreen() -> Element {
             }
             ConditionList { win: true }
             ConditionList { win: false }
+            crate::ui::reference::DslReference {}
         }
     }
 }
