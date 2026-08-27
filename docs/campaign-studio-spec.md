@@ -237,6 +237,12 @@ Modals ride one `Overlay` enum signal (delete confirm, rename confirm, import er
     textarea stacked on an `aria-hidden` `<pre>` of colored token spans
     (`ui/highlight.rs`), the tokenizer lossless by property test over the campaign corpus
     and its vocabulary mirroring the real grammar's keyword/effect/call/subject lists —
+    and **asset autocomplete** (`ui/autocomplete.rs`, pure + host-tested): with the caret
+    inside a string literal, the surrounding context picks a pool from the live document —
+    `hasKey` → key codes, `hasItem`/`hasEquipped` → item keys, `…room.name ==` → room
+    names, `setVisible`/`giveItem` → `npc:` refs, `stateGet` → state fields seen in the
+    body, `includes(….status, …)` → status keys — in a popover (click or ↑↓/Enter/Tab/Esc).
+    Sugar only: unknown names never error (the info-tier literal lint is unchanged) —
     plus a collapsible **DSL reference sidebar** generated from this vocabulary:
     subjects `actor` `party` `round` `maxRounds` `damage` `action` `element`; calls
     `hasKey(x,'k')` `hasItem(x,'k')` `hasEquipped(x,'k')` `stateGet('f', default)`

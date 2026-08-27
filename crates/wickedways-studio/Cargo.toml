@@ -58,6 +58,8 @@ web-sys = { version = "0.3", features = [
   "Event", "IdbFactory", "IdbOpenDbRequest", "IdbRequest", "IdbDatabase",
   "IdbTransaction", "IdbTransactionMode", "IdbObjectStore",
   "IdbVersionChangeEvent", "DomException", "console",
+  # The DSL editor's autocomplete (caret position + programmatic insertion).
+  "HtmlTextAreaElement",
 ] }
 
 [lints]
