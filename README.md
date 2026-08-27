@@ -1777,7 +1777,13 @@ Post-P3 polish: every DSL body edits with **syntax highlighting** — the overla
 scroll-synced), driven by a lossless tokenizer (`ui/highlight.rs`) whose vocabulary
 mirrors the real grammar's keyword/effect/call/subject lists and is property-tested to
 reproduce every line of the campaign corpus byte-for-byte. The compiler stays the
-validity authority; the colors are cosmetic and never guess at unknown words.
+validity authority; the colors are cosmetic and never guess at unknown words. On top of
+it, **asset autocomplete** (`ui/autocomplete.rs`, a pure host-tested analysis): with the
+caret inside a string literal, the surrounding call/comparison picks a suggestion pool
+from the live document (`hasKey` → key codes, `hasItem`/`hasEquipped` → item keys,
+`…room.name ==` → room names, `setVisible`/`giveItem` → `npc:` refs, `stateGet` → state
+fields already used in the body, `includes(….status, …)` → status keys), offered in a
+popover accepted by click or ↑↓/Enter/Tab — sugar only, unknown names never error.
 
 Build/serve like the play client: `dx serve` in `crates/wickedways-studio` for dev,
 `crates/wickedways-studio/build-studio.sh` for the static bundle. **Deployment**: the root

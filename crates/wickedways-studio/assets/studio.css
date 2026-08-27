@@ -19,11 +19,14 @@
 body {
   background: var(--bg);
   color: var(--ink);
-  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  /* A bolder sans-serif UI face (the play client keeps its serif voice; the
+     studio is a tool). System stack — the wasm bundle ships no font files. */
+  font-family: "Segoe UI", "Helvetica Neue", "Arial Nova", Roboto, Ubuntu, Cantarell, Arial, sans-serif;
+  font-weight: 500;
   margin: 0;
 }
 
-h1, h2, h3, h4 { font-weight: 600; letter-spacing: 0.03em; }
+h1, h2, h3, h4 { font-weight: 700; letter-spacing: 0.03em; }
 h2 { font-size: 1.15rem; margin: 0.2rem 0 0.6rem; }
 h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; color: var(--ink-dim); }
 
@@ -224,6 +227,36 @@ h3 { font-size: 0.95rem; margin: 1rem 0 0.4rem; color: var(--ink-dim); }
 .hl-num { color: #7fdcd0; }
 .hl-op { color: var(--ink-dim); }
 .hl-plain { color: var(--ink); }
+
+/* ── autocomplete popover (asset-name suggestions in string literals) ── */
+.studio-ac {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  margin-top: 2px;
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+}
+.studio-ac-label { color: var(--ink-dim); font-size: 0.7rem; padding: 0.1rem 0.45rem 0.25rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.studio-ac-item {
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--ink);
+  cursor: pointer;
+  font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.45rem;
+  text-align: left;
+}
+.studio-ac-item:hover, .studio-ac-item.active { background: var(--accent-dim); }
 .studio-field-err { color: var(--color-error); font-size: 0.8rem; margin: 0.2rem 0 0.6rem; white-space: pre-wrap; }
 .studio-hint { color: var(--ink-dim); font-size: 0.8rem; }
 .studio-statsrow { display: flex; gap: 0.8rem; }

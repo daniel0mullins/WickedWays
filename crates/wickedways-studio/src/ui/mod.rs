@@ -1,6 +1,7 @@
 //! The studio's screens. Unlike the play client's monolithic surfaces, a CRUD app
 //! decomposes into many small components — a deliberate departure noted in the spec.
 
+pub mod autocomplete;
 pub mod behaviors;
 pub mod builders;
 pub mod highlight;
