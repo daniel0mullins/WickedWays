@@ -1,12 +1,13 @@
 # Talks: One Engine to Rule Them All
 
-A set of four talks, at four lengths, making the case for the Wicked Ways
+Talks 01–04 are a set at four lengths, making the case for the Wicked Ways
 architecture: **a single deterministic Rust engine as the only place game rules
 exist, with every product surface — browser, desktop, multiplayer server, JS
 embedding, physical tabletop — a thin projection of it** (a view/adapter over
 the engine, holding no logic of its own).
 
-All four talks share one thesis and escalate in depth. Pick by venue:
+Those four share one thesis and escalate in depth; 05 and 06 are Rust talks
+that stand on their own. Pick by venue:
 
 | Talk | Length | Venue | Deck |
 |---|---|---|---|
