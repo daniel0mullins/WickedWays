@@ -267,8 +267,8 @@ And if you want to see a real one, this project is public: a horror-RPG engine
 whose Rust core runs in the browser, on a server, and on a physical board — the
 architecture talks are in this same folder.
 
-Closing line: *you already know half of it; the other half is three ideas and a
-fortnight.*
+Closing line: *you already know half of it; the other half is three ideas and
+about two weeks.*
 
 ---
 
