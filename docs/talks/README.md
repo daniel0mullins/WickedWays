@@ -15,6 +15,7 @@ All four talks share one thesis and escalate in depth. Pick by venue:
 | [The systems tour](03-systems-tour.md) | 10–15 min | Conference short slot, team onboarding | [pptx](decks/03-systems-tour.pptx) |
 | [The deep dive](04-deep-dive.md) | 30–40 min | Full conference slot, architecture review | [pptx](decks/04-deep-dive.pptx) |
 | [The Rust ecosystem tour](05-rust-ecosystem.md) | 30–40 min | Rust meetup, team evaluating Rust | [pptx](decks/05-rust-ecosystem.pptx) |
+| [Rust for JavaScript developers](06-rust-for-js-devs.md) | 10 min | JS/TS team, web meetup, lunch-and-learn | [pptx](decks/06-rust-for-js-devs.pptx) |
 
 The decks in `decks/` are ready to present: 16:9, dark theme, with each talk's
 script embedded as per-slide speaker notes. The talk documents remain the
@@ -30,6 +31,11 @@ Rust — a brief, grounded introduction to the language's ecosystem (rustup,
 cargo, crates.io, workspaces, features, targets, clippy, and the marquee
 libraries) taught entirely through the jobs each piece does in this repo.
 Same no-experience-assumed conventions apply.
+
+Talks 05 and 06 are both about Rust, and they do not overlap: 05 is a long tour
+of the *ecosystem* for engineers evaluating the language; 06 is a short *language*
+intro that teaches every idea as a JavaScript↔Rust pair. Pick by audience, not by
+length.
 
 **Presenting to a non-technical audience?** There is a parallel set
 reformulated for gaming enthusiasts — no code, no architecture vocabulary,
