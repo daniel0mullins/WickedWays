@@ -1,12 +1,13 @@
 # Talks: One Engine to Rule Them All
 
-A set of four talks, at four lengths, making the case for the Wicked Ways
+Talks 01–04 are a set at four lengths, making the case for the Wicked Ways
 architecture: **a single deterministic Rust engine as the only place game rules
 exist, with every product surface — browser, desktop, multiplayer server, JS
 embedding, physical tabletop — a thin projection of it** (a view/adapter over
 the engine, holding no logic of its own).
 
-All four talks share one thesis and escalate in depth. Pick by venue:
+Those four share one thesis and escalate in depth; 05 and 06 are Rust talks
+that stand on their own. Pick by venue:
 
 | Talk | Length | Venue | Deck |
 |---|---|---|---|
@@ -15,6 +16,7 @@ All four talks share one thesis and escalate in depth. Pick by venue:
 | [The systems tour](03-systems-tour.md) | 10–15 min | Conference short slot, team onboarding | [pptx](decks/03-systems-tour.pptx) |
 | [The deep dive](04-deep-dive.md) | 30–40 min | Full conference slot, architecture review | [pptx](decks/04-deep-dive.pptx) |
 | [The Rust ecosystem tour](05-rust-ecosystem.md) | 30–40 min | Rust meetup, team evaluating Rust | [pptx](decks/05-rust-ecosystem.pptx) |
+| [Rust for JavaScript developers](06-rust-for-js-devs.md) | 10 min | JS/TS team, web meetup, lunch-and-learn | [pptx](decks/06-rust-for-js-devs.pptx) |
 
 The decks in `decks/` are ready to present: 16:9, dark theme, with each talk's
 script embedded as per-slide speaker notes. The talk documents remain the
@@ -30,6 +32,11 @@ Rust — a brief, grounded introduction to the language's ecosystem (rustup,
 cargo, crates.io, workspaces, features, targets, clippy, and the marquee
 libraries) taught entirely through the jobs each piece does in this repo.
 Same no-experience-assumed conventions apply.
+
+Talks 05 and 06 are both about Rust, and they do not overlap: 05 is a long tour
+of the *ecosystem* for engineers evaluating the language; 06 is a short *language*
+intro that teaches every idea as a JavaScript↔Rust pair. Pick by audience, not by
+length.
 
 **Presenting to a non-technical audience?** There is a parallel set
 reformulated for gaming enthusiasts — no code, no architecture vocabulary,
