@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use serde_json::{Map, Value};
 use wickedways_assemble::description::{
     ArchetypeDef, CacheDef, CampaignDescription, ConditionEntry, ExitDef, FormationDef, LootDef,
-    MechanicEntry, MobDef, NpcDef, RoomDef, SceneDef,
+    MapGenDef, MechanicEntry, MobDef, NpcDef, RequiredExitDef, RoomDef, SceneDef,
 };
 use wickedways_core::script::ast::{
     BehaviorScript, CardScript, ExitScript, ItemScript, SceneScript, VictoryScript,
@@ -203,6 +203,28 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 config: m.config.as_ref().and_then(|v| serde_json::to_value(v).ok()),
             })
             .collect(),
+        // The `[mapGen]` table → the description's `MapGenDef` (room NAMES;
+        // `assemble` derives the ids). Its interaction with `[[exits]]` is
+        // validated in `lower_catalog` (the fallible half).
+        map_gen: doc.map_gen.as_ref().map(|m| MapGenDef {
+            extra_connections: m.extra_connections,
+            required: m
+                .required
+                .iter()
+                .map(|r| RequiredExitDef {
+                    from: r.from.clone(),
+                    to: r.to.clone(),
+                    behavior_key: r.behavior.clone(),
+                    name: r.name.clone(),
+                    initial_state: r
+                        .initial_state
+                        .as_ref()
+                        .and_then(|v| serde_json::to_value(v).ok()),
+                })
+                .collect(),
+            max_exits_per_room: m.max_exits_per_room,
+            sealed: m.sealed.clone(),
+        }),
         // The `[villain]` table → the description's `VillainDef` (character
         // reference + authored deck), passed through verbatim; the assembler
         // resolves the character (mob-first, or the "@gm" sentinel at seating).
@@ -359,6 +381,30 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
                     kind: "exit",
                     key: key.clone(),
                 });
+            }
+        }
+    }
+
+    // `[mapGen]` owns the whole graph: mixing it with hand-wired `[[exits]]`
+    // is rejected outright (pinned passages belong in `[[mapGen.required]]`).
+    // A required entry's `behavior` resolves exactly like an exit's.
+    if let Some(mg) = &doc.map_gen {
+        if !doc.exits.is_empty() {
+            return Err(CompileError::ExprParse {
+                span: EXPR_BASE,
+                message: "[mapGen] and [[exits]] are mutually exclusive — move pinned \
+                          passages into [[mapGen.required]]"
+                    .into(),
+            });
+        }
+        for req in &mg.required {
+            if let Some(key) = &req.behavior {
+                if !doc.behaviors.exit.contains_key(key) {
+                    return Err(CompileError::UnresolvedKey {
+                        kind: "exit",
+                        key: key.clone(),
+                    });
+                }
             }
         }
     }

@@ -69,6 +69,12 @@ pub struct CampaignDescription {
     /// villain-less campaign, so committed description fixtures stay byte-stable.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub villain: Option<VillainDef>,
+    /// Procedural map generation. When present, `exits` stays empty and the
+    /// engine wires the room graph at `begin_campaign` (randomized spanning
+    /// tree over `World.rng`). Absent (and omitted on serialize) for
+    /// hand-wired campaigns, so committed fixtures stay byte-stable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map_gen: Option<MapGenDef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timeout_narration: Option<Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -242,6 +248,44 @@ pub struct VillainDef {
     pub character: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub deck: Vec<String>,
+}
+
+/// Procedural map-generation config (mirrors the engine's `MapGenSnapshot`,
+/// but references rooms by their author NAMES — id derivation happens in
+/// `construct`).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MapGenDef {
+    /// Loop edges beyond the spanning tree: an absolute count, or a fraction
+    /// of `n - 1` when strictly between 0 and 1.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extra_connections: Option<f64>,
+    /// Room pairs pinned as neighbors in every layout; each may carry an
+    /// authored door (behavior/name/state), like a hand-wired exit.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub required: Vec<RequiredExitDef>,
+    /// Per-room exit cap (clamped to `2..=8` at build time; default 8).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_exits_per_room: Option<i64>,
+    /// Room NAMES reachable only through `required` passages (a locked crypt's
+    /// keyed door stays its sole entrance in every layout).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sealed: Vec<String>,
+}
+
+/// One pinned passage of a [`MapGenDef`]: `from`/`to` are room names; the
+/// door fields mirror `ExitDef` (the generator assigns the compass direction).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RequiredExitDef {
+    pub from: String,
+    pub to: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub behavior_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub initial_state: Option<Value>,
 }
 
 #[cfg(test)]

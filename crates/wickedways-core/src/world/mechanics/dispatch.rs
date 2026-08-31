@@ -162,6 +162,12 @@ impl World {
                 }
                 Ok(())
             }
+            Effect::SetWorldState { field, value } => {
+                // The one write seam for `campaign.world_state` (auto-vivifies a
+                // non-object state, same as per-behavior `SetState`).
+                crate::script::eval::state_set(&mut self.campaign.world_state, &field, value);
+                Ok(())
+            }
         }
     }
 
@@ -1179,6 +1185,7 @@ mod tests {
             target: cid("pc"),
             stat: StatType::Health,
             source: None,
+            room: None,
         };
         let mut cues = Vec::new();
         assert_eq!(

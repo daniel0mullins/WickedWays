@@ -50,6 +50,11 @@ pub struct EditorDoc {
     pub mechanics: Vec<WithId<MechanicEntryToml>>,
     pub cards: Vec<WithId<CardEntryToml>>,
     pub villain: Option<VillainEntry>,
+    /// The `[mapGen]` table, passed through verbatim (no dedicated editor UI
+    /// yet — import/export keep it intact; a serde default keeps documents
+    /// saved before the field existed loadable).
+    #[serde(default)]
+    pub map_gen: Option<wickedways_author::author_doc::MapGenEntry>,
     pub behaviors: Behaviors,
     pub victory_win: Vec<WithId<ConditionEntry>>,
     pub victory_lose: Vec<WithId<ConditionEntry>>,
@@ -84,6 +89,7 @@ impl EditorDoc {
             mechanics: wrap(&mut next, doc.mechanics),
             cards: wrap(&mut next, doc.cards),
             villain: doc.villain,
+            map_gen: doc.map_gen,
             behaviors: doc.behaviors,
             victory_win: wrap(&mut next, victory.win),
             victory_lose: wrap(&mut next, victory.lose),
@@ -112,6 +118,7 @@ impl EditorDoc {
             mechanics: strip(&self.mechanics),
             villain: self.villain.clone(),
             cards: strip(&self.cards),
+            map_gen: self.map_gen.clone(),
             behaviors: self.behaviors.clone(),
             victory: wickedways_author::author_doc::Victory {
                 win: strip(&self.victory_win),
@@ -142,6 +149,7 @@ impl EditorDoc {
             mechanics: Vec::new(),
             villain: None,
             cards: Vec::new(),
+            map_gen: None,
             behaviors: Behaviors::default(),
             victory: wickedways_author::author_doc::Victory::default(),
             timeout_narration: None,

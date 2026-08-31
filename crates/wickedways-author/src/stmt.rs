@@ -344,6 +344,30 @@ fn parse_emit(rest: &str, base: Span) -> Result<Stmt, CompileError> {
                 },
             })
         }
+        // `setWorld(<field>, <value>)` — write one field of the campaign's
+        // world-scoped state (read back anywhere via `worldGet(...)`). The
+        // field is a string literal; the value any expression.
+        "setWorld" => {
+            if args.len() != 2 {
+                return Err(CompileError::ExprParse {
+                    span: base,
+                    message: format!("`setWorld(...)` takes 2 arguments (got {})", args.len()),
+                });
+            }
+            let wickedways_core::script::ast::Expr::Lit {
+                value: wickedways_core::script::value::Value::Str(field),
+            } = parse_expr(args[0].trim(), base)?
+            else {
+                return Err(CompileError::ExprParse {
+                    span: base,
+                    message: "setWorld's first argument (field) must be a string literal".into(),
+                });
+            };
+            let value = parse_expr(args[1].trim(), base)?;
+            Ok(Stmt::Emit {
+                effect: EffectTemplate::SetWorldState { field, value },
+            })
+        }
         // `status(field(<label>, <value>[, <emphasis>]), …)` — a HUD status readout.
         // Each argument is a `field(...)` form; the whole list becomes the effect's
         // `Vec<FieldTemplate>`.
@@ -361,7 +385,7 @@ fn parse_emit(rest: &str, base: Span) -> Result<Stmt, CompileError> {
             span: base,
             message: format!(
                 "unknown effect `{effect_name}` (expected cue/adjustStat/giveItem/setVisible/\
-                 status/damage/heal/grantImmunity)"
+                 setWorld/status/damage/heal/grantImmunity)"
             ),
         }),
     }

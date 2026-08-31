@@ -307,16 +307,40 @@ pub enum AppTransport {
 /// Build a fresh offline transport + a coordinator joined to it, from an authoritative snapshot and
 /// its catalog. Shared by single-player boot, `restore` (from a save), and `restart` (from a pristine
 /// genesis) — the local analog of the room server's "reset the authority to a snapshot".
+/// `World::from_snapshot` reseeds the transient rng to 0, so restore/restart stay deterministic; the
+/// fresh-game boots pass an entropy seed through [`rebuild_single_seeded`] instead.
 pub fn rebuild_single(
     snapshot: CampaignSnapshot,
     catalog: Catalog,
 ) -> (AppTransport, SyncCoordinator) {
-    let transport = AppTransport::Single(Box::new(SinglePlayerTransport::new(
-        World::from_snapshot(snapshot),
-        catalog,
-    )));
+    rebuild_single_seeded(snapshot, catalog, None)
+}
+
+/// [`rebuild_single`] with an explicit rng seed. A fresh game passes platform entropy so each
+/// playthrough draws a different stream — procedurally generated maps lay out differently, encounters
+/// and the villain's shuffle vary — while a `None` seed keeps `from_snapshot`'s deterministic 0
+/// (tests, restore).
+pub fn rebuild_single_seeded(
+    snapshot: CampaignSnapshot,
+    catalog: Catalog,
+    seed: Option<u32>,
+) -> (AppTransport, SyncCoordinator) {
+    let mut world = World::from_snapshot(snapshot);
+    if let Some(seed) = seed {
+        world.seed_rng(seed);
+    }
+    let transport = AppTransport::Single(Box::new(SinglePlayerTransport::new(world, catalog)));
     let coord = SyncCoordinator::join(&transport);
     (transport, coord)
+}
+
+/// The per-playthrough rng seed: platform entropy (`Math.random()` on the web, OS-seeded hasher
+/// entropy natively), truncated to the engine's u32 seed space.
+fn playthrough_seed() -> u32 {
+    #[allow(clippy::cast_possible_truncation)]
+    {
+        platform::random_u64() as u32
+    }
 }
 
 /// Boot the offline single-player authority for a bundled campaign: build it, and `BeginCampaign` if
@@ -327,7 +351,8 @@ pub async fn boot_single(
 ) -> Result<(AppTransport, SyncCoordinator, Catalog), String> {
     let (snapshot, catalog) = bundled_campaign(campaign)?;
     let started = snapshot.campaign.started;
-    let (transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+    let (transport, mut coord) =
+        rebuild_single_seeded(snapshot, catalog.clone(), Some(playthrough_seed()));
     if !started {
         match transport.submit_async(Command::BeginCampaign).await {
             SubmitResult::Committed { .. } => coord.sync(&transport),
@@ -359,7 +384,8 @@ pub async fn boot_hotseat(
     if snapshot.campaign.started || extra.is_empty() {
         return boot_single(campaign).await;
     }
-    let (transport, mut coord) = rebuild_single(snapshot.clone(), catalog.clone());
+    let (transport, mut coord) =
+        rebuild_single_seeded(snapshot.clone(), catalog.clone(), Some(playthrough_seed()));
     for (i, seat) in extra.iter().enumerate() {
         let name = if seat.name.trim().is_empty() {
             format!("Player {}", i + 2)

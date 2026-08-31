@@ -267,6 +267,59 @@ pub struct VillainSnapshot {
     pub card_action_taken: bool,
 }
 
+/// A required (pinned) passage for procedural map generation: the two rooms are
+/// guaranteed adjacent in every generated layout, and the exit carries the
+/// authored door behavior/name/state (a keyed mausoleum door survives the
+/// shuffle). Compass directions are still assigned by the generator.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RequiredExitSnapshot {
+    pub from: RoomId,
+    pub to: RoomId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub behavior_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Value::is_null")]
+    pub state: Value,
+}
+
+/// Procedural map-generation config (the `[mapGen]` authoring table). When a
+/// campaign carries one, its rooms are authored WITHOUT `[[exits]]` and the
+/// engine wires them at `begin_campaign` via a randomized spanning tree drawn
+/// from `World.rng` — every room reachable, bidirectional exits, no
+/// self-connections, at most `max_exits_per_room` exits per room. Absent (and
+/// omitted on serialize) for hand-wired campaigns, so pre-existing goldens
+/// stay byte-stable.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MapGenSnapshot {
+    /// Loop edges beyond the spanning tree: an absolute count (`>= 1`), or a
+    /// fraction of `n - 1` when strictly between 0 and 1. Default 0.
+    #[serde(default, skip_serializing_if = "is_zero_f64")]
+    pub extra_connections: f64,
+    /// Room pairs pinned as neighbors before the tree is laid down (keyed
+    /// doors and other authored passages that must exist in every layout).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub required: Vec<RequiredExitSnapshot>,
+    /// Per-room exit cap, clamped to `2..=8` at build time. Default 8 (the
+    /// eight compass directions).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_exits_per_room: Option<i64>,
+    /// Rooms the generator may reach ONLY through `required` passages: they
+    /// never host tree or loop edges, so a locked crypt's keyed door stays its
+    /// sole entrance in every layout. Each sealed room must appear in a
+    /// `required` pair or the build fails (a stranded room is an error).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sealed: Vec<RoomId>,
+}
+
+/// Serde `skip_serializing_if` for `MapGenSnapshot::extra_connections`.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_zero_f64(n: &f64) -> bool {
+    *n == 0.0
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VictoryConditionSnapshot {
@@ -315,6 +368,19 @@ pub struct CampaignCoreSnapshot {
     /// Ticks down at round end; omitted while `0` so goldens stay byte-stable.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub lights_out_rounds: i64,
+    /// Campaign-wide, world-scoped script state: a JSON object readable from
+    /// EVERY DSL context via `worldGet(...)` and written through the
+    /// `setWorld(...)` effect. Unlike per-behavior `state`, this is the one
+    /// sanctioned cross-behavior channel — a night clock a victory test can
+    /// read, a ward a card can break. `null`/absent is the empty state and the
+    /// key is omitted on serialize, so pre-existing goldens stay byte-stable.
+    #[serde(default, skip_serializing_if = "Value::is_null")]
+    pub world_state: Value,
+    /// Procedural map-generation config. When present, `begin_campaign` wires
+    /// the room graph from `World.rng` (see `MapGenSnapshot`); absent (and
+    /// omitted on serialize) for hand-wired campaigns.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map_gen: Option<MapGenSnapshot>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

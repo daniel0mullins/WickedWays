@@ -12,23 +12,22 @@ and an entry here may have been closed since.
 Nothing in this list is a regression against a shipped Rust feature. These are capabilities that
 existed in TS and have no Rust equivalent yet.
 
-## Genuinely absent — needs porting
+## Ported — closed since this list was written
 
-### 1. Map generation (`buildMap`)
+### Map generation (`buildMap`) — PORTED
 
 **TS:** `buildMap(rooms, options)` wired a list of rooms into a connected dungeon via a randomized
 spanning tree — every room reachable, `n - 1` edges, bidirectional exits, no self-connections, a
-cap of 8 exits per room. `extraConnections` added loops (an absolute count, or a fraction of
-`n - 1` when between 0 and 1); `requiredConnections` pinned specific pairs as neighbors
-before the tree was laid down; an injectable rng made it deterministic. If a room could not be
-wired in (its component fully saturated) it threw rather than leaving the room stranded.
+cap of 8 exits per room. `extraConnections` added loops; `requiredConnections` pinned specific
+pairs as neighbors before the tree was laid down; an injectable rng made it deterministic.
 
-**Rust today:** nothing. No `build_map`, no spanning-tree generator, no `extra_connections` /
-`required_connections` anywhere in `crates/`. Maps are authored edge by edge as `[[exits]]` and
-constructed by `wickedways-assemble` (`crates/wickedways-assemble/src/construct.rs`).
+**Rust now:** `World::generate_map` (`crates/wickedways-core/src/world/mapgen.rs`), run from
+`begin_campaign` for campaigns carrying a `[mapGen]` config (authored in the TOML surface,
+carried as `campaign.map_gen`). All the TS semantics, drawn from `World.rng` — plus a `sealed`
+extension: rooms reachable only through their `required` (keyed-door) passages. Hand-wired
+`[[exits]]` campaigns are untouched. `campaigns/solomons-rest.toml` is the first user.
 
-**Why it matters:** procedural dungeon layout is impossible right now — every passage, including
-each return leg, must be hand-written in TOML.
+## Genuinely absent — needs porting
 
 ### 2. Runtime light placement (`placeLight` / `takeLight`)
 

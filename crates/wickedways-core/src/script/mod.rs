@@ -158,6 +158,7 @@ fn check_effect(t: &ast::EffectTemplate) -> Result<(), &'static str> {
             check_expr(target)?;
             check_expr(visible)
         }
+        T::SetWorldState { value, .. } => check_expr(value),
     }
 }
 
@@ -218,7 +219,8 @@ fn check_expr(e: &Expr) -> Result<(), &'static str> {
         | Expr::Action
         | Expr::Damage
         | Expr::Element
-        | Expr::StateGet { .. } => Ok(()),
+        | Expr::StateGet { .. }
+        | Expr::WorldGet { .. } => Ok(()),
     }
 }
 

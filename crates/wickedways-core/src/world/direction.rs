@@ -32,6 +32,21 @@ impl Direction {
         Direction::ALL.into_iter().find(|d| d.as_key() == key)
     }
 
+    /// The compass opposite — the direction the return leg of a two-way
+    /// passage occupies in the far room.
+    pub const fn opposite(self) -> Direction {
+        match self {
+            Direction::North => Direction::South,
+            Direction::South => Direction::North,
+            Direction::East => Direction::West,
+            Direction::West => Direction::East,
+            Direction::Northeast => Direction::Southwest,
+            Direction::Northwest => Direction::Southeast,
+            Direction::Southeast => Direction::Northwest,
+            Direction::Southwest => Direction::Northeast,
+        }
+    }
+
     /// The wire name of this direction — identical to its serde serialization
     /// (pinned by the `wire_names_match_serde` test below). Room exit maps are
     /// keyed by these strings.
