@@ -1,0 +1,216 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+:root{
+ --ink:#0E0B14; --panel:#221C31; --panel2:#2B2342; --line:#3A3152;
+ --bone:#E9E2D0; --muted:#9A92A8; --gold:#C9A227; --red:#8E2F2F; --redText:#D06060;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1280px;height:720px;overflow:hidden;background:var(--ink)}
+body{position:relative;font-family:'DejaVu Sans','Liberation Sans',sans-serif;color:var(--bone)}
+.scene{position:absolute;inset:0;opacity:0}
+.c{position:absolute;left:50%;transform:translateX(-50%);text-align:center;width:1100px}
+.disp{font-family:'DejaVu Serif','Liberation Serif',Georgia,serif;font-weight:700}
+.mono{font-family:'DejaVu Sans Mono','Liberation Mono',monospace}
+.kick{font-size:15px;letter-spacing:.32em;color:var(--gold);font-weight:700}
+.cap{font-size:23px;color:var(--muted);line-height:1.5}
+#glow{position:absolute;inset:0;pointer-events:none;
+ background:radial-gradient(circle at 50% 46%, rgba(201,162,39,.16) 0%, rgba(201,162,39,.05) 28%, rgba(0,0,0,0) 62%)}
+#vig{position:absolute;inset:0;pointer-events:none;
+ background:radial-gradient(ellipse at 50% 50%, rgba(0,0,0,0) 48%, rgba(0,0,0,.55) 100%)}
+#grain{position:absolute;inset:0;pointer-events:none;opacity:.055;
+ background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/></filter><rect width='160' height='160' filter='url(%23n)' opacity='.5'/></svg>")}
+#fade{position:absolute;inset:0;background:#000;pointer-events:none;opacity:0}
+.stat{position:absolute;width:150px;height:150px;border-radius:50%;
+ background:var(--panel2);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;
+ font-family:'DejaVu Serif',serif;font-weight:700;font-size:25px}
+.node{position:absolute;width:118px;height:118px;border-radius:50%;background:var(--panel2);
+ border:2px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.node .nm{font-size:15px;letter-spacing:.13em;font-weight:700;color:var(--bone);text-align:center;line-height:1.35}
+.node .lb{font-size:13px;color:var(--muted)}
+.room{position:absolute;border-radius:12px;border:2px solid var(--line);background:#0A0810;
+ display:flex;align-items:center;justify-content:center;font-size:56px}
+.die{position:absolute;left:50%;top:196px;transform:translateX(-50%);width:224px;height:224px;border-radius:26px;
+ background:var(--panel2);border:3px solid var(--gold);display:flex;align-items:center;justify-content:center;
+ font-family:'DejaVu Serif',serif;font-weight:700;font-size:110px;color:var(--bone)}
+.codeline{font-size:26px;line-height:1.75;color:var(--muted);text-align:left}
+.codeline b{color:var(--gold);font-weight:400}
+</style></head><body>
+
+<div class="scene" id="s1">
+  <div class="c disp" id="s1a" style="top:296px;font-size:46px;line-height:1.35"></div>
+  <div class="c" id="s1b" style="top:436px;font-size:22px;color:var(--muted);letter-spacing:.06em"></div>
+</div>
+
+<div class="scene" id="s2">
+  <div class="c kick" style="top:92px">THREE THINGS KEEP YOU ALIVE</div>
+  <svg id="s2svg" width="1280" height="720" style="position:absolute;inset:0">
+    <defs><marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 z" fill="#C9A227"/></marker></defs>
+    <path id="a1" d="M565,300 L505,392" stroke="#C9A227" stroke-width="3" fill="none" marker-end="url(#ah)"/>
+    <path id="a2" d="M578,470 L702,470" stroke="#C9A227" stroke-width="3" fill="none" marker-end="url(#ah)"/>
+    <path id="a3" d="M775,392 L715,300" stroke="#C9A227" stroke-width="3" fill="none" marker-end="url(#ah)"/>
+  </svg>
+  <div class="stat" id="st1" style="left:565px;top:148px">Health</div>
+  <div class="stat" id="st2" style="left:390px;top:396px">Sanity</div>
+  <div class="stat" id="st3" style="left:740px;top:396px">Energy</div>
+  <div class="c cap" id="s2c" style="top:590px"></div>
+</div>
+
+<div class="scene" id="s3">
+  <div class="c kick" style="top:96px">THE DARK IS A DECISION</div>
+  <div class="room" id="rm" style="left:392px;top:186px;width:496px;height:268px"><span id="qm">?</span><span id="eyes" style="display:none;gap:34px;align-items:center"><i style="display:block;width:19px;height:19px;border-radius:50%;background:#D06060;box-shadow:0 0 18px #D06060"></i><i style="display:block;width:19px;height:19px;border-radius:50%;background:#D06060;box-shadow:0 0 18px #D06060"></i></span></div>
+  <div class="c cap" id="s3c" style="top:530px"></div>
+</div>
+
+<div class="scene" id="s4">
+  <div class="c kick" style="top:96px">EVERY ATTACK OPENS WITH A d20</div>
+  <div class="die" id="die">7</div>
+  <div class="c disp" id="s4b" style="top:452px;font-size:34px;color:var(--gold);letter-spacing:.08em"></div>
+  <div class="c cap" id="s4c" style="top:540px"></div>
+</div>
+
+<div class="scene" id="s5">
+  <svg id="s5svg" width="1280" height="720" style="position:absolute;inset:0"></svg>
+  <div class="node" id="n0" style="left:581px;top:281px;width:158px;height:158px;background:#8E2F2F;border-color:#C9A227">
+    <div class="lb" style="color:var(--bone);font-size:15px;line-height:1.3">the same<br>game</div></div>
+  <div class="node" id="n1" style="left:240px;top:170px"><div class="nm">BROWSER</div></div>
+  <div class="node" id="n2" style="left:240px;top:432px"><div class="nm">DESKTOP</div></div>
+  <div class="node" id="n3" style="left:922px;top:170px"><div class="nm">ONLINE</div></div>
+  <div class="node" id="n4" style="left:922px;top:432px"><div class="nm" style="color:#C9A227">A REAL<br>BOARD</div></div>
+  <div class="c disp" id="s5c" style="top:610px;font-size:40px"></div>
+</div>
+
+<div class="scene" id="s6">
+  <div class="c kick" style="top:104px">A CAMPAIGN IS A TEXT FILE YOU CAN READ</div>
+  <div style="position:absolute;left:296px;top:186px;width:688px">
+    <div class="mono codeline" id="cl1"></div>
+    <div class="mono codeline" id="cl2"></div>
+    <div class="mono codeline" id="cl3"></div>
+  </div>
+  <div class="c disp" id="s6c" style="top:530px;font-size:38px;color:var(--gold)"></div>
+</div>
+
+<div class="scene" id="s7">
+  <div class="c disp" id="t1" style="top:232px;font-size:88px;letter-spacing:.13em">WICKED WAYS</div>
+  <div class="c" id="t2" style="top:368px;font-size:26px;color:var(--muted);letter-spacing:.05em">A co-op horror RPG that follows you anywhere</div>
+  <div class="c mono" id="t3" style="top:470px;font-size:21px;color:var(--gold)">hollow.wickedways.online</div>
+  <div class="c mono" id="t4" style="top:520px;font-size:16px;color:var(--muted)">github.com/daniel0mullins/WickedWays</div>
+</div>
+
+<div id="glow"></div><div id="vig"></div><div id="grain"></div><div id="fade"></div>
+
+<script>
+const E=id=>document.getElementById(id);
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+// alpha window with fades
+function win(t,s,e,fi,fo){fi=fi||.55;fo=fo||.55;
+ if(t<s||t>e)return 0;
+ const a=cl((t-s)/fi,0,1), b=cl((e-t)/fo,0,1); return Math.min(a,b);}
+// progress 0..1 across [s,e]
+const pr=(t,s,e)=>cl((t-s)/(e-s),0,1);
+function type(el,txt,p){const n=Math.round(txt.length*p);el.textContent=txt.slice(0,n);}
+
+const SC=[[0,5.2],[5.2,11.0],[11.0,16.8],[16.8,22.6],[22.6,28.4],[28.4,33.0],[33.0,39.0]];
+const DIE=[13,4,19,8,2,17,11,6,20,3,15,9];
+
+function renderFrame(t){
+  // atmosphere: candle flicker
+  const fl=.72+.20*Math.sin(t*11.3)*Math.sin(t*4.7)+.08*Math.sin(t*23.1);
+  E('glow').style.opacity=(0.55+0.45*fl).toFixed(3);
+  // global open/close fade
+  let f=0;
+  if(t<0.9) f=1-t/0.9;
+  if(t>37.9) f=cl((t-37.9)/1.1,0,1);
+  E('fade').style.opacity=f.toFixed(3);
+
+  for(let i=0;i<7;i++){E('s'+(i+1)).style.opacity=win(t,SC[i][0],SC[i][1]).toFixed(3);}
+
+  // ---- S1 cold open
+  {const p=pr(t,0.9,3.0);
+   type(E('s1a'),'The door thuds shut behind you.',p);
+   E('s1a').style.transform='translateX(-50%) translateY('+lerp(14,0,ease(pr(t,0.9,2.2))).toFixed(1)+'px)';
+   E('s1b').style.opacity=win(t,3.3,5.2,.7,.5).toFixed(3);
+   type(E('s1b'),'Something in the cellar has been waiting.',pr(t,3.4,4.7));}
+
+  // ---- S2 stats
+  {const b=5.2;
+   [['st1',0],['st2',.32],['st3',.64]].forEach(([id,d])=>{
+     const p=ease(pr(t,b+.35+d,b+1.25+d));
+     const el=E(id); el.style.opacity=p.toFixed(3);
+     el.style.transform='scale('+lerp(.7,1,p).toFixed(3)+')';});
+   ['a1','a2','a3'].forEach((id,i)=>{
+     const p=ease(pr(t,b+1.5+i*.42,b+2.15+i*.42));
+     const el=E(id),L=el.getTotalLength();
+     el.style.strokeDasharray=L; el.style.strokeDashoffset=(L*(1-p)).toFixed(2);
+     el.style.opacity=p>0?1:0;});
+   E('s2c').style.opacity=win(t,b+2.9,11.0,.6,.5).toFixed(3);
+   type(E('s2c'),'Each one guards the next. Let one fall — and the house pushes.',pr(t,b+3.0,b+4.6));}
+
+  // ---- S3 dark / lantern
+  {const b=11.0, lit=pr(t,b+2.0,b+2.9);
+   const rm=E('rm');
+   rm.style.background='rgb('+Math.round(lerp(10,44,lit))+','+Math.round(lerp(8,34,lit))+','+Math.round(lerp(16,58,lit))+')';
+   rm.style.borderColor=lit>.5?'#C9A227':'#3A3152';
+   rm.style.boxShadow=lit>.05?('0 0 '+(lit*70).toFixed(0)+'px rgba(201,162,39,'+(lit*.5).toFixed(2)+')'):'none';
+   const dark = lit<.45;
+   E('qm').style.display = dark ? 'block' : 'none';
+   E('eyes').style.display = dark ? 'none' : 'flex';
+   rm.style.color = '#3A3152';
+   E('s3c').style.opacity=win(t,b+3.1,16.8,.6,.5).toFixed(3);
+   type(E('s3c'),'It hides what is in it — and something in there sees you fine.',pr(t,b+3.2,b+4.8));}
+
+  // ---- S4 dice
+  {const b=16.8, roll=pr(t,b+.5,b+2.35);
+   const die=E('die');
+   if(roll<1){const idx=Math.floor(roll*roll*34)%DIE.length; die.textContent=DIE[idx];
+     die.style.transform='translateX(-50%) rotate('+(lerp(0,700,roll)).toFixed(1)+'deg) scale('+lerp(.85,1,roll).toFixed(3)+')';
+     die.style.color='#E9E2D0'; die.style.borderColor='#3A3152';}
+   else{const pop=ease(pr(t,b+2.35,b+2.75));
+     die.textContent='20'; die.style.transform='translateX(-50%) rotate(0deg) scale('+lerp(1,1.14,pop).toFixed(3)+')';
+     die.style.color='#C9A227'; die.style.borderColor='#C9A227';
+     die.style.boxShadow='0 0 '+(pop*60).toFixed(0)+'px rgba(201,162,39,.55)';}
+   E('s4b').style.opacity=win(t,b+2.6,22.6,.4,.5).toFixed(3);
+   E('s4b').textContent='CRITICAL HIT  ×1.5';
+   E('s4c').style.opacity=win(t,b+3.5,22.6,.6,.5).toFixed(3);
+   type(E('s4c'),'Roll your own dice. The game takes your number.',pr(t,b+3.6,b+5.0));}
+
+  // ---- S5 every table
+  {const b=22.6;
+   const svg=E('s5svg');
+   if(!svg.dataset.built){
+     svg.innerHTML=[[299,229],[299,491],[981,229],[981,491]].map(([x,y],i)=>
+       '<line id="ln'+i+'" x1="660" y1="360" x2="'+x+'" y2="'+y+'" stroke="#3A3152" stroke-width="2.5"/>').join('');
+     svg.dataset.built='1';}
+   const core=ease(pr(t,b+.25,b+1.0));
+   E('n0').style.opacity=core.toFixed(3);
+   E('n0').style.transform='scale('+lerp(.72,1,core).toFixed(3)+')';
+   for(let i=0;i<4;i++){
+     const p=ease(pr(t,b+1.05+i*.42,b+1.75+i*.42));
+     E('n'+(i+1)).style.opacity=p.toFixed(3);
+     E('n'+(i+1)).style.transform='scale('+lerp(.72,1,p).toFixed(3)+')';
+     const ln=E('ln'+i); if(ln){const L=ln.getTotalLength();
+       ln.style.strokeDasharray=L; ln.style.strokeDashoffset=(L*(1-p)).toFixed(2);
+       ln.style.stroke=p>.9?'#C9A227':'#3A3152';}}
+   E('s5c').style.opacity=win(t,b+3.3,28.4,.55,.5).toFixed(3);
+   E('s5c').textContent='One game. Every table.';}
+
+  // ---- S6 modding
+  {const b=28.4;
+   type(E('cl1'),'ROOM  The Cellar',pr(t,b+.4,b+1.25));
+   type(E('cl2'),'DOOR  Iron Door — needs: cellar key',pr(t,b+1.3,b+2.5));
+   type(E('cl3'),'RULE  Doom clock — ticks each round',pr(t,b+2.55,b+3.75));
+   E('s6c').style.opacity=win(t,b+3.9,33.0,.5,.5).toFixed(3);
+   E('s6c').textContent='Write your own nightmare.';}
+
+  // ---- S7 title
+  {const b=33.0;
+   const p=ease(pr(t,b+.3,b+1.5));
+   E('t1').style.opacity=p.toFixed(3);
+   E('t1').style.letterSpacing=lerp(0.26,0.13,p).toFixed(3)+'em';
+   E('t2').style.opacity=win(t,b+1.5,39,.8,1.2).toFixed(3);
+   E('t3').style.opacity=win(t,b+2.5,39,.8,1.2).toFixed(3);
+   E('t4').style.opacity=win(t,b+3.0,39,.8,1.2).toFixed(3);}
+}
+window.renderFrame=renderFrame; renderFrame(0);
+</script></body></html>
