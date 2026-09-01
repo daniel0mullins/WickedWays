@@ -6,7 +6,7 @@
 //! codex. No ordering constraint, no hydration, no rng. A replica converges structurally because
 //! the same one crate produces and applies the delta.
 
-use crate::world::ids::{CharacterId, ItemId, LootId, MaterialCacheId, RoomId};
+use crate::world::ids::{CharacterId, ExitId, ItemId, LootId, MaterialCacheId, RoomId};
 use crate::world::World;
 
 use super::delta::{Delta, EntitySnapshot};
@@ -28,6 +28,9 @@ pub fn apply(replica: &mut World, delta: &Delta) {
             EntitySnapshot::Room(r) => {
                 replica.rooms.insert(r.id.clone(), (**r).clone());
             }
+            EntitySnapshot::Exit(e) => {
+                replica.exits.insert(e.id.clone(), (**e).clone());
+            }
             EntitySnapshot::Character(c) => {
                 replica.characters.insert(c.id.clone(), (**c).clone());
             }
@@ -47,6 +50,7 @@ pub fn apply(replica: &mut World, delta: &Delta) {
     // removes).
     for id in &delta.removed {
         replica.rooms.remove(&RoomId(id.clone()));
+        replica.exits.remove(&ExitId(id.clone()));
         replica.characters.remove(&CharacterId(id.clone()));
         replica.items.remove(&ItemId(id.clone()));
         replica.loot.remove(&LootId(id.clone()));
@@ -67,7 +71,7 @@ mod tests {
     use crate::sync::command::Command;
     use crate::sync::delta::{Delta, EntitySnapshot};
     use crate::world::descriptor::Catalog;
-    use crate::world::ids::{CharacterId, ItemId, RoomId};
+    use crate::world::ids::{CharacterId, ExitId, ItemId, RoomId};
     use crate::world::snapshot::ItemSnapshot;
     use crate::world::test_support::{world_two_rooms, world_with_party};
     use alloc::boxed::Box;
@@ -111,6 +115,24 @@ mod tests {
             1.0,
             "changed character replaced"
         );
+    }
+
+    #[test]
+    fn apply_replicates_an_exit_mutation() {
+        // diff → apply round-trip of an exit-state change (the SetExitState shape). The replica's
+        // exit map must converge — client-side door gating answers from it.
+        let authority = world_two_rooms(false);
+        let mut replica = authority.clone();
+        let mut mutated = authority.clone();
+        mutated
+            .exits
+            .get_mut(&ExitId("exit-north".into()))
+            .unwrap()
+            .state = serde_json::json!({ "sealed": true });
+        let delta = crate::sync::delta::diff(&authority.to_snapshot(), &mutated.to_snapshot());
+        assert_eq!(delta.changed.len(), 1, "exit change must ride the delta");
+        apply(&mut replica, &delta);
+        assert_eq!(replica.to_snapshot(), mutated.to_snapshot());
     }
 
     #[test]

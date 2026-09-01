@@ -1072,6 +1072,13 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
   gate** ([`crates/wickedways-assemble/tests/sync_gate.rs`](crates/wickedways-assemble/tests/sync_gate.rs))
   replays committed command sequences through the Rust authority and asserts each `{ seq, delta }`
   matches the committed golden byte-for-byte.
+  - **A `Delta` replicates all six entity collections** — rooms, exits, characters, items, loot,
+    material caches — plus the campaign core. The exit `EntitySnapshot` variant is a Rust-side
+    extension past the retired TS oracle, which treated exits as runtime-immutable and never
+    carried them: the engine now mutates exit objects after genesis (the `SetExitState` card
+    effect, begin-time map generation), and client-side door gating answers from the replica's
+    exits, so they stream live like everything else. A delta whose command touched no exit still
+    serializes byte-identically to the oracle's, so the committed sync goldens are unchanged.
   - **Solo mode** (`AuthorityOpts.solo`) is how the offline single-player host (the browser client's
     `SinglePlayerTransport`) recovers the full per-turn machinery the explicit multiplayer path leaves
     to the GM. A time-advancing command (`move`/`take`/`drop`/`use`/`attack`/`wait`) drives a turn that
@@ -1097,7 +1104,9 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
     only in the direction-based `go`). So the surfaces gate a `move` with `World::exit_block_reason`
     (a pure `can_pass` query that runs no `run_script`), narrating the door's fail message and issuing
     no command when it's locked — e.g. the Hollow House cellar door stays shut until the caretaker's
-    dialogue hands over the key.
+    dialogue hands over the key. The exit objects this gate reads are kept live by delta
+    replication (see above), so a door sealed or unsealed mid-session gates correctly on every
+    connected client, not just at join time.
   - **Materials & crafting** are wired end to end. `harvest`/`craft`/`repair`/`destroy` are **free**
     turn-gated commands (`authorize` requires the actor's turn; none tick the budget) that resolve
     against the ported engine verbs — harvesting a room's `MaterialCache` into the shared pool,

@@ -14,9 +14,13 @@
 //! not replicate JS `JSON.stringify` semantics; we rely on the existing snapshot-parity
 //! guarantee plus after-order iteration.
 //!
-//! Note the delta covers **rooms/characters/items/loot/materialCaches + campaignCore** — the
-//! same five collections the `EntitySnapshot` union tags. Exits are not replicated by delta
-//! (there is no exit `EntitySnapshot` variant), matching the oracle.
+//! Note the delta covers **rooms/exits/characters/items/loot/materialCaches + campaignCore** —
+//! the six collections the `EntitySnapshot` union tags. The `Exit` variant is a deliberate
+//! extension past the retired TS oracle, which treated exits as runtime-immutable and never
+//! carried them: the engine now mutates exit objects after genesis (`begin_campaign` map
+//! generation, the `SetExitState` card effect), and client-side door gating reads the
+//! replica's exits, so replicas must hear about those mutations. A delta whose command
+//! touched no exit serializes byte-identically to the oracle's.
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, BTreeSet};
@@ -27,8 +31,8 @@ use serde_json::Value;
 
 use crate::presentation::PresentationCue;
 use crate::world::snapshot::{
-    CampaignCoreSnapshot, CampaignSnapshot, CharacterSnapshot, ItemSnapshot, LootSnapshot,
-    MaterialCacheSnapshot, RoomSnapshot,
+    CampaignCoreSnapshot, CampaignSnapshot, CharacterSnapshot, ExitSnapshot, ItemSnapshot,
+    LootSnapshot, MaterialCacheSnapshot, RoomSnapshot,
 };
 
 /// A per-entity snapshot tagged so a replica applier can dispatch by entity type.
@@ -40,6 +44,7 @@ use crate::world::snapshot::{
 #[serde(tag = "type", content = "data", rename_all = "camelCase")]
 pub enum EntitySnapshot {
     Room(Box<RoomSnapshot>),
+    Exit(Box<ExitSnapshot>),
     Character(Box<CharacterSnapshot>),
     Item(Box<ItemSnapshot>),
     Loot(Box<LootSnapshot>),
@@ -87,6 +92,15 @@ pub fn diff(before: &CampaignSnapshot, after: &CampaignSnapshot) -> Delta {
         &after.rooms,
         room_id,
         |r| EntitySnapshot::Room(Box::new(r)),
+        &mut changed,
+        &mut created,
+        &mut removed,
+    );
+    diff_collection(
+        &before.exits,
+        &after.exits,
+        exit_id,
+        |e| EntitySnapshot::Exit(Box::new(e)),
         &mut changed,
         &mut created,
         &mut removed,
@@ -189,6 +203,9 @@ fn diff_collection<T, F, G>(
 fn room_id(r: &RoomSnapshot) -> &str {
     &r.id.0
 }
+fn exit_id(e: &ExitSnapshot) -> &str {
+    &e.id.0
+}
 fn character_id(c: &CharacterSnapshot) -> &str {
     &c.id.0
 }
@@ -209,7 +226,7 @@ mod tests {
     use super::*;
     use crate::world::ids::ItemId;
     use crate::world::snapshot::ItemSnapshot;
-    use crate::world::test_support::world_with_party;
+    use crate::world::test_support::{world_two_rooms, world_with_party};
     use serde_json::json;
 
     fn base() -> CampaignSnapshot {
@@ -269,6 +286,31 @@ mod tests {
         assert!(matches!(d.changed[0], EntitySnapshot::Character(_)));
         // A character-only mutation leaves campaign core untouched.
         assert!(d.campaign_core.is_none());
+    }
+
+    #[test]
+    fn captures_a_changed_exit() {
+        // An exit-state mutation (e.g. the SetExitState card effect) must ride the delta.
+        let before = world_two_rooms(false).to_snapshot();
+        let mut after = before.clone();
+        after.exits[0].state = json!({ "sealed": true });
+        let d = diff(&before, &after);
+        assert_eq!(d.changed.len(), 1);
+        match &d.changed[0] {
+            EntitySnapshot::Exit(e) => assert_eq!(e.state, json!({ "sealed": true })),
+            other => panic!("expected an exit, got {other:?}"),
+        }
+        assert!(d.created.is_empty() && d.removed.is_empty());
+        assert!(d.campaign_core.is_none());
+    }
+
+    #[test]
+    fn exit_snapshot_serializes_with_the_exit_tag() {
+        let snap = world_two_rooms(false).to_snapshot();
+        let e = EntitySnapshot::Exit(Box::new(snap.exits[0].clone()));
+        let v = serde_json::to_value(&e).unwrap();
+        assert_eq!(v["type"], json!("exit"));
+        assert_eq!(v["data"]["id"], json!("exit-north"));
     }
 
     #[test]
