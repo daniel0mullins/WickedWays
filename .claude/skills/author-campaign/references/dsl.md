@@ -51,7 +51,7 @@ Literals: numbers, `true`/`false`, strings in `'…'` or `"…"`.
 | `hasEquipped(who, '<itemKey>')` ★ | has the item equipped |
 | `stateGet('<field>', <literal default>)` ★ | read this behavior's state field |
 | `stateGetIn('<mapField>', <keyExpr>, <literal default>)` ★ | read a string-keyed state map |
-| `worldGet('<field>', <literal default>)` ★ | read the campaign's WORLD-scoped state — readable in every context (victory tests included); written via `emit setWorld(...)` |
+| `worldGet('<field>', <literal default>)` ★ | read the campaign's WORLD-scoped state (written via `emit setWorld(...)`) — readable wherever a campaign view is in scope: mechanic hooks, scenes, item/card effects, NPC dialogue effects, and victory tests. NOT in exit behaviors (`canPass`/`runScript` see only the actor and the exit's own state — it silently yields the default there; gate doors on `hasKey(actor, …)` or the exit's own `stateGet('unlocked', …)`, flipped by its `runScript`, instead) |
 | `some(list, pred)` / `every(list, pred)` | quantifiers; `pred` reads `element` |
 | `includes(list, value)` | list membership |
 | `length(list)` / `first(list)` | list ops |

@@ -205,11 +205,6 @@ pub struct ViewModel {
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-/// Alias list for a scope entity.
-///
-/// Returns a deduplicated list: lowercased `name` first, then any catalog alias
-/// entries for `behavior_key`. If `behavior_key` is `None` (keys), returns just
-/// the lowercased name.
 /// The catalog's art entry for `key` (an entity id like `room:{name}`/`mob:{name}`,
 /// or a prefixed author key like `card:{key}`), as the opaque `AssetRef` the view
 /// types carry. `None` when the campaign supplied no art for it.
@@ -220,6 +215,11 @@ fn image_ref(catalog: &Catalog, key: &str) -> Option<AssetRef> {
         .map(|path| AssetRef::String(path.clone()))
 }
 
+/// Alias list for a scope entity.
+///
+/// Returns a deduplicated list: lowercased `name` first, then any catalog alias
+/// entries for `behavior_key`. If `behavior_key` is `None` (keys), returns just
+/// the lowercased name.
 fn aliases_for(behavior_key: Option<&str>, name: &str, catalog: &Catalog) -> Vec<String> {
     let name_lc = name.to_lowercase();
     let mut out: Vec<String> = alloc::vec![name_lc];
@@ -411,9 +411,15 @@ impl World {
                     // characters); a formation-SPAWNED mob mints a
                     // `campaign-mob:*` id, so fall back to its display name
                     // under the `mob:` prefix (the key a `MobSpec.image`
-                    // lowers to).
+                    // lowers to); a fellow PLAYER falls back to their chosen
+                    // archetype's portrait (`archetype:{id}` — the key an
+                    // `[[archetypes]]` `image` lowers to).
                     image: image_ref(cat, &id.0)
-                        .or_else(|| image_ref(cat, &alloc::format!("mob:{name}"))),
+                        .or_else(|| image_ref(cat, &alloc::format!("mob:{name}")))
+                        .or_else(|| {
+                            let arch = self.characters.get(id)?.archetype_id.as_ref()?;
+                            image_ref(cat, &alloc::format!("archetype:{arch}"))
+                        }),
                     equippable: None,
                     usable: None,
                     has_lore: None,

@@ -305,10 +305,10 @@ pub enum AppTransport {
 }
 
 /// Build a fresh offline transport + a coordinator joined to it, from an authoritative snapshot and
-/// its catalog. Shared by single-player boot, `restore` (from a save), and `restart` (from a pristine
-/// genesis) — the local analog of the room server's "reset the authority to a snapshot".
-/// `World::from_snapshot` reseeds the transient rng to 0, so restore/restart stay deterministic; the
-/// fresh-game boots pass an entropy seed through [`rebuild_single_seeded`] instead.
+/// its catalog. Used by `restore`/`undo` (from a save) — the local analog of the room server's
+/// "reset the authority to a snapshot". `World::from_snapshot` reseeds the transient rng to 0, so
+/// those stay deterministic; fresh boots AND `restart` go through [`boot_single`], which passes an
+/// entropy seed via [`rebuild_single_seeded`] — a restarted mapGen campaign deals a new layout.
 pub fn rebuild_single(
     snapshot: CampaignSnapshot,
     catalog: Catalog,

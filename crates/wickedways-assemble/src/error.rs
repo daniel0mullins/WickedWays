@@ -72,6 +72,13 @@ pub enum Problem {
         to: String,
         key: String,
     },
+    /// A `mapGen.sealed` room named in no `mapGen.required` passage: the
+    /// generator gives sealed rooms no generated edges, so an unanchored one is
+    /// guaranteed unreachable — caught here as a labeled load-time problem
+    /// instead of a `begin_campaign` violation at the table.
+    SealedRoomUnanchored {
+        room: String,
+    },
     UnregisteredFormation {
         key: String,
     },
@@ -122,6 +129,11 @@ impl fmt::Display for Problem {
             Problem::UnregisteredExit { from, to, key } => write!(
                 f,
                 "exit from '{from}' to '{to}' references unregistered exit key '{key}'."
+            ),
+            Problem::SealedRoomUnanchored { room } => write!(
+                f,
+                "mapGen.sealed room '{room}' appears in no mapGen.required passage — a sealed \
+                 room's required door is its only entrance, so it would be unreachable."
             ),
             Problem::UnregisteredFormation { key } => write!(
                 f,

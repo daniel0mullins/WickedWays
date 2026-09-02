@@ -339,7 +339,7 @@ impl CardBehavior for ScatterCard {
     fn play(
         &self,
         w: &World,
-        _cat: &Catalog,
+        cat: &Catalog,
         rng: &mut Rng,
         args: &CardArgs,
     ) -> Result<Vec<CardEffect>, ProceduralViolation> {
@@ -368,12 +368,24 @@ impl CardBehavior for ScatterCard {
         for victim in victims {
             // Draw a destination other than the victim's current room, so each
             // hero is always MOVED (though two heroes may still land together).
+            // A room the hero could not walk OUT of (a sealed crypt behind an
+            // unheld key — its door is the sole entrance by mapgen guarantee)
+            // is excluded, so a random card play can never softlock a hero;
+            // if that filter empties the pool (a degenerate all-sealed map),
+            // fall back to any room rather than fizzle.
             let here = w
                 .characters
                 .get(&victim)
                 .and_then(|c| c.current_room_id.clone());
-            let candidates: Vec<&RoomId> =
-                rooms.iter().filter(|r| Some(*r) != here.as_ref()).collect();
+            let moved: Vec<&RoomId> = rooms.iter().filter(|r| Some(*r) != here.as_ref()).collect();
+            let mut candidates: Vec<&RoomId> = moved
+                .iter()
+                .copied()
+                .filter(|r| w.escapable_for(&victim, r, cat))
+                .collect();
+            if candidates.is_empty() {
+                candidates = moved;
+            }
             if candidates.is_empty() {
                 continue;
             }

@@ -314,9 +314,10 @@ fn apply_action(
 ) -> Result<(), ProceduralViolation> {
     let result: Result<(), ProceduralViolation> = match command {
         // The room-id `move` is door-checked server-side before it lands: a keyed exit that
-        // refuses passage denies the command (the surfaces run the same pure query client-side
-        // via `exit_block_reason`, so an honest client never sends a blocked move — this bars
-        // clients whose replica exit state is stale, and hostile ones).
+        // refuses passage — or a destination no exit connects to at all — denies the command
+        // (the surfaces resolve moves from the exit graph and run the same pure query
+        // client-side via `exit_block_reason`, so an honest client never sends either; this
+        // bars clients whose replica exit state is stale, and hostile ones).
         Command::Move { actor_id, room_id } => {
             if let Some(reason) = world.move_block_reason(actor_id, room_id, cat) {
                 Err(ProceduralViolation(reason))
@@ -589,6 +590,32 @@ mod tests {
             panic!("a locked-door move must be denied, got {res:?}");
         };
         assert_eq!(reason, "The door is locked.");
+        assert_eq!(auth.head(), 0, "a denied command commits nothing");
+    }
+
+    #[test]
+    fn a_non_adjacent_move_is_denied_server_side() {
+        // No exit connects the rooms → denied. Without this a hostile client could hop
+        // straight into a sealed room from anywhere, bypassing its keyed door entirely.
+        let mut world = world_two_rooms(false);
+        world.rooms.insert(
+            RoomId("island".into()),
+            world.rooms[&RoomId("next".into())].clone(),
+        );
+        if let Some(r) = world.rooms.get_mut(&RoomId("island".into())) {
+            r.id = RoomId("island".into());
+            r.exits.clear();
+            r.occupant_ids.clear();
+        }
+        let mut auth = authority(world);
+        let res = auth.submit(Command::Move {
+            actor_id: CharacterId("pc".into()),
+            room_id: RoomId("island".into()),
+        });
+        let SubmitResult::Denied { reason } = res else {
+            panic!("a non-adjacent move must be denied, got {res:?}");
+        };
+        assert_eq!(reason, "You can't get there from here.");
         assert_eq!(auth.head(), 0, "a denied command commits nothing");
     }
 

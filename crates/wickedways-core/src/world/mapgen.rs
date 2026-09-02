@@ -218,6 +218,8 @@ impl World {
         let mut order: Vec<usize> = (0..n).collect();
         for i in (1..n).rev() {
             let unit = self.rng.next_f64();
+            // Safe: `unit` ∈ [0, 1), so `unit * (i + 1)` ∈ [0, i + 1) — non-negative
+            // and within usize after truncation (belt-and-braces `.min(i)` below).
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
             let j = (unit * ((i + 1) as f64)) as usize;
             order.swap(i, j.min(i));

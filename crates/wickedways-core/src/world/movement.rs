@@ -258,12 +258,12 @@ impl World {
         keyed_exit_blocks(exit, &actor_view, cat)
     }
 
-    /// Whether the room-id `move` from `actor`'s current room to `dest` is barred by keyed
-    /// exits: `Some(fail message)` when at least one exit connects the two rooms and **every**
-    /// connecting exit refuses passage; `None` when any connecting exit is passable
-    /// (behavior-free, or a keyed exit whose `can_pass` holds), or when no exit connects them
-    /// at all — adjacency is not this check's concern, mirroring [`move_to`](Self::move_to)'s
-    /// existing posture toward unconnected rooms.
+    /// Whether the room-id `move` from `actor`'s current room to `dest` is barred:
+    /// `Some(reason)` when NO exit connects the two rooms (a non-adjacent hop would let a
+    /// hostile or stale client walk into a sealed room from anywhere, so it is denied — the
+    /// surfaces only ever issue adjacent moves), or when at least one exit connects them and
+    /// **every** connecting exit refuses passage; `None` when the rooms are the same or any
+    /// connecting exit is passable (behavior-free, or a keyed exit whose `can_pass` holds).
     ///
     /// The sync authority calls this to deny a blocked `move` command server-side (a pure
     /// `can_pass` query like [`exit_block_reason`](Self::exit_block_reason) — no `run_script`,
@@ -283,26 +283,58 @@ impl World {
             return None;
         }
         let room = self.rooms.get(&here)?;
+        let connecting: Vec<&crate::world::snapshot::ExitSnapshot> = room
+            .exits
+            .values()
+            .filter_map(|exit_id| self.exits.get(exit_id))
+            .filter(|exit| {
+                (exit.endpoint_ids[0] == here && exit.endpoint_ids[1] == *dest)
+                    || (exit.endpoint_ids[1] == here && exit.endpoint_ids[0] == *dest)
+            })
+            .collect();
+        if connecting.is_empty() {
+            return Some("You can't get there from here.".into());
+        }
+        // A behavior-free connecting exit is always passable — skip the view build.
+        if connecting.iter().any(|exit| exit.behavior_key.is_none()) {
+            return None;
+        }
         let actor_view = self.character_view(actor, cat)?;
         // First blocking exit's message, kept only if NO connecting exit lets the actor
         // through. `room.exits` is a BTreeMap (direction-keyed), so iteration — and thus
         // which fail message wins — is deterministic.
         let mut block: Option<alloc::string::String> = None;
-        for exit_id in room.exits.values() {
-            let Some(exit) = self.exits.get(exit_id) else {
-                continue;
-            };
-            let connects = (exit.endpoint_ids[0] == here && exit.endpoint_ids[1] == *dest)
-                || (exit.endpoint_ids[1] == here && exit.endpoint_ids[0] == *dest);
-            if !connects {
-                continue;
-            }
+        for exit in connecting {
             match keyed_exit_blocks(exit, &actor_view, cat) {
                 None => return None, // a passable route exists
                 Some(reason) => block = block.or(Some(reason)),
             }
         }
         block
+    }
+
+    /// Whether `actor` could leave `room` right now: some exit of `room` is behavior-free, or
+    /// keyed with a `can_pass` that holds for the actor. A pure query (no `run_script`, no
+    /// state mutation). `wicked:scatter` uses it to avoid hurling a hero into a room they
+    /// cannot walk out of (a sealed crypt behind an unheld key).
+    pub(crate) fn escapable_for(&self, actor: &CharacterId, room: &RoomId, cat: &Catalog) -> bool {
+        let Some(r) = self.rooms.get(room) else {
+            return false;
+        };
+        let exits: Vec<&crate::world::snapshot::ExitSnapshot> = r
+            .exits
+            .values()
+            .filter_map(|exit_id| self.exits.get(exit_id))
+            .collect();
+        if exits.iter().any(|exit| exit.behavior_key.is_none()) {
+            return true;
+        }
+        let Some(actor_view) = self.character_view(actor, cat) else {
+            return false;
+        };
+        exits
+            .iter()
+            .any(|exit| keyed_exit_blocks(exit, &actor_view, cat).is_none())
     }
 
     // ---- scenes ----
@@ -1359,15 +1391,39 @@ mod tests {
     }
 
     #[test]
-    fn move_block_reason_passes_behavior_free_unconnected_and_same_room_moves() {
+    fn move_block_reason_passes_behavior_free_and_same_room_bars_unconnected() {
         let w = world_two_rooms(false);
         let cat = Catalog::default();
         // A behavior-free connecting exit → passable.
         assert_eq!(w.move_block_reason(&cid("pc"), &rid("next"), &cat), None);
-        // No exit connects the rooms → not this check's concern (move_to's posture).
-        assert_eq!(w.move_block_reason(&cid("pc"), &rid("nowhere"), &cat), None);
+        // No exit connects the rooms → denied outright: a non-adjacent hop would let a
+        // hostile client walk into a sealed room from anywhere.
+        assert_eq!(
+            w.move_block_reason(&cid("pc"), &rid("nowhere"), &cat)
+                .as_deref(),
+            Some("You can't get there from here.")
+        );
         // A same-room "move" → no check.
         assert_eq!(w.move_block_reason(&cid("pc"), &rid("start"), &cat), None);
+    }
+
+    #[test]
+    fn escapable_for_reflects_keyed_exit_state() {
+        let mut w = world_two_rooms(false);
+        let cat = Catalog::default();
+        // Behavior-free exits both ways → escapable.
+        assert!(w.escapable_for(&cid("pc"), &rid("next"), &cat));
+        // Lock the only exit → "next" is a trap for a keyless pc.
+        w.make_north_exit_keyed("conformance:keyed-door");
+        for ex in w.exits.values_mut() {
+            if ex.behavior_key.is_some() {
+                ex.state = serde_json::json!({ "unlocked": false });
+            }
+        }
+        assert!(!w.escapable_for(&cid("pc"), &rid("next"), &cat));
+        // With the key, can_pass holds → escapable again.
+        seed_held_item(&mut w, "pc", "brass-key");
+        assert!(w.escapable_for(&cid("pc"), &rid("next"), &cat));
     }
 
     #[test]

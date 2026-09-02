@@ -694,20 +694,25 @@ fn scene_view(
     let body_total = body.len();
 
     // Campaign-supplied room art paints the scene box (over the wall/floor
-    // gradient); art-less rooms keep the gradient. `%22`-escape any stray
+    // gradient); art-less rooms keep the gradient. Hidden while the room is
+    // unlit — darkness (including `wicked:lights-out`) must actually darken
+    // the scene, matching the CRT surface's posture. `%22`-escape any stray
     // double quote so the value stays inside the CSS url("").
-    let scene_style = v
-        .room
-        .image
-        .as_ref()
-        .and_then(crate::affordances::asset_url)
-        .map(|url| {
-            format!(
-                "background-image:url(\"{}\");background-size:cover;background-position:center;",
-                url.replace('"', "%22")
-            )
-        })
-        .unwrap_or_default();
+    let scene_style = if v.room.is_lit {
+        v.room
+            .image
+            .as_ref()
+            .and_then(crate::affordances::asset_url)
+            .map(|url| {
+                format!(
+                    "background-image:url(\"{}\");background-size:cover;background-position:center;",
+                    url.replace('"', "%22")
+                )
+            })
+            .unwrap_or_default()
+    } else {
+        String::new()
+    };
 
     rsx! {
         div { class: "scene", style: "{scene_style}",

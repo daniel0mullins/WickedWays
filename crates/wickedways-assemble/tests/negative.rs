@@ -43,6 +43,39 @@ fn duplicate_room_name() {
 }
 
 #[test]
+fn sealed_room_without_a_required_passage() {
+    let mut v = base();
+    v["rooms"] = json!([
+        { "name": "start", "description": "entry" },
+        { "name": "crypt", "description": "sealed" },
+        { "name": "yard", "description": "open" }
+    ]);
+    // "crypt" is sealed but no required passage anchors it → unreachable by
+    // construction; "yard" is anchored and clean.
+    v["mapGen"] = json!({
+        "required": [{ "from": "start", "to": "yard" }],
+        "sealed": ["crypt"]
+    });
+    let ps = problems(v);
+    assert!(ps
+        .iter()
+        .any(|p| matches!(p, Problem::SealedRoomUnanchored { room } if room == "crypt")));
+    // Anchoring it clears the problem.
+    let mut v = base();
+    v["rooms"] = json!([
+        { "name": "start", "description": "entry" },
+        { "name": "crypt", "description": "sealed" }
+    ]);
+    v["mapGen"] = json!({
+        "required": [{ "from": "start", "to": "crypt" }],
+        "sealed": ["crypt"]
+    });
+    assert!(!problems(v)
+        .iter()
+        .any(|p| matches!(p, Problem::SealedRoomUnanchored { .. })));
+}
+
+#[test]
 fn undefined_start_room() {
     let mut v = base();
     v["startRoom"] = json!("ghost");
