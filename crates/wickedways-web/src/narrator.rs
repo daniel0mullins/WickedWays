@@ -496,6 +496,7 @@ mod tests {
             description: "A hall table with a single drawer.".into(),
             opened: true,
             contents: vec![journal.clone()],
+            image: None,
         }];
         before.scope = vec![journal];
         let line = n

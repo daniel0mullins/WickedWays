@@ -209,6 +209,10 @@ pub struct LootEntry {
     pub items: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Container art: a relative asset path (see `[[rooms]]`' `image`). Lowered
+    /// into `catalog.images["loot:{name}"]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 /// A `[[caches]]` entry: a single-use pile of raw crafting materials placed in a

@@ -1,11 +1,12 @@
 # g2-images — authors the g2-images golden pair.
 # Proves the `image` authoring surface end to end: every image-bearing entry
-# kind carries one. Rooms/mobs/npcs/archetypes/cards lower into
+# kind carries one. Rooms/mobs/npcs/archetypes/loot/cards — and formation mob
+# specs, keyed by display name for the spawned-mob fallback — lower into
 # `catalog.images` (keyed by the ids surfaces resolve entities by:
-# `room:{name}`, `mob:{name}`, `npc:{name}`, `archetype:{id}`, `card:{key}`);
-# items lower into the descriptor's `presentation.image` channel. Paths are
-# relative to the deploy's asset root; the files themselves are not fixtures —
-# only the association is pinned. ASCII only.
+# `room:{name}`, `mob:{name}`, `npc:{name}`, `archetype:{id}`, `loot:{name}`,
+# `card:{key}`); items lower into the descriptor's `presentation.image`
+# channel. Paths are relative to the deploy's asset root; the files themselves
+# are not fixtures — only the association is pinned. ASCII only.
 
 title = "Images"
 startRoom = "Gallery"
@@ -44,6 +45,14 @@ image = "items/vault-key.webp"
 name = "Plinth"
 room = "Gallery"
 items = ["cameo", "vault-key"]
+image = "loot/plinth.webp"
+
+[[formations]]
+key = "frame-echoes"
+weight = 2
+mobs = [
+  { name = "Frame Echo", stats = { health = 2, sanity = 2, energy = 3 }, naturalAttack = { stat = "sanity", power = 1 }, baseEscapeChance = 60, actionsPerRound = 1, image = "mobs/frame-echo.webp" },
+]
 
 [[npcs]]
 name = "Docent"

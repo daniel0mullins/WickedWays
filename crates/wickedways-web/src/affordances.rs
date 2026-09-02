@@ -208,7 +208,7 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
             label: loot.description.clone(),
             kind: HotspotKind::Loot,
             dir: None,
-            image: None,
+            image: loot.image.clone(),
             actions: vec![
                 ActionDescriptor::Examine {
                     label: "Examine".into(),
@@ -619,6 +619,7 @@ mod tests {
             description: "an old chest".into(),
             opened: false,
             contents: Vec::new(),
+            image: None,
         }];
         let h = &scene_hotspots(&vm)[0];
         assert_eq!(h.kind, HotspotKind::Loot);
@@ -699,6 +700,7 @@ mod tests {
             description: "a box".into(),
             opened: false,
             contents: vec![content.clone()],
+            image: None,
         }];
         assert!(scene_hotspots(&closed)
             .iter()
@@ -713,6 +715,7 @@ mod tests {
             description: "a box".into(),
             opened: true,
             contents: vec![content],
+            image: None,
         }];
         assert!(scene_hotspots(&opened)
             .iter()
@@ -739,6 +742,7 @@ mod tests {
             description: "a box".into(),
             opened: false,
             contents: vec![hidden],
+            image: None,
         }];
         let ids: Vec<&str> = floor_items(&vm).iter().map(|e| e.id.as_str()).collect();
         assert_eq!(ids, vec!["poker-1"]);
@@ -881,6 +885,7 @@ mod tests {
             description: "a crate".into(),
             opened: false,
             contents: Vec::new(),
+            image: None,
         }];
         vm.scope = vec![occupant, floor_item];
         let kinds: Vec<HotspotKind> = scene_hotspots(&vm).into_iter().map(|h| h.kind).collect();

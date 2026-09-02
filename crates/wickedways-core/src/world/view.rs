@@ -96,6 +96,10 @@ pub struct LootView {
     pub description: String,
     pub opened: bool,
     pub contents: Vec<ScopeEntity>,
+    /// The container's campaign-supplied art (`catalog.images["loot:{name}"]`).
+    /// Omitted when absent so pre-image ViewModel goldens stay byte-stable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<AssetRef>,
 }
 
 /// The player's inventory in the widened ViewModel.
@@ -403,7 +407,13 @@ impl World {
                     aliases: alloc::vec![name.to_lowercase()],
                     kind: "occupant".into(),
                     health: Some(health),
-                    image: image_ref(cat, &id.0),
+                    // By world id first (`mob:{name}`/`npc:{name}` for placed
+                    // characters); a formation-SPAWNED mob mints a
+                    // `campaign-mob:*` id, so fall back to its display name
+                    // under the `mob:` prefix (the key a `MobSpec.image`
+                    // lowers to).
+                    image: image_ref(cat, &id.0)
+                        .or_else(|| image_ref(cat, &alloc::format!("mob:{name}"))),
                     equippable: None,
                     usable: None,
                     has_lore: None,
@@ -440,6 +450,7 @@ impl World {
                     description: container.description.clone(),
                     opened,
                     contents,
+                    image: image_ref(cat, &container.id.0),
                 }
             })
             .collect();
@@ -486,7 +497,7 @@ impl World {
                 ],
                 kind: "loot".into(),
                 health: None,
-                image: None,
+                image: lv.image.clone(),
                 equippable: None,
                 usable: None,
                 has_lore: None,

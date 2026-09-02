@@ -61,10 +61,34 @@
       "text": "Every portrait's eyes go dark."
     }
   },
-  "formations": {},
+  "formations": {
+    "frame-echoes": {
+      "mobs": [
+        {
+          "actionsPerRound": 1,
+          "baseEscapeChance": 60,
+          "image": "mobs/frame-echo.webp",
+          "lightAverse": false,
+          "materialDrops": {},
+          "name": "Frame Echo",
+          "naturalAttack": {
+            "power": 1.0,
+            "stat": "sanity"
+          },
+          "stats": {
+            "energy": 3.0,
+            "health": 2.0,
+            "sanity": 2.0
+          }
+        }
+      ]
+    }
+  },
   "images": {
     "archetype:curator": "archetypes/curator.webp",
     "card:wicked:lights-out": "cards/lights-out.webp",
+    "loot:Plinth": "loot/plinth.webp",
+    "mob:Frame Echo": "mobs/frame-echo.webp",
     "mob:Frame Wraith": "mobs/frame-wraith.webp",
     "npc:Docent": "npcs/docent.webp",
     "room:Gallery": "rooms/gallery.webp"

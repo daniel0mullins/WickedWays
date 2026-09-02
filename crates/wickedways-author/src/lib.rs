@@ -213,6 +213,14 @@ pub fn compile_all(toml_src: &str) -> Result<CompiledCampaign, Vec<LabeledError>
         for n in &doc.npcs {
             check_image(format!("npcs.{}.image", n.name), &n.image);
         }
+        for l in &doc.loot {
+            check_image(format!("loot.{}.image", l.name), &l.image);
+        }
+        for f in &doc.formations {
+            for (i, spec) in f.mobs.iter().enumerate() {
+                check_image(format!("formations.{}.mobs[{i}].image", f.key), &spec.image);
+            }
+        }
         for c in &doc.cards {
             check_image(format!("cards.{}.image", c.key), &c.image);
         }

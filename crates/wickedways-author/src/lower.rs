@@ -304,6 +304,22 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
             &mut images,
         )?;
     }
+    for l in &doc.loot {
+        add_image(
+            wickedways_assemble::ids::loot_id(&l.name),
+            &l.image,
+            &mut images,
+        )?;
+    }
+    // Formation mob specs: a spawned mob mints a `campaign-mob:*` world id, so
+    // its art is keyed by display NAME under the `mob:` prefix — the occupant
+    // projection falls back to that key when the id lookup misses. (The image
+    // also rides the spec itself inside `catalog.formations`, harmlessly.)
+    for f in &doc.formations {
+        for spec in &f.mobs {
+            add_image(format!("mob:{}", spec.name), &spec.image, &mut images)?;
+        }
+    }
     for c in &doc.cards {
         add_image(format!("card:{}", c.key), &c.image, &mut images)?;
     }

@@ -407,7 +407,7 @@ fn RoomHub(room: String) -> Element {
                     let id = store.mutate(move |d| {
                         let id = d.mint();
                         d.loot.push(WithId { id, entry: LootEntry {
-                            name: format!("container-{id}"), room, items: Vec::new(), description: None,
+                            name: format!("container-{id}"), room, items: Vec::new(), description: None, image: None,
                         }});
                         id
                     });
@@ -761,7 +761,7 @@ pub fn LootScreen(asset: Option<u64>) -> Element {
                     let id = store.mutate(move |d| {
                         let id = d.mint();
                         d.loot.push(WithId { id, entry: LootEntry {
-                            name: format!("container-{id}"), room, items: Vec::new(), description: None,
+                            name: format!("container-{id}"), room, items: Vec::new(), description: None, image: None,
                         }});
                         id
                     });
@@ -1409,6 +1409,7 @@ fn FormationForm(id: u64, entry: FormationEntry) -> Element {
             class: "studio-btn small",
             onclick: move |_| edit_formation(store, id, move |f| {
                 f.mobs.push(MobSpec {
+                    image: None,
                     name: "Mob".into(),
                     stats: default_stats(),
                     natural_attack: NaturalAttack {

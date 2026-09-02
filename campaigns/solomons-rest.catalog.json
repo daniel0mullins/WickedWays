@@ -1,0 +1,2146 @@
+{
+  "items": {
+    "bandage-roll": {
+      "name": "Torn Bandage",
+      "type": "consumable",
+      "stat": "health",
+      "modifier": 3,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": true
+      },
+      "presentation": {
+        "image": "solomons-rest/bandage-roll.png"
+      },
+      "recipe": {
+        "cloth": 2
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "bandages": {
+      "name": "Roll of Bandages",
+      "type": "consumable",
+      "stat": "health",
+      "modifier": 4,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": true
+      },
+      "recipe": {
+        "cloth": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "cough-drops": {
+      "name": "Tin of Cough Drops",
+      "type": "consumable",
+      "stat": "energy",
+      "modifier": 3,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": true
+      },
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "fence-spike": {
+      "name": "Iron Fence Spike",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 3,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 10,
+      "recipe": {
+        "iron": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "fence-spike-2": {
+      "name": "Rusted Finial Spike",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 3,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 8,
+      "recipe": {
+        "iron": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "first-aid-kit": {
+      "name": "Lodge First-Aid Kit",
+      "type": "consumable",
+      "stat": "health",
+      "modifier": 7,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": true
+      },
+      "presentation": {
+        "image": "solomons-rest/first-aid-kit.png"
+      },
+      "recipe": {
+        "cloth": 2,
+        "healing": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "founder-key": {
+      "name": "Founder's Bronze Key",
+      "type": "key",
+      "stat": "health",
+      "modifier": 0,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": false,
+        "usable": false
+      },
+      "keyCode": "founder",
+      "consumeOnUse": false,
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "grave-marker": {
+      "name": "Wooden Grave Marker",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 2,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 6,
+      "recipe": {
+        "wood": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "hunting-knife": {
+      "name": "Hunting Knife",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 5,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 16,
+      "presentation": {
+        "image": "solomons-rest/hunting-knife.png"
+      },
+      "recipe": {},
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "hymnal": {
+      "name": "Lodge Hymnal",
+      "type": "consumable",
+      "stat": "sanity",
+      "modifier": 0,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "lore": "A funeral hymnal, margins crowded with a steady old hand: 'For the risen flesh, FLAME. For the unquiet spirit, COLD IRON. For the beasts that never lived, the craft's own SILVER. For the Warden of the Yard — nothing of this world. Endure him.'",
+      "presentation": {
+        "image": "solomons-rest/hymnal.png"
+      },
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "lantern": {
+      "name": "Storm Lantern",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 0,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "emitsLight": true,
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "machete": {
+      "name": "Brush Machete",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 6,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 14,
+      "recipe": {},
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "revolver": {
+      "name": "Founder's Revolver",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 8,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 6,
+      "lore": "A lodge-engraved top-break revolver, oiled and loaded. Six shots. The founder believed in being prepared for his own funeral.",
+      "recipe": {},
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "sextons-ledger": {
+      "name": "The Sexton's Ledger",
+      "type": "consumable",
+      "stat": "sanity",
+      "modifier": 0,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false,
+        "droppable": false
+      },
+      "lore": "A burial ledger in a cramped, patient hand. The last page is a compact, witnessed by nine seals: 'The Warden of the Yard shall keep Solomon's Rest from dusk-bell to daybreak, and shall claim of trespassers ONLY THE SUNDERED — the one cut off from the flock. While two of the living stand witness to one another he shall not raise his hand, and at first light he shall go below. So mote it be.' Someone has underlined 'only the sundered' three times.",
+      "presentation": {
+        "image": "solomons-rest/founders-ledger.png"
+      },
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "shovel": {
+      "name": "Grave-Digger's Shovel",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 3,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "twoHanded": true,
+      "maxDurability": 12,
+      "recipe": {
+        "iron": 1,
+        "wood": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "silver-trowel": {
+      "name": "Ceremonial Silver Trowel",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 3,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "maxDurability": 12,
+      "lore": "Lodge silver, engraved: 'TO SPREAD THE CEMENT OF BROTHERLY LOVE.' The working tool of the craft — and, the old stories say, the one metal the beasts that never lived cannot abide.",
+      "presentation": {
+        "image": "solomons-rest/silver-trowel.png"
+      },
+      "recipe": {
+        "silver": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "smelling-salts": {
+      "name": "Smelling Salts",
+      "type": "consumable",
+      "stat": "sanity",
+      "modifier": 5,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": true
+      },
+      "recipe": {
+        "healing": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "soda": {
+      "name": "Warm Soda",
+      "type": "consumable",
+      "stat": "energy",
+      "modifier": 4,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": true
+      },
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "torch": {
+      "name": "Grave Torch",
+      "type": "weapon",
+      "stat": "health",
+      "modifier": 2,
+      "properties": {
+        "equippable": true,
+        "equipped": false,
+        "destroyable": true,
+        "usable": false
+      },
+      "slot": "hand",
+      "emitsLight": true,
+      "maxDurability": 14,
+      "presentation": {
+        "image": "solomons-rest/field-torch.png"
+      },
+      "recipe": {
+        "cloth": 1,
+        "wood": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "undercroft-key": {
+      "name": "Tyler's Brass Key",
+      "type": "key",
+      "stat": "health",
+      "modifier": 0,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": false,
+        "usable": false
+      },
+      "keyCode": "undercroft",
+      "consumeOnUse": false,
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    },
+    "whiskey-flask": {
+      "name": "Offering Flask",
+      "type": "consumable",
+      "stat": "sanity",
+      "modifier": 3,
+      "properties": {
+        "equippable": false,
+        "equipped": false,
+        "destroyable": true,
+        "usable": true
+      },
+      "recipe": {
+        "item": 1
+      },
+      "teaches": null,
+      "immunities": null,
+      "grantsImmunity": null
+    }
+  },
+  "aliases": {
+    "bandage-roll": [
+      "bandage"
+    ],
+    "bandages": [
+      "bandages",
+      "gauze"
+    ],
+    "cough-drops": [
+      "tin",
+      "drops"
+    ],
+    "fence-spike": [
+      "spike",
+      "iron spike",
+      "fence spike"
+    ],
+    "fence-spike-2": [
+      "finial",
+      "rusted spike"
+    ],
+    "first-aid-kit": [
+      "kit",
+      "first aid"
+    ],
+    "founder-key": [
+      "bronze key",
+      "founder key",
+      "key"
+    ],
+    "grave-marker": [
+      "marker",
+      "plank"
+    ],
+    "hunting-knife": [
+      "knife",
+      "blade"
+    ],
+    "hymnal": [
+      "hymnal",
+      "book"
+    ],
+    "lantern": [
+      "lantern",
+      "lamp",
+      "light"
+    ],
+    "machete": [
+      "machete"
+    ],
+    "revolver": [
+      "revolver",
+      "gun",
+      "pistol"
+    ],
+    "sextons-ledger": [
+      "ledger",
+      "journal"
+    ],
+    "shovel": [
+      "shovel",
+      "spade"
+    ],
+    "silver-trowel": [
+      "trowel",
+      "silver"
+    ],
+    "smelling-salts": [
+      "salts"
+    ],
+    "soda": [
+      "soda",
+      "cola"
+    ],
+    "torch": [
+      "torch",
+      "brand",
+      "fire"
+    ],
+    "undercroft-key": [
+      "brass key",
+      "tyler key",
+      "key"
+    ],
+    "whiskey-flask": [
+      "flask",
+      "whiskey"
+    ]
+  },
+  "behaviors": {
+    "bandage-roll": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "actor"
+              },
+              "stat": "health",
+              "delta": {
+                "kind": "lit",
+                "value": 3.0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "bandages": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "actor"
+              },
+              "stat": "health",
+              "delta": {
+                "kind": "lit",
+                "value": 4.0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "cold-hands": {
+      "family": "card",
+      "script": {
+        "onPlay": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "cue",
+              "text": {
+                "kind": "lit",
+                "value": "The ground softens like a held breath, and cold hands close around every living ankle in the yard. They do not pull. They just hold — and the holding is the worst of it."
+              }
+            }
+          },
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "index",
+                "list": {
+                  "kind": "party"
+                },
+                "index": {
+                  "kind": "lit",
+                  "value": 0.0
+                }
+              },
+              "stat": "sanity",
+              "delta": {
+                "kind": "lit",
+                "value": -3.0
+              }
+            }
+          },
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "index",
+                "list": {
+                  "kind": "party"
+                },
+                "index": {
+                  "kind": "lit",
+                  "value": 1.0
+                }
+              },
+              "stat": "sanity",
+              "delta": {
+                "kind": "lit",
+                "value": -3.0
+              }
+            }
+          },
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "index",
+                "list": {
+                  "kind": "party"
+                },
+                "index": {
+                  "kind": "lit",
+                  "value": 2.0
+                }
+              },
+              "stat": "sanity",
+              "delta": {
+                "kind": "lit",
+                "value": -3.0
+              }
+            }
+          },
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "index",
+                "list": {
+                  "kind": "party"
+                },
+                "index": {
+                  "kind": "lit",
+                  "value": 3.0
+                }
+              },
+              "stat": "sanity",
+              "delta": {
+                "kind": "lit",
+                "value": -3.0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "cough-drops": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "actor"
+              },
+              "stat": "energy",
+              "delta": {
+                "kind": "lit",
+                "value": 3.0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "first-aid-kit": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "actor"
+              },
+              "stat": "health",
+              "delta": {
+                "kind": "lit",
+                "value": 7.0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "founders-door": {
+      "family": "exit",
+      "script": {
+        "canPass": {
+          "kind": "bin",
+          "op": "or",
+          "left": {
+            "kind": "stateGet",
+            "field": "unlocked",
+            "default": false
+          },
+          "right": {
+            "kind": "hasKey",
+            "of": {
+              "kind": "actor"
+            },
+            "keyCode": "founder"
+          }
+        },
+        "runScript": [
+          {
+            "kind": "when",
+            "cond": {
+              "kind": "not",
+              "expr": {
+                "kind": "stateGet",
+                "field": "unlocked",
+                "default": false
+              }
+            },
+            "then": [
+              {
+                "kind": "setState",
+                "field": "unlocked",
+                "value": {
+                  "kind": "lit",
+                  "value": true
+                }
+              },
+              {
+                "kind": "pass",
+                "value": {
+                  "kind": "lit",
+                  "value": "The bronze key grinds through a century of verdigris, and the founders door swings inward."
+                }
+              }
+            ]
+          }
+        ],
+        "failMessage": "The bronze door of the founders mausoleum is locked fast. The keyhole is shaped like a compass rose."
+      }
+    },
+    "founders-reveal": {
+      "family": "scene",
+      "script": {
+        "canPlay": {
+          "kind": "not",
+          "expr": {
+            "kind": "stateGet",
+            "field": "seen",
+            "default": false
+          }
+        },
+        "onEnter": [
+          {
+            "kind": "setState",
+            "field": "seen",
+            "value": {
+              "kind": "lit",
+              "value": true
+            }
+          },
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "cue",
+              "text": {
+                "kind": "lit",
+                "value": "Marble, regalia, and the founder's long oak case. On the sarcophagus lid, freshly dusted as if tended nightly, someone keeps a ledger squared to the corner — the Sexton still makes his rounds in here."
+              }
+            }
+          }
+        ]
+      }
+    },
+    "grave-wards": {
+      "family": "mechanic",
+      "script": {
+        "init": {},
+        "hooks": {
+          "modifyDamage": {
+            "kind": "ifElse",
+            "cond": {
+              "kind": "bin",
+              "op": "and",
+              "left": {
+                "kind": "bin",
+                "op": "eq",
+                "left": {
+                  "kind": "get",
+                  "of": {
+                    "kind": "damage"
+                  },
+                  "field": "target"
+                },
+                "right": {
+                  "kind": "lit",
+                  "value": "mob:Wight of the Founder"
+                }
+              },
+              "right": {
+                "kind": "not",
+                "expr": {
+                  "kind": "some",
+                  "list": {
+                    "kind": "party"
+                  },
+                  "pred": {
+                    "kind": "bin",
+                    "op": "and",
+                    "left": {
+                      "kind": "bin",
+                      "op": "eq",
+                      "left": {
+                        "kind": "get",
+                        "of": {
+                          "kind": "element"
+                        },
+                        "field": "id"
+                      },
+                      "right": {
+                        "kind": "get",
+                        "of": {
+                          "kind": "damage"
+                        },
+                        "field": "source"
+                      }
+                    },
+                    "right": {
+                      "kind": "hasEquipped",
+                      "of": {
+                        "kind": "element"
+                      },
+                      "itemKey": "torch"
+                    }
+                  }
+                }
+              }
+            },
+            "then": {
+              "kind": "value",
+              "expr": {
+                "kind": "lit",
+                "value": 0.0
+              }
+            },
+            "else": {
+              "kind": "ifElse",
+              "cond": {
+                "kind": "bin",
+                "op": "and",
+                "left": {
+                  "kind": "bin",
+                  "op": "eq",
+                  "left": {
+                    "kind": "get",
+                    "of": {
+                      "kind": "damage"
+                    },
+                    "field": "target"
+                  },
+                  "right": {
+                    "kind": "lit",
+                    "value": "mob:The Tyler"
+                  }
+                },
+                "right": {
+                  "kind": "not",
+                  "expr": {
+                    "kind": "some",
+                    "list": {
+                      "kind": "party"
+                    },
+                    "pred": {
+                      "kind": "bin",
+                      "op": "and",
+                      "left": {
+                        "kind": "bin",
+                        "op": "eq",
+                        "left": {
+                          "kind": "get",
+                          "of": {
+                            "kind": "element"
+                          },
+                          "field": "id"
+                        },
+                        "right": {
+                          "kind": "get",
+                          "of": {
+                            "kind": "damage"
+                          },
+                          "field": "source"
+                        }
+                      },
+                      "right": {
+                        "kind": "bin",
+                        "op": "or",
+                        "left": {
+                          "kind": "hasEquipped",
+                          "of": {
+                            "kind": "element"
+                          },
+                          "itemKey": "fence-spike"
+                        },
+                        "right": {
+                          "kind": "hasEquipped",
+                          "of": {
+                            "kind": "element"
+                          },
+                          "itemKey": "fence-spike-2"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "kind": "value",
+                "expr": {
+                  "kind": "lit",
+                  "value": 0.0
+                }
+              },
+              "else": {
+                "kind": "ifElse",
+                "cond": {
+                  "kind": "bin",
+                  "op": "and",
+                  "left": {
+                    "kind": "bin",
+                    "op": "eq",
+                    "left": {
+                      "kind": "get",
+                      "of": {
+                        "kind": "damage"
+                      },
+                      "field": "target"
+                    },
+                    "right": {
+                      "kind": "lit",
+                      "value": "campaign-mob:spectral hound"
+                    }
+                  },
+                  "right": {
+                    "kind": "not",
+                    "expr": {
+                      "kind": "some",
+                      "list": {
+                        "kind": "party"
+                      },
+                      "pred": {
+                        "kind": "bin",
+                        "op": "and",
+                        "left": {
+                          "kind": "bin",
+                          "op": "eq",
+                          "left": {
+                            "kind": "get",
+                            "of": {
+                              "kind": "element"
+                            },
+                            "field": "id"
+                          },
+                          "right": {
+                            "kind": "get",
+                            "of": {
+                              "kind": "damage"
+                            },
+                            "field": "source"
+                          }
+                        },
+                        "right": {
+                          "kind": "hasEquipped",
+                          "of": {
+                            "kind": "element"
+                          },
+                          "itemKey": "silver-trowel"
+                        }
+                      }
+                    }
+                  }
+                },
+                "then": {
+                  "kind": "value",
+                  "expr": {
+                    "kind": "lit",
+                    "value": 0.0
+                  }
+                },
+                "else": {
+                  "kind": "value",
+                  "expr": {
+                    "kind": "get",
+                    "of": {
+                      "kind": "damage"
+                    },
+                    "field": "amount"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "actions": {}
+      }
+    },
+    "lone-prey": {
+      "family": "mechanic",
+      "script": {
+        "init": {},
+        "hooks": {
+          "modifyDamage": {
+            "kind": "ifElse",
+            "cond": {
+              "kind": "bin",
+              "op": "eq",
+              "left": {
+                "kind": "get",
+                "of": {
+                  "kind": "damage"
+                },
+                "field": "target"
+              },
+              "right": {
+                "kind": "lit",
+                "value": "mob:The Sexton"
+              }
+            },
+            "then": {
+              "kind": "value",
+              "expr": {
+                "kind": "lit",
+                "value": 0.0
+              }
+            },
+            "else": {
+              "kind": "ifElse",
+              "cond": {
+                "kind": "bin",
+                "op": "and",
+                "left": {
+                  "kind": "bin",
+                  "op": "eq",
+                  "left": {
+                    "kind": "get",
+                    "of": {
+                      "kind": "damage"
+                    },
+                    "field": "source"
+                  },
+                  "right": {
+                    "kind": "lit",
+                    "value": "mob:The Sexton"
+                  }
+                },
+                "right": {
+                  "kind": "some",
+                  "list": {
+                    "kind": "party"
+                  },
+                  "pred": {
+                    "kind": "bin",
+                    "op": "and",
+                    "left": {
+                      "kind": "bin",
+                      "op": "and",
+                      "left": {
+                        "kind": "bin",
+                        "op": "ne",
+                        "left": {
+                          "kind": "get",
+                          "of": {
+                            "kind": "element"
+                          },
+                          "field": "id"
+                        },
+                        "right": {
+                          "kind": "get",
+                          "of": {
+                            "kind": "damage"
+                          },
+                          "field": "target"
+                        }
+                      },
+                      "right": {
+                        "kind": "bin",
+                        "op": "eq",
+                        "left": {
+                          "kind": "get",
+                          "of": {
+                            "kind": "element"
+                          },
+                          "field": "roomId"
+                        },
+                        "right": {
+                          "kind": "get",
+                          "of": {
+                            "kind": "damage"
+                          },
+                          "field": "room"
+                        }
+                      }
+                    },
+                    "right": {
+                      "kind": "not",
+                      "expr": {
+                        "kind": "includes",
+                        "list": {
+                          "kind": "get",
+                          "of": {
+                            "kind": "element"
+                          },
+                          "field": "status"
+                        },
+                        "value": {
+                          "kind": "lit",
+                          "value": "ko"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "then": {
+                "kind": "value",
+                "expr": {
+                  "kind": "lit",
+                  "value": 0.0
+                }
+              },
+              "else": {
+                "kind": "value",
+                "expr": {
+                  "kind": "get",
+                  "of": {
+                    "kind": "damage"
+                  },
+                  "field": "amount"
+                }
+              }
+            }
+          }
+        },
+        "actions": {}
+      }
+    },
+    "night-clock": {
+      "family": "mechanic",
+      "script": {
+        "init": {
+          "ticks": 0
+        },
+        "hooks": {
+          "onRoundEnd": [
+            {
+              "kind": "setState",
+              "field": "ticks",
+              "value": {
+                "kind": "bin",
+                "op": "add",
+                "left": {
+                  "kind": "stateGet",
+                  "field": "ticks",
+                  "default": 0.0
+                },
+                "right": {
+                  "kind": "lit",
+                  "value": 1.0
+                }
+              }
+            },
+            {
+              "kind": "emit",
+              "effect": {
+                "kind": "status",
+                "fields": [
+                  {
+                    "label": "Night",
+                    "value": {
+                      "kind": "lookup",
+                      "map": {
+                        "kind": "mapLit",
+                        "entries": {
+                          "0": "Dusk",
+                          "1": "9 PM",
+                          "2": "10 PM",
+                          "3": "11 PM",
+                          "4": "Midnight",
+                          "5": "2 AM",
+                          "6": "3 AM",
+                          "7": "False Dawn",
+                          "8": "DAYBREAK"
+                        }
+                      },
+                      "key": {
+                        "kind": "str",
+                        "num": {
+                          "kind": "worldGet",
+                          "field": "hour",
+                          "default": 0.0
+                        }
+                      }
+                    },
+                    "emphasis": {
+                      "kind": "ifElse",
+                      "cond": {
+                        "kind": "bin",
+                        "op": "gte",
+                        "left": {
+                          "kind": "worldGet",
+                          "field": "hour",
+                          "default": 0.0
+                        },
+                        "right": {
+                          "kind": "lit",
+                          "value": 6.0
+                        }
+                      },
+                      "then": {
+                        "kind": "lit",
+                        "value": "warn"
+                      },
+                      "else": {
+                        "kind": "lit",
+                        "value": "normal"
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "bin",
+                "op": "gte",
+                "left": {
+                  "kind": "stateGet",
+                  "field": "ticks",
+                  "default": 0.0
+                },
+                "right": {
+                  "kind": "lit",
+                  "value": 3.0
+                }
+              }
+            },
+            {
+              "kind": "setState",
+              "field": "ticks",
+              "value": {
+                "kind": "lit",
+                "value": 0.0
+              }
+            },
+            {
+              "kind": "guard",
+              "cond": {
+                "kind": "bin",
+                "op": "lt",
+                "left": {
+                  "kind": "worldGet",
+                  "field": "hour",
+                  "default": 0.0
+                },
+                "right": {
+                  "kind": "lit",
+                  "value": 8.0
+                }
+              }
+            },
+            {
+              "kind": "when",
+              "cond": {
+                "kind": "bin",
+                "op": "gte",
+                "left": {
+                  "kind": "bin",
+                  "op": "add",
+                  "left": {
+                    "kind": "worldGet",
+                    "field": "hour",
+                    "default": 0.0
+                  },
+                  "right": {
+                    "kind": "lit",
+                    "value": 1.0
+                  }
+                },
+                "right": {
+                  "kind": "lit",
+                  "value": 8.0
+                }
+              },
+              "then": [
+                {
+                  "kind": "emit",
+                  "effect": {
+                    "kind": "setWorldState",
+                    "field": "hour",
+                    "value": {
+                      "kind": "lit",
+                      "value": 8.0
+                    }
+                  }
+                },
+                {
+                  "kind": "emit",
+                  "effect": {
+                    "kind": "setWorldState",
+                    "field": "daybreak",
+                    "value": {
+                      "kind": "lit",
+                      "value": true
+                    }
+                  }
+                },
+                {
+                  "kind": "emit",
+                  "effect": {
+                    "kind": "cue",
+                    "text": {
+                      "kind": "lit",
+                      "value": "The east goes gray above the yews. Somewhere below, a spade is shouldered: the compact is spent. Daybreak."
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "kind": "when",
+              "cond": {
+                "kind": "bin",
+                "op": "lt",
+                "left": {
+                  "kind": "bin",
+                  "op": "add",
+                  "left": {
+                    "kind": "worldGet",
+                    "field": "hour",
+                    "default": 0.0
+                  },
+                  "right": {
+                    "kind": "lit",
+                    "value": 1.0
+                  }
+                },
+                "right": {
+                  "kind": "lit",
+                  "value": 8.0
+                }
+              },
+              "then": [
+                {
+                  "kind": "emit",
+                  "effect": {
+                    "kind": "setWorldState",
+                    "field": "hour",
+                    "value": {
+                      "kind": "bin",
+                      "op": "add",
+                      "left": {
+                        "kind": "worldGet",
+                        "field": "hour",
+                        "default": 0.0
+                      },
+                      "right": {
+                        "kind": "lit",
+                        "value": 1.0
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "emit",
+                  "effect": {
+                    "kind": "cue",
+                    "text": {
+                      "kind": "lookup",
+                      "map": {
+                        "kind": "mapLit",
+                        "entries": {
+                          "1": "The dusk-bell fades. Nine o clock, by the chapel chime, and the last daylight drains out of the sky.",
+                          "2": "Ten o clock. The gravel paths have gone silver and strange, and the rows do not seem to line up the way they did.",
+                          "3": "Eleven. A lantern crosses the yard where no path runs. It pauses whenever one of you stands apart from the others.",
+                          "4": "Midnight. The chime goes on one stroke too long. In the after-ring you hear a spade bite earth, patient as a heartbeat.",
+                          "5": "Two in the morning — the chime skipped one entirely. The Sexton has been seen at the edge of the light, waiting. Never while you stand together. Only ever near whoever is alone.",
+                          "6": "Three. The fog comes up to the knee, and under it the ground feels freshly turned. All of it.",
+                          "7": "False dawn — a lie of gray light. The digging sounds have stopped. That is somehow worse."
+                        }
+                      },
+                      "key": {
+                        "kind": "str",
+                        "num": {
+                          "kind": "bin",
+                          "op": "add",
+                          "left": {
+                            "kind": "worldGet",
+                            "field": "hour",
+                            "default": 0.0
+                          },
+                          "right": {
+                            "kind": "lit",
+                            "value": 1.0
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "kind": "emit",
+                  "effect": {
+                    "kind": "adjustStat",
+                    "target": {
+                      "kind": "index",
+                      "list": {
+                        "kind": "party"
+                      },
+                      "index": {
+                        "kind": "lit",
+                        "value": 0.0
+                      }
+                    },
+                    "stat": "sanity",
+                    "delta": {
+                      "kind": "lit",
+                      "value": -1.0
+                    }
+                  }
+                },
+                {
+                  "kind": "emit",
+                  "effect": {
+                    "kind": "adjustStat",
+                    "target": {
+                      "kind": "index",
+                      "list": {
+                        "kind": "party"
+                      },
+                      "index": {
+                        "kind": "lit",
+                        "value": 1.0
+                      }
+                    },
+                    "stat": "sanity",
+                    "delta": {
+                      "kind": "lit",
+                      "value": -1.0
+                    }
+                  }
+                },
+                {
+                  "kind": "emit",
+                  "effect": {
+                    "kind": "adjustStat",
+                    "target": {
+                      "kind": "index",
+                      "list": {
+                        "kind": "party"
+                      },
+                      "index": {
+                        "kind": "lit",
+                        "value": 2.0
+                      }
+                    },
+                    "stat": "sanity",
+                    "delta": {
+                      "kind": "lit",
+                      "value": -1.0
+                    }
+                  }
+                },
+                {
+                  "kind": "emit",
+                  "effect": {
+                    "kind": "adjustStat",
+                    "target": {
+                      "kind": "index",
+                      "list": {
+                        "kind": "party"
+                      },
+                      "index": {
+                        "kind": "lit",
+                        "value": 3.0
+                      }
+                    },
+                    "stat": "sanity",
+                    "delta": {
+                      "kind": "lit",
+                      "value": -1.0
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "actions": {}
+      }
+    },
+    "smelling-salts": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "actor"
+              },
+              "stat": "sanity",
+              "delta": {
+                "kind": "lit",
+                "value": 5.0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "soda": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "actor"
+              },
+              "stat": "energy",
+              "delta": {
+                "kind": "lit",
+                "value": 4.0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "survived-to-daybreak": {
+      "family": "victory",
+      "script": {
+        "test": {
+          "kind": "bin",
+          "op": "and",
+          "left": {
+            "kind": "worldGet",
+            "field": "daybreak",
+            "default": false
+          },
+          "right": {
+            "kind": "some",
+            "list": {
+              "kind": "party"
+            },
+            "pred": {
+              "kind": "not",
+              "expr": {
+                "kind": "includes",
+                "list": {
+                  "kind": "get",
+                  "of": {
+                    "kind": "element"
+                  },
+                  "field": "status"
+                },
+                "value": {
+                  "kind": "lit",
+                  "value": "ko"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "the-dare": {
+      "family": "scene",
+      "script": {
+        "canPlay": {
+          "kind": "not",
+          "expr": {
+            "kind": "stateGet",
+            "field": "played",
+            "default": false
+          }
+        },
+        "onEnter": [
+          {
+            "kind": "setState",
+            "field": "played",
+            "value": {
+              "kind": "lit",
+              "value": true
+            }
+          },
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "cue",
+              "text": {
+                "kind": "lit",
+                "value": "The padlock snaps shut behind you and your friends' laughter fades down the road. The dare is simple: last until daybreak inside Solomon's Rest. Somewhere across the yard, right on cue, a bell you cannot see tolls dusk — and something under the ground hears it too."
+              }
+            }
+          }
+        ]
+      }
+    },
+    "the-flock-is-taken": {
+      "family": "victory",
+      "script": {
+        "test": {
+          "kind": "bin",
+          "op": "and",
+          "left": {
+            "kind": "bin",
+            "op": "gt",
+            "left": {
+              "kind": "length",
+              "list": {
+                "kind": "party"
+              }
+            },
+            "right": {
+              "kind": "lit",
+              "value": 0.0
+            }
+          },
+          "right": {
+            "kind": "every",
+            "list": {
+              "kind": "party"
+            },
+            "pred": {
+              "kind": "includes",
+              "list": {
+                "kind": "get",
+                "of": {
+                  "kind": "element"
+                },
+                "field": "status"
+              },
+              "value": {
+                "kind": "lit",
+                "value": "ko"
+              }
+            }
+          }
+        }
+      }
+    },
+    "the-watcher": {
+      "family": "scene",
+      "script": {
+        "canPlay": {
+          "kind": "not",
+          "expr": {
+            "kind": "stateGet",
+            "field": "seen",
+            "default": false
+          }
+        },
+        "onEnter": [
+          {
+            "kind": "setState",
+            "field": "seen",
+            "value": {
+              "kind": "lit",
+              "value": true
+            }
+          },
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "cue",
+              "text": {
+                "kind": "lit",
+                "value": "Far down the rows a lantern swings — a tall figure with a spade over one shoulder, standing very still among the stones. It watches all of you, counts you, and does not come closer. Not yet."
+              }
+            }
+          }
+        ]
+      }
+    },
+    "toll-the-black-bell": {
+      "family": "card",
+      "script": {
+        "onPlay": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "cue",
+              "text": {
+                "kind": "lit",
+                "value": "From the chapel a bell tolls — backward, the strokes swallowing themselves. The stars wheel the wrong way, and the night grows two hours longer."
+              }
+            }
+          },
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "setWorldState",
+              "field": "hour",
+              "value": {
+                "kind": "ifElse",
+                "cond": {
+                  "kind": "bin",
+                  "op": "lt",
+                  "left": {
+                    "kind": "worldGet",
+                    "field": "hour",
+                    "default": 0.0
+                  },
+                  "right": {
+                    "kind": "lit",
+                    "value": 2.0
+                  }
+                },
+                "then": {
+                  "kind": "lit",
+                  "value": 0.0
+                },
+                "else": {
+                  "kind": "bin",
+                  "op": "sub",
+                  "left": {
+                    "kind": "worldGet",
+                    "field": "hour",
+                    "default": 0.0
+                  },
+                  "right": {
+                    "kind": "lit",
+                    "value": 2.0
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "undercroft-chill": {
+      "family": "scene",
+      "script": {
+        "canPlay": {
+          "kind": "not",
+          "expr": {
+            "kind": "stateGet",
+            "field": "seen",
+            "default": false
+          }
+        },
+        "onEnter": [
+          {
+            "kind": "setState",
+            "field": "seen",
+            "value": {
+              "kind": "lit",
+              "value": true
+            }
+          },
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "cue",
+              "text": {
+                "kind": "lit",
+                "value": "The cold down here is older than the chapel above it. Lodge chests line the walls, and the dust on the floor shows no footprints at all — nothing walks here. Nothing has to."
+              }
+            }
+          }
+        ]
+      }
+    },
+    "undercroft-door": {
+      "family": "exit",
+      "script": {
+        "canPass": {
+          "kind": "bin",
+          "op": "or",
+          "left": {
+            "kind": "stateGet",
+            "field": "unlocked",
+            "default": false
+          },
+          "right": {
+            "kind": "hasKey",
+            "of": {
+              "kind": "actor"
+            },
+            "keyCode": "undercroft"
+          }
+        },
+        "runScript": [
+          {
+            "kind": "when",
+            "cond": {
+              "kind": "not",
+              "expr": {
+                "kind": "stateGet",
+                "field": "unlocked",
+                "default": false
+              }
+            },
+            "then": [
+              {
+                "kind": "setState",
+                "field": "unlocked",
+                "value": {
+                  "kind": "lit",
+                  "value": true
+                }
+              },
+              {
+                "kind": "pass",
+                "value": {
+                  "kind": "lit",
+                  "value": "The brass key turns twice. The stair-door swings open onto cellar dark."
+                }
+              }
+            ]
+          }
+        ],
+        "failMessage": "The stair-door to the undercroft is locked — a keyhole of old brass, and the Tyler's post stands between you and whatever opens it."
+      }
+    },
+    "whiskey-flask": {
+      "family": "item",
+      "script": {
+        "onUse": [
+          {
+            "kind": "emit",
+            "effect": {
+              "kind": "adjustStat",
+              "target": {
+                "kind": "actor"
+              },
+              "stat": "sanity",
+              "delta": {
+                "kind": "lit",
+                "value": 3.0
+              }
+            }
+          }
+        ]
+      }
+    },
+    "widow-marbury": {
+      "family": "npc",
+      "script": {
+        "description": "A woman in mourning gray beneath the willow, her veil moving in a wind you cannot feel. Her grief is a hundred years old and perfectly patient.",
+        "default": {
+          "match": {
+            "kind": "exact",
+            "text": ""
+          },
+          "response": {
+            "kind": "lit",
+            "value": "You should never have come in on a dare, children. But you are in now, and the gates keep till morning. Listen to an old widow: whatever else you do tonight, stay TOGETHER. The Sexton walks."
+          },
+          "effects": [],
+          "once": false
+        },
+        "dialogue": [
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "sexton"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "He dug every grave here, and then his own, and did not stop working. The lodge bound him with a compact: from dusk-bell to daybreak he keeps the yard — but he may take only the sundered, the one cut off from the flock. While another living soul stands beside you, his hand is stayed. He knows it. It is why he will try so hard to get you alone."
+            },
+            "effects": [],
+            "once": false
+          },
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "daybreak",
+                "dawn",
+                "morning",
+                "sunrise"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "Endure to first light, dears. At daybreak he must go below — the compact allows him nothing else — and the lychgate will stand open of itself."
+            },
+            "effects": [],
+            "once": false
+          },
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "fight",
+                "kill",
+                "weapon"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "The lesser dead can be put down: flame for the risen flesh, cold iron for the unquiet spirit, the craft's silver for the beasts that never lived. But the Sexton is not a thing you fight. He is a thing you outlast."
+            },
+            "effects": [],
+            "once": false
+          },
+          {
+            "match": {
+              "kind": "fuzzy",
+              "tokens": [
+                "key",
+                "crypt",
+                "locked",
+                "door"
+              ]
+            },
+            "response": {
+              "kind": "lit",
+              "value": "The Tyler guards the chapel stair as he guarded the lodge door in life — his key goes below with him, unless someone puts him to rest. And the founder was buried with everything he valued, behind bronze. His wight keeps the bronze key, out among the mausoleums."
+            },
+            "effects": [],
+            "once": false
+          }
+        ]
+      }
+    }
+  },
+  "formations": {
+    "carrion-crows": {
+      "mobs": [
+        {
+          "name": "Carrion Crow",
+          "stats": {
+            "energy": 4.0,
+            "sanity": 2.0,
+            "health": 2.0
+          },
+          "naturalAttack": {
+            "stat": "sanity",
+            "power": 1.0
+          },
+          "baseEscapeChance": 75,
+          "lightAverse": false,
+          "materialDrops": {},
+          "actionsPerRound": 2,
+          "image": "solomons-rest/carrion-crow.png"
+        }
+      ]
+    },
+    "rat-swarm": {
+      "mobs": [
+        {
+          "name": "Cemetery Rat",
+          "stats": {
+            "energy": 3.0,
+            "sanity": 2.0,
+            "health": 2.0
+          },
+          "naturalAttack": {
+            "stat": "health",
+            "power": 1.0
+          },
+          "baseEscapeChance": 60,
+          "lightAverse": false,
+          "materialDrops": {},
+          "actionsPerRound": 2,
+          "image": "solomons-rest/cemetery-rat.png"
+        },
+        {
+          "name": "Cemetery Rat",
+          "stats": {
+            "energy": 3.0,
+            "sanity": 2.0,
+            "health": 2.0
+          },
+          "naturalAttack": {
+            "stat": "health",
+            "power": 1.0
+          },
+          "baseEscapeChance": 60,
+          "lightAverse": false,
+          "materialDrops": {},
+          "actionsPerRound": 2,
+          "image": "solomons-rest/cemetery-rat.png"
+        }
+      ]
+    },
+    "spectral-hound": {
+      "mobs": [
+        {
+          "name": "Spectral Hound",
+          "stats": {
+            "energy": 4.0,
+            "sanity": 4.0,
+            "health": 6.0
+          },
+          "naturalAttack": {
+            "stat": "sanity",
+            "power": 3.0
+          },
+          "baseEscapeChance": 40,
+          "lightAverse": true,
+          "materialDrops": {},
+          "actionsPerRound": 2,
+          "image": "solomons-rest/spectral-hound.png"
+        }
+      ]
+    },
+    "stray-raccoon": {
+      "mobs": [
+        {
+          "name": "Raccoon",
+          "stats": {
+            "energy": 5.0,
+            "sanity": 3.0,
+            "health": 3.0
+          },
+          "naturalAttack": {
+            "stat": "health",
+            "power": 1.0
+          },
+          "baseEscapeChance": 70,
+          "lightAverse": false,
+          "materialDrops": {},
+          "actionsPerRound": 2
+        }
+      ]
+    }
+  },
+  "recipes": {
+    "field-torch": {
+      "id": "field-torch",
+      "outputName": "Grave Torch",
+      "materials": {
+        "cloth": 1,
+        "wood": 1
+      },
+      "outputItemKey": "torch"
+    },
+    "torn-bandage": {
+      "id": "torn-bandage",
+      "outputName": "Torn Bandage",
+      "materials": {
+        "cloth": 2
+      },
+      "outputItemKey": "bandage-roll"
+    }
+  },
+  "cards": {
+    "cold-hands": {
+      "name": "Cold Hands from Below",
+      "text": "Fingers close around every living ankle in the yard."
+    },
+    "toll-the-black-bell": {
+      "name": "Toll the Black Bell",
+      "text": "The chapel bell rings backward, and the night grows two hours longer."
+    },
+    "wicked:lights-out": {
+      "name": "Lights Out",
+      "text": "Every flame in the cemetery gutters and dies.",
+      "config": {
+        "rounds": 2
+      }
+    },
+    "wicked:ruin": {
+      "name": "Rot and Ruin",
+      "text": "What you carry, the grave-damp claims."
+    },
+    "wicked:scatter": {
+      "name": "Scatter the Flock",
+      "text": "The ground opens under every pair of feet at once."
+    },
+    "wicked:shadow-step": {
+      "name": "Shadow Step",
+      "text": "The Sexton is where the lantern-light is not."
+    }
+  },
+  "images": {
+    "archetype:cheer-captain": "solomons-rest/the-cheer-captain.png",
+    "archetype:quarterback": "solomons-rest/the-quarterback.png",
+    "archetype:quiet-one": "solomons-rest/the-quiet-one.png",
+    "archetype:valedictorian": "solomons-rest/the-valedictorian.png",
+    "loot:abandoned-backpack": "solomons-rest/abandoned-backpack.png",
+    "loot:drowned-lockbox": "solomons-rest/drowned-lockbox.png",
+    "loot:fallen-marker": "solomons-rest/fallen-marker.png",
+    "loot:founders-gun-case": "solomons-rest/founders-gun-case.png",
+    "loot:iron-fence": "solomons-rest/iron-fence.png",
+    "loot:offering-bowl": "solomons-rest/offering-bowl.png",
+    "loot:sunken-reliquary": "solomons-rest/sunken-reliquary.png",
+    "loot:tool-rack": "solomons-rest/tool-rack.png",
+    "loot:undercroft-cache": "solomons-rest/undercroft-cache.png",
+    "loot:votive-shelf": "solomons-rest/votive-shelf.png",
+    "loot:yew-gate": "solomons-rest/yew-gate.png",
+    "mob:Carrion Crow": "solomons-rest/carrion-crow.png",
+    "mob:Cemetery Rat": "solomons-rest/cemetery-rat.png",
+    "mob:Raccoon": "solomons-rest/raccoon.png",
+    "mob:Spectral Hound": "solomons-rest/spectral-hound.png",
+    "mob:The Sexton": "solomons-rest/the-sexton.png",
+    "mob:The Tyler": "solomons-rest/the-tyler.png",
+    "mob:Wight of the Founder": "solomons-rest/wight-of-the-founder.png",
+    "npc:Widow Marbury": "solomons-rest/widow-marbury.png",
+    "room:Bone Hollow": "solomons-rest/bone-hollow.png",
+    "room:Caretakers Lodge": "solomons-rest/caretakers-lodge.png",
+    "room:Chapel of the Compasses": "solomons-rest/chapel-of-the-compasses.png",
+    "room:Charnel House": "solomons-rest/charnel-house.png",
+    "room:Columbarium": "solomons-rest/columbarium.png",
+    "room:Founders Mausoleum": "solomons-rest/founders-mausoleum.png",
+    "room:Gravel Path": "solomons-rest/gravel-path.png",
+    "room:Lychgate": "solomons-rest/lychgate.png",
+    "room:Mausoleum Row": "solomons-rest/mausoleum-row.png",
+    "room:Obelisk Circle": "solomons-rest/obelisk-circle.png",
+    "room:Old Yard": "solomons-rest/old-yard.png",
+    "room:Ossuary": "solomons-rest/ossuary.png",
+    "room:Potters Field": "solomons-rest/potters-field.png",
+    "room:Reflecting Pool": "solomons-rest/reflecting-pool.png",
+    "room:Toolshed": "solomons-rest/toolshed.png",
+    "room:Undercroft": "solomons-rest/undercroft.png",
+    "room:Widows Willow": "solomons-rest/widows-willow.png",
+    "room:Yew Alley": "solomons-rest/yew-alley.png"
+  }
+}

@@ -13,7 +13,12 @@
       "to": "Vault"
     }
   ],
-  "formations": [],
+  "formations": [
+    {
+      "key": "frame-echoes",
+      "weight": 2
+    }
+  ],
   "loot": [
     {
       "items": [

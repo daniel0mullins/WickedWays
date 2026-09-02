@@ -378,6 +378,7 @@ mod tests {
             light_averse: false,
             material_drops: serde_json::json!({}),
             actions_per_round: 2,
+            image: None,
         };
         let desc = FormationDescriptor {
             mobs: alloc::vec![spec.clone(), spec],
@@ -568,6 +569,7 @@ mod spawn_tests {
             light_averse: false,
             material_drops: serde_json::json!({}),
             actions_per_round: 2,
+            image: None,
         };
         let mobs: alloc::vec::Vec<MobSpec> = (0..mob_count).map(|_| spec.clone()).collect();
         let mut formations = BTreeMap::new();

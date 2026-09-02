@@ -111,6 +111,7 @@ The generator assigns compass directions; a required entry carries none.
 | `room` | string | yes — a room `name` |
 | `items` | array of item keys | yes |
 | `description` | string | no |
+| `image` | string | no — relative art path (e.g. `loot/toolbox.webp`), same rules as a room's `image` |
 
 ## `[[caches]]` — a one-use pile of crafting materials
 
@@ -163,7 +164,7 @@ The generator assigns compass directions; a required entry carries none.
 |---|---|---|
 | `key` | string | yes |
 | `weight` | int | no — opt-in weight on the encounter table |
-| `mobs` | array of tables | no — each: `name`, `stats`, `naturalAttack` (`{ stat, power }`), `baseEscapeChance` (int), `actionsPerRound` (int) **all required**; `drops`, `lightAverse`, `materialDrops` optional |
+| `mobs` | array of tables | no — each: `name`, `stats`, `naturalAttack` (`{ stat, power }`), `baseEscapeChance` (int), `actionsPerRound` (int) **all required**; `drops`, `lightAverse`, `materialDrops`, `image` (relative art path, same rules as a room's `image`) optional |
 
 Note the formation `mobs` entries are the core `MobSpec`: unlike `[[mobs]]`,
 `naturalAttack`/`baseEscapeChance`/`actionsPerRound` are **required** there.
