@@ -27,6 +27,19 @@ Three ways to work with these files:
 | `covenant.toml` | **The Covenant** — the co-op multiplayer campaign (twin-ward victory needs two players). |
 | `g2-*.toml` | Single-feature campaigns, one per engine mechanic (doors, mobs, scenes, victory, villain cards, …). Small, focused references for how each feature is authored — and the studio's template gallery. |
 
+## Campaign art (`assets/`)
+
+Any archetype, room, item, mob, NPC, or card entry may carry
+`image = "<relative path>.webp"` — a path into `campaigns/assets/` (see its
+README for conventions and the path rules). The compiler validates the path
+shape and records the **association only**: rooms/mobs/npcs/archetypes/cards
+land in `catalog.images` keyed by their entity id (`room:{name}`,
+`mob:{name}`, `npc:{name}`, `archetype:{id}`, `card:{key}`); items land in
+their descriptor's `presentation.image`. The image **files** never enter the
+TOML, the goldens, or engine state — the room server serves them statically
+under `/assets/`, and the surfaces resolve the paths at render time.
+`g2-images.toml` is the focused reference.
+
 ## Relationship to `conformance/fixtures/`
 
 The golden corpus under `conformance/fixtures/` holds the **compiled output** of

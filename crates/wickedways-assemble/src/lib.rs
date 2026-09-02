@@ -10,7 +10,9 @@ pub mod description;
 pub mod error;
 // `pub(crate)` = visible inside this crate only — there is no JS equivalent short
 // of "not exported from the package"; these three modules are implementation.
-pub(crate) mod ids;
+// Public: the id mints are the shared contract between the compiler (which keys
+// `catalog.images` by them), the assembler, and surfaces that look entities up.
+pub mod ids;
 pub(crate) mod seat;
 pub(crate) mod validate;
 

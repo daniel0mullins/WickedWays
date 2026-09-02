@@ -29,6 +29,7 @@ Single tables: `[villain]`, the `[behaviors.*]` trees.
 | `baseStats` | table `{ statName = number }` | no |
 | `inventorySlots` | int | no |
 | `immunities` | array of status keys | no |
+| `image` | string | no — relative art path (e.g. `archetypes/occultist.webp`), served from the deploy's asset root; no `..`, no leading `/`, never inline data |
 
 ## `[[rooms]]`
 
@@ -39,6 +40,7 @@ Single tables: `[villain]`, the `[behaviors.*]` trees.
 | `dark` | bool | no — unlit room (darkness mechanic) |
 | `spawnModifier` | int | no — biases this room's encounter roll |
 | `lights` | array of item keys | no — items that light this room when carried lit |
+| `image` | string | no — relative art path (e.g. `rooms/foyer.webp`), served from the deploy's asset root; no `..`, no leading `/`, never inline data |
 
 ## `[[exits]]` — one-directional; write the return leg yourself
 
@@ -73,6 +75,7 @@ Single tables: `[villain]`, the `[behaviors.*]` trees.
 | `maxDurability` | int | no |
 | `lore` | string | no — text shown on `read` |
 | `aliases` | array of strings | no — extra names the parser resolves (`lamp` for the lantern) |
+| `image` | string | no — relative art path (e.g. `items/lantern.webp`), served from the deploy's asset root; no `..`, no leading `/`, never inline data |
 
 ## `[[loot]]` — a searchable container placing items in a room
 
@@ -110,6 +113,7 @@ Single tables: `[villain]`, the `[behaviors.*]` trees.
 | `room` | string | no |
 | `behavior` | string | yes — the `[behaviors.npc.<key>]` dialogue key |
 | `holds` | array of item keys | no — items it carries (can hand over via dialogue `effects`) |
+| `image` | string | no — relative art path (e.g. `npcs/caretaker.webp`), served from the deploy's asset root; no `..`, no leading `/`, never inline data |
 
 ## `[[mobs]]` — a placed enemy
 
@@ -125,6 +129,7 @@ Single tables: `[villain]`, the `[behaviors.*]` trees.
 | `baseEscapeChance` | int | no |
 | `materialDrops` | inline table | no |
 | `lightAverse` | bool | no — flees/avoids lit rooms |
+| `image` | string | no — relative art path (e.g. `mobs/revenant.webp`), served from the deploy's asset root; no `..`, no leading `/`, never inline data |
 
 ## `[[formations]]` — a random-encounter group
 
@@ -149,7 +154,8 @@ Note the formation `mobs` entries are the core `MobSpec`: unlike `[[mobs]]`,
 
 `[[cards]]`: `key` (doubles as the behavior key — native `wicked:*` or a
 `[behaviors.card.<key>]` body), `name`, optional `text`, optional `config`
-(inline table, e.g. `{ rounds = 3 }`).
+(inline table, e.g. `{ rounds = 3 }`), optional `image` (relative art path,
+same rules as a room's `image`).
 
 ## `[[victory.win]]` / `[[victory.lose]]` — ordered arrays
 

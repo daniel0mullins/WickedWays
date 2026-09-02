@@ -96,6 +96,10 @@ pub struct ArchetypeEntry {
     pub inventory_slots: Option<i64>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub immunities: Vec<String>,
+    /// Portrait art: a relative asset path (see `[[rooms]]`' `image`). Lowered
+    /// into `catalog.images["archetype:{id}"]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 /// A `[[rooms]]` entry. `dark` marks a room unlit (the darkness mechanic);
@@ -113,6 +117,13 @@ pub struct RoomEntry {
     pub spawn_modifier: Option<i64>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub lights: Vec<String>,
+    /// Room art: a plain relative asset path (`rooms/foyer.webp`), resolved by
+    /// the serving host under its asset root (files live next to the campaign,
+    /// e.g. `campaigns/assets/<campaign>/`; never inline byte data). Lowered
+    /// into `catalog.images["room:{name}"]` — presentation-only, never engine
+    /// state.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -177,6 +188,11 @@ pub struct ItemEntry {
     /// the lantern). Lowered into `catalog.aliases[<key>]`; absent → no alias entry.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub aliases: Vec<String>,
+    /// Item art: a relative asset path (see `[[rooms]]`' `image`). Lowered into
+    /// the descriptor's existing `presentation.image` channel (NOT
+    /// `catalog.images`), which the ViewModel already projects to surfaces.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -243,6 +259,10 @@ pub struct NpcEntry {
     pub behavior: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub holds: Vec<String>,
+    /// NPC art: a relative asset path (see `[[rooms]]`' `image`). Lowered into
+    /// `catalog.images["npc:{name}"]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 /// A `[[mobs]]` entry: a placed enemy. `stats` is the core `Stats` snapshot (same
@@ -272,6 +292,10 @@ pub struct MobEntry {
     pub material_drops: Option<toml::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub light_averse: Option<bool>,
+    /// Mob art: a relative asset path (see `[[rooms]]`' `image`). Lowered into
+    /// `catalog.images["mob:{name}"]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 /// A `[[formations]]` entry: a data-driven encounter formation. It carries BOTH
@@ -327,6 +351,10 @@ pub struct CardEntryToml {
     pub text: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub config: Option<toml::Value>,
+    /// Card face art: a relative asset path (see `[[rooms]]`' `image`). Lowered
+    /// into `catalog.images["card:{key}"]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 // ── Behavior bodies: the `[behaviors.<family>.<key>]` tables ────────────────

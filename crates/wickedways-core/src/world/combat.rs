@@ -647,6 +647,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         };
         w.items.insert(
             wpn.clone(),
@@ -827,6 +828,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         };
         w.items.insert(
             armor_id.clone(),
@@ -920,6 +922,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         };
         w.items.insert(
             armor_id.clone(),

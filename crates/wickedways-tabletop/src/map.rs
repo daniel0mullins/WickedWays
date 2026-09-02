@@ -547,6 +547,7 @@ mod tests {
                 name: name.into(),
                 description: String::new(),
                 is_lit: true,
+                image: None,
             },
             exits: Vec::new(),
             locked_doors: Vec::new(),

@@ -234,6 +234,7 @@ pub fn RoomsScreen(asset: Option<u64>) -> Element {
                         dark: None,
                         spawn_modifier: None,
                         lights: Vec::new(),
+                        image: None,
                     }});
                     id
                 });
@@ -420,7 +421,7 @@ fn RoomHub(room: String) -> Element {
                             name: format!("New Mob {id}"), stats: default_stats(), room: Some(room),
                             drops: Vec::new(), natural_attack: None, inventory_slots: None,
                             actions_per_round: None, base_escape_chance: None,
-                            material_drops: None, light_averse: None,
+                            material_drops: None, light_averse: None, image: None,
                         }});
                         id
                     });
@@ -596,7 +597,7 @@ pub fn ItemsScreen(asset: Option<u64>) -> Element {
                         key_code: None, type_: None, stat: None, modifier: None,
                         usable: None, destroyable: None, recipe: None, equippable: None,
                         droppable: None, slot: None, two_handed: None, emits_light: None,
-                        max_durability: None, lore: None, aliases: Vec::new(),
+                        max_durability: None, lore: None, aliases: Vec::new(), image: None,
                     }});
                     id
                 });
@@ -1025,7 +1026,7 @@ pub fn MobsScreen(asset: Option<u64>) -> Element {
                         name: format!("New Mob {id}"), stats: default_stats(), room: None,
                         drops: Vec::new(), natural_attack: None, inventory_slots: None,
                         actions_per_round: None, base_escape_chance: None,
-                        material_drops: None, light_averse: None,
+                        material_drops: None, light_averse: None, image: None,
                     }});
                     id
                 });
@@ -1146,7 +1147,7 @@ pub fn NpcsScreen(asset: Option<u64>) -> Element {
                     });
                     d.npcs.push(WithId { id, entry: NpcEntry {
                         name: format!("New NPC {id}"), stats: default_stats(),
-                        room: None, behavior, holds: Vec::new(),
+                        room: None, behavior, holds: Vec::new(), image: None,
                     }});
                     id
                 });
@@ -1237,7 +1238,7 @@ pub fn ArchetypesScreen(asset: Option<u64>) -> Element {
                     let id = d.mint();
                     d.archetypes.push(WithId { id, entry: ArchetypeEntry {
                         id: format!("archetype-{id}"), name: format!("New Archetype {id}"),
-                        base_stats: None, inventory_slots: None, immunities: Vec::new(),
+                        base_stats: None, inventory_slots: None, immunities: Vec::new(), image: None,
                     }});
                     id
                 });
@@ -1753,7 +1754,7 @@ pub fn CardsScreen(asset: Option<u64>) -> Element {
                     let id = d.mint();
                     d.cards.push(WithId { id, entry: CardEntryToml {
                         key: format!("card-{id}"), name: format!("New Card {id}"),
-                        text: None, config: None,
+                        text: None, config: None, image: None,
                     }});
                     id
                 });

@@ -693,8 +693,24 @@ fn scene_view(
     let (perimeter, body) = partition_hotspots(&hotspots);
     let body_total = body.len();
 
+    // Campaign-supplied room art paints the scene box (over the wall/floor
+    // gradient); art-less rooms keep the gradient. `%22`-escape any stray
+    // double quote so the value stays inside the CSS url("").
+    let scene_style = v
+        .room
+        .image
+        .as_ref()
+        .and_then(crate::affordances::asset_url)
+        .map(|url| {
+            format!(
+                "background-image:url(\"{}\");background-size:cover;background-position:center;",
+                url.replace('"', "%22")
+            )
+        })
+        .unwrap_or_default();
+
     rsx! {
-        div { class: "scene",
+        div { class: "scene", style: "{scene_style}",
             for hs in perimeter.iter() {
                 {
                     let pos = hs.dir.map_or(crate::scene_layout::ScenePosition { left: 50.0, top: 50.0 }, dir_position);
@@ -725,13 +741,19 @@ fn scene_view(
                         HotspotKind::Loot => "body-marker loot-marker",
                         _ => "body-marker item-marker",
                     };
+                    // Campaign-supplied entity art replaces the abstract marker box.
+                    let art = hs.image.as_ref().and_then(crate::affordances::asset_url);
                     rsx! {
                         div {
                             key: "body-{hs.key}",
                             class: "hotspot",
                             style: "left:{pos.left}%;top:{pos.top}%;z-index:1;",
                             onclick: move |e| if !finished { offer(&actions, &e, menu, driver) },
-                            div { class: "{marker_cls}" }
+                            if let Some(url) = art {
+                                img { class: "marker-image", src: "{url}", alt: "{label}" }
+                            } else {
+                                div { class: "{marker_cls}" }
+                            }
                             span { class: "label", "{label}" }
                         }
                     }

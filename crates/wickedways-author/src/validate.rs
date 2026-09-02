@@ -38,6 +38,28 @@ pub fn exit_script(src: &str) -> Result<(), CompileError> {
     parse_script(src, BASE).map(|_| ())
 }
 
+/// An entry's `image` value: a plain relative asset path (`rooms/foyer.webp`),
+/// resolved by the serving host under its asset root. Rejects anything that
+/// could escape or bypass that root: an empty path, a leading `/` (absolute),
+/// `.`/`..` segments (traversal), empty segments (`//`), backslashes, and `:`
+/// (URL schemes / drive letters). Byte data (data URIs) is rejected by the same
+/// rule — images ship as files next to the campaign, never inline.
+pub fn image_path(path: &str) -> Result<(), CompileError> {
+    let ok = !path.is_empty()
+        && !path.contains('\\')
+        && !path.contains(':')
+        && path
+            .split('/')
+            .all(|seg| !seg.is_empty() && seg != "." && seg != "..");
+    if ok {
+        Ok(())
+    } else {
+        Err(CompileError::InvalidImagePath {
+            path: path.to_string(),
+        })
+    }
+}
+
 /// An NPC dialogue `effects` body — emit-only (any other statement form is
 /// rejected).
 pub fn effects(src: &str) -> Result<(), CompileError> {

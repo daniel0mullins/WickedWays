@@ -366,6 +366,7 @@ mod tests {
                 name: "Hall".into(),
                 description: "A long central hall.".into(),
                 is_lit: true,
+                image: None,
             },
             exits: vec![ExitView {
                 dir: Direction::North,
@@ -438,6 +439,7 @@ mod tests {
             name: "Cellar".into(),
             description: "A dank cellar.".into(),
             is_lit: false,
+            image: None,
         };
         let parts = n.render_room_parts(&vm);
         assert_eq!(parts.description.as_deref(), Some("A dank cellar."));

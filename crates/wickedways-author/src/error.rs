@@ -18,6 +18,7 @@ pub enum CompileError {
     ExprParse { span: Span, message: String },
     UnknownReference { span: Span, name: String },
     UnresolvedKey { kind: &'static str, key: String },
+    InvalidImagePath { path: String },
 }
 
 // `Display` is the human-readable rendering (≈ `toString()`). Some of these
@@ -38,6 +39,13 @@ impl fmt::Display for CompileError {
             ),
             CompileError::UnresolvedKey { kind, key } => {
                 write!(f, "{kind} references undefined behavior key '{key}'")
+            }
+            CompileError::InvalidImagePath { path } => {
+                write!(
+                    f,
+                    "invalid image path '{path}': must be a plain relative path \
+                     (no leading '/', no '..' or '.' segments, no '\\', no ':')"
+                )
             }
         }
     }

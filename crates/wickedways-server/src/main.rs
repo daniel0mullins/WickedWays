@@ -16,6 +16,9 @@
 //! - `STUDIO_DIR`   — directory of the bundled Campaign Studio (the authoring app), served under
 //!   `/studio` (default `./studio`; empty or absent directory ⇒ off). The studio routes entirely by
 //!   query params, so `/studio/?c=…` deep-links resolve to its `index.html` naturally.
+//! - `ASSETS_DIR`   — directory of campaign art served under `/assets` (default `./assets`; empty
+//!   or absent directory ⇒ off). The `image` paths campaigns author (catalog `images` / item
+//!   `presentation.image`) resolve against this route; a missing file is a plain 404.
 //!
 //! `verify_token` here is the development default (identity = the token string, empty rejected) —
 //! a real deployment injects a proper verifier. Chat/AV are not implemented yet.
@@ -106,6 +109,16 @@ async fn main() {
             // browser demands a JS module (strict MIME checking). ServeDir does this
             // redirect for subdirectories itself; the nest root needs it done here.
             .layer(axum::middleware::from_fn(redirect_bare_studio));
+    }
+    // Campaign art rides `/assets`: the catalog's `images` paths and item
+    // `presentation.image` refs are relative paths clients resolve against this
+    // route (e.g. `image = "rooms/foyer.webp"` → `/assets/rooms/foyer.webp`; in
+    // the repo the files live under `campaigns/assets/`). Mounted only when the
+    // directory exists, so an art-less deploy stays unchanged. Deliberately no
+    // SPA fallback — a missing image is a plain 404, not index.html.
+    let assets_dir = std::env::var("ASSETS_DIR").unwrap_or_else(|_| "./assets".into());
+    if !assets_dir.is_empty() && std::path::Path::new(&assets_dir).is_dir() {
+        app = app.nest_service("/assets", tower_http::services::ServeDir::new(&assets_dir));
     }
     if !web_dir.is_empty() {
         let index = std::path::Path::new(&web_dir).join("index.html");

@@ -1698,6 +1698,22 @@ room **`dark`** + **`spawnModifier`**, exit **`name`** + **`initialState`**, **`
 entry carrying both the `{key,weight}` opt-in and the catalog `MobSpec` roster — the roving rats),
 **`[opts]`** (`maxRounds`/`baseEncounterChance`), and **`timeoutNarration`**. Each is proven by a bespoke
 `g2-*` oracle authoring the corresponding **real** hollow-house content byte-for-byte. Still deferred
+
+**Campaign art (`image` fields).** Archetype, room, item, mob, NPC, and card entries take an
+optional `image = "<relative path>"` — validated at compile time (relative-only: no leading `/`,
+no `..`/`.` segments, no `\`, no `:`; never inline data). Rooms/mobs/npcs/archetypes/cards lower
+into **`catalog.images`**, keyed by the id surfaces resolve entities by at render time (the
+assembler's mints: `room:{name}`, `mob:{name}`, `npc:{name}`; plus `archetype:{id}`,
+`card:{key}`); items lower into the descriptor's pre-existing **`presentation.image`** channel.
+Image data is strictly presentation-side: paths ride the catalog only, so snapshots, sync
+deltas, checkpoints, and the golden corpus never carry image bytes, and an image-less campaign's
+catalog serializes byte-identically (the `images` map is omitted when empty). The `ViewModel`
+projects the associations (`ThinRoom.image`, occupant/card `ScopeEntity.image`, items via the
+existing resolved-presentation path); the files themselves live in `campaigns/assets/` and are
+served by the room server's `/assets` route (`ASSETS_DIR`, wired in the Docker image). The PnC
+surface renders them — room art as the scene backdrop, entity art replacing the abstract
+hotspot markers; `asset_url` (`wickedways-web/src/affordances.rs`) owns path→URL resolution.
+The `g2-images` gate fixture pins the lowering.
 (no Hollow House usage, so a bespoke oracle would be needed): `endedNarration`, `chat`, `av`, `caches`,
 standalone `materials`/`recipes`, room `lights`, item `presentation`, and the mob override fields beyond
 naturalAttack/drops.

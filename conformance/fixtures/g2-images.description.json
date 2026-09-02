@@ -1,0 +1,82 @@
+{
+  "archetypes": [
+    {
+      "id": "curator",
+      "name": "Curator"
+    }
+  ],
+  "caches": [],
+  "exits": [
+    {
+      "direction": "north",
+      "from": "Gallery",
+      "to": "Vault"
+    }
+  ],
+  "formations": [],
+  "loot": [
+    {
+      "items": [
+        "cameo",
+        "vault-key"
+      ],
+      "name": "Plinth",
+      "room": "Gallery"
+    }
+  ],
+  "loseConditions": [],
+  "materials": [],
+  "mechanics": [],
+  "mobs": [
+    {
+      "name": "Frame Wraith",
+      "room": "Vault",
+      "stats": {
+        "energy": 3.0,
+        "health": 4.0,
+        "sanity": 0.0
+      }
+    }
+  ],
+  "npcs": [
+    {
+      "behavior": "docent",
+      "name": "Docent",
+      "room": "Gallery",
+      "stats": {
+        "energy": 1.0,
+        "health": 1.0,
+        "sanity": 1.0
+      }
+    }
+  ],
+  "opts": {},
+  "recipes": [],
+  "rooms": [
+    {
+      "description": "Portraits line the walls.",
+      "name": "Gallery"
+    },
+    {
+      "description": "A windowless strongroom.",
+      "name": "Vault"
+    }
+  ],
+  "scenes": [],
+  "startRoom": "Gallery",
+  "title": "Images",
+  "villain": {
+    "character": "Frame Wraith",
+    "deck": [
+      "wicked:lights-out"
+    ]
+  },
+  "winConditions": [
+    {
+      "key": "reach-vault",
+      "narration": {
+        "text": "The vault accepts you."
+      }
+    }
+  ]
+}

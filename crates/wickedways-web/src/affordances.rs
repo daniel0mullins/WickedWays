@@ -67,6 +67,26 @@ pub struct Hotspot {
     pub actions: Vec<ActionDescriptor>,
 }
 
+/// Resolve an opaque image `AssetRef` (a `ThinRoom`/`ScopeEntity`/[`Hotspot`] `image`) to a URL a
+/// surface can put in an `img src` or CSS `url()`. Campaign-compiled refs are plain relative
+/// paths served under `/assets/` (the room server's `ASSETS_DIR` route); an absolute URL, a
+/// root-relative path, or a data URI passes through verbatim (the ref is opaque author-data — be
+/// liberal in what we accept). A non-string or empty ref resolves to `None`.
+pub fn asset_url(image: &serde_json::Value) -> Option<String> {
+    let s = image.as_str()?;
+    if s.is_empty() {
+        return None;
+    }
+    if s.starts_with("data:")
+        || s.starts_with("http://")
+        || s.starts_with("https://")
+        || s.starts_with('/')
+    {
+        return Some(s.to_string());
+    }
+    Some(format!("/assets/{s}"))
+}
+
 /// Capitalise a lowercase [`Direction`] key for display ("north" → "North"). Only the first byte is
 /// uppercased (so "northeast" → "Northeast", NOT "NorthEast").
 fn cap(dir: Direction) -> String {
@@ -344,6 +364,7 @@ mod tests {
                 name: "Hall".into(),
                 description: "a hall".into(),
                 is_lit: true,
+                image: None,
             },
             exits: Vec::new(),
             locked_doors: Vec::new(),
