@@ -24,6 +24,12 @@ pub struct ThinRoom {
     pub name: String,
     pub description: String,
     pub is_lit: bool,
+    /// The room's campaign-supplied art (`catalog.images[room id]`), carried as
+    /// an opaque `AssetRef` like `ScopeEntity.image` — the surface owns URL
+    /// resolution and rendering. Omitted when absent so pre-image ViewModel
+    /// goldens stay byte-stable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<AssetRef>,
 }
 
 /// A passable exit as the surface lists it.
@@ -90,6 +96,10 @@ pub struct LootView {
     pub description: String,
     pub opened: bool,
     pub contents: Vec<ScopeEntity>,
+    /// The container's campaign-supplied art (`catalog.images["loot:{name}"]`).
+    /// Omitted when absent so pre-image ViewModel goldens stay byte-stable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<AssetRef>,
 }
 
 /// The player's inventory in the widened ViewModel.
@@ -194,6 +204,16 @@ pub struct ViewModel {
 }
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
+
+/// The catalog's art entry for `key` (an entity id like `room:{name}`/`mob:{name}`,
+/// or a prefixed author key like `card:{key}`), as the opaque `AssetRef` the view
+/// types carry. `None` when the campaign supplied no art for it.
+fn image_ref(catalog: &Catalog, key: &str) -> Option<AssetRef> {
+    catalog
+        .images
+        .get(key)
+        .map(|path| AssetRef::String(path.clone()))
+}
 
 /// Alias list for a scope entity.
 ///
@@ -387,7 +407,19 @@ impl World {
                     aliases: alloc::vec![name.to_lowercase()],
                     kind: "occupant".into(),
                     health: Some(health),
-                    image: None,
+                    // By world id first (`mob:{name}`/`npc:{name}` for placed
+                    // characters); a formation-SPAWNED mob mints a
+                    // `campaign-mob:*` id, so fall back to its display name
+                    // under the `mob:` prefix (the key a `MobSpec.image`
+                    // lowers to); a fellow PLAYER falls back to their chosen
+                    // archetype's portrait (`archetype:{id}` — the key an
+                    // `[[archetypes]]` `image` lowers to).
+                    image: image_ref(cat, &id.0)
+                        .or_else(|| image_ref(cat, &alloc::format!("mob:{name}")))
+                        .or_else(|| {
+                            let arch = self.characters.get(id)?.archetype_id.as_ref()?;
+                            image_ref(cat, &alloc::format!("archetype:{arch}"))
+                        }),
                     equippable: None,
                     usable: None,
                     has_lore: None,
@@ -424,6 +456,7 @@ impl World {
                     description: container.description.clone(),
                     opened,
                     contents,
+                    image: image_ref(cat, &container.id.0),
                 }
             })
             .collect();
@@ -470,7 +503,7 @@ impl World {
                 ],
                 kind: "loot".into(),
                 health: None,
-                image: None,
+                image: lv.image.clone(),
                 equippable: None,
                 usable: None,
                 has_lore: None,
@@ -613,7 +646,7 @@ impl World {
                             name,
                             kind: "card".into(),
                             health: None,
-                            image: None,
+                            image: image_ref(cat, &alloc::format!("card:{key}")),
                             equippable: None,
                             usable: None,
                             has_lore: None,
@@ -654,6 +687,7 @@ impl World {
                 name: room_snap.name.clone(),
                 description: room_snap.description.clone(),
                 is_lit,
+                image: image_ref(cat, &room_id.0),
             },
             exits,
             locked_doors,
@@ -792,6 +826,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         }
     }
 
@@ -960,6 +995,8 @@ mod tests {
             mechanics: alloc::vec![],
             villain: None,
             lights_out_rounds: 0,
+            world_state: serde_json::Value::Null,
+            map_gen: None,
         };
 
         let mut characters = BTreeMap::new();
@@ -1123,6 +1160,29 @@ mod tests {
         // PC has sword-2 equipped in "hand"
         assert_eq!(v.inventory.equipped_names, alloc::vec!["Iron Sword"]);
         assert_eq!(v.inventory.slots, 6);
+    }
+
+    #[test]
+    fn view_projects_catalog_images_for_room_and_occupants() {
+        let w = build_world_for_view();
+        let mut cat = build_catalog();
+        // Image-less catalog: every image slot stays absent (byte-stable goldens).
+        let base = w.view(&cat, &BTreeSet::new()).unwrap();
+        assert_eq!(base.room.image, None);
+        assert!(!base.occupants.is_empty(), "fixture seats an occupant");
+        assert!(base.occupants.iter().all(|o| o.image.is_none()));
+        // Catalog art keyed by the entity ids the view carries → projected through.
+        cat.images
+            .insert(base.room.id.clone(), "rooms/hall.webp".into());
+        for occ in &base.occupants {
+            cat.images.insert(occ.id.clone(), "mobs/wraith.webp".into());
+        }
+        let v = w.view(&cat, &BTreeSet::new()).unwrap();
+        assert_eq!(v.room.image, Some(json!("rooms/hall.webp")));
+        assert!(v
+            .occupants
+            .iter()
+            .all(|o| o.image == Some(json!("mobs/wraith.webp"))));
     }
 
     #[test]

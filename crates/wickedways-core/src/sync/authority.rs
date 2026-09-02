@@ -313,7 +313,18 @@ fn apply_action(
     cues: &mut Vec<PresentationCue>,
 ) -> Result<(), ProceduralViolation> {
     let result: Result<(), ProceduralViolation> = match command {
-        Command::Move { actor_id, room_id } => world.move_to(actor_id, room_id, cat, cues),
+        // The room-id `move` is door-checked server-side before it lands: a keyed exit that
+        // refuses passage — or a destination no exit connects to at all — denies the command
+        // (the surfaces resolve moves from the exit graph and run the same pure query
+        // client-side via `exit_block_reason`, so an honest client never sends either; this
+        // bars clients whose replica exit state is stale, and hostile ones).
+        Command::Move { actor_id, room_id } => {
+            if let Some(reason) = world.move_block_reason(actor_id, room_id, cat) {
+                Err(ProceduralViolation(reason))
+            } else {
+                world.move_to(actor_id, room_id, cat, cues)
+            }
+        }
         Command::Attack {
             actor_id,
             target_id,
@@ -536,6 +547,91 @@ mod tests {
         }
         assert_eq!(auth.head(), 1);
         assert_eq!(auth.entries_since(1).len(), 1);
+    }
+
+    /// Lock the two-room world's north exit (`conformance:keyed-door`, `unlocked: false`),
+    /// optionally seating a "brass-key" item in the pc's inventory.
+    fn locked_door_world(with_key: bool) -> World {
+        let mut world = world_two_rooms(false);
+        world.make_north_exit_keyed("conformance:keyed-door");
+        for ex in world.exits.values_mut() {
+            if ex.behavior_key.is_some() {
+                ex.state = serde_json::json!({ "unlocked": false });
+            }
+        }
+        if with_key {
+            let item_id = crate::world::ids::ItemId("brass-key-1".into());
+            world.items.insert(
+                item_id.clone(),
+                crate::world::snapshot::ItemSnapshot::Item {
+                    id: item_id.clone(),
+                    behavior_key: "brass-key".into(),
+                    durability: None,
+                    modifier: 0,
+                },
+            );
+            if let Some(c) = world.characters.get_mut(&CharacterId("pc".into())) {
+                c.inventory.item_ids.push(item_id);
+            }
+        }
+        world
+    }
+
+    #[test]
+    fn a_move_through_a_locked_door_is_denied_server_side() {
+        // The room-id move is door-checked on the authority: even a client that skipped the
+        // client-side `exit_block_reason` gate (stale replica, hostile client) cannot pass.
+        let mut auth = authority(locked_door_world(false));
+        let res = auth.submit(Command::Move {
+            actor_id: CharacterId("pc".into()),
+            room_id: RoomId("next".into()),
+        });
+        let SubmitResult::Denied { reason } = res else {
+            panic!("a locked-door move must be denied, got {res:?}");
+        };
+        assert_eq!(reason, "The door is locked.");
+        assert_eq!(auth.head(), 0, "a denied command commits nothing");
+    }
+
+    #[test]
+    fn a_non_adjacent_move_is_denied_server_side() {
+        // No exit connects the rooms → denied. Without this a hostile client could hop
+        // straight into a sealed room from anywhere, bypassing its keyed door entirely.
+        let mut world = world_two_rooms(false);
+        world.rooms.insert(
+            RoomId("island".into()),
+            world.rooms[&RoomId("next".into())].clone(),
+        );
+        if let Some(r) = world.rooms.get_mut(&RoomId("island".into())) {
+            r.id = RoomId("island".into());
+            r.exits.clear();
+            r.occupant_ids.clear();
+        }
+        let mut auth = authority(world);
+        let res = auth.submit(Command::Move {
+            actor_id: CharacterId("pc".into()),
+            room_id: RoomId("island".into()),
+        });
+        let SubmitResult::Denied { reason } = res else {
+            panic!("a non-adjacent move must be denied, got {res:?}");
+        };
+        assert_eq!(reason, "You can't get there from here.");
+        assert_eq!(auth.head(), 0, "a denied command commits nothing");
+    }
+
+    #[test]
+    fn a_locked_door_move_commits_when_the_actor_holds_the_key() {
+        // Same door, key held: `can_pass` holds, so the check stands aside and the move commits.
+        let mut auth = authority(locked_door_world(true));
+        let res = auth.submit(Command::Move {
+            actor_id: CharacterId("pc".into()),
+            room_id: RoomId("next".into()),
+        });
+        assert!(
+            matches!(res, SubmitResult::Committed { .. }),
+            "a keyed move with the key should commit, got {res:?}"
+        );
+        assert_eq!(auth.head(), 1);
     }
 
     #[test]

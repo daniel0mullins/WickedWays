@@ -320,7 +320,14 @@ impl World {
             // the non-crit path multiplies by exactly 1.0, so player damage is bit-identical).
             for (stat, strength) in matrix {
                 if strength > 0.0 {
-                    self.take_damage(target, strength * crit_mult, stat, cat, cues)?;
+                    self.take_damage_from(
+                        target,
+                        Some(actor),
+                        strength * crit_mult,
+                        stat,
+                        cat,
+                        cues,
+                    )?;
                 }
             }
 
@@ -440,9 +447,27 @@ impl World {
     /// Apply an incoming hit to `target`'s `attack_stat` after armor + mitigation,
     /// wear contributing armor, reconcile, and record a NON-budgeted `takeDamage`.
     /// Behavior is pinned byte-exact by the conformance goldens. Internal only.
+    /// The attack path routes through [`take_damage_from`] so `modify_damage`
+    /// transforms observe the attacker; this source-less form covers everything
+    /// else (and pre-existing behavior is unchanged — `DamageView.source`/`room`
+    /// are transform-only reads, never serialized).
     pub fn take_damage(
         &mut self,
         target: &CharacterId,
+        attack_strength: f64,
+        attack_stat: StatType,
+        cat: &Catalog,
+        cues: &mut Vec<PresentationCue>,
+    ) -> Result<(), ProceduralViolation> {
+        self.take_damage_from(target, None, attack_strength, attack_stat, cat, cues)
+    }
+
+    /// [`take_damage`] with the attacking character wired into the transform
+    /// view (`DamageView.source`), alongside the target's room (`DamageView.room`).
+    pub fn take_damage_from(
+        &mut self,
+        target: &CharacterId,
+        source: Option<&CharacterId>,
         attack_strength: f64,
         attack_stat: StatType,
         cat: &Catalog,
@@ -487,7 +512,12 @@ impl World {
                 amount: final_strength,
                 target: target.clone(),
                 stat: attack_stat,
-                source: None,
+                source: source.cloned(),
+                room: self
+                    .characters
+                    .get(target)
+                    .and_then(|c| c.current_room_id.as_ref())
+                    .map(|r| r.0.clone()),
             },
             cues,
             cat,
@@ -599,6 +629,7 @@ mod tests {
             target: cid("pc"),
             stat: StatType::Health,
             source: None,
+            room: None,
         };
         assert_eq!(
             w.run_damage_transformers(&dv, &mut cues, &Catalog::default()),
@@ -647,6 +678,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         };
         w.items.insert(
             wpn.clone(),
@@ -827,6 +859,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         };
         w.items.insert(
             armor_id.clone(),
@@ -920,6 +953,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         };
         w.items.insert(
             armor_id.clone(),

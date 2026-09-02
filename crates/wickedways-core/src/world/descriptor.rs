@@ -144,6 +144,17 @@ pub struct Catalog {
     /// byte-stable.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub cards: BTreeMap<String, CardDescriptor>,
+    /// Campaign-supplied entity art: asset paths (relative to the deployment's
+    /// asset root) keyed by the id surfaces resolve entities by at render time —
+    /// the assembler's world ids for placed entities (`room:{name}`,
+    /// `mob:{name}`, `npc:{name}`) and prefixed author keys otherwise
+    /// (`archetype:{id}`, `card:{key}`). Items ride the existing
+    /// `ItemDescriptor.presentation.image` channel instead of this map.
+    /// Presentation-only — the engine never reads it; the `ViewModel`
+    /// projection passes entries through as `AssetRef`s. Post-oracle field,
+    /// OMITTED when empty so the committed catalog fixtures stay byte-stable.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub images: BTreeMap<String, String>,
 }
 
 #[cfg(test)]

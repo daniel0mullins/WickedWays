@@ -104,6 +104,9 @@ COPY conformance/fixtures/sync-move.genesis.json ./genesis/demo.json
 # `catalog_for` picks up `<id>.catalog.json` automatically.
 COPY conformance/fixtures/covenant.genesis.json ./genesis/covenant.json
 COPY conformance/fixtures/covenant.catalog.json ./genesis/covenant.catalog.json
+# Campaign art: the `image` paths authored in campaigns/*.toml resolve under
+# `/assets` (the ASSETS_DIR route). Ships even when empty (README only).
+COPY campaigns/assets ./assets
 
 # PORT is injected by the platform (Coolify); the rest wire the one-binary topology.
 # No DB_PATH → the store is ephemeral (a clean slate per deploy).
@@ -111,6 +114,7 @@ ENV PORT=8080 \
     WEB_DIR=/app/dist \
     STUDIO_DIR=/app/studio \
     GENESIS_DIR=/app/genesis \
+    ASSETS_DIR=/app/assets \
     GM_IDENTITY=gm
 EXPOSE 8080
 

@@ -68,6 +68,12 @@ pub struct AuthorDoc {
     /// `[[cards]]` entries: Wicked Ways card faces (key/name/text/config).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cards: Vec<CardEntryToml>,
+    /// The `[mapGen]` table: procedural map generation. When present, the
+    /// campaign authors NO `[[exits]]` — the engine wires the rooms at
+    /// `begin_campaign` via a randomized spanning tree (a different layout
+    /// every playthrough seed). See `MapGenEntry`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map_gen: Option<MapGenEntry>,
     #[serde(default, skip_serializing_if = "Behaviors::is_empty")]
     pub behaviors: Behaviors,
     #[serde(default, skip_serializing_if = "Victory::is_empty")]
@@ -96,6 +102,10 @@ pub struct ArchetypeEntry {
     pub inventory_slots: Option<i64>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub immunities: Vec<String>,
+    /// Portrait art: a relative asset path (see `[[rooms]]`' `image`). Lowered
+    /// into `catalog.images["archetype:{id}"]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 /// A `[[rooms]]` entry. `dark` marks a room unlit (the darkness mechanic);
@@ -113,6 +123,13 @@ pub struct RoomEntry {
     pub spawn_modifier: Option<i64>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub lights: Vec<String>,
+    /// Room art: a plain relative asset path (`rooms/foyer.webp`), resolved by
+    /// the serving host under its asset root (files live next to the campaign,
+    /// e.g. `campaigns/assets/<campaign>/`; never inline byte data). Lowered
+    /// into `catalog.images["room:{name}"]` — presentation-only, never engine
+    /// state.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -177,6 +194,11 @@ pub struct ItemEntry {
     /// the lantern). Lowered into `catalog.aliases[<key>]`; absent → no alias entry.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub aliases: Vec<String>,
+    /// Item art: a relative asset path (see `[[rooms]]`' `image`). Lowered into
+    /// the descriptor's existing `presentation.image` channel (NOT
+    /// `catalog.images`), which the ViewModel already projects to surfaces.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -187,6 +209,10 @@ pub struct LootEntry {
     pub items: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Container art: a relative asset path (see `[[rooms]]`' `image`). Lowered
+    /// into `catalog.images["loot:{name}"]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 /// A `[[caches]]` entry: a single-use pile of raw crafting materials placed in a
@@ -243,6 +269,10 @@ pub struct NpcEntry {
     pub behavior: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub holds: Vec<String>,
+    /// NPC art: a relative asset path (see `[[rooms]]`' `image`). Lowered into
+    /// `catalog.images["npc:{name}"]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 /// A `[[mobs]]` entry: a placed enemy. `stats` is the core `Stats` snapshot (same
@@ -272,6 +302,10 @@ pub struct MobEntry {
     pub material_drops: Option<toml::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub light_averse: Option<bool>,
+    /// Mob art: a relative asset path (see `[[rooms]]`' `image`). Lowered into
+    /// `catalog.images["mob:{name}"]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 /// A `[[formations]]` entry: a data-driven encounter formation. It carries BOTH
@@ -327,6 +361,10 @@ pub struct CardEntryToml {
     pub text: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub config: Option<toml::Value>,
+    /// Card face art: a relative asset path (see `[[rooms]]`' `image`). Lowered
+    /// into `catalog.images["card:{key}"]`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 // ── Behavior bodies: the `[behaviors.<family>.<key>]` tables ────────────────
@@ -456,6 +494,51 @@ pub struct MechanicBehaviorEntry {
     pub modify_damage: Option<String>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub actions: BTreeMap<String, String>,
+}
+
+/// The `[mapGen]` table: procedural map generation. Mutually exclusive with
+/// `[[exits]]` (the compiler rejects a document carrying both). The engine
+/// builds a randomized spanning tree over the declared rooms at
+/// `begin_campaign` — every room reachable, bidirectional exits, no
+/// self-connections — then adds `extraConnections` loop edges.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MapGenEntry {
+    /// Loop edges beyond the spanning tree: an absolute count (`2.0` = two
+    /// loops), or a fraction of `n - 1` when strictly between 0 and 1
+    /// (`0.25` = a quarter as many loops as tree edges). Default 0.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extra_connections: Option<f64>,
+    /// `[[mapGen.required]]` entries: room pairs pinned as neighbors in every
+    /// generated layout. The place for keyed doors — each entry may carry the
+    /// same `behavior`/`name`/`initialState` an `[[exits]]` entry would.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub required: Vec<MapGenRequiredEntry>,
+    /// Per-room exit cap (clamped to 2..=8 at build time; default 8).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_exits_per_room: Option<i64>,
+    /// Room names reachable ONLY through `[[mapGen.required]]` passages — the
+    /// generator never wires a tree/loop edge into them, so a locked crypt's
+    /// keyed door stays its sole entrance. Every sealed room must appear in a
+    /// required entry.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sealed: Vec<String>,
+}
+
+/// One `[[mapGen.required]]` entry: a pinned passage between two rooms. The
+/// generator assigns its compass direction — everything else mirrors an
+/// `[[exits]]` entry (`behavior` names a `[behaviors.exit.<key>]` body).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct MapGenRequiredEntry {
+    pub from: String,
+    pub to: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub behavior: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub initial_state: Option<toml::Value>,
 }
 
 /// A `[behaviors.card.<key>]` body: the `onPlay` statement block fired when

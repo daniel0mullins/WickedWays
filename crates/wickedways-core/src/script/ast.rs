@@ -162,6 +162,14 @@ pub enum Expr {
         key: Box<Expr>,
         default: Value,
     },
+    /// Read `campaign.world_state[field]`, or `default` when the field is
+    /// missing / `null` / the ctx has no campaign view. The world-scoped
+    /// counterpart of `StateGet` — readable from EVERY context (victory tests
+    /// included), written through the `SetWorldState` effect.
+    WorldGet {
+        field: String,
+        default: Value,
+    },
     /// Value at `String(key)` in a static `MapLit`, else `Null`. Requires a
     /// `MapLit` operand (enforced at load); a non-`MapLit` yields `Null`.
     Lookup {
@@ -246,6 +254,13 @@ pub enum EffectTemplate {
     SetVisible {
         target: Expr,
         visible: Expr,
+    },
+    /// Write `campaign.world_state[field]` (`Effect::SetWorldState`) — the
+    /// world-scoped counterpart of `SetState`, applied through the same
+    /// collect-then-apply pipeline as every other effect.
+    SetWorldState {
+        field: String,
+        value: Expr,
     },
 }
 

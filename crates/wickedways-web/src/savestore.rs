@@ -69,6 +69,7 @@ mod tests {
                 name: "Hall".into(),
                 description: String::new(),
                 is_lit: true,
+                image: None,
             },
             exits: vec![ExitView {
                 dir: Direction::North,
@@ -106,6 +107,7 @@ mod tests {
             name: "Landing".into(),
             description: String::new(),
             is_lit: true,
+            image: None,
         };
         v.exits = Vec::new();
         m.observe(&v);

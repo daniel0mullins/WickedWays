@@ -67,6 +67,26 @@ pub struct Hotspot {
     pub actions: Vec<ActionDescriptor>,
 }
 
+/// Resolve an opaque image `AssetRef` (a `ThinRoom`/`ScopeEntity`/[`Hotspot`] `image`) to a URL a
+/// surface can put in an `img src` or CSS `url()`. Campaign-compiled refs are plain relative
+/// paths served under `/assets/` (the room server's `ASSETS_DIR` route); an absolute URL, a
+/// root-relative path, or a data URI passes through verbatim (the ref is opaque author-data — be
+/// liberal in what we accept). A non-string or empty ref resolves to `None`.
+pub fn asset_url(image: &serde_json::Value) -> Option<String> {
+    let s = image.as_str()?;
+    if s.is_empty() {
+        return None;
+    }
+    if s.starts_with("data:")
+        || s.starts_with("http://")
+        || s.starts_with("https://")
+        || s.starts_with('/')
+    {
+        return Some(s.to_string());
+    }
+    Some(format!("/assets/{s}"))
+}
+
 /// Capitalise a lowercase [`Direction`] key for display ("north" → "North"). Only the first byte is
 /// uppercased (so "northeast" → "Northeast", NOT "NorthEast").
 fn cap(dir: Direction) -> String {
@@ -188,7 +208,7 @@ pub fn scene_hotspots(vm: &ViewModel) -> Vec<Hotspot> {
             label: loot.description.clone(),
             kind: HotspotKind::Loot,
             dir: None,
-            image: None,
+            image: loot.image.clone(),
             actions: vec![
                 ActionDescriptor::Examine {
                     label: "Examine".into(),
@@ -344,6 +364,7 @@ mod tests {
                 name: "Hall".into(),
                 description: "a hall".into(),
                 is_lit: true,
+                image: None,
             },
             exits: Vec::new(),
             locked_doors: Vec::new(),
@@ -598,6 +619,7 @@ mod tests {
             description: "an old chest".into(),
             opened: false,
             contents: Vec::new(),
+            image: None,
         }];
         let h = &scene_hotspots(&vm)[0];
         assert_eq!(h.kind, HotspotKind::Loot);
@@ -678,6 +700,7 @@ mod tests {
             description: "a box".into(),
             opened: false,
             contents: vec![content.clone()],
+            image: None,
         }];
         assert!(scene_hotspots(&closed)
             .iter()
@@ -692,6 +715,7 @@ mod tests {
             description: "a box".into(),
             opened: true,
             contents: vec![content],
+            image: None,
         }];
         assert!(scene_hotspots(&opened)
             .iter()
@@ -718,6 +742,7 @@ mod tests {
             description: "a box".into(),
             opened: false,
             contents: vec![hidden],
+            image: None,
         }];
         let ids: Vec<&str> = floor_items(&vm).iter().map(|e| e.id.as_str()).collect();
         assert_eq!(ids, vec!["poker-1"]);
@@ -860,6 +885,7 @@ mod tests {
             description: "a crate".into(),
             opened: false,
             contents: Vec::new(),
+            image: None,
         }];
         vm.scope = vec![occupant, floor_item];
         let kinds: Vec<HotspotKind> = scene_hotspots(&vm).into_iter().map(|h| h.kind).collect();

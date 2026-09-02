@@ -234,6 +234,7 @@ pub fn RoomsScreen(asset: Option<u64>) -> Element {
                         dark: None,
                         spawn_modifier: None,
                         lights: Vec::new(),
+                        image: None,
                     }});
                     id
                 });
@@ -283,6 +284,12 @@ fn RoomForm(id: u64, entry: RoomEntry) -> Element {
                 values: entry.lights.clone(),
                 hint: format!("known items: {}", item_keys.join(", ")),
                 on_change: move |v| edit_room(store, id, move |r| r.lights = v),
+            }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_room(store, id, move |r| r.image = v),
             }
             ConfirmDelete {
                 label: format!("Delete room ({} refs will dangle)", count_room_refs(&doc, &entry.name)),
@@ -406,7 +413,7 @@ fn RoomHub(room: String) -> Element {
                     let id = store.mutate(move |d| {
                         let id = d.mint();
                         d.loot.push(WithId { id, entry: LootEntry {
-                            name: format!("container-{id}"), room, items: Vec::new(), description: None,
+                            name: format!("container-{id}"), room, items: Vec::new(), description: None, image: None,
                         }});
                         id
                     });
@@ -420,7 +427,7 @@ fn RoomHub(room: String) -> Element {
                             name: format!("New Mob {id}"), stats: default_stats(), room: Some(room),
                             drops: Vec::new(), natural_attack: None, inventory_slots: None,
                             actions_per_round: None, base_escape_chance: None,
-                            material_drops: None, light_averse: None,
+                            material_drops: None, light_averse: None, image: None,
                         }});
                         id
                     });
@@ -596,7 +603,7 @@ pub fn ItemsScreen(asset: Option<u64>) -> Element {
                         key_code: None, type_: None, stat: None, modifier: None,
                         usable: None, destroyable: None, recipe: None, equippable: None,
                         droppable: None, slot: None, two_handed: None, emits_light: None,
-                        max_durability: None, lore: None, aliases: Vec::new(),
+                        max_durability: None, lore: None, aliases: Vec::new(), image: None,
                     }});
                     id
                 });
@@ -725,6 +732,12 @@ fn ItemForm(id: u64, entry: ItemEntry) -> Element {
                 onclick: move |_| store.select("behaviors", None),
                 "Edit item behaviors →"
             }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_item(store, id, move |i| i.image = v),
+            }
             ConfirmDelete {
                 label: format!("Delete item ({} refs will dangle)", count_item_refs(&doc, &entry.key)),
                 on_delete: move |()| {
@@ -760,7 +773,7 @@ pub fn LootScreen(asset: Option<u64>) -> Element {
                     let id = store.mutate(move |d| {
                         let id = d.mint();
                         d.loot.push(WithId { id, entry: LootEntry {
-                            name: format!("container-{id}"), room, items: Vec::new(), description: None,
+                            name: format!("container-{id}"), room, items: Vec::new(), description: None, image: None,
                         }});
                         id
                     });
@@ -807,6 +820,12 @@ fn LootForm(id: u64, entry: LootEntry) -> Element {
                 value: entry.description.clone(),
                 placeholder: None,
                 on_change: move |v| edit_loot(store, id, move |l| l.description = v),
+            }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_loot(store, id, move |l| l.image = v),
             }
             ConfirmDelete {
                 label: "Delete loot container".to_string(),
@@ -1025,7 +1044,7 @@ pub fn MobsScreen(asset: Option<u64>) -> Element {
                         name: format!("New Mob {id}"), stats: default_stats(), room: None,
                         drops: Vec::new(), natural_attack: None, inventory_slots: None,
                         actions_per_round: None, base_escape_chance: None,
-                        material_drops: None, light_averse: None,
+                        material_drops: None, light_averse: None, image: None,
                     }});
                     id
                 });
@@ -1101,6 +1120,12 @@ fn MobForm(id: u64, entry: MobEntry) -> Element {
                 value: entry.material_drops.clone(),
                 on_change: move |v| edit_mob(store, id, move |m| m.material_drops = v),
             }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_mob(store, id, move |m| m.image = v),
+            }
             ConfirmDelete {
                 label: "Delete mob".to_string(),
                 on_delete: move |()| {
@@ -1146,7 +1171,7 @@ pub fn NpcsScreen(asset: Option<u64>) -> Element {
                     });
                     d.npcs.push(WithId { id, entry: NpcEntry {
                         name: format!("New NPC {id}"), stats: default_stats(),
-                        room: None, behavior, holds: Vec::new(),
+                        room: None, behavior, holds: Vec::new(), image: None,
                     }});
                     id
                 });
@@ -1205,6 +1230,12 @@ fn NpcForm(id: u64, entry: NpcEntry) -> Element {
                 hint: format!("known items: {}", doc.item_keys().join(", ")),
                 on_change: move |v| edit_npc(store, id, move |n| n.holds = v),
             }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_npc(store, id, move |n| n.image = v),
+            }
             ConfirmDelete {
                 label: "Delete NPC".to_string(),
                 on_delete: move |()| {
@@ -1237,7 +1268,7 @@ pub fn ArchetypesScreen(asset: Option<u64>) -> Element {
                     let id = d.mint();
                     d.archetypes.push(WithId { id, entry: ArchetypeEntry {
                         id: format!("archetype-{id}"), name: format!("New Archetype {id}"),
-                        base_stats: None, inventory_slots: None, immunities: Vec::new(),
+                        base_stats: None, inventory_slots: None, immunities: Vec::new(), image: None,
                     }});
                     id
                 });
@@ -1306,6 +1337,12 @@ fn ArchetypeForm(id: u64, entry: ArchetypeEntry) -> Element {
                 values: entry.immunities.clone(),
                 hint: None,
                 on_change: move |v| edit_archetype(store, id, move |a| a.immunities = v),
+            }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_archetype(store, id, move |a| a.image = v),
             }
             ConfirmDelete {
                 label: "Delete archetype".to_string(),
@@ -1408,6 +1445,7 @@ fn FormationForm(id: u64, entry: FormationEntry) -> Element {
             class: "studio-btn small",
             onclick: move |_| edit_formation(store, id, move |f| {
                 f.mobs.push(MobSpec {
+                    image: None,
                     name: "Mob".into(),
                     stats: default_stats(),
                     natural_attack: NaturalAttack {
@@ -1503,6 +1541,14 @@ fn MobSpecCard(formation: u64, index: usize, spec: MobSpec) -> Element {
                 value: Some(spec.light_averse),
                 on_change: move |v: Option<bool>| edit_formation(store, formation, move |f| {
                     if let Some(m) = f.mobs.get_mut(index) { m.light_averse = v.unwrap_or(false); }
+                }),
+            }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: spec.image.clone(),
+                placeholder: Some("e.g. solomons-rest/cemetery-rat.png".to_string()),
+                on_change: move |v: Option<String>| edit_formation(store, formation, move |f| {
+                    if let Some(m) = f.mobs.get_mut(index) { m.image = v; }
                 }),
             }
             button {
@@ -1753,7 +1799,7 @@ pub fn CardsScreen(asset: Option<u64>) -> Element {
                     let id = d.mint();
                     d.cards.push(WithId { id, entry: CardEntryToml {
                         key: format!("card-{id}"), name: format!("New Card {id}"),
-                        text: None, config: None,
+                        text: None, config: None, image: None,
                     }});
                     id
                 });
@@ -1822,6 +1868,12 @@ fn CardForm(id: u64, entry: CardEntryToml) -> Element {
                 class: "studio-btn small",
                 onclick: move |_| store.select("behaviors", None),
                 "Edit card behaviors →"
+            }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_card(store, id, move |c| c.image = v),
             }
             ConfirmDelete {
                 label: "Delete card".to_string(),

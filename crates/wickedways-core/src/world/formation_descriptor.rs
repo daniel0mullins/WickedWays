@@ -48,6 +48,13 @@ pub struct MobSpec {
     #[serde(default = "empty_object")]
     pub material_drops: Value,
     pub actions_per_round: i64,
+    /// Portrait art: a relative asset path. Lowered into
+    /// `catalog.images["mob:{name}"]` — spawned mobs mint `campaign-mob:*` ids,
+    /// so the ViewModel's occupant projection falls back to this name-keyed
+    /// entry. Presentation-only; omitted when absent so pre-image formation
+    /// goldens stay byte-stable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 /// A named formation: the mobs it spawns. Keyed by encounter `behaviorKey` in

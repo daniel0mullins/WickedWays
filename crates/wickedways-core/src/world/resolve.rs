@@ -198,6 +198,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         }
     }
 
@@ -288,6 +289,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         };
 
         let snap = ItemSnapshot::Item {
@@ -468,6 +470,8 @@ mod tests {
                 mechanics: alloc::vec![],
                 villain: None,
                 lights_out_rounds: 0,
+                world_state: serde_json::Value::Null,
+                map_gen: None,
             },
             codex: Value::Array(alloc::vec![]),
             rng: crate::world::rng::Rng::seeded(0),
@@ -519,6 +523,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         };
 
         // Item in World.items
@@ -566,6 +571,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         };
 
         world.items.insert(
@@ -609,6 +615,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         };
 
         // Item exists in World.items (in inventory) but NOT in equipment map
@@ -654,6 +661,7 @@ mod tests {
             formations: BTreeMap::default(),
             recipes: BTreeMap::default(),
             cards: BTreeMap::default(),
+            images: BTreeMap::default(),
         };
 
         world.items.insert(

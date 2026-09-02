@@ -10,14 +10,14 @@ use std::collections::BTreeMap;
 use serde_json::{Map, Value};
 use wickedways_assemble::description::{
     ArchetypeDef, CacheDef, CampaignDescription, ConditionEntry, ExitDef, FormationDef, LootDef,
-    MechanicEntry, MobDef, NpcDef, RoomDef, SceneDef,
+    MapGenDef, MechanicEntry, MobDef, NpcDef, RequiredExitDef, RoomDef, SceneDef,
 };
 use wickedways_core::script::ast::{
     BehaviorScript, CardScript, ExitScript, ItemScript, SceneScript, VictoryScript,
 };
 use wickedways_core::stats::StatType;
 use wickedways_core::world::descriptor::{
-    CardDescriptor, Catalog, ItemDescriptor, ItemProperties, ItemType, RecipeMeta,
+    CardDescriptor, Catalog, ItemDescriptor, ItemProperties, ItemType, Presentation, RecipeMeta,
 };
 use wickedways_core::world::formation_descriptor::FormationDescriptor;
 
@@ -203,6 +203,28 @@ fn lower_description(doc: &AuthorDoc) -> CampaignDescription {
                 config: m.config.as_ref().and_then(|v| serde_json::to_value(v).ok()),
             })
             .collect(),
+        // The `[mapGen]` table → the description's `MapGenDef` (room NAMES;
+        // `assemble` derives the ids). Its interaction with `[[exits]]` is
+        // validated in `lower_catalog` (the fallible half).
+        map_gen: doc.map_gen.as_ref().map(|m| MapGenDef {
+            extra_connections: m.extra_connections,
+            required: m
+                .required
+                .iter()
+                .map(|r| RequiredExitDef {
+                    from: r.from.clone(),
+                    to: r.to.clone(),
+                    behavior_key: r.behavior.clone(),
+                    name: r.name.clone(),
+                    initial_state: r
+                        .initial_state
+                        .as_ref()
+                        .and_then(|v| serde_json::to_value(v).ok()),
+                })
+                .collect(),
+            max_exits_per_room: m.max_exits_per_room,
+            sealed: m.sealed.clone(),
+        }),
         // The `[villain]` table → the description's `VillainDef` (character
         // reference + authored deck), passed through verbatim; the assembler
         // resolves the character (mob-first, or the "@gm" sentinel at seating).
@@ -234,10 +256,72 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
     // Each item's `aliases` (if any) → a `catalog.aliases[<key>]` entry.
     let mut aliases = BTreeMap::new();
     for item in &doc.items {
+        if let Some(path) = &item.image {
+            crate::validate::image_path(path)?;
+        }
         items.insert(item.key.clone(), lower_item(item));
         if !item.aliases.is_empty() {
             aliases.insert(item.key.clone(), item.aliases.clone());
         }
+    }
+
+    // Entity art: each non-item entry's optional `image` → `catalog.images`,
+    // keyed by the id surfaces resolve the entity by at render time (the
+    // assembler's world-id mints for placed entities; prefixed author keys for
+    // archetypes and cards). Items instead ride the descriptor's existing
+    // `presentation.image` channel (see `lower_item`) — the ViewModel already
+    // projects it. Paths are validated relative-only; the map is omitted from
+    // the serialized catalog when empty, keeping image-less goldens byte-stable.
+    let mut images = BTreeMap::new();
+    let add_image = |key: String, path: &Option<String>, images: &mut BTreeMap<String, String>| {
+        if let Some(p) = path {
+            crate::validate::image_path(p)?;
+            images.insert(key, p.clone());
+        }
+        Ok::<(), CompileError>(())
+    };
+    for a in &doc.archetypes {
+        add_image(format!("archetype:{}", a.id), &a.image, &mut images)?;
+    }
+    for r in &doc.rooms {
+        add_image(
+            wickedways_assemble::ids::room_id(&r.name),
+            &r.image,
+            &mut images,
+        )?;
+    }
+    for m in &doc.mobs {
+        add_image(
+            wickedways_assemble::ids::mob_id(&m.name),
+            &m.image,
+            &mut images,
+        )?;
+    }
+    for n in &doc.npcs {
+        add_image(
+            wickedways_assemble::ids::npc_id(&n.name),
+            &n.image,
+            &mut images,
+        )?;
+    }
+    for l in &doc.loot {
+        add_image(
+            wickedways_assemble::ids::loot_id(&l.name),
+            &l.image,
+            &mut images,
+        )?;
+    }
+    // Formation mob specs: a spawned mob mints a `campaign-mob:*` world id, so
+    // its art is keyed by display NAME under the `mob:` prefix — the occupant
+    // projection falls back to that key when the id lookup misses. (The image
+    // also rides the spec itself inside `catalog.formations`, harmlessly.)
+    for f in &doc.formations {
+        for spec in &f.mobs {
+            add_image(format!("mob:{}", spec.name), &spec.image, &mut images)?;
+        }
+    }
+    for c in &doc.cards {
+        add_image(format!("card:{}", c.key), &c.image, &mut images)?;
     }
 
     let mut behaviors = BTreeMap::new();
@@ -363,6 +447,30 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
         }
     }
 
+    // `[mapGen]` owns the whole graph: mixing it with hand-wired `[[exits]]`
+    // is rejected outright (pinned passages belong in `[[mapGen.required]]`).
+    // A required entry's `behavior` resolves exactly like an exit's.
+    if let Some(mg) = &doc.map_gen {
+        if !doc.exits.is_empty() {
+            return Err(CompileError::ExprParse {
+                span: EXPR_BASE,
+                message: "[mapGen] and [[exits]] are mutually exclusive — move pinned \
+                          passages into [[mapGen.required]]"
+                    .into(),
+            });
+        }
+        for req in &mg.required {
+            if let Some(key) = &req.behavior {
+                if !doc.behaviors.exit.contains_key(key) {
+                    return Err(CompileError::UnresolvedKey {
+                        kind: "exit",
+                        key: key.clone(),
+                    });
+                }
+            }
+        }
+    }
+
     // Each `[[formations]]` entry's catalog half → a `FormationDescriptor` (its
     // `mobs` roster), keyed the same as the description opt-in.
     let mut formations = BTreeMap::new();
@@ -417,6 +525,7 @@ fn lower_catalog(doc: &AuthorDoc) -> Result<Catalog, CompileError> {
         formations,
         recipes,
         cards,
+        images,
     })
 }
 
@@ -458,7 +567,7 @@ fn lower_item(item: &ItemEntry) -> ItemDescriptor {
             emits_light: None,
             max_durability: None,
             lore: None,
-            presentation: None,
+            presentation: item_presentation(item),
             key_code: item.key_code.clone(),
             consume_on_use: Some(false),
             recipe: Value::Object(recipe),
@@ -512,7 +621,7 @@ fn lower_item(item: &ItemEntry) -> ItemDescriptor {
         emits_light: item.emits_light,
         max_durability: item.max_durability,
         lore: item.lore.clone(),
-        presentation: None,
+        presentation: item_presentation(item),
         key_code: None,
         consume_on_use: None,
         recipe,
@@ -520,6 +629,18 @@ fn lower_item(item: &ItemEntry) -> ItemDescriptor {
         immunities: Value::Null,
         grants_immunity: Value::Null,
     }
+}
+
+/// The item's `image` (if any) as the descriptor's `presentation` — the
+/// pre-existing per-item art channel the ViewModel projects (`ScopeEntity.image`).
+/// The path rides as a JSON string `AssetRef`; no `sound` on the author surface
+/// yet. Absent image → absent presentation, keeping image-less descriptors (and
+/// their goldens) byte-identical.
+fn item_presentation(item: &ItemEntry) -> Option<Presentation> {
+    item.image.as_ref().map(|path| Presentation {
+        image: Some(Value::String(path.clone())),
+        sound: None,
+    })
 }
 
 /// The description victory entry carries only the condition KEY + optional

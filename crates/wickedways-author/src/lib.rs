@@ -188,6 +188,44 @@ pub fn compile_all(toml_src: &str) -> Result<CompiledCampaign, Vec<LabeledError>
             );
         }
     }
+    // Image paths: every entry's optional `image` must be a plain relative
+    // asset path (the same check `compile` runs in lowering).
+    {
+        let mut check_image = |context: String, path: &Option<String>| {
+            if let Some(p) = path {
+                if let Err(error) = validate::image_path(p) {
+                    errors.push(LabeledError { context, error });
+                }
+            }
+        };
+        for a in &doc.archetypes {
+            check_image(format!("archetypes.{}.image", a.id), &a.image);
+        }
+        for r in &doc.rooms {
+            check_image(format!("rooms.{}.image", r.name), &r.image);
+        }
+        for i in &doc.items {
+            check_image(format!("items.{}.image", i.key), &i.image);
+        }
+        for m in &doc.mobs {
+            check_image(format!("mobs.{}.image", m.name), &m.image);
+        }
+        for n in &doc.npcs {
+            check_image(format!("npcs.{}.image", n.name), &n.image);
+        }
+        for l in &doc.loot {
+            check_image(format!("loot.{}.image", l.name), &l.image);
+        }
+        for f in &doc.formations {
+            for (i, spec) in f.mobs.iter().enumerate() {
+                check_image(format!("formations.{}.mobs[{i}].image", f.key), &spec.image);
+            }
+        }
+        for c in &doc.cards {
+            check_image(format!("cards.{}.image", c.key), &c.image);
+        }
+    }
+
     // The one lowering-time reference check with no body of its own: an exit
     // naming an undefined behavior.
     for e in &doc.exits {
@@ -251,6 +289,42 @@ mod compile_all_tests {
             "the dangling exit-behavior reference is labeled: {contexts:?}"
         );
         assert!(errors.len() >= 4, "all findings at once: {errors:?}");
+    }
+
+    #[test]
+    fn rejects_a_bad_image_path_in_both_compile_paths() {
+        // Traversal, absolute, and scheme-carrying paths are all invalid; the
+        // sweep labels the offending entry.
+        let src = r#"
+            title = "Art"
+            [[rooms]]
+            name = "Hall"
+            description = "h"
+            image = "../../etc/passwd"
+        "#;
+        assert!(matches!(
+            compile(src),
+            Err(CompileError::InvalidImagePath { .. })
+        ));
+        let errors = compile_all(src).unwrap_err();
+        assert!(
+            errors.iter().any(|e| e.context == "rooms.Hall.image"),
+            "labeled finding: {errors:?}"
+        );
+        for bad in [
+            "/abs/path.png",
+            "data:image/png;base64,AAAA",
+            "a\\b.png",
+            "",
+        ] {
+            assert!(
+                validate::image_path(bad).is_err(),
+                "'{bad}' must be rejected"
+            );
+        }
+        for good in ["rooms/foyer.webp", "hollow-house/mobs/wraith.png", "x.png"] {
+            assert!(validate::image_path(good).is_ok(), "'{good}' must pass");
+        }
     }
 
     #[test]

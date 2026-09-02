@@ -135,6 +135,8 @@ pub fn world_with_party(ids: &[&str], max_rounds: i64) -> World {
         mechanics: vec![],
         villain: None,
         lights_out_rounds: 0,
+        world_state: serde_json::Value::Null,
+        map_gen: None,
     };
 
     World {
@@ -271,6 +273,8 @@ pub fn world_two_rooms(next_dark: bool) -> World {
         mechanics: vec![],
         villain: None,
         lights_out_rounds: 0,
+        world_state: serde_json::Value::Null,
+        map_gen: None,
     };
 
     let mut characters = BTreeMap::new();

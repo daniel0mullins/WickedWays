@@ -391,6 +391,21 @@ impl Parser {
             return Ok(Expr::StateGet { field, default });
         }
 
+        // `worldGet(field, default)` — the world-scoped counterpart of
+        // `stateGet` (reads `campaign.worldState`, written via `emit
+        // setWorld(...)`). Same shape: a string-literal field + a literal default.
+        if name == "worldGet" {
+            let [arg0, arg1] = take_n::<2>(args, "worldGet", name_span)?;
+            let field = str_lit_arg(Some(arg0), name_span, "worldGet's first argument")?;
+            let Expr::Lit { value: default } = arg1 else {
+                return Err(CompileError::ExprParse {
+                    span: name_span,
+                    message: "worldGet's second argument must be a literal".into(),
+                });
+            };
+            return Ok(Expr::WorldGet { field, default });
+        }
+
         // `stateGetIn(map_field, key, default)` — dynamic string-keyed state read
         // (the storyteller's `seen[roomName]`): 3 args — a string-literal field, a
         // key EXPRESSION, and a literal default.

@@ -74,6 +74,21 @@ pub fn validate(desc: &CampaignDescription, catalog: &Catalog) -> Vec<Problem> {
         require_room("exit.from".into(), &e.from, &mut problems);
         require_room("exit.to".into(), &e.to, &mut problems);
     }
+    if let Some(mg) = &desc.map_gen {
+        for r in &mg.required {
+            require_room("mapGen.required.from".into(), &r.from, &mut problems);
+            require_room("mapGen.required.to".into(), &r.to, &mut problems);
+        }
+        for s in &mg.sealed {
+            require_room("mapGen.sealed".into(), s, &mut problems);
+            // A sealed room takes no generated edges, so it must be one end of a
+            // `required` passage or the generator is guaranteed to find it
+            // unreachable — fail here, at load, not at `begin_campaign`.
+            if !mg.required.iter().any(|r| &r.from == s || &r.to == s) {
+                problems.push(Problem::SealedRoomUnanchored { room: s.clone() });
+            }
+        }
+    }
     for m in &desc.mobs {
         if let Some(r) = &m.room {
             require_room(format!("mob '{}'", m.name), r, &mut problems);

@@ -11,7 +11,9 @@
 //! [`MapModel`](crate::map::MapModel) tracks the explored map (`map` opens it as an overlay, `help` a
 //! command list), and nouns in the room description and narration are clickable — a click fills the
 //! prompt with `examine <noun>` ([`link_nouns`](crate::link_nouns), against the current scope's names
-//! and aliases). Procedural audio plays through the shared [`AudioRuntime`] (the `audio` command
+//! and aliases) and, when the entity carries campaign art, shows its portrait as a dismissible
+//! inset (room art renders above the description whenever the room is lit).
+//! Procedural audio plays through the shared [`AudioRuntime`] (the `audio` command
 //! toggles it), and `save`/`restore`/`restart` drive the single-player lifecycle. A welcome gate
 //! shows the campaign's title + intro ([`welcome_for`](crate::driver::welcome_for) — the manifest
 //! passthrough) until the player presses Enter; the transport connects underneath while it's up.
@@ -94,6 +96,8 @@ pub fn crt_app() -> Element {
     let mut status_fields = use_signal(Vec::<StatusField>::new);
     let mut narration = use_signal(Vec::<String>::new);
     let mut draft = use_signal(String::new);
+    // The last clicked noun, for the campaign-art portrait inset (None = dismissed).
+    let portrait = use_signal(|| None::<String>);
     let mut narrator = use_signal(Narrator::new);
     let mut map_model = use_signal(MapModel::new);
     let mut overlay = use_signal(|| Overlay::None);
@@ -519,13 +523,18 @@ pub fn crt_app() -> Element {
         ),
         None => (rsx! {}, rsx! {}, rsx! {}),
     };
-    let (room_panel, log) = match vmodel {
-        Some(v) => (game_view(&v, draft), narration_view(&v, narration, draft)),
+    let (room_panel, log, portrait_panel) = match vmodel {
+        Some(v) => (
+            game_view(&v, draft, portrait),
+            narration_view(&v, narration, draft, portrait),
+            portrait_inset(&v, portrait),
+        ),
         None => (
             rsx! {
                 div { class: "line system", "WICKEDWAYS" }
                 div { class: "line", "status: {status}" }
             },
+            rsx! {},
             rsx! {},
         ),
     };
@@ -552,6 +561,7 @@ pub fn crt_app() -> Element {
                         div { class: "screen-cols",
                             div { class: "screen-main",
                                 div { class: "room-panel", {room_panel} }
+                                {portrait_panel}
                                 div { class: "transcript", id: "transcript", {log} }
                                 {dock}
                             }
@@ -646,7 +656,12 @@ pub fn crt_app() -> Element {
 
 /// Render one line of prose with the current scope's nouns as clickable spans; clicking a noun fills
 /// the prompt with `examine <noun>`.
-fn linked_line(line: &str, nouns: &[String], draft: Signal<String>) -> Element {
+fn linked_line(
+    line: &str,
+    nouns: &[String],
+    draft: Signal<String>,
+    portrait: Signal<Option<String>>,
+) -> Element {
     rsx! {
         for (i, seg) in link_nouns(line, nouns).into_iter().enumerate() {
             {
@@ -658,12 +673,55 @@ fn linked_line(line: &str, nouns: &[String], draft: Signal<String>) -> Element {
                             class: "noun",
                             // `Signal` is `Copy`, so `let mut d = draft` just re-binds the same
                             // handle mutably inside the closure — no clone, same underlying state.
-                            onclick: move |_| { let mut d = draft; d.set(format!("examine {n}")); },
+                            // The click also names the noun for the portrait inset (shown only
+                            // when the matching entity carries campaign art).
+                            onclick: move |_| {
+                                let mut d = draft;
+                                d.set(format!("examine {n}"));
+                                let mut p = portrait;
+                                p.set(Some(n.clone()));
+                            },
                             "{text}"
                         }
                     },
                     None => rsx! { span { key: "seg{i}", "{text}" } },
                 }
+            }
+        }
+    }
+}
+
+/// The clicked noun's campaign art, as a dismissible inset pinned between the room panel and the
+/// transcript. Resolves the noun against the scope (name or alias, case-insensitive); an entity
+/// without art — or a stale noun no longer in scope — renders nothing.
+fn portrait_inset(v: &ViewModel, portrait: Signal<Option<String>>) -> Element {
+    let Some(noun) = portrait() else {
+        return rsx! {};
+    };
+    let hit = v.scope.iter().find(|e| {
+        e.image.is_some()
+            && (e.name.eq_ignore_ascii_case(&noun)
+                || e.aliases.iter().any(|a| a.eq_ignore_ascii_case(&noun)))
+    });
+    let Some(entity) = hit else {
+        return rsx! {};
+    };
+    let Some(url) = entity
+        .image
+        .as_ref()
+        .and_then(crate::affordances::asset_url)
+    else {
+        return rsx! {};
+    };
+    let name = entity.name.clone();
+    rsx! {
+        div { class: "portrait-inset",
+            img { class: "portrait-img", src: "{url}", alt: "{name}" }
+            span { class: "portrait-name", "{name}" }
+            button {
+                class: "portrait-close",
+                onclick: move |_| { let mut p = portrait; p.set(None); },
+                "✕"
             }
         }
     }
@@ -863,14 +921,27 @@ fn side_bar(v: &ViewModel, may_see_hand: bool) -> Element {
 
 /// The pinned room panel: name, description, and contents (Here/Caches/Recipes chips). Renders
 /// above the scrolling narration log and stays in view as it grows.
-fn game_view(v: &ViewModel, draft: Signal<String>) -> Element {
+fn game_view(v: &ViewModel, draft: Signal<String>, portrait: Signal<Option<String>>) -> Element {
     let nouns = clickable_nouns(v);
+    // Campaign-supplied room art, framed above the description. Hidden with the
+    // description while the room is dark — you can't see the art either.
+    let room_art = if v.room.is_lit {
+        v.room
+            .image
+            .as_ref()
+            .and_then(crate::affordances::asset_url)
+    } else {
+        None
+    };
     rsx! {
         div { class: "room-name", "{v.room.name}" }
+        if let Some(url) = room_art {
+            img { class: "room-art", src: "{url}", alt: "{v.room.name}" }
+        }
         div {
             class: if v.room.is_lit { "room-desc" } else { "room-desc dark" },
             if v.room.is_lit {
-                {linked_line(&v.room.description, &nouns, draft)}
+                {linked_line(&v.room.description, &nouns, draft, portrait)}
             } else {
                 "It is too dark to see."
             }
@@ -953,11 +1024,16 @@ fn game_view(v: &ViewModel, draft: Signal<String>) -> Element {
 
 /// The narration log — the only scrolling region of the left column (the room panel above it
 /// is pinned). Nouns in each line are clickable, same as the room description.
-fn narration_view(v: &ViewModel, narration: Signal<Vec<String>>, draft: Signal<String>) -> Element {
+fn narration_view(
+    v: &ViewModel,
+    narration: Signal<Vec<String>>,
+    draft: Signal<String>,
+    portrait: Signal<Option<String>>,
+) -> Element {
     let nouns = clickable_nouns(v);
     rsx! {
         for (i, line) in narration().iter().enumerate() {
-            div { key: "n{i}", class: "line", {linked_line(line, &nouns, draft)} }
+            div { key: "n{i}", class: "line", {linked_line(line, &nouns, draft, portrait)} }
         }
     }
 }

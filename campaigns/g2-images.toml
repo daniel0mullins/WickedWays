@@ -1,0 +1,91 @@
+# g2-images — authors the g2-images golden pair.
+# Proves the `image` authoring surface end to end: every image-bearing entry
+# kind carries one. Rooms/mobs/npcs/archetypes/loot/cards — and formation mob
+# specs, keyed by display name for the spawned-mob fallback — lower into
+# `catalog.images` (keyed by the ids surfaces resolve entities by:
+# `room:{name}`, `mob:{name}`, `npc:{name}`, `archetype:{id}`, `loot:{name}`,
+# `card:{key}`); items lower into the descriptor's `presentation.image`
+# channel. Paths are relative to the deploy's asset root; the files themselves
+# are not fixtures — only the association is pinned. ASCII only.
+
+title = "Images"
+startRoom = "Gallery"
+
+[[archetypes]]
+id = "curator"
+name = "Curator"
+image = "archetypes/curator.webp"
+
+[[rooms]]
+name = "Gallery"
+description = "Portraits line the walls."
+image = "rooms/gallery.webp"
+
+[[rooms]]
+name = "Vault"
+description = "A windowless strongroom."
+
+[[exits]]
+from = "Gallery"
+to = "Vault"
+direction = "north"
+
+[[items]]
+key = "cameo"
+name = "Ivory Cameo"
+image = "items/cameo.webp"
+
+[[items]]
+key = "vault-key"
+name = "Vault Key"
+keyCode = "vault"
+image = "items/vault-key.webp"
+
+[[loot]]
+name = "Plinth"
+room = "Gallery"
+items = ["cameo", "vault-key"]
+image = "loot/plinth.webp"
+
+[[formations]]
+key = "frame-echoes"
+weight = 2
+mobs = [
+  { name = "Frame Echo", stats = { health = 2, sanity = 2, energy = 3 }, naturalAttack = { stat = "sanity", power = 1 }, baseEscapeChance = 60, actionsPerRound = 1, image = "mobs/frame-echo.webp" },
+]
+
+[[npcs]]
+name = "Docent"
+stats = { health = 1.0, sanity = 1.0, energy = 1.0 }
+room = "Gallery"
+behavior = "docent"
+image = "npcs/docent.webp"
+
+[[mobs]]
+name = "Frame Wraith"
+stats = { health = 4.0, sanity = 0.0, energy = 3.0 }
+room = "Vault"
+image = "mobs/frame-wraith.webp"
+
+[villain]
+character = "Frame Wraith"
+deck = ["wicked:lights-out"]
+
+[[cards]]
+key = "wicked:lights-out"
+name = "Lights Out"
+text = "Every portrait's eyes go dark."
+config = { rounds = 2 }
+image = "cards/lights-out.webp"
+
+[behaviors.npc.docent]
+description = "A docent in a moth-eaten uniform."
+
+[behaviors.npc.docent.default]
+match = ""
+response = "The gallery keeps what it is given."
+
+[[victory.win]]
+key = "reach-vault"
+test = "party[0].room.name == 'Vault'"
+narration = "The vault accepts you."

@@ -1,0 +1,141 @@
+{
+  "aliases": {},
+  "behaviors": {
+    "docent": {
+      "family": "npc",
+      "script": {
+        "default": {
+          "effects": [],
+          "match": {
+            "kind": "exact",
+            "text": ""
+          },
+          "once": false,
+          "response": {
+            "kind": "lit",
+            "value": "The gallery keeps what it is given."
+          }
+        },
+        "description": "A docent in a moth-eaten uniform.",
+        "dialogue": []
+      }
+    },
+    "reach-vault": {
+      "family": "victory",
+      "script": {
+        "test": {
+          "kind": "bin",
+          "left": {
+            "field": "name",
+            "kind": "get",
+            "of": {
+              "field": "room",
+              "kind": "get",
+              "of": {
+                "index": {
+                  "kind": "lit",
+                  "value": 0.0
+                },
+                "kind": "index",
+                "list": {
+                  "kind": "party"
+                }
+              }
+            }
+          },
+          "op": "eq",
+          "right": {
+            "kind": "lit",
+            "value": "Vault"
+          }
+        }
+      }
+    }
+  },
+  "cards": {
+    "wicked:lights-out": {
+      "config": {
+        "rounds": 2
+      },
+      "name": "Lights Out",
+      "text": "Every portrait's eyes go dark."
+    }
+  },
+  "formations": {
+    "frame-echoes": {
+      "mobs": [
+        {
+          "actionsPerRound": 1,
+          "baseEscapeChance": 60,
+          "image": "mobs/frame-echo.webp",
+          "lightAverse": false,
+          "materialDrops": {},
+          "name": "Frame Echo",
+          "naturalAttack": {
+            "power": 1.0,
+            "stat": "sanity"
+          },
+          "stats": {
+            "energy": 3.0,
+            "health": 2.0,
+            "sanity": 2.0
+          }
+        }
+      ]
+    }
+  },
+  "images": {
+    "archetype:curator": "archetypes/curator.webp",
+    "card:wicked:lights-out": "cards/lights-out.webp",
+    "loot:Plinth": "loot/plinth.webp",
+    "mob:Frame Echo": "mobs/frame-echo.webp",
+    "mob:Frame Wraith": "mobs/frame-wraith.webp",
+    "npc:Docent": "npcs/docent.webp",
+    "room:Gallery": "rooms/gallery.webp"
+  },
+  "items": {
+    "cameo": {
+      "grantsImmunity": null,
+      "immunities": null,
+      "modifier": 0,
+      "name": "Ivory Cameo",
+      "presentation": {
+        "image": "items/cameo.webp"
+      },
+      "properties": {
+        "destroyable": false,
+        "equippable": false,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {},
+      "stat": "health",
+      "teaches": null,
+      "type": "consumable"
+    },
+    "vault-key": {
+      "consumeOnUse": false,
+      "grantsImmunity": null,
+      "immunities": null,
+      "keyCode": "vault",
+      "modifier": 0,
+      "name": "Vault Key",
+      "presentation": {
+        "image": "items/vault-key.webp"
+      },
+      "properties": {
+        "destroyable": false,
+        "equippable": false,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {
+        "item": 1
+      },
+      "stat": "health",
+      "teaches": null,
+      "type": "key"
+    }
+  },
+  "recipes": {}
+}

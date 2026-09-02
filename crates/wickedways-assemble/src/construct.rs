@@ -22,8 +22,9 @@ use wickedways_core::world::descriptor::{Catalog, ItemType};
 use wickedways_core::world::ids::{CharacterId, ExitId, ItemId, LootId, MaterialCacheId, RoomId};
 use wickedways_core::world::snapshot::{
     CampaignCoreSnapshot, CampaignSnapshot, CharacterKind, CharacterSnapshot, ExitSnapshot,
-    InventorySnapshot, ItemSnapshot, LootSnapshot, MaterialCacheSnapshot, MechanicSnapshot,
-    RoomSnapshot, SceneSnapshot, VictoryConditionSnapshot, VillainSnapshot, SCHEMA_VERSION,
+    InventorySnapshot, ItemSnapshot, LootSnapshot, MapGenSnapshot, MaterialCacheSnapshot,
+    MechanicSnapshot, RequiredExitSnapshot, RoomSnapshot, SceneSnapshot, VictoryConditionSnapshot,
+    VillainSnapshot, SCHEMA_VERSION,
 };
 
 use crate::description::{CampaignDescription, ConditionEntry, MobDef, NpcDef};
@@ -380,6 +381,27 @@ pub fn construct(
         mechanics,
         villain,
         lights_out_rounds: 0,
+        world_state: Value::Null,
+        map_gen: desc.map_gen.as_ref().map(|m| MapGenSnapshot {
+            extra_connections: m.extra_connections.unwrap_or(0.0),
+            required: m
+                .required
+                .iter()
+                .map(|r| RequiredExitSnapshot {
+                    from: RoomId(ids::room_id(&r.from)),
+                    to: RoomId(ids::room_id(&r.to)),
+                    behavior_key: r.behavior_key.clone(),
+                    name: r.name.clone(),
+                    state: r.initial_state.clone().unwrap_or(Value::Null),
+                })
+                .collect(),
+            max_exits_per_room: m.max_exits_per_room,
+            sealed: m
+                .sealed
+                .iter()
+                .map(|name| RoomId(ids::room_id(name)))
+                .collect(),
+        }),
     };
 
     // Genesis codex: one recipe entry per declared recipe key (declaration

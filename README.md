@@ -16,11 +16,12 @@ own behavior. The authored campaign TOMLs those goldens are compiled from live i
 [`campaigns/`](campaigns/README.md) — the place to start if you want to write or mod
 a campaign.
 
-A few TS-era behaviors did not make the cut and have no Rust equivalent yet — map generation,
-runtime light placement, `teaches`, one-time material claims, the codex query API, and a couple
-more. They are tracked as a porting backlog in
+A few TS-era behaviors did not make the cut and have no Rust equivalent yet — runtime light
+placement, `teaches`, one-time material claims, the codex query API, and a couple more. They are
+tracked as a porting backlog in
 [`docs/unported-from-typescript.md`](docs/unported-from-typescript.md); this README documents the
-engine as it actually is, not as TS left it.
+engine as it actually is, not as TS left it. (Map generation, the largest backlog entry, has since
+been ported — see *Procedural map generation* below.)
 
 ## Documentation site
 
@@ -163,11 +164,12 @@ throws.
   campaign's base encounter chance. A mob authored into a room is seated by the assembler as a
   room-attached resident (origin `"room"`), enabling key-item drops on defeat. Entering or exiting a room fires any
   `Scene` registered for that phase.
-- A room's loot and exits are both optional. The map is **authored, not generated**: each
+- A room's loot and exits are both optional. By default the map is **authored**: each
   `[[exits]]` entry in the campaign TOML declares one directed edge, and
-  `wickedways-assemble` constructs the room graph from them. (There is no runtime map
-  generator in the Rust engine — exits are wired at assembly time, and the return leg of a
-  passage is a separate authored entry.)
+  `wickedways-assemble` constructs the room graph from them (the return leg of a passage is
+  a separate authored entry). A campaign may instead opt into **procedural map generation**
+  with a `[mapGen]` table — see the section below — in which case it authors no `[[exits]]`
+  and the engine wires the rooms at `begin_campaign`.
 - A `Scene` runs its `script(room, state)` only when the trigger phase (`"enter"` / `"exit"`)
   matches **and** all of its `preconditions` pass — preconditions short-circuit on the first
   failure. Each scene owns a private, typed **state bag** (seeded by `initialState`, empty by
@@ -200,6 +202,48 @@ throws.
   - **Serialization.** Exit state serializes natively — the persisted `state` object is included in
     the exit snapshot, so a door that was unlocked during play stays unlocked across save/reload.
     Exits without a `behaviorKey` carry an empty state and no behavior on restore.
+
+### Procedural map generation
+
+A campaign may declare a `[mapGen]` table instead of `[[exits]]` (mixing the two is a compile
+error). Its rooms then ship **unwired** in the genesis, and `begin_campaign` calls
+`World::generate_map` (`crates/wickedways-core/src/world/mapgen.rs`) — the port of the TS-era
+`buildMap` — to wire them:
+
+- **A randomized spanning tree** connects every room: `n − 1` bidirectional exits registered in
+  both endpoint rooms under opposite compass directions, no self-connections, at most
+  `maxExitsPerRoom` (clamped 2–8, default 8) exits per room. A room that cannot be wired in
+  (every host saturated) is a `ProceduralViolation`, never a stranded room.
+- **`required` pairs** are pinned as neighbors *before* the tree is laid down, and may carry the
+  same door fields as an authored exit (`behavior`/`name`/`initialState`) — so a keyed crypt
+  door exists in every layout. **`sealed` rooms** take *only* required passages: no tree or loop
+  edge ever lands on them, making a locked door the sole entrance in every layout.
+- **`extraConnections`** adds loop edges beyond the tree (an absolute count, or a fraction of
+  `n − 1` when strictly between 0 and 1).
+
+All randomness draws from `World.rng`, so a given seed always builds the same map — replays and
+the golden gates hold — and generation is a no-op (zero rng draws) for campaigns without a
+`[mapGen]` config, keeping existing rng streams pinned. The single-player web boot seeds a fresh
+playthrough from platform entropy (`driver::rebuild_single_seeded`), which is what makes each
+night lay out differently; `restart` boots the same way, so it deals a NEW layout, while
+`restore`/`undo` rebuild from the saved snapshot on the deterministic seed-0 stream. Generated
+exit ids are `exit:{roomIdA}|{roomIdB}` (sorted room ids — disjoint from the assembler's
+authored-name scheme). The sync delta replicates exits (the `Exit` `EntitySnapshot` variant, this
+change), so connected replicas receive generated exits live at `begin_campaign`; room snapshots
+carry the direction→exit-id maps either way. `campaigns/solomons-rest.toml` is the reference user.
+
+### World-scoped script state (`worldGet` / `setWorld`)
+
+Per-behavior script `state` is deliberately private to each behavior key. The one sanctioned
+cross-behavior channel is the **world-scoped state**: a JSON object on the campaign core
+(`campaign.worldState`, omitted from serialization while null so pre-existing goldens are
+byte-stable). Any effect body writes it with `emit setWorld('<field>', <expr>)` (a new
+`Effect::SetWorldState` applied through the same collect-then-apply pipeline as every other
+effect), and **every** DSL context reads it with `worldGet('<field>', <literal default>)` —
+victory tests included, which is the point: a night-clock mechanic can advance a world-level
+doom clock, a Wicked Ways card can turn it back, and a win condition can test it. Solomon's
+Rest's daybreak clock (`night-clock` + `toll-the-black-bell` + `survived-to-daybreak`) is the
+reference user.
 
 ### Darkness & light
 
@@ -364,14 +408,17 @@ character** (authored as `character = "@gm"`); in single-player it is an authore
   exception (`card_protected`): quest items (`droppable: false`) and keys cannot be
   destroyed. Integrity clamps (stat floors, reconcile, the 64-effect cap) still hold —
   privilege lifts targeting, never state integrity.
-- **The three shipped cards** (native, always compiled in): **`wicked:lights-out`** —
+- **The four shipped cards** (native, always compiled in): **`wicked:lights-out`** —
   supernatural darkness for `config.rounds` (default 2) rounds: `campaign.lightsOutRounds`
   makes **every** room unlit (`is_lit` short-circuits first, so the targeting gate,
   light-averse ×1.5, entry-swing initiative, and both view projections all follow), ticking
   down at round end with a "darkness lifts" cue on expiry; **`wicked:ruin`** — destroy a
   random unprotected item a Hero carries (unplayable when no candidate exists — rejected
   before anything is spent); **`wicked:shadow-step`** — teleport a character (default: the
-  villain) to any room (`roomId` target required).
+  villain) to any room (`roomId` target required); **`wicked:scatter`** — hurl every
+  conscious hero to a random room at once (each destination drawn independently from
+  `World.rng`, always away from the hero's current room), the split-the-party card —
+  needs no target, unplayable with fewer than two rooms or no conscious hero.
 - **Wire commands.** `playCard { actorId, cardKey, roomId?, targetId? }` and
   `mulligan { actorId, cardKeys }` are Rust-side extensions (like `talk`/`wait`/`destroy`):
   budgeted, turn-gated turn-actions; the villain designation, hand membership, and the
@@ -626,7 +673,14 @@ categories:
   `beginCampaign` while the round counter is still 0.
 - **Transformers** — `modifyDamage(d: DamageView, h: HookCtx): TransformResult` —
   intercept an in-flight damage value before it reaches the character and return an
-  adjusted amount. The transformer runs on every `takeDamage` call and may return
+  adjusted amount. The `DamageView` carries `amount`/`target`/`stat` plus `source`
+  (the attacking character on the attack path — `take_damage_from`; absent for
+  source-less damage like a critical-miss stumble) and `room` (the **target's**
+  current room id), so a transform can express attacker-conditional wards
+  (`some(party, element.id == damage.source && hasEquipped(element, 'torch'))`) and
+  co-location rules (`some(party, element.roomId == damage.room && …)`) without a
+  room resolver — Solomon's Rest's `grave-wards` and `lone-prey` mechanics are the
+  reference users. The transformer runs on every `takeDamage` call and may return
   either a plain `number` (pass-through to the next transformer) or
   `{ value, final: true }` to lock the amount, halt the chain, and emit a
   diagnostic cue.
@@ -1072,6 +1126,13 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
   gate** ([`crates/wickedways-assemble/tests/sync_gate.rs`](crates/wickedways-assemble/tests/sync_gate.rs))
   replays committed command sequences through the Rust authority and asserts each `{ seq, delta }`
   matches the committed golden byte-for-byte.
+  - **A `Delta` replicates all six entity collections** — rooms, exits, characters, items, loot,
+    material caches — plus the campaign core. The exit `EntitySnapshot` variant is a Rust-side
+    extension past the retired TS oracle, which treated exits as runtime-immutable and never
+    carried them: the engine now mutates exit objects after genesis (the `SetExitState` card
+    effect, begin-time map generation), and client-side door gating answers from the replica's
+    exits, so they stream live like everything else. A delta whose command touched no exit still
+    serializes byte-identically to the oracle's, so the committed sync goldens are unchanged.
   - **Solo mode** (`AuthorityOpts.solo`) is how the offline single-player host (the browser client's
     `SinglePlayerTransport`) recovers the full per-turn machinery the explicit multiplayer path leaves
     to the GM. A time-advancing command (`move`/`take`/`drop`/`use`/`attack`/`wait`) drives a turn that
@@ -1092,12 +1153,16 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
     the sync `authorize` gate, and the sync gate constructs the authority with
     `AuthorityOpts::default()` (both `solo` and `manage_turns` off), so authorize stays budget-free
     and byte-stable against the goldens.
-  - **Keyed doors** are gated client-side. The sync `move` command carries a room id and lands via
-    `move_to`, which performs no door check (the guard lives
-    only in the direction-based `go`). So the surfaces gate a `move` with `World::exit_block_reason`
-    (a pure `can_pass` query that runs no `run_script`), narrating the door's fail message and issuing
-    no command when it's locked — e.g. the Hollow House cellar door stays shut until the caretaker's
-    dialogue hands over the key.
+  - **Keyed doors** are gated on both sides of the wire. The sync `move` command carries a room
+    id; before it lands via `move_to`, the authority denies it when every exit connecting the two
+    rooms refuses passage (`World::move_block_reason` — a pure `can_pass` query that runs no
+    `run_script`; a move between rooms no exit connects is left to `move_to`'s existing posture),
+    so a locked or sealed door holds even against a client whose replica is stale or hostile. The
+    surfaces still gate a `move` client-side with `World::exit_block_reason` (the direction-based
+    twin), narrating the door's fail message and issuing no command when it's locked — e.g. the
+    Hollow House cellar door stays shut until the caretaker's dialogue hands over the key. The
+    exit objects both gates read are kept live by delta replication (see above), so a door sealed
+    or unsealed mid-session gates correctly on every connected client, not just at join time.
   - **Materials & crafting** are wired end to end. `harvest`/`craft`/`repair`/`destroy` are **free**
     turn-gated commands (`authorize` requires the actor's turn; none tick the budget) that resolve
     against the ported engine verbs — harvesting a room's `MaterialCache` into the shared pool,
@@ -1687,6 +1752,27 @@ room **`dark`** + **`spawnModifier`**, exit **`name`** + **`initialState`**, **`
 entry carrying both the `{key,weight}` opt-in and the catalog `MobSpec` roster — the roving rats),
 **`[opts]`** (`maxRounds`/`baseEncounterChance`), and **`timeoutNarration`**. Each is proven by a bespoke
 `g2-*` oracle authoring the corresponding **real** hollow-house content byte-for-byte. Still deferred
+
+**Campaign art (`image` fields).** Archetype, room, item, mob, NPC, and card entries take an
+optional `image = "<relative path>"` — validated at compile time (relative-only: no leading `/`,
+no `..`/`.` segments, no `\`, no `:`; never inline data). Rooms/mobs/npcs/archetypes/cards lower
+into **`catalog.images`**, keyed by the id surfaces resolve entities by at render time (the
+assembler's mints: `room:{name}`, `mob:{name}`, `npc:{name}`; plus `archetype:{id}`,
+`card:{key}`); items lower into the descriptor's pre-existing **`presentation.image`** channel.
+Image data is strictly presentation-side: paths ride the catalog only, so snapshots, sync
+deltas, checkpoints, and the golden corpus never carry image bytes, and an image-less campaign's
+catalog serializes byte-identically (the `images` map is omitted when empty). The `ViewModel`
+projects the associations (`ThinRoom.image`, occupant/card `ScopeEntity.image`, items via the
+existing resolved-presentation path); the files themselves live in `campaigns/assets/` and are
+served by the room server's `/assets` route (`ASSETS_DIR`, wired in the Docker image). Both play
+surfaces render them: the PnC scene shows room art as its backdrop and entity art in place of
+the abstract hotspot markers; the CRT terminal frames room art above the room description
+(hidden while the room is dark) and shows a clicked noun's portrait as a dismissible inset
+between the room panel and the transcript. `asset_url`
+(`wickedways-web/src/affordances.rs`) owns path→URL resolution for both.
+Campaign Studio's entry forms (rooms, items, loot, mobs, NPCs, archetypes, cards, formation
+roster mobs) each carry an image-path input, and its TOML export round-trips the field.
+The `g2-images` gate fixture pins the lowering.
 (no Hollow House usage, so a bespoke oracle would be needed): `endedNarration`, `chat`, `av`, `caches`,
 standalone `materials`/`recipes`, room `lights`, item `presentation`, and the mob override fields beyond
 naturalAttack/drops.
