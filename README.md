@@ -1769,6 +1769,8 @@ the abstract hotspot markers; the CRT terminal frames room art above the room de
 (hidden while the room is dark) and shows a clicked noun's portrait as a dismissible inset
 between the room panel and the transcript. `asset_url`
 (`wickedways-web/src/affordances.rs`) owns path→URL resolution for both.
+Campaign Studio's entry forms (rooms, items, loot, mobs, NPCs, archetypes, cards, formation
+roster mobs) each carry an image-path input, and its TOML export round-trips the field.
 The `g2-images` gate fixture pins the lowering.
 (no Hollow House usage, so a bespoke oracle would be needed): `endedNarration`, `chat`, `av`, `caches`,
 standalone `materials`/`recipes`, room `lights`, item `presentation`, and the mob override fields beyond

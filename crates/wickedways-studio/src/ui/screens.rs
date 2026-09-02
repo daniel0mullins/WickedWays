@@ -285,6 +285,12 @@ fn RoomForm(id: u64, entry: RoomEntry) -> Element {
                 hint: format!("known items: {}", item_keys.join(", ")),
                 on_change: move |v| edit_room(store, id, move |r| r.lights = v),
             }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_room(store, id, move |r| r.image = v),
+            }
             ConfirmDelete {
                 label: format!("Delete room ({} refs will dangle)", count_room_refs(&doc, &entry.name)),
                 on_delete: move |()| {
@@ -726,6 +732,12 @@ fn ItemForm(id: u64, entry: ItemEntry) -> Element {
                 onclick: move |_| store.select("behaviors", None),
                 "Edit item behaviors →"
             }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_item(store, id, move |i| i.image = v),
+            }
             ConfirmDelete {
                 label: format!("Delete item ({} refs will dangle)", count_item_refs(&doc, &entry.key)),
                 on_delete: move |()| {
@@ -808,6 +820,12 @@ fn LootForm(id: u64, entry: LootEntry) -> Element {
                 value: entry.description.clone(),
                 placeholder: None,
                 on_change: move |v| edit_loot(store, id, move |l| l.description = v),
+            }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_loot(store, id, move |l| l.image = v),
             }
             ConfirmDelete {
                 label: "Delete loot container".to_string(),
@@ -1102,6 +1120,12 @@ fn MobForm(id: u64, entry: MobEntry) -> Element {
                 value: entry.material_drops.clone(),
                 on_change: move |v| edit_mob(store, id, move |m| m.material_drops = v),
             }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_mob(store, id, move |m| m.image = v),
+            }
             ConfirmDelete {
                 label: "Delete mob".to_string(),
                 on_delete: move |()| {
@@ -1206,6 +1230,12 @@ fn NpcForm(id: u64, entry: NpcEntry) -> Element {
                 hint: format!("known items: {}", doc.item_keys().join(", ")),
                 on_change: move |v| edit_npc(store, id, move |n| n.holds = v),
             }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_npc(store, id, move |n| n.image = v),
+            }
             ConfirmDelete {
                 label: "Delete NPC".to_string(),
                 on_delete: move |()| {
@@ -1307,6 +1337,12 @@ fn ArchetypeForm(id: u64, entry: ArchetypeEntry) -> Element {
                 values: entry.immunities.clone(),
                 hint: None,
                 on_change: move |v| edit_archetype(store, id, move |a| a.immunities = v),
+            }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_archetype(store, id, move |a| a.image = v),
             }
             ConfirmDelete {
                 label: "Delete archetype".to_string(),
@@ -1505,6 +1541,14 @@ fn MobSpecCard(formation: u64, index: usize, spec: MobSpec) -> Element {
                 value: Some(spec.light_averse),
                 on_change: move |v: Option<bool>| edit_formation(store, formation, move |f| {
                     if let Some(m) = f.mobs.get_mut(index) { m.light_averse = v.unwrap_or(false); }
+                }),
+            }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: spec.image.clone(),
+                placeholder: Some("e.g. solomons-rest/cemetery-rat.png".to_string()),
+                on_change: move |v: Option<String>| edit_formation(store, formation, move |f| {
+                    if let Some(m) = f.mobs.get_mut(index) { m.image = v; }
                 }),
             }
             button {
@@ -1824,6 +1868,12 @@ fn CardForm(id: u64, entry: CardEntryToml) -> Element {
                 class: "studio-btn small",
                 onclick: move |_| store.select("behaviors", None),
                 "Edit card behaviors →"
+            }
+            OptTextRow {
+                label: "Image (asset path under campaigns/assets/)",
+                value: entry.image.clone(),
+                placeholder: Some("e.g. solomons-rest/lychgate.png".to_string()),
+                on_change: move |v| edit_card(store, id, move |c| c.image = v),
             }
             ConfirmDelete {
                 label: "Delete card".to_string(),
